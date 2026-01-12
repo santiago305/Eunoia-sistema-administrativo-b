@@ -3,7 +3,7 @@ import { Module } from '@nestjs/common';
 import { envs } from '../config/envs';
 
 /**
- * Módulo de base de datos que configura la conexión a MySQL usando TypeORM.
+ * Módulo de base de datos que configura la conexión a cualquier base de datos usando TypeORM.
  *
  * Utiliza `TypeOrmModule.forRootAsync` para cargar la configuración de manera dinámica
  * desde las variables de entorno definidas en `envs`. También activa la carga automática
@@ -17,7 +17,7 @@ import { envs } from '../config/envs';
  *
  * @example
  * ```ts
- * @Module({
+ * @Module(
  *   imports: [DatabaseModule],
  * })
  * export class AppModule {}
@@ -33,7 +33,7 @@ import { envs } from '../config/envs';
         username: envs.db.username,
         password: envs.db.password,
         database: envs.db.name,
-        synchronize: true, // ⚠️ SOLO EN DESARROLLO
+        synchronize: true, //  SOLO EN DESARROLLO
         autoLoadEntities: true,
         logging: true,
       }),

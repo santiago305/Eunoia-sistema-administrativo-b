@@ -14,7 +14,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // ✅ Servir la carpeta de imágenes públicas
+  //  Servir la carpeta de imágenes públicas
   app.useStaticAssets(join(__dirname, '..', 'assets'), {
     prefix: '/api/assets/', // ruta pública
   });
