@@ -8,7 +8,7 @@ import { successResponse } from 'src/shared/response-standard/response';
 import { isTypeResponse } from 'src/shared/response-standard/guard';
 
 /**
- * Servicio encargado de la gestiAn de roles en el sistema.
+ * Servicio encargado de la gestion de roles en el sistema.
  *
  * Incluye operaciones CRUD, ademAs de mAtodos para restaurar o marcar un rol como eliminado (soft delete).
  */

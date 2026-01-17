@@ -15,8 +15,8 @@ import { RolesModule } from 'src/modules/roles/infrastructure/roles.module';
     RolesModule,
     TypeOrmModule.forFeature([User, Role])], // Importa la entidad User para operaciones con TypeORM
   controllers: [UsersController], // Controlador REST para endpoints relacionados con usuarios
-  providers: [UsersService], // Servicio con la lAgica de negocio para usuarios
-  exports: [UsersService], // Exporta el servicio para que pueda ser usado en otros mAdulos
+  providers: [UsersService], // Servicio con la lógica de negocio para usuarios
+  exports: [UsersService], // Exporta el servicio para que pueda ser usado en otros modulos
 })
 export class UsersModule {}
 

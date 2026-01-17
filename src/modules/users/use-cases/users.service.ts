@@ -156,7 +156,7 @@ export class UsersService {
 
     if (!user) throw new UnauthorizedException('Usuario no encontrado');
 
-    // Eliminamos la contraseAa por seguridad
+    // Eliminamos la contraseña por seguridad
     delete (user as any).password;
 
     return successResponse('Usuario encontrado', user);
@@ -167,12 +167,12 @@ export class UsersService {
     if (!user) throw new UnauthorizedException('Usuario no encontrado');
 
     const isMatch = await argon2.verify(user.password, currentPassword);
-    if (!isMatch) throw new UnauthorizedException('ContraseAa actual incorrecta');
+    if (!isMatch) throw new UnauthorizedException('Contraseña actual incorrecta');
 
     user.password = await argon2.hash(newPassword, { type: argon2.argon2id });
     await this.userRepository.save(user);
 
-    return successResponse('ContraseAa actualizada correctamente');
+    return successResponse('Contraseña actualizada correctamente');
   }
 
   async create(dto: CreateUserDto, requesterRole: string) {
