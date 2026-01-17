@@ -1,9 +1,9 @@
 import { DataSource } from 'typeorm';
-import { envs } from './src/config/envs';
-import { Role } from './src/roles/entities/role.entity';
-import { User } from 'src/users/entities/user.entity';
-import { seedRoles } from './src/roles/seed/role.seeder';
-import { seedUser } from 'src/users/seed/user.seeder';
+import { envs } from './src/infrastructure/config/envs';
+import { Role } from './src/modules/roles/infrastructure/orm-entities/role.entity';
+import { User } from './src/modules/users/infrastructure/orm-entities/user.entity';
+import { seedRoles } from './src/modules/roles/infrastructure/seed/role.seeder';
+import { seedUser } from './src/modules/users/infrastructure/seed/user.seeder';
 
 /**
  * Script de ejecución que inicializa la base de datos con roles predefinidos.

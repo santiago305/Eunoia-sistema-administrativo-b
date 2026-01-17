@@ -1,9 +1,9 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { HttpErrorFilter } from './common/filters/http-exception.filter';
-import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
-import { envs } from './config/envs';
-import { enableCookieParser } from './common/middleware/enable-cookie-parser';
+import { HttpErrorFilter } from './shared/errores/http-exception.filter';
+import { LoggingInterceptor } from './shared/utilidades/interceptors/logging.interceptor';
+import { envs } from './infrastructure/config/envs';
+import { enableCookieParser } from './shared/utilidades/middleware/enable-cookie-parser';
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import compression from 'compression';

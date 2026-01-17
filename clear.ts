@@ -1,7 +1,7 @@
 import { DataSource } from 'typeorm';
-import { envs } from './src/config/envs';
-import { Role } from './src/roles/entities/role.entity';
-import { User } from 'src/users/entities/user.entity';
+import { envs } from './src/infrastructure/config/envs';
+import { Role } from './src/modules/roles/infrastructure/orm-entities/role.entity';
+import { User } from './src/modules/users/infrastructure/orm-entities/user.entity';
 
 const dataSource = new DataSource({
   type: 'postgres',
