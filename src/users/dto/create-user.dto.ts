@@ -1,28 +1,28 @@
 import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 /**
- * DTO para la creación de un nuevo usuario.
+ * DTO para la creaciAn de un nuevo usuario.
  * Contiene las validaciones necesarias para asegurar la integridad de los datos.
  */
 export class CreateUserDto {
   /**
    * Nombre del usuario.
-   * Debe ser una cadena no vacía.
+   * Debe ser una cadena no vacAa.
    */
   @IsString()
   @IsNotEmpty()
   name: string;
 
   /**
-   * Correo electrónico del usuario.
-   * Debe ser un email válido.
+   * Correo electrAnico del usuario.
+   * Debe ser un email vAlido.
    */
   @IsEmail()
   email: string;
 
   /**
-   * Contraseña del usuario.
-   * Debe ser una cadena no vacía. Se almacenará de forma encriptada.
+   * ContraseAa del usuario.
+   * Debe ser una cadena no vacAa. Se almacenarA de forma encriptada.
    */
   @IsString()
   @IsNotEmpty()
@@ -42,3 +42,4 @@ export class CreateUserDto {
   avatarUrl?: string;
 
 }
+

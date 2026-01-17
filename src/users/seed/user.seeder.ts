@@ -20,7 +20,7 @@ export const seedUser = async (dataSource: DataSource) => {
       avatarUrl: 'https://res.cloudinary.com/demo/image/upload/v1730059489/default-admin.png',
     },
     {
-      name: 'María',
+      name: 'MarAa',
       email: 'maria@example.com',
       password: '123123123',
       roleDescription: RoleType.USER,
@@ -31,7 +31,7 @@ export const seedUser = async (dataSource: DataSource) => {
   for (const { name, email, password, roleDescription, avatarUrl } of usersToSeed) {
     const existing = await userRepo.findOneBy({ email });
     if (existing) {
-      console.log(`🟡 Usuario con email ${email} ya existe, omitiendo...`);
+      console.log(` Usuario con email ${email} ya existe, omitiendo...`);
       continue;
     }
 
@@ -42,7 +42,7 @@ export const seedUser = async (dataSource: DataSource) => {
       .getOne();
 
     if (!role) {
-      console.error(`❌ Rol "${roleDescription}" no existe. Crea los roles primero.`);
+      console.error(`A Rol "${roleDescription}" no existe. Crea los roles primero.`);
       continue;
     }
 
@@ -57,6 +57,7 @@ export const seedUser = async (dataSource: DataSource) => {
     });
 
     await userRepo.save(user);
-    console.log(`✅ Usuario ${name} creado exitosamente`);
+    console.log(`A Usuario ${name} creado exitosamente`);
   }
 };
+

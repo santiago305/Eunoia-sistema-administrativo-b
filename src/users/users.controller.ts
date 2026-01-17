@@ -23,7 +23,7 @@ import { RolesGuard } from 'src/common/guards/roles.guard';
 import { User as CurrentUser } from 'src/common/decorators/user.decorator';
 
 /**
- * Controlador para la gestión de usuarios.
+ * Controlador para la gestiAn de usuarios.
  */
 @Controller('users')
 export class UsersController {
@@ -140,3 +140,4 @@ export class UsersController {
     return this.usersService.updateAvatar(id, filePath);
   }
 }
+

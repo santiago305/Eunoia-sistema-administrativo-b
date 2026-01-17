@@ -6,16 +6,16 @@ import { Role } from './entities/role.entity';
 import { UsersModule } from 'src/users/users.module';
 
 /**
- * Módulo que gestiona todo lo relacionado con los roles de usuario.
+ * MAdulo que gestiona todo lo relacionado con los roles de usuario.
  *
- * Este módulo incluye:
+ * Este mAdulo incluye:
  * - La entidad `Role`.
  * - El controlador `RolesController` que expone endpoints HTTP.
- * - El servicio `RolesService` que contiene la lógica de negocio.
+ * - El servicio `RolesService` que contiene la lAgica de negocio.
  *
  * @remarks
- * Usa `TypeOrmModule.forFeature` para registrar la entidad `Role` en el contexto de este módulo.
- * Exporta el servicio para que pueda ser reutilizado en otros módulos (como `UsersModule`).
+ * Usa `TypeOrmModule.forFeature` para registrar la entidad `Role` en el contexto de este mAdulo.
+ * Exporta el servicio para que pueda ser reutilizado en otros mAdulos (como `UsersModule`).
  *
  * @example
  * ```ts
@@ -31,6 +31,7 @@ import { UsersModule } from 'src/users/users.module';
     TypeOrmModule.forFeature([Role])],
   controllers: [RolesController],
   providers: [RolesService],
-  exports: [RolesService], // Permite usar el servicio en otros módulos
+  exports: [RolesService], // Permite usar el servicio en otros mAdulos
 })
 export class RolesModule {}
+

@@ -3,15 +3,15 @@ import { ConfigModule } from '@nestjs/config';
 import { envs } from './envs';
 
 /**
- * Módulo de configuración de la aplicación.
+ * MAdulo de configuraciAn de la aplicaciAn.
  *
- * Este módulo carga las variables de entorno definidas en `envs` y las expone globalmente
- * mediante el `ConfigModule` de NestJS. Esto permite acceder a la configuración
- * en cualquier parte de la aplicación sin necesidad de importar el módulo manualmente.
+ * Este mAdulo carga las variables de entorno definidas en `envs` y las expone globalmente
+ * mediante el `ConfigModule` de NestJS. Esto permite acceder a la configuraciAn
+ * en cualquier parte de la aplicaciAn sin necesidad de importar el mAdulo manualmente.
  *
  * @remarks
- * - `isGlobal: true` hace que el `ConfigModule` esté disponible en toda la aplicación.
- * - `load: [() => envs]` permite cargar una configuración personalizada desde un archivo.
+ * - `isGlobal: true` hace que el `ConfigModule` estA disponible en toda la aplicaciAn.
+ * - `load: [() => envs]` permite cargar una configuraciAn personalizada desde un archivo.
  *
  * @example
  * ```ts
@@ -33,3 +33,4 @@ import { envs } from './envs';
   exports: [ConfigModule],
 })
 export class AppConfigModule {}
+

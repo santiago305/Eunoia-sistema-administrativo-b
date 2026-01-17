@@ -7,7 +7,7 @@ import { SetMetadata } from '@nestjs/common';
  * que luego puede ser utilizado por guards como `RolesGuard` para controlar el acceso.
  *
  * @param roles - Lista de roles permitidos (como 'admin', 'user', etc.).
- * @returns Decorador que añade los roles al handler o controlador.
+ * @returns Decorador que aAade los roles al handler o controlador.
  *
  * @example
  * ```ts
@@ -19,3 +19,4 @@ import { SetMetadata } from '@nestjs/common';
  * ```
  */
 export const Roles = (...roles: string[]) => SetMetadata('roles', roles);
+

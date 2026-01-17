@@ -5,14 +5,14 @@ import { LoggingInterceptor } from './interceptors/logging.interceptor';
 
 
 /**
- * Módulo común que configura proveedores globales como filtros e interceptores.
+ * MAdulo comAn que configura proveedores globales como filtros e interceptores.
  *
- * Este módulo registra:
+ * Este mAdulo registra:
  * - `HttpErrorFilter`: Un filtro global para capturar y formatear errores HTTP.
- * - `LoggingInterceptor`: Un interceptor que mide el tiempo de ejecución de las solicitudes.
+ * - `LoggingInterceptor`: Un interceptor que mide el tiempo de ejecuciAn de las solicitudes.
  *
  * Al registrar estos proveedores con `APP_FILTER` y `APP_INTERCEPTOR`,
- * NestJS los aplica globalmente en toda la aplicación sin necesidad de usarlos en cada controlador.
+ * NestJS los aplica globalmente en toda la aplicaciAn sin necesidad de usarlos en cada controlador.
  *
  * @example
  * ```ts
@@ -36,3 +36,4 @@ import { LoggingInterceptor } from './interceptors/logging.interceptor';
   exports: [],
 })
 export class CommonModule {}
+

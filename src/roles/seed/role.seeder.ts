@@ -9,7 +9,7 @@ import { RoleType } from '../../common/constants';
  * y asegura que cada rol definido en `RoleType` exista en la base de datos.
  * Si un rol ya existe, no se vuelve a insertar.
  *
- * @param dataSource - Instancia de conexión a la base de datos proporcionada por TypeORM.
+ * @param dataSource - Instancia de conexiAn a la base de datos proporcionada por TypeORM.
  *
  * @example
  * ```ts
@@ -38,3 +38,4 @@ export const seedRoles = async (dataSource: DataSource) => {
     }
   }
 };
+

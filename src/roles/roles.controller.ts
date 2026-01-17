@@ -11,7 +11,7 @@ import { JwtAuthGuard } from 'src/auth/guard/jwt-auth.guard';
 /**
  * Controlador encargado de gestionar las rutas relacionadas con los roles de usuario.
  *
- * Todos los endpoints de este controlador están protegidos por el `RolesGuard`,
+ * Todos los endpoints de este controlador estAn protegidos por el `RolesGuard`,
  * lo que significa que solo los usuarios autenticados con rol `ADMIN` pueden acceder.
  *
  * Ruta base: `/roles`
@@ -107,3 +107,4 @@ export class RolesController {
     return this.rolesService.restore(id);
   }
 }
+

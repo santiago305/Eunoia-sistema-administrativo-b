@@ -11,7 +11,7 @@ export const successResponse = <T = any>(
   message: string,
   data?: T
 ): SuccessResponse<T> => ({
-  type: status.SUCCESS, // debería ser 'success'
+  type: status.SUCCESS, // deberAa ser 'success'
   message,
   data,
 });
@@ -35,3 +35,4 @@ export const invalidResponse = (message): InvalidResponse => ({
   type: status.INVALID,
   message,
 });
+

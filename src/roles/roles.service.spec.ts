@@ -61,7 +61,7 @@ describe('RolesService - create()', () => {
     expect(result).toEqual(successResponse('Rol creado exitosamente'));
   });
 
-  it('debe retornar error si ocurre una excepción', async () => {
+  it('debe retornar error si ocurre una excepciAn', async () => {
     mockRepository.createQueryBuilder().where().andWhere().getExists.mockResolvedValue(false);
     mockRepository.createQueryBuilder().execute.mockRejectedValue(new Error('Error interno'));
 
@@ -71,3 +71,4 @@ describe('RolesService - create()', () => {
     expect(result).toEqual(errorResponse('No hemos podido crear el rol'));
   });
 });
+

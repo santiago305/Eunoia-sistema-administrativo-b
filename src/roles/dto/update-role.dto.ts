@@ -10,9 +10,10 @@ import { CreateRoleDto } from './create-role.dto';
  * @extends PartialType<CreateRoleDto>
  *
  * @example
- * // Solo actualiza la descripción del rol
+ * // Solo actualiza la descripciAn del rol
  * {
  *   "description": "nuevo_rol"
  * }
  */
 export class UpdateRoleDto extends PartialType(CreateRoleDto) {}
+

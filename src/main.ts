@@ -14,9 +14,9 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  //  Servir la carpeta de imágenes públicas
+  //  Servir la carpeta de imAgenes pAblicas
   app.useStaticAssets(join(__dirname, '..', 'assets'), {
-    prefix: '/api/assets/', // ruta pública
+    prefix: '/api/assets/', // ruta pAblica
   });
 
   app.setGlobalPrefix('api');
@@ -52,3 +52,4 @@ async function bootstrap() {
   console.log(`Server is running on port ${envs.port || 3000}`);
 }
 bootstrap();
+

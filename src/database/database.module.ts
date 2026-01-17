@@ -3,17 +3,17 @@ import { Module } from '@nestjs/common';
 import { envs } from '../config/envs';
 
 /**
- * Módulo de base de datos que configura la conexión a cualquier base de datos usando TypeORM.
+ * MAdulo de base de datos que configura la conexiAn a cualquier base de datos usando TypeORM.
  *
- * Utiliza `TypeOrmModule.forRootAsync` para cargar la configuración de manera dinámica
- * desde las variables de entorno definidas en `envs`. También activa la carga automática
- * de entidades y la sincronización del esquema (solo recomendable en desarrollo).
+ * Utiliza `TypeOrmModule.forRootAsync` para cargar la configuraciAn de manera dinAmica
+ * desde las variables de entorno definidas en `envs`. TambiAn activa la carga automAtica
+ * de entidades y la sincronizaciAn del esquema (solo recomendable en desarrollo).
  *
  * @remarks
- * - `synchronize: true` permite sincronizar entidades con la base de datos automáticamente.
- *   ⚠️ Esto no debe usarse en producción porque puede borrar datos ya que es como un auto-migrador.
- * - `autoLoadEntities: true` permite registrar automáticamente las entidades en los módulos.
- * - `logging: true` habilita logs de consultas y errores en consola (útil para debug).
+ * - `synchronize: true` permite sincronizar entidades con la base de datos automAticamente.
+ *   AI Esto no debe usarse en producciAn porque puede borrar datos ya que es como un auto-migrador.
+ * - `autoLoadEntities: true` permite registrar automAticamente las entidades en los mAdulos.
+ * - `logging: true` habilita logs de consultas y errores en consola (Atil para debug).
  *
  * @example
  * ```ts
@@ -41,3 +41,4 @@ import { envs } from '../config/envs';
   ],
 })
 export class DatabaseModule {}
+

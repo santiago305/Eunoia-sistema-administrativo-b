@@ -8,9 +8,9 @@ import { successResponse } from 'src/common/utils/response';
 import { isTypeResponse } from 'src/common/guards/guard';
 
 /**
- * Servicio encargado de la gestión de roles en el sistema.
+ * Servicio encargado de la gestiAn de roles en el sistema.
  *
- * Incluye operaciones CRUD, además de métodos para restaurar o marcar un rol como eliminado (soft delete).
+ * Incluye operaciones CRUD, ademAs de mAtodos para restaurar o marcar un rol como eliminado (soft delete).
  */
 @Injectable()
 export class RolesService {
@@ -189,3 +189,4 @@ private async toggleDelete(id: string, deleted: boolean, successMsg: string, err
     return this.toggleDelete(id, false, 'El rol ha sido restaurado','no se pudo restaurar el rol')
   }
 }
+

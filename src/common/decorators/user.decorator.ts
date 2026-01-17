@@ -18,6 +18,7 @@ export const User = createParamDecorator(
     const request = ctx.switchToHttp().getRequest();
 
     // Este `user` fue insertado por JwtStrategy.validate()
-    return request.user || null; // Devuelve null si no está logueado (opcional)
+    return request.user || null; // Devuelve null si no estA logueado (opcional)
   },
 );
+

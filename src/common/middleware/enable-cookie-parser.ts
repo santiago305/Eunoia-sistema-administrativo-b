@@ -3,13 +3,13 @@ import  cookieParser from 'cookie-parser';
 import { envs } from '../../config/envs';
 
 /**
- * Habilita el middleware `cookie-parser` en la aplicación NestJS.
+ * Habilita el middleware `cookie-parser` en la aplicaciAn NestJS.
  *
  * Este middleware permite leer y firmar cookies en las solicitudes HTTP.
  * Se utiliza una clave secreta (`cookieSecret`) definida en las variables de entorno
  * para firmar cookies y verificar su integridad.
  *
- * @param app - Instancia de la aplicación NestJS (`INestApplication`).
+ * @param app - Instancia de la aplicaciAn NestJS (`INestApplication`).
  *
  * @example
  * ```ts
@@ -28,3 +28,4 @@ export function enableCookieParser(app: INestApplication): void {
   // Agrega cookie-parser con un secret opcional (para firmar cookies si se desea)
   app.use(cookieParser(cookieSecret));
 }
+

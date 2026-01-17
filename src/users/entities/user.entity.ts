@@ -15,7 +15,7 @@ import { Role } from '../../roles/entities/role.entity';
 @Entity('users')
 export class User {
   /**
-   * Identificador único del usuario.
+   * Identificador Anico del usuario.
    */
   @PrimaryGeneratedColumn('uuid')
   id: string
@@ -27,19 +27,19 @@ export class User {
   name: string;
 
   /**
-   * Correo electrónico del usuario (único).
+   * Correo electrAnico del usuario (Anico).
    */
   @Column({ unique: true })
   email: string;
 
   /**
-   * Contraseña hasheada del usuario.
+   * ContraseAa hasheada del usuario.
    */
   @Column()
   password: string;
 
   /**
-   * Indica si el usuario ha sido eliminado lógicamente.
+   * Indica si el usuario ha sido eliminado lAgicamente.
    */
   @Column({ default: false })
   deleted: boolean;
@@ -58,3 +58,4 @@ export class User {
   @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;
 }
+

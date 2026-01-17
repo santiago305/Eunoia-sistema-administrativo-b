@@ -4,34 +4,34 @@ import { User } from 'users/entities/user.entity';
 /**
  * Entidad `Role` que representa los diferentes roles de usuario en el sistema.
  *
- * Cada rol tiene una descripción única, un indicador de si está eliminado lógicamente,
- * y una relación uno-a-muchos con usuarios (`User`).
+ * Cada rol tiene una descripciAn Anica, un indicador de si estA eliminado lAgicamente,
+ * y una relaciAn uno-a-muchos con usuarios (`User`).
  */
 @Entity('roles')
 export class Role {
   /**
-   * Identificador único del rol.
-   * Se genera automáticamente al insertar un nuevo registro.
+   * Identificador Anico del rol.
+   * Se genera automAticamente al insertar un nuevo registro.
    */
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
   /**
-   * Descripción única del rol (por ejemplo: 'admin', 'user', 'moderator').
+   * DescripciAn Anica del rol (por ejemplo: 'admin', 'user', 'moderator').
    */
   @Column({ unique: true })
   description: string;
 
   /**
-   * Campo booleano que indica si el rol fue eliminado lógicamente.
-   * Se utiliza para soft deletes (sin borrar físicamente de la base de datos).
+   * Campo booleano que indica si el rol fue eliminado lAgicamente.
+   * Se utiliza para soft deletes (sin borrar fAsicamente de la base de datos).
    */
   @Column({ default: false })
   deleted: boolean;
 
   /**
-   * Relación uno-a-muchos con la entidad `User`.
-   * Un rol puede estar asignado a múltiples usuarios.
+   * RelaciAn uno-a-muchos con la entidad `User`.
+   * Un rol puede estar asignado a mAltiples usuarios.
    */
   @OneToMany(() => User, (user) => user.role)
   users: User[];
@@ -39,3 +39,4 @@ export class Role {
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }
+

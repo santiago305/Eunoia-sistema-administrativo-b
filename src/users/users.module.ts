@@ -7,7 +7,7 @@ import { Role } from 'src/roles/entities/role.entity';
 import { RolesModule } from 'src/roles/roles.module';
 
 /**
- * Módulo encargado de la gestión de usuarios.
+ * MAdulo encargado de la gestiAn de usuarios.
  * Incluye el controlador, servicio y entidad User.
  */
 @Module({
@@ -15,7 +15,8 @@ import { RolesModule } from 'src/roles/roles.module';
     RolesModule,
     TypeOrmModule.forFeature([User, Role])], // Importa la entidad User para operaciones con TypeORM
   controllers: [UsersController], // Controlador REST para endpoints relacionados con usuarios
-  providers: [UsersService], // Servicio con la lógica de negocio para usuarios
-  exports: [UsersService], // Exporta el servicio para que pueda ser usado en otros módulos
+  providers: [UsersService], // Servicio con la lAgica de negocio para usuarios
+  exports: [UsersService], // Exporta el servicio para que pueda ser usado en otros mAdulos
 })
 export class UsersModule {}
+
