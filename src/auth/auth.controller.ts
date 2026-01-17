@@ -1,4 +1,4 @@
-import {
+﻿import {
   Controller,
   Post,
   Body,
@@ -32,9 +32,9 @@ export class AuthController {
 
     res.cookie('refresh_token', refresh_token, {
       httpOnly: true,
-      secure: false, // ⚠️ pon en true en prod
+      secure: false, // pon en true en prod
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 dias
     });
 
     res.cookie('access_token', access_token, {
@@ -79,14 +79,14 @@ export class AuthController {
   logout(@Res({ passthrough: true }) res: Response) {
     res.clearCookie('refresh_token');
     res.clearCookie('access_token');
-    return successResponse('Sesión cerrada correctamente');
+    return successResponse('Sesion cerrada correctamente');
   }
 
-  // 🔁 REFRESH TOKEN
+  // REFRESH TOKEN
   @UseGuards(JwtRefreshAuthGuard)
   @Get('refresh')
   async refresh(
-    @UserDecorator() user: any, // 👈 puede venir con userId o sub
+    @UserDecorator() user: any, // puede venir con userId o sub
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.authService.refreshFromPayload(user);
@@ -108,6 +108,6 @@ export class AuthController {
   @Get('validate-token')
   @UseGuards(JwtAuthGuard)
   async validateToken(@Res() res: Response) {
-    return res.status(200).json({ message: 'Token es válido' });
+    return res.status(200).json({ message: 'Token es valido' });
   }
 }

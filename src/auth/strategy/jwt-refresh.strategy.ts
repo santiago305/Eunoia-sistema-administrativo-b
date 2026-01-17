@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+﻿import { Injectable } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Request } from 'express';
@@ -7,8 +7,8 @@ import { envs } from '../../config/envs';
 /**
  * Estrategia Passport para validar el refresh token desde una cookie.
  *
- * Esta estrategia se registra bajo el nombre `'jwt-refresh'`.
- * Se encarga de extraer el token desde la cookie `refresh_token`
+ * Esta estrategia se registra bajo el nombre 'jwt-refresh'.
+ * Se encarga de extraer el token desde la cookie 'refresh_token'
  * y validar su firma y contenido.
  */
 @Injectable()
@@ -17,10 +17,10 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
     super({
       /**
        * Extrae el JWT desde la cookie 'refresh_token'.
-       * Esta es una práctica más segura que enviarlo por header.
+       * Esta es una practica mas segura que enviarlo por header.
        */
       jwtFromRequest: ExtractJwt.fromExtractors([
-        (req: Request) => req.cookies['refresh_token'], 
+        (req: Request) => req.cookies['refresh_token'],
       ]),
 
       /**
@@ -29,30 +29,30 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
       secretOrKey: envs.jwt.secret,
 
       /**
-       * No se ignora la expiración, se validará automáticamente.
+       * No se ignora la expiracion, se validara automaticamente.
        */
       ignoreExpiration: false,
 
       /**
-       * Verifica el `issuer` del token para mayor seguridad.
+       * Verifica el issuer del token para mayor seguridad.
        */
       issuer: envs.jwt.issuer,
 
       /**
-       * No se pasa la request completa al callback de validación.
+       * No se pasa la request completa al callback de validacion.
        */
       passReqToCallback: false,
     });
   }
 
   /**
-   * Método que se ejecuta si el token es válido.
-   * Retorna un objeto con los datos del usuario extraídos del payload.
+   * Metodo que se ejecuta si el token es valido.
+   * Retorna un objeto con los datos del usuario extraidos del payload.
    *
    * @param payload - Cuerpo del token decodificado.
    * @returns Objeto con datos del usuario autenticado.
    */
   async validate(payload: any) {
-    return { id: payload.sub, email: payload.email, role: payload.role };
+    return { sub: payload.sub, email: payload.email, role: payload.role };
   }
 }

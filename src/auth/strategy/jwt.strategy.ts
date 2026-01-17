@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+﻿import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { envs } from '../../config/envs';
@@ -13,9 +13,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor() {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
-        // ✅ Prioridad 1: cookie
+        // Nota. Prioridad 1: cookie
         (req: Request) => req?.cookies?.access_token,
-        // ✅ Prioridad 2: header Authorization
+        // Nota. Prioridad 2: header Authorization
         ExtractJwt.fromAuthHeaderAsBearerToken(),
       ]),
       ignoreExpiration: false,
@@ -25,15 +25,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   /**
-   * Si el token es válido, Passport inyecta lo que retorne aquí en req.user.
+   * Si el token es valido, Passport inyecta lo que retorne aqui en req.user.
    */
   async validate(payload: any) {
     if (!payload?.sub) {
-      throw new UnauthorizedException('Token inválido o sin identificador');
+      throw new UnauthorizedException('Token invalido o sin identificador');
     }
 
     return {
-      id: payload.sub,   // 👈 Este ID será leído en @User()
+      id: payload.sub,   // Este ID sera leido en @User()
       email: payload.email,
       role: payload.role,
     };
