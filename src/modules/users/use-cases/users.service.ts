@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from 'src/modules/users/infrastructure/orm-entities/user.entity';
@@ -8,12 +8,22 @@ import * as argon2 from 'argon2';
 import { RoleType } from 'src/shared/constantes/constants';
 import { errorResponse, successResponse } from 'src/shared/response-standard/response';
 import { RolesService } from 'src/modules/roles/use-cases/roles.service';
+import {
+  Email,
+  Password,
+  RoleId,
+  USER_REPOSITORY,
+  UserFactory,
+  UserRepository,
+} from 'src/modules/users/domain';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @Inject(USER_REPOSITORY)
+    private readonly userDomainRepository: UserRepository,
 
     private readonly rolesService: RolesService,
   ) {}
@@ -119,10 +129,9 @@ export class UsersService {
   }
 
   async isUserEmail(email: string) {
-    const exists = await this.userRepository
-      .createQueryBuilder('user')
-      .where('user.email = :email', { email })
-      .getExists();
+    const exists = await this.userDomainRepository.existsByEmail(
+      new Email(email)
+    );
   
     if (exists) {
       throw new UnauthorizedException('Este email ya estA registrado');
@@ -132,47 +141,66 @@ export class UsersService {
   }
 
   async findByEmail(email: string) {
-    const user = await this.userRepository
-      .createQueryBuilder('user')
-      .leftJoinAndSelect('user.role', 'role')
-      .select([
-        'user.id',
-        'user.email',
-        'role.description As rol'
-      ])
-      .where('user.email = :email', { email })
-      .andWhere('user.deleted = false')
-      .getRawOne();
-  
-    if (!user) return errorResponse('No hemos encontrado el usuario');
+    const domainUser = await this.userDomainRepository.findByEmail(
+      new Email(email)
+    );
+    if (!domainUser || domainUser.deleted) {
+      return errorResponse('No hemos encontrado el usuario');
+    }
 
-    return successResponse('Usuario encontrado', user);
+    const roleResponse = await this.rolesService.findOne(
+      domainUser.roleId.value
+    );
+    const role = (roleResponse as any).data ?? roleResponse;
+
+    return successResponse('Usuario encontrado', {
+      id: domainUser.id,
+      email: domainUser.email.value,
+      rol: role.description,
+    });
   }
   async findOwnUser(id: string) {
-    const user = await this.userRepository.findOne({
-      where: { id },
-      relations: ['role'],
+    const domainUser = await this.userDomainRepository.findById(id);
+    if (!domainUser || domainUser.deleted) {
+      throw new UnauthorizedException('Usuario no encontrado');
+    }
+
+    const roleResponse = await this.rolesService.findOne(
+      domainUser.roleId.value
+    );
+    const role = (roleResponse as any).data ?? roleResponse;
+
+    return successResponse('Usuario encontrado', {
+      id: domainUser.id,
+      name: domainUser.name,
+      email: domainUser.email.value,
+      deleted: domainUser.deleted,
+      avatarUrl: domainUser.avatarUrl,
+      createdAt: domainUser.createdAt,
+      role: {
+        id: role.id,
+        description: role.description,
+      },
     });
-
-    if (!user) throw new UnauthorizedException('Usuario no encontrado');
-
-    // Eliminamos la contraseña por seguridad
-    delete (user as any).password;
-
-    return successResponse('Usuario encontrado', user);
   }
 
   async changePassword(id: string, currentPassword: string, newPassword: string) {
-    const user = await this.userRepository.findOne({ where: { id } });
-    if (!user) throw new UnauthorizedException('Usuario no encontrado');
+    const domainUser = await this.userDomainRepository.findById(id);
+    if (!domainUser) throw new UnauthorizedException('Usuario no encontrado');
 
-    const isMatch = await argon2.verify(user.password, currentPassword);
-    if (!isMatch) throw new UnauthorizedException('Contraseña actual incorrecta');
+    const isMatch = await argon2.verify(
+      domainUser.password.value,
+      currentPassword
+    );
+    if (!isMatch) throw new UnauthorizedException('Contrasena actual incorrecta');
 
-    user.password = await argon2.hash(newPassword, { type: argon2.argon2id });
-    await this.userRepository.save(user);
+    const hashedPassword = await argon2.hash(newPassword, {
+      type: argon2.argon2id,
+    });
+    domainUser.password = new Password(hashedPassword);
+    await this.userDomainRepository.save(domainUser);
 
-    return successResponse('Contraseña actualizada correctamente');
+    return successResponse('Contrasena actualizada correctamente');
   }
 
   async create(dto: CreateUserDto, requesterRole: string) {
@@ -195,19 +223,16 @@ export class UsersService {
 
     const roleId = roleResult.data.id || RoleType.USER ;
   
+    const domainUser = UserFactory.createNew({
+      name: dto.name,
+      email: new Email(dto.email),
+      password: new Password(hashedPassword),
+      roleId: new RoleId(roleId),
+      avatarUrl: dto.avatarUrl,
+    });
+
     try {
-      await this.userRepository
-        .createQueryBuilder()
-        .insert()
-        .into(User)
-        .values({
-          name: dto.name,
-          email: dto.email,
-          password: hashedPassword,
-          role: { id: roleId }
-        })
-        .execute();
-    
+      await this.userDomainRepository.save(domainUser);
       return successResponse('Usuario creado correctamente') 
     } catch (error) {
       console.error('[UsersService][create] error al crear un usuario: ',error);
@@ -218,30 +243,32 @@ export class UsersService {
   async update(id: string, dto: UpdateUserDto) {
     await this.findOne(id)
 
-    const updateData: Partial<User> = {};
+    const existingUser = await this.userDomainRepository.findById(id);
+    if (!existingUser) throw new UnauthorizedException('Usuario no encontrado');
+
     if (dto.email) {
       await this.isUserEmail(dto.email);
-      updateData.email = dto.email;
+      existingUser.email = new Email(dto.email);
     }
     if (dto.roleId) {
       await this.rolesService.isRoleActive(dto.roleId);
+      existingUser.roleId = new RoleId(dto.roleId);
     }
 
-    if (dto.name) updateData.name = dto.name;
+    if (dto.name) existingUser.name = dto.name;
     if (dto.password) {
-      updateData.password = await argon2.hash(dto.password, {
+      const hashedPassword = await argon2.hash(dto.password, {
         type: argon2.argon2id,
       });
+      existingUser.password = new Password(hashedPassword);
+    }
+    if (dto.avatarUrl) {
+      existingUser.avatarUrl = dto.avatarUrl;
     }
 
     try {
 
-      await this.userRepository
-      .createQueryBuilder()
-      .update(User)
-      .set(updateData)
-      .where('id = :id',{id})
-      .execute();
+      await this.userDomainRepository.save(existingUser);
 
       const updateUser = await this.findOne(id)
 
@@ -288,32 +315,39 @@ export class UsersService {
     password: string;
     role: { description: string };
   } | null> {
-    const user = await this.userRepository
-      .createQueryBuilder('user')
-      .leftJoinAndSelect('user.role', 'role')
-      .select([
-        'user.id',
-        'user.email',
-        'user.password',
-        'role.description',
-      ])
-      .where('user.email = :email', { email })
-      .andWhere('user.deleted = false')
-      .getOne();
+    const domainUser = await this.userDomainRepository.findByEmail(
+      new Email(email)
+    );
+    if (!domainUser || domainUser.deleted) return null;
 
-    return user || null;
+    const roleResponse = await this.rolesService.findOne(
+      domainUser.roleId.value
+    );
+    const role = (roleResponse as any).data ?? roleResponse;
+
+    return {
+      id: domainUser.id as string,
+      email: domainUser.email.value,
+      password: domainUser.password.value,
+      role: { description: role.description },
+    };
   }
 
 
   async updateAvatar(id: string, filePath: string) {
     try {
-      const user = await this.userRepository.findOne({ where: { id } });
-      if (!user) throw new UnauthorizedException('Usuario no encontrado');
+      const domainUser = await this.userDomainRepository.findById(id);
+      if (!domainUser) throw new UnauthorizedException('Usuario no encontrado');
 
-      user.avatarUrl = filePath;
-      await this.userRepository.save(user);
+      domainUser.avatarUrl = filePath;
+      const saved = await this.userDomainRepository.save(domainUser);
 
-      return successResponse('Avatar actualizado correctamente', user);
+      return successResponse('Avatar actualizado correctamente', {
+        id: saved.id,
+        name: saved.name,
+        email: saved.email.value,
+        avatarUrl: saved.avatarUrl,
+      });
     } catch (error) {
       console.error('[UserService][updateAvatar] Error al subir avatar:', error);
       throw new UnauthorizedException('No se pudo actualizar el avatar');
