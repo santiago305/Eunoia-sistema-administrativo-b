@@ -16,6 +16,10 @@ import {
   UserFactory,
   UserRepository,
 } from 'src/modules/users/domain';
+import {
+  USER_READ_REPOSITORY,
+  UserReadRepository,
+} from 'src/modules/users/ports/user-read.repository';
 
 @Injectable()
 export class UsersService {
@@ -24,57 +28,24 @@ export class UsersService {
     private readonly userRepository: Repository<User>,
     @Inject(USER_REPOSITORY)
     private readonly userDomainRepository: UserRepository,
+    @Inject(USER_READ_REPOSITORY)
+    private readonly userReadRepository: UserReadRepository,
 
     private readonly rolesService: RolesService,
   ) {}
 
-  private async getUsers(
-    whereClause?: string,
-    page: number = 1,
-    filters?: { role?: string },
-    sortBy: string = 'user.createdAt',
-    order: 'ASC' | 'DESC' = 'DESC'
-  ) {
-    const pageSize = 20;
-    const offset = (page - 1) * pageSize;
-  
-    const query = this.userRepository
-      .createQueryBuilder('user')
-      .leftJoin('user.role', 'role')
-      .select([
-        'user.id',
-        'user.name',
-        'user.email',
-        'role.description As rol',
-        'user.deleted',
-        'user.createdAt',
-      ])
-      .skip(offset)
-      .take(pageSize);
-  
-    // Aplica condiciones en orden seguro
-    if (whereClause) {
-      query.where(whereClause);
-    } else {
-      query.where('1=1'); // para permitir encadenar andWhere incluso si no hay filtro base
-    }
-  
-    if (filters?.role) {
-      query.andWhere('rol = :role', { role: filters.role });
-    }
-  
-    query.orderBy(sortBy, order);
-  
-    return query.getRawMany();
-  }
-  
   async findAll(params: {
     page?: number,
     filters?: { role?: string },
     sortBy?: string,
     order?: 'ASC' | 'DESC'
   }) {
-    return this.getUsers(undefined, params.page, params.filters, params.sortBy, params.order);
+    return this.userReadRepository.listUsers({
+      page: params.page,
+      filters: params.filters,
+      sortBy: params.sortBy,
+      order: params.order,
+    });
   }
 
   async findActives(params: {
@@ -83,7 +54,13 @@ export class UsersService {
     sortBy?: string,
     order?: 'ASC' | 'DESC'
   }){
-    return await this.getUsers('role.deleted = false', params.page, params.filters, params.sortBy, params.order)
+    return this.userReadRepository.listUsers({
+      page: params.page,
+      filters: params.filters,
+      sortBy: params.sortBy,
+      order: params.order,
+      whereClause: 'role.deleted = false',
+    });
   }
 
   async findOne(id: string) {
@@ -141,47 +118,20 @@ export class UsersService {
   }
 
   async findByEmail(email: string) {
-    const domainUser = await this.userDomainRepository.findByEmail(
-      new Email(email)
-    );
-    if (!domainUser || domainUser.deleted) {
-      return errorResponse('No hemos encontrado el usuario');
-    }
-
-    const roleResponse = await this.rolesService.findOne(
-      domainUser.roleId.value
-    );
-    const role = (roleResponse as any).data ?? roleResponse;
+    const user = await this.userReadRepository.findPublicByEmail(email);
+    if (!user) return errorResponse('No hemos encontrado el usuario');
 
     return successResponse('Usuario encontrado', {
-      id: domainUser.id,
-      email: domainUser.email.value,
-      rol: role.description,
+      id: user.id,
+      email: user.email,
+      rol: user.roleDescription,
     });
   }
   async findOwnUser(id: string) {
-    const domainUser = await this.userDomainRepository.findById(id);
-    if (!domainUser || domainUser.deleted) {
-      throw new UnauthorizedException('Usuario no encontrado');
-    }
+    const user = await this.userReadRepository.findPublicById(id);
+    if (!user) throw new UnauthorizedException('Usuario no encontrado');
 
-    const roleResponse = await this.rolesService.findOne(
-      domainUser.roleId.value
-    );
-    const role = (roleResponse as any).data ?? roleResponse;
-
-    return successResponse('Usuario encontrado', {
-      id: domainUser.id,
-      name: domainUser.name,
-      email: domainUser.email.value,
-      deleted: domainUser.deleted,
-      avatarUrl: domainUser.avatarUrl,
-      createdAt: domainUser.createdAt,
-      role: {
-        id: role.id,
-        description: role.description,
-      },
-    });
+    return successResponse('Usuario encontrado', user);
   }
 
   async changePassword(id: string, currentPassword: string, newPassword: string) {
@@ -315,21 +265,14 @@ export class UsersService {
     password: string;
     role: { description: string };
   } | null> {
-    const domainUser = await this.userDomainRepository.findByEmail(
-      new Email(email)
-    );
-    if (!domainUser || domainUser.deleted) return null;
-
-    const roleResponse = await this.rolesService.findOne(
-      domainUser.roleId.value
-    );
-    const role = (roleResponse as any).data ?? roleResponse;
+    const user = await this.userReadRepository.findWithPasswordByEmail(email);
+    if (!user) return null;
 
     return {
-      id: domainUser.id as string,
-      email: domainUser.email.value,
-      password: domainUser.password.value,
-      role: { description: role.description },
+      id: user.id,
+      email: user.email,
+      password: user.password,
+      role: { description: user.roleDescription },
     };
   }
 

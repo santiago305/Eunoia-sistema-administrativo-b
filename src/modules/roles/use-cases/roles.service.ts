@@ -119,7 +119,9 @@ export class RolesService {
     .andWhere('role.deleted = false')
     .getExists()
 
-    if(!isRoleExisting)throw new UnauthorizedException('No hay registros de este rol');
+    if (isRoleExisting) {
+      throw new UnauthorizedException('Ese rol ya existe');
+    }
 
     return true;
   }

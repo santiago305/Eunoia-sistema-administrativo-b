@@ -7,6 +7,8 @@ import { Role } from 'src/modules/roles/infrastructure/orm-entities/role.entity'
 import { RolesModule } from 'src/modules/roles/infrastructure/roles.module';
 import { USER_REPOSITORY } from '../domain';
 import { TypeormUserRepository } from './repositories/typeorm-user.repository';
+import { USER_READ_REPOSITORY } from '../ports/user-read.repository';
+import { TypeormUserReadRepository } from './repositories/typeorm-user-read.repository';
 
 /**
  * MAdulo encargado de la gestiAn de usuarios.
@@ -24,7 +26,11 @@ import { TypeormUserRepository } from './repositories/typeorm-user.repository';
       provide: USER_REPOSITORY,
       useClass: TypeormUserRepository,
     },
+    {
+      provide: USER_READ_REPOSITORY,
+      useClass: TypeormUserReadRepository,
+    },
   ], // Servicio con la lИgica de negocio para usuarios
-  exports: [UsersService, USER_REPOSITORY], // Exporta el servicio para que pueda ser usado en otros modulos
+  exports: [UsersService, USER_REPOSITORY, USER_READ_REPOSITORY], // Exporta el servicio para que pueda ser usado en otros modulos
 })
 export class UsersModule {}
