@@ -17,7 +17,7 @@ export class Role {
   id: string;
 
   /**
-   * DescripciAn Anica del rol (por ejemplo: 'admin', 'user', 'moderator').
+   * DescripciAn Anica del rol (por ejemplo: 'admin', 'adviser', 'moderator').
    */
   @Column({ unique: true })
   description: string;

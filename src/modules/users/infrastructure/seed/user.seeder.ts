@@ -5,7 +5,7 @@ import { Role } from 'src/modules/roles/infrastructure/orm-entities/role.entity'
 import { RoleType } from 'src/shared/constantes/constants';
 
 /**
- * Seeder para insertar usuarios por defecto (admin y usuario).
+ * Seeder para insertar usuarios por defecto (admin y adviser).
  */
 export const seedUser = async (dataSource: DataSource) => {
   const userRepo = dataSource.getRepository(User);
@@ -23,7 +23,7 @@ export const seedUser = async (dataSource: DataSource) => {
       name: 'MarAa',
       email: 'maria@example.com',
       password: '123123123',
-      roleDescription: RoleType.USER,
+      roleDescription: RoleType.ADVISER,
       avatarUrl: 'https://res.cloudinary.com/demo/image/upload/v1730059490/default-user.png',
     },
   ];

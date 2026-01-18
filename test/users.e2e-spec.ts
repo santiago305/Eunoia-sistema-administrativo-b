@@ -2,9 +2,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { UsersController } from 'src/modules/users/adapters/in/controllers/users.controller';
-import { UsersService } from 'src/modules/users/use-cases/users.service';
+import { UsersService } from 'src/modules/users/application/use-cases/users.service';
 import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/shared/utilidades/guards/roles.guard';
+import { RoleType } from 'src/shared/constantes/constants';
 
 describe('UsersController (e2e)', () => {
   let app: INestApplication;
@@ -24,7 +25,13 @@ describe('UsersController (e2e)', () => {
       ],
     })
       .overrideGuard(JwtAuthGuard)
-      .useValue({ canActivate: () => true })
+      .useValue({
+        canActivate: (context) => {
+          const req = context.switchToHttp().getRequest();
+          req.user = { id: 'user-1', role: RoleType.ADMIN };
+          return true;
+        },
+      })
       .overrideGuard(RolesGuard)
       .useValue({ canActivate: () => true })
       .compile();

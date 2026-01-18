@@ -30,8 +30,23 @@ export class TypeormUserReadRepository implements UserReadRepository {
     const pageSize = 20;
     const page = params.page ?? 1;
     const offset = (page - 1) * pageSize;
-    const sortBy = params.sortBy ?? 'user.createdAt';
-    const order = params.order ?? 'DESC';
+    // Whitelist de columnas para evitar inyeccion en orderBy
+    const sortByKey = (params.sortBy ?? 'user.createdAt').toLowerCase();
+    const sortByMap: Record<string, string> = {
+      name: 'user.name',
+      'user.name': 'user.name',
+      email: 'user.email',
+      'user.email': 'user.email',
+      createdat: 'user.createdAt',
+      'user.createdat': 'user.createdAt',
+      role: 'role.description',
+      rol: 'role.description',
+      'role.description': 'role.description',
+      deleted: 'user.deleted',
+      'user.deleted': 'user.deleted',
+    };
+    const sortBy = sortByMap[sortByKey] ?? 'user.createdAt';
+    const order = params.order === 'ASC' ? 'ASC' : 'DESC';
 
     const query = this.ormRepository
       .createQueryBuilder('user')
@@ -54,7 +69,7 @@ export class TypeormUserReadRepository implements UserReadRepository {
     }
 
     if (params.filters?.role) {
-      query.andWhere('rol = :role', { role: params.filters.role });
+      query.andWhere('role.description = :role', { role: params.filters.role });
     }
 
     query.orderBy(sortBy, order);

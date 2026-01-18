@@ -33,7 +33,7 @@ export class AuthService {
     const payload = {
       sub: user.id,
       email: user.email,
-      role: user.role?.description || RoleType.USER,
+      role: user.role?.description || RoleType.ADVISER,
     };
 
     const access_token = this.jwtService.sign(payload, {
@@ -54,7 +54,8 @@ export class AuthService {
   // Nota. Registra y devuelve tokens del nuevo usuario
   async register(dto: CreateUserDto): Promise<{ access_token: string; refresh_token: string }> {
     // Crea el usuario con rol por defecto USER
-    await this.usersService.create(dto, RoleType.USER);
+    await this.usersService.create(dto, RoleType.ADVISER);
+    // Nota. Registro con rol por defecto adviser
 
     // Busca el usuario recien creado para armar el payload correcto
     const user = await this.usersService.findWithPasswordByEmail(dto.email);
@@ -63,7 +64,7 @@ export class AuthService {
     const payload = {
       sub: user.id,
       email: user.email,
-      role: user.role?.description || RoleType.USER,
+      role: user.role?.description || RoleType.ADVISER,
     };
 
     const access_token = this.jwtService.sign(payload, {

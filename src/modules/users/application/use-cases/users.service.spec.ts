@@ -2,6 +2,7 @@ import { UsersService } from './users.service';
 import { errorResponse, successResponse } from 'src/shared/response-standard/response';
 import { UserReadRepository } from 'src/modules/users/application/ports/user-read.repository';
 import { UserRepository } from 'src/modules/users/domain';
+import { RoleType } from 'src/shared/constantes/constants';
 
 describe('UsersService', () => {
   const makeService = (overrides?: {
@@ -28,7 +29,7 @@ describe('UsersService', () => {
       },
     });
 
-    const result = await service.findAll({ page: 1 });
+    const result = await service.findAll({ page: 1 }, RoleType.ADMIN);
     expect(result).toEqual([{ id: 'user-1' }]);
   });
 
@@ -38,7 +39,7 @@ describe('UsersService', () => {
       userReadRepository: { listUsers },
     });
 
-    await service.findActives({ page: 1 });
+    await service.findActives({ page: 1 }, RoleType.ADMIN);
     expect(listUsers).toHaveBeenCalledWith(
       expect.objectContaining({ whereClause: 'role.deleted = false' })
     );
@@ -51,7 +52,7 @@ describe('UsersService', () => {
       },
     });
 
-    const result = await service.findByEmail('ana@example.com');
+    const result = await service.findByEmail('ana@example.com', RoleType.ADMIN);
     expect(result).toEqual(errorResponse('No hemos encontrado el usuario'));
   });
 
@@ -66,7 +67,7 @@ describe('UsersService', () => {
       },
     });
 
-    const result = await service.findByEmail('ana@example.com');
+    const result = await service.findByEmail('ana@example.com', RoleType.ADMIN);
     expect(result).toEqual(
       successResponse('Usuario encontrado', {
         id: 'user-1',
