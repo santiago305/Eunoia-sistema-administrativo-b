@@ -19,7 +19,7 @@ import {
 import {
   USER_READ_REPOSITORY,
   UserReadRepository,
-} from 'src/modules/users/ports/user-read.repository';
+} from 'src/modules/users/application/ports/user-read.repository';
 
 @Injectable()
 export class UsersService {

@@ -1,6 +1,6 @@
 import { UsersService } from './users.service';
 import { errorResponse, successResponse } from 'src/shared/response-standard/response';
-import { UserReadRepository } from 'src/modules/users/ports/user-read.repository';
+import { UserReadRepository } from 'src/modules/users/application/ports/user-read.repository';
 import { UserRepository } from 'src/modules/users/domain';
 
 describe('UsersService', () => {

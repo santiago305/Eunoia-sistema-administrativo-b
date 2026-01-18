@@ -1,7 +1,7 @@
 ﻿import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
-import { UsersService } from 'src/modules/users/use-cases/users.service';
+import { UsersService } from 'src/modules/users/application/use-cases/users.service';
 import { LoginAuthDto } from 'src/modules/auth/adapters/in/dtos';
 import { envs } from 'src/infrastructure/config/envs';
 import { CreateUserDto } from 'src/modules/users/adapters/in/dtos/create-user.dto';
