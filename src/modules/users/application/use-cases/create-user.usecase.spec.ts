@@ -1,9 +1,13 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { Inject, UnauthorizedException } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { CreateUserUseCase } from './create-user.usecase';
 import { RoleType } from 'src/shared/constantes/constants';
 import { successResponse } from 'src/shared/response-standard/response';
 import { Email } from 'src/modules/users/domain';
+import { ROLE_REPOSITORY, RoleRepository} from 'src/modules/roles/application/ports/role.repository';
+import { ROLE_READ_REPOSITORY, RoleReadRepository } from 'src/modules/roles/application/ports/role-read.repository';
+
+
 
 jest.mock('argon2', () => ({
   hash: jest.fn(),
@@ -14,35 +18,51 @@ jest.mock('argon2', () => ({
 describe('CreateUserUseCase', () => {
   const makeUseCase = (overrides?: {
     userRepository?: any;
-    rolesService?: any;
+    roleRepository?: Partial<RoleRepository>;
+    roleReadRepository?: Partial<RoleReadRepository>;
   }) => {
     const userRepository = overrides?.userRepository ?? {
       existsByEmail: jest.fn().mockResolvedValue(false),
       save: jest.fn().mockResolvedValue({}),
     };
-    const rolesService = overrides?.rolesService ?? {
-      isRoleActive: jest.fn(),
-      findOne: jest.fn(),
-      findOneDescription: jest.fn(),
+
+    const roleRepository: RoleRepository = {
+      save: jest.fn(),
+      findById: jest.fn(),
+      updateDeleted: jest.fn(),
+      update: jest.fn(),
+      ...(overrides?.roleRepository ?? {}),
     };
 
-    return new CreateUserUseCase(userRepository, rolesService);
+    const roleReadRepository: RoleReadRepository = {
+      listRoles: jest.fn(),
+      findById: jest.fn(),
+      findByDescription: jest.fn(),
+      existsByDescription: jest.fn(),
+      ...(overrides?.roleReadRepository ?? {}),
+    };
+
+    return new CreateUserUseCase(userRepository,  roleReadRepository, roleRepository);
   };
 
   it('creates user for admin', async () => {
     (argon2.hash as jest.Mock).mockResolvedValue('hashed');
-    const rolesService = {
-      isRoleActive: jest.fn(),
-      findOne: jest.fn(),
-      findOneDescription: jest.fn().mockResolvedValue({
-        data: { id: 'role-1', description: RoleType.ADVISER },
+
+    const roleReadRepository: Partial<RoleReadRepository> = {
+      findByDescription: jest.fn().mockResolvedValue({
+        id: 'role-1',
+        description: RoleType.ADVISER,
+        deleted: false,
+        createdAt: new Date(),
       }),
     };
+
     const userRepository = {
       existsByEmail: jest.fn().mockResolvedValue(false),
       save: jest.fn().mockResolvedValue({}),
     };
-    const useCase = makeUseCase({ userRepository, rolesService });
+
+    const useCase = makeUseCase({ userRepository, roleReadRepository });
 
     const result = await useCase.execute(
       {
@@ -79,14 +99,16 @@ describe('CreateUserUseCase', () => {
   });
 
   it('rejects moderator creating non adviser', async () => {
-    const rolesService = {
-      isRoleActive: jest.fn(),
-      findOne: jest.fn().mockResolvedValue({
-        data: { id: 'role-1', description: RoleType.ADMIN },
+    const roleReadRepository: Partial<RoleReadRepository> = {
+      findById: jest.fn().mockResolvedValue({
+        id: 'role-1',
+        description: RoleType.ADMIN,
+        deleted: false,
+        createdAt: new Date(),
       }),
-      findOneDescription: jest.fn(),
     };
-    const useCase = makeUseCase({ rolesService });
+
+    const useCase = makeUseCase({ roleReadRepository });
 
     await expect(
       useCase.execute(

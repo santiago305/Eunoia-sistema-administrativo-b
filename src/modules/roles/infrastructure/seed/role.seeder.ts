@@ -1,4 +1,4 @@
-import { Role } from '../orm-entities/role.entity';
+import { Role } from '../../adapters/out/persistence/typeorm/entities/role.entity';
 import { DataSource } from 'typeorm';
 import { RoleType } from 'src/shared/constantes/constants';
 

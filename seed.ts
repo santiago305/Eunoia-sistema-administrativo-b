@@ -1,6 +1,6 @@
 import { DataSource } from 'typeorm';
 import { envs } from './src/infrastructure/config/envs';
-import { Role } from './src/modules/roles/infrastructure/orm-entities/role.entity';
+import { Role } from './src/modules/roles/adapters/out/persistence/typeorm/entities/role.entity';
 import { User } from './src/modules/users/adapters/out/persistence/typeorm/entities/user.entity';
 import { seedRoles } from './src/modules/roles/infrastructure/seed/role.seeder';
 import { seedUser } from './src/modules/users/infrastructure/seed/user.seeder';

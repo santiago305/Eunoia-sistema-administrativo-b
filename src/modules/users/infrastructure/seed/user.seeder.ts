@@ -1,7 +1,7 @@
 import { DataSource } from 'typeorm';
 import * as argon2 from 'argon2';
 import { User } from '../../adapters/out/persistence/typeorm/entities/user.entity';
-import { Role } from 'src/modules/roles/infrastructure/orm-entities/role.entity';
+import { Role } from '../../../roles/adapters/out/persistence/typeorm/entities/role.entity';
 import { RoleType } from 'src/shared/constantes/constants';
 
 /**

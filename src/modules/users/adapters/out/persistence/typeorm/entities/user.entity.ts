@@ -6,7 +6,7 @@ import {
   JoinColumn,
   CreateDateColumn,
 } from 'typeorm';
-import { Role } from 'src/modules/roles/infrastructure/orm-entities/role.entity';
+import { Role } from '../../../../../../roles/adapters/out/persistence/typeorm/entities/role.entity';
 
 /**
  * Entidad que representa a un usuario del sistema.
