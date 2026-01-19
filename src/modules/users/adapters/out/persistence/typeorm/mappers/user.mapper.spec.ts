@@ -1,10 +1,10 @@
 import { User as OrmUser } from '../entities/user.entity';
 import { UserMapper } from './user.mapper';
-import { UserFactory } from '../../../../domain/factories/user.factory';
-import { Email } from '../../../../domain/value-objects/email.vo';
-import { Password } from '../../../../domain/value-objects/password.vo';
-import { RoleId } from '../../../../domain/value-objects/role.vo';
-import { MissingRoleIdError } from '../../../../domain/errors/missing-role-id.error';
+import { UserFactory } from '../../../../../domain/factories/user.factory';
+import { Email } from '../../../../../domain/value-objects/email.vo';
+import { Password } from '../../../../../domain/value-objects/password.vo';
+import { RoleId } from '../../../../../domain/value-objects/role.vo';
+import { MissingRoleIdError } from '../../../../../domain/errors/missing-role-id.error';
 
 describe('UserMapper', () => {
   it('maps orm user to domain user', () => {
@@ -54,3 +54,5 @@ describe('UserMapper', () => {
     expect((persistence.role as any).id).toBe('role-1');
   });
 });
+
+
