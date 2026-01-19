@@ -1,37 +1,35 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { User } from 'src/modules/users/adapters/out/persistence/typeorm/entities/user.entity';
+import { Injectable } from '@nestjs/common';
 import { CreateUserDto } from 'src/modules/users/adapters/in/dtos/create-user.dto';
 import { UpdateUserDto } from 'src/modules/users/adapters/in/dtos/update-user.dto';
-import * as argon2 from 'argon2';
 import { RoleType } from 'src/shared/constantes/constants';
-import { errorResponse, successResponse } from 'src/shared/response-standard/response';
-import { RolesService } from 'src/modules/roles/use-cases/roles.service';
-import {
-  Email,
-  Password,
-  RoleId,
-  UserFactory,
-} from 'src/modules/users/domain';
-import { UserRepository } from 'src/modules/users/application/ports/user.repository';
-import { USER_REPOSITORY } from 'src/modules/users/application/ports/user.repository';
-import {
-  USER_READ_REPOSITORY,
-  UserReadRepository,
-} from 'src/modules/users/application/ports/user-read.repository';
+import { ChangePasswordUseCase } from './change-password.usecase';
+import { CreateUserUseCase } from './create-user.usecase';
+import { DeleteUserUseCase } from './delete-user.usecase';
+import { GetOwnUserUseCase } from './get-own-user.usecase';
+import { GetUserByEmailUseCase } from './get-user-by-email.usecase';
+import { GetUserUseCase } from './get-user.usecase';
+import { GetUserWithPasswordByEmailUseCase } from './get-user-with-password-by-email.usecase';
+import { ListActiveUsersUseCase } from './list-active-users.usecase';
+import { ListUsersUseCase } from './list-users.usecase';
+import { RestoreUserUseCase } from './restore-user.usecase';
+import { UpdateAvatarUseCase } from './update-avatar.usecase';
+import { UpdateUserUseCase } from './update-user.usecase';
 
 @Injectable()
 export class UsersService {
   constructor(
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
-    @Inject(USER_REPOSITORY)
-    private readonly userDomainRepository: UserRepository,
-    @Inject(USER_READ_REPOSITORY)
-    private readonly userReadRepository: UserReadRepository,
-
-    private readonly rolesService: RolesService,
+    private readonly createUserUseCase: CreateUserUseCase,
+    private readonly updateUserUseCase: UpdateUserUseCase,
+    private readonly changePasswordUseCase: ChangePasswordUseCase,
+    private readonly listUsersUseCase: ListUsersUseCase,
+    private readonly listActiveUsersUseCase: ListActiveUsersUseCase,
+    private readonly getUserUseCase: GetUserUseCase,
+    private readonly getUserByEmailUseCase: GetUserByEmailUseCase,
+    private readonly getOwnUserUseCase: GetOwnUserUseCase,
+    private readonly deleteUserUseCase: DeleteUserUseCase,
+    private readonly restoreUserUseCase: RestoreUserUseCase,
+    private readonly updateAvatarUseCase: UpdateAvatarUseCase,
+    private readonly getUserWithPasswordByEmailUseCase: GetUserWithPasswordByEmailUseCase,
   ) {}
 
   async findAll(
@@ -43,14 +41,7 @@ export class UsersService {
     },
     requesterRole: RoleType
   ) {
-    this.assertCanListUsers(requesterRole);
-    const scopedParams = this.applyRoleScope(params, requesterRole);
-    return this.userReadRepository.listUsers({
-      page: scopedParams.page,
-      filters: scopedParams.filters,
-      sortBy: scopedParams.sortBy,
-      order: scopedParams.order,
-    });
+    return this.listUsersUseCase.execute(params, requesterRole);
   }
 
   async findActives(
@@ -62,242 +53,37 @@ export class UsersService {
     },
     requesterRole: RoleType
   ){
-    this.assertCanListUsers(requesterRole);
-    const scopedParams = this.applyRoleScope(params, requesterRole);
-    return this.userReadRepository.listUsers({
-      page: scopedParams.page,
-      filters: scopedParams.filters,
-      sortBy: scopedParams.sortBy,
-      order: scopedParams.order,
-      whereClause: 'role.deleted = false',
-    });
+    return this.listActiveUsersUseCase.execute(params, requesterRole);
   }
 
   async findOne(id: string, requesterRole: RoleType) {
-    const user = await this.userRepository
-    .createQueryBuilder('user')
-    .leftJoin('user.role', 'role')
-    .select([
-      'user.id',
-      'user.name',
-      'user.email',
-      'role.description AS rol',
-      'user.deleted',
-    ])
-    .where('user.deleted = :deleted', { deleted: false })
-    .andWhere('user.id = :id', { id })
-    .getRawOne();
-    
-    if(!user) return errorResponse('No hemos podido encotrar el usuario')
-
-    this.assertCanViewRole(requesterRole, user.rol);
-
-    return successResponse('usuarios encontrado', user)
-  }
-  private async checkUserStatus(
-    id: string, 
-    deleted: boolean = false, 
-    errorMsg: string, 
-    ){
-    const query = this.userRepository
-    .createQueryBuilder('user')
-    .where('user.deleted = :deleted', { deleted })
-    .andWhere('user.id = :id', { id: id })
-
-    const exists = await query.getExists();
-
-    if (!exists) throw new UnauthorizedException(errorMsg)
-
-    return true
-  }
-  async isUserActive(id: string) {
-    return await this.checkUserStatus(id, false, 'El usuario ingresado no existe')
-  }
-  async isUserDeleted(id: string) {
-    return await this.checkUserStatus(id, true, 'Este usuario todavia no ha sido eliminado')
-  }
-
-  async isUserEmail(email: string) {
-    const exists = await this.userDomainRepository.existsByEmail(
-      new Email(email)
-    );
-  
-    if (exists) {
-      throw new UnauthorizedException('Este email ya estA registrado');
-    }
-  
-    return true;
+    return this.getUserUseCase.execute(id, requesterRole);
   }
 
   async findByEmail(email: string, requesterRole: RoleType) {
-    const user = await this.userReadRepository.findPublicByEmail(email);
-    if (!user) return errorResponse('No hemos encontrado el usuario');
-
-    this.assertCanViewRole(requesterRole, user.roleDescription);
-
-    return successResponse('Usuario encontrado', {
-      id: user.id,
-      email: user.email,
-      rol: user.roleDescription,
-    });
+    return this.getUserByEmailUseCase.execute(email, requesterRole);
   }
   async findOwnUser(id: string) {
-    const user = await this.userReadRepository.findPublicById(id);
-    if (!user) throw new UnauthorizedException('Usuario no encontrado');
-
-    return successResponse('Usuario encontrado', user);
+    return this.getOwnUserUseCase.execute(id);
   }
 
   async changePassword(id: string, currentPassword: string, newPassword: string, requesterUserId: string) {
-    if (id !== requesterUserId) {
-      throw new UnauthorizedException('No puedes cambiar la contrasena de otro usuario');
-    }
-    if (!newPassword || !newPassword.trim()) {
-      throw new UnauthorizedException('La nueva contrasena es obligatoria');
-    }
-    const domainUser = await this.userDomainRepository.findById(id);
-    if (!domainUser) throw new UnauthorizedException('Usuario no encontrado');
-
-    const isMatch = await argon2.verify(
-      domainUser.password.value,
-      currentPassword
-    );
-    if (!isMatch) throw new UnauthorizedException('Contrasena actual incorrecta');
-
-    const hashedPassword = await argon2.hash(newPassword, {
-      type: argon2.argon2id,
-    });
-    domainUser.password = new Password(hashedPassword);
-    await this.userDomainRepository.save(domainUser);
-
-    return successResponse('Contrasena actualizada correctamente');
+    return this.changePasswordUseCase.execute(id, currentPassword, newPassword, requesterUserId);
   }
 
   async create(dto: CreateUserDto, requesterRole: RoleType) {
-
-    await this.isUserEmail(dto.email);
-    
-    const isAdmin = requesterRole === RoleType.ADMIN;
-    const isModerator = requesterRole === RoleType.MODERATOR;
-
-    if (!isAdmin && !isModerator) {
-      throw new UnauthorizedException('No autorizado para crear usuarios');
-    }
-
-    const hashedPassword = await argon2.hash(dto.password, {
-      type: argon2.argon2id,
-    });
-
-    let targetRoleId: string;
-    let targetRoleDescription: string;
-
-    if (dto.roleId) {
-      await this.rolesService.isRoleActive(dto.roleId);
-      const roleResult = await this.rolesService.findOne(dto.roleId);
-      targetRoleId = roleResult.data.id;
-      targetRoleDescription = roleResult.data.description;
-    } else {
-      const roleResult = await this.rolesService.findOneDescription(RoleType.ADVISER);
-      targetRoleId = roleResult.data.id;
-      targetRoleDescription = RoleType.ADVISER;
-    }
-
-    if (isModerator && targetRoleDescription !== RoleType.ADVISER) {
-      throw new UnauthorizedException('Solo puedes crear asesores');
-    }
-    if (isAdmin && targetRoleDescription === RoleType.ADMIN) {
-      throw new UnauthorizedException('No puedes crear administradores');
-    }
-  
-    const domainUser = UserFactory.createNew({
-      name: dto.name,
-      email: new Email(dto.email),
-      password: new Password(hashedPassword),
-      roleId: new RoleId(targetRoleId),
-      avatarUrl: dto.avatarUrl,
-    });
-
-    try {
-      await this.userDomainRepository.save(domainUser);
-      return successResponse('Usuario creado correctamente') 
-    } catch (error) {
-      console.error('[UsersService][create] error al crear un usuario: ',error);
-      throw new UnauthorizedException('Se ha producido un error al crear al usuario')  
-    }
+    return this.createUserUseCase.execute(dto, requesterRole);
   }
   
   async update(id: string, dto: UpdateUserDto, requesterUserId: string) {
-    if (id !== requesterUserId) {
-      throw new UnauthorizedException('No puedes editar otro usuario');
-    }
-    await this.isUserActive(id)
-
-    const existingUser = await this.userDomainRepository.findById(id);
-    if (!existingUser) throw new UnauthorizedException('Usuario no encontrado');
-
-    if (dto.email) {
-      await this.isUserEmail(dto.email);
-      existingUser.email = new Email(dto.email);
-    }
-    if (dto.roleId) {
-      throw new UnauthorizedException('No puedes cambiar el rol');
-    }
-
-    if (dto.name) existingUser.name = dto.name;
-    if (dto.password) {
-      throw new UnauthorizedException('No puedes cambiar la contrasena aqui');
-    }
-    if (dto.avatarUrl) {
-      existingUser.avatarUrl = dto.avatarUrl;
-    }
-
-    try {
-
-      await this.userDomainRepository.save(existingUser);
-
-      const updatedUser = await this.userReadRepository.findPublicById(id);
-      return successResponse('Modificacion terminada', updatedUser)
-    } catch (error) {
-      console.error('[UserService][update] error al editar el usuario: ', error);
-      throw new UnauthorizedException('No pudimos modificar el usuario')
-      
-    }
+    return this.updateUserUseCase.execute(id, dto, requesterUserId);
   }
-
-  private async toggleDelete(
-    id: string, 
-    deleted: boolean, 
-    successMsg: string, 
-    errorMsg: string) {
-      try {
-        await this.userRepository
-          .createQueryBuilder()
-          .update(User)
-          .set({ deleted })
-          .where('id = :id', { id })
-          .execute();
-    
-        return successResponse(successMsg);
-      } catch (error) {
-        console.error('[UserService][toggleDelete] error de la accion', error);
-        throw new UnauthorizedException(errorMsg);
-      }
-    }
   async remove(id: string, requesterRole: RoleType) {
-    if (requesterRole === RoleType.MODERATOR) {
-      const target = await this.userReadRepository.findPublicById(id);
-      if (!target) throw new UnauthorizedException('Usuario no encontrado');
-      if (target.role.description !== RoleType.ADVISER) {
-        throw new UnauthorizedException('No puedes eliminar usuarios administrativos');
-      }
-    }
-    await this.isUserActive(id);
-    return this.toggleDelete(id, true, 'El usuario ha sido eliminado','no se pudo eliminar al usuario')
+    return this.deleteUserUseCase.execute(id, requesterRole);
   }
 
   async restore(id: string ) {
-    await this.isUserDeleted(id)
-    return this.toggleDelete(id, false, 'El usuario ha sido restaurado','No se pudo restaurar al usuario')
+    return this.restoreUserUseCase.execute(id);
   }
 
   async findWithPasswordByEmail(email: string): Promise<{
@@ -306,68 +92,12 @@ export class UsersService {
     password: string;
     role: { description: string };
   } | null> {
-    const user = await this.userReadRepository.findWithPasswordByEmail(email);
-    if (!user) return null;
-
-    return {
-      id: user.id,
-      email: user.email,
-      password: user.password,
-      role: { description: user.roleDescription },
-    };
+    return this.getUserWithPasswordByEmailUseCase.execute(email);
   }
 
 
   async updateAvatar(id: string, filePath: string, requesterUserId?: string) {
-    if (requesterUserId && id !== requesterUserId) {
-      throw new UnauthorizedException('No puedes subir avatar de otro usuario');
-    }
-    try {
-      const domainUser = await this.userDomainRepository.findById(id);
-      if (!domainUser) throw new UnauthorizedException('Usuario no encontrado');
-
-      domainUser.avatarUrl = filePath;
-      const saved = await this.userDomainRepository.save(domainUser);
-
-      return successResponse('Avatar actualizado correctamente', {
-        id: saved.id,
-        name: saved.name,
-        email: saved.email.value,
-        avatarUrl: saved.avatarUrl,
-      });
-    } catch (error) {
-      console.error('[UserService][updateAvatar] Error al subir avatar:', error);
-      throw new UnauthorizedException('No se pudo actualizar el avatar');
-    }
-  }
-
-  private assertCanListUsers(requesterRole: RoleType) {
-    if (requesterRole !== RoleType.ADMIN && requesterRole !== RoleType.MODERATOR) {
-      throw new UnauthorizedException('No autorizado para listar usuarios');
-    }
-  }
-
-  private applyRoleScope(
-    params: {
-      page?: number,
-      filters?: { role?: string },
-      sortBy?: string,
-      order?: 'ASC' | 'DESC'
-    },
-    requesterRole: RoleType,
-  ) {
-    if (requesterRole === RoleType.MODERATOR) {
-      // Moderador solo puede ver asesores
-      return { ...params, filters: { ...(params.filters || {}), role: RoleType.ADVISER } };
-    }
-
-    return params;
-  }
-
-  private assertCanViewRole(requesterRole: RoleType, targetRole: string) {
-    if (requesterRole === RoleType.MODERATOR && targetRole !== RoleType.ADVISER) {
-      throw new UnauthorizedException('Acceso denegado');
-    }
+    return this.updateAvatarUseCase.execute(id, filePath, requesterUserId);
   }
 }
 

@@ -47,6 +47,36 @@ describe('TypeormUserRepository', () => {
     expect(result).toBe(true);
   });
 
+  it('existsByIdAndDeleted delegates to query builder', async () => {
+    const getExists = jest.fn().mockResolvedValue(true);
+    const repo = makeRepo({
+      createQueryBuilder: jest.fn().mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getExists,
+      }),
+    });
+
+    const result = await repo.existsByIdAndDeleted('user-1', false);
+    expect(result).toBe(true);
+    expect(getExists).toHaveBeenCalled();
+  });
+
+  it('updateDeleted delegates to update query', async () => {
+    const execute = jest.fn().mockResolvedValue(undefined);
+    const repo = makeRepo({
+      createQueryBuilder: jest.fn().mockReturnValue({
+        update: jest.fn().mockReturnThis(),
+        set: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        execute,
+      }),
+    });
+
+    await repo.updateDeleted('user-1', true);
+    expect(execute).toHaveBeenCalled();
+  });
+
   it('save maps and persists', async () => {
     const ormUser = new OrmUser();
     ormUser.id = 'user-1';

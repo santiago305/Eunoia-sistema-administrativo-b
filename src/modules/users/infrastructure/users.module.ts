@@ -1,6 +1,18 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersService } from '../application/use-cases/users.service';
+import { ChangePasswordUseCase } from '../application/use-cases/change-password.usecase';
+import { CreateUserUseCase } from '../application/use-cases/create-user.usecase';
+import { DeleteUserUseCase } from '../application/use-cases/delete-user.usecase';
+import { GetOwnUserUseCase } from '../application/use-cases/get-own-user.usecase';
+import { GetUserByEmailUseCase } from '../application/use-cases/get-user-by-email.usecase';
+import { GetUserUseCase } from '../application/use-cases/get-user.usecase';
+import { GetUserWithPasswordByEmailUseCase } from '../application/use-cases/get-user-with-password-by-email.usecase';
+import { ListActiveUsersUseCase } from '../application/use-cases/list-active-users.usecase';
+import { ListUsersUseCase } from '../application/use-cases/list-users.usecase';
+import { RestoreUserUseCase } from '../application/use-cases/restore-user.usecase';
+import { UpdateAvatarUseCase } from '../application/use-cases/update-avatar.usecase';
+import { UpdateUserUseCase } from '../application/use-cases/update-user.usecase';
 import { UsersController } from '../adapters/in/controllers/users.controller';
 import { User } from '../adapters/out/persistence/typeorm/entities/user.entity';
 import { Role } from 'src/modules/roles/infrastructure/orm-entities/role.entity';
@@ -22,6 +34,18 @@ import { TypeormUserReadRepository } from '../adapters/out/persistence/typeorm/r
   controllers: [UsersController], // Controlador REST para endpoints relacionados con usuarios
   providers: [
     UsersService,
+    CreateUserUseCase,
+    UpdateUserUseCase,
+    ChangePasswordUseCase,
+    ListUsersUseCase,
+    ListActiveUsersUseCase,
+    GetUserUseCase,
+    GetUserByEmailUseCase,
+    GetOwnUserUseCase,
+    DeleteUserUseCase,
+    RestoreUserUseCase,
+    UpdateAvatarUseCase,
+    GetUserWithPasswordByEmailUseCase,
     {
       provide: USER_REPOSITORY,
       useClass: TypeormUserRepository,

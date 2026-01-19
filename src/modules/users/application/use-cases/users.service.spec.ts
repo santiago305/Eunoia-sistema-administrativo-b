@@ -1,79 +1,62 @@
 import { UsersService } from './users.service';
-import { errorResponse, successResponse } from 'src/shared/response-standard/response';
-import { UserReadRepository } from 'src/modules/users/application/ports/user-read.repository';
-import { UserRepository } from 'src/modules/users/application/ports/user.repository';
 import { RoleType } from 'src/shared/constantes/constants';
+import { GetUserByEmailUseCase } from './get-user-by-email.usecase';
+import { ListActiveUsersUseCase } from './list-active-users.usecase';
+import { ListUsersUseCase } from './list-users.usecase';
 
 describe('UsersService', () => {
-  const makeService = (overrides?: {
-    userReadRepository?: Partial<UserReadRepository>;
-    userDomainRepository?: Partial<UserRepository>;
-  }) => {
-    const userRepository = {} as any;
-    const userDomainRepository = overrides?.userDomainRepository ?? {};
-    const userReadRepository = overrides?.userReadRepository ?? {};
-    const rolesService = {} as any;
+  const makeService = (overrides?: Partial<{
+    listUsersUseCase: ListUsersUseCase;
+    listActiveUsersUseCase: ListActiveUsersUseCase;
+    getUserByEmailUseCase: GetUserByEmailUseCase;
+  }>) => {
+    const defaults = { execute: jest.fn() };
 
     return new UsersService(
-      userRepository,
-      userDomainRepository as UserRepository,
-      userReadRepository as UserReadRepository,
-      rolesService
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
+      (overrides?.listUsersUseCase ?? { ...defaults }) as ListUsersUseCase,
+      (overrides?.listActiveUsersUseCase ?? { ...defaults }) as ListActiveUsersUseCase,
+      { execute: jest.fn() } as any,
+      (overrides?.getUserByEmailUseCase ?? { ...defaults }) as GetUserByEmailUseCase,
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any,
+      { execute: jest.fn() } as any
     );
   };
 
-  it('findAll returns list from read repository', async () => {
-    const service = makeService({
-      userReadRepository: {
-        listUsers: jest.fn().mockResolvedValue([{ id: 'user-1' }]),
-      },
-    });
+  it('findAll delegates to listUsersUseCase', async () => {
+    const listUsersUseCase = {
+      execute: jest.fn().mockResolvedValue([{ id: 'user-1' }]),
+    } as unknown as ListUsersUseCase;
+    const service = makeService({ listUsersUseCase });
 
     const result = await service.findAll({ page: 1 }, RoleType.ADMIN);
     expect(result).toEqual([{ id: 'user-1' }]);
+    expect(listUsersUseCase.execute).toHaveBeenCalledWith({ page: 1 }, RoleType.ADMIN);
   });
 
-  it('findActives passes whereClause to read repository', async () => {
-    const listUsers = jest.fn().mockResolvedValue([]);
-    const service = makeService({
-      userReadRepository: { listUsers },
-    });
+  it('findActives delegates to listActiveUsersUseCase', async () => {
+    const listActiveUsersUseCase = {
+      execute: jest.fn().mockResolvedValue([]),
+    } as unknown as ListActiveUsersUseCase;
+    const service = makeService({ listActiveUsersUseCase });
 
     await service.findActives({ page: 1 }, RoleType.ADMIN);
-    expect(listUsers).toHaveBeenCalledWith(
-      expect.objectContaining({ whereClause: 'role.deleted = false' })
-    );
+    expect(listActiveUsersUseCase.execute).toHaveBeenCalledWith({ page: 1 }, RoleType.ADMIN);
   });
 
-  it('findByEmail returns error response when not found', async () => {
-    const service = makeService({
-      userReadRepository: {
-        findPublicByEmail: jest.fn().mockResolvedValue(null),
-      },
-    });
+  it('findByEmail delegates to getUserByEmailUseCase', async () => {
+    const getUserByEmailUseCase = {
+      execute: jest.fn().mockResolvedValue({ ok: true }),
+    } as unknown as GetUserByEmailUseCase;
+    const service = makeService({ getUserByEmailUseCase });
 
     const result = await service.findByEmail('ana@example.com', RoleType.ADMIN);
-    expect(result).toEqual(errorResponse('No hemos encontrado el usuario'));
-  });
-
-  it('findByEmail returns success response when found', async () => {
-    const service = makeService({
-      userReadRepository: {
-        findPublicByEmail: jest.fn().mockResolvedValue({
-          id: 'user-1',
-          email: 'ana@example.com',
-          roleDescription: 'admin',
-        }),
-      },
-    });
-
-    const result = await service.findByEmail('ana@example.com', RoleType.ADMIN);
-    expect(result).toEqual(
-      successResponse('Usuario encontrado', {
-        id: 'user-1',
-        email: 'ana@example.com',
-        rol: 'admin',
-      })
-    );
+    expect(result).toEqual({ ok: true });
+    expect(getUserByEmailUseCase.execute).toHaveBeenCalledWith('ana@example.com', RoleType.ADMIN);
   });
 });
