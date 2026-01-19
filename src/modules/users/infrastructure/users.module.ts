@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { UsersService } from '../application/use-cases/users.service';
 import { ChangePasswordUseCase } from '../application/use-cases/change-password.usecase';
 import { CreateUserUseCase } from '../application/use-cases/create-user.usecase';
 import { DeleteUserUseCase } from '../application/use-cases/delete-user.usecase';
@@ -23,7 +22,7 @@ import { USER_READ_REPOSITORY } from '../application/ports/user-read.repository'
 import { TypeormUserReadRepository } from '../adapters/out/persistence/typeorm/repositories/typeorm-user-read.repository';
 
 /**
- * MAdulo encargado de la gestiAn de usuarios.
+ * Modulo encargado de la gestiAn de usuarios.
  * Incluye el controlador, servicio y entidad User.
  */
 @Module({
@@ -33,7 +32,6 @@ import { TypeormUserReadRepository } from '../adapters/out/persistence/typeorm/r
   ], // Importa la entidad User para operaciones con TypeORM
   controllers: [UsersController], // Controlador REST para endpoints relacionados con usuarios
   providers: [
-    UsersService,
     CreateUserUseCase,
     UpdateUserUseCase,
     ChangePasswordUseCase,
@@ -55,6 +53,11 @@ import { TypeormUserReadRepository } from '../adapters/out/persistence/typeorm/r
       useClass: TypeormUserReadRepository,
     },
   ], // Servicio con la lИgica de negocio para usuarios
-  exports: [UsersService, USER_REPOSITORY, USER_READ_REPOSITORY], // Exporta el servicio para que pueda ser usado en otros modulos
+  exports: [
+    USER_REPOSITORY,
+    USER_READ_REPOSITORY,
+    CreateUserUseCase,
+    GetUserWithPasswordByEmailUseCase,
+  ], // Exporta repositorios y use cases usados en otros modulos
 })
 export class UsersModule {}

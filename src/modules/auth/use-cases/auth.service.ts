@@ -1,7 +1,8 @@
 ﻿import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
-import { UsersService } from 'src/modules/users/application/use-cases/users.service';
+import { CreateUserUseCase } from 'src/modules/users/application/use-cases/create-user.usecase';
+import { GetUserWithPasswordByEmailUseCase } from 'src/modules/users/application/use-cases/get-user-with-password-by-email.usecase';
 import { LoginAuthDto } from 'src/modules/auth/adapters/in/dtos';
 import { envs } from 'src/infrastructure/config/envs';
 import { CreateUserDto } from 'src/modules/users/adapters/in/dtos/create-user.dto';
@@ -10,13 +11,14 @@ import { RoleType } from 'src/shared/constantes/constants';
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly usersService: UsersService,
+    private readonly createUserUseCase: CreateUserUseCase,
+    private readonly getUserWithPasswordByEmailUseCase: GetUserWithPasswordByEmailUseCase,
     private readonly jwtService: JwtService,
   ) {}
 
   // Nota. Valida credenciales del usuario
   private async validateUser(email: string, password: string) {
-    const user = await this.usersService.findWithPasswordByEmail(email);
+    const user = await this.getUserWithPasswordByEmailUseCase.execute(email);
 
     if (!user) throw new UnauthorizedException('Credenciales invalidas');
 
@@ -54,11 +56,11 @@ export class AuthService {
   // Nota. Registra y devuelve tokens del nuevo usuario
   async register(dto: CreateUserDto): Promise<{ access_token: string; refresh_token: string }> {
     // Crea el usuario con rol por defecto USER
-    await this.usersService.create(dto, RoleType.ADVISER);
+    await this.createUserUseCase.execute(dto, RoleType.ADVISER);
     // Nota. Registro con rol por defecto adviser
 
     // Busca el usuario recien creado para armar el payload correcto
-    const user = await this.usersService.findWithPasswordByEmail(dto.email);
+    const user = await this.getUserWithPasswordByEmailUseCase.execute(dto.email);
     if (!user) throw new UnauthorizedException('Error al registrar usuario');
 
     const payload = {
