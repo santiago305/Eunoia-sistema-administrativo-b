@@ -2,26 +2,41 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { UsersController } from 'src/modules/users/adapters/in/controllers/users.controller';
-import { UsersService } from 'src/modules/users/application/use-cases/users.service';
+import { ChangePasswordUseCase } from 'src/modules/users/application/use-cases/change-password.usecase';
+import { CreateUserUseCase } from 'src/modules/users/application/use-cases/create-user.usecase';
+import { DeleteUserUseCase } from 'src/modules/users/application/use-cases/delete-user.usecase';
+import { GetOwnUserUseCase } from 'src/modules/users/application/use-cases/get-own-user.usecase';
+import { GetUserByEmailUseCase } from 'src/modules/users/application/use-cases/get-user-by-email.usecase';
+import { GetUserUseCase } from 'src/modules/users/application/use-cases/get-user.usecase';
+import { ListActiveUsersUseCase } from 'src/modules/users/application/use-cases/list-active-users.usecase';
+import { ListUsersUseCase } from 'src/modules/users/application/use-cases/list-users.usecase';
+import { RestoreUserUseCase } from 'src/modules/users/application/use-cases/restore-user.usecase';
+import { UpdateAvatarUseCase } from 'src/modules/users/application/use-cases/update-avatar.usecase';
+import { UpdateUserUseCase } from 'src/modules/users/application/use-cases/update-user.usecase';
 import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/shared/utilidades/guards/roles.guard';
 import { RoleType } from 'src/shared/constantes/constants';
 
 describe('UsersController (e2e)', () => {
   let app: INestApplication;
-  const usersService = {
-    findAll: jest.fn(),
-    findActives: jest.fn(),
-  };
+  const listUsersUseCase = { execute: jest.fn() };
+  const listActiveUsersUseCase = { execute: jest.fn() };
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       controllers: [UsersController],
       providers: [
-        {
-          provide: UsersService,
-          useValue: usersService,
-        },
+        { provide: CreateUserUseCase, useValue: { execute: jest.fn() } },
+        { provide: UpdateUserUseCase, useValue: { execute: jest.fn() } },
+        { provide: ChangePasswordUseCase, useValue: { execute: jest.fn() } },
+        { provide: ListUsersUseCase, useValue: listUsersUseCase },
+        { provide: ListActiveUsersUseCase, useValue: listActiveUsersUseCase },
+        { provide: GetUserUseCase, useValue: { execute: jest.fn() } },
+        { provide: GetUserByEmailUseCase, useValue: { execute: jest.fn() } },
+        { provide: GetOwnUserUseCase, useValue: { execute: jest.fn() } },
+        { provide: DeleteUserUseCase, useValue: { execute: jest.fn() } },
+        { provide: RestoreUserUseCase, useValue: { execute: jest.fn() } },
+        { provide: UpdateAvatarUseCase, useValue: { execute: jest.fn() } },
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -41,7 +56,7 @@ describe('UsersController (e2e)', () => {
   });
 
   it('/users/findAll (GET)', async () => {
-    usersService.findAll.mockResolvedValue([{ id: 'user-1' }]);
+    listUsersUseCase.execute.mockResolvedValue([{ id: 'user-1' }]);
 
     await request(app.getHttpServer())
       .get('/users/findAll?page=1')
@@ -50,7 +65,7 @@ describe('UsersController (e2e)', () => {
   });
 
   it('/users/actives (GET)', async () => {
-    usersService.findActives.mockResolvedValue([{ id: 'user-2' }]);
+    listActiveUsersUseCase.execute.mockResolvedValue([{ id: 'user-2' }]);
 
     await request(app.getHttpServer())
       .get('/users/actives?page=1')
