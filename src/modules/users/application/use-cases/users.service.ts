@@ -1,7 +1,7 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User } from 'src/modules/users/infrastructure/orm-entities/user.entity';
+import { User } from 'src/modules/users/adapters/out/persistence/typeorm/entities/user.entity';
 import { CreateUserDto } from 'src/modules/users/adapters/in/dtos/create-user.dto';
 import { UpdateUserDto } from 'src/modules/users/adapters/in/dtos/update-user.dto';
 import * as argon2 from 'argon2';
@@ -12,10 +12,10 @@ import {
   Email,
   Password,
   RoleId,
-  USER_REPOSITORY,
   UserFactory,
-  UserRepository,
 } from 'src/modules/users/domain';
+import { UserRepository } from 'src/modules/users/application/ports/user.repository';
+import { USER_REPOSITORY } from 'src/modules/users/application/ports/user.repository';
 import {
   USER_READ_REPOSITORY,
   UserReadRepository,

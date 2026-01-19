@@ -27,13 +27,13 @@ export class User {
   name: string;
 
   /**
-   * Correo electrónico del usuario (Anico).
+   * Correo electrИnico del usuario (Anico).
    */
   @Column({ unique: true })
   email: string;
 
   /**
-   * Contraseña hasheada del usuario.
+   * Contraseヵa hasheada del usuario.
    */
   @Column()
   password: string;
@@ -58,4 +58,3 @@ export class User {
   @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;
 }
-

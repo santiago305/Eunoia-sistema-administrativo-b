@@ -1,7 +1,7 @@
 import { Repository } from 'typeorm';
 import { TypeormUserRepository } from './typeorm-user.repository';
-import { User as OrmUser } from '../orm-entities/user.entity';
-import { Email } from '../../domain/value-objects/email.vo';
+import { User as OrmUser } from '../entities/user.entity';
+import { Email } from '../../../../domain/value-objects/email.vo';
 import { UserMapper } from '../mappers/user.mapper';
 
 describe('TypeormUserRepository', () => {

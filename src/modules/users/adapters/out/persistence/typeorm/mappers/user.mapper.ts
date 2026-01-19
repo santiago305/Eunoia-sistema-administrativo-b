@@ -1,10 +1,10 @@
-import { User as DomainUser } from '../../domain/entities/user.entity';
-import { UserFactory } from '../../domain/factories/user.factory';
-import { Email } from '../../domain/value-objects/email.vo';
-import { Password } from '../../domain/value-objects/password.vo';
-import { RoleId } from '../../domain/value-objects/role.vo';
-import { User as OrmUser } from '../orm-entities/user.entity';
-import { MissingRoleIdError } from '../../domain/errors/missing-role-id.error';
+import { User as DomainUser } from '../../../../domain/entities/user.entity';
+import { UserFactory } from '../../../../domain/factories/user.factory';
+import { Email } from '../../../../domain/value-objects/email.vo';
+import { Password } from '../../../../domain/value-objects/password.vo';
+import { RoleId } from '../../../../domain/value-objects/role.vo';
+import { User as OrmUser } from '../entities/user.entity';
+import { MissingRoleIdError } from '../../../../domain/errors/missing-role-id.error';
 
 export class UserMapper {
   static toDomain(orm: OrmUser): DomainUser {

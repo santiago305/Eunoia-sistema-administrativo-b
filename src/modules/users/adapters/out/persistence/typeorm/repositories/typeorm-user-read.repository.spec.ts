@@ -1,6 +1,6 @@
 import { Repository } from 'typeorm';
 import { TypeormUserReadRepository } from './typeorm-user-read.repository';
-import { User as OrmUser } from '../orm-entities/user.entity';
+import { User as OrmUser } from '../entities/user.entity';
 
 describe('TypeormUserReadRepository', () => {
   const makeRepo = (overrides?: Partial<Repository<OrmUser>>) => {

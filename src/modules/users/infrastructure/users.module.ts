@@ -2,13 +2,13 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersService } from '../application/use-cases/users.service';
 import { UsersController } from '../adapters/in/controllers/users.controller';
-import { User } from './orm-entities/user.entity';
+import { User } from '../adapters/out/persistence/typeorm/entities/user.entity';
 import { Role } from 'src/modules/roles/infrastructure/orm-entities/role.entity';
 import { RolesModule } from 'src/modules/roles/infrastructure/roles.module';
-import { USER_REPOSITORY } from '../domain';
-import { TypeormUserRepository } from './repositories/typeorm-user.repository';
+import { USER_REPOSITORY } from '../application/ports/user.repository';
+import { TypeormUserRepository } from '../adapters/out/persistence/typeorm/repositories/typeorm-user.repository';
 import { USER_READ_REPOSITORY } from '../application/ports/user-read.repository';
-import { TypeormUserReadRepository } from './repositories/typeorm-user-read.repository';
+import { TypeormUserReadRepository } from '../adapters/out/persistence/typeorm/repositories/typeorm-user-read.repository';
 
 /**
  * MAdulo encargado de la gestiAn de usuarios.

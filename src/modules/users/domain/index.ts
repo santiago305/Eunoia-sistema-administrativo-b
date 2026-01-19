@@ -3,7 +3,6 @@ export { UserFactory } from './factories/user.factory';
 export { Email } from './value-objects/email.vo';
 export { Password } from './value-objects/password.vo';
 export { RoleId } from './value-objects/role.vo';
-export { USER_REPOSITORY, UserRepository } from './repositories/user.repository';
 export { InvalidEmailError } from './errors/invalid-email.error';
 export { InvalidPasswordError } from './errors/invalid-password.error';
 export { InvalidRoleIdError } from './errors/invalid-role-id.error';

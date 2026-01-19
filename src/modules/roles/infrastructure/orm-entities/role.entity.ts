@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany, CreateDateColumn } from 'typeorm';
-import { User } from 'src/modules/users/infrastructure/orm-entities/user.entity';
+import { User } from 'src/modules/users/adapters/out/persistence/typeorm/entities/user.entity';
 
 /**
  * Entidad `Role` que representa los diferentes roles de usuario en el sistema.
