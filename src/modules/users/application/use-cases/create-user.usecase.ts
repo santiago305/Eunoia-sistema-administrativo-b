@@ -41,7 +41,10 @@ export class CreateUserUseCase {
     let targetRoleDescription: string;
 
     if (dto.roleId) {
-      const roleResult = await this.roleRepository.findById(dto.roleId);
+      const roleResult = await this.roleReadRepository.findById(dto.roleId);
+      if (!roleResult) {
+        throw new UnauthorizedException('Rol inválido');
+      }
       targetRoleId = roleResult.id;
       targetRoleDescription = roleResult.description;
     } else {
@@ -53,9 +56,9 @@ export class CreateUserUseCase {
     if (isModerator && targetRoleDescription !== RoleType.ADVISER) {
       throw new UnauthorizedException('Solo puedes crear asesores');
     }
-    if (isAdmin && targetRoleDescription === RoleType.ADMIN) {
-      throw new UnauthorizedException('No puedes crear administradores');
-    }
+    // if (isAdmin && targetRoleDescription === RoleType.ADMIN) {
+    //   throw new UnauthorizedException('No puedes crear administradores');
+    // }
 
     const domainUser = UserFactory.createNew({
       name: dto.name,
