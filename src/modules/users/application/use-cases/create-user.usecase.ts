@@ -1,18 +1,23 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import * as argon2 from 'argon2';
-import { RolesService } from 'src/modules/roles/use-cases/roles.service';
+import { ROLE_REPOSITORY, RoleRepository } from 'src/modules/roles/application/ports/role.repository';
+import { ROLE_READ_REPOSITORY, RoleReadRepository } from 'src/modules/roles/application/ports/role-read.repository';
 import { CreateUserDto } from 'src/modules/users/adapters/in/dtos/create-user.dto';
 import { USER_REPOSITORY, UserRepository } from 'src/modules/users/application/ports/user.repository';
 import { Email, Password, RoleId, UserFactory } from 'src/modules/users/domain';
 import { RoleType } from 'src/shared/constantes/constants';
 import { successResponse } from 'src/shared/response-standard/response';
+import { In } from 'typeorm';
 
 @Injectable()
 export class CreateUserUseCase {
   constructor(
     @Inject(USER_REPOSITORY)
     private readonly userRepository: UserRepository,
-    private readonly rolesService: RolesService,
+    @Inject(ROLE_READ_REPOSITORY)
+    private readonly roleReadRepository: RoleReadRepository,
+    @Inject(ROLE_REPOSITORY)
+    private readonly roleRepository: RoleRepository,
   ) {}
 
   async execute(dto: CreateUserDto, requesterRole: RoleType) {
@@ -36,13 +41,12 @@ export class CreateUserUseCase {
     let targetRoleDescription: string;
 
     if (dto.roleId) {
-      await this.rolesService.isRoleActive(dto.roleId);
-      const roleResult = await this.rolesService.findOne(dto.roleId);
-      targetRoleId = roleResult.data.id;
-      targetRoleDescription = roleResult.data.description;
+      const roleResult = await this.roleRepository.findById(dto.roleId);
+      targetRoleId = roleResult.id;
+      targetRoleDescription = roleResult.description;
     } else {
-      const roleResult = await this.rolesService.findOneDescription(RoleType.ADVISER);
-      targetRoleId = roleResult.data.id;
+      const roleResult = await this.roleReadRepository.findByDescription(RoleType.ADVISER);
+      targetRoleId = roleResult.id;
       targetRoleDescription = RoleType.ADVISER;
     }
 

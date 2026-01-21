@@ -60,7 +60,7 @@ export class UsersController {
     return this.createUserUseCase.execute(dto, user.role);
   }
 
-  @Get('findAll')
+  @Get('/findAll')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleType.ADMIN, RoleType.MODERATOR)
   async findAll(
@@ -79,7 +79,7 @@ export class UsersController {
     }, user.role);
   }
 
-  @Get('actives')
+  @Get('/actives')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleType.ADMIN, RoleType.MODERATOR)
   async findActives(
@@ -98,27 +98,27 @@ export class UsersController {
     }, user.role);
   }
 
- @Get('me')
+ @Get('/me')
   @UseGuards(JwtAuthGuard)
   getProfile(@CurrentUser() user: { id: string }) {
     return this.getOwnUserUseCase.execute(user.id);
   }
 
-  @Get('search/:id')
+  @Get('/search/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleType.ADMIN, RoleType.MODERATOR)
   findOne(@Param('id') id: string, @CurrentUser() user: { role: RoleType }) {
     return this.getUserUseCase.execute(id, user.role);
   }
 
-  @Get('email/:email')
+  @Get('/email/:email')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleType.ADMIN, RoleType.MODERATOR)
   findByEmail(@Param('email') email: string, @CurrentUser() user: { role: RoleType }) {
     return this.getUserByEmailUseCase.execute(email, user.role);
   }
 
-  @Patch('update/:id')
+  @Patch('/update/:id')
   @UseGuards(JwtAuthGuard)
   update(
     @Param('id') id: string,
@@ -131,21 +131,21 @@ export class UsersController {
     return this.updateUserUseCase.execute(id, dto, user.id);
   }
 
-  @Patch('delete/:id')
+  @Patch('/delete/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleType.ADMIN, RoleType.MODERATOR)
   remove(@Param('id') id: string, @CurrentUser() user: { role: RoleType }) {
     return this.deleteUserUseCase.execute(id, user.role);
   }
 
-  @Patch('restore/:id')
+  @Patch('/restore/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleType.ADMIN)
   restore(@Param('id') id: string) {
     return this.restoreUserUseCase.execute(id);
   }
 
-  @Patch('change-password/:id')
+  @Patch('/change-password/:id')
   @UseGuards(JwtAuthGuard)
   async changePassword(
     @Param('id') id: string,
@@ -160,7 +160,7 @@ export class UsersController {
 
 
   // Subir avatar del usuario
-  @Post(':id/avatar')
+  @Post('/:id/avatar')
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileInterceptor('avatar', {

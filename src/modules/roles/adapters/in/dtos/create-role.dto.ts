@@ -4,13 +4,6 @@ import {
   Matches, 
   Length
 } from 'class-validator';
-
-/**
- * DTO (Data Transfer Object) para la creaciAn de un nuevo rol.
- *
- * Este objeto define y valida los datos que se esperan al momento de
- * recibir una solicitud para crear un rol.
- */
 export class CreateRoleDto {
   /**
    * DescripciAn del rol (por ejemplo: "admin", "user").

@@ -14,7 +14,7 @@ import { UpdateAvatarUseCase } from '../application/use-cases/update-avatar.usec
 import { UpdateUserUseCase } from '../application/use-cases/update-user.usecase';
 import { UsersController } from '../adapters/in/controllers/users.controller';
 import { User } from '../adapters/out/persistence/typeorm/entities/user.entity';
-import { Role } from 'src/modules/roles/infrastructure/orm-entities/role.entity';
+import { Role } from '../../roles/adapters/out/persistence/typeorm/entities/role.entity';
 import { RolesModule } from 'src/modules/roles/infrastructure/roles.module';
 import { USER_REPOSITORY } from '../application/ports/user.repository';
 import { TypeormUserRepository } from '../adapters/out/persistence/typeorm/repositories/typeorm-user.repository';
