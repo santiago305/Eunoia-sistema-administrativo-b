@@ -25,6 +25,8 @@ export class AuthController {
     private readonly registerAuthUseCase: RegisterAuthUseCase,
     private readonly refreshAuthUseCase: RefreshAuthUseCase,
   ) {}
+  // Registro deshabilitado temporalmente; se reactivara cuando el flujo este definido.
+  /*
   @Post('register')
   async register(
     @Body() dto: CreateUserDto,
@@ -51,6 +53,7 @@ export class AuthController {
 
     return { access_token };
   }
+  */
 
   @Post('login')
   async login(

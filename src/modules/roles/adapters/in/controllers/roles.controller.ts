@@ -14,6 +14,7 @@ import { Roles } from 'src/shared/utilidades/decorators/roles.decorator';
 import { RoleType } from 'src/shared/constantes/constants';
 import { RolesGuard } from 'src/shared/utilidades/guards/roles.guard';
 import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard';
+import { User as CurrentUser } from 'src/shared/utilidades/decorators/user.decorator';
 
 // UseCases
 import { CreateRoleUseCase } from 'src/modules/roles/application/use-cases/create-role.usecase';
@@ -26,7 +27,7 @@ import { RestoreRoleUseCase } from 'src/modules/roles/application/use-cases/rest
 
 @Controller('roles')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(RoleType.ADMIN, RoleType.MODERATOR, RoleType.ADVISER)
+@Roles(RoleType.ADMIN)
 export class RolesController {
   constructor(
     private readonly createRoleUseCase: CreateRoleUseCase,
@@ -39,8 +40,8 @@ export class RolesController {
   ) {}
 
   @Post('/create')
-  create(@Body() dto: CreateRoleDto) {
-    return this.createRoleUseCase.execute(dto, RoleType.ADMIN);
+  create(@Body() dto: CreateRoleDto, @CurrentUser() user: { role: RoleType }) {
+    return this.createRoleUseCase.execute(dto, user.role);
   }
 
   @Get('')

@@ -14,12 +14,19 @@ export class DeleteUserUseCase {
   ) {}
 
   async execute(id: string, requesterRole: RoleType) {
-    if (requesterRole === RoleType.MODERATOR) {
-      const target = await this.userReadRepository.findPublicById(id);
-      if (!target) throw new UnauthorizedException('Usuario no encontrado');
-      if (target.role.description !== RoleType.ADVISER) {
-        throw new UnauthorizedException('No puedes eliminar usuarios administrativos');
-      }
+    if (requesterRole !== RoleType.ADMIN && requesterRole !== RoleType.MODERATOR) {
+      throw new UnauthorizedException('No autorizado para eliminar usuarios');
+    }
+
+    const target = await this.userReadRepository.findPublicById(id);
+    if (!target) throw new UnauthorizedException('Usuario no encontrado');
+
+    if (target.role.description === RoleType.ADMIN) {
+      throw new UnauthorizedException('No puedes eliminar usuarios administradores');
+    }
+
+    if (requesterRole === RoleType.MODERATOR && target.role.description !== RoleType.ADVISER) {
+      throw new UnauthorizedException('No puedes eliminar usuarios administrativos');
     }
 
     const isActive = await this.userRepository.existsByIdAndDeleted(id, false);
