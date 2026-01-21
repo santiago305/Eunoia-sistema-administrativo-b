@@ -1,5 +1,7 @@
 import 'dotenv/config'
-import * as joi from 'joi'
+import * as joi from 'joi';
+import { StringValue } from 'ms';
+
 
 interface EnvVars {
     PORT: number;
@@ -10,9 +12,9 @@ interface EnvVars {
     DB_NAME: string;
     COOKIE_SECRET: string;
     JWT_SECRET: string;
-    JWT_EXPIRES_IN: string;
-    JWT_ISSUER: string;
-    JWT_REFRESH_EXPIRES_IN: string;
+    JWT_EXPIRES_IN: StringValue;
+    JWT_ISSUER: StringValue;
+    JWT_REFRESH_EXPIRES_IN: StringValue;
     }
 
 const envsSchema = joi.object({
