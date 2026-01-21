@@ -3,12 +3,18 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
-import { AuthService } from '../use-cases/auth.service';
 import { AuthController } from '../adapters/in/controllers/auth.controller';
 import { UsersModule } from 'src/modules/users/infrastructure/users.module';
 import { JwtStrategy } from './providers/strategy/jwt.strategy';
 import { envs } from 'src/infrastructure/config/envs';
 import { JwtRefreshStrategy } from './providers/strategy/jwt-refresh.strategy';
+import { RegisterAuthUseCase } from '../application/use-cases/register-auth.usecase';
+import { LoginAuthUseCase } from '../application/use-cases/login-auth.usecase';
+import { RefreshAuthUseCase } from '../application/use-cases/refresh.auth.usecase';
+import { PASSWORD_HASHER_READ_REPOSITORY } from '../application/ports/password-hasher-read.repository';
+import { TOKEN_READ_REPOSITORY } from '../application/ports/token-read.repository';
+import { JwtTokenReadRepository } from './providers/jwt-token-read.repository';
+import { Argon2PasswordHasherReadRepository } from './providers/argon2-password-hasher-read.repository';
 
 /**
  * Modulo de autenticacion.
@@ -35,9 +41,13 @@ import { JwtRefreshStrategy } from './providers/strategy/jwt-refresh.strategy';
   ],
   controllers: [AuthController],
   providers: [
-    AuthService,
     JwtStrategy,          // Estrategia para validar access tokens
     JwtRefreshStrategy,   // Estrategia para validar refresh tokens
+    RegisterAuthUseCase,
+    LoginAuthUseCase,
+    RefreshAuthUseCase,
+    { provide: TOKEN_READ_REPOSITORY, useClass: JwtTokenReadRepository },
+    { provide: PASSWORD_HASHER_READ_REPOSITORY, useClass: Argon2PasswordHasherReadRepository }
   ],
 })
 export class AuthModule {}

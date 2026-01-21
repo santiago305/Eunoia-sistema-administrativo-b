@@ -26,7 +26,7 @@ import { RestoreRoleUseCase } from 'src/modules/roles/application/use-cases/rest
 
 @Controller('roles')
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(RoleType.ADMIN)
+@Roles(RoleType.ADMIN, RoleType.MODERATOR, RoleType.ADVISER)
 export class RolesController {
   constructor(
     private readonly createRoleUseCase: CreateRoleUseCase,
