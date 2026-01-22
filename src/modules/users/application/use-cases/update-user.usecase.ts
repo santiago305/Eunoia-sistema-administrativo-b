@@ -28,11 +28,14 @@ export class UpdateUserUseCase {
     if (!existingUser) throw new UnauthorizedException('Usuario no encontrado');
 
     if (dto.email) {
-      const exists = await this.userRepository.existsByEmail(new Email(dto.email));
-      if (exists) {
-        throw new UnauthorizedException('Este email ya estA registrado');
+      const normalizedEmail = dto.email;
+      if (normalizedEmail !== existingUser.email.value) {
+        const exists = await this.userRepository.existsByEmail(new Email(normalizedEmail));
+        if (exists) {
+          throw new UnauthorizedException('Este email ya estA registrado');
+        }
+        existingUser.email = new Email(normalizedEmail);
       }
-      existingUser.email = new Email(dto.email);
     }
     if (dto.roleId) {
       throw new UnauthorizedException('No puedes cambiar el rol');

@@ -67,7 +67,7 @@ describe('UpdateUserUseCase', () => {
     });
 
     await expect(
-      useCase.execute('user-1', { email: 'ana@example.com' } as any, 'user-1')
+      useCase.execute('user-1', { email: 'other@example.com' } as any, 'user-1')
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 

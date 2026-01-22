@@ -1,7 +1,7 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { GetUserByEmailUseCase } from './get-user-by-email.usecase';
 import { RoleType } from 'src/shared/constantes/constants';
-import { errorResponse, successResponse } from 'src/shared/response-standard/response';
+import { successResponse } from 'src/shared/response-standard/response';
 
 describe('GetUserByEmailUseCase', () => {
   const makeUseCase = (overrides?: { userReadRepository?: any }) => {
@@ -11,13 +11,14 @@ describe('GetUserByEmailUseCase', () => {
     return new GetUserByEmailUseCase(userReadRepository);
   };
 
-  it('returns error response when not found', async () => {
+  it('throws when not found', async () => {
     const useCase = makeUseCase({
       userReadRepository: { findPublicByEmail: jest.fn().mockResolvedValue(null) },
     });
 
-    const result = await useCase.execute('ana@example.com', RoleType.ADMIN);
-    expect(result).toEqual(errorResponse('No hemos encontrado el usuario'));
+    await expect(
+      useCase.execute('ana@example.com', RoleType.ADMIN)
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('returns success response for admin', async () => {

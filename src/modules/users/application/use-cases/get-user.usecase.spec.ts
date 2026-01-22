@@ -1,7 +1,7 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { GetUserUseCase } from './get-user.usecase';
 import { RoleType } from 'src/shared/constantes/constants';
-import { errorResponse, successResponse } from 'src/shared/response-standard/response';
+import { successResponse } from 'src/shared/response-standard/response';
 
 describe('GetUserUseCase', () => {
   const makeUseCase = (overrides?: { userReadRepository?: any }) => {
@@ -11,13 +11,14 @@ describe('GetUserUseCase', () => {
     return new GetUserUseCase(userReadRepository);
   };
 
-  it('returns error response when not found', async () => {
+  it('throws when not found', async () => {
     const useCase = makeUseCase({
       userReadRepository: { findPublicById: jest.fn().mockResolvedValue(null) },
     });
 
-    const result = await useCase.execute('user-1', RoleType.ADMIN);
-    expect(result).toEqual(errorResponse('No hemos podido encotrar el usuario'));
+    await expect(
+      useCase.execute('user-1', RoleType.ADMIN)
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('returns success response for admin', async () => {

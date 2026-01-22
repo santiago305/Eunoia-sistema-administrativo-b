@@ -25,7 +25,7 @@ export class ListActiveUsersUseCase {
       filters: scopedParams.filters,
       sortBy: scopedParams.sortBy,
       order: scopedParams.order,
-      whereClause: 'role.deleted = false',
+      whereClause: 'user.deleted = false',
     });
   }
 

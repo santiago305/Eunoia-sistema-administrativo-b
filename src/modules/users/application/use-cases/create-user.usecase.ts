@@ -7,7 +7,6 @@ import { USER_REPOSITORY, UserRepository } from 'src/modules/users/application/p
 import { Email, Password, RoleId, UserFactory } from 'src/modules/users/domain';
 import { RoleType } from 'src/shared/constantes/constants';
 import { successResponse } from 'src/shared/response-standard/response';
-import { In } from 'typeorm';
 
 @Injectable()
 export class CreateUserUseCase {
@@ -49,6 +48,9 @@ export class CreateUserUseCase {
       targetRoleDescription = roleResult.description;
     } else {
       const roleResult = await this.roleReadRepository.findByDescription(RoleType.ADVISER);
+      if (!roleResult) {
+        throw new UnauthorizedException('Rol invǭlido');
+      }
       targetRoleId = roleResult.id;
       targetRoleDescription = RoleType.ADVISER;
     }

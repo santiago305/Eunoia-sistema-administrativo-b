@@ -1,11 +1,11 @@
-import { Inject, UnauthorizedException } from '@nestjs/common';
+import { UnauthorizedException } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { CreateUserUseCase } from './create-user.usecase';
 import { RoleType } from 'src/shared/constantes/constants';
 import { successResponse } from 'src/shared/response-standard/response';
 import { Email } from 'src/modules/users/domain';
-import { ROLE_REPOSITORY, RoleRepository} from 'src/modules/roles/application/ports/role.repository';
-import { ROLE_READ_REPOSITORY, RoleReadRepository } from 'src/modules/roles/application/ports/role-read.repository';
+import { RoleRepository} from 'src/modules/roles/application/ports/role.repository';
+import { RoleReadRepository } from 'src/modules/roles/application/ports/role-read.repository';
 
 
 
@@ -95,6 +95,25 @@ describe('CreateUserUseCase', () => {
 
     await expect(
       useCase.execute({ email: 'ana@example.com' } as any, RoleType.ADMIN)
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('rejects when default adviser role is missing', async () => {
+    const useCase = makeUseCase({
+      roleReadRepository: {
+        findByDescription: jest.fn().mockResolvedValue(null),
+      },
+    });
+
+    await expect(
+      useCase.execute(
+        {
+          name: 'Ana',
+          email: 'ana@example.com',
+          password: 'secret',
+        } as any,
+        RoleType.ADMIN
+      )
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 

@@ -6,7 +6,7 @@ Casos de uso del modulo de usuarios.
 
 - `change-password.usecase.ts`: cambia la contrasena del usuario validando credenciales actuales.
 - `change-password.usecase.spec.ts`: pruebas unitarias del cambio de contrasena.
-- `create-user.usecase.ts`: crea un usuario nuevo.
+- `create-user.usecase.ts`: crea un usuario nuevo y valida la existencia del rol `ADVISER` cuando no se envia `roleId`.
 - `create-user.usecase.spec.ts`: pruebas unitarias de creacion de usuario.
 - `delete-user.usecase.ts`: marca un usuario como eliminado.
 - `delete-user.usecase.spec.ts`: pruebas unitarias de eliminacion de usuario.
