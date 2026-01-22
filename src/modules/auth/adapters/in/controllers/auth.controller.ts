@@ -13,7 +13,7 @@ import { RefreshAuthUseCase } from 'src/modules/auth/application/use-cases/refre
 import { RegisterAuthUseCase } from 'src/modules/auth/application/use-cases/register-auth.usecase';
 import { LoginAuthDto } from '../dtos/login-auth.dto';
 import { Response } from 'express';
-import { CreateUserDto } from 'src/modules/users/adapters/in/dtos/create-user.dto';
+// import { CreateUserDto } from 'src/modules/users/adapters/in/dtos/create-user.dto';
 import { ErrorResponse, isTypeResponse } from 'src/shared/response-standard/guard';
 import { successResponse } from 'src/shared/response-standard/response';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
