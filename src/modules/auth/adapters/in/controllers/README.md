@@ -8,9 +8,9 @@ Controladores HTTP para autenticacion.
 
 ## APIs disponibles
 
-Base: `/auth`
+Base: `/api/auth`
 
-- `POST /auth/login` (publico)
-- `POST /auth/logout` (auth: `JWT`)
-- `GET /auth/refresh` (auth: `JWT` refresh)
-- `GET /auth/validate-token` (auth: `JWT`)
+- `POST /api/auth/login` (publico)
+- `POST /api/auth/logout` (auth: `JWT`)
+- `GET /api/auth/refresh` (auth: `JWT` refresh)
+- `GET /api/auth/validate-token` (auth: `JWT`)
