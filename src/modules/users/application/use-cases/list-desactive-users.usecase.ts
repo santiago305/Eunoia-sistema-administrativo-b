@@ -3,7 +3,7 @@ import { USER_READ_REPOSITORY, UserReadRepository } from 'src/modules/users/appl
 import { RoleType } from 'src/shared/constantes/constants';
 
 @Injectable()
-export class ListUsersUseCase {
+export class ListDesactiveUseCase {
   constructor(
     @Inject(USER_READ_REPOSITORY)
     private readonly userReadRepository: UserReadRepository,
@@ -25,7 +25,7 @@ export class ListUsersUseCase {
       filters: scopedParams.filters,
       sortBy: scopedParams.sortBy,
       order: scopedParams.order,
-      whereClause: 'user.deleted = false',
+      whereClause: 'user.deleted = true',
     });
   }
 
