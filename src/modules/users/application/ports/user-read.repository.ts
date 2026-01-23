@@ -13,6 +13,7 @@ export interface UserReadRepository {
       name: string;
       email: string;
       rol: string;
+      roleId: string; 
       deleted: boolean;
       createdAt: Date;
     }>

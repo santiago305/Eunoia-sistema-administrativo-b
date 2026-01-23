@@ -23,6 +23,7 @@ export class TypeormUserReadRepository implements UserReadRepository {
       name: string;
       email: string;
       rol: string;
+      roleId: string;
       deleted: boolean;
       createdAt: Date;
     }>
@@ -42,6 +43,7 @@ export class TypeormUserReadRepository implements UserReadRepository {
       role: 'role.description',
       rol: 'role.description',
       'role.description': 'role.description',
+      roleId: 'role.id',
       deleted: 'user.deleted',
       'user.deleted': 'user.deleted',
     };
@@ -56,6 +58,7 @@ export class TypeormUserReadRepository implements UserReadRepository {
         'user.name',
         'user.email',
         'role.description As rol',
+        'role.id As roleId',
         'user.deleted',
         'user.createdAt',
       ])

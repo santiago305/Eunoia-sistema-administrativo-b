@@ -33,6 +33,7 @@ import { RoleType } from 'src/shared/constantes/constants';
 import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/shared/utilidades/guards/roles.guard';
 import { User as CurrentUser } from 'src/shared/utilidades/decorators/user.decorator';
+import { ListDesactiveUseCase } from 'src/modules/users/application/use-cases/list-desactive-users.usecase';
 
 /**
  * Controlador para la gestiAn de usuarios.
@@ -45,6 +46,7 @@ export class UsersController {
     private readonly changePasswordUseCase: ChangePasswordUseCase,
     private readonly listUsersUseCase: ListUsersUseCase,
     private readonly listActiveUsersUseCase: ListActiveUsersUseCase,
+    private readonly listDesactiveUserCase: ListDesactiveUseCase,
     private readonly getUserUseCase: GetUserUseCase,
     private readonly getUserByEmailUseCase: GetUserByEmailUseCase,
     private readonly getOwnUserUseCase: GetOwnUserUseCase,
@@ -97,7 +99,25 @@ export class UsersController {
       order: this.normalizeOrder(order),
     }, user.role);
   }
-
+  
+  @Get('desactive')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN, RoleType.MODERATOR)
+  async findDesactive(
+    @Query('page') page: string,
+    @Query('role') role: string,
+    @Query('sortBy') sortBy: string,
+    @Query('order') order: 'ASC' | 'DESC',
+    @CurrentUser() user: { role: RoleType }
+  ) {
+    const pageNumber = parseInt(page) || 1;
+    return this.listDesactiveUserCase.execute({
+      page: pageNumber,
+      filters: { role },
+      sortBy: this.normalizeSortBy(sortBy),
+      order: this.normalizeOrder(order),
+    }, user.role);
+  }
  @Get('me')
   @UseGuards(JwtAuthGuard)
   getProfile(@CurrentUser() user: { id: string }) {

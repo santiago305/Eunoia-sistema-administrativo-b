@@ -32,7 +32,7 @@ export class CreateUserDto {
    * ID del rol asignado al usuario.
    * No es obligatorio.
    */
-  @IsOptional()
+  @IsString()
   @IsNotEmpty()
   roleId?: string;
 
