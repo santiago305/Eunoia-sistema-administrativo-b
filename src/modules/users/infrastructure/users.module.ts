@@ -20,6 +20,7 @@ import { USER_REPOSITORY } from '../application/ports/user.repository';
 import { TypeormUserRepository } from '../adapters/out/persistence/typeorm/repositories/typeorm-user.repository';
 import { USER_READ_REPOSITORY } from '../application/ports/user-read.repository';
 import { TypeormUserReadRepository } from '../adapters/out/persistence/typeorm/repositories/typeorm-user-read.repository';
+import { ListDesactiveUseCase } from '../application/use-cases/list-desactive-users.usecase';
 
 /**
  * Modulo encargado de la gestiAn de usuarios.
@@ -37,6 +38,7 @@ import { TypeormUserReadRepository } from '../adapters/out/persistence/typeorm/r
     ChangePasswordUseCase,
     ListUsersUseCase,
     ListActiveUsersUseCase,
+    ListDesactiveUseCase,
     GetUserUseCase,
     GetUserByEmailUseCase,
     GetOwnUserUseCase,
