@@ -68,12 +68,10 @@ describe('RegisterAuthUseCase', () => {
     );
     expect(tokenReadRepository.signAccessToken).toHaveBeenCalledWith({
       sub: 'user-1',
-      email: 'ana@example.com',
       role: RoleType.ADMIN,
     });
     expect(tokenReadRepository.signRefreshToken).toHaveBeenCalledWith({
       sub: 'user-1',
-      email: 'ana@example.com',
       role: RoleType.ADMIN,
     });
     expect(result).toEqual({ access_token: 'access', refresh_token: 'refresh' });
@@ -106,7 +104,6 @@ describe('RegisterAuthUseCase', () => {
 
     expect(tokenReadRepository.signAccessToken).toHaveBeenCalledWith({
       sub: 'user-1',
-      email: 'ana@example.com',
       role: RoleType.ADVISER,
     });
   });

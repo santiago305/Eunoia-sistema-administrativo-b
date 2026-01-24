@@ -21,13 +21,11 @@ describe('RefreshAuthUseCase', () => {
 
     const result = await useCase.execute({
       sub: 'user-1',
-      email: 'ana@example.com',
       role: 'ADMIN',
     });
 
     expect(tokenReadRepository.signAccessToken).toHaveBeenCalledWith({
       sub: 'user-1',
-      email: 'ana@example.com',
       role: 'ADMIN',
     });
     expect(result).toEqual({ access_token: 'access' });
@@ -37,7 +35,7 @@ describe('RefreshAuthUseCase', () => {
     const useCase = makeUseCase();
 
     await expect(
-      useCase.execute({ email: 'ana@example.com', role: 'ADMIN' } as any)
+      useCase.execute({ role: 'ADMIN' } as any)
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });

@@ -19,7 +19,6 @@ export class RefreshAuthUseCase {
 
     const payload = {
       sub: user.sub,
-      email: user.email,
       role: user.role,
     };
 

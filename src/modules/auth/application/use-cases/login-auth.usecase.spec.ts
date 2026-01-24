@@ -64,12 +64,10 @@ describe('LoginAuthUseCase', () => {
     expect(passwordHasher.verify).toHaveBeenCalledWith('hashed', 'secret');
     expect(tokenReadRepository.signAccessToken).toHaveBeenCalledWith({
       sub: 'user-1',
-      email: 'ana@example.com',
       role: RoleType.ADMIN,
     });
     expect(tokenReadRepository.signRefreshToken).toHaveBeenCalledWith({
       sub: 'user-1',
-      email: 'ana@example.com',
       role: RoleType.ADMIN,
     });
     expect(result).toEqual({ access_token: 'access', refresh_token: 'refresh' });
@@ -97,7 +95,6 @@ describe('LoginAuthUseCase', () => {
 
     expect(tokenReadRepository.signAccessToken).toHaveBeenCalledWith({
       sub: 'user-1',
-      email: 'ana@example.com',
       role: RoleType.ADVISER,
     });
   });

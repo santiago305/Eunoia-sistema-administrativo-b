@@ -34,7 +34,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     return {
       id: payload.sub,   // Este ID sera leido en @User()
-      email: payload.email,
       role: payload.role,
     };
   }

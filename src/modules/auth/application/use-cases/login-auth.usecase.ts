@@ -37,7 +37,6 @@ export class LoginAuthUseCase {
 
     const payload = {
       sub: user.id,
-      email: user.email,
       role: user.role?.description || RoleType.ADVISER,
     };
 
