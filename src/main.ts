@@ -34,7 +34,7 @@ async function bootstrap() {
   enableCookieParser(app);
   // habilitamos el cors
   app.enableCors({
-    origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+    origin: ['http://localhost:5174', 'http://127.0.0.1:5174'],
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Access-Control-Allow-Origin'],
     exposedHeaders: ['Authorization'],
