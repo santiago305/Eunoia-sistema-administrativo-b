@@ -10,3 +10,4 @@ Casos de uso de autenticacion.
 - `register-auth.usecase.spec.ts`: pruebas unitarias de registro.
 - `refresh.auth.usecase.ts`: genera un nuevo access token con refresh token valido.
 - `refresh-auth.usecase.spec.ts`: pruebas unitarias de refresh.
+- `get-auth-user.usecase.ts`: devuelve el id y rol del usuario autenticado.

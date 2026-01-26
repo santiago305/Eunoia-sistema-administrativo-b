@@ -14,3 +14,4 @@ Base: `/api/auth`
 - `POST /api/auth/logout` (auth: `JWT`)
 - `GET /api/auth/refresh` (auth: `JWT` refresh)
 - `GET /api/auth/validate-token` (auth: `JWT`)
+- `GET /api/auth/me` (auth: `JWT`)

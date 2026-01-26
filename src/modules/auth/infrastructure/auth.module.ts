@@ -11,6 +11,7 @@ import { JwtRefreshStrategy } from './providers/strategy/jwt-refresh.strategy';
 import { RegisterAuthUseCase } from '../application/use-cases/register-auth.usecase';
 import { LoginAuthUseCase } from '../application/use-cases/login-auth.usecase';
 import { RefreshAuthUseCase } from '../application/use-cases/refresh.auth.usecase';
+import { GetAuthUserUseCase } from '../application/use-cases/get-auth-user.usecase';
 import { PASSWORD_HASHER_READ_REPOSITORY } from '../application/ports/password-hasher-read.repository';
 import { TOKEN_READ_REPOSITORY } from '../application/ports/token-read.repository';
 import { JwtTokenReadRepository } from './providers/jwt-token-read.repository';
@@ -46,6 +47,7 @@ import { Argon2PasswordHasherReadRepository } from './providers/argon2-password-
     RegisterAuthUseCase,
     LoginAuthUseCase,
     RefreshAuthUseCase,
+    GetAuthUserUseCase,
     { provide: TOKEN_READ_REPOSITORY, useClass: JwtTokenReadRepository },
     { provide: PASSWORD_HASHER_READ_REPOSITORY, useClass: Argon2PasswordHasherReadRepository }
   ],

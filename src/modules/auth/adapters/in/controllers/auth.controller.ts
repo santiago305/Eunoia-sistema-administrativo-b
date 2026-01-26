@@ -5,12 +5,14 @@
   Res,
   Get,
   UseGuards,
+  HttpCode,
 } from '@nestjs/common';
 import { JwtRefreshAuthGuard } from '../guards/jwt-refresh-auth.guard';
 import { User as UserDecorator } from 'src/shared/utilidades/decorators';
 import { LoginAuthUseCase } from 'src/modules/auth/application/use-cases/login-auth.usecase';
 import { RefreshAuthUseCase } from 'src/modules/auth/application/use-cases/refresh.auth.usecase';
 import { RegisterAuthUseCase } from 'src/modules/auth/application/use-cases/register-auth.usecase';
+import { GetAuthUserUseCase } from 'src/modules/auth/application/use-cases/get-auth-user.usecase';
 import { LoginAuthDto } from '../dtos/login-auth.dto';
 import { Response } from 'express';
 // import { CreateUserDto } from 'src/modules/users/adapters/in/dtos/create-user.dto';
@@ -24,6 +26,7 @@ export class AuthController {
     private readonly loginAuthUseCase: LoginAuthUseCase,
     private readonly registerAuthUseCase: RegisterAuthUseCase,
     private readonly refreshAuthUseCase: RefreshAuthUseCase,
+    private readonly getAuthUserUseCase: GetAuthUserUseCase,
   ) {}
   // Registro deshabilitado temporalmente; se reactivara cuando el flujo este definido.
   /*
@@ -56,10 +59,11 @@ export class AuthController {
   */
 
   @Post('login')
+  @HttpCode(200)
   async login(
     @Body() dto: LoginAuthDto,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<{ access_token: string } | ErrorResponse> {
+  ): Promise<{ message: string } | ErrorResponse> {
     const result = await this.loginAuthUseCase.execute(dto);
     if (isTypeResponse(result)) return result;
 
@@ -79,7 +83,7 @@ export class AuthController {
       maxAge: 60 * 60 * 1000,
     });
 
-    return { access_token };
+    return { message: 'OK' };
   }
 
   @Post('logout')
@@ -110,12 +114,18 @@ export class AuthController {
       maxAge: 60 * 60 * 1000, // 1h
     });
 
-    return { access_token };
+    return { message: 'OK' };
   }
 
   @Get('validate-token')
   @UseGuards(JwtAuthGuard)
   async validateToken(@Res() res: Response) {
     return res.status(200).json({ message: 'Token es valido' });
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  getAuthUser(@UserDecorator() user: { id: string; role: string }) {
+    return this.getAuthUserUseCase.execute(user);
   }
 }
