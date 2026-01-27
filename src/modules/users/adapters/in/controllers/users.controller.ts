@@ -178,8 +178,6 @@ export class UsersController {
     return this.changePasswordUseCase.execute(id, body.currentPassword, body.newPassword, user.id);
   }
 
-
-  // Subir avatar del usuario
   @Post(':id/avatar')
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(
@@ -193,6 +191,7 @@ export class UsersController {
       }),
     }),
   )
+  
   async uploadAvatar(
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
