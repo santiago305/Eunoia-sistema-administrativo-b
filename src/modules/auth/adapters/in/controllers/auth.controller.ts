@@ -23,6 +23,7 @@ import { ErrorResponse, isTypeResponse } from 'src/shared/response-standard/guar
 import { successResponse } from 'src/shared/response-standard/response';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { getDeviceIdOrThrow, getOrCreateDeviceId } from 'src/shared/utilidades/utils/getOrCreateDeviceId.util'
+import { VerifyUserPasswordBySessionUseCase } from 'src/modules/auth/application/use-cases/verify-user-password-by-session.usecase';
 
 @Controller('auth')
 export class AuthController {
@@ -32,6 +33,8 @@ export class AuthController {
     private readonly refreshAuthUseCase: RefreshAuthUseCase,
     private readonly getAuthUserUseCase: GetAuthUserUseCase,
     private readonly revokeSessionByDeviceUseCase: RevokeSessionByDeviceUseCase,
+    private readonly verifyUserPasswordBySessionUseCase: VerifyUserPasswordBySessionUseCase,
+
 
   ) {}
   // Registro deshabilitado temporalmente; se reactivara cuando el flujo este definido.
@@ -76,7 +79,7 @@ export class AuthController {
     const deviceId = getOrCreateDeviceId(req, res);
     const deviceName = (req.headers['x-device-name'] as string) ?? null;
     const userAgent = (req.headers['x-user-agent'] as string) ?? req.headers['user-agent'] ?? null;
-    const ipAddress = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0] || null;
+    const ipAddress = req.ip || req.socket?.remoteAddress || null;
 
     if (!deviceId) {
       throw new UnauthorizedException('DeviceId faltante (header x-device-id)');
@@ -164,6 +167,22 @@ export class AuthController {
     });
 
     return { message: 'OK' };
+  }
+
+  
+  @Post('verify-password')
+  @UseGuards(JwtAuthGuard)
+  async verifyPassword(
+    @UserDecorator() user: { id: string },
+    @Body() body: { currentPassword: string },
+    @Req() req: Request,
+  ) {
+    const deviceId = getDeviceIdOrThrow(req);
+    return this.verifyUserPasswordBySessionUseCase.execute({
+      userId: user.id,
+      deviceId,
+      password: body.currentPassword,
+    });
   }
 
   @Get('validate-token')

@@ -19,6 +19,7 @@ import { Argon2PasswordHasherReadRepository } from './providers/argon2-password-
 import { SessionsModule } from 'src/modules/sessions/infrastructure/session.module';
 import { UpsertSessionUseCase } from 'src/modules/sessions/application/use-cases/upsert-session.usecase';
 import { RevokeSessionByDeviceUseCase } from 'src/modules/sessions/application/use-cases/revoke-session-by-device.usecase';
+import { VerifyUserPasswordBySessionUseCase } from '../application/use-cases/verify-user-password-by-session.usecase';
 
 /**
  * Modulo de autenticacion.
@@ -54,6 +55,8 @@ import { RevokeSessionByDeviceUseCase } from 'src/modules/sessions/application/u
     GetAuthUserUseCase,
     UpsertSessionUseCase,
     RevokeSessionByDeviceUseCase,
+    VerifyUserPasswordBySessionUseCase,
+
     { provide: TOKEN_READ_REPOSITORY, useClass: JwtTokenReadRepository },
     { provide: PASSWORD_HASHER_READ_REPOSITORY, useClass: Argon2PasswordHasherReadRepository }
   ],

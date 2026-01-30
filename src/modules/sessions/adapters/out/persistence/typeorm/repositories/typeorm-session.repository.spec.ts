@@ -120,4 +120,25 @@ describe('TypeormSessionRepository', () => {
 
     expect(execute).toHaveBeenCalled();
   });
+
+  it('revokeAllForUserExceptDevice uses query builder', async () => {
+    const execute = jest.fn().mockResolvedValue(undefined);
+    const repo = makeRepo({
+      createQueryBuilder: jest.fn().mockReturnValue({
+        update: jest.fn().mockReturnThis(),
+        set: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        execute,
+      }),
+    });
+
+    await repo.revokeAllForUserExceptDevice(
+      'user-1',
+      'device-1',
+      new Date('2026-01-03T00:00:00Z'),
+    );
+
+    expect(execute).toHaveBeenCalled();
+  });
 });

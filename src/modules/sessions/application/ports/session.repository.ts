@@ -10,4 +10,5 @@ export interface SessionRepository {
   updateRefreshTokenHash(id: string, refreshTokenHash: string, expiresAt: Date): Promise<void>;
   revoke(id: string, revokedAt: Date): Promise<void>;
   revokeAllForUser(userId: string, revokedAt: Date): Promise<void>;
+  revokeAllForUserExceptDevice(userId: string, deviceId: string, revokedAt: Date): Promise<void>;
 }

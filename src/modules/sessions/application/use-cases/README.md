@@ -12,6 +12,8 @@ Casos de uso del modulo de sesiones.
 - `revoke-session.usecase.spec.ts`: pruebas unitarias de revocacion puntual.
 - `revoke-all-sessions.usecase.ts`: revoca todas las sesiones del usuario.
 - `revoke-all-sessions.usecase.spec.ts`: pruebas unitarias de revocacion total.
+- `revoke-all-session-less-me.usecase.ts`: revoca todas las sesiones del usuario excepto la actual.
+- `revoke-all-session-less-me.usecase.spec.ts`: pruebas unitarias de revocacion parcial.
 - `touch-session.usecase.ts`: actualiza `lastSeenAt` de una sesion valida.
 - `touch-session.usecase.spec.ts`: pruebas unitarias de touch.
 - `update-session-refresh.usecase.ts`: rota el hash del refresh token.
