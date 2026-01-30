@@ -189,8 +189,17 @@ export class UsersController {
           cb(null, uniqueName);
         },
       }),
+      limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+      fileFilter: (req, file, cb) => {
+        const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        if (!allowed.includes(file.mimetype)) {
+          return cb(new Error('Solo se permiten imagenes JPG/PNG/WEBP/GIF'), false);
+        }
+        cb(null, true);
+      },
     }),
   )
+
   
   async uploadAvatar(
     @Param('id') id: string,

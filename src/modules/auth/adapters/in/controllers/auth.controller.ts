@@ -6,6 +6,8 @@
   Get,
   UseGuards,
   HttpCode,
+  Req,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { JwtRefreshAuthGuard } from '../guards/jwt-refresh-auth.guard';
 import { User as UserDecorator } from 'src/shared/utilidades/decorators';
@@ -14,11 +16,13 @@ import { RefreshAuthUseCase } from 'src/modules/auth/application/use-cases/refre
 import { RegisterAuthUseCase } from 'src/modules/auth/application/use-cases/register-auth.usecase';
 import { GetAuthUserUseCase } from 'src/modules/auth/application/use-cases/get-auth-user.usecase';
 import { LoginAuthDto } from '../dtos/login-auth.dto';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 // import { CreateUserDto } from 'src/modules/users/adapters/in/dtos/create-user.dto';
+import { RevokeSessionByDeviceUseCase } from 'src/modules/sessions/application/use-cases/revoke-session-by-device.usecase';
 import { ErrorResponse, isTypeResponse } from 'src/shared/response-standard/guard';
 import { successResponse } from 'src/shared/response-standard/response';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+import { getDeviceIdOrThrow, getOrCreateDeviceId } from 'src/shared/utilidades/utils/getOrCreateDeviceId.util'
 
 @Controller('auth')
 export class AuthController {
@@ -27,6 +31,8 @@ export class AuthController {
     private readonly registerAuthUseCase: RegisterAuthUseCase,
     private readonly refreshAuthUseCase: RefreshAuthUseCase,
     private readonly getAuthUserUseCase: GetAuthUserUseCase,
+    private readonly revokeSessionByDeviceUseCase: RevokeSessionByDeviceUseCase,
+
   ) {}
   // Registro deshabilitado temporalmente; se reactivara cuando el flujo este definido.
   /*
@@ -62,13 +68,31 @@ export class AuthController {
   @HttpCode(200)
   async login(
     @Body() dto: LoginAuthDto,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ message: string } | ErrorResponse> {
-    const result = await this.loginAuthUseCase.execute(dto);
+
+
+    const deviceId = getOrCreateDeviceId(req, res);
+    const deviceName = (req.headers['x-device-name'] as string) ?? null;
+    const userAgent = (req.headers['x-user-agent'] as string) ?? req.headers['user-agent'] ?? null;
+    const ipAddress = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0] || null;
+
+    if (!deviceId) {
+      throw new UnauthorizedException('DeviceId faltante (header x-device-id)');
+    }
+    console.log(deviceId, 'deviceId');
+    
+    const result = await this.loginAuthUseCase.execute(
+     { dto,
+      deviceId,
+      deviceName,
+      userAgent,
+      ipAddress}
+    );
     if (isTypeResponse(result)) return result;
 
     const { access_token, refresh_token } = result;
-
     res.cookie('refresh_token', refresh_token, {
       httpOnly: true,
       secure: false,
@@ -88,7 +112,17 @@ export class AuthController {
 
   @Post('logout')
   @UseGuards(JwtAuthGuard)
-  logout(@Res({ passthrough: true }) res: Response) {
+  async logout(
+    @UserDecorator() user: { id: string },
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const deviceId = getDeviceIdOrThrow(req);
+    if (!deviceId) {
+      throw new UnauthorizedException('DeviceId faltante (header x-device-id)');
+    }
+    await this.revokeSessionByDeviceUseCase.execute(user.id, deviceId);
+
     res.clearCookie('refresh_token');
     res.clearCookie('access_token');
     return successResponse('Sesion cerrada correctamente');
@@ -99,9 +133,23 @@ export class AuthController {
   @Get('refresh')
   async refresh(
     @UserDecorator() user: any, // puede venir con userId o sub
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const result = await this.refreshAuthUseCase.execute(user);
+    const refreshToken = req.cookies?.['refresh_token'];
+    const deviceId = getDeviceIdOrThrow(req);
+
+    if (!refreshToken) {
+      throw new UnauthorizedException('refresh_token faltante (cookie)');
+    }
+    if (!deviceId) {
+      throw new UnauthorizedException('DeviceId faltante (header x-device-id)');
+    }
+    const result = await this.refreshAuthUseCase.execute({
+      user,
+      deviceId,
+      refreshToken,
+    });
 
     if (isTypeResponse(result)) return result;
 
@@ -112,6 +160,7 @@ export class AuthController {
       secure: false,
       sameSite: 'lax',
       maxAge: 60 * 60 * 1000, // 1h
+      signed:true
     });
 
     return { message: 'OK' };
