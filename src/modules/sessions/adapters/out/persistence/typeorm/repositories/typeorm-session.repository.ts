@@ -60,4 +60,19 @@ export class TypeormSessionRepository implements SessionRepository {
       .andWhere('revoked_at IS NULL')
       .execute();
   }
+
+  async revokeAllForUserExceptDevice(
+    userId: string,
+    deviceId: string,
+    revokedAt: Date,
+  ): Promise<void> {
+    await this.ormRepository
+      .createQueryBuilder()
+      .update(OrmSession)
+      .set({ revokedAt })
+      .where('user_id = :userId', { userId })
+      .andWhere('device_id != :deviceId', { deviceId })
+      .andWhere('revoked_at IS NULL')
+      .execute();
+  }
 }

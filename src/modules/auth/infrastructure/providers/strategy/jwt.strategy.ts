@@ -1,8 +1,13 @@
-﻿import { Injectable, UnauthorizedException } from '@nestjs/common';
+﻿import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { envs } from 'src/infrastructure/config/envs';
 import { Request } from 'express';
+import {
+  SESSION_REPOSITORY,
+  SessionRepository,
+} from 'src/modules/sessions/application/ports/session.repository';
+import { getDeviceIdOrThrow } from 'src/shared/utilidades/utils/getOrCreateDeviceId.util';
 
 /**
  * Estrategia para validar el access token JWT.
@@ -10,7 +15,9 @@ import { Request } from 'express';
  */
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor() {
+  constructor(@Inject(SESSION_REPOSITORY)
+    private readonly sessionRepository: SessionRepository,
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         // Nota. Prioridad 1: cookie
@@ -21,20 +28,32 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       ignoreExpiration: false,
       secretOrKey: envs.jwt.secret,
       issuer: envs.jwt.issuer,
+      passReqToCallback: true, // <-- clave
     });
   }
 
   /**
    * Si el token es valido, Passport inyecta lo que retorne aqui en req.user.
    */
-  async validate(payload: any) {
+    async validate(req: Request, payload: any) {
     if (!payload?.sub) {
       throw new UnauthorizedException('Token invalido o sin identificador');
     }
 
+    const deviceId = getDeviceIdOrThrow(req);
+    const session = await this.sessionRepository.findActiveByUserAndDevice(
+      payload.sub,
+      deviceId,
+    );
+
+    if (!session) {
+      throw new UnauthorizedException('Sesion no encontrada');
+    }
+
     return {
-      id: payload.sub,   // Este ID sera leido en @User()
+      id: payload.sub,
       role: payload.role,
     };
   }
+
 }

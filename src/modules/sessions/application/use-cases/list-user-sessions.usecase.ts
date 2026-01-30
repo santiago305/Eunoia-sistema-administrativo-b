@@ -4,6 +4,8 @@ import {
   SessionReadRepository,
 } from 'src/modules/sessions/application/ports/session-read.repository';
 import { UserId } from 'src/modules/sessions/domain/values-objects/user.vo';
+import { getGeoByIp } from 'src/shared/utilidades/utils/apiGeoByIp';
+
 
 @Injectable()
 export class ListUserSessionsUseCase {
@@ -21,9 +23,17 @@ export class ListUserSessionsUseCase {
   ) {
     new UserId(userId);
 
-    return this.sessionReadRepository.listUserSessions(userId, {
+    const sessions = await this.sessionReadRepository.listUserSessions(userId, {
       includeRevoked: params?.includeRevoked ?? false,
       includeExpired: params?.includeExpired ?? false,
     });
+    const withGeo = await Promise.all(
+      sessions.map(async (s) => ({
+        ...s,
+        location: await getGeoByIp(s.ipAddress),
+      }))
+    );
+
+    return withGeo;
   }
 }

@@ -13,6 +13,7 @@ import { CreateSessionUseCase } from '../application/use-cases/create-session.us
 import { ListUserSessionsUseCase } from '../application/use-cases/list-user-sessions.usecase';
 import { RevokeSessionUseCase } from '../application/use-cases/revoke-session.usecase';
 import { RevokeAllSessionsUseCase } from '../application/use-cases/revoke-all-sessions.usecase';
+import { RevokeAllSessionsLessMeUseCase } from '../application/use-cases/revoke-all-session-less-me.usecase';
 import { TouchSessionUseCase } from '../application/use-cases/touch-session.usecase';
 import { UpdateSessionRefreshUseCase } from '../application/use-cases/update-session-refresh.usecase';
 import { UpsertSessionUseCase } from '../application/use-cases/upsert-session.usecase';
@@ -26,6 +27,7 @@ import { RevokeSessionByDeviceUseCase } from '../application/use-cases/revoke-se
     ListUserSessionsUseCase,
     RevokeSessionUseCase,
     RevokeAllSessionsUseCase,
+    RevokeAllSessionsLessMeUseCase,
     TouchSessionUseCase,
     UpdateSessionRefreshUseCase,
     UpsertSessionUseCase,
@@ -47,6 +49,7 @@ import { RevokeSessionByDeviceUseCase } from '../application/use-cases/revoke-se
     UpsertSessionUseCase,
     RevokeSessionByDeviceUseCase,
     RevokeAllSessionsUseCase,
+    RevokeAllSessionsLessMeUseCase,
 
   ],
 })
