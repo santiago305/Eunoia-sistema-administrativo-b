@@ -13,6 +13,12 @@ export class GetOwnUserUseCase {
     const user = await this.userReadRepository.findPublicById(id);
     if (!user) throw new UnauthorizedException('Usuario no encontrado');
 
-    return successResponse('Usuario encontrado', user);
+    return successResponse('Usuario encontrado', {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      avatarUrl: user.avatarUrl,
+      role: user.role?.description,
+    });
   }
 }
