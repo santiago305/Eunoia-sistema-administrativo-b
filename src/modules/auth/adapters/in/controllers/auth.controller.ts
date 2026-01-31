@@ -156,14 +156,20 @@ export class AuthController {
 
     if (isTypeResponse(result)) return result;
 
-    const { access_token } = result;
+    const { access_token, refresh_token } = result;
 
     res.cookie('access_token', access_token, {
       httpOnly: true,
       secure: false,
       sameSite: 'lax',
       maxAge: 60 * 60 * 1000, // 1h
-      signed:true
+    });
+
+    res.cookie('refresh_token', refresh_token, {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     return { message: 'OK' };

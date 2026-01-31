@@ -12,6 +12,8 @@ import {
   SESSION_REPOSITORY,
   SessionRepository,
 } from 'src/modules/sessions/application/ports/session.repository';
+import { envs } from 'src/infrastructure/config/envs';
+import ms from 'ms';
 
 @Injectable()
 export class RefreshAuthUseCase {
@@ -58,7 +60,21 @@ export class RefreshAuthUseCase {
     };
 
     const access_token = this.tokenReadRepository.signAccessToken(payload);
+    const refresh_token = this.tokenReadRepository.signRefreshToken(payload);
 
-    return { access_token };
+    const refreshTokenHash = await this.passwordHasher.hash(refresh_token);
+    const refreshMs = ms(envs.jwt.refreshExpiresIn);
+    if (!refreshMs) {
+      throw new Error('JWT_REFRESH_EXPIRES_IN invalido');
+    }
+    const expiresAt = new Date(Date.now() + refreshMs);
+
+    await this.sessionRepository.updateRefreshTokenHash(
+      session.id,
+      refreshTokenHash,
+      expiresAt,
+    );
+
+    return { access_token, refresh_token };
   }
 }
