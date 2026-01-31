@@ -51,7 +51,7 @@ export class SessionsController {
     return this.revokeAllSessionsLessMeUseCase.execute(user.id, deviceId);
   }
 
-  @Patch('revoke')
+  @Patch(':id/revoke')
   revoke(@Param('id') id: string, @CurrentUser() user: { id: string }) {
     return this.revokeSessionUseCase.execute(id, user.id);
   }
