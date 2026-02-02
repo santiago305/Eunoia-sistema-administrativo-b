@@ -21,7 +21,7 @@ import { TypeormUserRepository } from '../adapters/out/persistence/typeorm/repos
 import { USER_READ_REPOSITORY } from '../application/ports/user-read.repository';
 import { TypeormUserReadRepository } from '../adapters/out/persistence/typeorm/repositories/typeorm-user-read.repository';
 import { ListDesactiveUseCase } from '../application/use-cases/list-desactive-users.usecase';
-import { SessionsModule } from 'src/modules/sessions/infrastructure/session.module';
+import { RemoveAvatarUseCase } from '../application/use-cases/remove-avatar.usecase';
 
 /**
  * Modulo encargado de la gestiAn de usuarios.
@@ -31,7 +31,6 @@ import { SessionsModule } from 'src/modules/sessions/infrastructure/session.modu
   imports: [
     RolesModule,
     TypeOrmModule.forFeature([User, Role]),
-    SessionsModule, 
   ], // Importa la entidad User para operaciones con TypeORM
   controllers: [UsersController], // Controlador REST para endpoints relacionados con usuarios
   providers: [
@@ -48,6 +47,7 @@ import { SessionsModule } from 'src/modules/sessions/infrastructure/session.modu
     RestoreUserUseCase,
     UpdateAvatarUseCase,
     GetUserWithPasswordByEmailUseCase,
+    RemoveAvatarUseCase,
     {
       provide: USER_REPOSITORY,
       useClass: TypeormUserRepository,
