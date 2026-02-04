@@ -1,4 +1,4 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable, UnauthorizedException  } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { ROLE_REPOSITORY, RoleRepository } from 'src/modules/roles/application/ports/role.repository';
 import { ROLE_READ_REPOSITORY, RoleReadRepository } from 'src/modules/roles/application/ports/role-read.repository';

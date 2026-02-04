@@ -34,6 +34,7 @@ import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard
 import { RolesGuard } from 'src/shared/utilidades/guards/roles.guard';
 import { User as CurrentUser } from 'src/shared/utilidades/decorators/user.decorator';
 import { ListDesactiveUseCase } from 'src/modules/users/application/use-cases/list-desactive-users.usecase';
+import { RemoveAvatarUseCase } from 'src/modules/users/application/use-cases/remove-avatar.usecase';
 
 /**
  * Controlador para la gestiAn de usuarios.
@@ -53,6 +54,7 @@ export class UsersController {
     private readonly deleteUserUseCase: DeleteUserUseCase,
     private readonly restoreUserUseCase: RestoreUserUseCase,
     private readonly updateAvatarUseCase: UpdateAvatarUseCase,
+    private readonly removeAvatarUseCase: RemoveAvatarUseCase,
   ) {}
 
   @Post('create')
@@ -149,6 +151,18 @@ export class UsersController {
       throw new ForbiddenException('No puedes editar otro usuario');
     }
     return this.updateUserUseCase.execute(id, dto, user.id);
+  }
+  @Patch('remove-avatar/:id')
+  @UseGuards(JwtAuthGuard)
+  removeAvatar(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserDto,
+    @CurrentUser() user: { id: string }
+  ) {
+    if (id !== user.id) {
+      throw new ForbiddenException('No puedes editar otro usuario');
+    }
+    return this.removeAvatarUseCase.execute(id);
   }
 
   @Patch('delete/:id')
