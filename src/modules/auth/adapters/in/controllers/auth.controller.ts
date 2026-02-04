@@ -68,6 +68,7 @@ export class AuthController {
   ) {
     res.clearCookie('refresh_token');
     res.clearCookie('access_token');
+    res.clearCookie('device_id');
     return successResponse('Sesion cerrada correctamente');
   }
 

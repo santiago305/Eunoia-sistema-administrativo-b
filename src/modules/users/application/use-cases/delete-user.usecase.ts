@@ -26,7 +26,7 @@ export class DeleteUserUseCase {
     }
 
     if (requesterRole === RoleType.MODERATOR && target.role.description !== RoleType.ADVISER) {
-      throw new UnauthorizedException('No puedes eliminar usuarios administrativos');
+      throw new UnauthorizedException('No estas autorizado para eliminar usuario');
     }
 
     const isActive = await this.userRepository.existsByIdAndDeleted(id, false);
