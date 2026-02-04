@@ -13,12 +13,26 @@ describe('GetOwnUserUseCase', () => {
   it('returns own user', async () => {
     const useCase = makeUseCase({
       userReadRepository: {
-        findPublicById: jest.fn().mockResolvedValue({ id: 'user-1' }),
+        findPublicById: jest.fn().mockResolvedValue({
+          id: 'user-1',
+          name: 'Ana',
+          email: 'ana@example.com',
+          avatarUrl: 'avatar.png',
+          role: { description: 'admin' },
+        }),
       },
     });
 
     const result = await useCase.execute('user-1');
-    expect(result).toEqual(successResponse('Usuario encontrado', { id: 'user-1' }));
+    expect(result).toEqual(
+      successResponse('Usuario encontrado', {
+        id: 'user-1',
+        name: 'Ana',
+        email: 'ana@example.com',
+        avatarUrl: 'avatar.png',
+        role: 'admin',
+      })
+    );
   });
 
   it('throws when not found', async () => {

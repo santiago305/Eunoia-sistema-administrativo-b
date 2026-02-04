@@ -3,7 +3,6 @@ import * as argon2 from 'argon2';
 import { USER_REPOSITORY, UserRepository } from 'src/modules/users/application/ports/user.repository';
 import { Password } from 'src/modules/users/domain';
 import { successResponse } from 'src/shared/response-standard/response';
-import { RevokeAllSessionsUseCase } from 'src/modules/sessions/application/use-cases/revoke-all-sessions.usecase';
 
 
 @Injectable()
@@ -11,7 +10,6 @@ export class ChangePasswordUseCase {
   constructor(
     @Inject(USER_REPOSITORY)
     private readonly userRepository: UserRepository,
-    private readonly revokeAllSessionsUseCase: RevokeAllSessionsUseCase,
   ) {}
 
   async execute(
@@ -41,9 +39,6 @@ export class ChangePasswordUseCase {
     domainUser.password = new Password(hashedPassword);
     await this.userRepository.save(domainUser);
     
-    // Revoca todas las sesiones después del cambio de password
-    await this.revokeAllSessionsUseCase.execute(id);
-
     return successResponse('Contrasena actualizada correctamente');
   }
 }

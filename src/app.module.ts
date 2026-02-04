@@ -8,7 +8,6 @@ import { UsersModule } from './modules/users/infrastructure/users.module';
 import { AppConfigModule } from './infrastructure/config/config.module';
 import { CommonModule } from './shared/common.module';
 import { DatabaseModule } from './infrastructure/database/database.module';
-import { SessionsModule } from './modules/sessions/infrastructure/session.module';
 
 
 @Module({
@@ -19,7 +18,6 @@ import { SessionsModule } from './modules/sessions/infrastructure/session.module
     AuthModule, 
     RolesModule, 
     UsersModule,
-    SessionsModule
   ],
 })
 export class AppModule {

@@ -57,8 +57,7 @@ describe('LoginAuthUseCase', () => {
     });
 
     const result = await useCase.execute({
-      email: 'ana@example.com',
-      password: 'secret',
+      dto: { email: 'ana@example.com', password: 'secret' },
     } as any);
 
     expect(passwordHasher.verify).toHaveBeenCalledWith('hashed', 'secret');
@@ -91,7 +90,7 @@ describe('LoginAuthUseCase', () => {
       passwordHasher: { verify: jest.fn().mockResolvedValue(true) },
     });
 
-    await useCase.execute({ email: 'ana@example.com', password: 'secret' } as any);
+    await useCase.execute({ dto: { email: 'ana@example.com', password: 'secret' } } as any);
 
     expect(tokenReadRepository.signAccessToken).toHaveBeenCalledWith({
       sub: 'user-1',
@@ -107,7 +106,7 @@ describe('LoginAuthUseCase', () => {
     });
 
     await expect(
-      useCase.execute({ email: 'ana@example.com', password: 'secret' } as any)
+      useCase.execute({ dto: { email: 'ana@example.com', password: 'secret' } } as any)
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 
@@ -130,7 +129,7 @@ describe('LoginAuthUseCase', () => {
     });
 
     await expect(
-      useCase.execute({ email: 'ana@example.com', password: 'bad' } as any)
+      useCase.execute({ dto: { email: 'ana@example.com', password: 'bad' } } as any)
     ).rejects.toBeInstanceOf(UnauthorizedException);
     expect(tokenReadRepository.signAccessToken).not.toHaveBeenCalled();
     expect(tokenReadRepository.signRefreshToken).not.toHaveBeenCalled();

@@ -16,9 +16,6 @@ import { PASSWORD_HASHER_READ_REPOSITORY } from '../application/ports/password-h
 import { TOKEN_READ_REPOSITORY } from '../application/ports/token-read.repository';
 import { JwtTokenReadRepository } from './providers/jwt-token-read.repository';
 import { Argon2PasswordHasherReadRepository } from './providers/argon2-password-hasher-read.repository';
-import { SessionsModule } from 'src/modules/sessions/infrastructure/session.module';
-import { UpsertSessionUseCase } from 'src/modules/sessions/application/use-cases/upsert-session.usecase';
-import { RevokeSessionByDeviceUseCase } from 'src/modules/sessions/application/use-cases/revoke-session-by-device.usecase';
 import { VerifyUserPasswordBySessionUseCase } from '../application/use-cases/verify-user-password-by-session.usecase';
 
 /**
@@ -31,7 +28,6 @@ import { VerifyUserPasswordBySessionUseCase } from '../application/use-cases/ver
   imports: [
     // Modulo de usuarios para obtener/verificar usuarios desde el servicio
     UsersModule,
-    SessionsModule,
 
     // Passport para integracion con estrategias JWT
     PassportModule,
@@ -53,8 +49,6 @@ import { VerifyUserPasswordBySessionUseCase } from '../application/use-cases/ver
     LoginAuthUseCase,
     RefreshAuthUseCase,
     GetAuthUserUseCase,
-    UpsertSessionUseCase,
-    RevokeSessionByDeviceUseCase,
     VerifyUserPasswordBySessionUseCase,
 
     { provide: TOKEN_READ_REPOSITORY, useClass: JwtTokenReadRepository },
