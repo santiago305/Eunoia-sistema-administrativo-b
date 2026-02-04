@@ -7,6 +7,7 @@
   UseGuards,
   HttpCode,
   Req,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtRefreshAuthGuard } from '../guards/jwt-refresh-auth.guard';
 import { User as UserDecorator } from 'src/shared/utilidades/decorators';
@@ -21,6 +22,9 @@ import { ErrorResponse, isTypeResponse } from 'src/shared/response-standard/guar
 import { successResponse } from 'src/shared/response-standard/response';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { VerifyUserPasswordBySessionUseCase } from 'src/modules/auth/application/use-cases/verify-user-password-by-session.usecase';
+import { CsrfGuard } from 'src/shared/utilidades/guards/csrf.guard';
+import { randomBytes } from 'crypto';
+import { RevokeSessionUseCase } from 'src/modules/sessions/application/use-cases/revoke-session.usecase';
 
 @Controller('auth')
 export class AuthController {
@@ -30,6 +34,7 @@ export class AuthController {
     private readonly refreshAuthUseCase: RefreshAuthUseCase,
     private readonly getAuthUserUseCase: GetAuthUserUseCase,
     private readonly verifyUserPasswordBySessionUseCase: VerifyUserPasswordBySessionUseCase,
+    private readonly revokeSessionUseCase: RevokeSessionUseCase,
 
 
   ) {}
@@ -54,6 +59,7 @@ export class AuthController {
     if (isTypeResponse(result)) return result;
 
     const { access_token, refresh_token } = result;
+    const csrfToken = randomBytes(32).toString('hex');
     res.cookie('refresh_token', refresh_token, {
       httpOnly: true,
       secure: false,
@@ -67,23 +73,43 @@ export class AuthController {
       sameSite: 'lax',
       maxAge: 60 * 60 * 1000,
     });
+    res.cookie('csrf_token', csrfToken, {
+      httpOnly: false,
+      secure: false,
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
 
     return { message: 'OK' };
   }
 
   @Post('logout')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, CsrfGuard)
   async logout(
-    @UserDecorator() user: { id: string },
+    @UserDecorator() user: { id: string; sessionId?: string },
     @Res({ passthrough: true }) res: Response,
   ) {
+    if (user.sessionId) {
+      try {
+        await this.revokeSessionUseCase.execute({
+          sessionId: user.sessionId,
+          userId: user.id,
+        });
+      } catch (error) {
+        if (!(error instanceof NotFoundException)) {
+          throw error;
+        }
+      }
+    }
+
     res.clearCookie('refresh_token');
     res.clearCookie('access_token');
+    res.clearCookie('csrf_token');
     return successResponse('Sesion cerrada correctamente');
   }
 
   // REFRESH TOKEN
-  @UseGuards(JwtRefreshAuthGuard)
+  @UseGuards(JwtRefreshAuthGuard, CsrfGuard)
   @Get('refresh')
   async refresh(
     @UserDecorator() user: any, // puede venir con userId o sub
@@ -98,6 +124,7 @@ export class AuthController {
     if (isTypeResponse(result)) return result;
 
     const { access_token, refresh_token } = result;
+    const csrfToken = randomBytes(32).toString('hex');
 
     res.cookie('access_token', access_token, {
       httpOnly: true,
@@ -112,13 +139,19 @@ export class AuthController {
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
+    res.cookie('csrf_token', csrfToken, {
+      httpOnly: false,
+      secure: false,
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
 
     return { message: 'OK' };
   }
 
   
   @Post('verify-password')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, CsrfGuard)
   async verifyPassword(
     @UserDecorator() user: { id: string },
     @Body() body: { currentPassword: string },

@@ -5,6 +5,7 @@ import { ListActiveSessionsUseCase } from 'src/modules/sessions/application/use-
 import { RevokeSessionUseCase } from 'src/modules/sessions/application/use-cases/revoke-session.usecase';
 import { RevokeAllSessionsUseCase } from 'src/modules/sessions/application/use-cases/revoke-all-sessions.usecase';
 import { SessionResponseDto } from '../dtos/session-response.dto';
+import { CsrfGuard } from 'src/shared/utilidades/guards/csrf.guard';
 
 @Controller('sessions')
 export class SessionsController {
@@ -35,13 +36,13 @@ export class SessionsController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, CsrfGuard)
   revokeOne(@Param('id') id: string, @CurrentUser() user: { id: string }) {
     return this.revokeSessionUseCase.execute({ sessionId: id, userId: user.id });
   }
 
   @Delete()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, CsrfGuard)
   revokeAll(@CurrentUser() user: { id: string; sessionId?: string }) {
     return this.revokeAllSessionsUseCase.execute({
       userId: user.id,

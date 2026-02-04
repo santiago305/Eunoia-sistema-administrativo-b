@@ -42,6 +42,7 @@ async function bootstrap() {
       'Access-Control-Allow-Origin',
       'x-device-name',
       'x-user-agent',
+      'x-csrf-token',
     ],
     exposedHeaders: ['Authorization'],
     credentials: true,

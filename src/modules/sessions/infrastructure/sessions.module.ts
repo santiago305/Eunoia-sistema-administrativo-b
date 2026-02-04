@@ -28,6 +28,7 @@ import { Argon2SessionTokenHasherRepository } from './providers/argon2-session-t
   ],
   exports: [
     CreateSessionUseCase,
+    RevokeSessionUseCase,
     SESSION_REPOSITORY,
     SESSION_READ_REPOSITORY,
     SESSION_TOKEN_HASHER,
