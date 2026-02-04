@@ -15,18 +15,16 @@ export class TypeormSessionReadRepository implements SessionReadRepository {
 
   async listActiveByUserId(userId: string): Promise<DomainSession[]> {
     const now = new Date();
-    const sessions = await this.ormRepository.find({
-      where: {
-        user: { id: userId },
-        revokedAt: null,
-      },
-      relations: ['user'],
-      order: { createdAt: 'DESC' },
-    });
+    const sessions = await this.ormRepository
+      .createQueryBuilder('session')
+      .innerJoinAndSelect('session.user', 'user')
+      .where('user.id = :userId', { userId })
+      .andWhere('session.revoked_at IS NULL')
+      .andWhere('session.expires_at > :now', { now })
+      .orderBy('session.created_at', 'DESC')
+      .getMany();
 
-    return sessions
-      .filter((session) => session.expiresAt > now)
-      .map((session) => SessionMapper.toDomain(session));
+    return sessions.map((session) => SessionMapper.toDomain(session));
   }
 
   async findByIdAndUserId(sessionId: string, userId: string): Promise<DomainSession | null> {

@@ -44,7 +44,10 @@ export class LoginAuthUseCase {
       role: user.role?.description || RoleType.ADVISER,
     };
 
-    const access_token = this.tokenReadRepository.signAccessToken(payload);
+    const access_token = this.tokenReadRepository.signAccessToken({
+      ...payload,
+      sessionId,
+    });
     const refresh_token = this.tokenReadRepository.signRefreshToken({
       ...payload,
       sessionId,

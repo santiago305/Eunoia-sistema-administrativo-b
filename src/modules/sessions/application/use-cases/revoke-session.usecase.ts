@@ -1,4 +1,4 @@
-import { Inject, Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable, BadRequestException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { SESSION_REPOSITORY, SessionRepository } from '../ports/session.repository';
 
 @Injectable()
@@ -20,7 +20,11 @@ export class RevokeSessionUseCase {
       throw new UnauthorizedException('Token invalido o sin identificador');
     }
 
-    await this.sessionRepository.revokeById(sessionId, userId);
+    const revoked = await this.sessionRepository.revokeById(sessionId, userId);
+    if (!revoked) {
+      throw new NotFoundException('Sesion no encontrada, ya cerrada o no pertenece al usuario');
+    }
+
     return { message: 'Sesion cerrada' };
   }
 }

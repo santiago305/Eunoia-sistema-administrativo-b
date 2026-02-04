@@ -16,11 +16,14 @@ export class SessionsController {
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  async listActive(@CurrentUser() user: { id: string }): Promise<SessionResponseDto[]> {
+  async listActive(
+    @CurrentUser() user: { id: string; sessionId?: string },
+  ): Promise<SessionResponseDto[]> {
     const sessions = await this.listActiveSessionsUseCase.execute(user.id);
     return sessions.map((session) => ({
       id: session.id,
       userId: session.userId,
+      isCurrent: user.sessionId === session.id,
       createdAt: session.createdAt,
       lastUsedAt: session.lastUsedAt,
       expiresAt: session.expiresAt,
@@ -39,7 +42,10 @@ export class SessionsController {
 
   @Delete()
   @UseGuards(JwtAuthGuard)
-  revokeAll(@CurrentUser() user: { id: string }) {
-    return this.revokeAllSessionsUseCase.execute(user.id);
+  revokeAll(@CurrentUser() user: { id: string; sessionId?: string }) {
+    return this.revokeAllSessionsUseCase.execute({
+      userId: user.id,
+      currentSessionId: user.sessionId,
+    });
   }
 }

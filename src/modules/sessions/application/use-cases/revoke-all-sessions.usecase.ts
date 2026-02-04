@@ -8,13 +8,14 @@ export class RevokeAllSessionsUseCase {
     private readonly sessionRepository: SessionRepository,
   ) {}
 
-  async execute(userId: string) {
-    const id = userId?.trim();
+  async execute(params: { userId: string; currentSessionId?: string }) {
+    const id = params.userId?.trim();
+    const currentSessionId = params.currentSessionId?.trim();
     if (!id) {
       throw new UnauthorizedException('Token invalido o sin identificador');
     }
 
-    await this.sessionRepository.revokeAllByUserId(id);
-    return { message: 'Todas las sesiones cerradas' };
+    const affected = await this.sessionRepository.revokeAllByUserId(id, currentSessionId);
+    return { message: 'Todas las sesiones cerradas', affected };
   }
 }

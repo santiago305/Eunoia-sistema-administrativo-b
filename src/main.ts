@@ -40,9 +40,9 @@ async function bootstrap() {
       'Content-Type',
       'Authorization',
       'Access-Control-Allow-Origin',
-      'x-device-id',
       'x-device-name',
-      'x-user-agent',],
+      'x-user-agent',
+    ],
     exposedHeaders: ['Authorization'],
     credentials: true,
   });
@@ -58,4 +58,6 @@ async function bootstrap() {
   console.log(`Server is running on port ${envs.port || 3000}`);
 }
 bootstrap();
+
+
 

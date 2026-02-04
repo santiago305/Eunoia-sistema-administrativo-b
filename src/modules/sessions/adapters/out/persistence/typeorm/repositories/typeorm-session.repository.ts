@@ -19,8 +19,8 @@ export class TypeormSessionRepository implements SessionRepository {
     return SessionMapper.toDomain(saved);
   }
 
-  async revokeById(sessionId: string, userId: string): Promise<void> {
-    await this.ormRepository
+  async revokeById(sessionId: string, userId: string): Promise<boolean> {
+    const result = await this.ormRepository
       .createQueryBuilder()
       .update(OrmSession)
       .set({ revokedAt: new Date() })
@@ -28,16 +28,23 @@ export class TypeormSessionRepository implements SessionRepository {
       .andWhere('user_id = :userId', { userId })
       .andWhere('revoked_at IS NULL')
       .execute();
+    return (result.affected ?? 0) > 0;
   }
 
-  async revokeAllByUserId(userId: string): Promise<void> {
-    await this.ormRepository
+  async revokeAllByUserId(userId: string, currentSessionId?: string): Promise<number> {
+    const qb = this.ormRepository
       .createQueryBuilder()
       .update(OrmSession)
       .set({ revokedAt: new Date() })
       .where('user_id = :userId', { userId })
-      .andWhere('revoked_at IS NULL')
-      .execute();
+      .andWhere('revoked_at IS NULL');
+
+    if (currentSessionId) {
+      qb.andWhere('id != :currentSessionId', { currentSessionId });
+    }
+
+    const result = await qb.execute();
+    return result.affected ?? 0;
   }
 
   async updateUsage(sessionId: string, params: { refreshTokenHash?: string; lastUsedAt?: Date; expiresAt?: Date }): Promise<void> {
