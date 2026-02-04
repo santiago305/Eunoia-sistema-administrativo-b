@@ -17,6 +17,7 @@ import { TOKEN_READ_REPOSITORY } from '../application/ports/token-read.repositor
 import { JwtTokenReadRepository } from './providers/jwt-token-read.repository';
 import { Argon2PasswordHasherReadRepository } from './providers/argon2-password-hasher-read.repository';
 import { VerifyUserPasswordBySessionUseCase } from '../application/use-cases/verify-user-password-by-session.usecase';
+import { SessionsModule } from 'src/modules/sessions/infrastructure/sessions.module';
 
 /**
  * Modulo de autenticacion.
@@ -28,6 +29,7 @@ import { VerifyUserPasswordBySessionUseCase } from '../application/use-cases/ver
   imports: [
     // Modulo de usuarios para obtener/verificar usuarios desde el servicio
     UsersModule,
+    SessionsModule,
 
     // Passport para integracion con estrategias JWT
     PassportModule,

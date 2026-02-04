@@ -1,6 +1,7 @@
 export type AuthTokenPayload = {
   sub: string;
   role: string;
+  sessionId?: string;
 };
 
 export const TOKEN_READ_REPOSITORY = Symbol('TOKEN_READ_REPOSITORY');

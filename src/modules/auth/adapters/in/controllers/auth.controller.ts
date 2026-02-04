@@ -6,6 +6,7 @@
   Get,
   UseGuards,
   HttpCode,
+  Req,
 } from '@nestjs/common';
 import { JwtRefreshAuthGuard } from '../guards/jwt-refresh-auth.guard';
 import { User as UserDecorator } from 'src/shared/utilidades/decorators';
@@ -14,7 +15,7 @@ import { RefreshAuthUseCase } from 'src/modules/auth/application/use-cases/refre
 import { RegisterAuthUseCase } from 'src/modules/auth/application/use-cases/register-auth.usecase';
 import { GetAuthUserUseCase } from 'src/modules/auth/application/use-cases/get-auth-user.usecase';
 import { LoginAuthDto } from '../dtos/login-auth.dto';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 // import { CreateUserDto } from 'src/modules/users/adapters/in/dtos/create-user.dto';
 import { ErrorResponse, isTypeResponse } from 'src/shared/response-standard/guard';
 import { successResponse } from 'src/shared/response-standard/response';
@@ -37,9 +38,19 @@ export class AuthController {
   @HttpCode(200)
   async login(
     @Body() dto: LoginAuthDto,
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<{ message: string } | ErrorResponse> {
-    const result = await this.loginAuthUseCase.execute({ dto });
+    const deviceName = (req.headers['x-device-name'] as string | undefined) ?? null;
+    const userAgent = (req.headers['x-user-agent'] as string | undefined) ?? req.headers['user-agent'] ?? null;
+    const ip = (req.headers['x-forwarded-for'] as string | undefined) ?? req.ip ?? null;
+
+    const result = await this.loginAuthUseCase.execute({
+      dto,
+      ip,
+      userAgent: userAgent as string | null,
+      deviceName,
+    });
     if (isTypeResponse(result)) return result;
 
     const { access_token, refresh_token } = result;
@@ -68,7 +79,6 @@ export class AuthController {
   ) {
     res.clearCookie('refresh_token');
     res.clearCookie('access_token');
-    res.clearCookie('device_id');
     return successResponse('Sesion cerrada correctamente');
   }
 
@@ -77,10 +87,12 @@ export class AuthController {
   @Get('refresh')
   async refresh(
     @UserDecorator() user: any, // puede venir con userId o sub
+    @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.refreshAuthUseCase.execute({
       user,
+      refreshToken: req.cookies?.refresh_token ?? '',
     });
 
     if (isTypeResponse(result)) return result;
