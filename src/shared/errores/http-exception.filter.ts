@@ -18,6 +18,7 @@ export class HttpErrorFilter implements ExceptionFilter {
 
     let type = status.ERROR;
     let message = 'Error desconocido';
+    let details: unknown = null;
 
     if (typeof exceptionResponse === 'object' && exceptionResponse !== null) {
       if ((exceptionResponse as any).type) {
@@ -29,6 +30,9 @@ export class HttpErrorFilter implements ExceptionFilter {
           ? extractedMessage.join(' | ')
           : extractedMessage;
       }
+      if ((exceptionResponse as any).details) {
+        details = (exceptionResponse as any).details;
+      }
     } else if (typeof exceptionResponse === 'string') {
       message = exceptionResponse;
     }
@@ -36,6 +40,7 @@ export class HttpErrorFilter implements ExceptionFilter {
     response.status(statusCode).json({
       type,
       message,
+      ...(details ? { details } : {}),
     });
   }
 }

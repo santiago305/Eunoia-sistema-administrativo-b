@@ -25,6 +25,7 @@ import { VerifyUserPasswordBySessionUseCase } from 'src/modules/auth/application
 import { CsrfGuard } from 'src/shared/utilidades/guards/csrf.guard';
 import { randomBytes } from 'crypto';
 import { RevokeSessionUseCase } from 'src/modules/sessions/application/use-cases/revoke-session.usecase';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('auth')
 export class AuthController {
@@ -41,6 +42,7 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(200)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   async login(
     @Body() dto: LoginAuthDto,
     @Req() req: Request,
@@ -110,7 +112,8 @@ export class AuthController {
 
   // REFRESH TOKEN
   @UseGuards(JwtRefreshAuthGuard, CsrfGuard)
-  @Get('refresh')
+  @Post('refresh')
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   async refresh(
     @UserDecorator() user: any, // puede venir con userId o sub
     @Req() req: Request,
@@ -152,6 +155,7 @@ export class AuthController {
   
   @Post('verify-password')
   @UseGuards(JwtAuthGuard, CsrfGuard)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   async verifyPassword(
     @UserDecorator() user: { id: string },
     @Body() body: { currentPassword: string },

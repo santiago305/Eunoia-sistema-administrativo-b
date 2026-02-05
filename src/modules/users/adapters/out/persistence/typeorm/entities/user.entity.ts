@@ -57,4 +57,16 @@ export class User {
 
   @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;
+
+  @Column({ name: 'failed_login_attempts', type: 'int', default: 0 })
+  failedLoginAttempts: number;
+
+  @Column({ name: 'lockout_level', type: 'int', default: 0 })
+  lockoutLevel: number;
+
+  @Column({ name: 'locked_until', type: 'timestamp', nullable: true })
+  lockedUntil: Date | null;
+
+  @Column({ name: 'security_disabled_at', type: 'timestamp', nullable: true })
+  securityDisabledAt: Date | null;
 }

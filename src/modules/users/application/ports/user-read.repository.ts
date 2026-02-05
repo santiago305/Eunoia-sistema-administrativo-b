@@ -40,5 +40,9 @@ export interface UserReadRepository {
     email: string;
     password: string;
     roleDescription: string;
+    failedLoginAttempts: number;
+    lockoutLevel: number;
+    lockedUntil: Date | null;
+    securityDisabledAt: Date | null;
   } | null>;
 }

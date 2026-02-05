@@ -9,17 +9,31 @@ import { SessionsModule } from './modules/sessions/infrastructure/sessions.modul
 import { AppConfigModule } from './infrastructure/config/config.module';
 import { CommonModule } from './shared/common.module';
 import { DatabaseModule } from './infrastructure/database/database.module';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 
 
 @Module({
   imports: [
     AppConfigModule,
     CommonModule,
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60_000,
+        limit: 120,
+      },
+    ]),
     DatabaseModule,
     AuthModule, 
     RolesModule, 
     UsersModule,
     SessionsModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule {

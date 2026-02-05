@@ -149,6 +149,10 @@ export class TypeormUserReadRepository implements UserReadRepository {
     email: string;
     password: string;
     roleDescription: string;
+    failedLoginAttempts: number;
+    lockoutLevel: number;
+    lockedUntil: Date | null;
+    securityDisabledAt: Date | null;
   } | null> {
     const user = await this.ormRepository
       .createQueryBuilder('user')
@@ -157,6 +161,10 @@ export class TypeormUserReadRepository implements UserReadRepository {
         'user.id',
         'user.email',
         'user.password',
+        'user.failedLoginAttempts',
+        'user.lockoutLevel',
+        'user.lockedUntil',
+        'user.securityDisabledAt',
         'role.description',
       ])
       .where('user.email = :email', { email })
@@ -170,6 +178,10 @@ export class TypeormUserReadRepository implements UserReadRepository {
       email: user.email,
       password: user.password,
       roleDescription: user.role.description,
+      failedLoginAttempts: user.failedLoginAttempts ?? 0,
+      lockoutLevel: user.lockoutLevel ?? 0,
+      lockedUntil: user.lockedUntil ?? null,
+      securityDisabledAt: user.securityDisabledAt ?? null,
     };
   }
 }

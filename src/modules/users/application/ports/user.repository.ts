@@ -9,5 +9,14 @@ export interface UserRepository {
   existsByEmail(email: Email): Promise<boolean>;
   existsByIdAndDeleted(id: string, deleted: boolean): Promise<boolean>;
   updateDeleted(id: string, deleted: boolean): Promise<void>;
+  updateSecurityById(
+    id: string,
+    params: {
+      failedLoginAttempts?: number;
+      lockoutLevel?: number;
+      lockedUntil?: Date | null;
+      securityDisabledAt?: Date | null;
+    },
+  ): Promise<void>;
   save(user: User): Promise<User>;
 }

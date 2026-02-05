@@ -57,6 +57,28 @@ export class TypeormUserRepository implements UserRepository {
       .execute();
   }
 
+  async updateSecurityById(
+    id: string,
+    params: {
+      failedLoginAttempts?: number;
+      lockoutLevel?: number;
+      lockedUntil?: Date | null;
+      securityDisabledAt?: Date | null;
+    },
+  ): Promise<void> {
+    await this.ormRepository
+      .createQueryBuilder()
+      .update(OrmUser)
+      .set({
+        failedLoginAttempts: params.failedLoginAttempts,
+        lockoutLevel: params.lockoutLevel,
+        lockedUntil: params.lockedUntil ?? null,
+        securityDisabledAt: params.securityDisabledAt ?? null,
+      })
+      .where('id = :id', { id })
+      .execute();
+  }
+
   async save(user: User): Promise<User> {
     const ormUser = this.ormRepository.create(UserMapper.toPersistence(user));
     const saved = await this.ormRepository.save(ormUser);
