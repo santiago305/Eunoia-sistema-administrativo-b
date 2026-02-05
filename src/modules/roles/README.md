@@ -9,3 +9,7 @@ Modulo de roles. Define dominio, casos de uso y persistencia de roles.
 - `domain/`: entidades, errores y fabricas del dominio.
 - `infrastructure/`: modulo Nest y seeders.
 - `ports/`: carpeta reservada (sin archivos por ahora).
+
+## Seguridad
+
+- Rutas protegidas con `JwtAuthGuard` y `RolesGuard` (solo ADMIN).
