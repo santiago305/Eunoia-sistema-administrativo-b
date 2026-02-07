@@ -8,6 +8,7 @@ export class InventoryDocument {
     public readonly docType: DocType,
     public status: DocStatus,
     public readonly serieId: string,
+    public readonly correlative: number,
     public readonly fromWarehouseId?: string,
     public readonly toWarehouseId?: string,
     public readonly referenceId?: string,

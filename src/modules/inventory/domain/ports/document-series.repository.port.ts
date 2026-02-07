@@ -23,4 +23,5 @@ export interface DocumentSeriesRepository {
   creatDocumentSerie(
     documentSerie: DocumentSerie, tx?:TransactionContext
   ): Promise<DocumentSerie>
+  
 }

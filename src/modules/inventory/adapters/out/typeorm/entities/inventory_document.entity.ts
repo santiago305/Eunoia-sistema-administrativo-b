@@ -17,6 +17,10 @@ export class InventoryDocumentEntity {
   @Column({ name: 'serie_id', type: 'uuid' })
   serieId: string;
 
+  @Column({ name: 'correlative', type: 'int', nullable: true })
+  correlative?: number;
+
+
   @Column({ name: 'from_warehouse_id', type: 'uuid', nullable: true })
   fromWarehouseId?: string;
 

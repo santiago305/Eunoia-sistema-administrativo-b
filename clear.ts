@@ -2,6 +2,8 @@ import { DataSource } from 'typeorm';
 import { envs } from './src/infrastructure/config/envs';
 import { Role } from './src/modules/roles/adapters/out/persistence/typeorm/entities/role.entity';
 import { User } from './src/modules/users/adapters/out/persistence/typeorm/entities/user.entity';
+import { seedDocumentSeries } from 'src/modules/inventory/infrastructure/seed/document_serie.seeder'
+import { DocumentSerie } from 'src/modules/inventory/adapters/out/typeorm/entities/document_serie.entity';
 
 const dataSource = new DataSource({
   type: 'postgres',
@@ -12,7 +14,7 @@ const dataSource = new DataSource({
   database: envs.db.name,
   synchronize: false,
   logging: false,
-  entities: [Role, User],
+  entities: [Role, User, DocumentSerie],
 });
 
 dataSource
@@ -20,7 +22,7 @@ dataSource
   .then(async () => {
     console.log('[Clear] Limpiando la base de datos...');
 
-    const entities = [User, Role]; // Orden: primero las tablas hijas, luego las padres
+    const entities = [User, Role, DocumentSerie]; // Orden: primero las tablas hijas, luego las padres
 
     for (const entity of entities) {
       const repo = dataSource.getRepository(entity);

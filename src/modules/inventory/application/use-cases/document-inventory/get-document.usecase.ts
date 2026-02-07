@@ -30,11 +30,8 @@ export class GetDocumentUseCase {
         id: doc.id!,
         docType: doc.docType,
         status: doc.status,
-        serieId: {
-          id: serie.id,
-          code: serie.code,
-          name: serie.name,
-        },
+        serie: serie.code,
+        correlative: doc.correlative,
         createdAt: doc.createdAt,
       },
       items: items.map((i) => ({
