@@ -62,7 +62,6 @@ export class DocumentSeriesTypeormRepository implements DocumentSeriesRepository
     return this.toDomain(saved);
   }
 
-
   async findActiveFor(
     params: { docType: DocType; warehouseId: string },
     tx?: TransactionContext,

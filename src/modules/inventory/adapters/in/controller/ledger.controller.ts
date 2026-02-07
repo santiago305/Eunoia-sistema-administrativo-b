@@ -10,7 +10,6 @@ export class LedgerController {
   ) {}
 
   @Get()
-  
   list(
     @Query('warehouseId') warehouseId?: string,
     @Query('variantId') variantId?: string,

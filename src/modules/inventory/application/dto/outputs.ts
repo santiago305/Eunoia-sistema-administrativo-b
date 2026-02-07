@@ -5,14 +5,16 @@ import { Direction } from '../../domain/value-objects/direction';
 export interface DocumentSerieOutput {
   id: string;
   code: string;     
-  name: string;      
+  name: string;
+  correlative: number;      
 }
 
 export interface DocumentOutput {
   id: string;
   docType: DocType;
   status: DocStatus;
-  serieId: DocumentSerieOutput;
+  serie: string;
+  correlative: number;
   createdAt?: Date;
 }
 

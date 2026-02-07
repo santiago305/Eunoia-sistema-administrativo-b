@@ -5,11 +5,11 @@ export class InventoryEntity {
   @PrimaryColumn({ name: 'warehouse_id', type: 'uuid' })
     warehouseId: string;
 
-    @PrimaryColumn({ name: 'variant_id', type: 'uuid' })
-    variantId: string;
+  @PrimaryColumn({ name: 'variant_id', type: 'uuid' })
+  variantId: string;
 
-    @Column({ name: 'location_id', type: 'uuid', nullable: true })
-    locationId?: string;
+  @Column({ name: 'location_id', type: 'uuid', nullable: true })
+  locationId?: string;
 
 
   @Column({ name: 'on_hand', type: 'int', default: 0 })

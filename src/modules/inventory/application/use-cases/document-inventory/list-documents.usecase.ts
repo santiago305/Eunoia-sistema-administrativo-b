@@ -15,7 +15,7 @@ export class ListDocumentsUseCase {
 
   async execute(input: ListDocumentsInput): Promise<DocumentOutput[]> {
     const docs = await this.documentRepo.list(input);
-    const cache = new Map<string, { id: string; code: string; name: string }>();
+    const cache = new Map<string, { id: string; code: string; correlative: number }>();
 
     return Promise.all(
       docs.map(async (d) => {
@@ -25,7 +25,7 @@ export class ListDocumentsUseCase {
           if (!s) {
             throw new BadRequestException('Serie invalida');
           }
-          serie = { id: s.id, code: s.code, name: s.name };
+          serie = { id: s.id, code: s.code, correlative: s.nextNumber };
           cache.set(d.serieId, serie);
         }
 
@@ -33,7 +33,8 @@ export class ListDocumentsUseCase {
           id: d.id!,
           docType: d.docType,
           status: d.status,
-          serieId: serie,
+          serie: serie.code,
+          correlative: d.correlative,
           createdAt: d.createdAt,
         };
       }),

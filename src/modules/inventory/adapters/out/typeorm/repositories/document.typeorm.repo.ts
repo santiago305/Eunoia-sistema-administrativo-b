@@ -41,6 +41,7 @@ export class DocumentTypeormRepository implements DocumentRepository {
       docType: doc.docType,
       status: doc.status,
       serieId: doc.serieId,
+      correlative: doc.correlative,
       fromWarehouseId: doc.fromWarehouseId,
       toWarehouseId: doc.toWarehouseId,
       referenceId: doc.referenceId,
@@ -54,6 +55,7 @@ export class DocumentTypeormRepository implements DocumentRepository {
       saved.docType as any,
       saved.status as any,
       saved.serieId,
+      saved.correlative,
       saved.fromWarehouseId,
       saved.toWarehouseId,
       saved.referenceId,
@@ -76,7 +78,8 @@ export class DocumentTypeormRepository implements DocumentRepository {
       row.docType as any,
       row.status as any,
       row.serieId,
-      row.fromWarehouseId,
+      row.correlative,          // <-- nuevo
+      row.fromWarehouseId,      // <-- este estaba mal/omitido
       row.toWarehouseId,
       row.referenceId,
       row.referenceType,
@@ -86,6 +89,7 @@ export class DocumentTypeormRepository implements DocumentRepository {
       row.postedAt,
       row.createdAt,
     );
+
   }
 
   async list(
@@ -125,6 +129,7 @@ export class DocumentTypeormRepository implements DocumentRepository {
           row.docType as any,
           row.status as any,
           row.serieId,
+          row.correlative,
           row.fromWarehouseId,
           row.toWarehouseId,
           row.referenceId,
