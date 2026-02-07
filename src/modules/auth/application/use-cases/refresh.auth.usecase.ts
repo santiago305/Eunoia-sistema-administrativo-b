@@ -8,7 +8,7 @@ import { SESSION_READ_REPOSITORY, SessionReadRepository } from 'src/modules/sess
 import { SESSION_REPOSITORY, SessionRepository } from 'src/modules/sessions/application/ports/session.repository';
 import { SESSION_TOKEN_HASHER, SessionTokenHasherRepository } from 'src/modules/sessions/application/ports/session-token-hasher.repository';
 import { envs } from 'src/infrastructure/config/envs';
-import ms from 'ms';
+import ms, { StringValue } from 'ms';
 
 @Injectable()
 export class RefreshAuthUseCase {
@@ -70,7 +70,7 @@ export class RefreshAuthUseCase {
   }
 
   private calculateExpiresAt() {
-    const ttl = ms(envs.jwt.refreshExpiresIn as string);
+    const ttl = ms(envs.jwt.refreshExpiresIn as StringValue);
     const ttlMs = typeof ttl === 'number' && ttl > 0 ? ttl : 7 * 24 * 60 * 60 * 1000;
     return new Date(Date.now() + ttlMs);
   }
