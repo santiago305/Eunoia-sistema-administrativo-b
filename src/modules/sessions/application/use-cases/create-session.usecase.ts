@@ -1,6 +1,6 @@
 import { Inject, Injectable, BadRequestException } from '@nestjs/common';
 import { envs } from 'src/infrastructure/config/envs';
-import ms from 'ms';
+import ms, { StringValue } from 'ms';
 import { SessionFactory } from '../../domain/factories/session.factory';
 import { SESSION_REPOSITORY, SessionRepository } from '../ports/session.repository';
 import { SESSION_TOKEN_HASHER, SessionTokenHasherRepository } from '../ports/session-token-hasher.repository';
@@ -46,7 +46,7 @@ export class CreateSessionUseCase {
   }
 
   private calculateExpiresAt() {
-    const ttl = ms(envs.jwt.refreshExpiresIn as string);
+    const ttl = ms(envs.jwt.refreshExpiresIn as StringValue);
     const ttlMs = typeof ttl === 'number' && ttl > 0 ? ttl : 7 * 24 * 60 * 60 * 1000;
     return new Date(Date.now() + ttlMs);
   }
