@@ -12,6 +12,7 @@ import { DocType } from '../../../domain/value-objects/doc-type';
 import { Inventory } from '../../../domain/entities/inventory';
 import InventoryDocumentItem from '../../../domain/entities/inventory-document-item';
 
+
 @Injectable()
 export class PostDocumentUseCase {
   constructor(
@@ -35,11 +36,12 @@ export class PostDocumentUseCase {
       if (!result) {
         throw new BadRequestException('Documento no encontrado');
       }
+      console.log(result, 'ssssssssssssssssssssssssss');
 
       const { doc, items } = result;
 
       if (!doc.isDraft()) {
-        return { ok: true };
+        return { isPosted: true };
       }
 
       if (!items.length) {
@@ -264,9 +266,9 @@ export class PostDocumentUseCase {
 
         if (doc.docType === DocType.OUT) {
           const warehouseId = doc.fromWarehouseId;
-          if (!warehouseId) {
-            throw new BadRequestException('OUT requiere warehouseId');
-          }
+          // if (!warehouseId) {
+          //   throw new BadRequestException('OUT requiere warehouseId');
+          // }
 
           const snapshot = this.getSnapshot(snapshotMap, warehouseId, item.variantId, item.fromLocationId);
           this.ensureAvailable(snapshot, item.quantity);

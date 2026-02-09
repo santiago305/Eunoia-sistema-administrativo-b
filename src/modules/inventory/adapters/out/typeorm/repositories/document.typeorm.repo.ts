@@ -254,4 +254,6 @@ export class DocumentTypeormRepository implements DocumentRepository {
       status: DocStatus.CANCELLED,
     });
   }
+
+  
 }

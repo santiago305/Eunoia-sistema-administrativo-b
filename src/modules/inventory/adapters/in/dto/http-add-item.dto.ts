@@ -11,7 +11,7 @@ export class HttpAddItemDto {
   quantity: number;
 
   @IsOptional()
-  @IsUUID()
+  // @IsUUID()
   fromLocationId?: string;
 
   @IsOptional()

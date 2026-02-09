@@ -15,17 +15,15 @@ export class InventoryController {
   list(
     @Query('warehouseId') warehouseId?: string,
     @Query('variantId') variantId?: string,
-    @Query('locationId') locationId?: string,
   ) {
-    return this.listInventory.execute({ warehouseId, variantId, locationId });
+    return this.listInventory.execute({ warehouseId, variantId });
   }
 
   @Get('availability')
   availability(
     @Query('warehouseId') warehouseId: string,
     @Query('variantId') variantId: string,
-    @Query('locationId') locationId?: string,
   ) {
-    return this.getAvailability.execute({ warehouseId, variantId, locationId });
+    return this.getAvailability.execute({ warehouseId, variantId });
   }
 }
