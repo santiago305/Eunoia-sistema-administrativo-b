@@ -7,6 +7,7 @@ import { RolesModule } from './modules/roles/infrastructure/roles.module';
 import { UsersModule } from './modules/users/infrastructure/users.module';
 import { SessionsModule } from './modules/sessions/infrastructure/sessions.module';
 import { InventoryModule } from './modules/inventory/infrastructure/inventory.module';
+import { CatalagModule } from './modules/catalag/infrastructure/catalag.module';
 import { AppConfigModule } from './infrastructure/config/config.module';
 import { CommonModule } from './shared/common.module';
 import { DatabaseModule } from './infrastructure/database/database.module';
@@ -30,6 +31,7 @@ import { APP_GUARD } from '@nestjs/core';
     UsersModule,
     SessionsModule,
     InventoryModule,
+    CatalagModule,
   ],
   providers: [
     {
