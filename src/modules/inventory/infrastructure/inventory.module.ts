@@ -32,6 +32,10 @@ import { UpdateItemUseCase } from '../application/use-cases/document-inventory/u
 import { RemoveItemUseCase } from '../application/use-cases/document-inventory/remove-item.usecase';
 import { CancelDocumentUseCase } from '../application/use-cases/document-inventory/cancel-document.usecase';
 import { DocumentSeriesController } from '../adapters/in/controller/documente-series.controller';
+import { PostDocumentoOut } from '../application/use-cases/document-inventory/post-document-out.usecase';
+import { PostDocumentoIn } from '../application/use-cases/document-inventory/post-document-in.usecase';
+import { PostDocumentoTransfer } from '../application/use-cases/document-inventory/post-document-transfer.usecase';
+import { PostDocumentoAdjustment } from '../application/use-cases/document-inventory/post-document-adjustment.usecase';
 
 import { CreateDocumentSerieUseCase } from '../application/use-cases/document-serie/create-document-serie.usecase';
 import { GetDocumentSerieUseCase } from '../application/use-cases/document-serie/get-document-serie.usecase';
@@ -45,6 +49,7 @@ import { LEDGER_REPOSITORY } from '../domain/ports/ledger.repository.port';
 import { UNIT_OF_WORK } from '../domain/ports/unit-of-work.port';
 import { INVENTORY_LOCK } from '../domain/ports/inventory-lock.port';
 import { CLOCK } from '../domain/ports/clock.port';
+import { DocumentPostOutValidationService } from '../domain/services/document-post-out-validation.service';
 import { SERIES_REPOSITORY, DocumentSeriesRepository } from '../domain/ports/document-series.repository.port';
 
 @Module({
@@ -71,6 +76,10 @@ import { SERIES_REPOSITORY, DocumentSeriesRepository } from '../domain/ports/doc
     AddItemUseCase,
     GetAvailabilityUseCase,
     PostDocumentUseCase,
+    PostDocumentoOut,
+    PostDocumentoIn,
+    PostDocumentoTransfer,
+    PostDocumentoAdjustment,
     GetLedgerUseCase,
     ListInventoryUseCase,
     ListDocumentsUseCase,
@@ -79,6 +88,7 @@ import { SERIES_REPOSITORY, DocumentSeriesRepository } from '../domain/ports/doc
     UpdateItemUseCase,
     RemoveItemUseCase,
     CancelDocumentUseCase,
+    DocumentPostOutValidationService,
     { provide: INVENTORY_REPOSITORY, useClass: InventoryTypeormRepository },
     { provide: DOCUMENT_REPOSITORY, useClass: DocumentTypeormRepository },
     { provide: LEDGER_REPOSITORY, useClass: LedgerTypeormRepository },

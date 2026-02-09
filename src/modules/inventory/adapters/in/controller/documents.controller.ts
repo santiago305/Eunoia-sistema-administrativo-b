@@ -16,6 +16,10 @@ import { HttpPostDto } from '../dto/http-post.dto';
 import { HttpUpdateItemDto } from '../dto/http-update-item.dto';
 import { DocStatus } from 'src/modules/inventory/domain/value-objects/doc-status';
 import { DocType } from 'src/modules/inventory/domain/value-objects/doc-type';
+import { PostDocumentoOut } from 'src/modules/inventory/application/use-cases/document-inventory/post-document-out.usecase';
+import { PostDocumentoIn } from 'src/modules/inventory/application/use-cases/document-inventory/post-document-in.usecase';
+import { PostDocumentoTransfer } from 'src/modules/inventory/application/use-cases/document-inventory/post-document-transfer.usecase';
+import { PostDocumentoAdjustment } from 'src/modules/inventory/application/use-cases/document-inventory/post-document-adjustment.usecase';
 
 @Controller('inventory/documents')
 @UseGuards(JwtAuthGuard)
@@ -30,6 +34,10 @@ export class DocumentsController {
     private readonly updateItem: UpdateItemUseCase,
     private readonly removeItem: RemoveItemUseCase,
     private readonly cancelDocument: CancelDocumentUseCase,
+    private readonly postDocumentOut: PostDocumentoOut,
+    private readonly postDocumentIn: PostDocumentoIn,
+    private readonly postDocumentTransfer: PostDocumentoTransfer,
+    private readonly postDocumentAdjustment: PostDocumentoAdjustment,
   ) {}
 
   @Get()
@@ -96,9 +104,39 @@ export class DocumentsController {
     });
   }
 
-  @Post(':id/post')
-  post(@Param('id') docId: string, @Body() _dto: HttpPostDto, @CurrentUser() user: { id: string }) {
-    return this.postDocument.execute({
+  // @Post(':id/post')
+  // post(@Param('id') docId: string, @Body() _dto: HttpPostDto, @CurrentUser() user: { id: string }) {
+  //   return this.postDocument.execute({
+  //     docId,
+  //     postedBy: user.id,
+  //   });
+
+  // }
+
+  @Post(':id/post-out')
+  postOut(@Param('id') docId: string, @Body() _dto: HttpPostDto, @CurrentUser() user: { id: string }) {
+    return this.postDocumentOut.execute({
+      docId,
+      postedBy: user.id,
+    });
+  }
+  @Post(':id/post-in')
+  postIn(@Param('id') docId: string, @Body() _dto: HttpPostDto, @CurrentUser() user: { id: string }) {
+    return this.postDocumentIn.execute({
+      docId,
+      postedBy: user.id,
+    });
+  }
+  @Post(':id/post-adjustment')
+  postAdjustment(@Param('id') docId: string, @Body() _dto: HttpPostDto, @CurrentUser() user: { id: string }) {
+    return this.postDocumentAdjustment.execute({
+      docId,
+      postedBy: user.id,
+    });
+  }
+  @Post(':id/post-transfer')
+  postTransfer(@Param('id') docId: string, @Body() _dto: HttpPostDto, @CurrentUser() user: { id: string }) {
+    return this.postDocumentTransfer.execute({
       docId,
       postedBy: user.id,
     });

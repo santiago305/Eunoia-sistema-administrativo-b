@@ -47,7 +47,6 @@ export interface PostDocumentInput {
 export interface GetAvailabilityInput {
   warehouseId: string;
   variantId: string;
-  locationId?: string;
 }
 
 export interface GetLedgerInput {

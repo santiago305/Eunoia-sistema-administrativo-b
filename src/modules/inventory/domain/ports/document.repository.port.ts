@@ -46,4 +46,6 @@ export interface DocumentRepository {
     tx?: TransactionContext,
   ): Promise<void>;
   markCancelled(docId: string, tx?: TransactionContext): Promise<void>;
+
+
 }
