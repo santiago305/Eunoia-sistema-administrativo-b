@@ -2,7 +2,7 @@
 import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../../domain/ports/document.repository.port';
 import { SERIES_REPOSITORY, DocumentSeriesRepository } from '../../../domain/ports/document-series.repository.port';
 import { ListDocumentsInput } from '../../dto/inputs';
-import { DocumentOutput } from '../../dto/outputs';
+import { PaginatedDocumentOutputResult } from '../../dto/outputs';
 
 @Injectable()
 export class ListDocumentsUseCase {
@@ -13,12 +13,12 @@ export class ListDocumentsUseCase {
     private readonly seriesRepo: DocumentSeriesRepository,
   ) {}
 
-  async execute(input: ListDocumentsInput): Promise<DocumentOutput[]> {
-    const docs = await this.documentRepo.list(input);
+  async execute(input: ListDocumentsInput): Promise<PaginatedDocumentOutputResult> {
+    const result = await this.documentRepo.list(input);
     const cache = new Map<string, { id: string; code: string; correlative: number }>();
 
-    return Promise.all(
-      docs.map(async (d) => {
+    const items = await Promise.all(
+      result.items.map(async (d) => {
         let serie = cache.get(d.serieId);
         if (!serie) {
           const s = await this.seriesRepo.findById(d.serieId);
@@ -39,5 +39,12 @@ export class ListDocumentsUseCase {
         };
       }),
     );
+
+    return {
+      items,
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+    };
   }
 }

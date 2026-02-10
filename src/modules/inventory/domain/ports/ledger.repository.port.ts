@@ -12,7 +12,14 @@ export interface LedgerRepository {
       from?: Date;
       to?: Date;
       docId?: string;
+      page?:number;
+      limit?: number;
     },
     tx?: TransactionContext,
-  ): Promise<LedgerEntry[]>;
+  ): Promise<{
+    items: LedgerEntry[];
+    total: number;
+    page: number;
+    limit: number;
+  }>;
 }

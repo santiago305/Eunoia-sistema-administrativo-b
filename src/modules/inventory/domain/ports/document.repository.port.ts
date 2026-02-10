@@ -16,9 +16,16 @@ export interface DocumentRepository {
       warehouseId?: string;
       from?: Date;
       to?: Date;
+      page?:number;
+      limit?:number;
     },
     tx?: TransactionContext,
-  ): Promise<InventoryDocument[]>;
+  ): Promise<{
+    items:InventoryDocument[];
+    total:number;
+    page:number;
+    limit:number;
+  }>;
   listItems(docId: string, tx?: TransactionContext): Promise<InventoryDocumentItem[]>;
   getByIdWithItems(
     docId: string,

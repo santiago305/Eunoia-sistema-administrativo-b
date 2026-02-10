@@ -55,6 +55,8 @@ export interface GetLedgerInput {
   from?: Date;
   to?: Date;
   docId?: string;
+  page?: number;
+  limit?:number
 }
 
 export interface ListInventoryInput {
@@ -69,6 +71,8 @@ export interface ListDocumentsInput {
   warehouseId?: string;
   from?: Date;
   to?: Date;
+  page?:number;
+  limit?:number;
 }
 
 export interface GetDocumentInput {

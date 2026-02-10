@@ -1,7 +1,7 @@
 import { Inject } from "@nestjs/common";
 import { PRODUCT_VARIANT, ProductVariantRepository } from "src/modules/catalag/domain/ports/product-variant.repository";
-import { ListProductVariantsInput } from "../../dto/inputs";
-import { ProductVariantOutput } from "../../dto/outputs";
+import { ListProductVariantsInput } from "../../dto/product-variants/input/list-product-variant";
+import { ProductVariantOutput } from "../../dto/product-variants/output/product-variant-out";
 import { ProductId } from "src/modules/catalag/domain/value-object/product.vo";
 
 export class ListInactiveProductVariants {
@@ -11,9 +11,7 @@ export class ListInactiveProductVariants {
   ) {}
 
   async execute(input: ListProductVariantsInput = {}): Promise<ProductVariantOutput[]> {
-    const rows = input.productId
-      ? await this.variantRepo.listInactiveByProductId(new ProductId(input.productId))
-      : await this.variantRepo.listAllInactive();
+    const rows = await this.variantRepo.listInactiveByProductId(new ProductId(input.productId));
 
     return rows.map((v: any) => ({
       id: v.id,

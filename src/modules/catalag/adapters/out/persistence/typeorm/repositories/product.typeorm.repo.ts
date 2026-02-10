@@ -6,6 +6,10 @@ import { Product } from 'src/modules/catalag/domain/entity/product';
 import { ProductEntity } from '../entities/product.entity';
 import { TransactionContext } from 'src/modules/inventory/domain/ports/unit-of-work.port';
 import { TypeormTransactionContext } from 'src/modules/inventory/adapters/out/typeorm/uow/typeorm.transaction-context';
+import { ProductVar } from 'src/modules/catalag/domain/entity/product-variant';
+import { ProductVariantEntity } from '../entities/product-variant.entity';
+import { ProductId } from 'src/modules/catalag/domain/value-object/product.vo';
+import { Money } from 'src/modules/catalag/domain/value-object/money.vo';
 
 @Injectable()
 export class ProductTypeormRepository implements ProductRepository {
@@ -23,6 +27,9 @@ export class ProductTypeormRepository implements ProductRepository {
 
   private getRepo(tx?: TransactionContext) {
     return this.getManager(tx).getRepository(ProductEntity);
+  }
+  private getVariant(tx?: TransactionContext) {
+    return this.getManager(tx).getRepository(ProductVariantEntity);
   }
 
   async created(prod: Product, tx?: TransactionContext): Promise<Product> {
@@ -56,36 +63,61 @@ export class ProductTypeormRepository implements ProductRepository {
       row.updatedAt,
     );
   }
-  async search(
-    params: { name?: string; description?: string },
+  async searchPaginated(
+    params: { isActive?: boolean; name?: string; description?: string; page: number; limit: number },
     tx?: TransactionContext,
-  ): Promise<Product[]> {
+  ): Promise<{ items: Product[]; total: number }> {
     const repo = this.getRepo(tx);
     const qb = repo.createQueryBuilder('p');
 
     if (params.name) {
-      qb.andWhere('LOWER(p.name) LIKE LOWER(:name)', { name: `%${params.name}%` });
+      qb.andWhere(
+        'unaccent(p.name) ILIKE unaccent(:name)',
+        { name: `%${params.name}%` },
+      );
     }
     if (params.description) {
-      qb.andWhere('LOWER(p.description) LIKE LOWER(:description)', { description: `%${params.description}%` });
+      qb.andWhere(
+        'unaccent(p.description) ILIKE unaccent(:description)',
+        { description: `%${params.description}%` },
+      );
+    }
+    if (params.isActive !== undefined) {
+      qb.andWhere('p.isActive = :isActive', { isActive: params.isActive });
     }
 
-    const rows = await qb.orderBy('p.createdAt', 'DESC').getMany();
+    const skip = (params.page - 1) * params.limit;
 
-    return rows.map(
-      (row) =>
-        new Product(
-          row.id,
-          row.name,
-          row.description,
-          row.isActive,
-          row.createdAt,
-          row.updatedAt,
-        ),
-    );
+    const [rows, total] = await qb
+      .orderBy('p.createdAt', 'DESC')
+      .skip(skip)
+      .take(params.limit)
+      .getManyAndCount();
+
+    return {
+      items: rows.map(
+        (row) =>
+          new Product(
+            row.id,
+            row.name,
+            row.description,
+            row.isActive,
+            row.createdAt,
+            row.updatedAt,
+          ),
+      ),
+      total,
+    };
   }
-
-
+  async getByIdWithVariants(
+      docId: string,
+      tx?: TransactionContext,
+    ): Promise<{ product: Product; items: ProductVar[] } | null> {
+      const product = await this.findById(docId, tx);
+      if (!product) return null;
+      const items = await this.listVariants(docId, tx);
+      return { product, items };
+    }
   async updated(
     params: { id: string; name?: string; description?: string },
     tx?: TransactionContext,
@@ -147,4 +179,22 @@ export class ProductTypeormRepository implements ProductRepository {
         ),
     );
   }
+  async listVariants(productId: string, tx?: TransactionContext): Promise<ProductVar[]> {
+      const repo = this.getVariant(tx);
+      const rows = await repo.find({ where: { productId } });
+      return rows.map(
+        (r) =>
+          new ProductVar(
+            r.id,
+            new ProductId(productId),
+            r.sku,
+            r.barcode,
+            r.attributes,
+            new Money(Number(r.price)),
+            new Money(Number(r.cost)),
+            r.isActive,
+            r.createdAt,
+          ),
+      );
+    }
 }

@@ -99,9 +99,16 @@ export class DocumentTypeormRepository implements DocumentRepository {
       warehouseId?: string;
       from?: Date;
       to?: Date;
+      page?:number;
+      limit?:number
     },
     tx?: TransactionContext,
-  ): Promise<InventoryDocument[]> {
+  ): Promise<{
+    items:InventoryDocument[],
+    total: number;
+    page: number;
+    limit: number;
+  }> {
     const repo = this.getDocRepo(tx);
     const qb = repo.createQueryBuilder('d');
 
@@ -121,26 +128,40 @@ export class DocumentTypeormRepository implements DocumentRepository {
       qb.andWhere('d.createdAt <= :to', { to: params.to });
     }
 
-    const rows = await qb.orderBy('d.createdAt', 'DESC').getMany();
-    return rows.map(
-      (row) =>
-        new InventoryDocument(
-          row.id,
-          row.docType as any,
-          row.status as any,
-          row.serieId,
-          row.correlative,
-          row.fromWarehouseId,
-          row.toWarehouseId,
-          row.referenceId,
-          row.referenceType,
-          row.note,
-          row.createdBy,
-          row.postedBy,
-          row.postedAt,
-          row.createdAt,
-        ),
-    );
+    const page = params.page && params.page > 0 ? params.page : 1;
+    const limit = params.limit && params.limit > 0 ? params.limit : 20;
+    const skip = (page - 1) * limit;
+
+    const [rows, total] = await qb
+      .orderBy('d.createdAt', 'DESC')
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      items: rows.map(
+        (row) =>
+          new InventoryDocument(
+            row.id,
+            row.docType as any,
+            row.status as any,
+            row.serieId,
+            row.correlative,
+            row.fromWarehouseId,
+            row.toWarehouseId,
+            row.referenceId,
+            row.referenceType,
+            row.note,
+            row.createdBy,
+            row.postedBy,
+            row.postedAt,
+            row.createdAt,
+          ),
+      ),
+      total,
+      page,
+      limit,
+    };
   }
 
   async listItems(docId: string, tx?: TransactionContext): Promise<InventoryDocumentItem[]> {

@@ -15,6 +15,7 @@ import { UpdateProduct } from '../application/usecases/product/update.usecase';
 import { SetProductActive } from '../application/usecases/product/set-active.usecase';
 import { ListActiveProducts } from '../application/usecases/product/list-active.usecase';
 import { ListInactiveProducts } from '../application/usecases/product/list-inactive.usecase';
+import { GetProductWithVariants } from '../application/usecases/product/get-with-variants.usecase';
 
 import { CreateProductVariant } from '../application/usecases/product-variant/create.usecase';
 import { UpdateProductVariant } from '../application/usecases/product-variant/update.usecase';
@@ -23,6 +24,7 @@ import { GetProductVariant } from '../application/usecases/product-variant/get-e
 import { ListActiveProductVariants } from '../application/usecases/product-variant/list-active.usecase';
 import { ListInactiveProductVariants } from '../application/usecases/product-variant/list-inactive.usecase';
 import { SearchProductVariants } from '../application/usecases/product-variant/search.usecase';
+import { ListProductVariants } from '../application/usecases/product-variant/list-by-product.usecase';
 
 import { UNIT_OF_WORK } from 'src/modules/inventory/domain/ports/unit-of-work.port';
 import { TypeormUnitOfWork } from 'src/modules/inventory/adapters/out/typeorm/uow/typeorm.unit-of-work';
@@ -30,7 +32,7 @@ import { CLOCK } from 'src/modules/inventory/domain/ports/clock.port';
 
 import { ProductsController } from '../adapters/in/controllers/product.controller';
 import { ProductVariantsController } from '../adapters/in/controllers/product-variant.controller';
-import { SearchProducts } from '../application/usecases/product/search.usecase';
+import { SearchProductsPaginated } from '../application/usecases/product/search-paginated.usecase';
 
 @Module({
   imports: [
@@ -44,6 +46,7 @@ import { SearchProducts } from '../application/usecases/product/search.usecase';
     SetProductActive,
     ListActiveProducts,
     ListInactiveProducts,
+    GetProductWithVariants,
 
     CreateProductVariant,
     UpdateProductVariant,
@@ -52,7 +55,8 @@ import { SearchProducts } from '../application/usecases/product/search.usecase';
     ListActiveProductVariants,
     ListInactiveProductVariants,
     SearchProductVariants,
-    SearchProducts,
+    ListProductVariants,
+    SearchProductsPaginated,
 
     // repos
     { provide: PRODUCT_REPOSITORY, useClass: ProductTypeormRepository },
