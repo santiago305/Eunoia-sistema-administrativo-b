@@ -1,5 +1,5 @@
 import { Inject } from "@nestjs/common";
-import { SetProductActiveInput } from "../../dto/inputs";
+import { SetProductActiveInput } from "../../dto/products/input/set-active-product";
 import { UNIT_OF_WORK, UnitOfWork } from "src/modules/inventory/domain/ports/unit-of-work.port";
 import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalag/domain/ports/product.repository";
 

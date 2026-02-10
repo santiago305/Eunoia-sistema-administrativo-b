@@ -16,6 +16,8 @@ export class LedgerController {
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('docId') docId?: string,
+    @Query('limit') limit?: string,
+    @Query('page') page?: string,
   ) {
     
     return this.getLedger.execute({
@@ -24,6 +26,8 @@ export class LedgerController {
       from: parseDateLocal(from),
       to: parseDateLocal(to),
       docId,
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
     });
   }
   

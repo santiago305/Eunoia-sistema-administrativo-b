@@ -1,16 +1,20 @@
-import { Money } from '../value-object/money.vo';
-import {ProductId} from '../value-object/product.vo'
+import { Money } from "../value-object/money.vo";
+import { ProductId } from "../value-object/product.vo";
 
 export class ProductVar {
-    constructor(
-        private readonly id: string,
-        private readonly product_id: ProductId,
-        private readonly sku: string,
-        private readonly barcode: string,
-        private readonly attributes: string,
-        private readonly price: Money,
-        private readonly cost: Money,
-        private readonly isActive: boolean = true,
-        private readonly createdAt?: Date,
-    ){}
+  constructor(
+    public readonly id: string,
+    private readonly product_id: ProductId,
+    public readonly sku: string,
+    public readonly barcode: string,
+    public readonly attributes: string,
+    public readonly price: Money,
+    public readonly cost: Money,
+    public readonly isActive: boolean,
+    public readonly createdAt: Date,
+  ) {}
+
+  get productId(): ProductId {
+    return this.product_id;
+  }
 }

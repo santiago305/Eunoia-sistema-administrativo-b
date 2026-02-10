@@ -51,6 +51,55 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       saved.createdAt,
     );
   }
+  async search(
+    params: {
+      productId?: ProductId;
+      isActive?: boolean;
+      sku?: string;
+      barcode?: string;
+    },
+    tx?: TransactionContext,
+  ): Promise<ProductVar[]> {
+    const repo = this.getRepo(tx);
+    const qb = repo.createQueryBuilder('v');
+
+    if (params.productId) {
+      qb.andWhere('v.productId = :productId', {
+        productId: params.productId.value,
+      });
+    }
+    if (params.isActive !== undefined) {
+      qb.andWhere('v.isActive = :isActive', {
+        isActive: params.isActive,
+      });
+    }
+    if (params.sku) {
+      qb.andWhere('v.sku ILIKE :sku', {
+        sku: `%${params.sku}%`,
+      });
+    }
+    if (params.barcode) {
+      qb.andWhere('v.barcode ILIKE :barcode', {
+        barcode: `%${params.barcode}%`,
+      });
+    }
+    qb.orderBy('v.createdAt', 'DESC');
+    const rows = await qb.getMany();
+    return rows.map(
+      (row) =>
+        new ProductVar(
+          row.id,
+          new ProductId(row.productId),
+          row.sku,
+          row.barcode,
+          row.attributes,
+          new Money(row.price),
+          new Money(row.cost),
+          row.isActive,
+          row.createdAt,
+        ),
+    );
+  }
 
   async update(
     params: {
@@ -190,44 +239,6 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
   async listInactiveByProductId(productId: ProductId, tx?: TransactionContext): Promise<ProductVar[]> {
     const repo = this.getRepo(tx);
     const rows = await repo.find({ where: { productId: productId.value , isActive: false } });
-    return rows.map(
-      (row) =>
-        new ProductVar(
-          row.id,
-          new ProductId(row.productId),
-          row.sku,
-          row.barcode,
-          row.attributes,
-          new Money(row.price),
-          new Money(row.cost),
-          row.isActive,
-          row.createdAt,
-        ),
-    );
-  }
-
-  async listAllActive(tx?: TransactionContext): Promise<ProductVar[]> {
-    const repo = this.getRepo(tx);
-    const rows = await repo.find({ where: { isActive: true } });
-    return rows.map(
-      (row) =>
-        new ProductVar(
-          row.id,
-          new ProductId(row.productId),
-          row.sku,
-          row.barcode,
-          row.attributes,
-          new Money(row.price),
-          new Money(row.cost),
-          row.isActive,
-          row.createdAt,
-        ),
-    );
-  }
-
-  async listAllInactive(tx?: TransactionContext): Promise<ProductVar[]> {
-    const repo = this.getRepo(tx);
-    const rows = await repo.find({ where: { isActive: false } });
     return rows.map(
       (row) =>
         new ProductVar(

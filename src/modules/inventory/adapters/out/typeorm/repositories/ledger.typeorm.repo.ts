@@ -53,9 +53,16 @@ private getRepo(tx?: TransactionContext) {
       from?: Date;
       to?: Date;
       docId?: string;
+      page?:number;
+      limit?: number;
     },
     tx?: TransactionContext,
-  ): Promise<LedgerEntry[]> {
+  ): Promise<{
+    items: LedgerEntry[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
     const repo = this.getRepo(tx);
     const where: any = {};
     
@@ -72,20 +79,35 @@ private getRepo(tx?: TransactionContext) {
     } else if (to) {
       where.createdAt = LessThanOrEqual(to);
     }
-    const rows = await repo.find({ where, order: { id: 'DESC' } });
-    return rows.map(
-      (r) =>
-        new LedgerEntry(
-          r.id,
-          r.docId,
-          r.warehouseId,
-          r.variantId,
-          r.direction as any,
-          r.quantity,
-          r.unitCost ?? null,
-          r.locationId,
-          r.createdAt,
-        ),
-    );
+    const page = params.page && params.page > 0 ? params.page : 1;
+    const limit = params.limit && params.limit > 0 ? params.limit : 20;
+    const skip = (page - 1) * limit;
+
+    const [rows, total] = await repo.findAndCount({
+      where,
+      order: { id: 'DESC' },
+      skip,
+      take: limit,
+    });
+    return {
+      items: rows.map(
+        (r) =>
+          new LedgerEntry(
+            r.id,
+            r.docId,
+            r.warehouseId,
+            r.variantId,
+            r.direction as any,
+            r.quantity,
+            r.unitCost ?? null,
+            r.locationId,
+            r.createdAt,
+          ),
+      ),
+      total,
+      page,
+      limit,
+    };
   }
+  
 }

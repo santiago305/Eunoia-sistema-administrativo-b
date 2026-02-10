@@ -1,7 +1,8 @@
 import { Inject, BadRequestException } from "@nestjs/common";
 import { PRODUCT_VARIANT, ProductVariantRepository } from "src/modules/catalag/domain/ports/product-variant.repository";
-import { UpdateProductVariantInput } from "../../dto/inputs";
+import { UpdateProductVariantInput } from "../../dto/product-variants/input/update-product-variant";
 import { Money } from "src/modules/catalag/domain/value-object/money.vo";
+import { ProductVariantOutput } from "../../dto/product-variants/output/product-variant-out";
 
 export class UpdateProductVariant {
   constructor(
@@ -23,6 +24,19 @@ export class UpdateProductVariant {
       throw new BadRequestException("Variant no encontrado");
     }
 
-    return updated;
+    return this.toOutput(updated);
   }
+  private toOutput(v: any): ProductVariantOutput {
+      return {
+        id: v.id,
+        productId: v.product_id?.value ?? v.productId,
+        sku: v.sku,
+        barcode: v.barcode,
+        attributes: v.attributes,
+        price: v.price?.getAmount?.() ?? v.price,
+        cost: v.cost?.getAmount?.() ?? v.cost,
+        isActive: v.isActive,
+        createdAt: v.createdAt,
+      };
+    }
 }

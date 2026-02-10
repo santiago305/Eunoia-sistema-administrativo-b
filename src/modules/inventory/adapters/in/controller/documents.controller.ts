@@ -47,6 +47,8 @@ export class DocumentsController {
     @Query('warehouseId') warehouseId?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?:string
   ) {
     return this.listDocuments.execute({
       status,
@@ -54,6 +56,8 @@ export class DocumentsController {
       warehouseId,
       from: from ? new Date(from) : undefined,
       to: to ? new Date(to) : undefined,
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
     });
   }
 

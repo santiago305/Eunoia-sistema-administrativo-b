@@ -1,7 +1,7 @@
 import { Inject } from "@nestjs/common";
 import { PRODUCT_VARIANT, ProductVariantRepository } from "src/modules/catalag/domain/ports/product-variant.repository";
-import { ListProductVariantsInput } from "../../dto/inputs";
-import { ProductVariantOutput } from "../../dto/outputs";
+import { ListProductVariantsInput } from "../../dto/product-variants/input/list-product-variant";
+import { ProductVariantOutput } from "../../dto/product-variants/output/product-variant-out";
 import { ProductId } from "src/modules/catalag/domain/value-object/product.vo";
 
 export class SearchProductVariants {
@@ -10,39 +10,27 @@ export class SearchProductVariants {
     private readonly variantRepo: ProductVariantRepository,
   ) {}
 
-  async execute(input: ListProductVariantsInput): Promise<ProductVariantOutput[]> {
-    const results: any[] = [];
+  async execute(
+    input: ListProductVariantsInput,
+  ): Promise<ProductVariantOutput[]> {
 
-    if (input.sku) {
-      const bySku = await this.variantRepo.findBySku(input.sku);
-      if (bySku) results.push(bySku);
-    }
-
-    if (input.barcode) {
-      const byBarcode = await this.variantRepo.findByBarcode(input.barcode);
-      if (byBarcode) results.push(byBarcode);
-    }
-
-    if (input.productId) {
-      const byProduct = await this.variantRepo.listByProductId(new ProductId(input.productId));
-      results.push(...byProduct);
-    }
-
-    const seen = new Set<string>();
-    const unique = results.filter((v: any) => {
-      if (seen.has(v.id)) return false;
-      seen.add(v.id);
-      return true;
+    const variants = await this.variantRepo.search({
+      productId: input.productId
+        ? new ProductId(input.productId)
+        : undefined,
+      sku: input.sku,
+      barcode: input.barcode,
+      isActive: input.isActive,
     });
 
-    return unique.map((v: any) => ({
+    return variants.map(v => ({
       id: v.id,
-      productId: v.product_id?.value ?? v.productId,
+      productId: v.productId.value,
       sku: v.sku,
       barcode: v.barcode,
       attributes: v.attributes,
-      price: v.price?.getAmount?.() ?? v.price,
-      cost: v.cost?.getAmount?.() ?? v.cost,
+      price: v.price.getAmount(),
+      cost: v.cost.getAmount(),
       isActive: v.isActive,
       createdAt: v.createdAt,
     }));

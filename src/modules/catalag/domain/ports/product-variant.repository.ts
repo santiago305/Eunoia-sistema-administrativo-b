@@ -26,7 +26,10 @@ export interface ProductVariantRepository {
 
   listActiveByProductId(productId: ProductId, tx?: TransactionContext): Promise<ProductVar[]>;
   listInactiveByProductId(productId: ProductId, tx?: TransactionContext): Promise<ProductVar[]>;
-
-  listAllActive(tx?: TransactionContext): Promise<ProductVar[]>;
-  listAllInactive(tx?: TransactionContext): Promise<ProductVar[]>;
+  search(params: {
+      productId?:ProductId;
+      isActive?: boolean;
+      sku?: string;
+      barcode?: string;
+    }, tx?: TransactionContext): Promise<ProductVar[]>;
 }

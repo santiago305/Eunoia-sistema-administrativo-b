@@ -4,8 +4,8 @@ import { PRODUCT_VARIANT, ProductVariantRepository } from "src/modules/catalag/d
 import { ProductVar } from "src/modules/catalag/domain/entity/product-variant";
 import { ProductId } from "src/modules/catalag/domain/value-object/product.vo";
 import { Money } from "src/modules/catalag/domain/value-object/money.vo";
-import { CreateProductVariantInput } from "../../dto/inputs";
-import { ProductVariantOutput } from "../../dto/outputs";
+import { CreateProductVariantInput } from "../../dto/product-variants/input/create-product-variant";
+import { ProductVariantOutput } from "../../dto/product-variants/output/product-variant-out";
 import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
 
 export class CreateProductVariant {

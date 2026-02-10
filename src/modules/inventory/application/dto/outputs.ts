@@ -17,6 +17,12 @@ export interface DocumentOutput {
   correlative: number;
   createdAt?: Date;
 }
+export interface PaginatedDocumentOutputResult {
+  items: DocumentOutput[];
+  total: number;
+  page: number;
+  limit: number;
+}
 
 export interface DocumentDetailOutput {
   doc: DocumentOutput;
@@ -59,6 +65,12 @@ export interface LedgerEntryOutput {
   quantity: number;
   unitCost?: number | null;
   createdAt?: Date;
+}
+export interface PaginatedLedgerResult {
+  items: LedgerEntryOutput[];
+  total: number;
+  page: number;
+  limit: number;
 }
 export interface DocumentSerieDetailOutput {
   id: string;

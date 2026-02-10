@@ -1,6 +1,6 @@
 import { Product } from "src/modules/catalag/domain/entity/product";
-import { CreateProductInput } from "../../dto/inputs";
-import { ProductOutput } from "../../dto/outputs";
+import { CreateProductInput } from "../../dto/products/input/create-product";
+import { ProductOutput } from "../../dto/products/output/product-out";
 import { UNIT_OF_WORK, UnitOfWork } from "src/modules/inventory/domain/ports/unit-of-work.port";
 import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalag/domain/ports/product.repository";
 import { Inject } from "@nestjs/common";
