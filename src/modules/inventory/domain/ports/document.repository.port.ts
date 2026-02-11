@@ -43,7 +43,7 @@ export interface DocumentRepository {
     },
     tx?: TransactionContext,
   ): Promise<InventoryDocumentItem | null>;
-  removeItem(docId: string, itemId: string, tx?: TransactionContext): Promise<void>;
+  removeItem(docId: string, itemId: string, tx?: TransactionContext): Promise<boolean>;
   markPosted(
     params: {
       docId: string;

@@ -2,12 +2,12 @@ import { Column, Entity, PrimaryGeneratedColumn, Index } from 'typeorm';
 import { DocType } from 'src/modules/inventory/domain/value-objects/doc-type';
 
 @Entity('document_series')
-@Index(['docType'], { unique: true })
+@Index(['warehouseId', 'code'], { unique: true })
 export class DocumentSerie {
   @PrimaryGeneratedColumn('uuid', { name: 'serie_id' })
   id: string;
 
-  @Column({ type: 'varchar', length: 10 })
+  @Column({ type: 'varchar', length: 250 })
   code: string;
 
   @Column({ type: 'varchar', length: 100 })
@@ -23,11 +23,11 @@ export class DocumentSerie {
   nextNumber: number;
 
   // Cantidad de ceros a la izquierda
-  @Column({ type: 'smallint', default: 6 })
+  @Column({ type: 'smallint', default:50 })
   padding: number;
 
   // Separador entre code y número
-  @Column({ type: 'varchar', length: 5, default: '-' })
+  @Column({ type: 'varchar', length: 50, default: '-' })
   separator: string;
 
   // Serie activa o no

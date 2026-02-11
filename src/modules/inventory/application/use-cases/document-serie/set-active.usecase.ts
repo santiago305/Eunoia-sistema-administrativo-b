@@ -15,7 +15,7 @@ export class SetDocumentSerieActive {
     private readonly documentRepo: DocumentRepository,
   ) {}
 
-  async execute(input: SetDocumentSerieInput): Promise<{ ok: true }> {
+  async execute(input: SetDocumentSerieInput): Promise<{ status: string }> {
     return this.uow.runInTransaction(async (tx) => {
       if (input.isActive === false) {
         const hasActiveDocs = await this.documentRepo.existsBySerieId(
@@ -32,7 +32,7 @@ export class SetDocumentSerieActive {
         }
       }
       await this.serieRepo.setActive(input.id, input.isActive, tx);
-      return { ok: true };
+      return { status: '¡Solicitud lograda con exito!' };
     });
   }
 }

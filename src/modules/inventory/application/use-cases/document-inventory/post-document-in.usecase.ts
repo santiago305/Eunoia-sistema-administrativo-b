@@ -8,6 +8,7 @@ import { PostDocumentInput } from "../../dto/document/input/document-post";
 import { LedgerEntry } from "src/modules/inventory/domain/entities/ledger-entry";
 import { LEDGER_REPOSITORY, LedgerRepository } from "src/modules/inventory/domain/ports/ledger.repository.port";
 import { Direction } from "src/modules/inventory/domain/value-objects/direction";
+import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
 
 export class PostDocumentoIn {
   constructor(
@@ -44,7 +45,11 @@ export class PostDocumentoIn {
       }
 
       if (!doc.toWarehouseId) {
-        throw new BadRequestException("IN requiere warehouseId");
+        throw new BadRequestException("IN requiere un almacen");
+      }
+      
+      if(doc.docType != DocType.IN){
+        throw new BadRequestException("El tipo de documento no es el adecuado");
       }
 
       // lock de snapshots que vamos a tocar
@@ -78,7 +83,6 @@ export class PostDocumentoIn {
         await this.inventoryRepo.incrementOnHand(
           {
             warehouseId,
-            locationId: item.toLocationId ?? item.fromLocationId,
             variantId: item.variantId,
             delta: item.quantity,
           },

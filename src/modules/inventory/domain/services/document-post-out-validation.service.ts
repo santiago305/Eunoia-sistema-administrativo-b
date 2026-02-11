@@ -38,7 +38,6 @@ export class DocumentPostOutValidationService {
         {
           warehouseId,
           variantId: i.variantId,
-          locationId: i.fromLocationId,
         },
         tx,
       );

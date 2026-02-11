@@ -13,7 +13,6 @@ export class ListDocumentsQueryDto {
   @IsEnum(DocType)
   docType?: DocType;
 
-  @IsOptional()
   @IsUUID()
   warehouseId?: string;
 

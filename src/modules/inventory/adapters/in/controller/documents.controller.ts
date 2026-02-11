@@ -9,16 +9,22 @@ import { ListDocumentItemsUseCase } from 'src/modules/inventory/application/use-
 import { UpdateItemUseCase } from 'src/modules/inventory/application/use-cases/document-item-inventory/update-item.usecase';
 import { RemoveItemUseCase } from 'src/modules/inventory/application/use-cases/document-item-inventory/remove-item.usecase';
 import { CancelDocumentUseCase } from 'src/modules/inventory/application/use-cases/document-inventory/cancel-document.usecase';
-import { HttpCreateDocumentDto } from '../dto/document/http-document-create.dto';
-import { HttpAddItemDto } from '../dto/document-item/http-document-add-item.dto';
-import { HttpPostDto } from '../dto/document-item/http-post.dto';
+import { HttpCreateDocumentInDto } from '../dto/document/http-document-create-in.dto';
+import { HttpCreateDocumentOutDto } from '../dto/document/http-document-create-out.dto';
+import { HttpCreateDocumentTransferDto } from '../dto/document/http-document-create-transfer.dto';
+import { HttpCreateDocumentAdjustmentDto } from '../dto/document/http-document-create-adjustment.dto';
+import { HttpAddItemAdjustmentDto } from '../dto/document-item/http-add-item-adjustment.dto';
+import { HttpAddItemInDto } from '../dto/document-item/http-add-item-in.dto';
+import { HttpAddItemOutDto } from '../dto/document-item/http-add-item-out.dto';
+import { HttpAddItemTransferDto } from '../dto/document-item/http-add-item-transfer.dto';
+import { HttpPostDto } from '../dto/document/http-post.dto';
 import { HttpUpdateItemDto } from '../dto/document-item/http-item-update.dto';
 import { PostDocumentoOut } from 'src/modules/inventory/application/use-cases/document-inventory/post-document-out.usecase';
 import { PostDocumentoIn } from 'src/modules/inventory/application/use-cases/document-inventory/post-document-in.usecase';
 import { PostDocumentoTransfer } from 'src/modules/inventory/application/use-cases/document-inventory/post-document-transfer.usecase';
 import { PostDocumentoAdjustment } from 'src/modules/inventory/application/use-cases/document-inventory/post-document-adjustment.usecase';
 import { ListDocumentsQueryDto } from '../dto/document/http-documents-list.dto';
-
+import { ParseDateLocal } from 'src/shared/utilidades/utils/ParseDates'
 @Controller('inventory/documents')
 @UseGuards(JwtAuthGuard)
 export class DocumentsController {
@@ -44,8 +50,8 @@ export class DocumentsController {
       status: query.status,
       docType: query.docType,
       warehouseId: query.warehouseId,
-      from: query.from ? new Date(query.from) : undefined,
-      to: query.to ? new Date(query.to) : undefined,
+      from: query.from ? ParseDateLocal(query.from, 'start') : undefined,
+      to: query.to ? ParseDateLocal(query.to, 'end') : undefined,
       page: query.page,
       limit: query.limit,
     });
@@ -61,16 +67,58 @@ export class DocumentsController {
     return this.listItems.execute({ docId });
   }
 
-  @Post()
-  create(@Body() dto: HttpCreateDocumentDto, @CurrentUser() user: { id: string }) {
+  @Post('create-in')
+  createIn(@Body() dto: HttpCreateDocumentInDto, @CurrentUser() user: { id: string }) {
+    return this.createDocument.execute({
+      ...dto,
+      createdBy: user.id,
+    });
+  }
+  @Post('create-out')
+  createOut(@Body() dto: HttpCreateDocumentOutDto, @CurrentUser() user: { id: string }) {
+    return this.createDocument.execute({
+      ...dto,
+      createdBy: user.id,
+    });
+  }
+  @Post('create-transfer')
+  createTransfer(@Body() dto: HttpCreateDocumentTransferDto, @CurrentUser() user: { id: string }) {
+    return this.createDocument.execute({
+      ...dto,
+      createdBy: user.id,
+    });
+  }
+  @Post('create-adjustment')
+  createAdjustment(@Body() dto: HttpCreateDocumentAdjustmentDto, @CurrentUser() user: { id: string }) {
     return this.createDocument.execute({
       ...dto,
       createdBy: user.id,
     });
   }
 
-  @Post(':id/items')
-  add(@Param('id', ParseUUIDPipe) docId: string, @Body() dto: HttpAddItemDto) {
+  @Post(':id/items-in')
+  addIn(@Param('id', ParseUUIDPipe) docId: string, @Body() dto: HttpAddItemInDto) {
+    return this.addItem.execute({
+      ...dto,
+      docId,
+    });
+  }
+  @Post(':id/items-out')
+  addOut(@Param('id', ParseUUIDPipe) docId: string, @Body() dto: HttpAddItemOutDto) {
+    return this.addItem.execute({
+      ...dto,
+      docId,
+    });
+  }
+  @Post(':id/items-transfer')
+  addTransfer(@Param('id', ParseUUIDPipe) docId: string, @Body() dto: HttpAddItemTransferDto) {
+    return this.addItem.execute({
+      ...dto,
+      docId,
+    });
+  }
+  @Post(':id/items-adjustment')
+  addAdjustment(@Param('id', ParseUUIDPipe) docId: string, @Body() dto: HttpAddItemAdjustmentDto) {
     return this.addItem.execute({
       ...dto,
       docId,
