@@ -1,8 +1,8 @@
 ﻿import { Inject, Injectable, BadRequestException } from '@nestjs/common';
 import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../../domain/ports/document.repository.port';
 import { SERIES_REPOSITORY, DocumentSeriesRepository } from '../../../domain/ports/document-series.repository.port';
-import { GetDocumentInput } from '../../dto/inputs';
-import { DocumentDetailOutput } from '../../dto/outputs';
+import { DocumentIdInput } from '../../dto/document/input/document-id';
+import { DocumentDetailOutput } from '../../dto/document/output/document-detail-out';
 
 @Injectable()
 export class GetDocumentUseCase {
@@ -13,7 +13,7 @@ export class GetDocumentUseCase {
     private readonly seriesRepo: DocumentSeriesRepository,
   ) {}
 
-  async execute(input: GetDocumentInput): Promise<DocumentDetailOutput> {
+  async execute(input: DocumentIdInput): Promise<DocumentDetailOutput> {
     const result = await this.documentRepo.getByIdWithItems(input.docId);
     if (!result) {
       throw new BadRequestException('Documento no encontrado');

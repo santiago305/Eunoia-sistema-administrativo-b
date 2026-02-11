@@ -2,6 +2,8 @@
 import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard';
 import { GetAvailabilityUseCase } from 'src/modules/inventory/application/use-cases/inventory/get-availability.usecase';
 import { ListInventoryUseCase } from 'src/modules/inventory/application/use-cases/inventory/list-inventory.usecase';
+import { ListInventoryQueryDto } from '../dto/inventory/http-inventory-list.dto';
+import { AvailabilityQueryDto } from '../dto/inventory/http-inventory-availability.dto';
 
 @Controller('inventory')
 @UseGuards(JwtAuthGuard)
@@ -12,18 +14,19 @@ export class InventoryController {
   ) {}
 
   @Get()
-  list(
-    @Query('warehouseId') warehouseId?: string,
-    @Query('variantId') variantId?: string,
-  ) {
-    return this.listInventory.execute({ warehouseId, variantId });
+  list(@Query() query: ListInventoryQueryDto) {
+    return this.listInventory.execute({
+      warehouseId: query.warehouseId,
+      variantId: query.variantId,
+    });
   }
 
   @Get('availability')
-  availability(
-    @Query('warehouseId') warehouseId: string,
-    @Query('variantId') variantId: string,
-  ) {
-    return this.getAvailability.execute({ warehouseId, variantId });
+  availability(@Query() query: AvailabilityQueryDto) {
+    return this.getAvailability.execute({
+      warehouseId: query.warehouseId,
+      variantId: query.variantId,
+    });
   }
+
 }

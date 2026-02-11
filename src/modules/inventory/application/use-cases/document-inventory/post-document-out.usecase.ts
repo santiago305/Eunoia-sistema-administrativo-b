@@ -3,11 +3,12 @@ import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port"
 import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/inventory/domain/ports/document.repository.port";
 import { INVENTORY_REPOSITORY, InventoryRepository } from "src/modules/inventory/domain/ports/inventory.repository.port";
 import { BadRequestException, Inject } from "@nestjs/common";
-import { PostDocumentInput } from "../../dto/inputs";
+import { PostDocumentInput } from "../../dto/document/input/document-post";
 import { LedgerEntry } from "src/modules/inventory/domain/entities/ledger-entry";
 import { LEDGER_REPOSITORY, LedgerRepository } from "src/modules/inventory/domain/ports/ledger.repository.port";
 import { Direction } from "src/modules/inventory/domain/value-objects/direction";
 import { DocumentPostOutValidationService } from "src/modules/inventory/domain/services/document-post-out-validation.service";
+import { INVENTORY_LOCK, InventoryLock } from "src/modules/inventory/domain/ports/inventory-lock.port";
 
 export class PostDocumentoOut {
   constructor(
@@ -22,6 +23,9 @@ export class PostDocumentoOut {
     @Inject(LEDGER_REPOSITORY)
     private readonly ledgerRepo: LedgerRepository,
     private readonly outValidator: DocumentPostOutValidationService,
+    @Inject(INVENTORY_LOCK)
+    private readonly lock: InventoryLock,
+
   ) {}
 
   async execute(input: PostDocumentInput) {
@@ -35,7 +39,7 @@ export class PostDocumentoOut {
       const { doc, items } = result;
 
       if (!doc.isDraft()) {
-        return { isPosted: true };
+        throw new BadRequestException('Documento ya ha sido posteado');
       }
 
       if (!items.length) {
@@ -45,6 +49,12 @@ export class PostDocumentoOut {
       if (!doc.fromWarehouseId) {
         throw new BadRequestException("OUT requiere warehouseId");
       }
+      const keys = items.map((i) => ({
+        warehouseId: doc.fromWarehouseId!,
+        variantId: i.variantId,
+      }));
+
+      await this.lock.lockSnapshots(keys, tx);
 
       const { insuficientes, suficientes } = await this.outValidator.validateOutStock(
         items,
@@ -97,11 +107,11 @@ export class PostDocumentoOut {
       }
 
       await this.documentRepo.markPosted(
-        { docId: doc.id!, postedBy: input.postedBy, postedAt: now },
+        { docId: doc.id!, postedBy: input.postedBy, note: input.note , postedAt: now },
         tx,
       );
 
-      return { ok: true };
+      return { status: '¡Postedo con exito!' };
     });
   }
 }

@@ -4,7 +4,7 @@ import { INVENTORY_LOCK, InventoryLock } from "src/modules/inventory/domain/port
 import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/inventory/domain/ports/document.repository.port";
 import { INVENTORY_REPOSITORY, InventoryRepository } from "src/modules/inventory/domain/ports/inventory.repository.port";
 import { BadRequestException, Inject } from "@nestjs/common";
-import { PostDocumentInput } from "../../dto/inputs";
+import { PostDocumentInput } from "../../dto/document/input/document-post";
 import { LedgerEntry } from "src/modules/inventory/domain/entities/ledger-entry";
 import { LEDGER_REPOSITORY, LedgerRepository } from "src/modules/inventory/domain/ports/ledger.repository.port";
 import { Direction } from "src/modules/inventory/domain/value-objects/direction";
@@ -38,7 +38,7 @@ export class PostDocumentoTransfer {
       const { doc, items } = result;
 
       if (!doc.isDraft()) {
-        return { isPosted: true };
+        throw new BadRequestException('Documento ya ha sido posteado');
       }
 
       if (!items.length) {
@@ -133,10 +133,10 @@ export class PostDocumentoTransfer {
         await this.ledgerRepo.append(entries, tx);
       }
       await this.documentRepo.markPosted(
-        { docId: doc.id!, postedBy: input.postedBy, postedAt: now },
+        { docId: doc.id!, postedBy: input.postedBy, note: input.note , postedAt: now },
         tx,
       );
-      return { ok: true };
+      return { status: '¡Postedo con exito!' };
     });
   }
 }

@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { LEDGER_REPOSITORY, LedgerRepository } from '../../../domain/ports/ledger.repository.port';
-import { GetLedgerInput } from '../../dto/inputs';
-import { PaginatedLedgerResult } from '../../dto/outputs';
+import { GetLedgerInput } from '../../dto/ledger/input/get-ledger';
+import { PaginatedLedgerResult } from '../../dto/ledger/output/paginated-ledger';
 
 
 @Injectable()

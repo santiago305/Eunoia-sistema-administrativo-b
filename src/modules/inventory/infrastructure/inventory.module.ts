@@ -20,16 +20,16 @@ import { TypeormUnitOfWork } from '../adapters/out/typeorm/uow/typeorm.unit-of-w
 import { PgInventoryLock } from '../adapters/out/typeorm/locks/pg-inventory-lock';
 
 import { CreateDocumentUseCase } from '../application/use-cases/document-inventory/create-document.usecase';
-import { AddItemUseCase } from '../application/use-cases/document-inventory/add-item.usecase';
+import { AddItemUseCase } from '../application/use-cases/document-item-inventory/add-item.usecase';
 import { GetAvailabilityUseCase } from '../application/use-cases/inventory/get-availability.usecase';
 import { PostDocumentUseCase } from '../application/use-cases/document-inventory/post-document.usecase';
 import { GetLedgerUseCase } from '../application/use-cases/ladger/get-ledger.usecase';
 import { ListInventoryUseCase } from '../application/use-cases/inventory/list-inventory.usecase';
 import { ListDocumentsUseCase } from '../application/use-cases/document-inventory/list-documents.usecase';
 import { GetDocumentUseCase } from '../application/use-cases/document-inventory/get-document.usecase';
-import { ListDocumentItemsUseCase } from '../application/use-cases/document-inventory/list-items.usecase';
-import { UpdateItemUseCase } from '../application/use-cases/document-inventory/update-item.usecase';
-import { RemoveItemUseCase } from '../application/use-cases/document-inventory/remove-item.usecase';
+import { ListDocumentItemsUseCase } from '../application/use-cases/document-item-inventory/list-items.usecase';
+import { UpdateItemUseCase } from '../application/use-cases/document-item-inventory/update-item.usecase';
+import { RemoveItemUseCase } from '../application/use-cases/document-item-inventory/remove-item.usecase';
 import { CancelDocumentUseCase } from '../application/use-cases/document-inventory/cancel-document.usecase';
 import { DocumentSeriesController } from '../adapters/in/controller/documente-series.controller';
 import { PostDocumentoOut } from '../application/use-cases/document-inventory/post-document-out.usecase';
@@ -39,7 +39,7 @@ import { PostDocumentoAdjustment } from '../application/use-cases/document-inven
 
 import { CreateDocumentSerieUseCase } from '../application/use-cases/document-serie/create-document-serie.usecase';
 import { GetDocumentSerieUseCase } from '../application/use-cases/document-serie/get-document-serie.usecase';
-import { GetActiveDocumentSerieUseCase } from '../application/use-cases/document-serie/get-active-document-serie.usecase';
+import { GetActiveDocumentSerieUseCase } from '../application/use-cases/document-serie/get-document-series.usecase';
 
 import { InventoryRulesService } from '../domain/services/inventory-rules.service';
 
@@ -51,6 +51,7 @@ import { INVENTORY_LOCK } from '../domain/ports/inventory-lock.port';
 import { CLOCK } from '../domain/ports/clock.port';
 import { DocumentPostOutValidationService } from '../domain/services/document-post-out-validation.service';
 import { SERIES_REPOSITORY, DocumentSeriesRepository } from '../domain/ports/document-series.repository.port';
+import { SetDocumentSerieActive } from 'src/modules/inventory/application/use-cases/document-serie/set-active.usecase';
 
 @Module({
   imports: [
@@ -88,6 +89,7 @@ import { SERIES_REPOSITORY, DocumentSeriesRepository } from '../domain/ports/doc
     UpdateItemUseCase,
     RemoveItemUseCase,
     CancelDocumentUseCase,
+    SetDocumentSerieActive,
     DocumentPostOutValidationService,
     { provide: INVENTORY_REPOSITORY, useClass: InventoryTypeormRepository },
     { provide: DOCUMENT_REPOSITORY, useClass: DocumentTypeormRepository },

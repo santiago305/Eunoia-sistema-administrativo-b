@@ -4,7 +4,7 @@ import { EntityManager, Repository } from 'typeorm';
 
 import DocumentSerie from '../../../../domain/entities/document-serie';
 import { DocType } from '../../../../domain/value-objects/doc-type';
-import { TransactionContext } from '../../../../domain/ports/unit-of-work.port'; // ✅ MISMO puerto
+import { TransactionContext } from '../../../../domain/ports/unit-of-work.port';
 import { DocumentSeriesRepository } from '../../../../domain/ports/document-series.repository.port';
 
 import { DocumentSerie as OrmSerie } from '../entities/document_serie.entity';
@@ -17,13 +17,16 @@ export class DocumentSeriesTypeormRepository implements DocumentSeriesRepository
     private readonly repo: Repository<OrmSerie>,
   ) {}
 
-   private manager(tx?: TransactionContext): EntityManager {
+  private getManager(tx?: TransactionContext): EntityManager {
     if (tx && (tx as TypeormTransactionContext).manager) {
       return (tx as TypeormTransactionContext).manager;
     }
     return this.repo.manager;
   }
 
+  private getSerieRepo(tx?: TransactionContext) {
+    return this.getManager(tx).getRepository(OrmSerie);
+  }
 
   private toDomain(row: OrmSerie): DocumentSerie {
     return new DocumentSerie(
@@ -39,11 +42,12 @@ export class DocumentSeriesTypeormRepository implements DocumentSeriesRepository
       row.createdAt,
     );
   }
+
   async creatDocumentSerie(
     documentSerie: DocumentSerie,
     tx?: TransactionContext,
   ): Promise<DocumentSerie> {
-    const repo = this.manager(tx).getRepository(OrmSerie);
+    const repo = this.getSerieRepo(tx);
 
     const row = repo.create({
       id: documentSerie.id,
@@ -63,26 +67,40 @@ export class DocumentSeriesTypeormRepository implements DocumentSeriesRepository
   }
 
   async findActiveFor(
-    params: { docType: DocType; warehouseId: string },
+    params: { docType?: DocType; isActive?: boolean; warehouseId: string },
     tx?: TransactionContext,
-  ): Promise<DocumentSerie | null> {
-    const row = await this.manager(tx).getRepository(OrmSerie).findOne({
-      where: {
-        docType: params.docType,
-        warehouseId: params.warehouseId,
-        isActive: true,
-      },
-    });
+  ): Promise<DocumentSerie[]> {
+    const repo = this.getSerieRepo(tx);
+    const qb = repo.createQueryBuilder('s');
 
-    return row ? this.toDomain(row) : null; 
+    if (params.docType) {
+      qb.andWhere('s.docType = :docType', { docType: params.docType });
+    }
+    if (params.warehouseId) {
+      qb.andWhere('s.warehouseId = :warehouseId', { warehouseId: params.warehouseId });
+    }
+    if (params.isActive !== undefined) {
+      qb.andWhere('s.isActive = :isActive', { isActive: params.isActive });
+    }
+
+    const rows = await qb
+      .orderBy('s.createdAt', 'DESC')
+      .getMany();
+
+    return rows.map((r) => this.toDomain(r));
   }
 
   async findById(serieId: string, tx?: TransactionContext): Promise<DocumentSerie | null> {
-    const row = await this.manager(tx).getRepository(OrmSerie).findOne({
+    const row = await this.getSerieRepo(tx).findOne({
       where: { id: serieId },
     });
 
-    return row ? this.toDomain(row) : null; 
+    return row ? this.toDomain(row) : null;
+  }
+
+  async setActive(id: string, isActive: boolean, tx?: TransactionContext): Promise<void> {
+    const repo = this.getSerieRepo(tx);
+    await repo.update({ id }, { isActive });
   }
 
   async reserveNextNumber(serieId: string, tx: TransactionContext): Promise<number> {

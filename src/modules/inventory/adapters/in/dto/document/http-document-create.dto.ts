@@ -9,15 +9,15 @@ export class HttpCreateDocumentDto {
   serieId: string;
 
   @IsOptional()
-  // @IsUUID()
+  @IsUUID()
   fromWarehouseId?: string;
 
   @IsOptional()
-  // @IsUUID()
+  @IsUUID()
   toWarehouseId?: string;
 
   @IsOptional()
-  // @IsUUID()
+  @IsUUID()
   referenceId?: string;
 
   @IsOptional()
