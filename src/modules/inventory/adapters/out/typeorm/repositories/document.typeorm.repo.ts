@@ -257,6 +257,7 @@ export class DocumentTypeormRepository implements DocumentRepository {
     params: {
       docId: string;
       postedBy?: string;
+      note?: string
       postedAt?: Date;
     },
     tx?: TransactionContext,
@@ -265,16 +266,42 @@ export class DocumentTypeormRepository implements DocumentRepository {
     await repo.update(params.docId, {
       status: DocStatus.POSTED,
       postedBy: params.postedBy,
+      note: params.note,
+      postedAt: params.postedAt,
+    });
+  }
+  async markCancelled(
+    params: {
+      docId: string;
+      postedBy?: string;
+      note?: string
+      postedAt?: Date;
+    },
+    tx?: TransactionContext,
+  ): Promise<void> {
+    const repo = this.getDocRepo(tx);
+    await repo.update(params.docId, {
+      status: DocStatus.CANCELLED,
+      postedBy: params.postedBy,
+      note: params.note,
       postedAt: params.postedAt,
     });
   }
 
-  async markCancelled(docId: string, tx?: TransactionContext): Promise<void> {
+  async existsBySerieId(
+    serieId: string,
+    params?: { excludeStatus?: DocStatus },
+    tx?: TransactionContext,
+  ): Promise<boolean> {
     const repo = this.getDocRepo(tx);
-    await repo.update(docId, {
-      status: DocStatus.CANCELLED,
-    });
-  }
+    const qb = repo.createQueryBuilder('d')
+      .where('d.serieId = :serieId', { serieId });
 
-  
+    if (params?.excludeStatus) {
+      qb.andWhere('d.status != :status', { status: params.excludeStatus });
+    }
+
+    const count = await qb.getCount();
+    return count > 0;
+  }
 }

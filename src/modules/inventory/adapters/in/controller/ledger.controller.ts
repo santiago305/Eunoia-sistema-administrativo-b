@@ -2,6 +2,7 @@ import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard';
 import { GetLedgerUseCase } from 'src/modules/inventory/application/use-cases/ladger/get-ledger.usecase';
 import { parseDateLocal } from 'src/shared/utilidades/utils/parseDates';
+import { GetLedgerQueryDto } from '../dto/ledger/http-list-ledger.dto';
 @Controller('inventory/ledger')
 @UseGuards(JwtAuthGuard)
 export class LedgerController {
@@ -10,24 +11,15 @@ export class LedgerController {
   ) {}
 
   @Get()
-  list(
-    @Query('warehouseId') warehouseId?: string,
-    @Query('variantId') variantId?: string,
-    @Query('from') from?: string,
-    @Query('to') to?: string,
-    @Query('docId') docId?: string,
-    @Query('limit') limit?: string,
-    @Query('page') page?: string,
-  ) {
-    
+  list(@Query() query: GetLedgerQueryDto) {
     return this.getLedger.execute({
-      warehouseId,
-      variantId,
-      from: parseDateLocal(from),
-      to: parseDateLocal(to),
-      docId,
-      page: page ? Number(page) : undefined,
-      limit: limit ? Number(limit) : undefined,
+      warehouseId: query.warehouseId,
+      variantId: query.variantId,
+      docId: query.docId,
+      from: query.from ? parseDateLocal(query.from) : undefined,
+      to: query.to ? parseDateLocal(query.to) : undefined,
+      page: query.page,
+      limit: query.limit,
     });
   }
   

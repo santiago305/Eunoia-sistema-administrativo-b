@@ -2,8 +2,7 @@
 import { IsInt, IsNumber, IsOptional, isString, IsUUID, Min } from 'class-validator';
 
 export class HttpAddItemDto {
-  // @IsUUID()
-   @IsOptional()
+  @IsUUID()
   variantId: string;
 
   @Type(() => Number)
@@ -11,11 +10,11 @@ export class HttpAddItemDto {
   quantity: number;
 
   @IsOptional()
-  // @IsUUID()
+  @IsUUID()
   fromLocationId?: string;
 
   @IsOptional()
-  // @IsUUID()
+  @IsUUID()
   toLocationId?: string;
 
   @IsOptional()

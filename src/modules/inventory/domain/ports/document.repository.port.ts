@@ -48,11 +48,23 @@ export interface DocumentRepository {
     params: {
       docId: string;
       postedBy?: string;
+      note?:string,
       postedAt?: Date;
     },
     tx?: TransactionContext,
   ): Promise<void>;
-  markCancelled(docId: string, tx?: TransactionContext): Promise<void>;
-
+  markCancelled(params: {
+      docId: string;
+      postedBy?: string;
+      note?:string,
+      postedAt?: Date;
+    },
+    tx?: TransactionContext,
+  ): Promise<void>;
+  existsBySerieId(
+      serieId: string,
+      params?: { excludeStatus?: DocStatus },
+      tx?: TransactionContext,
+  ): Promise<boolean>;
 
 }

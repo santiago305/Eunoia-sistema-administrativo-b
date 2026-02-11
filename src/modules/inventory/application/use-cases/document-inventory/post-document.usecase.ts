@@ -5,7 +5,7 @@ import { LEDGER_REPOSITORY, LedgerRepository } from '../../../domain/ports/ledge
 import { UNIT_OF_WORK, UnitOfWork } from '../../../domain/ports/unit-of-work.port';
 import { INVENTORY_LOCK, InventoryLock } from '../../../domain/ports/inventory-lock.port';
 import { CLOCK, ClockPort } from '../../../domain/ports/clock.port';
-import { PostDocumentInput } from '../../dto/inputs';
+import { PostDocumentInput } from '../../dto/document/input/document-post';
 import { Direction } from '../../../domain/value-objects/direction';
 import { LedgerEntry } from '../../../domain/entities/ledger-entry';
 import { DocType } from '../../../domain/value-objects/doc-type';

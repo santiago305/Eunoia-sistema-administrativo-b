@@ -6,9 +6,9 @@ export const SERIES_REPOSITORY = Symbol('SERIES_REPOSITORY');
 
 export interface DocumentSeriesRepository {
   findActiveFor(
-    params: { docType: DocType; warehouseId: string },
+    params: { docType?: DocType; isActive?:boolean; warehouseId: string },
     tx?: TransactionContext,
-  ): Promise<DocumentSerie | null>;
+  ): Promise<DocumentSerie[]>;
 
   reserveNextNumber(
     serieId: string,
@@ -24,4 +24,5 @@ export interface DocumentSeriesRepository {
     documentSerie: DocumentSerie, tx?:TransactionContext
   ): Promise<DocumentSerie>
   
+  setActive(id: string, isActive: boolean, tx?: TransactionContext): Promise<void>;
 }
