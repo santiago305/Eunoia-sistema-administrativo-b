@@ -9,7 +9,7 @@ export class RemoveItemUseCase {
     private readonly documentRepo: DocumentRepository,
   ) {}
 
-  async execute(input: RemoveItemInput): Promise<{ ok: true }> {
+  async execute(input: RemoveItemInput): Promise<{ status: string }> {
     const doc = await this.documentRepo.findById(input.docId);
     if (!doc) {
       throw new BadRequestException('Documento no encontrado');
@@ -18,7 +18,10 @@ export class RemoveItemUseCase {
       throw new BadRequestException('Solo se puede eliminar items en DRAFT');
     }
 
-    await this.documentRepo.removeItem(input.docId, input.itemId);
-    return { ok: true };
+    const removed = await this.documentRepo.removeItem(input.docId, input.itemId);
+    if (!removed) {
+      throw new BadRequestException('Item no encontrado para este documento');
+    }
+    return { status: '¡Item eliminado con exito!' };
   }
 }

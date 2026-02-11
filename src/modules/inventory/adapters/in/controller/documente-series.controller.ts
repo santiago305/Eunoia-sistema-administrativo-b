@@ -7,6 +7,7 @@ import { GetActiveDocumentSerieUseCase } from 'src/modules/inventory/application
 import { CreateDocumentSerieDto } from '../dto/document-serie/http-document-serie-create.dto';
 import { HttpSetDocumentSerieActiveDto } from '../dto/document-serie/http-document-serie-set-active.dto';
 import { SetDocumentSerieActive } from 'src/modules/inventory/application/use-cases/document-serie/set-active.usecase'
+import { DocumentSerieSearchDto } from '../dto/document-serie/http-document-serie-search.dto'
 @Controller('inventory/document-series')
 @UseGuards(JwtAuthGuard)
 export class DocumentSeriesController {
@@ -28,12 +29,14 @@ export class DocumentSeriesController {
   }
 
   @Get()
-  getActive(
-    @Query('docType') docType: DocType,
-    @Query('warehouseId') warehouseId: string,
-  ) {
-    return this.getActiveSerie.execute({ docType, warehouseId });
+  getActive(@Query() query: DocumentSerieSearchDto) {
+    return this.getActiveSerie.execute({
+      docType: query.docType,
+      warehouseId: query.warehouseId,
+      isActive: query.isActive
+    });
   }
+
   @Patch(':id/active')
   setActiveById(@Param('id', ParseUUIDPipe) id: string, @Body() dto: HttpSetDocumentSerieActiveDto) {
     return this.setActive.execute({ id, isActive: dto.isActive });

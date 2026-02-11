@@ -1,20 +1,17 @@
-import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { Equals, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { DocType } from 'src/modules/inventory/domain/value-objects/doc-type';
 
-export class HttpCreateDocumentDto {
-  @IsEnum(DocType)
+export class HttpCreateDocumentOutDto {
+  @Equals(DocType.OUT, {
+    message: 'Tipo de documento invalido',
+  })
   docType: DocType;
 
   @IsUUID()
   serieId: string;
 
-  @IsOptional()
   @IsUUID()
   fromWarehouseId?: string;
-
-  @IsOptional()
-  @IsUUID()
-  toWarehouseId?: string;
 
   @IsOptional()
   @IsUUID()

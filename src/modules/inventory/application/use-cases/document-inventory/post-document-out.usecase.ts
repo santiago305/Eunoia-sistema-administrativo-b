@@ -9,6 +9,7 @@ import { LEDGER_REPOSITORY, LedgerRepository } from "src/modules/inventory/domai
 import { Direction } from "src/modules/inventory/domain/value-objects/direction";
 import { DocumentPostOutValidationService } from "src/modules/inventory/domain/services/document-post-out-validation.service";
 import { INVENTORY_LOCK, InventoryLock } from "src/modules/inventory/domain/ports/inventory-lock.port";
+import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
 
 export class PostDocumentoOut {
   constructor(
@@ -48,6 +49,10 @@ export class PostDocumentoOut {
 
       if (!doc.fromWarehouseId) {
         throw new BadRequestException("OUT requiere warehouseId");
+      }
+      
+      if(doc.docType != DocType.OUT){
+        throw new BadRequestException("El tipo de documento no es el adecuado");
       }
       const keys = items.map((i) => ({
         warehouseId: doc.fromWarehouseId!,
@@ -95,7 +100,6 @@ export class PostDocumentoOut {
           {
             warehouseId,
             variantId: item.variantId,
-            locationId: item.fromLocationId,
             delta: -item.quantity,
           },
           tx,

@@ -29,7 +29,7 @@ export class CancelDocumentUseCase {
         { docId: doc.id!, postedBy: input.postedBy, note:input.note , postedAt: now },
           tx,
         );
-      return { status: '¡Postedo con exito!' };
+      return { status: '¡Documento cancelado con exito!' };
     });
   }
 }

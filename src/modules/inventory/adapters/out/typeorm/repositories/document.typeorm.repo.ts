@@ -248,9 +248,10 @@ export class DocumentTypeormRepository implements DocumentRepository {
     );
   }
 
-  async removeItem(docId: string, itemId: string, tx?: TransactionContext): Promise<void> {
+  async removeItem(docId: string, itemId: string, tx?: TransactionContext): Promise<boolean> {
     const repo = this.getItemRepo(tx);
-    await repo.delete({ id: itemId, docId });
+    const result = await repo.delete({ id: itemId, docId });
+    return (result.affected ?? 0) > 0;
   }
 
   async markPosted(

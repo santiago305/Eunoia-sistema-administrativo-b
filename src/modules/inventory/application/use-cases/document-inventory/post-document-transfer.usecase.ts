@@ -9,6 +9,7 @@ import { LedgerEntry } from "src/modules/inventory/domain/entities/ledger-entry"
 import { LEDGER_REPOSITORY, LedgerRepository } from "src/modules/inventory/domain/ports/ledger.repository.port";
 import { Direction } from "src/modules/inventory/domain/value-objects/direction";
 import { DocumentPostOutValidationService } from "src/modules/inventory/domain/services/document-post-out-validation.service";
+import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
 
 export class PostDocumentoTransfer {
   constructor(
@@ -52,6 +53,9 @@ export class PostDocumentoTransfer {
       if (doc.fromWarehouseId === doc.toWarehouseId) {
         throw new BadRequestException("TRANSFER requiere almacenes distintos");
       }
+      if(doc.docType != DocType.TRANSFER){
+        throw new BadRequestException("El tipo del documento no es el adecuado");
+      }
 
       // validar stock en origen usando el servicio
       const { insuficientes } = await this.outValidator.validateOutStock(
@@ -70,8 +74,8 @@ export class PostDocumentoTransfer {
       const keys = items.map((i) => ({
         warehouseId: doc.toWarehouseId!,
         variantId: i.variantId,
-        locationId: i.toLocationId ?? i.fromLocationId,
       }));
+      
       await this.lock.lockSnapshots(keys, tx);
 
       const now = this.clock.now();
@@ -105,14 +109,13 @@ export class PostDocumentoTransfer {
             Direction.IN,
             item.quantity,
             item.unitCost ?? null,
-            item.toLocationId ?? item.fromLocationId,
+            item.toLocationId,
             now,
           ),
         );
         await this.inventoryRepo.incrementOnHand(
           {
             warehouseId: fromWarehouseId,
-            locationId: item.fromLocationId,
             variantId: item.variantId,
             delta: -item.quantity,
           },
@@ -122,7 +125,6 @@ export class PostDocumentoTransfer {
         await this.inventoryRepo.incrementOnHand(
           {
             warehouseId: toWarehouseId,
-            locationId: item.toLocationId ?? item.fromLocationId,
             variantId: item.variantId,
             delta: item.quantity,
           },

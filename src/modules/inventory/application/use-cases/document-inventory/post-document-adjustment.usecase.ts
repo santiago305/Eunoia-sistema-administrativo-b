@@ -8,6 +8,7 @@ import { PostDocumentInput } from "../../dto/document/input/document-post";
 import { LedgerEntry } from "src/modules/inventory/domain/entities/ledger-entry";
 import { LEDGER_REPOSITORY, LedgerRepository } from "src/modules/inventory/domain/ports/ledger.repository.port";
 import { Direction } from "src/modules/inventory/domain/value-objects/direction";
+import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
 
 export class PostDocumentoAdjustment {
   constructor(
@@ -43,14 +44,18 @@ export class PostDocumentoAdjustment {
         throw new BadRequestException("El documento no tiene items");
       }
 
-      const warehouseId = doc.toWarehouseId ?? doc.fromWarehouseId;
+      const warehouseId = doc.fromWarehouseId;
       if (!warehouseId) {
-        throw new BadRequestException("ADJUSTMENT requiere warehouseId");
+        throw new BadRequestException("ADJUSTMENT requiere un almacen");
       }
+      
+      if(doc.docType != DocType.ADJUSTMENT){
+        throw new BadRequestException("El tipo del documento no es el adecuado");
+      }
+
       const keys = items.map((i) => ({
         warehouseId,
         variantId: i.variantId,
-        locationId: i.toLocationId ?? i.fromLocationId,
       }));
       await this.lock.lockSnapshots(keys, tx);
 
@@ -93,7 +98,7 @@ export class PostDocumentoAdjustment {
             direction,
             qty,
             item.unitCost ?? null,
-            item.toLocationId ?? item.fromLocationId,
+            item.fromLocationId,
             now,
           ),
         );

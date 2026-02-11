@@ -7,5 +7,7 @@ export interface DocumentOutput {
   status: DocStatus;
   serie: string;
   correlative: number;
+  toWarehouse?: string;
+  fromWarehouse?:string;
   createdAt?: Date;
 }

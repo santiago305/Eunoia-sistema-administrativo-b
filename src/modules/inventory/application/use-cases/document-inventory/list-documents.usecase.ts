@@ -35,6 +35,7 @@ export class ListDocumentsUseCase {
           status: d.status,
           serie: serie.code,
           correlative: d.correlative,
+          toWarehouse: d.toWarehouseId,
           createdAt: d.createdAt,
         };
       }),
