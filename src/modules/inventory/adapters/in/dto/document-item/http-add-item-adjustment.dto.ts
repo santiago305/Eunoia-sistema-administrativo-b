@@ -10,7 +10,7 @@ export class HttpAddItemAdjustmentDto {
   quantity: number;
 
   @IsUUID()
-  fromLocationId?: string;
+  fromLocationId: string;
 
   @Type(() => Number)
   @IsNumber({ allowNaN: false, allowInfinity: false })

@@ -8,4 +8,8 @@ export class ListInventoryQueryDto {
   @IsOptional()
   @IsUUID()
   variantId?: string;
+  
+  @IsOptional()
+  @IsUUID()
+  locationId?: string;
 }

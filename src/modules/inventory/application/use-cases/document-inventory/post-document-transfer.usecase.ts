@@ -70,13 +70,13 @@ export class PostDocumentoTransfer {
         });
       }
 
-      // lock adicional en destino para evitar carreras al ingresar
-      const keys = items.map((i) => ({
-        warehouseId: doc.toWarehouseId!,
-        variantId: i.variantId,
-      }));
-      
+      //lockear origen y destino
+      const keys = items.flatMap((i) => [
+        { warehouseId: doc.fromWarehouseId!, variantId: i.variantId, locationId: i.fromLocationId },
+        { warehouseId: doc.toWarehouseId!, variantId: i.variantId, locationId: i.toLocationId },
+      ]);
       await this.lock.lockSnapshots(keys, tx);
+
 
       const now = this.clock.now();
       const entries: LedgerEntry[] = [];
@@ -117,6 +117,7 @@ export class PostDocumentoTransfer {
           {
             warehouseId: fromWarehouseId,
             variantId: item.variantId,
+            locationId:item.fromLocationId,
             delta: -item.quantity,
           },
           tx,
@@ -126,6 +127,7 @@ export class PostDocumentoTransfer {
           {
             warehouseId: toWarehouseId,
             variantId: item.variantId,
+            locationId: item.toLocationId,
             delta: item.quantity,
           },
           tx,

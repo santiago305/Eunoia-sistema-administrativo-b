@@ -4,4 +4,6 @@ export interface ItemOutput {
   variantId: string;
   quantity: number;
   unitCost?: number | null;
+  fromLocationId?: string; 
+  toLocationId?: string;   
 }

@@ -1,6 +1,5 @@
 import { BadRequestException, Injectable, Inject } from '@nestjs/common';
 import { INVENTORY_REPOSITORY, InventoryRepository } from '../ports/inventory.repository.port';
-import { INVENTORY_LOCK, InventoryLock } from '../ports/inventory-lock.port';
 import { TransactionContext } from '../ports/unit-of-work.port';
 
 @Injectable()
@@ -8,8 +7,6 @@ export class DocumentPostOutValidationService {
   constructor(
     @Inject(INVENTORY_REPOSITORY)
     private readonly inventoryRepo: InventoryRepository,
-    @Inject(INVENTORY_LOCK)
-    private readonly lock: InventoryLock,
   ) {}
 
   async validateOutStock(
@@ -23,13 +20,6 @@ export class DocumentPostOutValidationService {
     //validar que no se repitan los mismos productos en salida (OUT)
     this.verifyVariantId(items);
     
-    const keys = items.map((i) => ({
-      warehouseId,
-      variantId: i.variantId,
-      locationId: i.fromLocationId,
-    }));
-    await this.lock.lockSnapshots(keys, tx);
-
     const insuficientes: Array<{ itemId: string; required: number; available: number; verify: string }> = [];
     const suficientes: Array<{ itemId: string; required: number; available: number; verify: string }> = [];
 
@@ -38,6 +28,7 @@ export class DocumentPostOutValidationService {
         {
           warehouseId,
           variantId: i.variantId,
+          locationId: i.fromLocationId
         },
         tx,
       );

@@ -21,6 +21,7 @@ export class GetAvailabilityUseCase {
       return {
         warehouseId: input.warehouseId,
         variantId: input.variantId,
+        locationId: input.locationId,
         onHand: 0,
         reserved: 0,
         available: 0,
@@ -30,6 +31,7 @@ export class GetAvailabilityUseCase {
     return {
       warehouseId: snapshot.warehouseId,
       variantId: snapshot.variantId,
+      locationId: snapshot.locationId,
       onHand: snapshot.onHand,
       reserved: snapshot.reserved,
       available: snapshot.available,

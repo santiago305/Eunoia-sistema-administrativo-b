@@ -18,6 +18,7 @@ export class InventoryController {
     return this.listInventory.execute({
       warehouseId: query.warehouseId,
       variantId: query.variantId,
+      locationId: query.locationId,
     });
   }
 
@@ -26,6 +27,7 @@ export class InventoryController {
     return this.getAvailability.execute({
       warehouseId: query.warehouseId,
       variantId: query.variantId,
+      locationId: query.locationId,
     });
   }
 
