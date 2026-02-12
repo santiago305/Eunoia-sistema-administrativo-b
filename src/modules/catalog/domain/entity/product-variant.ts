@@ -1,0 +1,30 @@
+import { Money } from '../value-object/money.vo';
+import { ProductId } from '../value-object/product.vo';
+
+type VariantAttributes = Record<string, unknown>;
+
+export class ProductVariant {
+  constructor(
+    public readonly id: string,
+    private readonly productId: ProductId,
+    public readonly sku: string,
+    public readonly barcode: string | null,
+    public readonly attributes: VariantAttributes,
+    public readonly price: Money,
+    public readonly cost: Money,
+    public readonly isActive: boolean,
+    public readonly createdAt: Date,
+  ) {
+    if (!sku?.trim()) throw new Error("SKU is required");
+  }
+
+  getId(): string { return this.id; }
+  getProductId(): ProductId { return this.productId; }
+  getSku(): string { return this.sku; }
+  getBarcode(): string | null { return this.barcode; }
+  getAttributes(): VariantAttributes { return this.attributes; }
+  getPrice(): Money { return this.price; }
+  getCost(): Money { return this.cost; }
+  getIsActive(): boolean { return this.isActive; }
+  getCreatedAt(): Date { return this.createdAt; }
+}
