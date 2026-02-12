@@ -3,6 +3,7 @@ import { PRODUCT_VARIANT, ProductVariantRepository } from "src/modules/catalag/d
 import { ListProductVariantsInput } from "../../dto/product-variants/input/list-product-variant";
 import { ProductVariantOutput } from "../../dto/product-variants/output/product-variant-out";
 import { ProductId } from "src/modules/catalag/domain/value-object/product.vo";
+import { PaginatedResult } from "../../dto/product-variants/output/paginated-result";
 
 export class SearchProductVariants {
   constructor(
@@ -12,27 +13,40 @@ export class SearchProductVariants {
 
   async execute(
     input: ListProductVariantsInput,
-  ): Promise<ProductVariantOutput[]> {
+  ): Promise<PaginatedResult<ProductVariantOutput>> {
+    const page = input.page && input.page > 0 ? input.page : 1;
+    const limit = input.limit && input.limit > 0 ? input.limit : 10;
 
-    const variants = await this.variantRepo.search({
-      productId: input.productId
-        ? new ProductId(input.productId)
-        : undefined,
+
+    const { items, total } = await this.variantRepo.search({
+      productId: input.productId ? new ProductId(input.productId) : undefined,
       sku: input.sku,
       barcode: input.barcode,
+      q: input.q,
       isActive: input.isActive,
+      productName: input.productName,
+      productDescription: input.productDescription,
+      page,
+      limit,
     });
 
-    return variants.map(v => ({
-      id: v.id,
-      productId: v.productId.value,
-      sku: v.sku,
-      barcode: v.barcode,
-      attributes: v.attributes,
-      price: v.price.getAmount(),
-      cost: v.cost.getAmount(),
-      isActive: v.isActive,
-      createdAt: v.createdAt,
-    }));
+    return {
+      items: items.map((x) => ({
+        id: x.variant.id,
+        productId: x.variant.productId.value,
+        sku: x.variant.sku,
+        barcode: x.variant.barcode,
+        attributes: x.variant.attributes,
+        price: x.variant.price.getAmount(),
+        cost: x.variant.cost.getAmount(),
+        isActive: x.variant.isActive,
+        createdAt: x.variant.createdAt,
+        productName: x.productName,
+        productDescription: x.productDescription,
+      })),
+      total,
+      page,
+      limit,
+    };
   }
 }

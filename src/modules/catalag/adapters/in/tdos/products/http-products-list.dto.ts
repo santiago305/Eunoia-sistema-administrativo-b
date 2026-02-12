@@ -1,4 +1,4 @@
-import { IsOptional, IsBooleanString, IsInt, Min, Max } from 'class-validator';
+import { IsOptional, IsBooleanString, IsInt, Min, Max, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class ListProductQueryDto {
@@ -18,6 +18,11 @@ export class ListProductQueryDto {
   @IsOptional()
   @IsBooleanString()
   isActive?: string;
+
+  @IsOptional()
+  @IsString()
+  q?:string;
+  
 
   @IsOptional()
   name?: string;

@@ -43,11 +43,17 @@ export class ProductVariantsController {
 
   @Get()
   list(@Query() query: ListProductVariantsQueryDto) {
+    const activeVal = query.isActive === undefined ? undefined : query.isActive === 'true';
     const dto: ListProductVariantsInput = {
-      productId:query.productId,
-      isActive: query.isActive === undefined ? undefined : query.isActive === 'true',
+      productId: query.productId,
+      productName: query.productName,
+      productDescription: query.productDescription,
       sku: query.sku,
       barcode: query.barcode,
+      q: query.q,
+      isActive: activeVal,
+      limit: query.limit,
+      page: query.page,
     };
     return this.search.execute(dto);
   }

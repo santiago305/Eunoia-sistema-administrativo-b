@@ -1,4 +1,5 @@
-import { IsOptional, IsString, IsNumber, Min } from "class-validator";
+import { IsOptional, IsString, IsNumber, Min, IsObject } from "class-validator";
+import { ProductVariantAttributes } from "src/modules/catalag/application/dto/product-variants/input/attributes-product-variant";
 
 export class HttpUpdateProductVariantDto {
   @IsOptional()
@@ -6,8 +7,8 @@ export class HttpUpdateProductVariantDto {
   barcode?: string;
 
   @IsOptional()
-  @IsString()
-  attributes?: string;
+  @IsObject()
+  attributes?: ProductVariantAttributes;
 
   @IsOptional()
   @IsNumber()

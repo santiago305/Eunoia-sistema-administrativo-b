@@ -1,4 +1,5 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Min } from "class-validator";
+import { IsBoolean, IsNumber, IsObject, IsOptional, IsString, Min } from "class-validator";
+import { ProductVariantAttributes } from "src/modules/catalag/application/dto/product-variants/input/attributes-product-variant";
 
 export class HttpCreateProductVariantDto {
   @IsString()
@@ -7,8 +8,9 @@ export class HttpCreateProductVariantDto {
   @IsString()
   barcode: string;
 
-  @IsString()
-  attributes: string;
+  @IsObject()
+  @IsOptional()
+  attributes: ProductVariantAttributes;
 
   @IsNumber()
   @Min(0)
