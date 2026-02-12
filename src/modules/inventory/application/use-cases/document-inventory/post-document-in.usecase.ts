@@ -56,6 +56,7 @@ export class PostDocumentoIn {
       const keys = items.map((i) => ({
         warehouseId: doc.toWarehouseId!,
         variantId: i.variantId,
+        locationId: i.toLocationId
       }));
       
       await this.lock.lockSnapshots(keys, tx);
@@ -75,7 +76,7 @@ export class PostDocumentoIn {
             Direction.IN,
             item.quantity,
             item.unitCost ?? null,
-            item.toLocationId ?? item.fromLocationId,
+            item.toLocationId,
             now,
           ),
         );
@@ -84,6 +85,7 @@ export class PostDocumentoIn {
           {
             warehouseId,
             variantId: item.variantId,
+            locationId: item.toLocationId,
             delta: item.quantity,
           },
           tx,

@@ -15,6 +15,7 @@ export class LedgerController {
     return this.getLedger.execute({
       warehouseId: query.warehouseId,
       variantId: query.variantId,
+      locationId: query.locationId,
       docId: query.docId,
       from: query.from ?ParseDateLocal(query.from) : undefined,
       to: query.to ?ParseDateLocal(query.to) : undefined,

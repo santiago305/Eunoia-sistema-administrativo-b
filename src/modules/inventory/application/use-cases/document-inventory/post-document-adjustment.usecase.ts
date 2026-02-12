@@ -56,6 +56,7 @@ export class PostDocumentoAdjustment {
       const keys = items.map((i) => ({
         warehouseId,
         variantId: i.variantId,
+        locationId: i.fromLocationId
       }));
       await this.lock.lockSnapshots(keys, tx);
 
@@ -73,6 +74,7 @@ export class PostDocumentoAdjustment {
             {
               warehouseId,
               variantId: item.variantId,
+              locationId: item.fromLocationId
             },
             tx,
           );
@@ -107,6 +109,7 @@ export class PostDocumentoAdjustment {
           {
             warehouseId,
             variantId: item.variantId,
+            locationId: item.fromLocationId,
             delta: item.quantity,
           },
           tx,

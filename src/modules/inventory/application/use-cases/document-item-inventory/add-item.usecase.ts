@@ -77,6 +77,8 @@ export class AddItemUseCase {
       variantId: saved.variantId,
       quantity: saved.quantity,
       unitCost: saved.unitCost ?? null,
+      fromLocationId: saved.fromLocationId, 
+      toLocationId: saved.toLocationId,     
     };
   }
 }

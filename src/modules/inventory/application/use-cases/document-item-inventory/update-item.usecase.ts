@@ -70,6 +70,8 @@ export class UpdateItemUseCase {
       variantId: updated.variantId,
       quantity: updated.quantity,
       unitCost: updated.unitCost ?? null,
+      fromLocationId: updated.fromLocationId,
+      toLocationId: updated.toLocationId,     
     };
   }
 }

@@ -18,6 +18,8 @@ export class ListDocumentItemsUseCase {
       variantId: i.variantId,
       quantity: i.quantity,
       unitCost: i.unitCost ?? null,
+      fromLocationId: i.fromLocationId, 
+      toLocationId: i.toLocationId,    
     }));
   }
 }

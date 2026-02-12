@@ -20,6 +20,10 @@ export class GetLedgerQueryDto {
 
   @IsOptional()
   @IsUUID()
+  locationId?: string;
+
+  @IsOptional()
+  @IsUUID()
   docId?: string;
 
   @IsOptional()

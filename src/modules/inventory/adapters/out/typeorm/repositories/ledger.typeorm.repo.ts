@@ -50,6 +50,7 @@ private getRepo(tx?: TransactionContext) {
     params: {
       warehouseId?: string;
       variantId?: string;
+      locationId?: string;
       from?: Date;
       to?: Date;
       docId?: string;
@@ -69,7 +70,9 @@ private getRepo(tx?: TransactionContext) {
     if (params.warehouseId) where.warehouseId = params.warehouseId;
     if (params.variantId) where.variantId = params.variantId;
     if (params.docId) where.docId = params.docId;
-
+    if (params.locationId !== undefined) {
+        where.locationId = params.locationId;
+    }
     const { from, to } = this.normalizeRange(params);
 
     if (from && to) {
