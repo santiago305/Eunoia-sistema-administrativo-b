@@ -8,8 +8,8 @@ export class ProductEntity {
   @Column({ type: 'varchar' })
   name: string;
 
-  @Column({ type: 'text' })
-  description: string;
+  @Column({ type: 'text' , nullable:true})
+  description?: string;
 
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;

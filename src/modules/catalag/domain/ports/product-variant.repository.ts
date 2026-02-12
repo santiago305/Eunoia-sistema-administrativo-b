@@ -2,6 +2,8 @@ import { TransactionContext } from "src/modules/inventory/domain/ports/unit-of-w
 import { ProductVar } from "../entity/product-variant";
 import { Money } from "../value-object/money.vo";
 import { ProductId } from "../value-object/product.vo";
+import { ProductVariantWithProductInfo } from "../../application/dto/product-variants/output/variant-with-produc-info";
+import { ProductVariantAttributes } from "../../application/dto/product-variants/input/attributes-product-variant";
 
 export const PRODUCT_VARIANT = Symbol('PRODUCT_VARIANT')
 export interface ProductVariantRepository {
@@ -11,10 +13,12 @@ export interface ProductVariantRepository {
     id: string;
     sku?: string;
     barcode?: string;
-    attributes?: string;
+    attributes?: ProductVariantAttributes;
     price?: Money;
     cost?: Money;
   }, tx?: TransactionContext): Promise<ProductVar | null>;
+  
+  findLastCreated(tx?: TransactionContext): Promise<ProductVar | null>;
 
   setActive(id: string, isActive: boolean, tx?: TransactionContext): Promise<void>;
 
@@ -27,9 +31,14 @@ export interface ProductVariantRepository {
   listActiveByProductId(productId: ProductId, tx?: TransactionContext): Promise<ProductVar[]>;
   listInactiveByProductId(productId: ProductId, tx?: TransactionContext): Promise<ProductVar[]>;
   search(params: {
-      productId?:ProductId;
+      productId?: ProductId;
       isActive?: boolean;
       sku?: string;
       barcode?: string;
-    }, tx?: TransactionContext): Promise<ProductVar[]>;
+      productName?: string;
+      productDescription?: string;
+      q?: string;
+      page?: number;
+      limit?: number;
+    }, tx?: TransactionContext): Promise<{ items: ProductVariantWithProductInfo[]; total: number }>;
 }

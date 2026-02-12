@@ -64,7 +64,8 @@ export class ProductTypeormRepository implements ProductRepository {
     );
   }
   async searchPaginated(
-    params: { isActive?: boolean; name?: string; description?: string; page: number; limit: number },
+    params: { isActive?: boolean; name?: string; description?: string; page: number;
+      q?:string, limit: number },
     tx?: TransactionContext,
   ): Promise<{ items: Product[]; total: number }> {
     const repo = this.getRepo(tx);
@@ -84,6 +85,15 @@ export class ProductTypeormRepository implements ProductRepository {
     }
     if (params.isActive !== undefined) {
       qb.andWhere('p.isActive = :isActive', { isActive: params.isActive });
+    }
+
+    if(params.q){
+      qb.andWhere(
+        `(unaccent(p.name) ILIKE unaccent(:q)
+          OR
+          unaccent(p.description) ILIKE unaccent(:q))`,
+        { q: `%${params.q}%` },
+      );
     }
 
     const skip = (params.page - 1) * params.limit;
@@ -147,6 +157,11 @@ export class ProductTypeormRepository implements ProductRepository {
     const repo = this.getRepo(tx);
     await repo.update({ id }, { isActive });
   }
+  async setAllVariantsActive(id: string, isActive: boolean, tx?: TransactionContext): Promise<void> {
+    const repo = this.getVariant(tx);
+    await repo.update({ id }, { isActive });
+  }
+
 
   async listActive(tx?: TransactionContext): Promise<Product[]> {
     const repo = this.getRepo(tx);

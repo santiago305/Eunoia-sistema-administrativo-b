@@ -24,6 +24,7 @@ export class SearchProductsPaginated {
       isActive: input.isActive,
       name: input.name,
       description: input.description,
+      q: input.q,
       page,
       limit,
     });

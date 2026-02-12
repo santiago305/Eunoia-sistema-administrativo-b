@@ -13,6 +13,7 @@ export interface ProductRepository {
   }, tx?: TransactionContext): Promise<Product | null>;
 
   setActive(id: string, isActive: boolean, tx?: TransactionContext): Promise<void>;
+  setAllVariantsActive(id: string, isActive: boolean, tx?: TransactionContext): Promise<void>;
   getByIdWithVariants(
       id: string,
       tx?: TransactionContext,
@@ -25,6 +26,7 @@ export interface ProductRepository {
     isActive?: boolean;
     name?: string;
     description?: string;
+    q?:string;
     page: number;
     limit: number;
   }, tx?: TransactionContext): Promise<{ items: Product[]; total: number }>;

@@ -1,3 +1,4 @@
+import { ProductVariantAttributes } from "../../application/dto/product-variants/input/attributes-product-variant";
 import { Money } from "../value-object/money.vo";
 import { ProductId } from "../value-object/product.vo";
 
@@ -7,7 +8,7 @@ export class ProductVar {
     private readonly product_id: ProductId,
     public readonly sku: string,
     public readonly barcode: string,
-    public readonly attributes: string,
+    public readonly attributes: ProductVariantAttributes,
     public readonly price: Money,
     public readonly cost: Money,
     public readonly isActive: boolean,
