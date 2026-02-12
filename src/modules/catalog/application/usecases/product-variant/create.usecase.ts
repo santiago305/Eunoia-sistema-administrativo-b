@@ -7,6 +7,7 @@ import { Money } from "src/modules/catalog/domain/value-object/money.vo";
 import { CreateProductVariantInput } from "../../dto/product-variants/input/create-product-variant";
 import { ProductVariantOutput } from "../../dto/product-variants/output/product-variant-out";
 import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
+import { generateUniqueSku } from "./generate-unique-sku";
 
 export class CreateProductVariant {
   constructor(
@@ -23,10 +24,24 @@ export class CreateProductVariant {
     if (!product) {
       throw new BadRequestException("Producto no encontrado");
     }
+    const existsBarcode = await this.variantRepo.findByBarcode(input.barcode);
+    if (existsBarcode) {
+      throw new BadRequestException("Barcode ya existe");
+    }
 
-    const sku = await this.generateUniqueSku(input.productId, (product as any).name);
 
+<<<<<<< HEAD:src/modules/catalog/application/usecases/product-variant/create.usecase.ts
     const variant = new ProductVariant(
+=======
+    const sku = await generateUniqueSku(
+      this.variantRepo,
+      input.productId,
+      (product as any).name,
+      input.attributes?.color,
+      input.attributes?.size,
+    );
+    const variant = new ProductVar(
+>>>>>>> dc51daef1824e3f0b93f1af0f6fb926f48682178:src/modules/catalag/application/usecases/product-variant/create.usecase.ts
       undefined,
       new ProductId(input.productId),
       sku,
@@ -39,39 +54,15 @@ export class CreateProductVariant {
     );
 
     const created = await this.variantRepo.create(variant);
-    return this.toOutput(created);
+    return this.toOutput(created, product);
   }
 
-  private async generateUniqueSku(productId: string, productName: string) {
-    const prefix = productName.trim().substring(0, 3).toUpperCase().padEnd(3, "X");
-    const variants = await this.variantRepo.listByProductId(new ProductId(productId));
-
-    const suffixes = variants
-      .map((v: any) => v.sku)
-      .filter((sku: string) => typeof sku === "string" && sku.startsWith(`${prefix}-`))
-      .map((sku: string) => {
-        const part = sku.substring(prefix.length + 1);
-        const num = Number(part);
-        return Number.isFinite(num) ? num : undefined;
-      })
-      .filter((n: number | undefined) => n !== undefined) as number[];
-
-    let next = suffixes.length ? Math.max(...suffixes) + 1 : 1;
-
-    for (let i = 0; i < 50; i++) {
-      const sku = `${prefix}-${String(next).padStart(5, "0")}`;
-      const exists = await this.variantRepo.findBySku(sku);
-      if (!exists) return sku;
-      next++;
-    }
-
-    throw new BadRequestException("No se pudo generar SKU único");
-  }
-
-  private toOutput(v: any): ProductVariantOutput {
+  private toOutput(v: any, product: any): ProductVariantOutput {
     return {
       id: v.id,
-      productId: v.product_id?.value ?? v.productId,
+      productId: product.id,
+      productName: product.name,
+      productDescription: product.description,
       sku: v.sku,
       barcode: v.barcode,
       attributes: v.attributes,

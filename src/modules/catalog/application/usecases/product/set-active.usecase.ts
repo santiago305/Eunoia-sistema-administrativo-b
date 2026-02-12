@@ -11,11 +11,21 @@ export class SetProductActive {
     private readonly productRepo: ProductRepository,
   ) {}
 
-  async execute(input: SetProductActiveInput): Promise<{ ok: true }> {
-    return this.uow.runInTransaction(async (tx) => {
-      await this.productRepo.setActive(input.id, input.isActive, tx);
-      return { ok: true };
-    });
-  }
+  async execute(input: SetProductActiveInput): Promise<{ status: string }> {
+  return this.uow.runInTransaction(async (tx) => {
+    await this.productRepo.setActive(input.id, input.isActive, tx);
+
+    // Opción A: cascada a variantes
+    if (input.isActive === false) {
+      await this.productRepo.setAllVariantsActive(input.id, false, tx);
+    }
+    if (input.isActive === true) {
+      await this.productRepo.setAllVariantsActive(input.id, true, tx);
+    }
+
+    return { status: "¡Operación lograda con exito!" };
+  });
+}
+
 }
 

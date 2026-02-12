@@ -40,10 +40,14 @@ export class ProductsController {
 
   @Get()
   list(@Query() query: ListProductQueryDto) {
+    const isActived = query.isActive === undefined ? undefined : query.isActive === 'true';
+    const q = query.q?.trim();
+
     return this.search.execute({
-      isActive: query.isActive === undefined ? undefined : query.isActive === 'true',
+      isActive: isActived,
       name: query.name,
       description: query.description,
+      q: q,
       page: query.page,
       limit: query.limit,
     });
