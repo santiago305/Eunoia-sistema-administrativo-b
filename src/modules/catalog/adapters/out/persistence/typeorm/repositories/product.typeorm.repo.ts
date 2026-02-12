@@ -41,7 +41,7 @@ export class ProductTypeormRepository implements ProductRepository {
     });
 
     return new Product(
-      saved.id,
+      new ProductId(saved.id),
       saved.name,
       saved.description,
       saved.isActive,
@@ -55,7 +55,7 @@ export class ProductTypeormRepository implements ProductRepository {
     if (!row) return null;
 
     return new Product(
-      row.id,
+      new ProductId(row.id),
       row.name,
       row.description,
       row.isActive,
@@ -108,7 +108,7 @@ export class ProductTypeormRepository implements ProductRepository {
       items: rows.map(
         (row) =>
           new Product(
-            row.id,
+            new ProductId(row.id),
             row.name,
             row.description,
             row.isActive,
@@ -144,7 +144,7 @@ export class ProductTypeormRepository implements ProductRepository {
     if (!updated) return null;
 
     return new Product(
-      updated.id,
+      new ProductId(updated.id),
       updated.name,
       updated.description,
       updated.isActive,
@@ -169,7 +169,7 @@ export class ProductTypeormRepository implements ProductRepository {
     return rows.map(
       (row) =>
         new Product(
-          row.id,
+          new ProductId(row.id),
           row.name,
           row.description,
           row.isActive,
@@ -185,7 +185,7 @@ export class ProductTypeormRepository implements ProductRepository {
     return rows.map(
       (row) =>
         new Product(
-          row.id,
+          new ProductId(row.id),
           row.name,
           row.description,
           row.isActive,

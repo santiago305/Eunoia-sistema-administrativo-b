@@ -1,27 +1,17 @@
-import { Inject } from "@nestjs/common";
-import { PRODUCT_VARIANT, ProductVariantRepository } from "src/modules/catalog/domain/ports/product-variant.repository";
-import { ListProductVariantsInput } from "../../dto/product-variants/input/list-product-variant";
-import { ProductVariantOutput } from "../../dto/product-variants/output/product-variant-out";
-<<<<<<< HEAD:src/modules/catalog/application/usecases/product-variant/search.usecase.ts
-import { ProductId } from "src/modules/catalog/domain/value-object/product.vo";
-=======
-import { ProductId } from "src/modules/catalag/domain/value-object/product.vo";
-import { PaginatedResult } from "../../dto/product-variants/output/paginated-result";
->>>>>>> dc51daef1824e3f0b93f1af0f6fb926f48682178:src/modules/catalag/application/usecases/product-variant/search.usecase.ts
-
+import { Inject } from '@nestjs/common';
+import { PRODUCT_VARIANT, ProductVariantRepository } from 'src/modules/catalog/domain/ports/product-variant.repository';
+import { ListProductVariantsInput } from '../../dto/product-variants/input/list-product-variant';
+import { ProductVariantOutput } from '../../dto/product-variants/output/product-variant-out';
+import { ProductId } from 'src/modules/catalog/domain/value-object/product.vo';
+import { PaginatedResult } from '../../dto/product-variants/output/paginated-result';
 export class SearchProductVariants {
   constructor(
     @Inject(PRODUCT_VARIANT)
     private readonly variantRepo: ProductVariantRepository,
   ) {}
-
-  async execute(
-    input: ListProductVariantsInput,
-  ): Promise<PaginatedResult<ProductVariantOutput>> {
+  async execute(input: ListProductVariantsInput): Promise<PaginatedResult<ProductVariantOutput>> {
     const page = input.page && input.page > 0 ? input.page : 1;
     const limit = input.limit && input.limit > 0 ? input.limit : 10;
-
-
     const { items, total } = await this.variantRepo.search({
       productId: input.productId ? new ProductId(input.productId) : undefined,
       sku: input.sku,
@@ -33,11 +23,10 @@ export class SearchProductVariants {
       page,
       limit,
     });
-
     return {
       items: items.map((x) => ({
         id: x.variant.id,
-        productId: x.variant.productId.value,
+        productId: x.variant.getProductId().value,
         sku: x.variant.sku,
         barcode: x.variant.barcode,
         attributes: x.variant.attributes,
@@ -53,9 +42,4 @@ export class SearchProductVariants {
       limit,
     };
   }
-<<<<<<< HEAD:src/modules/catalog/application/usecases/product-variant/search.usecase.ts
 }
-
-=======
-}
->>>>>>> dc51daef1824e3f0b93f1af0f6fb926f48682178:src/modules/catalag/application/usecases/product-variant/search.usecase.ts

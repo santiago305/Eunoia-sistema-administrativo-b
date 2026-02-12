@@ -1,7 +1,6 @@
-import { ProductVar } from "src/modules/catalag/domain/entity/product-variant";
-
+import { ProductVariant } from 'src/modules/catalog/domain/entity/product-variant';
 export interface ProductVariantWithProductInfo {
-  variant: ProductVar;
+  variant: ProductVariant;
   productName: string;
   productDescription: string;
 }

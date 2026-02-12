@@ -1,14 +1,13 @@
-import { Inject, BadRequestException } from "@nestjs/common";
-import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/domain/ports/product.repository";
-import { PRODUCT_VARIANT, ProductVariantRepository } from "src/modules/catalog/domain/ports/product-variant.repository";
-import { ProductVariant } from "src/modules/catalog/domain/entity/product-variant";
-import { ProductId } from "src/modules/catalog/domain/value-object/product.vo";
-import { Money } from "src/modules/catalog/domain/value-object/money.vo";
-import { CreateProductVariantInput } from "../../dto/product-variants/input/create-product-variant";
-import { ProductVariantOutput } from "../../dto/product-variants/output/product-variant-out";
-import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
-import { generateUniqueSku } from "./generate-unique-sku";
-
+import { Inject, BadRequestException } from '@nestjs/common';
+import { PRODUCT_REPOSITORY, ProductRepository } from 'src/modules/catalog/domain/ports/product.repository';
+import { PRODUCT_VARIANT, ProductVariantRepository } from 'src/modules/catalog/domain/ports/product-variant.repository';
+import { ProductVariant } from 'src/modules/catalog/domain/entity/product-variant';
+import { ProductId } from 'src/modules/catalog/domain/value-object/product.vo';
+import { Money } from 'src/modules/catalog/domain/value-object/money.vo';
+import { CreateProductVariantInput } from '../../dto/product-variants/input/create-product-variant';
+import { ProductVariantOutput } from '../../dto/product-variants/output/product-variant-out';
+import { CLOCK, ClockPort } from 'src/modules/inventory/domain/ports/clock.port';
+import { generateUniqueSku } from './generate-unique-sku';
 export class CreateProductVariant {
   constructor(
     @Inject(PRODUCT_REPOSITORY)
@@ -18,31 +17,26 @@ export class CreateProductVariant {
     @Inject(CLOCK)
     private readonly clock: ClockPort,
   ) {}
-
   async execute(input: CreateProductVariantInput): Promise<ProductVariantOutput> {
     const product = await this.productRepo.findById(input.productId);
     if (!product) {
-      throw new BadRequestException("Producto no encontrado");
+      throw new BadRequestException('Producto no encontrado');
     }
     const existsBarcode = await this.variantRepo.findByBarcode(input.barcode);
     if (existsBarcode) {
-      throw new BadRequestException("Barcode ya existe");
+      throw new BadRequestException('Barcode ya existe');
     }
-
-
-<<<<<<< HEAD:src/modules/catalog/application/usecases/product-variant/create.usecase.ts
+    const sku = input.sku?.trim()
+      ? input.sku.trim()
+      : await generateUniqueSku(
+          this.variantRepo,
+          input.productId,
+          (product as any).name,
+          input.attributes?.color,
+          input.attributes?.size,
+        );
     const variant = new ProductVariant(
-=======
-    const sku = await generateUniqueSku(
-      this.variantRepo,
-      input.productId,
-      (product as any).name,
-      input.attributes?.color,
-      input.attributes?.size,
-    );
-    const variant = new ProductVar(
->>>>>>> dc51daef1824e3f0b93f1af0f6fb926f48682178:src/modules/catalag/application/usecases/product-variant/create.usecase.ts
-      undefined,
+      undefined as unknown as string,
       new ProductId(input.productId),
       sku,
       input.barcode,
@@ -52,11 +46,9 @@ export class CreateProductVariant {
       input.isActive ?? true,
       this.clock.now(),
     );
-
     const created = await this.variantRepo.create(variant);
     return this.toOutput(created, product);
   }
-
   private toOutput(v: any, product: any): ProductVariantOutput {
     return {
       id: v.id,
@@ -73,4 +65,3 @@ export class CreateProductVariant {
     };
   }
 }
-

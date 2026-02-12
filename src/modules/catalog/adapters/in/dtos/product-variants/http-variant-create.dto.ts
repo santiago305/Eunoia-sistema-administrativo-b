@@ -1,5 +1,5 @@
 import { IsBoolean, IsNumber, IsObject, IsOptional, IsString, Min } from "class-validator";
-import { ProductVariantAttributes } from "src/modules/catalag/application/dto/product-variants/input/attributes-product-variant";
+import { ProductVariantAttributes } from "src/modules/catalog/application/dto/product-variants/input/attributes-product-variant";
 
 export class HttpCreateProductVariantDto {
   @IsString()
