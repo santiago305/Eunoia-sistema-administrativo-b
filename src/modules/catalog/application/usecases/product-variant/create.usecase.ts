@@ -1,4 +1,10 @@
-import { Inject, BadRequestException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PRODUCT_REPOSITORY, ProductRepository } from 'src/modules/catalog/domain/ports/product.repository';
 import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from 'src/modules/catalog/domain/ports/product-variant.repository';
 import { Product } from 'src/modules/catalog/domain/entity/product';
@@ -24,36 +30,59 @@ export class CreateProductVariant {
     const productId = ProductId.create(input.productId);
 
     const product = await this.productRepo.findById(productId);
-    if (!product) throw new BadRequestException('Producto no encontrado');
+    if (!product) throw new NotFoundException('Producto no encontrado');
 
     if (input.barcode?.trim()) {
       const existsBarcode = await this.variantRepo.findByBarcode(input.barcode.trim());
-      if (existsBarcode) throw new BadRequestException('Barcode ya existe');
+      if (existsBarcode) throw new ConflictException('Barcode ya existe');
     }
 
-    const sku = input.sku?.trim()
-      ? input.sku.trim()
-      : await generateUniqueSku(
+    const explicitSku = input.sku?.trim();
+    if (explicitSku) {
+      const existsSku = await this.variantRepo.findBySku(explicitSku);
+      if (existsSku) throw new ConflictException('SKU ya existe');
+    }
+
+    const maxAttempts = explicitSku ? 1 : 3;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const sku =
+        explicitSku ??
+        (await generateUniqueSku(
           this.variantRepo,
           product.getName(),
           input.attributes?.color,
           input.attributes?.size,
-        );
+        ));
 
-    const variant = new ProductVariant(
-      undefined,
-      productId,
-      sku,
-      input.barcode?.trim() || null,
-      input.attributes ?? {},
-      Money.create(input.price),
-      Money.create(input.cost),
-      input.isActive ?? true,
-      this.clock.now(),
-    );
+      const variant = new ProductVariant(
+        undefined,
+        productId,
+        sku,
+        input.barcode?.trim() || null,
+        input.attributes ?? {},
+        Money.create(input.price),
+        Money.create(input.cost),
+        input.isActive ?? true,
+        this.clock.now(),
+      );
 
-    const created = await this.variantRepo.create(variant);
-    return this.toOutput(created, product);
+      try {
+        const created = await this.variantRepo.create(variant);
+        return this.toOutput(created, product);
+      } catch (error: any) {
+        const dbUniqueViolation = error?.code === '23505';
+        if (dbUniqueViolation && !explicitSku && attempt < maxAttempts) {
+          continue;
+        }
+        if (dbUniqueViolation) {
+          throw new ConflictException('SKU o barcode ya existe');
+        }
+        throw new InternalServerErrorException('No se pudo crear la variante');
+      }
+    }
+
+    throw new BadRequestException('No se pudo generar un SKU unico');
   }
 
   private toOutput(v: ProductVariant, product: Product): ProductVariantOutput {

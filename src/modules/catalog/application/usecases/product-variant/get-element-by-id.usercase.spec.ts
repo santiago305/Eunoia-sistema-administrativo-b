@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { GetProductVariant } from './get-element-by-id.usercase';
 import { Money } from 'src/modules/catalog/domain/value-object/money.vo';
 import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo';
@@ -15,7 +15,7 @@ describe('GetProductVariant', () => {
 
     const useCase = new GetProductVariant(variantRepo as any);
 
-    await expect(useCase.execute({ id: variantUuid })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(useCase.execute({ id: variantUuid })).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('retorna variante mapeada', async () => {

@@ -23,6 +23,7 @@ export interface ProductVariantRepository {
   ): Promise<ProductVariant | null>;
 
   findLastCreated(tx?: TransactionContext): Promise<ProductVariant | null>;
+  findLastSkuByPrefix(prefix: string, tx?: TransactionContext): Promise<string | null>;
 
   setActive(id: string, isActive: boolean, tx?: TransactionContext): Promise<void>;
 

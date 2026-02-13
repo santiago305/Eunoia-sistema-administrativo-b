@@ -1,16 +1,9 @@
-import { Inject } from "@nestjs/common";
+import { Inject, NotFoundException } from "@nestjs/common";
 import { UNIT_OF_WORK, UnitOfWork } from "src/modules/inventory/domain/ports/unit-of-work.port";
 import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/domain/ports/product.repository";
 import { ProductId } from "src/modules/catalog/domain/value-object/product-id.vo";
 import { UpdateProductInput } from "../../dto/products/input/update-product";
 import { ProductOutput } from "../../dto/products/output/product-out";
-
-export class ProductNotFoundError extends Error {
-  constructor(message = "Producto no encontrado") {
-    super(message);
-    this.name = "ProductNotFoundError";
-  }
-}
 
 export class UpdateProduct {
   constructor(
@@ -29,7 +22,7 @@ export class UpdateProduct {
         tx,
       );
 
-      if (!updated) throw new ProductNotFoundError();
+      if (!updated) throw new NotFoundException('Producto no encontrado');
 
       return {
         id: updated.getId()?.value,

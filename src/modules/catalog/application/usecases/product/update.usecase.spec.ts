@@ -1,4 +1,5 @@
-import { UpdateProduct, ProductNotFoundError } from './update.usecase';
+import { NotFoundException } from '@nestjs/common';
+import { UpdateProduct } from './update.usecase';
 import { Product } from 'src/modules/catalog/domain/entity/product';
 import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo';
 
@@ -55,6 +56,6 @@ describe('UpdateProduct', () => {
 
     await expect(
       useCase.execute({ id: productId.value, name: 'X', description: 'Y' }),
-    ).rejects.toBeInstanceOf(ProductNotFoundError);
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

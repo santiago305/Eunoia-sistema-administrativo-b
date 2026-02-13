@@ -10,9 +10,16 @@ export async function generateUniqueSku(
 ) {
   const prefix = buildSkuBase(productName, color, size);
 
-  // Ideal: que el repo tenga un método tipo findLastSkuByPrefix(prefix)
-  // para evitar intentos lineales.
+  const lastSku = await variantRepo.findLastSkuByPrefix(prefix);
   let next = 1;
+
+  if (lastSku) {
+    const parts = lastSku.split('-');
+    const suffix = Number(parts[parts.length - 1]);
+    if (Number.isFinite(suffix) && suffix > 0) {
+      next = suffix + 1;
+    }
+  }
 
   const MAX_ATTEMPTS = 5000;
 
@@ -23,5 +30,5 @@ export async function generateUniqueSku(
     next++;
   }
 
-  throw new BadRequestException(`No se pudo generar SKU único para ${prefix}`);
+  throw new BadRequestException(`No se pudo generar SKU unico para ${prefix}`);
 }

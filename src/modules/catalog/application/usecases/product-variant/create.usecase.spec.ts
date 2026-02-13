@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { CreateProductVariant } from './create.usecase';
 import { Product } from 'src/modules/catalog/domain/entity/product';
 import { ProductVariant } from 'src/modules/catalog/domain/entity/product-variant';
@@ -15,6 +15,7 @@ describe('CreateProductVariant', () => {
 
     const variantRepo = {
       findByBarcode: jest.fn(),
+      findLastSkuByPrefix: jest.fn(),
       findLastCreated: jest.fn(),
       findBySku: jest.fn(),
       create: jest.fn(),
@@ -26,7 +27,7 @@ describe('CreateProductVariant', () => {
 
     await expect(
       useCase.execute({ productId: productUuid, barcode: '0001', attributes: {}, price: 10, cost: 5 }),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('crea variante con sku generado', async () => {
@@ -38,6 +39,7 @@ describe('CreateProductVariant', () => {
 
     const variantRepo = {
       findByBarcode: jest.fn().mockResolvedValue(null),
+      findLastSkuByPrefix: jest.fn().mockResolvedValue(null),
       findLastCreated: jest.fn().mockResolvedValue(null),
       findBySku: jest.fn().mockResolvedValue(null),
       create: jest.fn(),

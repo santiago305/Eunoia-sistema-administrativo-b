@@ -127,6 +127,18 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
     return this.toDomain(row);
   }
 
+  async findLastSkuByPrefix(prefix: string, tx?: TransactionContext): Promise<string | null> {
+    const row = await this.getRepo(tx)
+      .createQueryBuilder('v')
+      .select('v.sku', 'sku')
+      .where('v.sku LIKE :pattern', { pattern: `${prefix}-%` })
+      .orderBy('v.sku', 'DESC')
+      .limit(1)
+      .getRawOne<{ sku?: string }>();
+
+    return row?.sku ?? null;
+  }
+
   async update(
     params: {
       id: string;

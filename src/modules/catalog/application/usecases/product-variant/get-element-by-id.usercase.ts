@@ -1,4 +1,4 @@
-import { Inject, BadRequestException } from '@nestjs/common';
+import { Inject, NotFoundException } from '@nestjs/common';
 import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from 'src/modules/catalog/domain/ports/product-variant.repository';
 import { ProductVariant } from 'src/modules/catalog/domain/entity/product-variant';
 import { GetProductVariantInput } from '../../dto/product-variants/input/get-by-id-product-variant';
@@ -12,7 +12,7 @@ export class GetProductVariant {
 
   async execute(input: GetProductVariantInput): Promise<ProductVariantOutput> {
     const variant = await this.variantRepo.findById(input.id);
-    if (!variant) throw new BadRequestException('Variant no encontrado');
+    if (!variant) throw new NotFoundException('Variant no encontrado');
     return this.toOutput(variant);
   }
 
@@ -30,3 +30,4 @@ export class GetProductVariant {
     };
   }
 }
+

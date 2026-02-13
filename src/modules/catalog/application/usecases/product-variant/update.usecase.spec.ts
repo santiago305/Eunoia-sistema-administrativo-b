@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { UpdateProductVariant } from './update.usecase';
 import { Product } from 'src/modules/catalog/domain/entity/product';
 import { ProductVariant } from 'src/modules/catalog/domain/entity/product-variant';
@@ -73,7 +73,7 @@ describe('UpdateProductVariant', () => {
 
     const useCase = new UpdateProductVariant(uow as any, variantRepo as any, productRepo as any);
 
-    await expect(useCase.execute({ id: variantUuid })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(useCase.execute({ id: variantUuid })).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('recalcula sku cuando llegan attributes', async () => {
