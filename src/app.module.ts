@@ -13,6 +13,7 @@ import { CommonModule } from './shared/common.module';
 import { DatabaseModule } from './infrastructure/database/database.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { WarehousesModule } from './modules/warehouses/warehouses.module';
 
 
 @Module({
@@ -32,6 +33,7 @@ import { APP_GUARD } from '@nestjs/core';
     SessionsModule,
     InventoryModule,
     CatalogModule,
+    WarehousesModule,
   ],
   providers: [
     {
