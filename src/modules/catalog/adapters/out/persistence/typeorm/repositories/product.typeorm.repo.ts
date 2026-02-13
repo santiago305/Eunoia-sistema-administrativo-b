@@ -75,13 +75,13 @@ export class ProductTypeormRepository implements ProductRepository {
 
     if (params.name) qb.andWhere('unaccent(p.name) ILIKE unaccent(:name)', { name: `%${params.name}%` });
     if (params.description) qb.andWhere('unaccent(p.description) ILIKE unaccent(:description)', { description: `%${params.description}%` });
-    if (params.isActive !== undefined) qb.andWhere('p.isActive = :isActive', { isActive: params.isActive });
+    if (params.isActive !== undefined) qb.andWhere('p.is_active = :isActive', { isActive: params.isActive });
     if (params.q) {
       qb.andWhere('(unaccent(p.name) ILIKE unaccent(:q) OR unaccent(p.description) ILIKE unaccent(:q))', { q: `%${params.q}%` });
     }
 
     const skip = (params.page - 1) * params.limit;
-    const [rows, total] = await qb.orderBy('p.createdAt', 'DESC').skip(skip).take(params.limit).getManyAndCount();
+    const [rows, total] = await qb.orderBy('p.created_at', 'DESC').skip(skip).take(params.limit).getManyAndCount();
 
     return {
       items: rows.map((row) =>
@@ -153,7 +153,7 @@ export class ProductTypeormRepository implements ProductRepository {
         r.barcode,
         r.attributes,
         Money.create(Number(r.price)),
-        Money.create(Number(r.cost)),
+        Money.create(Number(r.cost ?? 0)),
         r.isActive,
         r.createdAt,
       ),

@@ -4,8 +4,9 @@ export class HttpCreateProductDto {
   @IsString()
   name: string;
 
+  @IsOptional()
   @IsString()
-  description: string;
+  description?: string;
 
   @IsOptional()
   @IsBoolean()

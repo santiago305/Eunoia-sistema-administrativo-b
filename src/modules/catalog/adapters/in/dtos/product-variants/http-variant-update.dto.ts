@@ -4,7 +4,7 @@ import { ProductVariantAttributes } from "src/modules/catalog/application/dto/pr
 export class HttpUpdateProductVariantDto {
   @IsOptional()
   @IsString()
-  barcode?: string;
+  barcode?: string | null;
 
   @IsOptional()
   @IsObject()

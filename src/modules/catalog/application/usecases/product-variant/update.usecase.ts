@@ -55,7 +55,7 @@ export class UpdateProductVariant {
         {
           id: input.id,
           sku,
-          barcode: input.barcode?.trim() ?? undefined,
+          barcode: input.barcode === null ? null : input.barcode?.trim() ?? undefined,
           attributes: input.attributes,
           price: input.price !== undefined ? Money.create(input.price) : undefined,
           cost: input.cost !== undefined ? Money.create(input.cost) : undefined,

@@ -63,10 +63,10 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
     const limit = params.limit && params.limit > 0 ? params.limit : 10;
     const skip = (page - 1) * limit;
 
-    const qb = repo.createQueryBuilder('v').innerJoin(ProductEntity, 'p', 'p.id = v.productId');
+    const qb = repo.createQueryBuilder('v').innerJoin(ProductEntity, 'p', 'p.product_id = v.product_id');
 
-    if (params.productId) qb.andWhere('v.productId = :productId', { productId: params.productId.value });
-    if (params.isActive !== undefined) qb.andWhere('v.isActive = :isActive', { isActive: params.isActive });
+    if (params.productId) qb.andWhere('v.product_id = :productId', { productId: params.productId.value });
+    if (params.isActive !== undefined) qb.andWhere('v.is_active = :isActive', { isActive: params.isActive });
     if (params.sku) qb.andWhere('v.sku ILIKE :sku', { sku: `%${params.sku}%` });
     if (params.barcode) qb.andWhere('v.barcode ILIKE :barcode', { barcode: `%${params.barcode}%` });
     if (params.productName) qb.andWhere('p.name ILIKE :productName', { productName: `%${params.productName}%` });
@@ -89,18 +89,18 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
     const { entities, raw } = await qb
       .select([
         'v.id',
-        'v.productId',
+        'v.product_id',
         'v.sku',
         'v.barcode',
         'v.attributes',
         'v.price',
         'v.cost',
-        'v.isActive',
-        'v.createdAt',
+        'v.is_active',
+        'v.created_at',
         'p.name',
         'p.description',
       ])
-      .orderBy('v.createdAt', 'DESC')
+      .orderBy('v.created_at', 'DESC')
       .skip(skip)
       .take(limit)
       .getRawAndEntities();
@@ -120,7 +120,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
   async findLastCreated(tx?: TransactionContext): Promise<ProductVariant | null> {
     const row = await this.getRepo(tx)
       .createQueryBuilder('v')
-      .orderBy('v.createdAt', 'DESC')
+      .orderBy('v.created_at', 'DESC')
       .limit(1)
       .getOne();
     if (!row) return null;
@@ -143,7 +143,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
     params: {
       id: string;
       sku?: string;
-      barcode?: string;
+      barcode?: string | null;
       attributes?: AttributesRecord;
       price?: Money;
       cost?: Money;
@@ -209,7 +209,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       row.barcode,
       row.attributes,
       Money.create(row.price),
-      Money.create(row.cost),
+      Money.create(Number(row.cost ?? 0)),
       row.isActive,
       row.createdAt,
     );

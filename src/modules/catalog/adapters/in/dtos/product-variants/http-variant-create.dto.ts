@@ -1,16 +1,17 @@
-import { IsBoolean, IsNumber, IsObject, IsOptional, IsString, Min } from "class-validator";
+import { IsBoolean, IsNumber, IsObject, IsOptional, IsString, IsUUID, Min } from "class-validator";
 import { ProductVariantAttributes } from "src/modules/catalog/application/dto/product-variants/input/attributes-product-variant";
 
 export class HttpCreateProductVariantDto {
-  @IsString()
+  @IsUUID()
   productId: string;
 
+  @IsOptional()
   @IsString()
-  barcode: string;
+  barcode?: string;
 
   @IsObject()
   @IsOptional()
-  attributes: ProductVariantAttributes;
+  attributes?: ProductVariantAttributes;
 
   @IsNumber()
   @Min(0)

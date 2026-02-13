@@ -2,10 +2,10 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateCol
 
 @Entity('products')
 export class ProductEntity {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn('uuid', { name: 'product_id' })
   id: string;
 
-  @Column({ type: 'varchar' })
+  @Column({ type: 'varchar', length: 180 })
   name: string;
 
   @Column({ type: 'text' , nullable:true})
