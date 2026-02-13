@@ -12,8 +12,7 @@ export interface PaginatedResult<T> {
 
 export class SearchProductsPaginated {
   constructor(
-    @Inject(PRODUCT_REPOSITORY)
-    private readonly productRepo: ProductRepository,
+    @Inject(PRODUCT_REPOSITORY) private readonly productRepo: ProductRepository,
   ) {}
 
   async execute(input: ListProductsInput): Promise<PaginatedResult<ProductOutput>> {
@@ -30,13 +29,13 @@ export class SearchProductsPaginated {
     });
 
     return {
-      items: items.map((p: any) => ({
-        id: p.id,
-        name: p.name,
-        description: p.description,
-        isActive: p.isActive,
-        createdAt: p.createdAt,
-        updatedAt: p.updatedAt,
+      items: items.map((p) => ({
+        id: p.getId()?.value,
+        name: p.getName(),
+        description: p.getDescription(),
+        isActive: p.getIsActive(),
+        createdAt: p.getCreatedAt(),
+        updatedAt: p.getUpdatedAt(),
       })),
       total,
       page,
@@ -44,4 +43,3 @@ export class SearchProductsPaginated {
     };
   }
 }
-

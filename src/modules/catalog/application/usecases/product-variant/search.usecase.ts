@@ -25,15 +25,15 @@ export class SearchProductVariants {
     });
     return {
       items: items.map((x) => ({
-        id: x.variant.id,
+        id: x.variant.getId(),
         productId: x.variant.getProductId().value,
-        sku: x.variant.sku,
-        barcode: x.variant.barcode,
-        attributes: x.variant.attributes,
-        price: x.variant.price.getAmount(),
-        cost: x.variant.cost.getAmount(),
-        isActive: x.variant.isActive,
-        createdAt: x.variant.createdAt,
+        sku: x.variant.getSku(),
+        barcode: x.variant.getBarcode(),
+        attributes: x.variant.getAttributes(),
+        price: x.variant.getPrice().getAmount(),
+        cost: x.variant.getCost().getAmount(),
+        isActive: x.variant.getIsActive(),
+        createdAt: x.variant.getCreatedAt(),
         productName: x.productName,
         productDescription: x.productDescription,
       })),

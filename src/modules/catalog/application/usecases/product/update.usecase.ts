@@ -1,28 +1,35 @@
-import { Inject, BadRequestException } from "@nestjs/common";
+import { Inject } from "@nestjs/common";
 import { UNIT_OF_WORK, UnitOfWork } from "src/modules/inventory/domain/ports/unit-of-work.port";
 import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/domain/ports/product.repository";
 import { ProductId } from "src/modules/catalog/domain/value-object/product-id.vo";
 import { UpdateProductInput } from "../../dto/products/input/update-product";
 import { ProductOutput } from "../../dto/products/output/product-out";
 
+export class ProductNotFoundError extends Error {
+  constructor(message = "Producto no encontrado") {
+    super(message);
+    this.name = "ProductNotFoundError";
+  }
+}
+
 export class UpdateProduct {
   constructor(
-    @Inject(UNIT_OF_WORK)
-    private readonly uow: UnitOfWork,
-    @Inject(PRODUCT_REPOSITORY)
-    private readonly productRepo: ProductRepository,
+    @Inject(UNIT_OF_WORK) private readonly uow: UnitOfWork,
+    @Inject(PRODUCT_REPOSITORY) private readonly productRepo: ProductRepository,
   ) {}
 
   async execute(input: UpdateProductInput): Promise<ProductOutput> {
     return this.uow.runInTransaction(async (tx) => {
-      const updated = await this.productRepo.updated(
-        { id: ProductId.create(input.id), name: input.name, description: input.description },
+      const updated = await this.productRepo.update(
+        {
+          id: ProductId.create(input.id),
+          name: input.name,
+          description: input.description ?? null,
+        },
         tx,
       );
 
-      if (!updated) {
-        throw new BadRequestException("Producto no encontrado");
-      }
+      if (!updated) throw new ProductNotFoundError();
 
       return {
         id: updated.getId()?.value,

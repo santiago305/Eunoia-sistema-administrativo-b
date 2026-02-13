@@ -5,6 +5,9 @@ import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo
 import { ProductVariant } from 'src/modules/catalog/domain/entity/product-variant';
 
 describe('GetProductVariant', () => {
+  const productUuid = '11111111-1111-4111-8111-111111111111';
+  const variantUuid = '22222222-2222-4222-8222-222222222222';
+
   it('lanza error si no existe', async () => {
     const variantRepo = {
       findById: jest.fn().mockResolvedValue(null),
@@ -12,19 +15,17 @@ describe('GetProductVariant', () => {
 
     const useCase = new GetProductVariant(variantRepo as any);
 
-    await expect(
-      useCase.execute({ id: 'VAR-1' } as any),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(useCase.execute({ id: variantUuid })).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('retorna variante mapeada', async () => {
     const now = new Date('2026-02-10T12:00:00Z');
     const variant = new ProductVariant(
-      'VAR-1',
-      ProductId.create('PROD-1'),
+      variantUuid,
+      ProductId.create(productUuid),
       'CAB-00001',
       '0001',
-      'Color=Negro',
+      { color: 'Negro' },
       Money.create(10),
       Money.create(5),
       true,
@@ -37,14 +38,14 @@ describe('GetProductVariant', () => {
 
     const useCase = new GetProductVariant(variantRepo as any);
 
-    const result = await useCase.execute({ id: 'VAR-1' } as any);
+    const result = await useCase.execute({ id: variantUuid });
 
     expect(result).toEqual({
-      id: 'VAR-1',
-      productId: 'PROD-1',
+      id: variantUuid,
+      productId: productUuid,
       sku: 'CAB-00001',
       barcode: '0001',
-      attributes: 'Color=Negro',
+      attributes: { color: 'Negro' },
       price: 10,
       cost: 5,
       isActive: true,
@@ -52,4 +53,3 @@ describe('GetProductVariant', () => {
     });
   });
 });
-

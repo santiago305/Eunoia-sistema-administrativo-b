@@ -1,6 +1,7 @@
 import { Inject, BadRequestException } from '@nestjs/common';
 import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from 'src/modules/catalog/domain/ports/product-variant.repository';
 import { PRODUCT_REPOSITORY, ProductRepository } from 'src/modules/catalog/domain/ports/product.repository';
+import { ProductVariant } from 'src/modules/catalog/domain/entity/product-variant';
 import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo';
 import { Money } from 'src/modules/catalog/domain/value-object/money.vo';
 import { UpdateProductVariantInput } from '../../dto/product-variants/input/update-product-variant';
@@ -54,7 +55,7 @@ export class UpdateProductVariant {
     });
   }
 
-  private toOutput(v: any): ProductVariantOutput {
+  private toOutput(v: ProductVariant): ProductVariantOutput {
     return {
       id: v.getId(),
       productId: v.getProductId().value,

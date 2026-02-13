@@ -1,16 +1,15 @@
 import { Inject } from "@nestjs/common";
 import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/domain/ports/product.repository";
 import { ProductId } from "src/modules/catalog/domain/value-object/product-id.vo";
-import { GetProductInput } from "../../dto/products/input/get-by-id-product";
+import { GetProductByIdInput } from "../../dto/products/input/get-product-by-id"
 import { ProductDetailOutput } from "../../dto/products/output/product-with-variants";
 
 export class GetProductWithVariants {
   constructor(
-    @Inject(PRODUCT_REPOSITORY)
-    private readonly productRepo: ProductRepository,
+    @Inject(PRODUCT_REPOSITORY) private readonly productRepo: ProductRepository,
   ) {}
 
-  async execute(input: GetProductInput): Promise<ProductDetailOutput | null> {
+  async execute(input: GetProductByIdInput): Promise<ProductDetailOutput | null> {
     const result = await this.productRepo.getByIdWithVariants(ProductId.create(input.id));
     if (!result) return null;
 

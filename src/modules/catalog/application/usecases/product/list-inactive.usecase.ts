@@ -5,24 +5,21 @@ import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/domai
 
 export class ListInactiveProducts {
   constructor(
-    @Inject(UNIT_OF_WORK)
-    private readonly uow: UnitOfWork,
-    @Inject(PRODUCT_REPOSITORY)
-    private readonly productRepo: ProductRepository,
+    @Inject(UNIT_OF_WORK) private readonly uow: UnitOfWork,
+    @Inject(PRODUCT_REPOSITORY) private readonly productRepo: ProductRepository,
   ) {}
 
   async execute(): Promise<ProductOutput[]> {
     return this.uow.runInTransaction(async (tx) => {
       const rows = await this.productRepo.listInactive(tx);
-      return rows.map((p: any) => ({
-        id: p.id,
-        name: p.name,
-        description: p.description,
-        isActive: p.isActive,
-        createdAt: p.createdAt,
-        updatedAt: p.updatedAt,
+      return rows.map((p) => ({
+        id: p.getId()?.value,
+        name: p.getName(),
+        description: p.getDescription(),
+        isActive: p.getIsActive(),
+        createdAt: p.getCreatedAt(),
+        updatedAt: p.getUpdatedAt(),
       }));
     });
   }
 }
-

@@ -8,26 +8,25 @@ import { ProductOutput } from "../../dto/products/output/product-out";
 
 export class CreateProduct {
   constructor(
-    @Inject(UNIT_OF_WORK)
-    private readonly uow: UnitOfWork,
-    @Inject(PRODUCT_REPOSITORY)
-    private readonly productRepo: ProductRepository,
-    @Inject(CLOCK)
-    private readonly clock: ClockPort,
+    @Inject(UNIT_OF_WORK) private readonly uow: UnitOfWork,
+    @Inject(PRODUCT_REPOSITORY) private readonly productRepo: ProductRepository,
+    @Inject(CLOCK) private readonly clock: ClockPort,
   ) {}
 
   async execute(input: CreateProductInput): Promise<ProductOutput> {
     return this.uow.runInTransaction(async (tx) => {
+      const now = this.clock.now();
+
       const product = new Product(
         undefined,
         input.name,
-        input.description,
+        input.description ?? null,
         input.isActive ?? true,
-        this.clock.now(),
-        this.clock.now(),
+        now,
+        now,
       );
 
-      const saved = await this.productRepo.created(product, tx);
+      const saved = await this.productRepo.create(product, tx);
 
       return {
         id: saved.getId()?.value,

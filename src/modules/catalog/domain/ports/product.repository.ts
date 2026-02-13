@@ -6,11 +6,11 @@ import { ProductId } from "../value-object/product-id.vo";
 export const PRODUCT_REPOSITORY = Symbol("PRODUCT_REPOSITORY");
 
 export interface ProductRepository {
-  created(prod: Product, tx?: TransactionContext): Promise<Product>;
+  create(prod: Product, tx?: TransactionContext): Promise<Product>;
 
   findById(id: ProductId, tx?: TransactionContext): Promise<Product | null>;
 
-  updated(
+  update(
     params: {
       id: ProductId;
       name?: string;

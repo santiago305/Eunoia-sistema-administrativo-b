@@ -1,41 +1,44 @@
 import { BadRequestException } from '@nestjs/common';
 import { CreateProductVariant } from './create.usecase';
+import { Product } from 'src/modules/catalog/domain/entity/product';
 import { ProductVariant } from 'src/modules/catalog/domain/entity/product-variant';
 import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo';
 import { Money } from 'src/modules/catalog/domain/value-object/money.vo';
 
 describe('CreateProductVariant', () => {
+  const productUuid = '11111111-1111-4111-8111-111111111111';
+
   it('lanza error si el producto no existe', async () => {
     const productRepo = {
       findById: jest.fn().mockResolvedValue(null),
     };
 
     const variantRepo = {
-      listByProductId: jest.fn(),
+      findByBarcode: jest.fn(),
+      findLastCreated: jest.fn(),
       findBySku: jest.fn(),
       create: jest.fn(),
     };
 
     const clock = { now: jest.fn().mockReturnValue(new Date('2026-02-10T12:00:00Z')) };
 
-    const useCase = new CreateProductVariant(
-      productRepo as any,
-      variantRepo as any,
-      clock as any,
-    );
+    const useCase = new CreateProductVariant(productRepo as any, variantRepo as any, clock as any);
 
     await expect(
-      useCase.execute({ productId: 'PROD-1' } as any),
+      useCase.execute({ productId: productUuid, barcode: '0001', attributes: {}, price: 10, cost: 5 }),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('crea variante con sku generado', async () => {
+    const productId = ProductId.create(productUuid);
+    const product = new Product(productId, 'Cable', 'Cable USB', true, new Date(), new Date());
     const productRepo = {
-      findById: jest.fn().mockResolvedValue({ id: 'PROD-1', name: 'Cable' }),
+      findById: jest.fn().mockResolvedValue(product),
     };
 
     const variantRepo = {
-      listByProductId: jest.fn().mockResolvedValue([]),
+      findByBarcode: jest.fn().mockResolvedValue(null),
+      findLastCreated: jest.fn().mockResolvedValue(null),
       findBySku: jest.fn().mockResolvedValue(null),
       create: jest.fn(),
     };
@@ -44,11 +47,11 @@ describe('CreateProductVariant', () => {
     const clock = { now: jest.fn().mockReturnValue(now) };
 
     const created = new ProductVariant(
-      'VAR-1',
-      ProductId.create('PROD-1'),
+      '22222222-2222-4222-8222-222222222222',
+      productId,
       'CAB-00001',
       '0001',
-      'Color=Negro',
+      { color: 'Negro' },
       Money.create(10),
       Money.create(5),
       true,
@@ -57,29 +60,26 @@ describe('CreateProductVariant', () => {
 
     (variantRepo.create as jest.Mock).mockResolvedValue(created);
 
-    const useCase = new CreateProductVariant(
-      productRepo as any,
-      variantRepo as any,
-      clock as any,
-    );
+    const useCase = new CreateProductVariant(productRepo as any, variantRepo as any, clock as any);
 
     const result = await useCase.execute({
-      productId: 'PROD-1',
+      productId: productUuid,
       barcode: '0001',
-      attributes: 'Color=Negro',
+      attributes: { color: 'Negro' },
       price: 10,
       cost: 5,
-    } as any);
+    });
 
-    expect(variantRepo.findBySku).toHaveBeenCalledWith('CAB-00001');
+    expect(variantRepo.findBySku).toHaveBeenCalledWith('CAB-NEGRO-00001');
     expect(variantRepo.create).toHaveBeenCalledWith(expect.any(ProductVariant));
-    expect((variantRepo.create as jest.Mock).mock.calls[0][0].sku).toBe('CAB-00001');
     expect(result).toEqual({
-      id: 'VAR-1',
-      productId: 'PROD-1',
+      id: '22222222-2222-4222-8222-222222222222',
+      productId: productUuid,
+      productName: 'Cable',
+      productDescription: 'Cable USB',
       sku: 'CAB-00001',
       barcode: '0001',
-      attributes: 'Color=Negro',
+      attributes: { color: 'Negro' },
       price: 10,
       cost: 5,
       isActive: true,
@@ -87,4 +87,3 @@ describe('CreateProductVariant', () => {
     });
   });
 });
-

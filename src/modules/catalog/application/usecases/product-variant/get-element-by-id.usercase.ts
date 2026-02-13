@@ -1,5 +1,6 @@
 import { Inject, BadRequestException } from "@nestjs/common";
 import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/modules/catalog/domain/ports/product-variant.repository";
+import { ProductVariant } from "src/modules/catalog/domain/entity/product-variant";
 import { GetProductVariantInput } from "../../dto/product-variants/input/get-by-id-product-variant";
 import { ProductVariantOutput } from "../../dto/product-variants/output/product-variant-out";
 
@@ -16,17 +17,17 @@ export class GetProductVariant {
     }
     return this.toOutput(variant);
   }
-  private toOutput(v: any): ProductVariantOutput {
+  private toOutput(v: ProductVariant): ProductVariantOutput {
       return {
-        id: v.id,
-        productId: v.product_id?.value ?? v.productId,
-        sku: v.sku,
-        barcode: v.barcode,
-        attributes: v.attributes,
-        price: v.price?.getAmount?.() ?? v.price,
-        cost: v.cost?.getAmount?.() ?? v.cost,
-        isActive: v.isActive,
-        createdAt: v.createdAt,
+        id: v.getId(),
+        productId: v.getProductId().value,
+        sku: v.getSku(),
+        barcode: v.getBarcode(),
+        attributes: v.getAttributes(),
+        price: v.getPrice().getAmount(),
+        cost: v.getCost().getAmount(),
+        isActive: v.getIsActive(),
+        createdAt: v.getCreatedAt(),
       };
     }
 }

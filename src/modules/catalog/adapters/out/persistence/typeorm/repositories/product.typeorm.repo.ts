@@ -33,7 +33,7 @@ export class ProductTypeormRepository implements ProductRepository {
     return this.getManager(tx).getRepository(ProductVariantEntity);
   }
 
-  async created(prod: Product, tx?: TransactionContext): Promise<Product> {
+  async create(prod: Product, tx?: TransactionContext): Promise<Product> {
     const repo = this.getRepo(tx);
     const saved = await repo.save({
       name: prod.getName(),
@@ -101,7 +101,7 @@ export class ProductTypeormRepository implements ProductRepository {
     return { product, items };
   }
 
-  async updated(
+  async update(
     params: { id: ProductId; name?: string; description?: string },
     tx?: TransactionContext,
   ): Promise<Product | null> {
