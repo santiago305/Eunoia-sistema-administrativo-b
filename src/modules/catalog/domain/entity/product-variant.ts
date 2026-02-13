@@ -5,7 +5,7 @@ type VariantAttributes = Record<string, unknown>;
 
 export class ProductVariant {
   constructor(
-    public readonly id: string,
+    private readonly id: string | undefined,
     private readonly productId: ProductId,
     public readonly sku: string,
     public readonly barcode: string | null,
@@ -18,7 +18,12 @@ export class ProductVariant {
     if (!sku?.trim()) throw new Error("SKU is required");
   }
 
-  getId(): string { return this.id; }
+  getId(): string {
+    if (!this.id) {
+      throw new Error("ProductVariant id is not assigned");
+    }
+    return this.id;
+  }
   getProductId(): ProductId { return this.productId; }
   getSku(): string { return this.sku; }
   getBarcode(): string | null { return this.barcode; }

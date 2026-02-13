@@ -23,6 +23,7 @@ describe('PostDocumentUseCase', () => {
       removeItem: jest.fn(),
       markPosted: jest.fn(),
       markCancelled: jest.fn(),
+      existsBySerieId: jest.fn(),
     };
 
     const inventoryRepo: InventoryRepository = {

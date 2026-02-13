@@ -25,23 +25,28 @@ describe('GetLedgerUseCase', () => {
         new Date('2026-02-06T12:00:00Z'),
       ),
     ];
-    (repo.list as jest.Mock).mockResolvedValue(entries);
+    (repo.list as jest.Mock).mockResolvedValue({ items: entries, total: 1 });
 
     const useCase = new GetLedgerUseCase(repo);
     const result = await useCase.execute({ warehouseId: 'WH-1' });
 
-    expect(result).toEqual([
-      {
-        id: 1,
-        docId: 'DOC-1',
-        warehouseId: 'WH-1',
-        locationId: 'LOC-1',
-        variantId: 'VAR-1',
-        direction: Direction.IN,
-        quantity: 10,
-        unitCost: 5,
-        createdAt: new Date('2026-02-06T12:00:00Z'),
-      },
-    ]);
+    expect(result).toEqual({
+      items: [
+        {
+          id: 1,
+          docId: 'DOC-1',
+          warehouseId: 'WH-1',
+          locationId: 'LOC-1',
+          variantId: 'VAR-1',
+          direction: Direction.IN,
+          quantity: 10,
+          unitCost: 5,
+          createdAt: new Date('2026-02-06T12:00:00Z'),
+        },
+      ],
+      total: 1,
+      page: 1,
+      limit: 20,
+    });
   });
 });

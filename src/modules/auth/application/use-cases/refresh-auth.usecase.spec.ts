@@ -4,13 +4,34 @@ import { RefreshAuthUseCase } from './refresh.auth.usecase';
 describe('RefreshAuthUseCase', () => {
   const makeUseCase = (overrides?: {
     tokenReadRepository?: { signAccessToken: jest.Mock; signRefreshToken: jest.Mock };
+    sessionReadRepository?: { findByIdAndUserId: jest.Mock };
+    sessionRepository?: { updateUsage: jest.Mock };
+    tokenHasher?: { verify: jest.Mock; hash: jest.Mock };
   }) => {
     const tokenReadRepository = overrides?.tokenReadRepository ?? {
       signAccessToken: jest.fn(),
       signRefreshToken: jest.fn(),
     };
 
-    return new RefreshAuthUseCase(tokenReadRepository as any);
+    const sessionReadRepository = overrides?.sessionReadRepository ?? {
+      findByIdAndUserId: jest.fn(),
+    };
+
+    const sessionRepository = overrides?.sessionRepository ?? {
+      updateUsage: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const tokenHasher = overrides?.tokenHasher ?? {
+      verify: jest.fn().mockResolvedValue(true),
+      hash: jest.fn().mockResolvedValue('hashed-refresh'),
+    };
+
+    return new RefreshAuthUseCase(
+      tokenReadRepository as any,
+      sessionReadRepository as any,
+      sessionRepository as any,
+      tokenHasher as any,
+    );
   };
 
   it('returns tokens when payload is valid', async () => {
@@ -18,20 +39,42 @@ describe('RefreshAuthUseCase', () => {
       signAccessToken: jest.fn().mockReturnValue('access'),
       signRefreshToken: jest.fn().mockReturnValue('refresh'),
     };
+    const sessionReadRepository = {
+      findByIdAndUserId: jest.fn().mockResolvedValue({
+        id: 'session-1',
+        userId: 'user-1',
+        refreshTokenHash: 'hashed-old',
+        revokedAt: null,
+        expiresAt: new Date(Date.now() + 60_000),
+      }),
+    };
+    const sessionRepository = { updateUsage: jest.fn().mockResolvedValue(undefined) };
+    const tokenHasher = {
+      verify: jest.fn().mockResolvedValue(true),
+      hash: jest.fn().mockResolvedValue('hashed-refresh'),
+    };
 
-    const useCase = makeUseCase({ tokenReadRepository });
+    const useCase = makeUseCase({
+      tokenReadRepository,
+      sessionReadRepository,
+      sessionRepository,
+      tokenHasher,
+    });
 
     const result = await useCase.execute({
-      user: { sub: 'user-1', role: 'ADMIN' },
+      user: { sub: 'user-1', role: 'ADMIN', sessionId: 'session-1' } as any,
+      refreshToken: 'refresh-old',
     });
 
     expect(tokenReadRepository.signAccessToken).toHaveBeenCalledWith({
       sub: 'user-1',
       role: 'ADMIN',
+      sessionId: 'session-1',
     });
     expect(tokenReadRepository.signRefreshToken).toHaveBeenCalledWith({
       sub: 'user-1',
       role: 'ADMIN',
+      sessionId: 'session-1',
     });
     expect(result).toEqual({ access_token: 'access', refresh_token: 'refresh' });
   });
@@ -40,7 +83,7 @@ describe('RefreshAuthUseCase', () => {
     const useCase = makeUseCase();
 
     await expect(
-      useCase.execute({ user: { role: 'ADMIN' } } as any)
+      useCase.execute({ user: { role: 'ADMIN' }, refreshToken: 'x' } as any)
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });

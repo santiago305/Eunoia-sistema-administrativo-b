@@ -22,11 +22,12 @@ export class CreateProductVariant {
 
   async execute(input: CreateProductVariantInput): Promise<ProductVariantOutput> {
     const productId = ProductId.create(input.productId);
+
     const product = await this.productRepo.findById(productId);
     if (!product) throw new BadRequestException('Producto no encontrado');
 
-    if (input.barcode) {
-      const existsBarcode = await this.variantRepo.findByBarcode(input.barcode);
+    if (input.barcode?.trim()) {
+      const existsBarcode = await this.variantRepo.findByBarcode(input.barcode.trim());
       if (existsBarcode) throw new BadRequestException('Barcode ya existe');
     }
 
@@ -34,18 +35,17 @@ export class CreateProductVariant {
       ? input.sku.trim()
       : await generateUniqueSku(
           this.variantRepo,
-          input.productId,
           product.getName(),
           input.attributes?.color,
           input.attributes?.size,
         );
 
     const variant = new ProductVariant(
-      undefined as unknown as string,
+      undefined,
       productId,
       sku,
-      input.barcode,
-      input.attributes,
+      input.barcode?.trim() || null,
+      input.attributes ?? {},
       Money.create(input.price),
       Money.create(input.cost),
       input.isActive ?? true,

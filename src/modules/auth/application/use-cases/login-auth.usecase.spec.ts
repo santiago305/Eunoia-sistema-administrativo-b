@@ -5,16 +5,22 @@ import { RoleType } from 'src/shared/constantes/constants';
 describe('LoginAuthUseCase', () => {
   const makeUseCase = (overrides?: {
     getUserWithPasswordByEmailUseCase?: { execute: jest.Mock };
+    userRepository?: { updateSecurityById: jest.Mock };
     tokenReadRepository?: {
       signAccessToken: jest.Mock;
       signRefreshToken: jest.Mock;
     };
     passwordHasher?: { verify: jest.Mock };
+    createSessionUseCase?: { execute: jest.Mock };
   }) => {
     const getUserWithPasswordByEmailUseCase =
       overrides?.getUserWithPasswordByEmailUseCase ?? {
         execute: jest.fn(),
       };
+
+    const userRepository = overrides?.userRepository ?? {
+      updateSecurityById: jest.fn().mockResolvedValue(undefined),
+    };
 
     const tokenReadRepository = overrides?.tokenReadRepository ?? {
       signAccessToken: jest.fn(),
@@ -25,10 +31,16 @@ describe('LoginAuthUseCase', () => {
       verify: jest.fn(),
     };
 
+    const createSessionUseCase = overrides?.createSessionUseCase ?? {
+      execute: jest.fn().mockResolvedValue(undefined),
+    };
+
     return new LoginAuthUseCase(
       getUserWithPasswordByEmailUseCase as any,
+      userRepository as any,
       tokenReadRepository as any,
       passwordHasher as any,
+      createSessionUseCase as any,
     );
   };
 
@@ -50,10 +62,15 @@ describe('LoginAuthUseCase', () => {
       verify: jest.fn().mockResolvedValue(true),
     };
 
+    const createSessionUseCase = {
+      execute: jest.fn().mockResolvedValue(undefined),
+    };
+
     const useCase = makeUseCase({
       getUserWithPasswordByEmailUseCase,
       tokenReadRepository,
       passwordHasher,
+      createSessionUseCase,
     });
 
     const result = await useCase.execute({
@@ -64,10 +81,12 @@ describe('LoginAuthUseCase', () => {
     expect(tokenReadRepository.signAccessToken).toHaveBeenCalledWith({
       sub: 'user-1',
       role: RoleType.ADMIN,
+      sessionId: expect.any(String),
     });
     expect(tokenReadRepository.signRefreshToken).toHaveBeenCalledWith({
       sub: 'user-1',
       role: RoleType.ADMIN,
+      sessionId: expect.any(String),
     });
     expect(result).toEqual({ access_token: 'access', refresh_token: 'refresh' });
   });
@@ -95,6 +114,7 @@ describe('LoginAuthUseCase', () => {
     expect(tokenReadRepository.signAccessToken).toHaveBeenCalledWith({
       sub: 'user-1',
       role: RoleType.ADVISER,
+      sessionId: expect.any(String),
     });
   });
 

@@ -20,6 +20,7 @@ describe('AddItemUseCase', () => {
       removeItem: jest.fn(),
       markPosted: jest.fn(),
       markCancelled: jest.fn(),
+      existsBySerieId: jest.fn(),
     } as unknown as DocumentRepository);
 
   const makeRules = () =>
@@ -111,8 +112,9 @@ describe('AddItemUseCase', () => {
       docId: 'DOC-1',
       variantId: 'VAR-1',
       quantity: 12,
-      countedQty: null,
       unitCost: 5,
+      fromLocationId: undefined,
+      toLocationId: undefined,
     });
   });
 });

@@ -23,9 +23,20 @@ describe('UpdateProductVariant', () => {
     );
 
     const uow = { runInTransaction: jest.fn(async (work) => work({})) };
+    const current = new ProductVariant(
+      variantUuid,
+      ProductId.create(productUuid),
+      'CAB-00001',
+      '0001',
+      { color: 'Negro' },
+      Money.create(10),
+      Money.create(5),
+      true,
+      new Date('2026-02-10T12:00:00Z'),
+    );
     const variantRepo = {
       update: jest.fn().mockResolvedValue(updated),
-      findById: jest.fn(),
+      findById: jest.fn().mockResolvedValue(current),
     };
     const productRepo = { findById: jest.fn() };
 
@@ -56,7 +67,7 @@ describe('UpdateProductVariant', () => {
     const uow = { runInTransaction: jest.fn(async (work) => work({})) };
     const variantRepo = {
       update: jest.fn().mockResolvedValue(null),
-      findById: jest.fn(),
+      findById: jest.fn().mockResolvedValue(null),
     };
     const productRepo = { findById: jest.fn() };
 

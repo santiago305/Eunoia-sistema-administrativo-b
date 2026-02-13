@@ -2,7 +2,6 @@ import { Inject, BadRequestException } from '@nestjs/common';
 import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from 'src/modules/catalog/domain/ports/product-variant.repository';
 import { PRODUCT_REPOSITORY, ProductRepository } from 'src/modules/catalog/domain/ports/product.repository';
 import { ProductVariant } from 'src/modules/catalog/domain/entity/product-variant';
-import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo';
 import { Money } from 'src/modules/catalog/domain/value-object/money.vo';
 import { UpdateProductVariantInput } from '../../dto/product-variants/input/update-product-variant';
 import { ProductVariantOutput } from '../../dto/product-variants/output/product-variant-out';
@@ -19,19 +18,33 @@ export class UpdateProductVariant {
     private readonly productRepo: ProductRepository,
   ) {}
 
-  async execute(input: UpdateProductVariantInput) {
+  async execute(input: UpdateProductVariantInput): Promise<ProductVariantOutput> {
     return this.uow.runInTransaction(async (tx) => {
-      let sku = input.sku;
+      const current = await this.variantRepo.findById(input.id, tx);
+      if (!current) throw new BadRequestException('Variant no encontrado');
 
+      // Barcode uniqueness (si se está cambiando)
+      if (input.barcode?.trim() && input.barcode.trim() !== (current.getBarcode() ?? '')) {
+        const existsBarcode = await this.variantRepo.findByBarcode(input.barcode.trim(), tx);
+        if (existsBarcode && existsBarcode.getId() !== current.getId()) {
+          throw new BadRequestException('Barcode ya existe');
+        }
+      }
+
+      let sku = current.getSku();
+
+      // Si mandan sku explícito, se respeta
+      if (input.sku?.trim()) {
+        sku = input.sku.trim();
+      }
+
+      // Si mandan attributes, recalculamos SKU preservando serie
       if (input.attributes) {
-        const variant = await this.variantRepo.findById(input.id, tx);
-        if (!variant) throw new BadRequestException('Variant no encontrado');
-
-        const product = await this.productRepo.findById(ProductId.create(variant.getProductId().value), tx);
+        const product = await this.productRepo.findById(current.getProductId(), tx);
         if (!product) throw new BadRequestException('Producto no encontrado');
 
         sku = buildSkuPreservingSeries(
-          variant.getSku(),
+          sku,
           product.getName(),
           input.attributes?.color,
           input.attributes?.size,
@@ -42,7 +55,7 @@ export class UpdateProductVariant {
         {
           id: input.id,
           sku,
-          barcode: input.barcode,
+          barcode: input.barcode?.trim() ?? undefined,
           attributes: input.attributes,
           price: input.price !== undefined ? Money.create(input.price) : undefined,
           cost: input.cost !== undefined ? Money.create(input.cost) : undefined,
