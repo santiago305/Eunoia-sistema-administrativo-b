@@ -1,6 +1,6 @@
 export class MissingProductIdError extends Error {
-  constructor(message: string = 'ProductId requerido para mapear User') {
+  constructor(message: string = "ProductId is required") {
     super(message);
-    this.name = 'MissingProductIdError';
+    this.name = "MissingProductIdError";
   }
 }

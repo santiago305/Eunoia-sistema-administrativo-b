@@ -6,7 +6,7 @@ export interface ProductVariantOutput {
   productName?: string;
   productDescription?: string;
   sku: string;
-  barcode: string;
+  barcode: string | null;
   attributes: ProductVariantAttributes;
   price: number;
   cost: number;

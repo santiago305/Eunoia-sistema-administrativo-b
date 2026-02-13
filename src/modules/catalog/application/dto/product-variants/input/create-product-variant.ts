@@ -4,7 +4,7 @@ export interface CreateProductVariantInput {
   productId: string;
   sku?: string;
   barcode: string;
-  attributes: ProductVariantAttributes;
+  attributes?: ProductVariantAttributes;
   price: number;
   cost: number;
   isActive?: boolean;

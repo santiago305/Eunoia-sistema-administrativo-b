@@ -1,19 +1,19 @@
 import { Inject } from "@nestjs/common";
-import { PRODUCT_VARIANT, ProductVariantRepository } from "src/modules/catalog/domain/ports/product-variant.repository";
-import { ProductId } from "src/modules/catalog/domain/value-object/product.vo";
+import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/modules/catalog/domain/ports/product-variant.repository";
+import { ProductId } from "src/modules/catalog/domain/value-object/product-id.vo";
 import { ListProductVariantsInput } from "../../dto/product-variants/input/list-product-variant";
 import { ProductVariantOutput } from "../../dto/product-variants/output/product-variant-out";
 
 export class ListProductVariants {
   constructor(
-    @Inject(PRODUCT_VARIANT)
+    @Inject(PRODUCT_VARIANT_REPOSITORY)
     private readonly variantRepo: ProductVariantRepository,
   ) {}
 
   async execute(input: ListProductVariantsInput): Promise<ProductVariantOutput[]> {
     if (!input.productId) return [];
 
-    const rows = await this.variantRepo.listByProductId(new ProductId(input.productId));
+    const rows = await this.variantRepo.listByProductId(ProductId.create(input.productId));
 
     return rows.map((v: any) => ({
       id: v.id,

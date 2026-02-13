@@ -1,8 +1,8 @@
-import { ProductId } from '../value-object/product.vo';
+import { ProductId } from '../value-object/product-id.vo';
 
 export class Product {
   constructor(
-    private readonly id: ProductId,
+    private readonly id: ProductId | undefined,
     private name: string,
     private description: string | null,
     private isActive: boolean = true,

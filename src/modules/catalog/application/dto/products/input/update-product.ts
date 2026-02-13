@@ -1,5 +1,5 @@
 export interface UpdateProductInput {
-  id:string;
+  id: string;
   name?: string;
-  description?: string;
+  description?: string | null;
 }

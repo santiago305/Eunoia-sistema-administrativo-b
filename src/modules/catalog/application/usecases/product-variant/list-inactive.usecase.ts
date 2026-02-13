@@ -1,17 +1,18 @@
 import { Inject } from "@nestjs/common";
-import { PRODUCT_VARIANT, ProductVariantRepository } from "src/modules/catalog/domain/ports/product-variant.repository";
+import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/modules/catalog/domain/ports/product-variant.repository";
 import { ListProductVariantsInput } from "../../dto/product-variants/input/list-product-variant";
 import { ProductVariantOutput } from "../../dto/product-variants/output/product-variant-out";
-import { ProductId } from "src/modules/catalog/domain/value-object/product.vo";
+import { ProductId } from "src/modules/catalog/domain/value-object/product-id.vo";
 
 export class ListInactiveProductVariants {
   constructor(
-    @Inject(PRODUCT_VARIANT)
+    @Inject(PRODUCT_VARIANT_REPOSITORY)
     private readonly variantRepo: ProductVariantRepository,
   ) {}
 
   async execute(input: ListProductVariantsInput = {}): Promise<ProductVariantOutput[]> {
-    const rows = await this.variantRepo.listInactiveByProductId(new ProductId(input.productId));
+    if (!input.productId) return [];
+    const rows = await this.variantRepo.listInactiveByProductId(ProductId.create(input.productId));
 
     return rows.map((v: any) => ({
       id: v.id,
@@ -26,4 +27,3 @@ export class ListInactiveProductVariants {
     }));
   }
 }
-

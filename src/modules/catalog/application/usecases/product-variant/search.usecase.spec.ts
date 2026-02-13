@@ -1,6 +1,6 @@
 import { SearchProductVariants } from './search.usecase';
 import { Money } from 'src/modules/catalog/domain/value-object/money.vo';
-import { ProductId } from 'src/modules/catalog/domain/value-object/product.vo';
+import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo';
 
 describe('SearchProductVariants', () => {
   it('busca variantes y mapea salida', async () => {
@@ -8,12 +8,12 @@ describe('SearchProductVariants', () => {
       search: jest.fn().mockResolvedValue([
         {
           id: 'VAR-1',
-          productId: new ProductId('PROD-1'),
+          productId: ProductId.create('PROD-1'),
           sku: 'CAB-00001',
           barcode: '0001',
           attributes: 'Color=Negro',
-          price: new Money(10),
-          cost: new Money(5),
+          price: Money.create(10),
+          cost: Money.create(5),
           isActive: true,
           createdAt: new Date('2026-02-10T12:00:00Z'),
         },

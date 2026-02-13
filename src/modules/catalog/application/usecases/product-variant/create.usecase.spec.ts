@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { CreateProductVariant } from './create.usecase';
 import { ProductVariant } from 'src/modules/catalog/domain/entity/product-variant';
-import { ProductId } from 'src/modules/catalog/domain/value-object/product.vo';
+import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo';
 import { Money } from 'src/modules/catalog/domain/value-object/money.vo';
 
 describe('CreateProductVariant', () => {
@@ -45,12 +45,12 @@ describe('CreateProductVariant', () => {
 
     const created = new ProductVariant(
       'VAR-1',
-      new ProductId('PROD-1'),
+      ProductId.create('PROD-1'),
       'CAB-00001',
       '0001',
       'Color=Negro',
-      new Money(10),
-      new Money(5),
+      Money.create(10),
+      Money.create(5),
       true,
       now,
     );

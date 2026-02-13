@@ -2,6 +2,7 @@ import { Inject } from "@nestjs/common";
 import { SetProductActiveInput } from "../../dto/products/input/set-active-product";
 import { UNIT_OF_WORK, UnitOfWork } from "src/modules/inventory/domain/ports/unit-of-work.port";
 import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/domain/ports/product.repository";
+import { ProductId } from "src/modules/catalog/domain/value-object/product-id.vo";
 
 export class SetProductActive {
   constructor(
@@ -12,20 +13,11 @@ export class SetProductActive {
   ) {}
 
   async execute(input: SetProductActiveInput): Promise<{ status: string }> {
-  return this.uow.runInTransaction(async (tx) => {
-    await this.productRepo.setActive(input.id, input.isActive, tx);
-
-    // Opción A: cascada a variantes
-    if (input.isActive === false) {
-      await this.productRepo.setAllVariantsActive(input.id, false, tx);
-    }
-    if (input.isActive === true) {
-      await this.productRepo.setAllVariantsActive(input.id, true, tx);
-    }
-
-    return { status: "¡Operación lograda con exito!" };
-  });
+    return this.uow.runInTransaction(async (tx) => {
+      const productId = ProductId.create(input.id);
+      await this.productRepo.setActive(productId, input.isActive, tx);
+      await this.productRepo.setAllVariantsActive(productId, input.isActive, tx);
+      return { status: "Operacion lograda con exito" };
+    });
+  }
 }
-
-}
-

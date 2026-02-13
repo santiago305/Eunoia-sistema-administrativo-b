@@ -1,8 +1,9 @@
 import { Inject, BadRequestException } from "@nestjs/common";
-import { UpdateProductInput } from "../../dto/products/input/update-product";
-import { ProductOutput } from "../../dto/products/output/product-out";
 import { UNIT_OF_WORK, UnitOfWork } from "src/modules/inventory/domain/ports/unit-of-work.port";
 import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/domain/ports/product.repository";
+import { ProductId } from "src/modules/catalog/domain/value-object/product-id.vo";
+import { UpdateProductInput } from "../../dto/products/input/update-product";
+import { ProductOutput } from "../../dto/products/output/product-out";
 
 export class UpdateProduct {
   constructor(
@@ -15,7 +16,7 @@ export class UpdateProduct {
   async execute(input: UpdateProductInput): Promise<ProductOutput> {
     return this.uow.runInTransaction(async (tx) => {
       const updated = await this.productRepo.updated(
-        { id: input.id, name: input.name, description: input.description },
+        { id: ProductId.create(input.id), name: input.name, description: input.description },
         tx,
       );
 
@@ -24,14 +25,13 @@ export class UpdateProduct {
       }
 
       return {
-        id: (updated as any).id,
-        name: (updated as any).name,
-        description: (updated as any).description,
-        isActive: (updated as any).isActive,
-        createdAt: (updated as any).createdAt,
-        updatedAt: (updated as any).updatedAt,
+        id: updated.getId()?.value,
+        name: updated.getName(),
+        description: updated.getDescription(),
+        isActive: updated.getIsActive(),
+        createdAt: updated.getCreatedAt(),
+        updatedAt: updated.getUpdatedAt(),
       };
     });
   }
 }
-

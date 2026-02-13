@@ -1,4 +1,4 @@
-﻿# Catalag Module
+# Catalog Module
 
 Modulo de catalogo de productos y variantes.
 
@@ -8,3 +8,4 @@ Modulo de catalogo de productos y variantes.
 - `application/`: casos de uso y DTOs.
 - `domain/`: entidades, errores, value objects y puertos.
 - `infrastructure/`: modulo Nest del catalogo.
+

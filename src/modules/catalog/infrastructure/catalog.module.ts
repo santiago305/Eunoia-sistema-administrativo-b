@@ -8,7 +8,7 @@ import { ProductTypeormRepository } from '../adapters/out/persistence/typeorm/re
 import { ProductVariantTypeormRepository } from '../adapters/out/persistence/typeorm/repositories/product-variant.typeorm.repo';
 
 import { PRODUCT_REPOSITORY } from '../domain/ports/product.repository';
-import { PRODUCT_VARIANT } from '../domain/ports/product-variant.repository';
+import { PRODUCT_VARIANT_REPOSITORY } from '../domain/ports/product-variant.repository';
 
 import { CreateProduct } from '../application/usecases/product/created.usecase';
 import { UpdateProduct } from '../application/usecases/product/update.usecase';
@@ -60,13 +60,13 @@ import { SearchProductsPaginated } from '../application/usecases/product/search-
 
     // repos
     { provide: PRODUCT_REPOSITORY, useClass: ProductTypeormRepository },
-    { provide: PRODUCT_VARIANT, useClass: ProductVariantTypeormRepository },
+    { provide: PRODUCT_VARIANT_REPOSITORY, useClass: ProductVariantTypeormRepository },
 
     // shared infra
     { provide: UNIT_OF_WORK, useClass: TypeormUnitOfWork },
     { provide: CLOCK, useValue: { now: () => new Date() } },
   ],
-  exports: [PRODUCT_REPOSITORY, PRODUCT_VARIANT],
+  exports: [PRODUCT_REPOSITORY, PRODUCT_VARIANT_REPOSITORY],
 })
 export class CatalogModule {}
 

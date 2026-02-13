@@ -1,6 +1,9 @@
 export class InvalidProductIdError extends Error {
-  constructor(message: string = 'ProductId invalido') {
+  constructor(message = "ProductId is invalid", cause?: unknown) {
     super(message);
-    this.name = 'InvalidProductIdError';
+    if (cause !== undefined) {
+      (this as Error & { cause?: unknown }).cause = cause;
+    }
+    this.name = "InvalidProductIdError";
   }
 }

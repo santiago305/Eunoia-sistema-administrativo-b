@@ -1,5 +1,5 @@
 import { Money } from '../value-object/money.vo';
-import { ProductId } from '../value-object/product.vo';
+import { ProductId } from '../value-object/product-id.vo';
 
 type VariantAttributes = Record<string, unknown>;
 

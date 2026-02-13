@@ -7,38 +7,43 @@ import { ProductVariantEntity } from '../entities/product-variant.entity';
 import { ProductEntity } from '../entities/product.entity';
 import { TransactionContext } from 'src/modules/inventory/domain/ports/unit-of-work.port';
 import { TypeormTransactionContext } from 'src/modules/inventory/adapters/out/typeorm/uow/typeorm.transaction-context';
-import { ProductId } from 'src/modules/catalog/domain/value-object/product.vo';
+import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo';
 import { Money } from 'src/modules/catalog/domain/value-object/money.vo';
-import { ProductVariantWithProductInfo } from 'src/modules/catalog/application/dto/product-variants/output/variant-with-produc-info';
-import { ProductVariantAttributes } from 'src/modules/catalog/application/dto/product-variants/input/attributes-product-variant';
+import { ProductVariantWithProductInfo } from 'src/modules/catalog/domain/read-models/product-variant-with-product-info.rm';
+import { AttributesRecord } from 'src/modules/catalog/domain/value-object/variant-attributes.vo';
+
 @Injectable()
 export class ProductVariantTypeormRepository implements ProductVariantRepository {
   constructor(
     @InjectRepository(ProductVariantEntity)
     private readonly repo: Repository<ProductVariantEntity>,
   ) {}
+
   private getManager(tx?: TransactionContext) {
     if (tx && (tx as TypeormTransactionContext).manager) {
       return (tx as TypeormTransactionContext).manager;
     }
     return this.repo.manager;
   }
+
   private getRepo(tx?: TransactionContext) {
     return this.getManager(tx).getRepository(ProductVariantEntity);
   }
+
   async create(variant: ProductVariant, tx?: TransactionContext): Promise<ProductVariant> {
     const repo = this.getRepo(tx);
     const saved = await repo.save({
       productId: variant.getProductId().value,
-      sku: variant.sku,
-      barcode: variant.barcode,
-      attributes: variant.attributes,
-      price: variant.price.getAmount(),
-      cost: variant.cost.getAmount(),
-      isActive: variant.isActive ?? true,
+      sku: variant.getSku(),
+      barcode: variant.getBarcode(),
+      attributes: variant.getAttributes(),
+      price: variant.getPrice().getAmount(),
+      cost: variant.getCost().getAmount(),
+      isActive: variant.getIsActive() ?? true,
     });
     return this.toDomain(saved);
   }
+
   async search(
     params: {
       productId?: ProductId;
@@ -57,26 +62,16 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
     const page = params.page && params.page > 0 ? params.page : 1;
     const limit = params.limit && params.limit > 0 ? params.limit : 10;
     const skip = (page - 1) * limit;
+
     const qb = repo.createQueryBuilder('v').innerJoin(ProductEntity, 'p', 'p.id = v.productId');
-    if (params.productId) {
-      qb.andWhere('v.productId = :productId', { productId: params.productId.value });
-    }
-    if (params.isActive !== undefined) {
-      qb.andWhere('v.isActive = :isActive', { isActive: params.isActive });
-    }
-    if (params.sku) {
-      qb.andWhere('v.sku ILIKE :sku', { sku: `%${params.sku}%` });
-    }
-    if (params.barcode) {
-      qb.andWhere('v.barcode ILIKE :barcode', { barcode: `%${params.barcode}%` });
-    }
-    if (params.productName) {
-      qb.andWhere('p.name ILIKE :productName', { productName: `%${params.productName}%` });
-    }
+
+    if (params.productId) qb.andWhere('v.productId = :productId', { productId: params.productId.value });
+    if (params.isActive !== undefined) qb.andWhere('v.isActive = :isActive', { isActive: params.isActive });
+    if (params.sku) qb.andWhere('v.sku ILIKE :sku', { sku: `%${params.sku}%` });
+    if (params.barcode) qb.andWhere('v.barcode ILIKE :barcode', { barcode: `%${params.barcode}%` });
+    if (params.productName) qb.andWhere('p.name ILIKE :productName', { productName: `%${params.productName}%` });
     if (params.productDescription) {
-      qb.andWhere('p.description ILIKE :productDescription', {
-        productDescription: `%${params.productDescription}%`,
-      });
+      qb.andWhere('p.description ILIKE :productDescription', { productDescription: `%${params.productDescription}%` });
     }
     if (params.q) {
       qb.andWhere(
@@ -89,6 +84,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
         }),
       );
     }
+
     const total = await qb.clone().getCount();
     const { entities, raw } = await qb
       .select([
@@ -108,6 +104,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       .skip(skip)
       .take(limit)
       .getRawAndEntities();
+
     const items = entities.map((row, idx) => {
       const r = raw[idx];
       return {
@@ -116,20 +113,26 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
         productDescription: r.p_description,
       };
     });
+
     return { items, total };
   }
+
   async findLastCreated(tx?: TransactionContext): Promise<ProductVariant | null> {
-    const repo = this.getRepo(tx);
-    const row = await repo.createQueryBuilder('v').orderBy('v.createdAt', 'DESC').limit(1).getOne();
+    const row = await this.getRepo(tx)
+      .createQueryBuilder('v')
+      .orderBy('v.createdAt', 'DESC')
+      .limit(1)
+      .getOne();
     if (!row) return null;
     return this.toDomain(row);
   }
+
   async update(
     params: {
       id: string;
       sku?: string;
       barcode?: string;
-      attributes?: ProductVariantAttributes;
+      attributes?: AttributesRecord;
       price?: Money;
       cost?: Money;
     },
@@ -142,59 +145,62 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
     if (params.attributes !== undefined) patch.attributes = params.attributes;
     if (params.price !== undefined) patch.price = params.price.getAmount();
     if (params.cost !== undefined) patch.cost = params.cost.getAmount();
+
     await repo.update({ id: params.id }, patch);
     const updated = await repo.findOne({ where: { id: params.id } });
     if (!updated) return null;
     return this.toDomain(updated);
   }
+
   async setActive(id: string, isActive: boolean, tx?: TransactionContext): Promise<void> {
-    const repo = this.getRepo(tx);
-    await repo.update({ id }, { isActive });
+    await this.getRepo(tx).update({ id }, { isActive });
   }
+
   async findById(id: string, tx?: TransactionContext): Promise<ProductVariant | null> {
-    const repo = this.getRepo(tx);
-    const row = await repo.findOne({ where: { id } });
+    const row = await this.getRepo(tx).findOne({ where: { id } });
     if (!row) return null;
     return this.toDomain(row);
   }
+
   async findBySku(sku: string, tx?: TransactionContext): Promise<ProductVariant | null> {
-    const repo = this.getRepo(tx);
-    const row = await repo.findOne({ where: { sku } });
+    const row = await this.getRepo(tx).findOne({ where: { sku } });
     if (!row) return null;
     return this.toDomain(row);
   }
+
   async findByBarcode(barcode: string, tx?: TransactionContext): Promise<ProductVariant | null> {
-    const repo = this.getRepo(tx);
-    const row = await repo.findOne({ where: { barcode } });
+    const row = await this.getRepo(tx).findOne({ where: { barcode } });
     if (!row) return null;
     return this.toDomain(row);
   }
+
   async listByProductId(productId: ProductId, tx?: TransactionContext): Promise<ProductVariant[]> {
-    const repo = this.getRepo(tx);
-    const rows = await repo.find({ where: { productId: productId.value } });
+    const rows = await this.getRepo(tx).find({ where: { productId: productId.value } });
     return rows.map((row) => this.toDomain(row));
   }
+
   async listActiveByProductId(productId: ProductId, tx?: TransactionContext): Promise<ProductVariant[]> {
-    const repo = this.getRepo(tx);
-    const rows = await repo.find({ where: { productId: productId.value, isActive: true } });
+    const rows = await this.getRepo(tx).find({ where: { productId: productId.value, isActive: true } });
     return rows.map((row) => this.toDomain(row));
   }
+
   async listInactiveByProductId(productId: ProductId, tx?: TransactionContext): Promise<ProductVariant[]> {
-    const repo = this.getRepo(tx);
-    const rows = await repo.find({ where: { productId: productId.value, isActive: false } });
+    const rows = await this.getRepo(tx).find({ where: { productId: productId.value, isActive: false } });
     return rows.map((row) => this.toDomain(row));
   }
+
   private toDomain(row: ProductVariantEntity): ProductVariant {
     return new ProductVariant(
       row.id,
-      new ProductId(row.productId),
+      ProductId.create(row.productId),
       row.sku,
       row.barcode,
       row.attributes,
-      new Money(row.price),
-      new Money(row.cost),
+      Money.create(row.price),
+      Money.create(row.cost),
       row.isActive,
       row.createdAt,
     );
   }
 }
+

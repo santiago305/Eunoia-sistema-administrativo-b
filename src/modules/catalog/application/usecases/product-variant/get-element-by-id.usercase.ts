@@ -1,11 +1,11 @@
 import { Inject, BadRequestException } from "@nestjs/common";
-import { PRODUCT_VARIANT, ProductVariantRepository } from "src/modules/catalog/domain/ports/product-variant.repository";
+import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/modules/catalog/domain/ports/product-variant.repository";
 import { GetProductVariantInput } from "../../dto/product-variants/input/get-by-id-product-variant";
 import { ProductVariantOutput } from "../../dto/product-variants/output/product-variant-out";
 
 export class GetProductVariant {
   constructor(
-    @Inject(PRODUCT_VARIANT)
+    @Inject(PRODUCT_VARIANT_REPOSITORY)
     private readonly variantRepo: ProductVariantRepository,
   ) {}
 

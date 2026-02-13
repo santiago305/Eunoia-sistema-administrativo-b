@@ -1,8 +1,8 @@
 export interface ProductOutput {
   id: string;
   name: string;
-  description: string;
+  description: string | null;
   isActive: boolean;
-  createdAt?: Date;
-  updatedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
