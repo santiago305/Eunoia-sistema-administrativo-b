@@ -89,18 +89,18 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
     const { entities, raw } = await qb
       .select([
         'v.id',
-        'v.product_id',
+        'v.productId',
         'v.sku',
         'v.barcode',
         'v.attributes',
         'v.price',
         'v.cost',
-        'v.is_active',
-        'v.created_at',
+        'v.isActive',
+        'v.createdAt',
         'p.name',
         'p.description',
       ])
-      .orderBy('v.created_at', 'DESC')
+      .orderBy('v.createdAt', 'DESC')
       .skip(skip)
       .take(limit)
       .getRawAndEntities();
@@ -208,7 +208,8 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       row.sku,
       row.barcode,
       row.attributes,
-      Money.create(row.price),
+      // "numeric" from Postgres can arrive as string; normalize to number
+      Money.create(Number(row.price)),
       Money.create(Number(row.cost ?? 0)),
       row.isActive,
       row.createdAt,

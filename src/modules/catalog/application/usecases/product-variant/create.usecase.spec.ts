@@ -15,6 +15,7 @@ describe('CreateProductVariant', () => {
 
     const variantRepo = {
       findByBarcode: jest.fn(),
+      findLastSkuByProductId: jest.fn(),
       findLastSkuByPrefix: jest.fn(),
       findLastCreated: jest.fn(),
       findBySku: jest.fn(),
@@ -39,6 +40,7 @@ describe('CreateProductVariant', () => {
 
     const variantRepo = {
       findByBarcode: jest.fn().mockResolvedValue(null),
+      findLastSkuByProductId: jest.fn().mockResolvedValue(null),
       findLastSkuByPrefix: jest.fn().mockResolvedValue(null),
       findLastCreated: jest.fn().mockResolvedValue(null),
       findBySku: jest.fn().mockResolvedValue(null),

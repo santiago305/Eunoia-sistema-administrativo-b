@@ -47,7 +47,8 @@ export class UpdateProductVariant {
           sku,
           product.getName(),
           input.attributes?.color,
-          input.attributes?.size,
+          input.attributes?.presentation,
+          input.attributes?.variant,
         );
       }
 

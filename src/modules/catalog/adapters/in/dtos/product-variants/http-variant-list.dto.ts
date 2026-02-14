@@ -4,7 +4,7 @@ import { IsUUID, IsNotEmpty, IsOptional, IsBooleanString, IsString, IsInt, Max, 
 export class ListProductVariantsQueryDto {
   @IsUUID()
   @IsOptional()
-  productId: string;
+  productId?: string;
 
   @IsOptional()
   @IsString()

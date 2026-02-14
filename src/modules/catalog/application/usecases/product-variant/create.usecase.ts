@@ -26,7 +26,8 @@ export class CreateProductVariant {
     private readonly clock: ClockPort,
   ) {}
 
-  async execute(input: CreateProductVariantInput): Promise<ProductVariantOutput> {
+  async execute(input: CreateProductVariantInput): Promise<{message:string, type:string}> {
+    console.log("[CreateProductVariant] input.attributes:", input.attributes);
     const productId = ProductId.create(input.productId);
 
     const product = await this.productRepo.findById(productId);
@@ -52,8 +53,10 @@ export class CreateProductVariant {
           this.variantRepo,
           product.getName(),
           input.attributes?.color,
-          input.attributes?.size,
+          input.attributes?.variant,
+          input.attributes?.presentation,
         ));
+      console.log("[CreateProductVariant] generated sku:", sku);
 
       const variant = new ProductVariant(
         undefined,
@@ -69,7 +72,10 @@ export class CreateProductVariant {
 
       try {
         const created = await this.variantRepo.create(variant);
-        return this.toOutput(created, product);
+        return {
+          message: "¡Varitante create con exito!",
+          type: "success"
+        };
       } catch (error: any) {
         const dbUniqueViolation = error?.code === '23505';
         if (dbUniqueViolation && !explicitSku && attempt < maxAttempts) {
@@ -83,21 +89,5 @@ export class CreateProductVariant {
     }
 
     throw new BadRequestException('No se pudo generar un SKU unico');
-  }
-
-  private toOutput(v: ProductVariant, product: Product): ProductVariantOutput {
-    return {
-      id: v.getId(),
-      productId: product.getId()?.value,
-      productName: product.getName(),
-      productDescription: product.getDescription(),
-      sku: v.getSku(),
-      barcode: v.getBarcode(),
-      attributes: v.getAttributes(),
-      price: v.getPrice().getAmount(),
-      cost: v.getCost().getAmount(),
-      isActive: v.getIsActive(),
-      createdAt: v.getCreatedAt(),
-    };
   }
 }

@@ -1,5 +1,6 @@
 export interface ProductVariantAttributes {
   color?: string;
-  size?: string;
+  variant?: string;
+  presentation?: string;
   [key: string]: unknown;
 }
