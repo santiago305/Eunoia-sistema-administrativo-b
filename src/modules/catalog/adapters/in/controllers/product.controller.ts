@@ -53,7 +53,6 @@ export class ProductsController {
     });
   }
 
-
   @Get(':id/variants')
   getVariants(@Param('id', ParseUUIDPipe) id: string) {
     return this.listVariants.execute({ productId: id });

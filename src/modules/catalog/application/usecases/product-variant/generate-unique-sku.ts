@@ -6,11 +6,13 @@ export async function generateUniqueSku(
   variantRepo: ProductVariantRepository,
   productName: string,
   color?: string,
-  size?: string,
+  presentation?: string,
+  variant?:string
 ) {
-  const prefix = buildSkuBase(productName, color, size);
+  const prefix = buildSkuBase(productName, color, presentation, variant);
 
-  const lastSku = await variantRepo.findLastSkuByPrefix(prefix);
+  const lastVariant = await variantRepo.findLastCreated();
+  const lastSku = lastVariant?.sku;
   let next = 1;
 
   if (lastSku) {
