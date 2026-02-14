@@ -1,5 +1,5 @@
 // src/modules/warehouses/application/usecases/warehouse/create.usecase.ts
-import { Inject } from "@nestjs/common";
+import { BadRequestException, Inject } from "@nestjs/common";
 import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
 import { UNIT_OF_WORK, UnitOfWork } from "src/modules/inventory/domain/ports/unit-of-work.port";
 import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "src/modules/warehouses/domain/ports/warehouse.repository.port";
@@ -18,7 +18,7 @@ export class CreateWarehouseUsecase {
     private readonly clock: ClockPort,
   ) {}
 
-  async execute(input: CreateWarehouseInput): Promise<WarehouseOutput> {
+  async execute(input: CreateWarehouseInput): Promise<{message:string, type:string}> {
     return this.uow.runInTransaction(async (tx) => {
       const warehouse = new Warehouse(
         undefined,
@@ -30,18 +30,15 @@ export class CreateWarehouseUsecase {
         true,
         this.clock.now(),
       );
-
-      const saved = await this.warehouseRepo.create(warehouse, tx);
+      try {
+        await this.warehouseRepo.create(warehouse, tx);
+      } catch {
+        new BadRequestException("No se pudo crear el almacen");
+      }
 
       return {
-        warehouseId: saved.warehouseId.value,
-        name: saved.name,
-        department: saved.department,
-        province: saved.province,
-        district: saved.district,
-        address: saved.address,
-        isActive: saved.isActive,
-        createdAt: saved.createdAt,
+        message: "¡Varitante create con exito!",
+        type: "success"
       };
     });
   }

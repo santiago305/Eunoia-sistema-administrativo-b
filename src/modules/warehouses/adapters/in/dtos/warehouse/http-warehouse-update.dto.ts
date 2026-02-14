@@ -1,4 +1,4 @@
-import { IsOptional, IsString } from "class-validator";
+import { IsBoolean, IsOptional, IsString } from "class-validator";
 
 export class HttpUpdateWarehouseDto {
   @IsOptional()
@@ -20,4 +20,8 @@ export class HttpUpdateWarehouseDto {
   @IsOptional()
   @IsString()
   address?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }
