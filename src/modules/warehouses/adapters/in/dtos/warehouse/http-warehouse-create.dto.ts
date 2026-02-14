@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { IsBoolean, IsNotEmpty, IsOptional, IsString } from "class-validator";
 
 export class HttpCreateWarehouseDto {
   @IsString()
@@ -20,4 +20,8 @@ export class HttpCreateWarehouseDto {
   @IsOptional()
   @IsString()
   address?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }
