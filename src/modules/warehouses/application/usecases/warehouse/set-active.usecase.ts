@@ -14,11 +14,14 @@ export class SetWarehouseActiveUsecase {
     private readonly locationRepo: LocartionRepository,
   ) {}
 
-  async execute(input: SetActiveWarehouse): Promise<{ status: string }> {
+  async execute(input: SetActiveWarehouse): Promise<{ type: string, message:string }> {
     return this.uow.runInTransaction(async (tx) => {
       await this.warehouseRepo.setActive(input.warehouseId, input.isActive, tx);
       await this.locationRepo.setActiveByWarehouseId(input.warehouseId, input.isActive, tx);
-      return { status: "¡Operacion realizada con exito!" };
+      return { 
+        type: 'success',
+        message: "¡Operacion realizada con exito!" 
+      };
     });
   }
 }

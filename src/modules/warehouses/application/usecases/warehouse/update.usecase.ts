@@ -13,39 +13,31 @@ export class UpdateWarehouseUsecase {
     private readonly warehouseRepo: WarehouseRepository,
   ) {}
 
-  async execute(input: UpdateWarehouseInput): Promise<WarehouseOutput> {
+  async execute(input: UpdateWarehouseInput): Promise<{type:string,message:string}> {
     return this.uow.runInTransaction(async (tx) => {
       const warehouseActive = await this.warehouseRepo.findById(input.warehouseId);
 
       if(!warehouseActive.isActive){
         throw new BadRequestException("No puedes actulizar un almacen desabilitado");
       }
-      
-      const updated = await this.warehouseRepo.update(
-        {
-          warehouseId: input.warehouseId,
-          name: input.name,
-          department: input.department,
-          province: input.province,
-          district: input.district,
-          address: input.address,
-        },
-        tx,
-      );
-
-      if (!updated) {
+      try {
+        await this.warehouseRepo.update(
+         {
+           warehouseId: input.warehouseId,
+           name: input.name,
+           department: input.department,
+           province: input.province,
+           district: input.district,
+           address: input.address,
+         },
+         tx,
+       );
+      } catch {
         throw new BadRequestException("Almacen no encontrado");
       }
-
       return {
-        warehouseId: updated.warehouseId.value,
-        name: updated.name,
-        department: updated.department,
-        province: updated.province,
-        district: updated.district,
-        address: updated.address,
-        isActive: updated.isActive,
-        createdAt: updated.createdAt,
+        type: "success",
+        message: "¡Almacen actualizado con exito!",
       };
     });
   }
