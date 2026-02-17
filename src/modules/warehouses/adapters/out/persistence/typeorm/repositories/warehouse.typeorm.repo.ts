@@ -7,6 +7,9 @@ import { Warehouse } from "src/modules/warehouses/domain/entities/warehouse";
 import { WarehouseRepository } from "src/modules/warehouses/domain/ports/warehouse.repository.port";
 import { WarehouseId } from "src/modules/warehouses/domain/value-objects/warehouse-id.vo";
 import { WarehouseEntity } from "../entities/warehouse";
+import { WarehouseLocationEntity } from "../entities/warehouse-location";
+import { WarehouseLocation } from "src/modules/warehouses/domain/entities/warehouse-location";
+import { LocationId } from "src/modules/warehouses/domain/value-objects/location-id.vo";
 
 @Injectable()
 export class WarehouseTypeormRepo implements WarehouseRepository {
@@ -45,6 +48,36 @@ export class WarehouseTypeormRepo implements WarehouseRepository {
     });
     return row ? this.toDomain(row) : null;
   }
+  async findByIdLocations(
+    warehouseId: WarehouseId,
+    tx?: TransactionContext
+  ): Promise<{ warehouse: Warehouse; items: WarehouseLocation[] } | null> {
+    const warehouseRow = await this.getRepo(tx).findOne({
+      where: { id: warehouseId.value },
+    });
+
+    if (!warehouseRow) {
+      return null;
+    }
+
+    const locationRows = await this.getManager(tx)
+      .getRepository(WarehouseLocationEntity)
+      .find({ where: { warehouseId: warehouseId.value } });
+
+    const items = locationRows.map(
+      (r) =>
+        new WarehouseLocation(
+          new LocationId(r.id),
+          new WarehouseId(r.warehouseId),
+          r.code,
+          r.description ?? undefined,
+          r.isActive
+        )
+    );
+
+    return { warehouse: this.toDomain(warehouseRow), items };
+  }
+
 
   async create(warehouse: Warehouse, tx?: TransactionContext): Promise<Warehouse> {
     const repo = this.getRepo(tx);
