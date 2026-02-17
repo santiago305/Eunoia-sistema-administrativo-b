@@ -5,6 +5,7 @@ import { GetWarehouseUsecase } from "src/modules/warehouses/application/usecases
 import { ListWarehousesUsecase } from "src/modules/warehouses/application/usecases/warehouse/list.usecase";
 import { SetWarehouseActiveUsecase } from "src/modules/warehouses/application/usecases/warehouse/set-active.usecase";
 import { UpdateWarehouseUsecase } from "src/modules/warehouses/application/usecases/warehouse/update.usecase";
+import { GetWarehouseWithLocationsUsecase } from "src/modules/warehouses/application/usecases/warehouse/get-with-locations.usecase";
 import { HttpCreateWarehouseDto } from "../dtos/warehouse/http-warehouse-create.dto";
 import { ListWarehouseQueryDto } from "../dtos/warehouse/http-warehouse-list.dto";
 import { HttpSetWarehouseActiveDto } from "../dtos/warehouse/http-warehouse-set-active.dto";
@@ -20,6 +21,7 @@ export class WarehousesController {
     private readonly setWarehouseActive: SetWarehouseActiveUsecase,
     private readonly listWarehouses: ListWarehousesUsecase,
     private readonly getWarehouse: GetWarehouseUsecase,
+    private readonly getWarehouseWithLocations: GetWarehouseWithLocationsUsecase,
   ) {}
 
   @Post()
@@ -48,6 +50,11 @@ export class WarehousesController {
   @Get(":id")
   getById(@Param("id", ParseUUIDPipe) id: string) {
     return this.getWarehouse.execute({ warehouseId: new WarehouseId(id) });
+  }
+
+  @Get(":id/locations")
+  getWithLocations(@Param("id", ParseUUIDPipe) id: string) {
+    return this.getWarehouseWithLocations.execute({ warehouseId: new WarehouseId(id) });
   }
 
   @Patch(":id")

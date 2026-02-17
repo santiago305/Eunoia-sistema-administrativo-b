@@ -17,6 +17,7 @@ import { SetLocationActiveUsecase } from "./application/usecases/location/set-ac
 import { UpdateLocationUsecase } from "./application/usecases/location/update.usecase";
 import { CreateWarehouseUsecase } from "./application/usecases/warehouse/create.usecase";
 import { GetWarehouseUsecase } from "./application/usecases/warehouse/get-by-id.usecase";
+import { GetWarehouseWithLocationsUsecase } from "./application/usecases/warehouse/get-with-locations.usecase";
 import { ListWarehousesUsecase } from "./application/usecases/warehouse/list.usecase";
 import { SetWarehouseActiveUsecase } from "./application/usecases/warehouse/set-active.usecase";
 import { UpdateWarehouseUsecase } from "./application/usecases/warehouse/update.usecase";
@@ -32,6 +33,7 @@ import { WAREHOUSE_REPOSITORY } from "./domain/ports/warehouse.repository.port";
     SetWarehouseActiveUsecase,
     ListWarehousesUsecase,
     GetWarehouseUsecase,
+    GetWarehouseWithLocationsUsecase,
     CreateLocationUsecase,
     UpdateLocationUsecase,
     SetLocationActiveUsecase,
