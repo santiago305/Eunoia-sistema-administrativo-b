@@ -66,6 +66,25 @@ export class ProductTypeormRepository implements ProductRepository {
     );
   }
 
+  async findByName(name: string, tx?: TransactionContext): Promise<Product | null> {
+    const repo = this.getRepo(tx);
+    const row = await repo
+      .createQueryBuilder('p')
+      .where('LOWER(p.name) = LOWER(:name)', { name: name.trim() })
+      .orderBy('p.created_at', 'DESC')
+      .getOne();
+    if (!row) return null;
+
+    return new Product(
+      ProductId.create(row.id),
+      row.name,
+      row.description,
+      row.isActive,
+      row.createdAt,
+      row.updatedAt,
+    );
+  }
+
   async searchPaginated(
     params: { isActive?: boolean; name?: string; description?: string; page: number; q?: string; limit: number },
     tx?: TransactionContext,
@@ -73,11 +92,11 @@ export class ProductTypeormRepository implements ProductRepository {
     const repo = this.getRepo(tx);
     const qb = repo.createQueryBuilder('p');
 
-    if (params.name) qb.andWhere('unaccent(p.name) ILIKE unaccent(:name)', { name: `%${params.name}%` });
-    if (params.description) qb.andWhere('unaccent(p.description) ILIKE unaccent(:description)', { description: `%${params.description}%` });
+    if (params.name) qb.andWhere('LOWER(p.name) LIKE LOWER(:name)', { name: `%${params.name}%` });
+    if (params.description) qb.andWhere('LOWER(p.description) LIKE LOWER(:description)', { description: `%${params.description}%` });
     if (params.isActive !== undefined) qb.andWhere('p.is_active = :isActive', { isActive: params.isActive });
     if (params.q) {
-      qb.andWhere('(unaccent(p.name) ILIKE unaccent(:q) OR unaccent(p.description) ILIKE unaccent(:q))', { q: `%${params.q}%` });
+      qb.andWhere('(LOWER(p.name) LIKE LOWER(:q) OR LOWER(p.description) LIKE LOWER(:q))', { q: `%${params.q}%` });
     }
 
     const skip = (params.page - 1) * params.limit;
@@ -158,6 +177,44 @@ export class ProductTypeormRepository implements ProductRepository {
         r.createdAt,
       ),
     );
+  }
+
+  async countAll(tx?: TransactionContext): Promise<number> {
+    return this.getRepo(tx).count();
+  }
+
+  async countByActive(isActive: boolean, tx?: TransactionContext): Promise<number> {
+    return this.getRepo(tx).count({ where: { isActive } });
+  }
+
+  async countCreatedSince(from: Date, tx?: TransactionContext): Promise<number> {
+    return this.getRepo(tx).createQueryBuilder('p').where('p.created_at >= :from', { from }).getCount();
+  }
+
+  async countUpdatedSince(from: Date, tx?: TransactionContext): Promise<number> {
+    return this.getRepo(tx).createQueryBuilder('p').where('p.updated_at >= :from', { from }).getCount();
+  }
+
+  async createdByMonthSince(from: Date, tx?: TransactionContext): Promise<Array<{ month: string; count: number }>> {
+    const rows = await this.getRepo(tx)
+      .createQueryBuilder('p')
+      .select(`to_char(date_trunc('month', p.created_at), 'YYYY-MM')`, 'month')
+      .addSelect('COUNT(*)::int', 'count')
+      .where('p.created_at >= :from', { from })
+      .groupBy(`date_trunc('month', p.created_at)`)
+      .orderBy(`date_trunc('month', p.created_at)`, 'ASC')
+      .getRawMany<{ month: string; count: string }>();
+
+    return rows.map((r) => ({ month: r.month, count: Number(r.count) }));
+  }
+
+  async latest(limit: number, tx?: TransactionContext): Promise<Array<{ id: string; name: string; isActive: boolean; createdAt: Date }>> {
+    const rows = await this.getRepo(tx).find({
+      select: { id: true, name: true, isActive: true, createdAt: true },
+      order: { createdAt: 'DESC' },
+      take: limit,
+    });
+    return rows.map((r) => ({ id: r.id, name: r.name, isActive: r.isActive, createdAt: r.createdAt }));
   }
 }
 

@@ -16,6 +16,8 @@ import { SetProductActive } from '../application/usecases/product/set-active.use
 import { ListActiveProducts } from '../application/usecases/product/list-active.usecase';
 import { ListInactiveProducts } from '../application/usecases/product/list-inactive.usecase';
 import { GetProductWithVariants } from '../application/usecases/product/get-with-variants.usecase';
+import { GetProductById } from '../application/usecases/product/get-by-id.usecase';
+import { GetProductByName } from '../application/usecases/product/get-by-name.usecase';
 
 import { CreateProductVariant } from '../application/usecases/product-variant/create.usecase';
 import { UpdateProductVariant } from '../application/usecases/product-variant/update.usecase';
@@ -33,12 +35,14 @@ import { CLOCK } from 'src/modules/inventory/domain/ports/clock.port';
 import { ProductsController } from '../adapters/in/controllers/product.controller';
 import { ProductVariantsController } from '../adapters/in/controllers/product-variant.controller';
 import { SearchProductsPaginated } from '../application/usecases/product/search-paginated.usecase';
+import { CatalogSummaryController } from '../adapters/in/controllers/catalog-summary.controller';
+import { GetCatalogSummary } from '../application/usecases/catalog/get-summary.usecase';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([ProductEntity, ProductVariantEntity]),
   ],
-  controllers: [ProductsController, ProductVariantsController],
+  controllers: [ProductsController, ProductVariantsController, CatalogSummaryController],
   providers: [
     // use cases
     CreateProduct,
@@ -47,6 +51,8 @@ import { SearchProductsPaginated } from '../application/usecases/product/search-
     ListActiveProducts,
     ListInactiveProducts,
     GetProductWithVariants,
+    GetProductById,
+    GetProductByName,
 
     CreateProductVariant,
     UpdateProductVariant,
@@ -57,6 +63,7 @@ import { SearchProductsPaginated } from '../application/usecases/product/search-
     SearchProductVariants,
     ListProductVariants,
     SearchProductsPaginated,
+    GetCatalogSummary,
 
     // repos
     { provide: PRODUCT_REPOSITORY, useClass: ProductTypeormRepository },

@@ -49,4 +49,14 @@ export interface ProductVariantRepository {
     },
     tx?: TransactionContext,
   ): Promise<{ items: ProductVariantWithProductInfo[]; total: number }>;
+
+  countAll(tx?: TransactionContext): Promise<number>;
+  countByActive(isActive: boolean, tx?: TransactionContext): Promise<number>;
+  countCreatedSince(from: Date, tx?: TransactionContext): Promise<number>;
+  countUpdatedSince(from: Date, tx?: TransactionContext): Promise<number>;
+  createdByMonthSince(from: Date, tx?: TransactionContext): Promise<Array<{ month: string; count: number }>>;
+  latest(
+    limit: number,
+    tx?: TransactionContext,
+  ): Promise<Array<{ id: string; sku: string; productId: string; isActive: boolean; createdAt: Date }>>;
 }
