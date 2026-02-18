@@ -5,16 +5,19 @@ import { ProductEntity } from '../adapters/out/persistence/typeorm/entities/prod
 import { ProductVariantEntity } from '../adapters/out/persistence/typeorm/entities/product-variant.entity';
 import { UnitEntity } from '../adapters/out/persistence/typeorm/entities/unit.entity';
 import { ProductEquivalenceEntity } from '../adapters/out/persistence/typeorm/entities/product-equivalence.entity';
+import { ProductRecipeEntity } from '../adapters/out/persistence/typeorm/entities/product-recipe.entity';
 
 import { ProductTypeormRepository } from '../adapters/out/persistence/typeorm/repositories/product.typeorm.repo';
 import { ProductVariantTypeormRepository } from '../adapters/out/persistence/typeorm/repositories/product-variant.typeorm.repo';
 import { UnitTypeormRepository } from '../adapters/out/persistence/typeorm/repositories/unit.typeorm.repo';
 import { ProductEquivalenceTypeormRepository } from '../adapters/out/persistence/typeorm/repositories/product-equivalence.typeorm.repo';
+import { ProductRecipeTypeormRepository } from '../adapters/out/persistence/typeorm/repositories/product-recipe.typeorm.repo';
 
 import { PRODUCT_REPOSITORY } from '../domain/ports/product.repository';
 import { PRODUCT_VARIANT_REPOSITORY } from '../domain/ports/product-variant.repository';
 import { UNIT_REPOSITORY } from '../domain/ports/unit.repository';
 import { PRODUCT_EQUIVALENCE_REPOSITORY } from '../domain/ports/product-equivalence.repository';
+import { PRODUCT_RECIPE_REPOSITORY } from '../domain/ports/product-recipe.repository';
 
 import { CreateProduct } from '../application/usecases/product/created.usecase';
 import { UpdateProduct } from '../application/usecases/product/update.usecase';
@@ -35,6 +38,9 @@ import { ListUnits } from '../application/usecases/unit/list.usecase';
 import { CreateProductEquivalence } from '../application/usecases/product-equivalence/create.usecase';
 import { DeleteProductEquivalence } from '../application/usecases/product-equivalence/delete.usecase';
 import { ListProductEquivalencesByVariant } from '../application/usecases/product-equivalence/list-by-variant.usecase';
+import { CreateProductRecipe } from '../application/usecases/product-recipe/create.usecase';
+import { DeleteProductRecipe } from '../application/usecases/product-recipe/delete.usecase';
+import { ListProductRecipesByVariant } from '../application/usecases/product-recipe/list-by-variant.usecase';
 
 import { UNIT_OF_WORK } from 'src/modules/inventory/domain/ports/unit-of-work.port';
 import { TypeormUnitOfWork } from 'src/modules/inventory/adapters/out/typeorm/uow/typeorm.unit-of-work';
@@ -44,13 +50,14 @@ import { ProductsController } from '../adapters/in/controllers/product.controlle
 import { ProductVariantsController } from '../adapters/in/controllers/product-variant.controller';
 import { UnitsController } from '../adapters/in/controllers/unit.controller';
 import { ProductEquivalencesController } from '../adapters/in/controllers/product-equivalence.controller';
+import { ProductRecipesController } from '../adapters/in/controllers/product-recipe.controller';
 import { SearchProductsPaginated } from '../application/usecases/product/search-paginated.usecase';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ProductEntity, ProductVariantEntity, UnitEntity, ProductEquivalenceEntity]),
+    TypeOrmModule.forFeature([ProductEntity, ProductVariantEntity, UnitEntity, ProductEquivalenceEntity, ProductRecipeEntity]),
   ],
-  controllers: [ProductsController, ProductVariantsController, UnitsController, ProductEquivalencesController],
+  controllers: [ProductsController, ProductVariantsController, UnitsController, ProductEquivalencesController, ProductRecipesController],
   providers: [
     // use cases
     CreateProduct,
@@ -73,18 +80,21 @@ import { SearchProductsPaginated } from '../application/usecases/product/search-
     CreateProductEquivalence,
     DeleteProductEquivalence,
     ListProductEquivalencesByVariant,
+    CreateProductRecipe,
+    DeleteProductRecipe,
+    ListProductRecipesByVariant,
 
     // repos
     { provide: PRODUCT_REPOSITORY, useClass: ProductTypeormRepository },
     { provide: PRODUCT_VARIANT_REPOSITORY, useClass: ProductVariantTypeormRepository },
     { provide: UNIT_REPOSITORY, useClass: UnitTypeormRepository },
     { provide: PRODUCT_EQUIVALENCE_REPOSITORY, useClass: ProductEquivalenceTypeormRepository },
+    { provide: PRODUCT_RECIPE_REPOSITORY, useClass: ProductRecipeTypeormRepository },
 
     // shared infra
     { provide: UNIT_OF_WORK, useClass: TypeormUnitOfWork },
     { provide: CLOCK, useValue: { now: () => new Date() } },
   ],
-  exports: [PRODUCT_REPOSITORY, PRODUCT_VARIANT_REPOSITORY, UNIT_REPOSITORY, PRODUCT_EQUIVALENCE_REPOSITORY],
+  exports: [PRODUCT_REPOSITORY, PRODUCT_VARIANT_REPOSITORY, UNIT_REPOSITORY, PRODUCT_EQUIVALENCE_REPOSITORY, PRODUCT_RECIPE_REPOSITORY],
 })
 export class CatalogModule {}
-

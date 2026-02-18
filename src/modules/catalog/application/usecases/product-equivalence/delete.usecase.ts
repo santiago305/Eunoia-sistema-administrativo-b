@@ -1,4 +1,4 @@
-import { BadRequestException, Inject } from '@nestjs/common';
+import { BadRequestException, Inject, NotFoundException } from '@nestjs/common';
 import { PRODUCT_EQUIVALENCE_REPOSITORY, ProductEquivalenceRepository } from 'src/modules/catalog/domain/ports/product-equivalence.repository';
 
 export class DeleteProductEquivalence {
@@ -10,7 +10,7 @@ export class DeleteProductEquivalence {
   async execute(id: string): Promise<{type: string, message: string}> {
     const row = await this.equivalenceRepo.findById(id);
     if(!row){
-      throw new BadRequestException({
+      throw new NotFoundException({
         type:'error',
         message:'¡Error, no existe la equivalencia!'
       });
