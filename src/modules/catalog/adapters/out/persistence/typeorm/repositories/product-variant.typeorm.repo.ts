@@ -205,6 +205,54 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
     return rows.map((row) => this.toDomain(row));
   }
 
+  async countAll(tx?: TransactionContext): Promise<number> {
+    return this.getRepo(tx).count();
+  }
+
+  async countByActive(isActive: boolean, tx?: TransactionContext): Promise<number> {
+    return this.getRepo(tx).count({ where: { isActive } });
+  }
+
+  async countCreatedSince(from: Date, tx?: TransactionContext): Promise<number> {
+    return this.getRepo(tx).createQueryBuilder('v').where('v.created_at >= :from', { from }).getCount();
+  }
+
+  async countUpdatedSince(from: Date, tx?: TransactionContext): Promise<number> {
+    // product_variants no tiene updated_at mapeado; se usa created_at como aproximacion.
+    return this.getRepo(tx).createQueryBuilder('v').where('v.created_at >= :from', { from }).getCount();
+  }
+
+  async createdByMonthSince(from: Date, tx?: TransactionContext): Promise<Array<{ month: string; count: number }>> {
+    const rows = await this.getRepo(tx)
+      .createQueryBuilder('v')
+      .select(`to_char(date_trunc('month', v.created_at), 'YYYY-MM')`, 'month')
+      .addSelect('COUNT(*)::int', 'count')
+      .where('v.created_at >= :from', { from })
+      .groupBy(`date_trunc('month', v.created_at)`)
+      .orderBy(`date_trunc('month', v.created_at)`, 'ASC')
+      .getRawMany<{ month: string; count: string }>();
+
+    return rows.map((r) => ({ month: r.month, count: Number(r.count) }));
+  }
+
+  async latest(
+    limit: number,
+    tx?: TransactionContext,
+  ): Promise<Array<{ id: string; sku: string; productId: string; isActive: boolean; createdAt: Date }>> {
+    const rows = await this.getRepo(tx).find({
+      select: { id: true, sku: true, productId: true, isActive: true, createdAt: true },
+      order: { createdAt: 'DESC' },
+      take: limit,
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      sku: r.sku,
+      productId: r.productId,
+      isActive: r.isActive,
+      createdAt: r.createdAt,
+    }));
+  }
+
   private toDomain(row: ProductVariantEntity): ProductVariant {
     return new ProductVariant(
       row.id,

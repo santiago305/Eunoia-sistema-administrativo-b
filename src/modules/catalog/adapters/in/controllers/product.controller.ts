@@ -6,6 +6,7 @@ import { SetProductActive } from 'src/modules/catalog/application/usecases/produ
 import { SearchProductsPaginated } from 'src/modules/catalog/application/usecases/product/search-paginated.usecase';
 import { ListProductVariants } from 'src/modules/catalog/application/usecases/product-variant/list-by-product.usecase';
 import { GetProductWithVariants } from 'src/modules/catalog/application/usecases/product/get-with-variants.usecase';
+import { GetProductById } from 'src/modules/catalog/application/usecases/product/get-by-id.usecase';
 import { HttpCreateProductDto } from '../dtos/products/http-product-create.dto'
 import { HttpUpdateProductDto } from '../dtos/products/http-product-update.dto'
 import { HttpSetProductActiveDto } from '../dtos/products/http-product-set-active.dto'
@@ -18,6 +19,7 @@ export class ProductsController {
     private readonly updateProduct: UpdateProduct,
     private readonly setActive: SetProductActive,
     private readonly search: SearchProductsPaginated,
+    private readonly getById: GetProductById,
     private readonly listVariants: ListProductVariants,
     private readonly getWithVariants: GetProductWithVariants,
 
@@ -57,6 +59,20 @@ export class ProductsController {
   @Get(':id/variants')
   getVariants(@Param('id', ParseUUIDPipe) id: string) {
     return this.listVariants.execute({ productId: id });
+  }
+
+  @Get('by-name/:name')
+  getProductByName(@Param('name') name: string, @Query() query: ListProductQueryDto) {
+    return this.search.execute({
+      name: name?.trim(),
+      page: query.page ?? 1,
+      limit: query.limit ?? 10,
+    });
+  }
+
+  @Get(':id')
+  getProductById(@Param('id', ParseUUIDPipe) id: string) {
+    return this.getById.execute({ id });
   }
 
   @Get(':id/with-variants')

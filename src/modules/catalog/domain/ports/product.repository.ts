@@ -10,6 +10,7 @@ export interface ProductRepository {
   create(prod: Product, tx?: TransactionContext): Promise<Product>;
 
   findById(id: ProductId, tx?: TransactionContext): Promise<Product | null>;
+  findByName(name: string, tx?: TransactionContext): Promise<Product | null>;
 
   update(
     params: {
@@ -47,4 +48,11 @@ export interface ProductRepository {
     },
     tx?: TransactionContext,
   ): Promise<{ items: Product[]; total: number }>;
+
+  countAll(tx?: TransactionContext): Promise<number>;
+  countByActive(isActive: boolean, tx?: TransactionContext): Promise<number>;
+  countCreatedSince(from: Date, tx?: TransactionContext): Promise<number>;
+  countUpdatedSince(from: Date, tx?: TransactionContext): Promise<number>;
+  createdByMonthSince(from: Date, tx?: TransactionContext): Promise<Array<{ month: string; count: number }>>;
+  latest(limit: number, tx?: TransactionContext): Promise<Array<{ id: string; name: string; isActive: boolean; createdAt: Date }>>;
 }
