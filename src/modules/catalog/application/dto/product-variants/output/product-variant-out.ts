@@ -4,6 +4,8 @@ export interface ProductVariantOutput {
   id: string;
   productId: string;
   baseUnitId: string;
+  unitName?: string;
+  unitCode?: string;
   productName?: string;
   productDescription?: string;
   sku: string;

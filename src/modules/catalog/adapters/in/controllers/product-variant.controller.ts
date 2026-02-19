@@ -51,6 +51,7 @@ export class ProductVariantsController {
       sku: query.sku,
       barcode: query.barcode,
       q: query.q,
+      type:query.type,
       isActive: activeVal,
       limit: query.limit,
       page: query.page,

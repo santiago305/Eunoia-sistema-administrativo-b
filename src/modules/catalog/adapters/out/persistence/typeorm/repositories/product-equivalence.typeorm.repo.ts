@@ -29,9 +29,9 @@ export class ProductEquivalenceTypeormRepository implements ProductEquivalenceRe
   async create(equivalence: ProductEquivalence, tx?: TransactionContext): Promise<ProductEquivalence> {
     const repo = this.getRepo(tx);
     const saved = await repo.save({
-      primaVariantId: equivalence.prima_variant_id,
-      fromUnitId: equivalence.from_unit_id,
-      toUnitId: equivalence.to_unit_id,
+      primaVariantId: equivalence.primaVariantId,
+      fromUnitId: equivalence.fromUnitId,
+      toUnitId: equivalence.toUnitId,
       factor: equivalence.factor,
     });
     return this.toDomain(saved);

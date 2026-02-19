@@ -98,6 +98,7 @@ export class ProductTypeormRepository implements ProductRepository {
 
     if (params.name) qb.andWhere('LOWER(p.name) LIKE LOWER(:name)', { name: `%${params.name}%` });
     if (params.description) qb.andWhere('LOWER(p.description) LIKE LOWER(:description)', { description: `%${params.description}%` });
+    if (params.type)   qb.andWhere('p.type = :type', { type: params.type });
     if (params.isActive !== undefined) qb.andWhere('p.is_active = :isActive', { isActive: params.isActive });
     if (params.q) {
       qb.andWhere('(LOWER(p.name) LIKE LOWER(:q) OR LOWER(p.description) LIKE LOWER(:q))', { q: `%${params.q}%` });

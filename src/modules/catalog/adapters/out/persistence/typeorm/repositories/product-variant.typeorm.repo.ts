@@ -54,6 +54,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       q?: string;
       productName?: string;
       productDescription?: string;
+      type?:string;
       page?: number;
       limit?: number;
     },
@@ -71,6 +72,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
     if (params.sku) qb.andWhere('v.sku ILIKE :sku', { sku: `%${params.sku}%` });
     if (params.barcode) qb.andWhere('v.barcode ILIKE :barcode', { barcode: `%${params.barcode}%` });
     if (params.productName) qb.andWhere('p.name ILIKE :productName', { productName: `%${params.productName}%` });
+    if (params.type) qb.andWhere('p.type = :type', { type: params.type });
     if (params.productDescription) {
       qb.andWhere('p.description ILIKE :productDescription', { productDescription: `%${params.productDescription}%` });
     }

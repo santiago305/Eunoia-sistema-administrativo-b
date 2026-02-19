@@ -45,6 +45,7 @@ export interface ProductVariantRepository {
       q?: string;
       productName?: string;
       productDescription?: string;
+      type:string,
       page?: number;
       limit?: number;
     },

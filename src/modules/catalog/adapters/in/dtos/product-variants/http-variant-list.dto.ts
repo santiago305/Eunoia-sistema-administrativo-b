@@ -9,6 +9,10 @@ export class ListProductVariantsQueryDto {
   @IsOptional()
   @IsString()
   q?:string;
+  
+  @IsOptional()
+  @IsString()
+  type?:string;
 
   @IsOptional()
   @IsString()
