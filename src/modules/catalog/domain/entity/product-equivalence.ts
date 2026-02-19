@@ -1,9 +1,9 @@
 export class ProductEquivalence {
     constructor(
-        public readonly equivalence_id : string,
-        public readonly prima_variant_id: string,
-        public readonly from_unit_id: string,
-        public readonly to_unit_id: string,
+        public readonly equivalenceId: string,
+        public readonly primaVariantId: string,
+        public readonly fromUnitId: string,
+        public readonly toUnitId: string,
         public readonly factor: number
     ){}
 }

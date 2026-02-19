@@ -30,6 +30,11 @@ export class UnitTypeormRepository implements UnitRepository {
     return rows.map((row) => this.toDomain(row));
   }
 
+  async getById(id?: string, tx?: TransactionContext): Promise<Unit> {
+    const row = await this.getRepo(tx).findOne({ where: {id}});
+    return this.toDomain(row);
+  }
+
   private toDomain(row: UnitEntity): Unit {
     return new Unit(row.id, row.code, row.name);
   }

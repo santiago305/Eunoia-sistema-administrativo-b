@@ -7,6 +7,7 @@ export interface ListProductVariantsInput {
   isActive?: boolean;
   sku?: string;
   barcode?: string;
+  type?:string,
   limit?:number;
   page?:number;
 }

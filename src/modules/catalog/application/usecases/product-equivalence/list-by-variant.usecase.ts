@@ -14,10 +14,10 @@ export class ListProductEquivalencesByVariant {
   async execute(input: ListProductEquivalenceInput): Promise<ProductEquivalenceOutput[]> {
     const rows = await this.equivalenceRepo.listByVariantId(new VariantId(input.variantId));
     return rows.map((e: ProductEquivalence) => ({
-      id: e.equivalence_id,
-      primaVariantId: e.prima_variant_id,
-      fromUnitId: e.from_unit_id,
-      toUnitId: e.to_unit_id,
+      id: e.equivalenceId,
+      primaVariantId: e.primaVariantId,
+      fromUnitId: e.fromUnitId,
+      toUnitId: e.toUnitId,
       factor: e.factor,
     }));
   }
