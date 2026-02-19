@@ -89,25 +89,6 @@ export class ProductTypeormRepository implements ProductRepository {
     );
   }
 
-  async findByName(name: string, tx?: TransactionContext): Promise<Product | null> {
-    const repo = this.getRepo(tx);
-    const row = await repo
-      .createQueryBuilder('p')
-      .where('LOWER(p.name) = LOWER(:name)', { name: name.trim() })
-      .orderBy('p.created_at', 'DESC')
-      .getOne();
-    if (!row) return null;
-
-    return new Product(
-      ProductId.create(row.id),
-      row.name,
-      row.description,
-      row.isActive,
-      row.createdAt,
-      row.updatedAt,
-    );
-  }
-
   async searchPaginated(
     params: { isActive?: boolean; name?: string; description?: string; type?: ProductType; page: number; q?: string; limit: number },
     tx?: TransactionContext,

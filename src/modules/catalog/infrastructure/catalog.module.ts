@@ -91,7 +91,7 @@ import { GetCatalogSummary } from '../application/usecases/catalog/get-summary.u
     CreateProductRecipe,
     DeleteProductRecipe,
     ListProductRecipesByVariant,
-    GetCatalogSummary
+    GetCatalogSummary,
 
     // repos
     { provide: PRODUCT_REPOSITORY, useClass: ProductTypeormRepository },

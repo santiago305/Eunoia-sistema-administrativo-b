@@ -129,6 +129,70 @@ create table product_variants (
 -- Índice para listar variantes por producto
 create index idx_variants_product on product_variants(product_id);
 
+-- ---------------------------------------------------------
+-- TABLA: units
+-- Para qué sirve:
+-- - Catálogo de unidades de medida (KG, GR, LT, UND, etc.).
+-- Qué información guarda:
+-- - Código y nombre de la unidad.
+-- Columnas (ES):
+-- - unit_id: id de la unidad (uuid)
+-- - code: código único de la unidad
+-- - name: nombre descriptivo
+-- ---------------------------------------------------------
+create table units (
+  unit_id uuid primary key default uuid_generate_v4(),
+  code varchar(50) not null unique,
+  name varchar(180) not null
+);
+
+-- ---------------------------------------------------------
+-- TABLA: product_equivalences
+-- Para qué sirve:
+-- - Factores de conversión entre unidades por variante prima.
+-- Qué información guarda:
+-- - Variante prima, unidad origen/destino y factor de conversión.
+-- Columnas (ES):
+-- - equivalence_id: id de equivalencia
+-- - prima_variant_id: variante prima (FK product_variants)
+-- - from_unit_id: unidad origen (FK units)
+-- - to_unit_id: unidad destino (FK units)
+-- - factor: factor multiplicador de conversión
+-- ---------------------------------------------------------
+create table product_equivalences (
+  equivalence_id uuid primary key default uuid_generate_v4(),
+  prima_variant_id uuid not null references product_variants(variant_id) on delete cascade,
+  from_unit_id uuid not null references units(unit_id),
+  to_unit_id uuid not null references units(unit_id),
+  factor numeric(12,6) not null check (factor > 0)
+);
+
+create index idx_product_equivalences_variant on product_equivalences(prima_variant_id);
+
+-- ---------------------------------------------------------
+-- TABLA: product_recipes
+-- Para qué sirve:
+-- - Recetas/BOM para fabricar una variante terminada.
+-- Qué información guarda:
+-- - Variante terminada, variante prima, cantidad y merma.
+-- Columnas (ES):
+-- - recipe_id: id receta
+-- - finished_variant_id: variante final (FK product_variants)
+-- - prima_variant_id: variante prima insumo (FK product_variants)
+-- - quantity: cantidad requerida
+-- - waste: merma (opcional)
+-- ---------------------------------------------------------
+create table product_recipes (
+  recipe_id uuid primary key default uuid_generate_v4(),
+  finished_variant_id uuid not null references product_variants(variant_id) on delete cascade,
+  prima_variant_id uuid not null references product_variants(variant_id),
+  quantity numeric(12,6) not null check (quantity > 0),
+  waste numeric(12,6)
+);
+
+create index idx_product_recipes_finished on product_recipes(finished_variant_id);
+create index idx_product_recipes_prima on product_recipes(prima_variant_id);
+
 -- =========================
 -- 2) Almacenes
 -- =========================
@@ -589,3 +653,82 @@ create table purchase_order_items (
   quantity int not null check (quantity > 0),
   unit_cost numeric(12,2) not null
 );
+
+-- =========================
+-- 8) Producción
+-- =========================
+
+-- Estados de orden de producción:
+-- DRAFT: borrador
+-- IN_PROGRESS: en producción
+-- COMPLETED: finalizada
+-- CANCELLED: cancelada
+create type production_status as enum ('DRAFT','IN_PROGRESS','COMPLETED','CANCELLED');
+
+-- ---------------------------------------------------------
+-- TABLA: production_orders
+-- Para qué sirve:
+-- - Cabecera de órdenes de producción.
+-- Qué información guarda:
+-- - Almacén origen/destino, serie, correlativo, estado y auditoría.
+-- Columnas (ES):
+-- - production_id: id de orden producción
+-- - from_warehouse_id: almacén origen
+-- - to_warehouse_id: almacén destino
+-- - serie_id: serie documental asociada
+-- - correlative: correlativo de la orden
+-- - status: estado de la orden
+-- - reference: referencia externa/interna
+-- - manufacture_time: tiempo estimado/fabricación
+-- - created_by: usuario creador (texto)
+-- - updated_by: usuario que actualizó (texto, opcional)
+-- - created_at: fecha creación
+-- - updated_at: fecha actualización
+-- ---------------------------------------------------------
+create table production_orders (
+  production_id uuid primary key default uuid_generate_v4(),
+  from_warehouse_id uuid not null references warehouses(warehouse_id),
+  to_warehouse_id uuid not null references warehouses(warehouse_id),
+  serie_id uuid not null references documents_series(series_id),
+  correlative int not null,
+  status production_status not null default 'DRAFT',
+  reference varchar not null,
+  manufacture_time int not null,
+  created_by varchar not null,
+  updated_by varchar,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index idx_production_orders_status on production_orders(status);
+create index idx_production_orders_created_at on production_orders(created_at desc);
+create index idx_production_orders_from_wh on production_orders(from_warehouse_id);
+create index idx_production_orders_to_wh on production_orders(to_warehouse_id);
+
+-- ---------------------------------------------------------
+-- TABLA: production_order_items
+-- Para qué sirve:
+-- - Detalle de la orden de producción.
+-- Qué información guarda:
+-- - Variante final a fabricar, ubicación origen/destino, cantidad y costo unitario.
+-- Columnas (ES):
+-- - item_id: id del item
+-- - production_id: orden producción padre
+-- - finished_variant_id: variante final
+-- - from_location_id: ubicación origen
+-- - to_location_id: ubicación destino
+-- - quantity: cantidad
+-- - unit_cost: costo unitario
+-- ---------------------------------------------------------
+create table production_order_items (
+  item_id uuid primary key default uuid_generate_v4(),
+  production_id uuid not null references production_orders(production_id) on delete cascade,
+  finished_variant_id uuid not null references product_variants(variant_id),
+  from_location_id uuid not null references warehouse_locations(location_id),
+  to_location_id uuid not null references warehouse_locations(location_id),
+  quantity int not null check (quantity > 0),
+  unit_cost numeric not null
+);
+
+create index idx_production_items_production on production_order_items(production_id);
+create index idx_production_items_finished_variant on production_order_items(finished_variant_id);
