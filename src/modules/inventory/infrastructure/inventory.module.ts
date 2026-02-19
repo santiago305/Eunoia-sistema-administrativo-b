@@ -102,6 +102,14 @@ import { SetDocumentSerieActive } from 'src/modules/inventory/application/use-ca
       useValue: { now: () => new Date() },
     },
   ],
-  exports: [INVENTORY_REPOSITORY, DOCUMENT_REPOSITORY, LEDGER_REPOSITORY],
+  // al final de @Module
+  exports: [
+    INVENTORY_REPOSITORY,
+    DOCUMENT_REPOSITORY,
+    LEDGER_REPOSITORY,
+    SERIES_REPOSITORY,
+    INVENTORY_LOCK,
+    CLOCK,
+  ],
 })
 export class InventoryModule {}
