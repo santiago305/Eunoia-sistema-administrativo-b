@@ -89,6 +89,25 @@ export class ProductTypeormRepository implements ProductRepository {
     );
   }
 
+  async findByName(name: string, tx?: TransactionContext): Promise<Product | null> {
+    const repo = this.getRepo(tx);
+    const row = await repo
+      .createQueryBuilder('p')
+      .where('LOWER(p.name) = LOWER(:name)', { name: name.trim() })
+      .orderBy('p.created_at', 'DESC')
+      .getOne();
+    if (!row) return null;
+
+    return new Product(
+      ProductId.create(row.id),
+      row.name,
+      row.description,
+      row.isActive,
+      row.createdAt,
+      row.updatedAt,
+    );
+  }
+
   async searchPaginated(
     params: { isActive?: boolean; name?: string; description?: string; type?: ProductType; page: number; q?: string; limit: number },
     tx?: TransactionContext,
@@ -96,9 +115,8 @@ export class ProductTypeormRepository implements ProductRepository {
     const repo = this.getRepo(tx);
     const qb = repo.createQueryBuilder('p');
 
-    if (params.name) qb.andWhere('unaccent(p.name) ILIKE unaccent(:name)', { name: `%${params.name}%` });
-    if (params.description) qb.andWhere('unaccent(p.description) ILIKE unaccent(:description)', { description: `%${params.description}%` });
-    if (params.type) qb.andWhere('p.type = :type', { type: params.type });
+    if (params.name) qb.andWhere('LOWER(p.name) LIKE LOWER(:name)', { name: `%${params.name}%` });
+    if (params.description) qb.andWhere('LOWER(p.description) LIKE LOWER(:description)', { description: `%${params.description}%` });
     if (params.isActive !== undefined) qb.andWhere('p.is_active = :isActive', { isActive: params.isActive });
     if (params.q) {
       qb.andWhere('(LOWER(p.name) LIKE LOWER(:q) OR LOWER(p.description) LIKE LOWER(:q))', { q: `%${params.q}%` });
