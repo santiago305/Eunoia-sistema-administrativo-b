@@ -17,6 +17,7 @@ export class ListInactiveProducts {
         name: p.getName(),
         description: p.getDescription(),
         isActive: p.getIsActive(),
+        type: p.getType(),
         createdAt: p.getCreatedAt(),
         updatedAt: p.getUpdatedAt(),
       }));

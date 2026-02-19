@@ -2,6 +2,7 @@ import { TransactionContext } from "src/shared/domain/ports/transaction-context.
 import { Product } from "../entity/product";
 import { ProductVariant } from "../entity/product-variant";
 import { ProductId } from "../value-object/product-id.vo";
+import { ProductType } from "../value-object/productType";
 
 export const PRODUCT_REPOSITORY = Symbol("PRODUCT_REPOSITORY");
 
@@ -16,6 +17,7 @@ export interface ProductRepository {
       id: ProductId;
       name?: string;
       description?: string;
+      type?: ProductType;
     },
     tx?: TransactionContext,
   ): Promise<Product | null>;
@@ -39,6 +41,7 @@ export interface ProductRepository {
       isActive?: boolean;
       name?: string;
       description?: string;
+      type?: ProductType;
       q?: string;
       page: number;
       limit: number;

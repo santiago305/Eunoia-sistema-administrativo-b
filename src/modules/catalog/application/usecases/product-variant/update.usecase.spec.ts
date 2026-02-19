@@ -8,6 +8,7 @@ import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo
 describe('UpdateProductVariant', () => {
   const productUuid = '11111111-1111-4111-8111-111111111111';
   const variantUuid = '22222222-2222-4222-8222-222222222222';
+  const baseUnitId = '33333333-3333-4333-8333-333333333333';
 
   it('actualiza variante y retorna output', async () => {
     const updated = new ProductVariant(
@@ -20,6 +21,7 @@ describe('UpdateProductVariant', () => {
       Money.create(5),
       true,
       new Date('2026-02-10T12:00:00Z'),
+      baseUnitId,
     );
 
     const uow = { runInTransaction: jest.fn(async (work) => work({})) };
@@ -33,6 +35,7 @@ describe('UpdateProductVariant', () => {
       Money.create(5),
       true,
       new Date('2026-02-10T12:00:00Z'),
+      baseUnitId,
     );
     const variantRepo = {
       update: jest.fn().mockResolvedValue(updated),
@@ -59,6 +62,7 @@ describe('UpdateProductVariant', () => {
       price: 10,
       cost: 5,
       isActive: true,
+      baseUnitId,
       createdAt: new Date('2026-02-10T12:00:00Z'),
     });
   });
@@ -88,6 +92,7 @@ describe('UpdateProductVariant', () => {
       Money.create(5),
       true,
       new Date('2026-02-10T12:00:00Z'),
+      baseUnitId,
     );
     const updated = new ProductVariant(
       variantUuid,
@@ -99,6 +104,7 @@ describe('UpdateProductVariant', () => {
       Money.create(5),
       true,
       new Date('2026-02-10T12:00:00Z'),
+      baseUnitId,
     );
     const variantRepo = {
       findById: jest.fn().mockResolvedValue(existing),

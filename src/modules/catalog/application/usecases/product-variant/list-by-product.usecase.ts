@@ -19,6 +19,7 @@ export class ListProductVariants {
     return rows.map((v: ProductVariant) => ({
       id: v.getId(),
       productId: v.getProductId().value,
+      baseUnitId: v.getBaseUnitId(),
       sku: v.getSku(),
       barcode: v.getBarcode(),
       attributes: v.getAttributes(),

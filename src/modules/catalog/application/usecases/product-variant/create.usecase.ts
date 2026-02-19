@@ -68,6 +68,7 @@ export class CreateProductVariant {
         Money.create(input.cost),
         input.isActive ?? true,
         this.clock.now(),
+        input.baseUnitId,
       );
 
       try {

@@ -31,6 +31,7 @@ export class SearchProductVariants {
       items: items.map((x) => ({
         id: x.variant.getId(),
         productId: x.variant.getProductId().value,
+        baseUnitId: x.variant.getBaseUnitId(),
         productName: x.productName,
         sku: x.variant.getSku(),
         barcode: x.variant.getBarcode(),

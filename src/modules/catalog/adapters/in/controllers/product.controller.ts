@@ -49,6 +49,7 @@ export class ProductsController {
       isActive: isActived,
       name: query.name,
       description: query.description,
+      type: query.type,
       q: q,
       page: query.page,
       limit: query.limit,

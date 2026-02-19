@@ -1,4 +1,5 @@
-import { IsString, IsOptional, IsBoolean } from "class-validator";
+import { IsString, IsOptional, IsBoolean, IsEnum } from "class-validator";
+import { ProductType } from "src/modules/catalog/domain/value-object/productType";
 
 export class HttpCreateProductDto {
   @IsString()
@@ -11,4 +12,8 @@ export class HttpCreateProductDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsEnum(ProductType)
+  type?: ProductType;
 }

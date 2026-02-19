@@ -24,6 +24,7 @@ export class CreateProduct {
         input.isActive ?? true,
         now,
         now,
+        input.type,
       );
 
       const saved = await this.productRepo.create(product, tx);
@@ -33,6 +34,7 @@ export class CreateProduct {
         name: saved.getName(),
         description: saved.getDescription(),
         isActive: saved.getIsActive(),
+        type: saved.getType(),
         createdAt: saved.getCreatedAt(),
         updatedAt: saved.getUpdatedAt(),
       };

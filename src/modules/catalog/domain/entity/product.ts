@@ -1,4 +1,5 @@
 import { ProductId } from '../value-object/product-id.vo';
+import { ProductType } from '../value-object/productType';
 
 export class Product {
   constructor(
@@ -8,6 +9,7 @@ export class Product {
     private isActive: boolean = true,
     private readonly createdAt?: Date,
     private updatedAt?: Date,
+    public readonly type?: ProductType
   ) {
     if (!name?.trim()) throw new Error("Product name is required");
   }
@@ -18,4 +20,5 @@ export class Product {
   getIsActive() { return this.isActive; }
   getCreatedAt() { return this.createdAt; }
   getUpdatedAt() { return this.updatedAt; }
+  getType() { return this.type; }
 }

@@ -60,6 +60,7 @@ export class UpdateProductVariant {
           attributes: input.attributes,
           price: input.price !== undefined ? Money.create(input.price) : undefined,
           cost: input.cost !== undefined ? Money.create(input.cost) : undefined,
+          baseUnitId: input.baseUnitId,
         },
         tx,
       );
@@ -73,6 +74,7 @@ export class UpdateProductVariant {
     return {
       id: v.getId(),
       productId: v.getProductId().value,
+      baseUnitId: v.getBaseUnitId(),
       sku: v.getSku(),
       barcode: v.getBarcode(),
       attributes: v.getAttributes(),

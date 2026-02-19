@@ -7,6 +7,7 @@ import { Money } from 'src/modules/catalog/domain/value-object/money.vo';
 
 describe('CreateProductVariant', () => {
   const productUuid = '11111111-1111-4111-8111-111111111111';
+  const baseUnitId = '33333333-3333-4333-8333-333333333333';
 
   it('lanza error si el producto no existe', async () => {
     const productRepo = {
@@ -27,7 +28,7 @@ describe('CreateProductVariant', () => {
     const useCase = new CreateProductVariant(productRepo as any, variantRepo as any, clock as any);
 
     await expect(
-      useCase.execute({ productId: productUuid, barcode: '0001', attributes: {}, price: 10, cost: 5 }),
+      useCase.execute({ productId: productUuid, baseUnitId, barcode: '0001', attributes: {}, price: 10, cost: 5 }),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
@@ -60,6 +61,7 @@ describe('CreateProductVariant', () => {
       Money.create(5),
       true,
       now,
+      baseUnitId,
     );
 
     (variantRepo.create as jest.Mock).mockResolvedValue(created);
@@ -68,6 +70,7 @@ describe('CreateProductVariant', () => {
 
     const result = await useCase.execute({
       productId: productUuid,
+      baseUnitId,
       barcode: '0001',
       attributes: { color: 'Negro' },
       price: 10,

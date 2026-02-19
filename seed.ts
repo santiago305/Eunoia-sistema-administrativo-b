@@ -6,6 +6,8 @@ import { DocumentSerie } from 'src/modules/inventory/adapters/out/typeorm/entiti
 import { seedRoles } from './src/modules/roles/infrastructure/seed/role.seeder';
 import { seedUser } from './src/modules/users/infrastructure/seed/user.seeder';
 import { seedDocumentSeries } from 'src/modules/inventory/infrastructure/seed/document_serie.seeder'
+import { seedUnits } from 'src/modules/catalog/infrastructure/seed/unit.seeder'
+import { UnitEntity } from 'src/modules/catalog/adapters/out/persistence/typeorm/entities/unit.entity';
 /**
  * Script de ejecución que inicializa la base de datos con roles predefinidos.
  *
@@ -33,7 +35,7 @@ const dataSource = new DataSource({
   database: envs.db.name,
   synchronize: true, // ya sincronizó antes
   logging: false,
-  entities: [Role, User, DocumentSerie], // puedes agregar más entidades si quieres hacer seed de varias tablas
+  entities: [Role, User, DocumentSerie, UnitEntity], // puedes agregar más entidades si quieres hacer seed de varias tablas
 });
 
 dataSource
@@ -43,6 +45,7 @@ dataSource
     await seedRoles(dataSource); // ejecuta la siembra de roles
     await seedUser(dataSource); // ejecuta la siembra de usuario
     await seedDocumentSeries(dataSource); // ejecuta la siembra de usuario
+    await seedUnits(dataSource);
     await dataSource.destroy(); // cierra la conexión con la DB
     console.log('Seeding completo!');
   })

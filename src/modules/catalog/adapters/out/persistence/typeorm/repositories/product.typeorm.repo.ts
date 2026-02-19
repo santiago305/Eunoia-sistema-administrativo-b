@@ -10,6 +10,7 @@ import { ProductVariant } from 'src/modules/catalog/domain/entity/product-varian
 import { ProductVariantEntity } from '../entities/product-variant.entity';
 import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo';
 import { Money } from 'src/modules/catalog/domain/value-object/money.vo';
+import { ProductType } from 'src/modules/catalog/domain/value-object/productType';
 
 @Injectable()
 export class ProductTypeormRepository implements ProductRepository {
@@ -38,6 +39,7 @@ export class ProductTypeormRepository implements ProductRepository {
     const saved = await repo.save({
       name: prod.getName(),
       description: prod.getDescription(),
+      type: prod.getType(),
       isActive: prod.getIsActive() ?? true,
     });
 
@@ -48,12 +50,33 @@ export class ProductTypeormRepository implements ProductRepository {
       saved.isActive,
       saved.createdAt,
       saved.updatedAt,
+      saved.type ?? undefined,
     );
   }
 
   async findById(id: ProductId, tx?: TransactionContext): Promise<Product | null> {
     const repo = this.getRepo(tx);
     const row = await repo.findOne({ where: { id: id.value } });
+    if (!row) return null;
+
+    return new Product(
+      ProductId.create(row.id),
+      row.name,
+      row.description,
+      row.isActive,
+      row.createdAt,
+      row.updatedAt,
+      row.type ?? undefined,
+    );
+  }
+
+  async findByName(name: string, tx?: TransactionContext): Promise<Product | null> {
+    const repo = this.getRepo(tx);
+    const row = await repo
+      .createQueryBuilder('p')
+      .where('LOWER(p.name) = LOWER(:name)', { name: name.trim() })
+      .orderBy('p.created_at', 'DESC')
+      .getOne();
     if (!row) return null;
 
     return new Product(
@@ -86,7 +109,7 @@ export class ProductTypeormRepository implements ProductRepository {
   }
 
   async searchPaginated(
-    params: { isActive?: boolean; name?: string; description?: string; page: number; q?: string; limit: number },
+    params: { isActive?: boolean; name?: string; description?: string; type?: ProductType; page: number; q?: string; limit: number },
     tx?: TransactionContext,
   ): Promise<{ items: Product[]; total: number }> {
     const repo = this.getRepo(tx);
@@ -104,7 +127,7 @@ export class ProductTypeormRepository implements ProductRepository {
 
     return {
       items: rows.map((row) =>
-        new Product(ProductId.create(row.id), row.name, row.description, row.isActive, row.createdAt, row.updatedAt),
+        new Product(ProductId.create(row.id), row.name, row.description, row.isActive, row.createdAt, row.updatedAt, row.type ?? undefined),
       ),
       total,
     };
@@ -121,7 +144,7 @@ export class ProductTypeormRepository implements ProductRepository {
   }
 
   async update(
-    params: { id: ProductId; name?: string; description?: string },
+    params: { id: ProductId; name?: string; description?: string; type?: ProductType },
     tx?: TransactionContext,
   ): Promise<Product | null> {
     const repo = this.getRepo(tx);
@@ -129,6 +152,7 @@ export class ProductTypeormRepository implements ProductRepository {
 
     if (params.name !== undefined) patch.name = params.name;
     if (params.description !== undefined) patch.description = params.description;
+    if (params.type !== undefined) patch.type = params.type;
 
     await repo.update({ id: params.id.value }, patch);
     const updated = await repo.findOne({ where: { id: params.id.value } });
@@ -141,6 +165,7 @@ export class ProductTypeormRepository implements ProductRepository {
       updated.isActive,
       updated.createdAt,
       updated.updatedAt,
+      updated.type ?? undefined,
     );
   }
 
@@ -154,12 +179,16 @@ export class ProductTypeormRepository implements ProductRepository {
 
   async listActive(tx?: TransactionContext): Promise<Product[]> {
     const rows = await this.getRepo(tx).find({ where: { isActive: true } });
-    return rows.map((row) => new Product(ProductId.create(row.id), row.name, row.description, row.isActive, row.createdAt, row.updatedAt));
+    return rows.map((row) =>
+      new Product(ProductId.create(row.id), row.name, row.description, row.isActive, row.createdAt, row.updatedAt, row.type ?? undefined),
+    );
   }
 
   async listInactive(tx?: TransactionContext): Promise<Product[]> {
     const rows = await this.getRepo(tx).find({ where: { isActive: false } });
-    return rows.map((row) => new Product(ProductId.create(row.id), row.name, row.description, row.isActive, row.createdAt, row.updatedAt));
+    return rows.map((row) =>
+      new Product(ProductId.create(row.id), row.name, row.description, row.isActive, row.createdAt, row.updatedAt, row.type ?? undefined),
+    );
   }
 
   async listVariants(productId: ProductId, tx?: TransactionContext): Promise<ProductVariant[]> {
@@ -175,6 +204,7 @@ export class ProductTypeormRepository implements ProductRepository {
         Money.create(Number(r.cost ?? 0)),
         r.isActive,
         r.createdAt,
+        r.baseUnitId,
       ),
     );
   }
