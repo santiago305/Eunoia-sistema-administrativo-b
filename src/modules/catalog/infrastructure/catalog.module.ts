@@ -61,8 +61,8 @@ import { GetCatalogSummary } from '../application/usecases/catalog/get-summary.u
   imports: [
     TypeOrmModule.forFeature([ProductEntity, ProductVariantEntity, UnitEntity, ProductEquivalenceEntity, ProductRecipeEntity]),
   ],
-  controllers: [ProductsController, ProductVariantsController, UnitsController, ProductEquivalencesController, ProductRecipesController,
-    CatalogSummaryController
+  controllers: [ProductsController, ProductVariantsController, UnitsController, ProductEquivalencesController, ProductRecipesController
+    ,CatalogSummaryController
   ],
   providers: [
     // use cases
@@ -91,7 +91,7 @@ import { GetCatalogSummary } from '../application/usecases/catalog/get-summary.u
     CreateProductRecipe,
     DeleteProductRecipe,
     ListProductRecipesByVariant,
-    GetCatalogSummary,
+    GetCatalogSummary
 
     // repos
     { provide: PRODUCT_REPOSITORY, useClass: ProductTypeormRepository },
