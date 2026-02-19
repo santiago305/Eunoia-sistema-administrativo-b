@@ -18,6 +18,7 @@ export class UpdateProduct {
           id: ProductId.create(input.id),
           name: input.name,
           description: input.description ?? null,
+          type: input.type,
         },
         tx,
       );
@@ -29,6 +30,7 @@ export class UpdateProduct {
         name: updated.getName(),
         description: updated.getDescription(),
         isActive: updated.getIsActive(),
+        type: updated.getType(),
         createdAt: updated.getCreatedAt(),
         updatedAt: updated.getUpdatedAt(),
       };

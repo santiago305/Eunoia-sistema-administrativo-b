@@ -19,6 +19,7 @@ describe('GetProductWithVariants', () => {
 
   it('mapea producto y variantes', async () => {
     const productId = ProductId.create('11111111-1111-4111-8111-111111111111');
+    const baseUnitId = '33333333-3333-4333-8333-333333333333';
     const product = new Product(
       productId,
       'Cable',
@@ -37,6 +38,7 @@ describe('GetProductWithVariants', () => {
       Money.create(5),
       true,
       new Date('2026-02-10T12:00:00Z'),
+      baseUnitId,
     );
 
     const productRepo = {
@@ -63,6 +65,7 @@ describe('GetProductWithVariants', () => {
         {
           id: '22222222-2222-4222-8222-222222222222',
           productId: productId.value,
+          baseUnitId,
           sku: 'CAB-00001',
           barcode: '0001',
           attributes: { color: 'Negro' },

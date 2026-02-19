@@ -6,6 +6,7 @@ import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo
 describe('SearchProductVariants', () => {
   const productUuid = '11111111-1111-4111-8111-111111111111';
   const variantUuid = '22222222-2222-4222-8222-222222222222';
+  const baseUnitId = '33333333-3333-4333-8333-333333333333';
 
   it('busca variantes y mapea salida', async () => {
     const variant = new ProductVariant(
@@ -18,6 +19,7 @@ describe('SearchProductVariants', () => {
       Money.create(5),
       true,
       new Date('2026-02-10T12:00:00Z'),
+      baseUnitId,
     );
 
     const variantRepo = {
@@ -44,6 +46,7 @@ describe('SearchProductVariants', () => {
         {
           id: variantUuid,
           productId: productUuid,
+          baseUnitId,
           sku: 'CAB-00001',
           barcode: '0001',
           attributes: { color: 'Negro' },

@@ -1,5 +1,6 @@
-import { IsOptional, IsBooleanString, IsInt, Min, Max, IsString } from 'class-validator';
+import { IsOptional, IsBooleanString, IsInt, Min, Max, IsString, IsEnum } from 'class-validator';
 import { Type } from 'class-transformer';
+import { ProductType } from 'src/modules/catalog/domain/value-object/productType';
 
 export class ListProductQueryDto {
   @IsOptional()
@@ -31,4 +32,8 @@ export class ListProductQueryDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsEnum(ProductType)
+  type?: ProductType;
 }

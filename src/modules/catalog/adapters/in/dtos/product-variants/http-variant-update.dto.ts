@@ -1,11 +1,15 @@
 import { Type } from "class-transformer";
-import { IsOptional, IsString, IsNumber, Min, ValidateNested } from "class-validator";
+import { IsOptional, IsString, IsNumber, Min, ValidateNested, IsUUID } from "class-validator";
 import { ProductVariantAttributesDto } from "./product-variant-attributes.dto";
 
 export class HttpUpdateProductVariantDto {
   @IsOptional()
   @IsString()
   barcode?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  baseUnitId?: string;
 
   @IsOptional()
   @ValidateNested()

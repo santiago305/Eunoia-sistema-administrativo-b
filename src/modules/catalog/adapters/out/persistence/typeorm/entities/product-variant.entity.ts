@@ -6,6 +6,8 @@ export class ProductVariantEntity {
   id: string;
   @Column({ name: 'product_id', type: 'uuid' })
   productId: string;
+  @Column({ name: 'base_unit_id', type: 'uuid' })
+  baseUnitId: string;
   @Column({ type: 'varchar', length: 80, unique: true })
   sku: string;
   @Column({ type: 'varchar', length: 80, unique: true, nullable: true })
