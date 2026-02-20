@@ -193,7 +193,11 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
   }
 
   async listByProductId(productId: ProductId, tx?: TransactionContext): Promise<ProductVariant[]> {
-    const rows = await this.getRepo(tx).find({ where: { productId: productId.value } });
+    const rows = await this.getRepo(tx).find({ 
+      where: { 
+        productId: productId.value,
+        isActive: true,
+      } });
     return rows.map((row) => this.toDomain(row));
   }
 
