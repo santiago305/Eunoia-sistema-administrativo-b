@@ -3,36 +3,60 @@ import { UNIT_OF_WORK, UnitOfWork } from "src/modules/inventory/domain/ports/uni
 import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/domain/ports/product.repository";
 import { ProductId } from "src/modules/catalog/domain/value-object/product-id.vo";
 import { UpdateProductInput } from "../../dto/products/input/update-product";
-import { ProductOutput } from "../../dto/products/output/product-out";
-
+import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/modules/catalog/domain/ports/product-variant.repository";
+import { UpdateProductVariant } from "../product-variant/update.usecase";
 export class UpdateProduct {
   constructor(
     @Inject(UNIT_OF_WORK) private readonly uow: UnitOfWork,
     @Inject(PRODUCT_REPOSITORY) private readonly productRepo: ProductRepository,
+    @Inject(PRODUCT_VARIANT_REPOSITORY)
+    private readonly variantRepo: ProductVariantRepository,
+    private readonly updateProductVariant: UpdateProductVariant,
   ) {}
 
-  async execute(input: UpdateProductInput): Promise<ProductOutput> {
+  async execute(input: UpdateProductInput): Promise<{type:string, message:string, id:string} >{
     return this.uow.runInTransaction(async (tx) => {
       const updated = await this.productRepo.update(
         {
           id: ProductId.create(input.id),
           name: input.name,
           description: input.description ?? null,
-          type: input.type,
+          baseUnitId: input.baseUnitId ?? null,
+          variantDefaulId: input.variantDefaulId ?? null,
+          type: input.type ?? null,
         },
         tx,
       );
+      if (!updated) throw new NotFoundException(
+        {
+          type: "error",
+          message: "Producto no encontrado",
+        }
+      );
 
-      if (!updated) throw new NotFoundException('Producto no encontrado');
+      //buscar la variante por defecto
+      const variantDefault = await this.variantRepo.findById(updated.getVariantDefaultId(),tx);
+      if(variantDefault){
+        //actualizar la variante por defecto
+        const updateVariantDefault = await this.updateProductVariant.execute({
+          id: variantDefault.getId(),
+          price: input.price,
+          cost: input.cost,
+          attributes: input.attributes
+        });
+        if(!updateVariantDefault) throw new NotFoundException(
+          {
+            type: "error",
+            message: "Error al actualizar la variante por defecto del producto",
+          }
+        );
+      }
+
 
       return {
-        id: updated.getId()?.value,
-        name: updated.getName(),
-        description: updated.getDescription(),
-        isActive: updated.getIsActive(),
-        type: updated.getType(),
-        createdAt: updated.getCreatedAt(),
-        updatedAt: updated.getUpdatedAt(),
+        type: "success",
+        message: "Producto actualizado con éxito",
+        id: updated.getId()?.value || "",
       };
     });
   }

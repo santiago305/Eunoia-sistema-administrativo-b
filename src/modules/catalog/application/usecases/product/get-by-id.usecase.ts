@@ -17,6 +17,7 @@ export class GetProductById {
       id: product.getId()?.value,
       name: product.getName(),
       description: product.getDescription(),
+      baseUnitId: product.getBaseUnitId(),
       isActive: product.getIsActive(),
       createdAt: product.getCreatedAt(),
       updatedAt: product.getUpdatedAt(),

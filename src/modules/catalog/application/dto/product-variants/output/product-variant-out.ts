@@ -3,11 +3,11 @@ import { ProductVariantAttributes } from "../input/attributes-product-variant";
 export interface ProductVariantOutput {
   id: string;
   productId: string;
-  baseUnitId: string;
-  unitName?: string;
-  unitCode?: string;
   productName?: string;
   productDescription?: string;
+  baseUnitId?: string;
+  unitCode?: string;
+  unitName?: string;
   sku: string;
   barcode: string | null;
   attributes: ProductVariantAttributes;

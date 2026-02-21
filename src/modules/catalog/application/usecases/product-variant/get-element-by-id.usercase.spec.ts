@@ -7,7 +7,6 @@ import { ProductVariant } from 'src/modules/catalog/domain/entity/product-varian
 describe('GetProductVariant', () => {
   const productUuid = '11111111-1111-4111-8111-111111111111';
   const variantUuid = '22222222-2222-4222-8222-222222222222';
-  const baseUnitId = '33333333-3333-4333-8333-333333333333';
 
   it('lanza error si no existe', async () => {
     const variantRepo = {
@@ -31,7 +30,6 @@ describe('GetProductVariant', () => {
       Money.create(5),
       true,
       now,
-      baseUnitId,
     );
 
     const variantRepo = {
@@ -45,7 +43,6 @@ describe('GetProductVariant', () => {
     expect(result).toEqual({
       id: variantUuid,
       productId: productUuid,
-      baseUnitId,
       sku: 'CAB-00001',
       barcode: '0001',
       attributes: { color: 'Negro' },

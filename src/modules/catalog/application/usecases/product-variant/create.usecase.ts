@@ -15,6 +15,7 @@ import { CreateProductVariantInput } from '../../dto/product-variants/input/crea
 import { ProductVariantOutput } from '../../dto/product-variants/output/product-variant-out';
 import { CLOCK, ClockPort } from 'src/modules/inventory/domain/ports/clock.port';
 import { generateUniqueSku } from './generate-unique-sku';
+import { TransactionContext } from 'src/shared/domain/ports/transaction-context.port';
 
 export class CreateProductVariant {
   constructor(
@@ -26,21 +27,23 @@ export class CreateProductVariant {
     private readonly clock: ClockPort,
   ) {}
 
-  async execute(input: CreateProductVariantInput): Promise<{message:string, type:string}> {
-    console.log("[CreateProductVariant] input.attributes:", input.attributes);
+  async execute(
+    input: CreateProductVariantInput,
+    tx?: TransactionContext,
+  ): Promise<{ message: string; type: string; id: string }> {
     const productId = ProductId.create(input.productId);
 
-    const product = await this.productRepo.findById(productId);
+    const product = await this.productRepo.findById(productId, tx);
     if (!product) throw new NotFoundException('Producto no encontrado');
 
     if (input.barcode?.trim()) {
-      const existsBarcode = await this.variantRepo.findByBarcode(input.barcode.trim());
+      const existsBarcode = await this.variantRepo.findByBarcode(input.barcode.trim(), tx);
       if (existsBarcode) throw new ConflictException('Barcode ya existe');
     }
 
     const explicitSku = input.sku?.trim();
     if (explicitSku) {
-      const existsSku = await this.variantRepo.findBySku(explicitSku);
+      const existsSku = await this.variantRepo.findBySku(explicitSku, tx);
       if (existsSku) throw new ConflictException('SKU ya existe');
     }
 
@@ -55,8 +58,8 @@ export class CreateProductVariant {
           input.attributes?.color,
           input.attributes?.variant,
           input.attributes?.presentation,
+          tx,
         ));
-      console.log("[CreateProductVariant] generated sku:", sku);
 
       const variant = new ProductVariant(
         undefined,
@@ -68,14 +71,15 @@ export class CreateProductVariant {
         Money.create(input.cost),
         input.isActive ?? true,
         this.clock.now(),
-        input.baseUnitId,
+        input.defaultVariant ?? false,
       );
 
       try {
-        const created = await this.variantRepo.create(variant);
+        const created = await this.variantRepo.create(variant, tx);
         return {
           message: "¡Varitante create con exito!",
-          type: "success"
+          type: "success",
+          id: created.getId(),
         };
       } catch (error: any) {
         const dbUniqueViolation = error?.code === '23505';

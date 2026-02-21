@@ -16,6 +16,7 @@ export class ListActiveProducts {
         id: p.getId()?.value,
         name: p.getName(),
         description: p.getDescription(),
+        baseUnitId: p.getBaseUnitId(),
         isActive: p.getIsActive(),
         type: p.getType(),
         createdAt: p.getCreatedAt(),

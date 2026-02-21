@@ -17,6 +17,8 @@ export interface ProductRepository {
       id: ProductId;
       name?: string;
       description?: string;
+      baseUnitId?: string;
+      variantDefaulId?:string;
       type?: ProductType;
     },
     tx?: TransactionContext,

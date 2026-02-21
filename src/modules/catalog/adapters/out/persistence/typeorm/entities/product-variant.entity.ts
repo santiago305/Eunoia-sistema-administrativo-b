@@ -6,8 +6,6 @@ export class ProductVariantEntity {
   id: string;
   @Column({ name: 'product_id', type: 'uuid' })
   productId: string;
-  @Column({ name: 'base_unit_id', type: 'uuid' })
-  baseUnitId: string;
   @Column({ type: 'varchar', length: 80, unique: true })
   sku: string;
   @Column({ type: 'varchar', length: 80, unique: true, nullable: true })
@@ -18,6 +16,8 @@ export class ProductVariantEntity {
   price: number;
   @Column({ type: 'numeric', precision: 12, scale: 2, nullable: true })
   cost: number | null;
+  @Column({ name: 'default_variant', type: 'boolean', default: false })
+  defaultVariant: boolean;
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;
   @CreateDateColumn({ name: 'created_at' })

@@ -5,6 +5,7 @@ import { ProductVariantRepository } from 'src/modules/catalog/domain/ports/produ
 import { ProductVariant } from 'src/modules/catalog/domain/entity/product-variant';
 import { ProductVariantEntity } from '../entities/product-variant.entity';
 import { ProductEntity } from '../entities/product.entity';
+import { UnitEntity } from '../entities/unit.entity';
 import { TransactionContext } from 'src/modules/inventory/domain/ports/unit-of-work.port';
 import { TypeormTransactionContext } from 'src/modules/inventory/adapters/out/typeorm/uow/typeorm.transaction-context';
 import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo';
@@ -34,12 +35,12 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
     const repo = this.getRepo(tx);
     const saved = await repo.save({
       productId: variant.getProductId().value,
-      baseUnitId: variant.getBaseUnitId(),
       sku: variant.getSku(),
       barcode: variant.getBarcode(),
       attributes: variant.getAttributes(),
       price: variant.getPrice().getAmount(),
       cost: variant.getCost().getAmount(),
+      defaultVariant: variant.getDefaultVariant(),
       isActive: variant.getIsActive() ?? true,
     });
     return this.toDomain(saved);
@@ -65,7 +66,10 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
     const limit = params.limit && params.limit > 0 ? params.limit : 10;
     const skip = (page - 1) * limit;
 
-    const qb = repo.createQueryBuilder('v').innerJoin(ProductEntity, 'p', 'p.product_id = v.product_id');
+    const qb = repo
+      .createQueryBuilder('v')
+      .innerJoin(ProductEntity, 'p', 'p.product_id = v.product_id')
+      .innerJoin(UnitEntity, 'u', 'u.unit_id = p.base_unit_id');
 
     if (params.productId) qb.andWhere('v.product_id = :productId', { productId: params.productId.value });
     if (params.isActive !== undefined) qb.andWhere('v.is_active = :isActive', { isActive: params.isActive });
@@ -88,12 +92,12 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       );
     }
 
+    qb.andWhere('v.default_variant = false');
     const total = await qb.clone().getCount();
     const { entities, raw } = await qb
       .select([
         'v.id',
         'v.productId',
-        'v.baseUnitId',
         'v.sku',
         'v.barcode',
         'v.attributes',
@@ -103,6 +107,9 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
         'v.createdAt',
         'p.name',
         'p.description',
+        'p.baseUnitId',
+        'u.code',
+        'u.name',
       ])
       .orderBy('v.createdAt', 'DESC')
       .skip(skip)
@@ -115,6 +122,9 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
         variant: this.toDomain(row),
         productName: r.p_name,
         productDescription: r.p_description,
+        baseUnitId: r.p_baseUnitId ?? r.p_base_unit_id,
+        unitCode: r.u_code,
+        unitName: r.u_name,
       };
     });
 
@@ -151,7 +161,6 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       attributes?: AttributesRecord;
       price?: Money;
       cost?: Money;
-      baseUnitId?: string;
     },
     tx?: TransactionContext,
   ): Promise<ProductVariant | null> {
@@ -162,7 +171,6 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
     if (params.attributes !== undefined) patch.attributes = params.attributes;
     if (params.price !== undefined) patch.price = params.price.getAmount();
     if (params.cost !== undefined) patch.cost = params.cost.getAmount();
-    if (params.baseUnitId !== undefined) patch.baseUnitId = params.baseUnitId;
 
     await repo.update({ id: params.id }, patch);
     const updated = await repo.findOne({ where: { id: params.id } });
@@ -193,13 +201,55 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
   }
 
   async listByProductId(productId: ProductId, tx?: TransactionContext): Promise<ProductVariant[]> {
-    const rows = await this.getRepo(tx).find({ where: { productId: productId.value } });
+    const rows = await this.getRepo(tx).find({ 
+      where: { 
+        productId: productId.value,
+        isActive: true,
+      } });
     return rows.map((row) => this.toDomain(row));
   }
 
   async listActiveByProductId(productId: ProductId, tx?: TransactionContext): Promise<ProductVariant[]> {
     const rows = await this.getRepo(tx).find({ where: { productId: productId.value, isActive: true } });
     return rows.map((row) => this.toDomain(row));
+  }
+
+  async listRowMaterial(tx?: TransactionContext): Promise<ProductVariantWithProductInfo[]> {
+    const { entities, raw } = await this.getRepo(tx)
+      .createQueryBuilder('v')
+      .innerJoin(ProductEntity, 'p', 'p.product_id = v.product_id')
+      .innerJoin(UnitEntity, 'u', 'u.unit_id = p.base_unit_id')
+      .where('v.is_active = :isActive', { isActive: true })
+      .andWhere('p.type = :type', { type: 'PRIMA' })
+      .select([
+        'v.id',
+        'v.productId',
+        'v.sku',
+        'v.barcode',
+        'v.attributes',
+        'v.price',
+        'v.cost',
+        'v.isActive',
+        'v.createdAt',
+        'p.name',
+        'p.description',
+        'p.baseUnitId',
+        'u.code',
+        'u.name',
+      ])
+      .getRawAndEntities();
+
+    return entities.map((row, idx) => {
+      const r = raw[idx];
+      return {
+        variant: this.toDomain(row),
+        productName: r.p_name,
+        productDescription: r.p_description,
+        baseUnitId: r.p_baseUnitId ?? r.p_base_unit_id,
+        unitCode: r.u_code,
+        unitName: r.u_name,
+      };
+    });
   }
 
   async listInactiveByProductId(productId: ProductId, tx?: TransactionContext): Promise<ProductVariant[]> {
@@ -267,7 +317,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       Money.create(Number(row.cost ?? 0)),
       row.isActive,
       row.createdAt,
-      row.baseUnitId,
+      row.defaultVariant,
     );
   }
 }

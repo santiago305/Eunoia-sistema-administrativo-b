@@ -34,6 +34,7 @@ import { SetProductVariantActive } from '../application/usecases/product-variant
 import { GetProductVariant } from '../application/usecases/product-variant/get-element-by-id.usercase';
 import { ListActiveProductVariants } from '../application/usecases/product-variant/list-active.usecase';
 import { ListInactiveProductVariants } from '../application/usecases/product-variant/list-inactive.usecase';
+import { ListRowMaterialProductVariants } from '../application/usecases/product-variant/list-row-material.usecase';
 import { SearchProductVariants } from '../application/usecases/product-variant/search.usecase';
 import { ListProductVariants } from '../application/usecases/product-variant/list-by-product.usecase';
 import { ListUnits } from '../application/usecases/unit/list.usecase';
@@ -81,6 +82,7 @@ import { GetCatalogSummary } from '../application/usecases/catalog/get-summary.u
     GetProductVariant,
     ListActiveProductVariants,
     ListInactiveProductVariants,
+    ListRowMaterialProductVariants,
     SearchProductVariants,
     ListProductVariants,
     SearchProductsPaginated,

@@ -39,6 +39,7 @@ export class ProductTypeormRepository implements ProductRepository {
     const saved = await repo.save({
       name: prod.getName(),
       description: prod.getDescription(),
+      baseUnitId: prod.getBaseUnitId(),
       type: prod.getType(),
       isActive: prod.getIsActive() ?? true,
     });
@@ -47,7 +48,9 @@ export class ProductTypeormRepository implements ProductRepository {
       ProductId.create(saved.id),
       saved.name,
       saved.description,
+      saved.baseUnitId,
       saved.isActive,
+      saved.variantDefaulId,
       saved.createdAt,
       saved.updatedAt,
       saved.type ?? undefined,
@@ -63,7 +66,9 @@ export class ProductTypeormRepository implements ProductRepository {
       ProductId.create(row.id),
       row.name,
       row.description,
+      row.baseUnitId,
       row.isActive,
+      row.variantDefaulId,
       row.createdAt,
       row.updatedAt,
       row.type ?? undefined,
@@ -83,7 +88,9 @@ export class ProductTypeormRepository implements ProductRepository {
       ProductId.create(row.id),
       row.name,
       row.description,
+      row.baseUnitId,
       row.isActive,
+      row.variantDefaulId,
       row.createdAt,
       row.updatedAt,
     );
@@ -109,7 +116,17 @@ export class ProductTypeormRepository implements ProductRepository {
 
     return {
       items: rows.map((row) =>
-        new Product(ProductId.create(row.id), row.name, row.description, row.isActive, row.createdAt, row.updatedAt, row.type ?? undefined),
+        new Product(
+          ProductId.create(row.id),
+          row.name,
+          row.description,
+          row.baseUnitId,
+          row.isActive,
+          row.variantDefaulId,
+          row.createdAt,
+          row.updatedAt,
+          row.type ?? undefined,
+        ),
       ),
       total,
     };
@@ -126,7 +143,9 @@ export class ProductTypeormRepository implements ProductRepository {
   }
 
   async update(
-    params: { id: ProductId; name?: string; description?: string; type?: ProductType },
+    params: { id: ProductId; name?: string; description?: string; baseUnitId?: string; type?: ProductType;
+      variantDefaulId?:string
+     },
     tx?: TransactionContext,
   ): Promise<Product | null> {
     const repo = this.getRepo(tx);
@@ -134,7 +153,10 @@ export class ProductTypeormRepository implements ProductRepository {
 
     if (params.name !== undefined) patch.name = params.name;
     if (params.description !== undefined) patch.description = params.description;
+    if (params.baseUnitId !== undefined) patch.baseUnitId = params.baseUnitId;
     if (params.type !== undefined) patch.type = params.type;
+    if (params.variantDefaulId !== undefined) patch.variantDefaulId = params.variantDefaulId;
+
 
     await repo.update({ id: params.id.value }, patch);
     const updated = await repo.findOne({ where: { id: params.id.value } });
@@ -144,7 +166,9 @@ export class ProductTypeormRepository implements ProductRepository {
       ProductId.create(updated.id),
       updated.name,
       updated.description,
+      updated.baseUnitId,
       updated.isActive,
+      updated.variantDefaulId,
       updated.createdAt,
       updated.updatedAt,
       updated.type ?? undefined,
@@ -162,14 +186,34 @@ export class ProductTypeormRepository implements ProductRepository {
   async listActive(tx?: TransactionContext): Promise<Product[]> {
     const rows = await this.getRepo(tx).find({ where: { isActive: true } });
     return rows.map((row) =>
-      new Product(ProductId.create(row.id), row.name, row.description, row.isActive, row.createdAt, row.updatedAt, row.type ?? undefined),
+      new Product(
+        ProductId.create(row.id),
+        row.name,
+        row.description,
+        row.baseUnitId,
+        row.isActive,
+        row.variantDefaulId,
+        row.createdAt,
+        row.updatedAt,
+        row.type ?? undefined,
+      ),
     );
   }
 
   async listInactive(tx?: TransactionContext): Promise<Product[]> {
     const rows = await this.getRepo(tx).find({ where: { isActive: false } });
     return rows.map((row) =>
-      new Product(ProductId.create(row.id), row.name, row.description, row.isActive, row.createdAt, row.updatedAt, row.type ?? undefined),
+      new Product(
+        ProductId.create(row.id),
+        row.name,
+        row.description,
+        row.baseUnitId,
+        row.isActive,
+        row.variantDefaulId,
+        row.createdAt,
+        row.updatedAt,
+        row.type ?? undefined,
+      ),
     );
   }
 
@@ -186,7 +230,7 @@ export class ProductTypeormRepository implements ProductRepository {
         Money.create(Number(r.cost ?? 0)),
         r.isActive,
         r.createdAt,
-        r.baseUnitId,
+        r.defaultVariant,
       ),
     );
   }

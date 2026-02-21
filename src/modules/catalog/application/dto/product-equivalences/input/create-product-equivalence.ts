@@ -1,5 +1,5 @@
 export interface CreateProductEquivalenceInput {
-  primaVariantId: string;
+  productId: string;
   fromUnitId: string;
   toUnitId: string;
   factor: number;

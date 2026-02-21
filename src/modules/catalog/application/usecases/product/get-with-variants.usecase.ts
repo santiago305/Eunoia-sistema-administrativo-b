@@ -21,6 +21,7 @@ export class GetProductWithVariants {
         id: product.getId()?.value,
         name: product.getName(),
         description: product.getDescription(),
+        baseUnitId: product.getBaseUnitId(),
         isActive: product.getIsActive(),
         type: product.getType(),
         createdAt: product.getCreatedAt(),
@@ -29,7 +30,6 @@ export class GetProductWithVariants {
       variants: variants.map((v) => ({
         id: v.getId(),
         productId: v.getProductId().value,
-        baseUnitId: v.getBaseUnitId(),
         sku: v.getSku(),
         barcode: v.getBarcode(),
         attributes: v.getAttributes(),

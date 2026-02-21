@@ -6,7 +6,6 @@ import { ProductEquivalence } from 'src/modules/catalog/domain/entity/product-eq
 import { ProductEquivalenceEntity } from '../entities/product-equivalence.entity';
 import { TransactionContext } from 'src/shared/domain/ports/transaction-context.port';
 import { TypeormTransactionContext } from 'src/modules/inventory/adapters/out/typeorm/uow/typeorm.transaction-context';
-import { VariantId } from 'src/modules/inventory/domain/value-objects/ids';
 
 @Injectable()
 export class ProductEquivalenceTypeormRepository implements ProductEquivalenceRepository {
@@ -29,7 +28,7 @@ export class ProductEquivalenceTypeormRepository implements ProductEquivalenceRe
   async create(equivalence: ProductEquivalence, tx?: TransactionContext): Promise<ProductEquivalence> {
     const repo = this.getRepo(tx);
     const saved = await repo.save({
-      primaVariantId: equivalence.primaVariantId,
+      productId: equivalence.productId,
       fromUnitId: equivalence.fromUnitId,
       toUnitId: equivalence.toUnitId,
       factor: equivalence.factor,
@@ -37,8 +36,8 @@ export class ProductEquivalenceTypeormRepository implements ProductEquivalenceRe
     return this.toDomain(saved);
   }
 
-  async listByVariantId(variantId: VariantId, tx?: TransactionContext): Promise<ProductEquivalence[]> {
-    const rows = await this.getRepo(tx).find({ where: { primaVariantId: variantId.value } });
+  async listByProductId(productId: string, tx?: TransactionContext): Promise<ProductEquivalence[]> {
+    const rows = await this.getRepo(tx).find({ where: { productId } });
     return rows.map((row) => this.toDomain(row));
   }
 
@@ -55,7 +54,7 @@ export class ProductEquivalenceTypeormRepository implements ProductEquivalenceRe
   private toDomain(row: ProductEquivalenceEntity): ProductEquivalence {
     return new ProductEquivalence(
       row.id,
-      row.primaVariantId,
+      row.productId,
       row.fromUnitId,
       row.toUnitId,
       Number(row.factor),

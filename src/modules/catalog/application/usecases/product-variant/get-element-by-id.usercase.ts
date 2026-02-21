@@ -20,7 +20,6 @@ export class GetProductVariant {
     return {
       id: v.getId(),
       productId: v.getProductId().value,
-      baseUnitId: v.getBaseUnitId(),
       sku: v.getSku(),
       barcode: v.getBarcode(),
       attributes: v.getAttributes(),
