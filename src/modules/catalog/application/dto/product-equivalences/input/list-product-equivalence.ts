@@ -1,3 +1,3 @@
 export interface ListProductEquivalenceInput {
-  variantId: string;
+  productId: string;
 }

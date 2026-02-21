@@ -21,7 +21,6 @@ describe('UpdateProductVariant', () => {
       Money.create(5),
       true,
       new Date('2026-02-10T12:00:00Z'),
-      baseUnitId,
     );
 
     const uow = { runInTransaction: jest.fn(async (work) => work({})) };
@@ -35,7 +34,6 @@ describe('UpdateProductVariant', () => {
       Money.create(5),
       true,
       new Date('2026-02-10T12:00:00Z'),
-      baseUnitId,
     );
     const variantRepo = {
       update: jest.fn().mockResolvedValue(updated),
@@ -62,7 +60,6 @@ describe('UpdateProductVariant', () => {
       price: 10,
       cost: 5,
       isActive: true,
-      baseUnitId,
       createdAt: new Date('2026-02-10T12:00:00Z'),
     });
   });
@@ -92,7 +89,6 @@ describe('UpdateProductVariant', () => {
       Money.create(5),
       true,
       new Date('2026-02-10T12:00:00Z'),
-      baseUnitId,
     );
     const updated = new ProductVariant(
       variantUuid,
@@ -104,7 +100,6 @@ describe('UpdateProductVariant', () => {
       Money.create(5),
       true,
       new Date('2026-02-10T12:00:00Z'),
-      baseUnitId,
     );
     const variantRepo = {
       findById: jest.fn().mockResolvedValue(existing),
@@ -112,7 +107,7 @@ describe('UpdateProductVariant', () => {
     };
     const productRepo = {
       findById: jest.fn().mockResolvedValue(
-        new Product(ProductId.create(productUuid), 'Cable', 'Cable USB', true, new Date(), new Date()),
+        new Product(ProductId.create(productUuid), 'Cable', 'Cable USB', baseUnitId, true, undefined, new Date(), new Date()),
       ),
     };
 

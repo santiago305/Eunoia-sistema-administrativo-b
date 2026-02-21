@@ -1,13 +1,12 @@
 import { TransactionContext } from "src/shared/domain/ports/transaction-context.port";
 import { ProductEquivalence } from "../entity/product-equivalence";
-import { VariantId } from "src/modules/inventory/domain/value-objects/ids";
 
 
 export const PRODUCT_EQUIVALENCE_REPOSITORY = Symbol("PRODUCT_EQUIVALENCE_REPOSITORY");
 
 export interface ProductEquivalenceRepository {
   create(equivalence: ProductEquivalence, tx?: TransactionContext): Promise<ProductEquivalence>;
-  listByVariantId(variantId: VariantId, tx?: TransactionContext): Promise<ProductEquivalence[]>;
+  listByProductId(productId: string, tx?: TransactionContext): Promise<ProductEquivalence[]>;
   findById(id: string, tx?: TransactionContext): Promise<ProductEquivalence | null>;
   deleteById(id: string, tx?: TransactionContext): Promise<void>;
 }

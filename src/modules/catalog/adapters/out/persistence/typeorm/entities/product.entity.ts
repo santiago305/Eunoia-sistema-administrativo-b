@@ -12,6 +12,14 @@ export class ProductEntity {
   @Column({ type: 'text' , nullable:true})
   description?: string;
 
+  @Column({ name: 'base_unit_id', type: 'uuid' })
+  baseUnitId: string;
+  
+  @Column({ name: 'variant_default_id', type: 'uuid', nullable: true })
+  variantDefaulId?: string;
+
+
+
   @Column({ name: 'type', type: 'enum', enum: ProductType, enumName: 'product_type', nullable: true })
   type?: ProductType;
 

@@ -34,7 +34,6 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
     const repo = this.getRepo(tx);
     const saved = await repo.save({
       productId: variant.getProductId().value,
-      baseUnitId: variant.getBaseUnitId(),
       sku: variant.getSku(),
       barcode: variant.getBarcode(),
       attributes: variant.getAttributes(),
@@ -93,7 +92,6 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       .select([
         'v.id',
         'v.productId',
-        'v.baseUnitId',
         'v.sku',
         'v.barcode',
         'v.attributes',
@@ -151,7 +149,6 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       attributes?: AttributesRecord;
       price?: Money;
       cost?: Money;
-      baseUnitId?: string;
     },
     tx?: TransactionContext,
   ): Promise<ProductVariant | null> {
@@ -162,7 +159,6 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
     if (params.attributes !== undefined) patch.attributes = params.attributes;
     if (params.price !== undefined) patch.price = params.price.getAmount();
     if (params.cost !== undefined) patch.cost = params.cost.getAmount();
-    if (params.baseUnitId !== undefined) patch.baseUnitId = params.baseUnitId;
 
     await repo.update({ id: params.id }, patch);
     const updated = await repo.findOne({ where: { id: params.id } });
@@ -271,7 +267,6 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       Money.create(Number(row.cost ?? 0)),
       row.isActive,
       row.createdAt,
-      row.baseUnitId,
     );
   }
 }

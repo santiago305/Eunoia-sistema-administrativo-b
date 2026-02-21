@@ -6,7 +6,6 @@ import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo
 describe('ListInactiveProductVariants', () => {
   const productUuid = '11111111-1111-4111-8111-111111111111';
   const variantUuid = '22222222-2222-4222-8222-222222222222';
-  const baseUnitId = '33333333-3333-4333-8333-333333333333';
 
   it('lista variantes inactivas por producto', async () => {
     const variantRepo = {
@@ -21,7 +20,6 @@ describe('ListInactiveProductVariants', () => {
           Money.create(4),
           false,
           new Date('2026-02-10T12:00:00Z'),
-          baseUnitId,
         ),
       ]),
     };
@@ -35,7 +33,6 @@ describe('ListInactiveProductVariants', () => {
       {
         id: variantUuid,
         productId: productUuid,
-        baseUnitId,
         sku: 'CAB-00002',
         barcode: '0002',
         attributes: { color: 'Blanco' },

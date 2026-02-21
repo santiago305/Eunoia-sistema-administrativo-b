@@ -24,7 +24,9 @@ describe('GetProductWithVariants', () => {
       productId,
       'Cable',
       'Cable USB',
+      baseUnitId,
       true,
+      undefined,
       new Date('2026-02-10T10:00:00Z'),
       new Date('2026-02-10T11:00:00Z'),
     );
@@ -38,7 +40,6 @@ describe('GetProductWithVariants', () => {
       Money.create(5),
       true,
       new Date('2026-02-10T12:00:00Z'),
-      baseUnitId,
     );
 
     const productRepo = {
@@ -57,6 +58,7 @@ describe('GetProductWithVariants', () => {
         id: productId.value,
         name: 'Cable',
         description: 'Cable USB',
+        baseUnitId,
         isActive: true,
         createdAt: new Date('2026-02-10T10:00:00Z'),
         updatedAt: new Date('2026-02-10T11:00:00Z'),
@@ -65,7 +67,6 @@ describe('GetProductWithVariants', () => {
         {
           id: '22222222-2222-4222-8222-222222222222',
           productId: productId.value,
-          baseUnitId,
           sku: 'CAB-00001',
           barcode: '0001',
           attributes: { color: 'Negro' },

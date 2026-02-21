@@ -1,6 +1,6 @@
 export interface ProductEquivalenceOutput {
   id: string;
-  primaVariantId: string;
+  productId: string;
   fromUnitId: string;
   toUnitId: string;
   factor: number;

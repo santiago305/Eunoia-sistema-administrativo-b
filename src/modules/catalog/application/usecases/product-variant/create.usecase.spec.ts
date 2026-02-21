@@ -28,13 +28,13 @@ describe('CreateProductVariant', () => {
     const useCase = new CreateProductVariant(productRepo as any, variantRepo as any, clock as any);
 
     await expect(
-      useCase.execute({ productId: productUuid, baseUnitId, barcode: '0001', attributes: {}, price: 10, cost: 5 }),
+      useCase.execute({ productId: productUuid, barcode: '0001', attributes: {}, price: 10, cost: 5 }),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('crea variante con sku generado', async () => {
     const productId = ProductId.create(productUuid);
-    const product = new Product(productId, 'Cable', 'Cable USB', true, new Date(), new Date());
+    const product = new Product(productId, 'Cable', 'Cable USB', baseUnitId, true, undefined, new Date(), new Date());
     const productRepo = {
       findById: jest.fn().mockResolvedValue(product),
     };
@@ -61,7 +61,6 @@ describe('CreateProductVariant', () => {
       Money.create(5),
       true,
       now,
-      baseUnitId,
     );
 
     (variantRepo.create as jest.Mock).mockResolvedValue(created);
@@ -70,7 +69,6 @@ describe('CreateProductVariant', () => {
 
     const result = await useCase.execute({
       productId: productUuid,
-      baseUnitId,
       barcode: '0001',
       attributes: { color: 'Negro' },
       price: 10,

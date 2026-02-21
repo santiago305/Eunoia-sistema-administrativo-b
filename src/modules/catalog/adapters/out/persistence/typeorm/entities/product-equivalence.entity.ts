@@ -5,8 +5,8 @@ export class ProductEquivalenceEntity {
   @PrimaryGeneratedColumn('uuid', { name: 'equivalence_id' })
   id: string;
 
-  @Column({ name: 'prima_variant_id', type: 'uuid' })
-  primaVariantId: string;
+  @Column({ name: 'product_id', type: 'uuid' })
+  productId: string;
 
   @Column({ name: 'from_unit_id', type: 'uuid' })
   fromUnitId: string;

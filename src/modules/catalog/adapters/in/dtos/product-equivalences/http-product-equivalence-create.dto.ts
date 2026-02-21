@@ -3,7 +3,7 @@ import { Type } from 'class-transformer';
 
 export class HttpCreateProductEquivalenceDto {
   @IsUUID()
-  primaVariantId: string;
+  productId: string;
 
   @IsUUID()
   fromUnitId: string;

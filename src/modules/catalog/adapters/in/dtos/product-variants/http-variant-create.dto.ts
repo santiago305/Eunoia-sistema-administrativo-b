@@ -6,9 +6,6 @@ export class HttpCreateProductVariantDto {
   @IsUUID()
   productId: string;
 
-  @IsUUID()
-  baseUnitId: string;
-
   @IsOptional()
   @IsString()
   barcode?: string;

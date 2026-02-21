@@ -7,6 +7,7 @@ describe('CreateProduct', () => {
     const now = new Date('2026-02-10T12:00:00Z');
     const tx = { id: 'tx' };
     const productId = ProductId.create('11111111-1111-4111-8111-111111111111');
+    const baseUnitId = '33333333-3333-4333-8333-333333333333';
 
     const uow = {
       runInTransaction: jest.fn(async (work) => work(tx)),
@@ -14,7 +15,7 @@ describe('CreateProduct', () => {
 
     const productRepo = {
       create: jest.fn().mockResolvedValue(
-        new Product(productId, 'Cable', 'Cable USB', true, now, now),
+        new Product(productId, 'Cable', 'Cable USB', baseUnitId, true, undefined, now, now),
       ),
     };
 
@@ -25,6 +26,7 @@ describe('CreateProduct', () => {
     const result = await useCase.execute({
       name: 'Cable',
       description: 'Cable USB',
+      baseUnitId,
     });
 
     expect(uow.runInTransaction).toHaveBeenCalledTimes(1);
@@ -33,6 +35,7 @@ describe('CreateProduct', () => {
       id: productId.value,
       name: 'Cable',
       description: 'Cable USB',
+      baseUnitId,
       isActive: true,
       createdAt: now,
       updatedAt: now,

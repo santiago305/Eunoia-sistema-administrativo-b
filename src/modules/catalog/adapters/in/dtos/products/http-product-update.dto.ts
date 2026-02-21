@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsEnum } from "class-validator";
+import { IsOptional, IsString, IsEnum, IsUUID } from "class-validator";
 import { ProductType } from "src/modules/catalog/domain/value-object/productType";
 
 export class HttpUpdateProductDto {
@@ -9,6 +9,10 @@ export class HttpUpdateProductDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsUUID()
+  baseUnitId?: string;
 
   @IsOptional()
   @IsEnum(ProductType)

@@ -6,6 +6,7 @@ describe('ListActiveProducts', () => {
   it('lista productos activos', async () => {
     const tx = {};
     const productId = ProductId.create('11111111-1111-4111-8111-111111111111');
+    const baseUnitId = '33333333-3333-4333-8333-333333333333';
 
     const uow = {
       runInTransaction: jest.fn(async (work) => work(tx)),
@@ -17,7 +18,9 @@ describe('ListActiveProducts', () => {
           productId,
           'Cable',
           'Cable USB',
+          baseUnitId,
           true,
+          undefined,
           new Date('2026-02-10T10:00:00Z'),
           new Date('2026-02-10T11:00:00Z'),
         ),
@@ -34,6 +37,7 @@ describe('ListActiveProducts', () => {
         id: productId.value,
         name: 'Cable',
         description: 'Cable USB',
+        baseUnitId,
         isActive: true,
         createdAt: new Date('2026-02-10T10:00:00Z'),
         updatedAt: new Date('2026-02-10T11:00:00Z'),

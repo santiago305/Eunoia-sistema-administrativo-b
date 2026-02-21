@@ -22,7 +22,7 @@ export class ProductEquivalencesController {
 
   @Get()
   list(@Query() query: ListProductEquivalencesQueryDto) {
-    return this.listByVariant.execute({ variantId: query.variantId });
+    return this.listByVariant.execute({ productId: query.productId });
   }
 
   @Delete(':id')
