@@ -41,7 +41,8 @@ export class CreateProduct {
         productId: saved.getId()?.value,
         price: input.price,
         cost: input.cost,
-        attributes: input.attributes
+        attributes: input.attributes,
+        defaultVariant: true,
       }, tx);
 
       //actualizar producto con id de variante por defecto

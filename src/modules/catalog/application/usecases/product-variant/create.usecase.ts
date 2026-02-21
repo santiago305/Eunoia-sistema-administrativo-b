@@ -31,7 +31,6 @@ export class CreateProductVariant {
     input: CreateProductVariantInput,
     tx?: TransactionContext,
   ): Promise<{ message: string; type: string; id: string }> {
-    console.log("[CreateProductVariant] input.attributes:", input.attributes);
     const productId = ProductId.create(input.productId);
 
     const product = await this.productRepo.findById(productId, tx);
@@ -61,7 +60,6 @@ export class CreateProductVariant {
           input.attributes?.presentation,
           tx,
         ));
-      console.log("[CreateProductVariant] generated sku:", sku);
 
       const variant = new ProductVariant(
         undefined,
@@ -73,6 +71,7 @@ export class CreateProductVariant {
         Money.create(input.cost),
         input.isActive ?? true,
         this.clock.now(),
+        input.defaultVariant ?? false,
       );
 
       try {

@@ -8,4 +8,5 @@ export interface CreateProductVariantInput {
   price: number;
   cost: number;
   isActive?: boolean;
+  defaultVariant?: boolean;
 }

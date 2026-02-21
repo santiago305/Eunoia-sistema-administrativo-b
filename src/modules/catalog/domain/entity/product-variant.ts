@@ -13,7 +13,8 @@ export class ProductVariant {
     public readonly price: Money,
     public readonly cost: Money,
     public readonly isActive: boolean,
-    public readonly createdAt: Date
+    public readonly createdAt: Date,
+    private readonly defaultVariant: boolean,
   ) {
     if (!sku?.trim()) throw new Error("SKU is required");
   }
@@ -32,4 +33,5 @@ export class ProductVariant {
   getCost(): Money { return this.cost; }
   getIsActive(): boolean { return this.isActive; }
   getCreatedAt(): Date { return this.createdAt; }
+  getDefaultVariant(): boolean { return this.defaultVariant; }
 }

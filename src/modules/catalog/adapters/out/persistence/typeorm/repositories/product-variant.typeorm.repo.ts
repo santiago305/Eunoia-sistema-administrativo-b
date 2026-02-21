@@ -40,6 +40,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       attributes: variant.getAttributes(),
       price: variant.getPrice().getAmount(),
       cost: variant.getCost().getAmount(),
+      defaultVariant: variant.getDefaultVariant(),
       isActive: variant.getIsActive() ?? true,
     });
     return this.toDomain(saved);
@@ -65,7 +66,10 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
     const limit = params.limit && params.limit > 0 ? params.limit : 10;
     const skip = (page - 1) * limit;
 
-    const qb = repo.createQueryBuilder('v').innerJoin(ProductEntity, 'p', 'p.product_id = v.product_id');
+    const qb = repo
+      .createQueryBuilder('v')
+      .innerJoin(ProductEntity, 'p', 'p.product_id = v.product_id')
+      .innerJoin(UnitEntity, 'u', 'u.unit_id = p.base_unit_id');
 
     if (params.productId) qb.andWhere('v.product_id = :productId', { productId: params.productId.value });
     if (params.isActive !== undefined) qb.andWhere('v.is_active = :isActive', { isActive: params.isActive });
@@ -88,6 +92,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       );
     }
 
+    qb.andWhere('v.default_variant = false');
     const total = await qb.clone().getCount();
     const { entities, raw } = await qb
       .select([
@@ -102,6 +107,9 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
         'v.createdAt',
         'p.name',
         'p.description',
+        'p.baseUnitId',
+        'u.code',
+        'u.name',
       ])
       .orderBy('v.createdAt', 'DESC')
       .skip(skip)
@@ -114,6 +122,9 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
         variant: this.toDomain(row),
         productName: r.p_name,
         productDescription: r.p_description,
+        baseUnitId: r.p_baseUnitId ?? r.p_base_unit_id,
+        unitCode: r.u_code,
+        unitName: r.u_name,
       };
     });
 
@@ -234,7 +245,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
         variant: this.toDomain(row),
         productName: r.p_name,
         productDescription: r.p_description,
-        baseUnitId: r.p_baseUnitId,
+        baseUnitId: r.p_baseUnitId ?? r.p_base_unit_id,
         unitCode: r.u_code,
         unitName: r.u_name,
       };
@@ -306,6 +317,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       Money.create(Number(row.cost ?? 0)),
       row.isActive,
       row.createdAt,
+      row.defaultVariant,
     );
   }
 }
