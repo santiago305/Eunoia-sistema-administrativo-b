@@ -5,6 +5,9 @@ export interface ProductVariantOutput {
   productId: string;
   productName?: string;
   productDescription?: string;
+  baseUnitId?: string;
+  unitCode?: string;
+  unitName?: string;
   sku: string;
   barcode: string | null;
   attributes: ProductVariantAttributes;

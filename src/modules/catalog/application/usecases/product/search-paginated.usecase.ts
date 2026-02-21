@@ -54,6 +54,8 @@ export class SearchProductsPaginated {
           }
           return {
             id: p.getId()?.value,
+            baseUnitId: p.getBaseUnitId(),
+            primaDefaultVariantId: p.getVariantDefaultId(), 
             name: p.getName(),
             sku: variantDefault?.getSku(),
             cost: variantDefault?.getCost()?.getAmount(),

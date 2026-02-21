@@ -4,4 +4,7 @@ export interface ProductVariantWithProductInfo {
   variant: ProductVariant;
   productName: string;
   productDescription: string;
+  baseUnitId?: string;
+  unitCode?: string;
+  unitName?: string;
 }

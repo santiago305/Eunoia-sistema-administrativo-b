@@ -50,7 +50,7 @@ export class ProductTypeormRepository implements ProductRepository {
       saved.description,
       saved.baseUnitId,
       saved.isActive,
-      undefined,
+      saved.variantDefaulId,
       saved.createdAt,
       saved.updatedAt,
       saved.type ?? undefined,
@@ -68,7 +68,7 @@ export class ProductTypeormRepository implements ProductRepository {
       row.description,
       row.baseUnitId,
       row.isActive,
-      undefined,
+      row.variantDefaulId,
       row.createdAt,
       row.updatedAt,
       row.type ?? undefined,
@@ -90,7 +90,7 @@ export class ProductTypeormRepository implements ProductRepository {
       row.description,
       row.baseUnitId,
       row.isActive,
-      undefined,
+      row.variantDefaulId,
       row.createdAt,
       row.updatedAt,
     );
@@ -116,7 +116,17 @@ export class ProductTypeormRepository implements ProductRepository {
 
     return {
       items: rows.map((row) =>
-        new Product(ProductId.create(row.id), row.name, row.description, row.baseUnitId, row.isActive, undefined, row.createdAt, row.updatedAt, row.type ?? undefined),
+        new Product(
+          ProductId.create(row.id),
+          row.name,
+          row.description,
+          row.baseUnitId,
+          row.isActive,
+          row.variantDefaulId,
+          row.createdAt,
+          row.updatedAt,
+          row.type ?? undefined,
+        ),
       ),
       total,
     };
@@ -176,14 +186,34 @@ export class ProductTypeormRepository implements ProductRepository {
   async listActive(tx?: TransactionContext): Promise<Product[]> {
     const rows = await this.getRepo(tx).find({ where: { isActive: true } });
     return rows.map((row) =>
-      new Product(ProductId.create(row.id), row.name, row.description, row.baseUnitId, row.isActive, undefined, row.createdAt, row.updatedAt, row.type ?? undefined),
+      new Product(
+        ProductId.create(row.id),
+        row.name,
+        row.description,
+        row.baseUnitId,
+        row.isActive,
+        row.variantDefaulId,
+        row.createdAt,
+        row.updatedAt,
+        row.type ?? undefined,
+      ),
     );
   }
 
   async listInactive(tx?: TransactionContext): Promise<Product[]> {
     const rows = await this.getRepo(tx).find({ where: { isActive: false } });
     return rows.map((row) =>
-      new Product(ProductId.create(row.id), row.name, row.description, row.baseUnitId, row.isActive, undefined, row.createdAt, row.updatedAt, row.type ?? undefined),
+      new Product(
+        ProductId.create(row.id),
+        row.name,
+        row.description,
+        row.baseUnitId,
+        row.isActive,
+        row.variantDefaulId,
+        row.createdAt,
+        row.updatedAt,
+        row.type ?? undefined,
+      ),
     );
   }
 

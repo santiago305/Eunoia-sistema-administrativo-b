@@ -5,6 +5,7 @@ import { ProductVariantRepository } from 'src/modules/catalog/domain/ports/produ
 import { ProductVariant } from 'src/modules/catalog/domain/entity/product-variant';
 import { ProductVariantEntity } from '../entities/product-variant.entity';
 import { ProductEntity } from '../entities/product.entity';
+import { UnitEntity } from '../entities/unit.entity';
 import { TransactionContext } from 'src/modules/inventory/domain/ports/unit-of-work.port';
 import { TypeormTransactionContext } from 'src/modules/inventory/adapters/out/typeorm/uow/typeorm.transaction-context';
 import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo';
@@ -200,6 +201,44 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
   async listActiveByProductId(productId: ProductId, tx?: TransactionContext): Promise<ProductVariant[]> {
     const rows = await this.getRepo(tx).find({ where: { productId: productId.value, isActive: true } });
     return rows.map((row) => this.toDomain(row));
+  }
+
+  async listRowMaterial(tx?: TransactionContext): Promise<ProductVariantWithProductInfo[]> {
+    const { entities, raw } = await this.getRepo(tx)
+      .createQueryBuilder('v')
+      .innerJoin(ProductEntity, 'p', 'p.product_id = v.product_id')
+      .innerJoin(UnitEntity, 'u', 'u.unit_id = p.base_unit_id')
+      .where('v.is_active = :isActive', { isActive: true })
+      .andWhere('p.type = :type', { type: 'PRIMA' })
+      .select([
+        'v.id',
+        'v.productId',
+        'v.sku',
+        'v.barcode',
+        'v.attributes',
+        'v.price',
+        'v.cost',
+        'v.isActive',
+        'v.createdAt',
+        'p.name',
+        'p.description',
+        'p.baseUnitId',
+        'u.code',
+        'u.name',
+      ])
+      .getRawAndEntities();
+
+    return entities.map((row, idx) => {
+      const r = raw[idx];
+      return {
+        variant: this.toDomain(row),
+        productName: r.p_name,
+        productDescription: r.p_description,
+        baseUnitId: r.p_baseUnitId,
+        unitCode: r.u_code,
+        unitName: r.u_name,
+      };
+    });
   }
 
   async listInactiveByProductId(productId: ProductId, tx?: TransactionContext): Promise<ProductVariant[]> {

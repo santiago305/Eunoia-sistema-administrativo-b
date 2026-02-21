@@ -5,6 +5,7 @@ import { UpdateProductVariant } from 'src/modules/catalog/application/usecases/p
 import { SetProductVariantActive } from 'src/modules/catalog/application/usecases/product-variant/set-active.usecase';
 import { GetProductVariant } from 'src/modules/catalog/application/usecases/product-variant/get-element-by-id.usercase';
 import { SearchProductVariants } from 'src/modules/catalog/application/usecases/product-variant/search.usecase';
+import { ListRowMaterialProductVariants } from 'src/modules/catalog/application/usecases/product-variant/list-row-material.usecase';
 import {HttpCreateProductVariantDto} from '../dtos/product-variants/http-variant-create.dto'
 import {HttpUpdateProductVariantDto} from '../dtos/product-variants/http-variant-update.dto'
 import {HttpSetProductVariantActiveDto} from '../dtos/product-variants/http-variant-set-active.dto'
@@ -19,6 +20,7 @@ export class ProductVariantsController {
     private readonly setActive: SetProductVariantActive,
     private readonly getById: GetProductVariant,
     private readonly search: SearchProductVariants,
+    private readonly listRowMaterial: ListRowMaterialProductVariants,
   ) {}
 
   @Post()
@@ -34,6 +36,11 @@ export class ProductVariantsController {
   @Patch(':id/active')
   setActiveById(@Param('id', ParseUUIDPipe) id: string, @Body() dto: HttpSetProductVariantActiveDto) {
     return this.setActive.execute({ id, isActive: dto.isActive });
+  }
+
+  @Get('row-materials')
+  listRowMaterialVariants() {
+    return this.listRowMaterial.execute();
   }
 
   @Get(':id')
@@ -58,5 +65,7 @@ export class ProductVariantsController {
     };
     return this.search.execute(dto);
   }
+
+  
 }
 
