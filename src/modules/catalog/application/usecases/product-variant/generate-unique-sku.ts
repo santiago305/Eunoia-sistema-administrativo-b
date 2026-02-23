@@ -1,7 +1,7 @@
 import { buildSkuBase } from 'src/shared/utilidades/utils/buildSkuBase';
 import { ProductVariantRepository } from 'src/modules/catalog/domain/ports/product-variant.repository';
 import { BadRequestException } from '@nestjs/common';
-import { TransactionContext } from 'src/shared/domain/ports/transaction-context.port';
+import { TransactionContext } from 'src/modules/inventory/domain/ports/unit-of-work.port';
 
 export async function generateUniqueSku(
   variantRepo: ProductVariantRepository,

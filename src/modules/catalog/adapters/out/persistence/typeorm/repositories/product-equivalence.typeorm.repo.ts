@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { ProductEquivalenceRepository } from 'src/modules/catalog/domain/ports/product-equivalence.repository';
 import { ProductEquivalence } from 'src/modules/catalog/domain/entity/product-equivalence';
 import { ProductEquivalenceEntity } from '../entities/product-equivalence.entity';
-import { TransactionContext } from 'src/shared/domain/ports/transaction-context.port';
+import { TransactionContext } from 'src/modules/inventory/domain/ports/unit-of-work.port';
 import { TypeormTransactionContext } from 'src/modules/inventory/adapters/out/typeorm/uow/typeorm.transaction-context';
 
 @Injectable()

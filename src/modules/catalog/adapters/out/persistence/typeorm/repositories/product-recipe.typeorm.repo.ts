@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { ProductRecipeRepository } from 'src/modules/catalog/domain/ports/product-recipe.repository';
 import { ProductRecipe } from 'src/modules/catalog/domain/entity/product-recipe';
 import { ProductRecipeEntity } from '../entities/product-recipe.entity';
-import { TransactionContext } from 'src/shared/domain/ports/transaction-context.port';
+import { TransactionContext } from 'src/modules/inventory/domain/ports/unit-of-work.port';
 import { TypeormTransactionContext } from 'src/modules/inventory/adapters/out/typeorm/uow/typeorm.transaction-context';
 import { VariantId } from 'src/modules/inventory/domain/value-objects/ids';
 

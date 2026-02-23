@@ -15,6 +15,10 @@ interface EnvVars {
     JWT_EXPIRES_IN: StringValue;
     JWT_ISSUER: StringValue;
     JWT_REFRESH_EXPIRES_IN: StringValue;
+
+    IDENTITY_API_KEY?: string;
+    IDENTITY_BASE_URL?: string;
+    IDENTITY_TIMEOUT_MS?: number;
     }
 
 const envsSchema = joi.object({
@@ -29,6 +33,9 @@ const envsSchema = joi.object({
     JWT_EXPIRES_IN: joi.string().required(),
     JWT_ISSUER: joi.string().required(),
     JWT_REFRESH_EXPIRES_IN: joi.string().required(),
+    IDENTITY_BASE_URL: joi.string().optional(),
+    IDENTITY_API_KEY: joi.string().optional(),
+    IDENTITY_TIMEOUT_MS: joi.number().optional(),
 })
 .unknown(true)
 
@@ -50,6 +57,11 @@ export const envs = {
         expiresIn: envsVars.JWT_EXPIRES_IN,
         issuer: envsVars.JWT_ISSUER,
         refreshExpiresIn: envsVars.JWT_REFRESH_EXPIRES_IN,
+    },
+    identity: {
+        baseUrl: envsVars.IDENTITY_BASE_URL,
+        apiKey: envsVars.IDENTITY_API_KEY,
+        timeoutMs: envsVars.IDENTITY_TIMEOUT_MS,
     },
     db: {
         host: envsVars.DB_HOST,
