@@ -21,7 +21,7 @@ export class UpdateProduct {
           id: ProductId.create(input.id),
           name: input.name,
           description: input.description ?? null,
-          baseUnitId: input.baseUnitId ?? null,
+          baseUnitId: input.baseUnitId,
           variantDefaulId: input.variantDefaulId ?? null,
           type: input.type ?? null,
         },

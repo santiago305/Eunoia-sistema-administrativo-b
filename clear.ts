@@ -2,8 +2,8 @@ import { DataSource } from 'typeorm';
 import { envs } from './src/infrastructure/config/envs';
 import { Role } from './src/modules/roles/adapters/out/persistence/typeorm/entities/role.entity';
 import { User } from './src/modules/users/adapters/out/persistence/typeorm/entities/user.entity';
-import { seedDocumentSeries } from 'src/modules/inventory/infrastructure/seed/document_serie.seeder'
 import { DocumentSerie } from 'src/modules/inventory/adapters/out/typeorm/entities/document_serie.entity';
+import { UnitEntity } from 'src/modules/catalog/adapters/out/persistence/typeorm/entities/unit.entity';
 
 const dataSource = new DataSource({
   type: 'postgres',
@@ -12,32 +12,21 @@ const dataSource = new DataSource({
   username: envs.db.username,
   password: envs.db.password,
   database: envs.db.name,
-  synchronize: false,
+  // Borra tablas existentes del schema y recrea las de estas entidades.
+  // Esto evita ALTERs sobre tablas antiguas (ej. products sin base_unit_id).
+  dropSchema: true,
+  synchronize: true,
   logging: false,
-  entities: [Role, User, DocumentSerie],
+  entities: [Role, User, DocumentSerie, UnitEntity],
 });
 
 dataSource
   .initialize()
   .then(async () => {
-    console.log('[Clear] Limpiando la base de datos...');
-
-    const entities = [User, Role, DocumentSerie]; // Orden: primero las tablas hijas, luego las padres
-
-    for (const entity of entities) {
-      const repo = dataSource.getRepository(entity);
-      const tableName = repo.metadata.tableName;
-      try {
-        await repo.query(`TRUNCATE TABLE "${tableName}" RESTART IDENTITY CASCADE;`);
-        console.log(`[Clear] Tabla "${tableName}" limpiada.`);
-      } catch (error) {
-        console.error(`[Clear] Error al limpiar la tabla "${tableName}":`, error);
-      }
-    }
-
+    console.log('[Clear] Esquema eliminado y recreado correctamente.');
     await dataSource.destroy();
-    console.log('[Clear] Base de datos limpiada con éxito.');
+    console.log('[Clear] Base de datos lista para seed.');
   })
   .catch((err) => {
-    console.error('[Clear] Error al inicializar la conexión:', err);
+    console.error('[Clear] Error al inicializar la conexion:', err);
   });
