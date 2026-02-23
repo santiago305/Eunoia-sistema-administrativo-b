@@ -84,14 +84,22 @@ create index if not exists idx_users_role on users(role_id);
 -- - product_id: id del producto
 -- - name: nombre del producto
 -- - description: descripción
+-- - base_unit_id: unidad base del producto (FK units)
+-- - variant_default_id: variante por defecto (FK product_variants)
+-- - type: tipo de producto (enum product_type)
 -- - is_active: si está disponible/activo
 -- - created_at: fecha de creación
 -- - updated_at: fecha de actualización
 -- ---------------------------------------------------------
+create type product_type as enum ('PRIMA', 'FINISHED');
+
 create table products (
   product_id uuid primary key default uuid_generate_v4(),
   name varchar(180) not null,
   description text,
+  base_unit_id uuid not null,
+  variant_default_id uuid,
+  type product_type,
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -111,6 +119,7 @@ create table products (
 -- - attributes: atributos en JSON (ej: {"talla":"M","color":"Azul"})
 -- - price: precio de venta
 -- - cost: costo (opcional)
+-- - default_variant: variante por defecto del producto
 -- - is_active: activo/inactivo
 -- - created_at: fecha de creación
 -- ---------------------------------------------------------
@@ -122,12 +131,18 @@ create table product_variants (
   attributes jsonb not null default '{}'::jsonb,
   price numeric(12,2) not null,
   cost numeric(12,2),
+  default_variant boolean not null default false,
   is_active boolean not null default true,
   created_at timestamptz not null default now()
 );
 
 -- Índice para listar variantes por producto
 create index idx_variants_product on product_variants(product_id);
+
+-- FK: variante por defecto del producto
+alter table products
+  add constraint fk_products_variant_default
+  foreign key (variant_default_id) references product_variants(variant_id);
 
 -- ---------------------------------------------------------
 -- TABLA: units
@@ -146,28 +161,33 @@ create table units (
   name varchar(180) not null
 );
 
+-- FK: unidad base del producto
+alter table products
+  add constraint fk_products_base_unit
+  foreign key (base_unit_id) references units(unit_id);
+
 -- ---------------------------------------------------------
 -- TABLA: product_equivalences
 -- Para qué sirve:
--- - Factores de conversión entre unidades por variante prima.
+-- - Factores de conversión entre unidades por producto.
 -- Qué información guarda:
--- - Variante prima, unidad origen/destino y factor de conversión.
+-- - Producto, unidad origen/destino y factor de conversión.
 -- Columnas (ES):
 -- - equivalence_id: id de equivalencia
--- - prima_variant_id: variante prima (FK product_variants)
+-- - product_id: producto (FK products)
 -- - from_unit_id: unidad origen (FK units)
 -- - to_unit_id: unidad destino (FK units)
 -- - factor: factor multiplicador de conversión
 -- ---------------------------------------------------------
 create table product_equivalences (
   equivalence_id uuid primary key default uuid_generate_v4(),
-  prima_variant_id uuid not null references product_variants(variant_id) on delete cascade,
+  product_id uuid not null references products(product_id) on delete cascade,
   from_unit_id uuid not null references units(unit_id),
   to_unit_id uuid not null references units(unit_id),
   factor numeric(12,6) not null check (factor > 0)
 );
 
-create index idx_product_equivalences_variant on product_equivalences(prima_variant_id);
+create index idx_product_equivalences_product on product_equivalences(product_id);
 
 -- ---------------------------------------------------------
 -- TABLA: product_recipes
@@ -569,13 +589,24 @@ create table reorder_rules (
 -- - address: dirección
 -- - created_at: fecha de creación
 -- ---------------------------------------------------------
+create type supplier_doc_type as enum ('06','01','04');
+
 create table suppliers (
   supplier_id uuid primary key default uuid_generate_v4(),
-  name varchar(160) not null,
+  document_type supplier_doc_type not null,
+  document_number varchar(30) not null,
+  name varchar(160),
+  last_name varchar(160),
+  trade_name varchar(200),
   phone varchar(40),
   email varchar(120),
   address text,
-  created_at timestamptz not null default now()
+  note text,
+  lead_time_days int,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (document_type, document_number)
 );
 
 -- ---------------------------------------------------------

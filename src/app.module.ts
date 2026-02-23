@@ -15,6 +15,8 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { WarehousesModule } from './modules/warehouses/warehouses.module';
 import { ProductionModule } from './modules/production/infrastructure/production.module';
+import { SuppliersModule } from './modules/suppliers/suppliers.module';
+import { IdentityModule } from './modules/identity/identity.module';
 
 
 @Module({
@@ -36,6 +38,8 @@ import { ProductionModule } from './modules/production/infrastructure/production
     CatalogModule,
     WarehousesModule,
     ProductionModule,
+    SuppliersModule,
+    IdentityModule,
   ],
   providers: [
     {

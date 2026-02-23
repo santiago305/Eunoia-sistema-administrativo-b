@@ -15,7 +15,7 @@ import { CreateProductVariantInput } from '../../dto/product-variants/input/crea
 import { ProductVariantOutput } from '../../dto/product-variants/output/product-variant-out';
 import { CLOCK, ClockPort } from 'src/modules/inventory/domain/ports/clock.port';
 import { generateUniqueSku } from './generate-unique-sku';
-import { TransactionContext } from 'src/shared/domain/ports/transaction-context.port';
+import { TransactionContext } from 'src/modules/inventory/domain/ports/unit-of-work.port';
 
 export class CreateProductVariant {
   constructor(
