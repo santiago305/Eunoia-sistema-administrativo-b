@@ -92,6 +92,7 @@ create table products (
   product_id uuid primary key default uuid_generate_v4(),
   name varchar(180) not null,
   description text,
+  base_unit_id uuid not null,
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -145,6 +146,11 @@ create table units (
   code varchar(50) not null unique,
   name varchar(180) not null
 );
+
+-- FK diferida porque units se crea después de products en este script
+alter table products
+  add constraint fk_products_base_unit
+  foreign key (base_unit_id) references units(unit_id);
 
 -- ---------------------------------------------------------
 -- TABLA: product_equivalences
