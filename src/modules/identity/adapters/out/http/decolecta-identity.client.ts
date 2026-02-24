@@ -1,9 +1,12 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { envs } from "src/infrastructure/config/envs";
 import {
-  IdentityLookupRepository,
+  DecolectaResponse,
+  DniData,
   IdentityLookupResult,
-} from "src/modules/identity/application/ports/identity-lookup.repository";
+  RucData,
+} from "src/modules/identity/application/dtos/out";
+import { IdentityLookupRepository } from "src/modules/identity/domain/ports/identity-lookup.repository";
 import { SupplierDocType } from "src/modules/suppliers/domain/object-values/supplier-doc-type";
 
 @Injectable()
@@ -11,7 +14,7 @@ export class DecolectaIdentityClient implements IdentityLookupRepository {
   async lookup(params: {
     documentType: string;
     documentNumber: string;
-  }): Promise<IdentityLookupResult> {
+  }): Promise<IdentityLookupResult<DniData | RucData>> {
     const apiKey = envs.identity?.apiKey;
     const baseUrl = envs.identity?.baseUrl;
     const timeoutMs = envs.identity?.timeoutMs ?? 4000;
@@ -21,7 +24,6 @@ export class DecolectaIdentityClient implements IdentityLookupRepository {
     }
     const { url } = this.resolveEndpoint(
       params.documentType,
-      params.documentNumber,
       this.normalizeBaseUrl(baseUrl),
     );
     const controller = new AbortController();
@@ -29,29 +31,61 @@ export class DecolectaIdentityClient implements IdentityLookupRepository {
 
     try {
       const res = await fetch(url, {
-        method: "GET",
+        method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey}`,
         },
+        body: JSON.stringify({ documento: params.documentNumber }),
         signal: controller.signal,
       });
 
-      const body = await this.safeJson(res);
+      const body = await this.safeJson<DecolectaResponse>(res);
 
       if (!res.ok) {
-        throw this.mapError(res.status, body);
+        throw this.mapError(res.status);
       }
 
-      return {
-        documentType: params.documentType,
-        documentNumber: params.documentNumber,
-        data: body,
-      };
+      if (!body || typeof body !== "object") {
+        throw new HttpException(
+          { type: "error", message: "Respuesta invalida del servicio externo" },
+          HttpStatus.BAD_GATEWAY,
+        );
+      }
+
+      if (params.documentType === SupplierDocType.DNI) {
+        return {
+          documentType: params.documentType,
+          documentNumber: params.documentNumber,
+          data: {
+            name: body?.message?.nombres ?? "",
+            lastName: `${body?.message?.apellido_paterno ?? ""} ${body?.message?.apellido_materno ?? ""}`.trim(),
+          },
+        };
+      }
+
+      if (params.documentType === SupplierDocType.RUC) {
+        return {
+          documentType: params.documentType,
+          documentNumber: params.documentNumber,
+          data: {
+            tradeName: body?.message?.nombre_completo ?? "",
+            address: `${body?.message?.direccion ?? ""} (Ubigueo-${body?.message?.ubigeo ?? ""})`.trim(),
+          },
+        };
+      }
+
+      throw new HttpException(
+        { type: "error", message: "Tipo de documento no soportado" },
+        HttpStatus.BAD_REQUEST,
+      );
     } catch (error) {
       if (error instanceof HttpException) throw error;
       if ((error as any)?.name === "AbortError") {
-        throw new HttpException({ type: "error", message: "Tiempo de espera agotado" }, HttpStatus.GATEWAY_TIMEOUT);
+        throw new HttpException(
+          { type: "error", message: "Tiempo de espera agotado" },
+          HttpStatus.GATEWAY_TIMEOUT,
+        );
       }
       throw new HttpException(
         { type: "error", message: "Error al consultar servicio externo" },
@@ -62,35 +96,27 @@ export class DecolectaIdentityClient implements IdentityLookupRepository {
     }
   }
 
-  private resolveEndpoint(documentType: string, documentNumber: string, baseUrl: string) {
-    if (documentType === SupplierDocType.DNI) {
-      const path = "reniec/dni";
-      const url = new URL(path, baseUrl);
-      url.searchParams.set("numero", documentNumber);
-      return { url: url.toString() };
+  private resolveEndpoint(documentType: string, baseUrl: string) {
+    if (documentType !== SupplierDocType.DNI && documentType !== SupplierDocType.RUC) {
+      throw new HttpException("Tipo de documento no soportado", HttpStatus.BAD_REQUEST);
     }
 
-    if (documentType === SupplierDocType.RUC) {
-      const path = "sunat/ruc";
-      const url = new URL(path, baseUrl);
-      url.searchParams.set("numero", documentNumber);
-      return { url: url.toString() };
-    }
-
-    throw new HttpException("Tipo de documento no soportado", HttpStatus.BAD_REQUEST);
+    const path = "dniruc";
+    const url = new URL(path, baseUrl);
+    return { url: url.toString() };
   }
 
-  private async safeJson(res: Response): Promise<unknown> {
+  private async safeJson<T>(res: Response): Promise<T | null> {
     const text = await res.text();
     if (!text) return null;
     try {
-      return JSON.parse(text);
+      return JSON.parse(text) as T;
     } catch {
-      return text;
+      return null;
     }
   }
 
-  private mapError(status: number, body: unknown) {
+  private mapError(status: number) {
     if (status >= 500) {
       return new HttpException(
         { type: "error", message: "Servicio externo no disponible" },
@@ -124,9 +150,7 @@ export class DecolectaIdentityClient implements IdentityLookupRepository {
 
   private normalizeBaseUrl(baseUrl: string) {
     const trimmed = baseUrl.trim();
-    if (trimmed.endsWith("/v1/")) return trimmed;
-    if (trimmed.endsWith("/v1")) return `${trimmed}/`;
-    if (trimmed.endsWith("/")) return `${trimmed}v1/`;
-    return `${trimmed}/v1/`;
+    if (trimmed.endsWith("/")) return trimmed;
+    return `${trimmed}/`;
   }
 }
