@@ -13,3 +13,8 @@ JWT_SECRET=4e5fa0e8d2f1b5a3c1d8e7f6a9b3c0d4e5fa7a3b1d2e3f4c6b7e8d9f0a1b2c3d
 JWT_EXPIRES_IN=3600s
 JWT_ISSUER=
 JWT_REFRESH_EXPIRES_IN=7d
+
+#api de consultas dni y ruc (versión gratuita 100 consultas por mes)
+IDENTITY_API_KEY=w4lwOmZFUBYEhcynlsHHU19u4zvOAssJYiVXFJMy0obpnwDrxpTZbMyTK6zoy7Sm
+IDENTITY_BASE_URL=https://diurvanconsultores.com/apidiurvan/api
+IDENTITY_TIMEOUT_MS=4000
