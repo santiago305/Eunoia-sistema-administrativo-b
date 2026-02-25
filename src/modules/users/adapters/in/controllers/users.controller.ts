@@ -33,6 +33,7 @@ import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard
 import { RolesGuard } from 'src/shared/utilidades/guards/roles.guard';
 import { User as CurrentUser } from 'src/shared/utilidades/decorators/user.decorator';
 import { RemoveAvatarUseCase } from 'src/modules/users/application/use-cases/remove-avatar.usecase';
+import { OwnUserGuard } from 'src/modules/users/adapters/in/guards/own-user.guard';
 
 /**
  * Controlador para la gestiAn de usuarios.
@@ -192,7 +193,7 @@ export class UsersController {
   }
 
   @Post(':id/avatar')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, OwnUserGuard)
   @UseInterceptors(
     FileInterceptor('avatar', {
       storage: diskStorage({
