@@ -74,6 +74,8 @@ describe('CreateUserUseCase', () => {
     );
 
     expect(userRepository.existsByEmail).toHaveBeenCalledWith(new Email('ana@example.com'));
+    expect(roleReadRepository.findByDescription).toHaveBeenCalledWith(RoleType.ADVISER);
+    expect((roleReadRepository.findById as jest.Mock | undefined)).toBeUndefined();
     expect(userRepository.save).toHaveBeenCalled();
     expect(result).toEqual(successResponse('Usuario creado correctamente'));
   });
