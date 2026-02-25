@@ -54,6 +54,7 @@ export class TypeormRoleReadRepository implements RoleReadRepository {
   }
   async findByDescription(description: string) {
     const role = await this.ormRepository.findOne({
+      select: ['roleId', 'description', 'deleted', 'createdAt'],
       where: { description, deleted: false },
     });
 
