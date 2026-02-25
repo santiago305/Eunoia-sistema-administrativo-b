@@ -41,7 +41,7 @@ export class LocalFileStorageService implements FileStorage {
 
     return {
       filename: safeFilename,
-      relativePath: posix.join('/assets', safeDirectory, safeFilename),
+      relativePath: posix.join('/api/assets', safeDirectory, safeFilename),
     };
   }
 

@@ -15,7 +15,7 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   //  Servir la carpeta de imAgenes pAblicas
-  app.useStaticAssets(join(__dirname, '..', '..', 'assets'), {
+  app.useStaticAssets(join(process.cwd(), 'assets'), {
     prefix: '/api/assets/',
   });
 

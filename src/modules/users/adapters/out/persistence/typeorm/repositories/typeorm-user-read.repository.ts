@@ -141,7 +141,7 @@ export class TypeormUserReadRepository implements UserReadRepository {
       name: user.name,
       email: user.email,
       deleted: user.deleted,
-      avatarUrl: user.avatarUrl,
+      avatarUrl: this.normalizeAvatarUrl(user.avatarUrl),
       createdAt: user.createdAt,
       role: {
         id: user.role.id,
@@ -189,5 +189,13 @@ export class TypeormUserReadRepository implements UserReadRepository {
       lockedUntil: user.lockedUntil ?? null,
       securityDisabledAt: user.securityDisabledAt ?? null,
     };
+  }
+
+  private normalizeAvatarUrl(avatarUrl?: string) {
+    if (!avatarUrl) return avatarUrl;
+    if (avatarUrl.startsWith('/assets/')) {
+      return avatarUrl.replace(/^\/assets\//, '/api/assets/');
+    }
+    return avatarUrl;
   }
 }
