@@ -11,14 +11,20 @@ export class GetProductById {
 
   async execute(input: GetProductByIdInput): Promise<ProductOutput> {
     const product = await this.productRepo.findById(ProductId.create(input.id));
-    if (!product) throw new NotFoundException('Producto no encontrado');
+    if (!product) throw new NotFoundException({ type: "error",  message: "Producto no encontrado" });
 
     return {
       id: product.getId()?.value,
       name: product.getName(),
       description: product.getDescription(),
       baseUnitId: product.getBaseUnitId(),
+      sku: product.getSku(),
+      barcode: product.getBarcode(),
+      price: product.getPrice().getAmount(),
+      cost: product.getCost().getAmount(),
+      attributes: product.getAttributes(),
       isActive: product.getIsActive(),
+      type: product.getType(),
       createdAt: product.getCreatedAt(),
       updatedAt: product.getUpdatedAt(),
     };

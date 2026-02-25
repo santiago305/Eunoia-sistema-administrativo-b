@@ -40,7 +40,6 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       attributes: variant.getAttributes(),
       price: variant.getPrice().getAmount(),
       cost: variant.getCost().getAmount(),
-      defaultVariant: variant.getDefaultVariant(),
       isActive: variant.getIsActive() ?? true,
     });
     return this.toDomain(saved);
@@ -91,8 +90,6 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
         }),
       );
     }
-
-    qb.andWhere('v.default_variant = false');
     const total = await qb.clone().getCount();
     const { entities, raw } = await qb
       .select([
@@ -203,8 +200,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
   async listByProductId(productId: ProductId, tx?: TransactionContext): Promise<ProductVariant[]> {
     const rows = await this.getRepo(tx).find({ 
       where: { 
-        productId: productId.value,
-        isActive: true,
+        productId: productId.value
       } });
     return rows.map((row) => this.toDomain(row));
   }
@@ -317,7 +313,6 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       Money.create(Number(row.cost ?? 0)),
       row.isActive,
       row.createdAt,
-      row.defaultVariant,
     );
   }
 }

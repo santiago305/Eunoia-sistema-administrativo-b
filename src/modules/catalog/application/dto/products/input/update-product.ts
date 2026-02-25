@@ -6,8 +6,9 @@ export interface UpdateProductInput {
   name?: string;
   description?: string | null;
   baseUnitId?: string;
-  variantDefaulId?: string | null;
   type?: ProductType;
+  sku?: string;
+  barcode?: string | null;
   attributes?: ProductVariantAttributes;
   price?: number;
   cost?: number;

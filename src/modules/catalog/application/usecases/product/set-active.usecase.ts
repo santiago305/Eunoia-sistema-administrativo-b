@@ -1,4 +1,4 @@
-import { Inject } from "@nestjs/common";
+import { Inject, NotFoundException } from "@nestjs/common";
 import { SetProductActiveInput } from "../../dto/products/input/set-active-product";
 import { UNIT_OF_WORK, UnitOfWork } from "src/modules/inventory/domain/ports/unit-of-work.port";
 import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/domain/ports/product.repository";
@@ -10,14 +10,19 @@ export class SetProductActive {
     @Inject(PRODUCT_REPOSITORY) private readonly productRepo: ProductRepository,
   ) {}
 
-  async execute(input: SetProductActiveInput): Promise<{ status: string }> {
+  async execute(input: SetProductActiveInput): Promise<{ type:string, message:string }> {
     return this.uow.runInTransaction(async (tx) => {
       const productId = ProductId.create(input.id);
+
+      const product = await this.productRepo.findById(productId, tx);
+      if (!product) {
+        throw new NotFoundException({ type: "error", message: "Producto no encontrado" });
+      }
 
       await this.productRepo.setActive(productId, input.isActive, tx);
       await this.productRepo.setAllVariantsActive(productId, input.isActive, tx);
 
-      return { status: "Operación lograda con éxito" };
+      return { type: "success", message: "Operación lograda con éxito" };
     });
   }
 }

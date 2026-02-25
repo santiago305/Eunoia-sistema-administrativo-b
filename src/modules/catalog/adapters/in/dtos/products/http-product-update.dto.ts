@@ -1,5 +1,7 @@
-import { IsOptional, IsString, IsEnum, IsUUID } from "class-validator";
+import { Type } from "class-transformer";
+import { IsOptional, IsString, IsEnum, IsUUID, IsNumber, Min, ValidateNested } from "class-validator";
 import { ProductType } from "src/modules/catalog/domain/value-object/productType";
+import { ProductVariantAttributesDto } from "../product-variants/product-variant-attributes.dto";
 
 export class HttpUpdateProductDto {
   @IsOptional()
@@ -13,6 +15,23 @@ export class HttpUpdateProductDto {
   @IsOptional()
   @IsUUID()
   baseUnitId?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ProductVariantAttributesDto)
+  attributes?: ProductVariantAttributesDto;
+
+  @IsOptional()
+  @IsString()
+  barcode?: string;
+
+  @IsNumber()
+  @Min(0)
+  price: number;
+
+  @IsNumber()
+  @Min(0)
+  cost: number;
 
   @IsOptional()
   @IsEnum(ProductType)

@@ -10,7 +10,7 @@ export class SetProductVariantActive {
 
   async execute(input: SetProductVariantActiveInput) {
     const variant = await this.variantRepo.findById(input.id);
-    if (!variant) throw new NotFoundException('Variant no encontrado');
+    if (!variant) throw new NotFoundException({type: 'error', message: 'Variant no encontrado'});
 
     await this.variantRepo.setActive(input.id, input.isActive);
     return { ok: true };

@@ -12,7 +12,7 @@ export class GetProductVariant {
 
   async execute(input: GetProductVariantInput): Promise<ProductVariantOutput> {
     const variant = await this.variantRepo.findById(input.id);
-    if (!variant) throw new NotFoundException('Variant no encontrado');
+    if (!variant) throw new NotFoundException({type: 'error', message: 'Variant no encontrado'});
     return this.toOutput(variant);
   }
 

@@ -49,6 +49,8 @@ export class ProductsController {
       isActive: isActived,
       name: query.name,
       description: query.description,
+      sku: query.sku,
+      barcode: query.barcode,
       type: query.type,
       q: q,
       page: query.page,
@@ -65,6 +67,8 @@ export class ProductsController {
   getProductByName(@Param('name') name: string, @Query() query: ListProductQueryDto) {
     return this.search.execute({
       name: name?.trim(),
+      sku: query.sku,
+      barcode: query.barcode,
       page: query.page ?? 1,
       limit: query.limit ?? 10,
     });
