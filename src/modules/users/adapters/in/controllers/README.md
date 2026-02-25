@@ -23,3 +23,10 @@ Base: `/api/users`
 - `PATCH /api/users/change-password/:id` (auth: `JWT`, solo dueno)
 - `POST /api/users/me/avatar` (auth: `JWT`, usa el usuario del token)
 - `DELETE /api/users/me/avatar` (auth: `JWT`, usa el usuario del token)
+
+## Notas de avatar
+
+- El upload de avatar usa `multipart/form-data` con campo `avatar`.
+- El backend procesa la imagen y la convierte a `webp` antes de persistirla.
+- Si falla la actualizacion en base de datos despues de guardar el archivo, se intenta limpiar el archivo para evitar huerfanos.
+- El avatar no se modifica por `PATCH /api/users/update/:id`; debe usarse el endpoint dedicado.

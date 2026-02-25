@@ -20,9 +20,11 @@ Casos de uso del modulo de usuarios.
 - `get-user-with-password-by-email.usecase.spec.ts`: pruebas unitarias de consulta con password.
 - `list-users.usecase.ts`: lista usuarios con filtros, paginacion y estado (`all`, `active`, `inactive`).
 - `list-users.usecase.spec.ts`: pruebas unitarias de listado general y filtrado por estado.
+- `remove-avatar.usecase.ts`: elimina la referencia del avatar y limpia el archivo local cuando aplica.
+- `remove-avatar.usecase.spec.ts`: pruebas unitarias de eliminacion de avatar y cleanup de archivo.
 - `restore-user.usecase.ts`: restaura un usuario marcado como eliminado.
 - `restore-user.usecase.spec.ts`: pruebas unitarias de restauracion.
 - `update-avatar.usecase.ts`: actualiza el avatar del usuario.
-- `update-avatar.usecase.spec.ts`: pruebas unitarias de actualizacion de avatar.
+- `update-avatar.usecase.spec.ts`: pruebas unitarias de actualizacion de avatar y errores.
 - `update-user.usecase.ts`: actualiza datos del usuario.
-- `update-user.usecase.spec.ts`: pruebas unitarias de actualizacion.
+- `update-user.usecase.spec.ts`: pruebas unitarias de actualizacion (avatar y password se gestionan por endpoints dedicados).

@@ -23,6 +23,8 @@ describe('UsersController (e2e)', () => {
   let app: INestApplication;
   const listUsersUseCase = { execute: jest.fn() };
   const removeAvatarUseCase = { execute: jest.fn() };
+  const imageProcessor = { toWebp: jest.fn() };
+  const fileStorage = { save: jest.fn(), delete: jest.fn() };
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -39,8 +41,8 @@ describe('UsersController (e2e)', () => {
         { provide: RestoreUserUseCase, useValue: { execute: jest.fn() } },
         { provide: UpdateAvatarUseCase, useValue: { execute: jest.fn() } },
         { provide: RemoveAvatarUseCase, useValue: removeAvatarUseCase },
-        { provide: IMAGE_PROCESSOR, useValue: { toWebp: jest.fn() } },
-        { provide: FILE_STORAGE, useValue: { save: jest.fn() } },
+        { provide: IMAGE_PROCESSOR, useValue: imageProcessor },
+        { provide: FILE_STORAGE, useValue: fileStorage },
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -110,5 +112,11 @@ describe('UsersController (e2e)', () => {
       .expect({ ok: true });
 
     expect(removeAvatarUseCase.execute).toHaveBeenCalledWith('user-1');
+  });
+
+  it('/users/me/avatar (POST) returns 400 when file is missing', async () => {
+    await request(app.getHttpServer())
+      .post('/users/me/avatar')
+      .expect(400);
   });
 });

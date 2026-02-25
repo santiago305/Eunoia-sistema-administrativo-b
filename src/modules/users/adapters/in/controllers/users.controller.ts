@@ -209,7 +209,7 @@ export class UsersController {
       fileFilter: (req, file, cb) => {
         const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
         if (!allowed.includes(file.mimetype)) {
-          return cb(new Error('Solo se permiten imagenes JPG/PNG/WEBP/GIF'), false);
+          return cb(new BadRequestException('Solo se permiten imagenes JPG/PNG/WEBP/GIF'), false);
         }
         cb(null, true);
       },
@@ -225,6 +225,7 @@ export class UsersController {
       throw new BadRequestException('Debes enviar un archivo de avatar');
     }
 
+    let savedRelativePath: string | null = null;
     try {
       const processed = await this.imageProcessor.toWebp({
         buffer: file.buffer,
@@ -242,9 +243,18 @@ export class UsersController {
         extension: processed.extension,
         filenamePrefix: user.id,
       });
+      savedRelativePath = relativePath;
 
       return this.updateAvatarUseCase.execute(user.id, relativePath);
     } catch (error) {
+      if (savedRelativePath) {
+        try {
+          await this.fileStorage.delete(savedRelativePath);
+        } catch (cleanupError) {
+          console.error('[UsersController] No se pudo limpiar avatar temporal tras error:', cleanupError);
+        }
+      }
+
       if (
         error instanceof ImageProcessingError ||
         error instanceof InvalidFileStoragePathError

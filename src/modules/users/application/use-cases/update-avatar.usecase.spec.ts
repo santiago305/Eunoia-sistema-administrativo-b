@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { UpdateAvatarUseCase } from './update-avatar.usecase';
 import { Email, Password, RoleId, User } from 'src/modules/users/domain';
 import { successResponse } from 'src/shared/response-standard/response';
@@ -48,6 +48,6 @@ describe('UpdateAvatarUseCase', () => {
 
     await expect(
       useCase.execute('user-1', '/assets/avatar.png')
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

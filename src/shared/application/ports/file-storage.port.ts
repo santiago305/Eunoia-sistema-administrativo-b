@@ -11,4 +11,6 @@ export interface FileStorage {
     filename: string;
     relativePath: string;
   }>;
+
+  delete(relativePath: string): Promise<boolean>;
 }

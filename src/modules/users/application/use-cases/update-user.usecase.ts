@@ -46,7 +46,7 @@ export class UpdateUserUseCase {
       throw new UnauthorizedException('No puedes cambiar la contrasena aqui');
     }
     if (dto.avatarUrl) {
-      existingUser.avatarUrl = dto.avatarUrl;
+      throw new UnauthorizedException('No puedes cambiar el avatar por este endpoint');
     }
 
     try {

@@ -12,3 +12,4 @@ Puertos de entrada del modulo de usuarios.
 
 - La autorizacion se aplica en los controladores con `JwtAuthGuard` y `RolesGuard`.
 - Las operaciones self-service (`/users/me/...`) usan el `id` del JWT para evitar parametros redundantes.
+- El manejo de avatar usa endpoint dedicado con validacion de archivo y pipeline de transformacion/almacenamiento.

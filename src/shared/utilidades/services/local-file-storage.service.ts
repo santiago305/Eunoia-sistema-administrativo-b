@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { mkdir, writeFile } from 'fs/promises';
+import { mkdir, rm, writeFile } from 'fs/promises';
 import { randomUUID } from 'crypto';
 import { join, posix } from 'path';
 import {
@@ -43,6 +43,29 @@ export class LocalFileStorageService implements FileStorage {
       filename: safeFilename,
       relativePath: posix.join('/api/assets', safeDirectory, safeFilename),
     };
+  }
+
+  async delete(relativePath: string): Promise<boolean> {
+    const normalizedRelativePath = this.normalizePublicAssetPath(relativePath);
+    const baseDir = join(process.cwd(), 'assets');
+    const normalized = posix
+      .normalize(normalizedRelativePath.replace(/^\/+/, ''))
+      .replace(/^assets\//, '');
+
+    if (!normalized || normalized === '.' || normalized.startsWith('..') || normalized.includes('/../')) {
+      throw new InvalidFileStoragePathError('Ruta de archivo invalida');
+    }
+
+    const absolutePath = join(baseDir, normalized);
+    try {
+      await rm(absolutePath, { force: false });
+      return true;
+    } catch (error: any) {
+      if (error?.code === 'ENOENT') {
+        return false;
+      }
+      throw error;
+    }
   }
 
   private buildFilename(prefix: string | undefined, extension: string) {
@@ -94,5 +117,21 @@ export class LocalFileStorageService implements FileStorage {
   private sanitizeSimpleSegment(value: string) {
     const normalized = value.replace(/[^a-zA-Z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
     return normalized || 'file';
+  }
+
+  private normalizePublicAssetPath(relativePath: string) {
+    if (!relativePath) {
+      throw new InvalidFileStoragePathError('Ruta de archivo invalida');
+    }
+
+    if (relativePath.startsWith('/api/assets/')) {
+      return relativePath.replace(/^\/api\/assets\//, '/assets/');
+    }
+
+    if (relativePath.startsWith('/assets/')) {
+      return relativePath;
+    }
+
+    throw new InvalidFileStoragePathError('Ruta de archivo invalida');
   }
 }
