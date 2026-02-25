@@ -1,8 +1,12 @@
 export const ROLE_READ_REPOSITORY = Symbol('ROLE_READ_REPOSITORY');
 
+export const ROLE_LIST_STATUSES = ['all', 'active', 'inactive'] as const;
+
+export type RoleListStatus = (typeof ROLE_LIST_STATUSES)[number];
+
 export interface RoleReadRepository {
   listRoles(params?: {
-    includeDeleted?: boolean;
+    status?: RoleListStatus;
   }): Promise<
     Array<{
       id: string;

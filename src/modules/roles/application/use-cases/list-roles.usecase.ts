@@ -1,5 +1,9 @@
 import { Inject } from '@nestjs/common';
-import { ROLE_READ_REPOSITORY, RoleReadRepository } from '../ports/role-read.repository';
+import {
+  ROLE_READ_REPOSITORY,
+  RoleListStatus,
+  RoleReadRepository,
+} from '../ports/role-read.repository';
 
 export class ListRolesUseCase {
   constructor(
@@ -7,7 +11,7 @@ export class ListRolesUseCase {
     private readonly roleReadRepository: RoleReadRepository,
   ) {}
 
-  async execute() {
-    return this.roleReadRepository.listRoles();
+  async execute(params?: { status?: RoleListStatus }) {
+    return this.roleReadRepository.listRoles({ status: params?.status ?? 'all' });
   }
 }

@@ -40,6 +40,10 @@ import { IMAGE_PROCESSOR, ImageProcessor } from 'src/shared/application/ports/im
 import { FILE_STORAGE, FileStorage } from 'src/shared/application/ports/file-storage.port';
 import { ImageProcessingError } from 'src/shared/application/errors/image-processing.error';
 import {
+  USER_LIST_STATUSES,
+  UserListStatus,
+} from 'src/modules/users/application/ports/user-read.repository';
+import {
   FileStorageConflictError,
   InvalidFileStoragePathError
 } from 'src/shared/application/errors/file-storage.errors';
@@ -74,7 +78,7 @@ export class UsersController {
     return this.createUserUseCase.execute(dto, user.role);
   }
 
-  @Get('findAll')
+  @Get('')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleType.ADMIN, RoleType.MODERATOR)
   async findAll(
@@ -82,58 +86,25 @@ export class UsersController {
     @Query('role') role: string,
     @Query('sortBy') sortBy: string,
     @Query('order') order: 'ASC' | 'DESC',
+    @Query('status') status: string,
     @CurrentUser() user: { role: RoleType }
   ) {
+    if (status && !USER_LIST_STATUSES.includes(status as UserListStatus)) {
+      throw new BadRequestException(
+        `Invalid status '${status}'. Allowed values: ${USER_LIST_STATUSES.join(', ')}`,
+      );
+    }
     const pageNumber = parseInt(page) || 1;
     return this.listUsersUseCase.execute({
       page: pageNumber,
       filters: { role },
       sortBy: this.normalizeSortBy(sortBy),
       order: this.normalizeOrder(order),
-      status: 'all',
+      status: (status as UserListStatus | undefined) ?? 'all',
     }, user.role);
   }
 
-  @Get('actives')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleType.ADMIN, RoleType.MODERATOR)
-  async findActives(
-    @Query('page') page: string,
-    @Query('role') role: string,
-    @Query('sortBy') sortBy: string,
-    @Query('order') order: 'ASC' | 'DESC',
-    @CurrentUser() user: { role: RoleType }
-  ) {
-    const pageNumber = parseInt(page) || 1;
-    return this.listUsersUseCase.execute({
-      page: pageNumber,
-      filters: { role },
-      sortBy: this.normalizeSortBy(sortBy),
-      order: this.normalizeOrder(order),
-      status: 'active',
-    }, user.role);
-  }
-  
-  @Get('desactive')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleType.ADMIN, RoleType.MODERATOR)
-  async findDesactive(
-    @Query('page') page: string,
-    @Query('role') role: string,
-    @Query('sortBy') sortBy: string,
-    @Query('order') order: 'ASC' | 'DESC',
-    @CurrentUser() user: { role: RoleType }
-  ) {
-    const pageNumber = parseInt(page) || 1;
-    return this.listUsersUseCase.execute({
-      page: pageNumber,
-      filters: { role },
-      sortBy: this.normalizeSortBy(sortBy),
-      order: this.normalizeOrder(order),
-      status: 'inactive',
-    }, user.role);
-  }
- @Get('me')
+  @Get('me')
   @UseGuards(JwtAuthGuard)
   getProfile(@CurrentUser() user: { id: string }) {
     return this.getOwnUserUseCase.execute(user.id);

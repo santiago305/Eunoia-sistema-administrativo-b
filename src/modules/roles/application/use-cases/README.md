@@ -6,10 +6,8 @@ Casos de uso del modulo de roles.
 
 - `create-role.usecase.ts`: crea un rol nuevo.
 - `create-role.usecase.spec.ts`: pruebas unitarias de creacion.
-- `list-roles.usecase.ts`: lista roles.
+- `list-roles.usecase.ts`: lista roles (por defecto `status: 'all'`; soporta `all | active | inactive`).
 - `list-roles.usecase.spec.ts`: pruebas unitarias de listado.
-- `list-active-role.usecase.ts`: lista roles activos.
-- `list-active-role.usecase.spec.ts`: pruebas unitarias de listado activo.
 - `get-role-by-id.usecase.ts`: obtiene un rol por id.
 - `get-role-by-id.usecase.spec.ts`: pruebas unitarias de consulta por id.
 - `update-role.usecase.ts`: actualiza un rol.

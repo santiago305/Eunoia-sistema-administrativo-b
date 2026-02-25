@@ -1,9 +1,11 @@
 import {
+  BadRequestException,
   Controller,
   Post,
   Get,
   Body,
   Param,
+  Query,
   Patch,
   Delete,
   UseGuards,
@@ -15,11 +17,14 @@ import { RoleType } from 'src/shared/constantes/constants';
 import { RolesGuard } from 'src/shared/utilidades/guards/roles.guard';
 import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard';
 import { User as CurrentUser } from 'src/shared/utilidades/decorators/user.decorator';
+import {
+  ROLE_LIST_STATUSES,
+  RoleListStatus,
+} from 'src/modules/roles/application/ports/role-read.repository';
 
 // UseCases
 import { CreateRoleUseCase } from 'src/modules/roles/application/use-cases/create-role.usecase';
 import { ListRolesUseCase } from 'src/modules/roles/application/use-cases/list-roles.usecase';
-import { ListActiveRolesUseCase } from 'src/modules/roles/application/use-cases/list-active-role.usecase';
 import { GetRoleByIdUseCase } from 'src/modules/roles/application/use-cases/get-role-by-id.usecase';
 import { UpdateRoleUseCase } from 'src/modules/roles/application/use-cases/update-role.usecase';
 import { DeleteRoleUseCase } from 'src/modules/roles/application/use-cases/delete-role.usecase';
@@ -32,7 +37,6 @@ export class RolesController {
   constructor(
     private readonly createRoleUseCase: CreateRoleUseCase,
     private readonly listRolesUseCase: ListRolesUseCase,
-    private readonly listActiveRolesUseCase: ListActiveRolesUseCase,
     private readonly getRoleByIdUseCase: GetRoleByIdUseCase,
     private readonly updateRoleUseCase: UpdateRoleUseCase,
     private readonly deleteRoleUseCase: DeleteRoleUseCase,
@@ -45,13 +49,13 @@ export class RolesController {
   }
 
   @Get('')
-  findAll() {
-    return this.listRolesUseCase.execute();
-  }
-
-  @Get('/actives')
-  findActives() {
-    return this.listActiveRolesUseCase.execute();
+  findAll(@Query('status') status?: string) {
+    if (status && !ROLE_LIST_STATUSES.includes(status as RoleListStatus)) {
+      throw new BadRequestException(
+        `Invalid status '${status}'. Allowed values: ${ROLE_LIST_STATUSES.join(', ')}`,
+      );
+    }
+    return this.listRolesUseCase.execute({ status: status as RoleListStatus | undefined });
   }
 
   @Get('/:id')

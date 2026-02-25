@@ -1,6 +1,8 @@
 export const USER_READ_REPOSITORY = Symbol('USER_READ_REPOSITORY');
 
-export type UserListStatus = 'all' | 'active' | 'inactive';
+export const USER_LIST_STATUSES = ['all', 'active', 'inactive'] as const;
+
+export type UserListStatus = (typeof USER_LIST_STATUSES)[number];
 
 export interface UserReadRepository {
   listUsers(params: {

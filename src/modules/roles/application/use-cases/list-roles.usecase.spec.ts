@@ -29,7 +29,22 @@ describe('ListRolesUseCase', () => {
 
     const result = await useCase.execute();
 
-    expect(roleReadRepository.listRoles).toHaveBeenCalledWith();
+    expect(roleReadRepository.listRoles).toHaveBeenCalledWith({
+      status: 'all',
+    });
     expect(result).toEqual(expected);
+  });
+
+  it('accepts explicit status filter', async () => {
+    const roleReadRepository = {
+      listRoles: jest.fn().mockResolvedValue([]),
+    };
+    const useCase = makeUseCase({ roleReadRepository });
+
+    await useCase.execute({ status: 'inactive' });
+
+    expect(roleReadRepository.listRoles).toHaveBeenCalledWith({
+      status: 'inactive',
+    });
   });
 });

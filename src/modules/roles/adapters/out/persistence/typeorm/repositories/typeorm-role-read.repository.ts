@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { RoleReadRepository } from '../../../../../application/ports/role-read.repository';
+import {
+  RoleListStatus,
+  RoleReadRepository,
+} from '../../../../../application/ports/role-read.repository';
 import { Role as OrmRole } from '../entities/role.entity';
 
 @Injectable()
@@ -11,10 +14,18 @@ export class TypeormRoleReadRepository implements RoleReadRepository {
     private readonly ormRepository: Repository<OrmRole>
   ) {}
 
-  async listRoles() {
+  async listRoles(params?: { status?: RoleListStatus }) {
+    const status = params?.status ?? 'all';
+    const where =
+      status === 'active'
+        ? { deleted: false }
+        : status === 'inactive'
+          ? { deleted: true }
+          : undefined;
+
     const roles = await this.ormRepository.find({
       select: ['roleId', 'description', 'deleted', 'createdAt'],
-      where: { deleted: false },
+      ...(where ? { where } : {}),
       order: { description: 'ASC' },
     });
 
