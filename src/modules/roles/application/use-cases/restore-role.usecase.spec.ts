@@ -1,5 +1,6 @@
-import { NotFoundException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { RestoreRoleUseCase } from './restore-role.usecase';
+import { RoleType } from 'src/shared/constantes/constants';
 
 describe('RestoreRoleUseCase', () => {
   const makeUseCase = (overrides?: { roleRepository?: any }) => {
@@ -26,9 +27,20 @@ describe('RestoreRoleUseCase', () => {
     );
   });
 
+  it('rejects restoring protected system roles', async () => {
+    const roleRepository = {
+      findById: jest.fn().mockResolvedValue({ id: 'role-1', description: RoleType.MODERATOR }),
+      updateDeleted: jest.fn(),
+    };
+    const useCase = makeUseCase({ roleRepository });
+
+    await expect(useCase.execute('role-1')).rejects.toBeInstanceOf(ForbiddenException);
+    expect(roleRepository.updateDeleted).not.toHaveBeenCalled();
+  });
+
   it('restores role when it exists', async () => {
     const roleRepository = {
-      findById: jest.fn().mockResolvedValue({ id: 'role-1' }),
+      findById: jest.fn().mockResolvedValue({ id: 'role-1', description: 'custom-role' }),
       updateDeleted: jest.fn().mockResolvedValue(undefined),
     };
     const useCase = makeUseCase({ roleRepository });

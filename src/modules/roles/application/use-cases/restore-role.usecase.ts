@@ -1,5 +1,17 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ROLE_REPOSITORY, RoleRepository } from '../ports/role.repository';
+import { RoleType } from 'src/shared/constantes/constants';
+
+const PROTECTED_SYSTEM_ROLES = new Set<string>([
+  RoleType.ADMIN,
+  RoleType.MODERATOR,
+  RoleType.ADVISER,
+]);
 
 @Injectable()
 export class RestoreRoleUseCase {
@@ -13,6 +25,10 @@ export class RestoreRoleUseCase {
 
     if (!role) {
       throw new NotFoundException('Rol no encontrado');
+    }
+    const normalizedDescription = (role.description || '').trim().toLowerCase();
+    if (PROTECTED_SYSTEM_ROLES.has(normalizedDescription)) {
+      throw new ForbiddenException('No se puede restaurar un rol base del sistema');
     }
     await this.roleRepository.updateDeleted(id, false);
 
