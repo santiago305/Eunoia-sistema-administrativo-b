@@ -77,6 +77,92 @@ describe('TypeormUserRepository', () => {
     expect(execute).toHaveBeenCalled();
   });
 
+  it('updateSecurityById only updates provided fields (partial semantics)', async () => {
+    const set = jest.fn().mockReturnThis();
+    const execute = jest.fn().mockResolvedValue(undefined);
+    const repo = makeRepo({
+      createQueryBuilder: jest.fn().mockReturnValue({
+        update: jest.fn().mockReturnThis(),
+        set,
+        where: jest.fn().mockReturnThis(),
+        execute,
+      }),
+    });
+
+    await repo.updateSecurityById('user-1', {
+      failedLoginAttempts: 3,
+      lockoutLevel: 1,
+    });
+
+    expect(set).toHaveBeenCalledWith({
+      failedLoginAttempts: 3,
+      lockoutLevel: 1,
+    });
+    expect(execute).toHaveBeenCalled();
+  });
+
+  it('updateSecurityById preserves explicit null for nullable fields', async () => {
+    const set = jest.fn().mockReturnThis();
+    const repo = makeRepo({
+      createQueryBuilder: jest.fn().mockReturnValue({
+        update: jest.fn().mockReturnThis(),
+        set,
+        where: jest.fn().mockReturnThis(),
+        execute: jest.fn().mockResolvedValue(undefined),
+      }),
+    });
+
+    await repo.updateSecurityById('user-1', {
+      lockedUntil: null,
+      securityDisabledAt: null,
+    });
+
+    expect(set).toHaveBeenCalledWith({
+      lockedUntil: null,
+      securityDisabledAt: null,
+    });
+  });
+
+  it('updateSecurityById is no-op when no fields are provided', async () => {
+    const execute = jest.fn().mockResolvedValue(undefined);
+    const set = jest.fn().mockReturnThis();
+    const repo = makeRepo({
+      createQueryBuilder: jest.fn().mockReturnValue({
+        update: jest.fn().mockReturnThis(),
+        set,
+        where: jest.fn().mockReturnThis(),
+        execute,
+      }),
+    });
+
+    await repo.updateSecurityById('user-1', {});
+
+    expect(set).not.toHaveBeenCalled();
+    expect(execute).not.toHaveBeenCalled();
+  });
+
+  it('updateSecurityById rejects explicit undefined values', async () => {
+    const execute = jest.fn().mockResolvedValue(undefined);
+    const set = jest.fn().mockReturnThis();
+    const repo = makeRepo({
+      createQueryBuilder: jest.fn().mockReturnValue({
+        update: jest.fn().mockReturnThis(),
+        set,
+        where: jest.fn().mockReturnThis(),
+        execute,
+      }),
+    });
+
+    await expect(
+      repo.updateSecurityById('user-1', {
+        lockedUntil: undefined,
+      })
+    ).rejects.toBeInstanceOf(TypeError);
+
+    expect(set).not.toHaveBeenCalled();
+    expect(execute).not.toHaveBeenCalled();
+  });
+
   it('save maps and persists', async () => {
     const ormUser = new OrmUser();
     ormUser.id = 'user-1';

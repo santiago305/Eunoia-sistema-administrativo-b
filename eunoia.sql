@@ -62,6 +62,10 @@ create table users (
   email varchar(180) not null unique,
   password varchar(255) not null,
   deleted boolean not null default false,
+  failed_login_attempts int not null default 0,
+  lockout_level int not null default 0,
+  locked_until timestamp null,
+  security_disabled_at timestamp null,
   avatar_url varchar(500),
   role_id uuid not null references roles(role_id),
   created_at timestamptz not null default now()
