@@ -20,6 +20,10 @@ import { TypeormUserRepository } from '../adapters/out/persistence/typeorm/repos
 import { USER_READ_REPOSITORY } from '../application/ports/user-read.repository';
 import { TypeormUserReadRepository } from '../adapters/out/persistence/typeorm/repositories/typeorm-user-read.repository';
 import { RemoveAvatarUseCase } from '../application/use-cases/remove-avatar.usecase';
+import { IMAGE_PROCESSOR } from 'src/shared/application/ports/image-processor.port';
+import { FILE_STORAGE } from 'src/shared/application/ports/file-storage.port';
+import { SharpImageProcessorService } from 'src/shared/utilidades/services/sharp-image-processor.service';
+import { LocalFileStorageService } from 'src/shared/utilidades/services/local-file-storage.service';
 
 /**
  * Modulo encargado de la gestiAn de usuarios.
@@ -44,6 +48,14 @@ import { RemoveAvatarUseCase } from '../application/use-cases/remove-avatar.usec
     UpdateAvatarUseCase,
     GetUserWithPasswordByEmailUseCase,
     RemoveAvatarUseCase,
+    {
+      provide: IMAGE_PROCESSOR,
+      useClass: SharpImageProcessorService,
+    },
+    {
+      provide: FILE_STORAGE,
+      useClass: LocalFileStorageService,
+    },
     {
       provide: USER_REPOSITORY,
       useClass: TypeormUserRepository,

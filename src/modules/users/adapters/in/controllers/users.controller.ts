@@ -11,10 +11,12 @@ import {
   UploadedFile,
   UseInterceptors,
   ForbiddenException,
+  BadRequestException,
+  ConflictException,
+  Inject,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
+import { memoryStorage } from 'multer';
 import { ChangePasswordUseCase } from 'src/modules/users/application/use-cases/change-password.usecase';
 import { CreateUserUseCase } from 'src/modules/users/application/use-cases/create-user.usecase';
 import { DeleteUserUseCase } from 'src/modules/users/application/use-cases/delete-user.usecase';
@@ -34,6 +36,13 @@ import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard
 import { RolesGuard } from 'src/shared/utilidades/guards/roles.guard';
 import { User as CurrentUser } from 'src/shared/utilidades/decorators/user.decorator';
 import { RemoveAvatarUseCase } from 'src/modules/users/application/use-cases/remove-avatar.usecase';
+import { IMAGE_PROCESSOR, ImageProcessor } from 'src/shared/application/ports/image-processor.port';
+import { FILE_STORAGE, FileStorage } from 'src/shared/application/ports/file-storage.port';
+import { ImageProcessingError } from 'src/shared/application/errors/image-processing.error';
+import {
+  FileStorageConflictError,
+  InvalidFileStoragePathError
+} from 'src/shared/application/errors/file-storage.errors';
 
 /**
  * Controlador para la gestiAn de usuarios.
@@ -52,6 +61,10 @@ export class UsersController {
     private readonly restoreUserUseCase: RestoreUserUseCase,
     private readonly updateAvatarUseCase: UpdateAvatarUseCase,
     private readonly removeAvatarUseCase: RemoveAvatarUseCase,
+    @Inject(IMAGE_PROCESSOR)
+    private readonly imageProcessor: ImageProcessor,
+    @Inject(FILE_STORAGE)
+    private readonly fileStorage: FileStorage,
   ) {}
 
   @Post('create')
@@ -191,13 +204,7 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileInterceptor('avatar', {
-      storage: diskStorage({
-        destination: './assets/users',
-        filename: (req, file, cb) => {
-          const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${extname(file.originalname)}`;
-          cb(null, uniqueName);
-        },
-      }),
+      storage: memoryStorage(),
       limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
       fileFilter: (req, file, cb) => {
         const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
@@ -214,8 +221,43 @@ export class UsersController {
     @UploadedFile() file: Express.Multer.File,
     @CurrentUser() user: { id: string }
   ) {
-    const filePath = `/assets/users/${file.filename}`;
-    return this.updateAvatarUseCase.execute(user.id, filePath);
+    if (!file?.buffer) {
+      throw new BadRequestException('Debes enviar un archivo de avatar');
+    }
+
+    try {
+      const processed = await this.imageProcessor.toWebp({
+        buffer: file.buffer,
+        maxWidth: 512,
+        maxHeight: 512,
+        quality: 80,
+        maxInputBytes: 2 * 1024 * 1024,
+        maxInputPixels: 20_000_000,
+        maxOutputBytes: 1 * 1024 * 1024,
+      });
+
+      const { relativePath } = await this.fileStorage.save({
+        directory: 'users',
+        buffer: processed.buffer,
+        extension: processed.extension,
+        filenamePrefix: user.id,
+      });
+
+      return this.updateAvatarUseCase.execute(user.id, relativePath);
+    } catch (error) {
+      if (
+        error instanceof ImageProcessingError ||
+        error instanceof InvalidFileStoragePathError
+      ) {
+        throw new BadRequestException(error.message);
+      }
+
+      if (error instanceof FileStorageConflictError) {
+        throw new ConflictException(error.message);
+      }
+
+      throw error;
+    }
   }
 
   private normalizeSortBy(sortBy?: string) {

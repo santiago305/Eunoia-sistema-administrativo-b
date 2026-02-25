@@ -16,6 +16,8 @@ import { UpdateUserUseCase } from 'src/modules/users/application/use-cases/updat
 import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/shared/utilidades/guards/roles.guard';
 import { RoleType } from 'src/shared/constantes/constants';
+import { IMAGE_PROCESSOR } from 'src/shared/application/ports/image-processor.port';
+import { FILE_STORAGE } from 'src/shared/application/ports/file-storage.port';
 
 describe('UsersController (e2e)', () => {
   let app: INestApplication;
@@ -37,6 +39,8 @@ describe('UsersController (e2e)', () => {
         { provide: RestoreUserUseCase, useValue: { execute: jest.fn() } },
         { provide: UpdateAvatarUseCase, useValue: { execute: jest.fn() } },
         { provide: RemoveAvatarUseCase, useValue: removeAvatarUseCase },
+        { provide: IMAGE_PROCESSOR, useValue: { toWebp: jest.fn() } },
+        { provide: FILE_STORAGE, useValue: { save: jest.fn() } },
       ],
     })
       .overrideGuard(JwtAuthGuard)
