@@ -20,6 +20,7 @@ import { RoleType } from 'src/shared/constantes/constants';
 describe('UsersController (e2e)', () => {
   let app: INestApplication;
   const listUsersUseCase = { execute: jest.fn() };
+  const removeAvatarUseCase = { execute: jest.fn() };
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -35,7 +36,7 @@ describe('UsersController (e2e)', () => {
         { provide: DeleteUserUseCase, useValue: { execute: jest.fn() } },
         { provide: RestoreUserUseCase, useValue: { execute: jest.fn() } },
         { provide: UpdateAvatarUseCase, useValue: { execute: jest.fn() } },
-        { provide: RemoveAvatarUseCase, useValue: { execute: jest.fn() } },
+        { provide: RemoveAvatarUseCase, useValue: removeAvatarUseCase },
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -94,5 +95,16 @@ describe('UsersController (e2e)', () => {
       expect.objectContaining({ status: 'inactive' }),
       RoleType.ADMIN
     );
+  });
+
+  it('/users/me/avatar (DELETE)', async () => {
+    removeAvatarUseCase.execute.mockResolvedValue({ ok: true });
+
+    await request(app.getHttpServer())
+      .delete('/users/me/avatar')
+      .expect(200)
+      .expect({ ok: true });
+
+    expect(removeAvatarUseCase.execute).toHaveBeenCalledWith('user-1');
   });
 });

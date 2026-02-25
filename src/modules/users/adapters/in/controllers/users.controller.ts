@@ -1,6 +1,7 @@
 import {
   Controller,
   Post,
+  Delete,
   Get,
   Body,
   Param,
@@ -33,7 +34,6 @@ import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard
 import { RolesGuard } from 'src/shared/utilidades/guards/roles.guard';
 import { User as CurrentUser } from 'src/shared/utilidades/decorators/user.decorator';
 import { RemoveAvatarUseCase } from 'src/modules/users/application/use-cases/remove-avatar.usecase';
-import { OwnUserGuard } from 'src/modules/users/adapters/in/guards/own-user.guard';
 
 /**
  * Controlador para la gestiAn de usuarios.
@@ -152,17 +152,12 @@ export class UsersController {
     }
     return this.updateUserUseCase.execute(id, dto, user.id);
   }
-  @Patch('remove-avatar/:id')
+  @Delete('me/avatar')
   @UseGuards(JwtAuthGuard)
   removeAvatar(
-    @Param('id') id: string,
-    @Body() dto: UpdateUserDto,
     @CurrentUser() user: { id: string }
   ) {
-    if (id !== user.id) {
-      throw new ForbiddenException('No puedes editar otro usuario');
-    }
-    return this.removeAvatarUseCase.execute(id);
+    return this.removeAvatarUseCase.execute(user.id);
   }
 
   @Patch('delete/:id')
@@ -192,12 +187,12 @@ export class UsersController {
     return this.changePasswordUseCase.execute(id, body.currentPassword, body.newPassword, user.id);
   }
 
-  @Post(':id/avatar')
-  @UseGuards(JwtAuthGuard, OwnUserGuard)
+  @Post('me/avatar')
+  @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileInterceptor('avatar', {
       storage: diskStorage({
-        destination: './assets/uploadusers',
+        destination: './assets/users',
         filename: (req, file, cb) => {
           const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${extname(file.originalname)}`;
           cb(null, uniqueName);
@@ -216,16 +211,11 @@ export class UsersController {
 
   
   async uploadAvatar(
-    @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,
     @CurrentUser() user: { id: string }
   ) {
-    // Validacion de acceso: solo el dueno puede subir su avatar
-    if (user?.id && user.id !== id) {
-      throw new ForbiddenException('No puedes subir avatar de otro usuario');
-    }
-    const filePath = `/assets/uploadusers/${file.filename}`;
-    return this.updateAvatarUseCase.execute(id, filePath, user?.id);
+    const filePath = `/assets/users/${file.filename}`;
+    return this.updateAvatarUseCase.execute(user.id, filePath);
   }
 
   private normalizeSortBy(sortBy?: string) {

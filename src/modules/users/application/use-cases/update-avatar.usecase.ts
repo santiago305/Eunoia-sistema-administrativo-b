@@ -9,10 +9,7 @@ export class UpdateAvatarUseCase {
     private readonly userRepository: UserRepository,
   ) {}
 
-  async execute(id: string, filePath: string, requesterUserId?: string) {
-    if (requesterUserId && id !== requesterUserId) {
-      throw new UnauthorizedException('No puedes subir avatar de otro usuario');
-    }
+  async execute(id: string, filePath: string) {
     try {
       const domainUser = await this.userRepository.findById(id);
       if (!domainUser) throw new UnauthorizedException('Usuario no encontrado');

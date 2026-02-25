@@ -12,7 +12,7 @@ describe('UpdateAvatarUseCase', () => {
     return new UpdateAvatarUseCase(userRepository);
   };
 
-  it('updates avatar for owner', async () => {
+  it('updates avatar for authenticated user', async () => {
     const domainUser = new User(
       'user-1',
       'Ana',
@@ -26,7 +26,7 @@ describe('UpdateAvatarUseCase', () => {
     };
     const useCase = makeUseCase({ userRepository });
 
-    const result = await useCase.execute('user-1', '/assets/avatar.png', 'user-1');
+    const result = await useCase.execute('user-1', '/assets/avatar.png');
 
     expect(result).toEqual(
       successResponse('Avatar actualizado correctamente', {
@@ -38,11 +38,16 @@ describe('UpdateAvatarUseCase', () => {
     );
   });
 
-  it('rejects when requester differs', async () => {
-    const useCase = makeUseCase();
+  it('rejects when user does not exist', async () => {
+    const useCase = makeUseCase({
+      userRepository: {
+        findById: jest.fn().mockResolvedValue(null),
+        save: jest.fn(),
+      },
+    });
 
     await expect(
-      useCase.execute('user-1', '/assets/avatar.png', 'user-2')
+      useCase.execute('user-1', '/assets/avatar.png')
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });
