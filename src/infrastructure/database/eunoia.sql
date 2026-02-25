@@ -40,6 +40,11 @@ create table roles (
   created_at timestamptz not null default now()
 );
 
+-- Refuerzo de unicidad semantica: evita duplicados por mayusculas/espacios
+-- (ej. "admin", " Admin ", "ADMIN")
+create unique index if not exists ux_roles_description_normalized
+  on roles (lower(btrim(description)));
+
 -- ---------------------------------------------------------
 -- TABLA: users
 -- Para qué sirve:
