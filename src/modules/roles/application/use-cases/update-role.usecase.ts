@@ -1,4 +1,9 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ROLE_REPOSITORY, RoleRepository } from '../ports/role.repository';
 import { UpdateRoleDto } from '../../adapters/in/dtos/update-role.dto';
 
@@ -10,6 +15,10 @@ export class UpdateRoleUseCase {
   ) {}
 
   async execute(id: string, dto: UpdateRoleDto) {
+    if (dto.description === undefined) {
+      throw new BadRequestException('Debe enviar al menos un campo para actualizar');
+    }
+
     const role = await this.roleRepository.findById(id);
 
     if (!role) {

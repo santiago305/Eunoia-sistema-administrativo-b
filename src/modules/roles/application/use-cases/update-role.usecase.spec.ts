@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { UpdateRoleUseCase } from './update-role.usecase';
 
 describe('UpdateRoleUseCase', () => {
@@ -27,6 +27,20 @@ describe('UpdateRoleUseCase', () => {
     await expect(
       useCase.execute('role-1', { description: 'New' } as any)
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('throws when no updatable fields are provided', async () => {
+    const roleRepository = {
+      findById: jest.fn(),
+      save: jest.fn(),
+    };
+    const useCase = makeUseCase({ roleRepository });
+
+    await expect(useCase.execute('role-1', {} as any)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(roleRepository.findById).not.toHaveBeenCalled();
+    expect(roleRepository.save).not.toHaveBeenCalled();
   });
 
   it('updates role when it exists', async () => {
