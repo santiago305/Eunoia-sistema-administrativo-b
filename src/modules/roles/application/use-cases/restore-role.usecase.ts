@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -29,6 +30,9 @@ export class RestoreRoleUseCase {
     const normalizedDescription = (role.description || '').trim().toLowerCase();
     if (PROTECTED_SYSTEM_ROLES.has(normalizedDescription)) {
       throw new ForbiddenException('No se puede restaurar un rol base del sistema');
+    }
+    if (!role.deleted) {
+      throw new BadRequestException('El rol ya se encuentra activo');
     }
     await this.roleRepository.updateDeleted(id, false);
 
