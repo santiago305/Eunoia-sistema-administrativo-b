@@ -1,10 +1,10 @@
 import { buildSkuBase } from 'src/shared/utilidades/utils/buildSkuBase';
-import { ProductVariantRepository } from 'src/modules/catalog/domain/ports/product-variant.repository';
 import { InternalServerErrorException } from '@nestjs/common';
 import { TransactionContext } from 'src/modules/inventory/domain/ports/unit-of-work.port';
+import { ProductRepository } from 'src/modules/catalog/domain/ports/product.repository';
 
-export async function generateUniqueSku(
-  variantRepo: ProductVariantRepository,
+export async function generateUniqueProductSku(
+  productRepo: ProductRepository,
   productName: string,
   color?: string,
   presentation?: string,
@@ -13,8 +13,8 @@ export async function generateUniqueSku(
 ) {
   const prefix = buildSkuBase(productName, color, presentation, variant);
 
-  const lastVariant = await variantRepo.findLastCreated(tx);
-  const lastSku = lastVariant ? lastVariant.getSku() : undefined;
+  const lastProduct = await productRepo.findLastCreated(tx);
+  const lastSku = lastProduct ? lastProduct.getSku() : undefined;
   let next = 1;
 
   if (lastSku) {
@@ -29,7 +29,7 @@ export async function generateUniqueSku(
 
   for (let i = 0; i < MAX_ATTEMPTS; i++) {
     const sku = `${prefix}-${String(next).padStart(5, '0')}`;
-    const exists = await variantRepo.findBySku(sku, tx);
+    const exists = await productRepo.findBySku(sku, tx);
     if (!exists) return sku;
     next++;
   }

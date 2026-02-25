@@ -35,7 +35,6 @@ export class HttpCreateProductDto {
   @IsBoolean()
   isActive?: boolean;
 
-  @IsOptional()
   @IsEnum(ProductType)
-  type?: ProductType;
+  type: ProductType;
 }

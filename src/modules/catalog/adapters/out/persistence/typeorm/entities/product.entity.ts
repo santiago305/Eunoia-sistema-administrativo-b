@@ -15,13 +15,23 @@ export class ProductEntity {
   @Column({ name: 'base_unit_id', type: 'uuid' })
   baseUnitId: string;
   
-  @Column({ name: 'variant_default_id', type: 'uuid', nullable: true })
-  variantDefaulId?: string;
+  @Column({ type: 'varchar', length: 80, unique: true })
+  sku: string;
+  
+  @Column({ type: 'varchar', length: 80, unique: true, nullable: true })
+  barcode: string | null;
+  
+  @Column({ type: 'numeric', precision: 12, scale: 2 })
+  price: number;
+  
+  @Column({ type: 'numeric', precision: 12, scale: 2 })
+  cost: number;
+  
+  @Column({ type: 'jsonb', nullable: false, default: () => "'{}'::jsonb" })
+  attributes: Record<string, unknown>;
 
-
-
-  @Column({ name: 'type', type: 'enum', enum: ProductType, enumName: 'product_type', nullable: true })
-  type?: ProductType;
+  @Column({ name: 'type', type: 'enum', enum: ProductType, enumName: 'product_type' })
+  type: ProductType;
 
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;

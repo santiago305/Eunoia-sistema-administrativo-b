@@ -2,18 +2,18 @@ import { ProductType } from "src/modules/catalog/domain/value-object/productType
 
 export interface ProductOutput {
   id: string;
-  baseUnitId?: string;
-  primaDefaultVariantId?: string;
+  baseUnitId: string;
   name: string;
   description: string | null;
+  sku: string;
+  barcode: string | null;
+  price: number;
+  cost: number;
+  attributes: Record<string, any>;
   baseUnitName?: string;
   baseUnitCode?: string;
-  cost?: number | null;
-  price?: number | null;
-  sku?: string | null;
-  attributes?: Record<string, any> | null;
   isActive: boolean;
-  type?: ProductType;
+  type: ProductType;
   createdAt: Date;
   updatedAt: Date;
 }

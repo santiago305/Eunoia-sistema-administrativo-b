@@ -1,4 +1,4 @@
-import { ConflictException, Inject, NotFoundException } from '@nestjs/common';
+import { ConflictException, Inject, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from 'src/modules/catalog/domain/ports/product-variant.repository';
 import { PRODUCT_REPOSITORY, ProductRepository } from 'src/modules/catalog/domain/ports/product.repository';
 import { ProductVariant } from 'src/modules/catalog/domain/entity/product-variant';
@@ -21,13 +21,13 @@ export class UpdateProductVariant {
   async execute(input: UpdateProductVariantInput): Promise<ProductVariantOutput> {
     return this.uow.runInTransaction(async (tx) => {
       const current = await this.variantRepo.findById(input.id, tx);
-      if (!current) throw new NotFoundException('Variant no encontrado');
+      if (!current) throw new NotFoundException({type: 'error', message: 'Variante no encontrada'});
 
       // Barcode uniqueness (si se está cambiando)
       if (input.barcode?.trim() && input.barcode.trim() !== (current.getBarcode() ?? '')) {
         const existsBarcode = await this.variantRepo.findByBarcode(input.barcode.trim(), tx);
         if (existsBarcode && existsBarcode.getId() !== current.getId()) {
-          throw new ConflictException('Barcode ya existe');
+          throw new ConflictException({type: 'error', message: 'Barcode ya existe'});
         }
       }
 
@@ -41,7 +41,7 @@ export class UpdateProductVariant {
       // Si mandan attributes, recalculamos SKU preservando serie
       if (input.attributes) {
         const product = await this.productRepo.findById(current.getProductId(), tx);
-        if (!product) throw new NotFoundException('Producto no encontrado');
+        if (!product) throw new NotFoundException({type: 'error', message: 'Producto no encontrado'});
 
         sku = buildSkuPreservingSeries(
           sku,
@@ -64,7 +64,7 @@ export class UpdateProductVariant {
         tx,
       );
 
-      if (!updated) throw new NotFoundException('Variant no encontrado');
+      if (!updated) throw new InternalServerErrorException({type: 'error', message: 'Variante no actualizada, por favor intente de nuevo'});
       return this.toOutput(updated);
     });
   }

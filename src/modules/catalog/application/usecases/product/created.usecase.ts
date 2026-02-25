@@ -1,85 +1,78 @@
-import { Inject, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Inject, InternalServerErrorException } from "@nestjs/common";
 import { Product } from "src/modules/catalog/domain/entity/product";
 import { UNIT_OF_WORK, UnitOfWork } from "src/modules/inventory/domain/ports/unit-of-work.port";
 import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
 import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/domain/ports/product.repository";
 import { CreateProductInput } from "../../dto/products/input/create-product";
-import { ProductOutput } from "../../dto/products/output/product-out";
-import { CreateProductVariant } from "../product-variant/create.usecase"; 
-import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/modules/catalog/domain/ports/product-variant.repository";
+import { Money } from "src/modules/catalog/domain/value-object/money.vo";
+import { generateUniqueProductSku } from "./generate-unique-sku";
+import { VariantAttributes } from "src/modules/catalog/domain/value-object/variant-attributes.vo";
 
 export class CreateProduct {
   constructor(
     @Inject(UNIT_OF_WORK) private readonly uow: UnitOfWork,
     @Inject(PRODUCT_REPOSITORY) private readonly productRepo: ProductRepository,
     @Inject(CLOCK) private readonly clock: ClockPort,
-    private readonly createProductVariant: CreateProductVariant,
-    @Inject(PRODUCT_VARIANT_REPOSITORY)
-    private readonly variantRepo: ProductVariantRepository,
   ) {}
 
-  async execute(input: CreateProductInput): Promise<ProductOutput> {
+  async execute(input: CreateProductInput): Promise<{type: string, message: string}> {
     return this.uow.runInTransaction(async (tx) => {
       const now = this.clock.now();
 
-      const product = new Product(
-        undefined,
-        input.name,
-        input.description ?? null,
-        input.baseUnitId,
-        input.isActive ?? true,
-        undefined,
-        now,
-        now,
-        input.type,
-      );
-
-      const saved = await this.productRepo.create(product, tx);
-      
-      //Crear variante por defecto
-      const variantId = await this.createProductVariant.execute({
-        productId: saved.getId()?.value,
-        price: input.price,
-        cost: input.cost,
-        attributes: input.attributes,
-        defaultVariant: true,
-      }, tx);
-
-      //actualizar producto con id de variante por defecto
-      const updatedProduct = await this.productRepo.update(
-        {
-          id: saved.getId()!,
-          variantDefaulId: variantId.id,
-        },
-        tx
-      );
-
-      //buscar la variante por defecto
-      const defaultVariant = await this.variantRepo.findById(variantId.id, tx);
-      if (!updatedProduct || !defaultVariant) {
-        throw new NotFoundException(
-          {
-            type: "error",
-            message: "Error al crear el producto y su variante por defecto",
-          }
-        );
+      const normalizedBarcode = input.barcode?.trim() || null;
+      if (normalizedBarcode) {
+        const existsBarcode = await this.productRepo.findByBarcode(normalizedBarcode, tx);
+        if (existsBarcode) throw new ConflictException({type: 'error', message: 'Barcode ya existe'});
+      }
+  
+      const explicitSku = input.sku?.trim();
+      if (explicitSku) {
+        const existsSku = await this.productRepo.findBySku(explicitSku, tx);
+        if (existsSku) throw new ConflictException({type: 'error', message: 'SKU ya existe'});
       }
 
+      let sku = explicitSku;
+      let attributes: Record<string, unknown>;
 
-      return {
-        id: saved.getId()?.value,
-        name: saved.getName(),
-        description: saved.getDescription(),
-        baseUnitId: saved.getBaseUnitId(),
-        sku: defaultVariant.getSku(),
-        cost: defaultVariant.getCost().getAmount(),
-        price: defaultVariant.getPrice().getAmount(),
-        attributes: defaultVariant.getAttributes(),
-        type: saved.getType(),
-        isActive: saved.getIsActive(),
-        createdAt: saved.getCreatedAt(),
-        updatedAt: saved.getUpdatedAt(),
-      };
+      try {
+        attributes = VariantAttributes.create(input.attributes).toJSON();
+      } catch {
+        throw new BadRequestException({ type: "error", message: "Attributes inválidos" });
+      }
+
+      if (!sku) {
+        sku = await generateUniqueProductSku(this.productRepo, input.name, input.attributes?.color,
+        input.attributes?.presentation, input.attributes?.variant, tx);
+      }
+
+      const product = new Product(
+        undefined,
+        input.baseUnitId,
+        input.name,
+        input.description ?? null,
+        sku,
+        normalizedBarcode,
+        Money.create(input.price),
+        Money.create(input.cost),
+        attributes,
+        input.isActive ?? true,
+        input.type,
+        now,
+        null,
+      );
+
+      try {
+        await this.productRepo.create(product, tx);
+        return {
+          type: "success",
+          message: "Producto creado exitosamente"
+        };
+      } catch {
+        throw new InternalServerErrorException({
+          type: "error",
+          message: "No se logro crear el producto, por favor intente de nuevo",
+        });
+      }
     });
   }
 }

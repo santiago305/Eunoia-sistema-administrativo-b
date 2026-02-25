@@ -34,6 +34,14 @@ export class ListProductQueryDto {
   description?: string;
 
   @IsOptional()
+  @IsString()
+  sku?: string;
+
+  @IsOptional()
+  @IsString()
+  barcode?: string;
+
+  @IsOptional()
   @IsEnum(ProductType)
   type?: ProductType;
 }

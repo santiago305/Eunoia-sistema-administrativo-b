@@ -22,8 +22,6 @@ import { PRODUCT_RECIPE_REPOSITORY } from '../domain/ports/product-recipe.reposi
 import { CreateProduct } from '../application/usecases/product/created.usecase';
 import { UpdateProduct } from '../application/usecases/product/update.usecase';
 import { SetProductActive } from '../application/usecases/product/set-active.usecase';
-import { ListActiveProducts } from '../application/usecases/product/list-active.usecase';
-import { ListInactiveProducts } from '../application/usecases/product/list-inactive.usecase';
 import { GetProductWithVariants } from '../application/usecases/product/get-with-variants.usecase';
 import { GetProductById } from '../application/usecases/product/get-by-id.usecase';
 import { GetProductByName } from '../application/usecases/product/get-by-name.usecase';
@@ -32,8 +30,6 @@ import { CreateProductVariant } from '../application/usecases/product-variant/cr
 import { UpdateProductVariant } from '../application/usecases/product-variant/update.usecase';
 import { SetProductVariantActive } from '../application/usecases/product-variant/set-active.usecase';
 import { GetProductVariant } from '../application/usecases/product-variant/get-element-by-id.usercase';
-import { ListActiveProductVariants } from '../application/usecases/product-variant/list-active.usecase';
-import { ListInactiveProductVariants } from '../application/usecases/product-variant/list-inactive.usecase';
 import { ListRowMaterialProductVariants } from '../application/usecases/product-variant/list-row-material.usecase';
 import { SearchProductVariants } from '../application/usecases/product-variant/search.usecase';
 import { ListProductVariants } from '../application/usecases/product-variant/list-by-product.usecase';
@@ -70,8 +66,6 @@ import { GetCatalogSummary } from '../application/usecases/catalog/get-summary.u
     CreateProduct,
     UpdateProduct,
     SetProductActive,
-    ListActiveProducts,
-    ListInactiveProducts,
     GetProductWithVariants,
     GetProductById,
     GetProductByName,
@@ -80,8 +74,6 @@ import { GetCatalogSummary } from '../application/usecases/catalog/get-summary.u
     UpdateProductVariant,
     SetProductVariantActive,
     GetProductVariant,
-    ListActiveProductVariants,
-    ListInactiveProductVariants,
     ListRowMaterialProductVariants,
     SearchProductVariants,
     ListProductVariants,

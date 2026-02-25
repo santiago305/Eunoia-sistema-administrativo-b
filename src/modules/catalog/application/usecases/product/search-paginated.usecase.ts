@@ -2,7 +2,6 @@ import { Inject, NotFoundException } from "@nestjs/common";
 import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/domain/ports/product.repository";
 import { ListProductsInput } from "../../dto/products/input/list-products";
 import { ProductOutput } from "../../dto/products/output/product-out";
-import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/modules/catalog/domain/ports/product-variant.repository";
 import { UNIT_REPOSITORY, UnitRepository } from "src/modules/catalog/domain/ports/unit.repository";
 
 export interface PaginatedResult<T> {
@@ -14,8 +13,6 @@ export interface PaginatedResult<T> {
 
 export class SearchProductsPaginated {
   constructor(
-    @Inject(PRODUCT_VARIANT_REPOSITORY)
-    private readonly variantRepo: ProductVariantRepository,
     @Inject(PRODUCT_REPOSITORY) private readonly productRepo: ProductRepository,
     @Inject(UNIT_REPOSITORY)
     private readonly unitRepo: UnitRepository
@@ -29,6 +26,8 @@ export class SearchProductsPaginated {
       isActive: input.isActive,
       name: input.name,
       description: input.description,
+      sku: input.sku,
+      barcode: input.barcode,
       type: input.type,
       q: input.q,
       page,
@@ -38,14 +37,7 @@ export class SearchProductsPaginated {
     return {
       items: await Promise.all(
         items.map(async (p) => {
-          const variantDefault = await this.variantRepo.findById(p.getVariantDefaultId());
           const unit = await this.unitRepo.getById(p.getBaseUnitId());
-          if(!variantDefault) {
-            throw new NotFoundException({
-              type: 'error',
-              message: `Variant default not found for product ${p.getId()?.value}`,
-            });
-          }
           if(!unit) {
             throw new NotFoundException({
               type: 'error',
@@ -55,12 +47,12 @@ export class SearchProductsPaginated {
           return {
             id: p.getId()?.value,
             baseUnitId: p.getBaseUnitId(),
-            primaDefaultVariantId: p.getVariantDefaultId(), 
             name: p.getName(),
-            sku: variantDefault?.getSku(),
-            cost: variantDefault?.getCost()?.getAmount(),
-            price: variantDefault?.getPrice()?.getAmount(),
-            attributes: variantDefault?.getAttributes(),
+            sku: p.getSku(),
+            barcode: p.getBarcode(),
+            cost: p.getCost().getAmount(),
+            price: p.getPrice().getAmount(),
+            attributes: p.getAttributes(),
             description: p.getDescription(),
             baseUnitName: unit.name,
             baseUnitCode: unit.code,

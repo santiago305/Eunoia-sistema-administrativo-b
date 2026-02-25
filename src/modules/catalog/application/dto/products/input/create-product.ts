@@ -5,9 +5,11 @@ export interface CreateProductInput {
   name: string;
   description?: string;
   baseUnitId: string;
-  isActive?: boolean;
-  type?: ProductType;
+  sku?: string;
+  barcode?: string | null;
+  price: number;
+  cost: number;
   attributes?: ProductVariantAttributes;
-  price?: number;
-  cost?: number;
+  isActive?: boolean;
+  type: ProductType;
 }
