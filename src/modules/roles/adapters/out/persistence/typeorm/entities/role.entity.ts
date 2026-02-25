@@ -4,8 +4,8 @@ import { User } from 'src/modules/users/adapters/out/persistence/typeorm/entitie
 @Entity('roles')
 export class Role {
 
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+  @PrimaryGeneratedColumn('uuid', { name: 'role_id' })
+  roleId: string;
 
   @Column({ unique: true })
   description: string;

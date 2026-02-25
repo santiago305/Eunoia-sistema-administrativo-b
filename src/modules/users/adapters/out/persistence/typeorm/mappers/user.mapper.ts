@@ -8,7 +8,7 @@ import { MissingRoleIdError } from '../../../../../domain/errors/missing-role-id
 
 export class UserMapper {
   static toDomain(orm: OrmUser): DomainUser {
-    const roleId = orm.role?.id ?? (orm as any).roleId;
+    const roleId = orm.role?.roleId ?? (orm as any).roleId;
     if (!roleId) {
       throw new MissingRoleIdError();
     }
@@ -33,7 +33,7 @@ export class UserMapper {
       password: domain.password.value,
       deleted: domain.deleted,
       avatarUrl: domain.avatarUrl,
-      role: domain.roleId ? ({ id: domain.roleId.value } as OrmUser['role']) : undefined,
+      role: domain.roleId ? ({ roleId: domain.roleId.value } as OrmUser['role']) : undefined,
       createdAt: domain.createdAt,
     };
   }

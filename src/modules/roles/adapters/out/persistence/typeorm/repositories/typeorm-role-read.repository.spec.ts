@@ -10,16 +10,16 @@ describe('TypeormRoleReadRepository', () => {
   it('listRoles returns id and description only', async () => {
     const repo = makeRepo({
       find: jest.fn().mockResolvedValue([
-        { id: 'role-1', description: 'admin' },
-        { id: 'role-2', description: 'user' },
+        { roleId: 'role-1', description: 'admin', deleted: false, createdAt: undefined },
+        { roleId: 'role-2', description: 'user', deleted: false, createdAt: undefined },
       ]),
     });
 
     const result = await repo.listRoles();
 
     expect(result).toEqual([
-      { id: 'role-1', description: 'admin' },
-      { id: 'role-2', description: 'user' },
+      { id: 'role-1', description: 'admin', deleted: false, createdAt: undefined },
+      { id: 'role-2', description: 'user', deleted: false, createdAt: undefined },
     ]);
   });
 
@@ -28,7 +28,7 @@ describe('TypeormRoleReadRepository', () => {
 
     const repo = makeRepo({
       findOne: jest.fn().mockResolvedValue({
-        id: 'role-1',
+        roleId: 'role-1',
         description: 'admin',
         deleted: false,
         createdAt,

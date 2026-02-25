@@ -12,23 +12,48 @@ export class TypeormRoleReadRepository implements RoleReadRepository {
   ) {}
 
   async listRoles() {
-    return this.ormRepository.find({
-      select: ['id', 'description'],
+    const roles = await this.ormRepository.find({
+      select: ['roleId', 'description', 'deleted', 'createdAt'],
       where: { deleted: false },
       order: { description: 'ASC' },
     });
+
+    return roles.map((role) => ({
+      id: role.roleId,
+      description: role.description,
+      deleted: role.deleted,
+      createdAt: role.createdAt,
+    }));
   }
 
   async findById(id: string) {
-    return this.ormRepository.findOne({
-      where: { id, deleted: false },
-      select: ['id', 'description', 'deleted', 'createdAt'],
+    const role = await this.ormRepository.findOne({
+      where: { roleId: id, deleted: false },
+      select: ['roleId', 'description', 'deleted', 'createdAt'],
     });
+
+    if (!role) return null;
+
+    return {
+      id: role.roleId,
+      description: role.description,
+      deleted: role.deleted,
+      createdAt: role.createdAt,
+    };
   }
   async findByDescription(description: string) {
-    return this.ormRepository.findOne({
+    const role = await this.ormRepository.findOne({
       where: { description, deleted: false },
     });
+
+    if (!role) return null;
+
+    return {
+      id: role.roleId,
+      description: role.description,
+      deleted: role.deleted,
+      createdAt: role.createdAt,
+    };
   }
 
   async existsByDescription(description: string) {

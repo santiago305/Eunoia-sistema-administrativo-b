@@ -4,7 +4,7 @@ import { Role as OrmRole } from '../entities/role.entity';
 export class RoleMapper {
   static toDomain(orm: OrmRole): DomainRole {
     return new DomainRole(
-      orm.id,
+      orm.roleId,
       orm.description,
       orm.deleted,
       orm.createdAt
@@ -13,7 +13,7 @@ export class RoleMapper {
 
   static toPersistence(domain: DomainRole): Partial<OrmRole> {
     return {
-      id: domain.id,
+      roleId: domain.id,
       description: domain.description,
       deleted: domain.deleted,
       createdAt: domain.createdAt,  

@@ -37,7 +37,7 @@ export const seedUser = async (dataSource: DataSource) => {
 
     const role = await roleRepo
       .createQueryBuilder('role')
-      .select(['role.id'])
+      .select(['role.roleId'])
       .where('role.description = :description', { description: roleDescription })
       .getOne();
 

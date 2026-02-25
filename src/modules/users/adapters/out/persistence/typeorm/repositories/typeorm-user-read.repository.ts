@@ -46,7 +46,7 @@ export class TypeormUserReadRepository implements UserReadRepository {
       role: 'role.description',
       rol: 'role.description',
       'role.description': 'role.description',
-      roleId: 'role.id',
+      roleId: 'role.roleId',
       deleted: 'user.deleted',
       'user.deleted': 'user.deleted',
     };
@@ -61,7 +61,7 @@ export class TypeormUserReadRepository implements UserReadRepository {
         'user.name',
         'user.email',
         'role.description As rol',
-        'role.id As roleId',
+        'role.roleId As roleId',
         'user.deleted',
         'user.createdAt',
       ])
@@ -127,7 +127,7 @@ export class TypeormUserReadRepository implements UserReadRepository {
         'user.deleted',
         'user.avatarUrl',
         'user.createdAt',
-        'role.id',
+        'role.roleId',
         'role.description',
       ])
       .where('user.id = :id', { id })
@@ -144,7 +144,7 @@ export class TypeormUserReadRepository implements UserReadRepository {
       avatarUrl: this.normalizeAvatarUrl(user.avatarUrl),
       createdAt: user.createdAt,
       role: {
-        id: user.role.id,
+        id: user.role.roleId,
         description: user.role.description,
       },
     };

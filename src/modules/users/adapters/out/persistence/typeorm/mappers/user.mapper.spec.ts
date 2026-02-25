@@ -16,7 +16,7 @@ describe('UserMapper', () => {
     orm.deleted = false;
     orm.avatarUrl = 'avatar.png';
     orm.createdAt = new Date('2024-01-01T00:00:00.000Z');
-    orm.role = { id: 'role-1' } as any;
+    orm.role = { roleId: 'role-1' } as any;
 
     const domain = UserMapper.toDomain(orm);
 
@@ -51,7 +51,7 @@ describe('UserMapper', () => {
     const persistence = UserMapper.toPersistence(domain);
 
     expect(persistence.email).toBe('ana@example.com');
-    expect((persistence.role as any).id).toBe('role-1');
+    expect((persistence.role as any).roleId).toBe('role-1');
   });
 });
 

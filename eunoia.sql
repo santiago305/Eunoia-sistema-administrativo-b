@@ -26,17 +26,17 @@ create extension if not exists "uuid-ossp";
 -- Para qué sirve:
 -- - Define roles/jerarquías del sistema (admin, moderador, asesor, etc.)
 -- Qué información guarda:
--- - Nombre del rol y descripción
+-- - Descripción del rol
 -- Columnas (ES):
 -- - role_id: id del rol (uuid)
--- - name: nombre del rol
 -- - description: descripción del rol
+-- - deleted: borrado lógico (true/false)
 -- - created_at: fecha de creación
 -- ---------------------------------------------------------
 create table roles (
   role_id uuid primary key default uuid_generate_v4(),
-  name varchar(60) not null unique,
-  description text,
+  description text not null unique,
+  deleted boolean not null default false,
   created_at timestamptz not null default now()
 );
 

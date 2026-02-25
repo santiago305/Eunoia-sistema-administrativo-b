@@ -1,6 +1,7 @@
 import { Repository } from 'typeorm';
 import { TypeormRoleRepository } from './typeorm-role.repository';
 import { Role as OrmRole } from '../entities/role.entity';
+import { RoleFactory } from '../../../../../domain/factories/role.factory';
 
 describe('TypeormRoleRepository', () => {
   const makeRepo = (overrides?: Partial<Repository<OrmRole>>) => {
@@ -8,21 +9,40 @@ describe('TypeormRoleRepository', () => {
   };
 
   it('save calls ormRepository.save and returns saved role', async () => {
-    const role = { id: 'role-1', description: 'admin' } as OrmRole;
+    const role = RoleFactory.reconstitute({
+      id: 'role-1',
+      description: 'admin',
+      deleted: false,
+      createdAt: new Date('2024-01-01T00:00:00.000Z'),
+    });
+    const savedOrm = {
+      roleId: 'role-1',
+      description: 'admin',
+      deleted: false,
+      createdAt: new Date('2024-01-01T00:00:00.000Z'),
+    } as OrmRole;
 
     const repo = makeRepo({
-      save: jest.fn().mockResolvedValue(role),
+      create: jest.fn((payload?: any) => payload as OrmRole) as any,
+      save: jest.fn().mockResolvedValue(savedOrm),
     });
 
     const result = await repo.save(role);
 
-    expect(result).toEqual(role);
-    expect(repo['ormRepository'].save).toHaveBeenCalledWith(role);
+    expect(result.id).toBe('role-1');
+    expect(result.description).toBe('admin');
+    expect(repo['ormRepository'].create).toHaveBeenCalledWith({
+      roleId: 'role-1',
+      description: 'admin',
+      deleted: false,
+      createdAt: new Date('2024-01-01T00:00:00.000Z'),
+    });
+    expect(repo['ormRepository'].save).toHaveBeenCalled();
   });
 
   it('findById returns role when found', async () => {
     const role = {
-      id: 'role-1',
+      roleId: 'role-1',
       description: 'admin',
       deleted: false,
     } as OrmRole;
@@ -33,9 +53,10 @@ describe('TypeormRoleRepository', () => {
 
     const result = await repo.findById('role-1');
 
-    expect(result).toEqual(role);
+    expect(result?.id).toBe('role-1');
+    expect(result?.description).toBe('admin');
     expect(repo['ormRepository'].findOne).toHaveBeenCalledWith({
-      where: { id: 'role-1' },
+      where: { roleId: 'role-1' },
     });
   });
 
@@ -50,20 +71,29 @@ describe('TypeormRoleRepository', () => {
   });
 
   it('update calls ormRepository.save and returns updated role', async () => {
-    const role = {
+    const role = RoleFactory.reconstitute({
       id: 'role-1',
       description: 'admin updated',
       deleted: false,
+      createdAt: new Date('2024-01-01T00:00:00.000Z'),
+    });
+    const savedOrm = {
+      roleId: 'role-1',
+      description: 'admin updated',
+      deleted: false,
+      createdAt: new Date('2024-01-01T00:00:00.000Z'),
     } as OrmRole;
 
     const repo = makeRepo({
-      save: jest.fn().mockResolvedValue(role),
+      create: jest.fn((payload?: any) => payload as OrmRole) as any,
+      save: jest.fn().mockResolvedValue(savedOrm),
     });
 
     const result = await repo.update(role);
 
-    expect(result).toEqual(role);
-    expect(repo['ormRepository'].save).toHaveBeenCalledWith(role);
+    expect(result.id).toBe('role-1');
+    expect(result.description).toBe('admin updated');
+    expect(repo['ormRepository'].save).toHaveBeenCalled();
   });
 
   it('updateDeleted calls ormRepository.update with correct values', async () => {
