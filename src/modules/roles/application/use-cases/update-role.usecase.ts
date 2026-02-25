@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
@@ -11,6 +12,13 @@ import {
   ROLE_READ_REPOSITORY,
   RoleReadRepository,
 } from '../ports/role-read.repository';
+import { RoleType } from 'src/shared/constantes/constants';
+
+const PROTECTED_SYSTEM_ROLES = new Set<string>([
+  RoleType.ADMIN,
+  RoleType.MODERATOR,
+  RoleType.ADVISER,
+]);
 
 @Injectable()
 export class UpdateRoleUseCase {
@@ -33,6 +41,11 @@ export class UpdateRoleUseCase {
     }
 
     const nextDescription = dto.description;
+    const currentDescription = (role.description || '').trim().toLowerCase();
+    if (PROTECTED_SYSTEM_ROLES.has(currentDescription) && nextDescription !== role.description) {
+      throw new ForbiddenException('No se puede renombrar un rol base del sistema');
+    }
+
     if (nextDescription !== role.description) {
       const exists = await this.roleReadRepository.existsByDescription(nextDescription);
       if (exists) {

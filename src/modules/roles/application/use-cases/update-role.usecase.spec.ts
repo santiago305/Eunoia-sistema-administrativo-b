@@ -1,9 +1,11 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
 import { UpdateRoleUseCase } from './update-role.usecase';
+import { RoleType } from 'src/shared/constantes/constants';
 
 describe('UpdateRoleUseCase', () => {
   const makeUseCase = (overrides?: { roleRepository?: any; roleReadRepository?: any }) => {
@@ -87,6 +89,23 @@ describe('UpdateRoleUseCase', () => {
     expect(roleRepository.save).not.toHaveBeenCalled();
   });
 
+  it('rejects renaming protected system roles', async () => {
+    const roleRepository = {
+      findById: jest.fn().mockResolvedValue({ id: 'role-1', description: RoleType.ADMIN }),
+      save: jest.fn(),
+    };
+    const roleReadRepository = {
+      existsByDescription: jest.fn(),
+    };
+    const useCase = makeUseCase({ roleRepository, roleReadRepository });
+
+    await expect(useCase.execute('role-1', { description: 'admin-renamed' } as any)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+    expect(roleReadRepository.existsByDescription).not.toHaveBeenCalled();
+    expect(roleRepository.save).not.toHaveBeenCalled();
+  });
+
   it('does not check duplicates when description is unchanged', async () => {
     const role = { id: 'role-1', description: 'Same' };
     const roleRepository = {
@@ -99,6 +118,24 @@ describe('UpdateRoleUseCase', () => {
     const useCase = makeUseCase({ roleRepository, roleReadRepository });
 
     const result = await useCase.execute('role-1', { description: 'Same' } as any);
+
+    expect(roleReadRepository.existsByDescription).not.toHaveBeenCalled();
+    expect(roleRepository.save).toHaveBeenCalledWith(role);
+    expect(result).toEqual({ message: 'Rol actualizado correctamente' });
+  });
+
+  it('allows protected system role when description is unchanged', async () => {
+    const role = { id: 'role-1', description: RoleType.MODERATOR };
+    const roleRepository = {
+      findById: jest.fn().mockResolvedValue(role),
+      save: jest.fn().mockResolvedValue({}),
+    };
+    const roleReadRepository = {
+      existsByDescription: jest.fn(),
+    };
+    const useCase = makeUseCase({ roleRepository, roleReadRepository });
+
+    const result = await useCase.execute('role-1', { description: RoleType.MODERATOR } as any);
 
     expect(roleReadRepository.existsByDescription).not.toHaveBeenCalled();
     expect(roleRepository.save).toHaveBeenCalledWith(role);
