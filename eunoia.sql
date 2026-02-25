@@ -47,7 +47,7 @@ create table roles (
 -- Qué información guarda:
 -- - Datos básicos de usuario + rol asignado
 -- Columnas (ES):
--- - id: id del usuario (uuid)
+-- - user_id: id del usuario (uuid)
 -- - name: nombre del usuario
 -- - email: correo (único)
 -- - password: contraseña hasheada
@@ -57,7 +57,7 @@ create table roles (
 -- - created_at: fecha de creación
 -- ---------------------------------------------------------
 create table users (
-  id uuid primary key default uuid_generate_v4(),
+  user_id uuid primary key default uuid_generate_v4(),
   name varchar(180) not null,
   email varchar(180) not null unique,
   password varchar(255) not null,
@@ -349,7 +349,7 @@ create table stock_reservations (
   reference_id uuid not null,
   expires_at timestamptz,
 
-  created_by uuid references users(id), -- quién creó la reserva (opcional, pero recomendado)
+  created_by uuid references users(user_id), -- quién creó la reserva (opcional, pero recomendado)
   created_at timestamptz not null default now()
 );
 
@@ -460,8 +460,8 @@ create table inventory_documents (
   note text,
 
   -- Auditoría:
-  created_by uuid references users(id), -- quién lo creó
-  posted_by uuid references users(id),  -- quién lo posteó (quién ejecutó el movimiento real)
+  created_by uuid references users(user_id), -- quién lo creó
+  posted_by uuid references users(user_id),  -- quién lo posteó (quién ejecutó el movimiento real)
   posted_at timestamptz,
 
   created_at timestamptz not null default now()

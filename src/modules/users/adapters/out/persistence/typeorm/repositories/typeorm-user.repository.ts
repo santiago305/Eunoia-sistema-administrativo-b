@@ -53,7 +53,7 @@ export class TypeormUserRepository implements UserRepository {
       .createQueryBuilder()
       .update(OrmUser)
       .set({ deleted })
-      .where('id = :id', { id })
+      .where('user_id = :id', { id })
       .execute();
   }
 
@@ -100,7 +100,7 @@ export class TypeormUserRepository implements UserRepository {
       .createQueryBuilder()
       .update(OrmUser)
       .set(setPayload)
-      .where('id = :id', { id })
+      .where('user_id = :id', { id })
       .execute();
   }
 
