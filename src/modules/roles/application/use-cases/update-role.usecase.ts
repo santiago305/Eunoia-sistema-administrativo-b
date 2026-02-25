@@ -33,6 +33,10 @@ export class UpdateRoleUseCase {
     if (dto.description === undefined) {
       throw new BadRequestException('Debe enviar al menos un campo para actualizar');
     }
+    const normalizedDescription = dto.description.trim().toLowerCase();
+    if (!normalizedDescription) {
+      throw new BadRequestException('La descripcion no puede quedar vacia');
+    }
 
     const role = await this.roleRepository.findById(id);
 
@@ -40,13 +44,15 @@ export class UpdateRoleUseCase {
       throw new NotFoundException('Rol no encontrado');
     }
 
-    const nextDescription = dto.description;
+    const nextDescription = normalizedDescription;
     const currentDescription = (role.description || '').trim().toLowerCase();
-    if (PROTECTED_SYSTEM_ROLES.has(currentDescription) && nextDescription !== role.description) {
+    const isSemanticDescriptionChange = nextDescription !== currentDescription;
+
+    if (PROTECTED_SYSTEM_ROLES.has(currentDescription) && isSemanticDescriptionChange) {
       throw new ForbiddenException('No se puede renombrar un rol base del sistema');
     }
 
-    if (nextDescription !== role.description) {
+    if (isSemanticDescriptionChange) {
       const exists = await this.roleReadRepository.existsByDescription(nextDescription);
       if (exists) {
         throw new ConflictException('Este rol ya existe');

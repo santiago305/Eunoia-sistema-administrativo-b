@@ -1,4 +1,9 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ROLE_REPOSITORY, RoleRepository } from '../ports/role.repository';
 import { CreateRoleDto } from '../../adapters/in/dtos/create-role.dto';
 import { RoleFactory } from '../../domain/factories/role.factory';
@@ -20,13 +25,18 @@ export class CreateRoleUseCase {
       throw new UnauthorizedException('No autorizado para crear roles');
     }
 
-    const exists = await this.roleReadRepository.existsByDescription(dto.description);
+    const normalizedDescription = dto.description.trim().toLowerCase();
+    if (!normalizedDescription) {
+      throw new BadRequestException('La descripcion no puede quedar vacia');
+    }
+
+    const exists = await this.roleReadRepository.existsByDescription(normalizedDescription);
     if (exists) {
       throw new UnauthorizedException('Este rol ya existe');
     }
 
     const role = RoleFactory.createNew({
-      description: dto.description,
+      description: normalizedDescription,
     });
 
     try {

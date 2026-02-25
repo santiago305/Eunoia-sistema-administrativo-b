@@ -57,6 +57,20 @@ describe('UpdateRoleUseCase', () => {
     expect(roleRepository.save).not.toHaveBeenCalled();
   });
 
+  it('rejects description that becomes empty after normalization', async () => {
+    const roleRepository = {
+      findById: jest.fn(),
+      save: jest.fn(),
+    };
+    const useCase = makeUseCase({ roleRepository });
+
+    await expect(useCase.execute('role-1', { description: '   ' } as any)).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(roleRepository.findById).not.toHaveBeenCalled();
+    expect(roleRepository.save).not.toHaveBeenCalled();
+  });
+
   it('updates role when it exists', async () => {
     const role = { id: 'role-1', description: 'Old' };
     const roleRepository = {
@@ -67,9 +81,27 @@ describe('UpdateRoleUseCase', () => {
 
     const result = await useCase.execute('role-1', { description: 'New' } as any);
 
-    expect(role.description).toBe('New');
+    expect(role.description).toBe('new');
     expect(roleRepository.save).toHaveBeenCalledWith(role);
     expect(result).toEqual({ message: 'Rol actualizado correctamente' });
+  });
+
+  it('normalizes description before duplicate check and save', async () => {
+    const role = { id: 'role-1', description: 'old' };
+    const roleRepository = {
+      findById: jest.fn().mockResolvedValue(role),
+      save: jest.fn().mockResolvedValue({}),
+    };
+    const roleReadRepository = {
+      existsByDescription: jest.fn().mockResolvedValue(false),
+    };
+    const useCase = makeUseCase({ roleRepository, roleReadRepository });
+
+    await useCase.execute('role-1', { description: '  AdViSeR  ' } as any);
+
+    expect(roleReadRepository.existsByDescription).toHaveBeenCalledWith('adviser');
+    expect(role.description).toBe('adviser');
+    expect(roleRepository.save).toHaveBeenCalledWith(role);
   });
 
   it('throws conflict when new description already exists', async () => {
@@ -85,7 +117,7 @@ describe('UpdateRoleUseCase', () => {
     await expect(useCase.execute('role-1', { description: 'Admin' } as any)).rejects.toBeInstanceOf(
       ConflictException,
     );
-    expect(roleReadRepository.existsByDescription).toHaveBeenCalledWith('Admin');
+    expect(roleReadRepository.existsByDescription).toHaveBeenCalledWith('admin');
     expect(roleRepository.save).not.toHaveBeenCalled();
   });
 
@@ -106,7 +138,7 @@ describe('UpdateRoleUseCase', () => {
     expect(roleRepository.save).not.toHaveBeenCalled();
   });
 
-  it('does not check duplicates when description is unchanged', async () => {
+  it('does not check duplicates when description is semantically unchanged', async () => {
     const role = { id: 'role-1', description: 'Same' };
     const roleRepository = {
       findById: jest.fn().mockResolvedValue(role),
@@ -120,6 +152,7 @@ describe('UpdateRoleUseCase', () => {
     const result = await useCase.execute('role-1', { description: 'Same' } as any);
 
     expect(roleReadRepository.existsByDescription).not.toHaveBeenCalled();
+    expect(role.description).toBe('same');
     expect(roleRepository.save).toHaveBeenCalledWith(role);
     expect(result).toEqual({ message: 'Rol actualizado correctamente' });
   });

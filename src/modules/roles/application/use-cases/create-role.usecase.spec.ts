@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { CreateRoleUseCase } from './create-role.usecase';
 import { RoleType } from 'src/shared/constantes/constants';
 import { successResponse } from 'src/shared/response-standard/response';
@@ -42,6 +42,31 @@ describe('CreateRoleUseCase', () => {
     await expect(
       useCase.execute({ description: 'Admin' } as any, RoleType.ADMIN)
     ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('normalizes description before duplicate check and save', async () => {
+    const roleReadRepository = {
+      existsByDescription: jest.fn().mockResolvedValue(false),
+    };
+    const roleRepository = {
+      save: jest.fn().mockResolvedValue({}),
+    };
+    const useCase = makeUseCase({ roleReadRepository, roleRepository });
+
+    await useCase.execute({ description: '  AdMiN  ' } as any, RoleType.ADMIN);
+
+    expect(roleReadRepository.existsByDescription).toHaveBeenCalledWith('admin');
+    expect(roleRepository.save).toHaveBeenCalledWith(
+      expect.objectContaining({ description: 'admin' }),
+    );
+  });
+
+  it('rejects description that becomes empty after normalization', async () => {
+    const useCase = makeUseCase();
+
+    await expect(
+      useCase.execute({ description: '   ' } as any, RoleType.ADMIN)
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('creates role for admin', async () => {
