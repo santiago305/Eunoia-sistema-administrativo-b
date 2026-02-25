@@ -8,8 +8,8 @@ import { DeleteUserUseCase } from 'src/modules/users/application/use-cases/delet
 import { GetOwnUserUseCase } from 'src/modules/users/application/use-cases/get-own-user.usecase';
 import { GetUserByEmailUseCase } from 'src/modules/users/application/use-cases/get-user-by-email.usecase';
 import { GetUserUseCase } from 'src/modules/users/application/use-cases/get-user.usecase';
-import { ListActiveUsersUseCase } from 'src/modules/users/application/use-cases/list-active-users.usecase';
 import { ListUsersUseCase } from 'src/modules/users/application/use-cases/list-users.usecase';
+import { RemoveAvatarUseCase } from 'src/modules/users/application/use-cases/remove-avatar.usecase';
 import { RestoreUserUseCase } from 'src/modules/users/application/use-cases/restore-user.usecase';
 import { UpdateAvatarUseCase } from 'src/modules/users/application/use-cases/update-avatar.usecase';
 import { UpdateUserUseCase } from 'src/modules/users/application/use-cases/update-user.usecase';
@@ -20,7 +20,6 @@ import { RoleType } from 'src/shared/constantes/constants';
 describe('UsersController (e2e)', () => {
   let app: INestApplication;
   const listUsersUseCase = { execute: jest.fn() };
-  const listActiveUsersUseCase = { execute: jest.fn() };
 
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -30,13 +29,13 @@ describe('UsersController (e2e)', () => {
         { provide: UpdateUserUseCase, useValue: { execute: jest.fn() } },
         { provide: ChangePasswordUseCase, useValue: { execute: jest.fn() } },
         { provide: ListUsersUseCase, useValue: listUsersUseCase },
-        { provide: ListActiveUsersUseCase, useValue: listActiveUsersUseCase },
         { provide: GetUserUseCase, useValue: { execute: jest.fn() } },
         { provide: GetUserByEmailUseCase, useValue: { execute: jest.fn() } },
         { provide: GetOwnUserUseCase, useValue: { execute: jest.fn() } },
         { provide: DeleteUserUseCase, useValue: { execute: jest.fn() } },
         { provide: RestoreUserUseCase, useValue: { execute: jest.fn() } },
         { provide: UpdateAvatarUseCase, useValue: { execute: jest.fn() } },
+        { provide: RemoveAvatarUseCase, useValue: { execute: jest.fn() } },
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -62,14 +61,38 @@ describe('UsersController (e2e)', () => {
       .get('/users/findAll?page=1')
       .expect(200)
       .expect([{ id: 'user-1' }]);
+
+    expect(listUsersUseCase.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'all' }),
+      RoleType.ADMIN
+    );
   });
 
   it('/users/actives (GET)', async () => {
-    listActiveUsersUseCase.execute.mockResolvedValue([{ id: 'user-2' }]);
+    listUsersUseCase.execute.mockResolvedValue([{ id: 'user-2' }]);
 
     await request(app.getHttpServer())
       .get('/users/actives?page=1')
       .expect(200)
       .expect([{ id: 'user-2' }]);
+
+    expect(listUsersUseCase.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'active' }),
+      RoleType.ADMIN
+    );
+  });
+
+  it('/users/desactive (GET)', async () => {
+    listUsersUseCase.execute.mockResolvedValue([{ id: 'user-3' }]);
+
+    await request(app.getHttpServer())
+      .get('/users/desactive?page=1')
+      .expect(200)
+      .expect([{ id: 'user-3' }]);
+
+    expect(listUsersUseCase.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'inactive' }),
+      RoleType.ADMIN
+    );
   });
 });

@@ -1,12 +1,14 @@
 export const USER_READ_REPOSITORY = Symbol('USER_READ_REPOSITORY');
 
+export type UserListStatus = 'all' | 'active' | 'inactive';
+
 export interface UserReadRepository {
   listUsers(params: {
     page?: number;
     filters?: { role?: string };
     sortBy?: string;
     order?: 'ASC' | 'DESC';
-    whereClause?: string;
+    status?: UserListStatus;
   }): Promise<
     Array<{
       id: string;

@@ -20,7 +20,6 @@ import { DeleteUserUseCase } from 'src/modules/users/application/use-cases/delet
 import { GetOwnUserUseCase } from 'src/modules/users/application/use-cases/get-own-user.usecase';
 import { GetUserByEmailUseCase } from 'src/modules/users/application/use-cases/get-user-by-email.usecase';
 import { GetUserUseCase } from 'src/modules/users/application/use-cases/get-user.usecase';
-import { ListActiveUsersUseCase } from 'src/modules/users/application/use-cases/list-active-users.usecase';
 import { ListUsersUseCase } from 'src/modules/users/application/use-cases/list-users.usecase';
 import { RestoreUserUseCase } from 'src/modules/users/application/use-cases/restore-user.usecase';
 import { UpdateAvatarUseCase } from 'src/modules/users/application/use-cases/update-avatar.usecase';
@@ -33,7 +32,6 @@ import { RoleType } from 'src/shared/constantes/constants';
 import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/shared/utilidades/guards/roles.guard';
 import { User as CurrentUser } from 'src/shared/utilidades/decorators/user.decorator';
-import { ListDesactiveUseCase } from 'src/modules/users/application/use-cases/list-desactive-users.usecase';
 import { RemoveAvatarUseCase } from 'src/modules/users/application/use-cases/remove-avatar.usecase';
 
 /**
@@ -46,8 +44,6 @@ export class UsersController {
     private readonly updateUserUseCase: UpdateUserUseCase,
     private readonly changePasswordUseCase: ChangePasswordUseCase,
     private readonly listUsersUseCase: ListUsersUseCase,
-    private readonly listActiveUsersUseCase: ListActiveUsersUseCase,
-    private readonly listDesactiveUserCase: ListDesactiveUseCase,
     private readonly getUserUseCase: GetUserUseCase,
     private readonly getUserByEmailUseCase: GetUserByEmailUseCase,
     private readonly getOwnUserUseCase: GetOwnUserUseCase,
@@ -80,6 +76,7 @@ export class UsersController {
       filters: { role },
       sortBy: this.normalizeSortBy(sortBy),
       order: this.normalizeOrder(order),
+      status: 'all',
     }, user.role);
   }
 
@@ -94,11 +91,12 @@ export class UsersController {
     @CurrentUser() user: { role: RoleType }
   ) {
     const pageNumber = parseInt(page) || 1;
-    return this.listActiveUsersUseCase.execute({
+    return this.listUsersUseCase.execute({
       page: pageNumber,
       filters: { role },
       sortBy: this.normalizeSortBy(sortBy),
       order: this.normalizeOrder(order),
+      status: 'active',
     }, user.role);
   }
   
@@ -113,11 +111,12 @@ export class UsersController {
     @CurrentUser() user: { role: RoleType }
   ) {
     const pageNumber = parseInt(page) || 1;
-    return this.listDesactiveUserCase.execute({
+    return this.listUsersUseCase.execute({
       page: pageNumber,
       filters: { role },
       sortBy: this.normalizeSortBy(sortBy),
       order: this.normalizeOrder(order),
+      status: 'inactive',
     }, user.role);
   }
  @Get('me')

@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { UserReadRepository } from '../../../../../application/ports/user-read.repository';
+import {
+  UserListStatus,
+  UserReadRepository
+} from '../../../../../application/ports/user-read.repository';
 import { User as OrmUser } from '../entities/user.entity';
 
 @Injectable()
@@ -16,7 +19,7 @@ export class TypeormUserReadRepository implements UserReadRepository {
     filters?: { role?: string };
     sortBy?: string;
     order?: 'ASC' | 'DESC';
-    whereClause?: string;
+    status?: UserListStatus;
   }): Promise<
     Array<{
       id: string;
@@ -65,8 +68,11 @@ export class TypeormUserReadRepository implements UserReadRepository {
       .skip(offset)
       .take(pageSize);
 
-    if (params.whereClause) {
-      query.where(params.whereClause);
+    const status = params.status ?? 'all';
+    if (status === 'active') {
+      query.where('user.deleted = false');
+    } else if (status === 'inactive') {
+      query.where('user.deleted = true');
     } else {
       query.where('1=1');
     }

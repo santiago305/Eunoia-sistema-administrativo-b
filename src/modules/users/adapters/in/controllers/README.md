@@ -11,8 +11,9 @@ Controladores HTTP para operaciones del usuario.
 Base: `/api/users`
 
 - `POST /api/users/create` (roles: `ADMIN`, `MODERATOR`)
-- `GET /api/users/findAll` (roles: `ADMIN`, `MODERATOR`)
-- `GET /api/users/actives` (roles: `ADMIN`, `MODERATOR`)
+- `GET /api/users/findAll` (roles: `ADMIN`, `MODERATOR`, retorna todos los usuarios)
+- `GET /api/users/actives` (roles: `ADMIN`, `MODERATOR`, retorna solo usuarios activos)
+- `GET /api/users/desactive` (roles: `ADMIN`, `MODERATOR`, retorna solo usuarios desactivados)
 - `GET /api/users/me` (auth: `JWT`)
 - `GET /api/users/search/:id` (roles: `ADMIN`, `MODERATOR`)
 - `GET /api/users/email/:email` (roles: `ADMIN`, `MODERATOR`)

@@ -7,7 +7,6 @@ import { GetOwnUserUseCase } from '../application/use-cases/get-own-user.usecase
 import { GetUserByEmailUseCase } from '../application/use-cases/get-user-by-email.usecase';
 import { GetUserUseCase } from '../application/use-cases/get-user.usecase';
 import { GetUserWithPasswordByEmailUseCase } from '../application/use-cases/get-user-with-password-by-email.usecase';
-import { ListActiveUsersUseCase } from '../application/use-cases/list-active-users.usecase';
 import { ListUsersUseCase } from '../application/use-cases/list-users.usecase';
 import { RestoreUserUseCase } from '../application/use-cases/restore-user.usecase';
 import { UpdateAvatarUseCase } from '../application/use-cases/update-avatar.usecase';
@@ -20,7 +19,6 @@ import { USER_REPOSITORY } from '../application/ports/user.repository';
 import { TypeormUserRepository } from '../adapters/out/persistence/typeorm/repositories/typeorm-user.repository';
 import { USER_READ_REPOSITORY } from '../application/ports/user-read.repository';
 import { TypeormUserReadRepository } from '../adapters/out/persistence/typeorm/repositories/typeorm-user-read.repository';
-import { ListDesactiveUseCase } from '../application/use-cases/list-desactive-users.usecase';
 import { RemoveAvatarUseCase } from '../application/use-cases/remove-avatar.usecase';
 
 /**
@@ -38,8 +36,6 @@ import { RemoveAvatarUseCase } from '../application/use-cases/remove-avatar.usec
     UpdateUserUseCase,
     ChangePasswordUseCase,
     ListUsersUseCase,
-    ListActiveUsersUseCase,
-    ListDesactiveUseCase,
     GetUserUseCase,
     GetUserByEmailUseCase,
     GetOwnUserUseCase,

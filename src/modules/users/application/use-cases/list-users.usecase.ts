@@ -1,5 +1,9 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
-import { USER_READ_REPOSITORY, UserReadRepository } from 'src/modules/users/application/ports/user-read.repository';
+import {
+  USER_READ_REPOSITORY,
+  UserListStatus,
+  UserReadRepository
+} from 'src/modules/users/application/ports/user-read.repository';
 import { RoleType } from 'src/shared/constantes/constants';
 
 @Injectable()
@@ -15,6 +19,7 @@ export class ListUsersUseCase {
       filters?: { role?: string };
       sortBy?: string;
       order?: 'ASC' | 'DESC';
+      status?: UserListStatus;
     },
     requesterRole: RoleType
   ) {
@@ -25,7 +30,7 @@ export class ListUsersUseCase {
       filters: scopedParams.filters,
       sortBy: scopedParams.sortBy,
       order: scopedParams.order,
-      whereClause: 'user.deleted = false',
+      status: scopedParams.status ?? 'all',
     });
   }
 
@@ -41,6 +46,7 @@ export class ListUsersUseCase {
       filters?: { role?: string };
       sortBy?: string;
       order?: 'ASC' | 'DESC';
+      status?: UserListStatus;
     },
     requesterRole: RoleType,
   ) {
