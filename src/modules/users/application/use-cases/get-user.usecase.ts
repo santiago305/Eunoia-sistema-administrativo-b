@@ -22,6 +22,7 @@ export class GetUserUseCase {
       id: user.id,
       name: user.name,
       email: user.email,
+      avatarUrl: user.avatarUrl,
       rol: user.role.description,
       deleted: user.deleted,
     });

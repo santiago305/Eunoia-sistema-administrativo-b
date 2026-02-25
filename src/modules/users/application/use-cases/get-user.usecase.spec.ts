@@ -28,6 +28,7 @@ describe('GetUserUseCase', () => {
           id: 'user-1',
           name: 'Ana',
           email: 'ana@example.com',
+          avatarUrl: '/api/assets/users/avatar.webp',
           deleted: false,
           role: { description: RoleType.ADVISER },
         }),
@@ -40,6 +41,7 @@ describe('GetUserUseCase', () => {
         id: 'user-1',
         name: 'Ana',
         email: 'ana@example.com',
+        avatarUrl: '/api/assets/users/avatar.webp',
         rol: RoleType.ADVISER,
         deleted: false,
       })
