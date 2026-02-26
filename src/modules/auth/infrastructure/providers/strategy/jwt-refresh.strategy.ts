@@ -20,7 +20,7 @@ export class JwtRefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh'
        * Esta es una practica mas segura que enviarlo por header.
        */
       jwtFromRequest: ExtractJwt.fromExtractors([
-        (req: Request) => req.cookies['refresh_token'],
+        (req: Request) => req?.signedCookies?.refresh_token || req?.cookies?.refresh_token || null,
       ]),
 
       /**
