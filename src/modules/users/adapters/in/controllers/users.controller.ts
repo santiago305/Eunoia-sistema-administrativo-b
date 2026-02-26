@@ -124,17 +124,13 @@ export class UsersController {
     return this.getUserByEmailUseCase.execute(email, user.role);
   }
 
-  @Patch('update/:id')
+  @Patch('me/update')
   @UseGuards(JwtAuthGuard)
   update(
-    @Param('id') id: string,
     @Body() dto: UpdateUserDto,
     @CurrentUser() user: { id: string }
   ) {
-    if (id !== user.id) {
-      throw new ForbiddenException('No puedes editar otro usuario');
-    }
-    return this.updateUserUseCase.execute(id, dto, user.id);
+    return this.updateUserUseCase.execute(user.id, dto, user.id);
   }
   @Delete('me/avatar')
   @UseGuards(JwtAuthGuard)
@@ -169,6 +165,20 @@ export class UsersController {
       throw new ForbiddenException('No puedes cambiar la contrasena de otro usuario');
     }
     return this.changePasswordUseCase.execute(id, body.currentPassword, body.newPassword, user.id);
+  }
+
+  @Patch('me/change-password')
+  @UseGuards(JwtAuthGuard)
+  async changeOwnPassword(
+    @Body() body: ChangePasswordDto,
+    @CurrentUser() user: { id: string }
+  ) {
+    return this.changePasswordUseCase.execute(
+      user.id,
+      body.currentPassword,
+      body.newPassword,
+      user.id,
+    );
   }
 
   @Post('me/avatar')
