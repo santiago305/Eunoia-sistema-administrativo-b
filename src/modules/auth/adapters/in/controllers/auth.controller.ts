@@ -13,11 +13,9 @@ import { JwtRefreshAuthGuard } from '../guards/jwt-refresh-auth.guard';
 import { User as UserDecorator } from 'src/shared/utilidades/decorators';
 import { LoginAuthUseCase } from 'src/modules/auth/application/use-cases/login-auth.usecase';
 import { RefreshAuthUseCase } from 'src/modules/auth/application/use-cases/refresh.auth.usecase';
-import { RegisterAuthUseCase } from 'src/modules/auth/application/use-cases/register-auth.usecase';
 import { GetAuthUserUseCase } from 'src/modules/auth/application/use-cases/get-auth-user.usecase';
 import { LoginAuthDto } from '../dtos/login-auth.dto';
 import { Request, Response } from 'express';
-// import { CreateUserDto } from 'src/modules/users/adapters/in/dtos/create-user.dto';
 import { ErrorResponse, isTypeResponse } from 'src/shared/response-standard/guard';
 import { successResponse } from 'src/shared/response-standard/response';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
@@ -31,13 +29,10 @@ import { Throttle } from '@nestjs/throttler';
 export class AuthController {
   constructor(
     private readonly loginAuthUseCase: LoginAuthUseCase,
-    private readonly registerAuthUseCase: RegisterAuthUseCase,
     private readonly refreshAuthUseCase: RefreshAuthUseCase,
     private readonly getAuthUserUseCase: GetAuthUserUseCase,
     private readonly verifyUserPasswordBySessionUseCase: VerifyUserPasswordBySessionUseCase,
     private readonly revokeSessionUseCase: RevokeSessionUseCase,
-
-
   ) {}
 
   @Post('login')

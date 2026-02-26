@@ -8,7 +8,6 @@ import { UsersModule } from 'src/modules/users/infrastructure/users.module';
 import { JwtStrategy } from './providers/strategy/jwt.strategy';
 import { envs } from 'src/infrastructure/config/envs';
 import { JwtRefreshStrategy } from './providers/strategy/jwt-refresh.strategy';
-import { RegisterAuthUseCase } from '../application/use-cases/register-auth.usecase';
 import { LoginAuthUseCase } from '../application/use-cases/login-auth.usecase';
 import { RefreshAuthUseCase } from '../application/use-cases/refresh.auth.usecase';
 import { GetAuthUserUseCase } from '../application/use-cases/get-auth-user.usecase';
@@ -47,7 +46,6 @@ import { SessionsModule } from 'src/modules/sessions/infrastructure/sessions.mod
   providers: [
     JwtStrategy,          // Estrategia para validar access tokens
     JwtRefreshStrategy,   // Estrategia para validar refresh tokens
-    RegisterAuthUseCase,
     LoginAuthUseCase,
     RefreshAuthUseCase,
     GetAuthUserUseCase,
