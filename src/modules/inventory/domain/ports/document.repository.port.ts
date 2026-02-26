@@ -1,6 +1,6 @@
-﻿import { InventoryDocument } from '../entities/inventory-document';
+import { InventoryDocument } from '../entities/inventory-document';
 import InventoryDocumentItem from '../entities/inventory-document-item';
-import { TransactionContext } from './unit-of-work.port';
+import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
 import { DocStatus } from '../value-objects/doc-status';
 import { DocType } from '../value-objects/doc-type';
 

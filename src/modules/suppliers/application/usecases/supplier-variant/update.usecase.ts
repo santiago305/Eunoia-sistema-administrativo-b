@@ -1,5 +1,5 @@
 import { Inject, NotFoundException } from "@nestjs/common";
-import { UNIT_OF_WORK, UnitOfWork } from "src/modules/inventory/domain/ports/unit-of-work.port";
+import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { Money } from "src/modules/catalog/domain/value-object/money.vo";
 import { SUPPLIER_VARIANT_REPOSITORY, SupplierVariantRepository } from "src/modules/suppliers/domain/ports/supplier-variant.repository";
 import { UpdateSupplierVariantInput } from "../../dtos/supplier-variant/input/update.input";

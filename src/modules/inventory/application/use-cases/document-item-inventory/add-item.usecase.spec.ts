@@ -1,4 +1,4 @@
-﻿import { BadRequestException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import { AddItemUseCase } from './add-item.usecase';
 import { DocumentRepository } from '../../../domain/ports/document.repository.port';
 import { InventoryRulesService } from '../../../domain/services/inventory-rules.service';
@@ -39,7 +39,7 @@ describe('AddItemUseCase', () => {
     await expect(
       useCase.execute({
         docId: 'DOC-1',
-        variantId: 'VAR-1',
+        stockItemId: 'VAR-1',
         quantity: 1,
       }),
     ).rejects.toThrow(BadRequestException);
@@ -63,7 +63,7 @@ describe('AddItemUseCase', () => {
     await expect(
       useCase.execute({
         docId: 'DOC-1',
-        variantId: 'VAR-1',
+        stockItemId: 'VAR-1',
         quantity: 1,
       }),
     ).rejects.toThrow(BadRequestException);
@@ -97,7 +97,7 @@ describe('AddItemUseCase', () => {
     const useCase = new AddItemUseCase(repo, rules);
     const result = await useCase.execute({
       docId: 'DOC-1',
-      variantId: 'VAR-1',
+      stockItemId: 'VAR-1',
       quantity: 1,
       unitCost: 5,
     });
@@ -110,7 +110,7 @@ describe('AddItemUseCase', () => {
     expect(result).toEqual({
       id: 'ITEM-1',
       docId: 'DOC-1',
-      variantId: 'VAR-1',
+      stockItemId: 'VAR-1',
       quantity: 12,
       unitCost: 5,
       fromLocationId: undefined,
@@ -118,3 +118,4 @@ describe('AddItemUseCase', () => {
     });
   });
 });
+

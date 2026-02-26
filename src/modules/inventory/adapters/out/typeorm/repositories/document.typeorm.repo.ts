@@ -1,4 +1,4 @@
-﻿import { Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DocumentRepository } from '../../../../domain/ports/document.repository.port';
@@ -7,8 +7,8 @@ import InventoryDocumentItem from '../../../../domain/entities/inventory-documen
 import { DocStatus } from '../../../../domain/value-objects/doc-status';
 import { InventoryDocumentEntity } from '../entities/inventory_document.entity';
 import { InventoryDocumentItemEntity } from '../entities/inventory_document_item.entity';
-import { TransactionContext } from '../../../../domain/ports/unit-of-work.port';
-import { TypeormTransactionContext } from '../uow/typeorm.transaction-context';
+import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
+import { TypeormTransactionContext } from 'src/shared/infrastructure/typeorm/typeorm.transaction-context';
 
 @Injectable()
 export class DocumentTypeormRepository implements DocumentRepository {
@@ -172,7 +172,7 @@ export class DocumentTypeormRepository implements DocumentRepository {
         new InventoryDocumentItem(
           r.id,
           r.docId,
-          r.variantId,
+          r.stockItemId,
           r.quantity,
           r.fromLocationId,
           r.toLocationId,
@@ -195,7 +195,7 @@ export class DocumentTypeormRepository implements DocumentRepository {
     const repo = this.getItemRepo(tx);
     const saved = await repo.save({
       docId: item.docId,
-      variantId: item.variantId,
+      stockItemId: item.stockItemId,
       fromLocationId: item.fromLocationId,
       toLocationId: item.toLocationId,
       quantity: item.quantity,
@@ -205,7 +205,7 @@ export class DocumentTypeormRepository implements DocumentRepository {
     return new InventoryDocumentItem(
       saved.id,
       saved.docId,
-      saved.variantId,
+      saved.stockItemId,
       saved.quantity,
       saved.fromLocationId,
       saved.toLocationId,
@@ -240,7 +240,7 @@ export class DocumentTypeormRepository implements DocumentRepository {
     return new InventoryDocumentItem(
       updated.id,
       updated.docId,
-      updated.variantId,
+      updated.stockItemId,
       updated.quantity,
       updated.fromLocationId,
       updated.toLocationId,
@@ -306,3 +306,4 @@ export class DocumentTypeormRepository implements DocumentRepository {
     return count > 0;
   }
 }
+

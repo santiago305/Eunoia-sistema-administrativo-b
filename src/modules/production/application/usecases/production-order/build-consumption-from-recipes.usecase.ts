@@ -1,8 +1,7 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/domain/ports/production-order.repository";
 import { PRODUCT_RECIPE_REPOSITORY, ProductRecipeRepository } from "src/modules/catalog/domain/ports/product-recipe.repository";
-import { VariantId } from "src/modules/inventory/domain/value-objects/ids";
-import { TransactionContext } from "src/modules/inventory/domain/ports/unit-of-work.port";
+import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 
 export interface RecipeConsumptionLine {
   variantId: string;
@@ -39,7 +38,7 @@ export class BuildConsumptionFromRecipesUseCase {
 
     for (const item of items) {
       const recipes = await this.recipeRepo.listByVariantId(
-        new VariantId(item.finishedVariantId),
+        item.finishedVariantId,
         tx,
       );
 

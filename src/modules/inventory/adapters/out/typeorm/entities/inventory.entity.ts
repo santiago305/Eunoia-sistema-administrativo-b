@@ -5,8 +5,8 @@ export class InventoryEntity {
   @PrimaryColumn({ name: 'warehouse_id', type: 'uuid' })
     warehouseId: string;
 
-  @PrimaryColumn({ name: 'variant_id', type: 'uuid' })
-  variantId: string;
+  @PrimaryColumn({ name: 'stock_item_id', type: 'uuid' })
+  stockItemId: string;
 
   @Column({ name: 'location_id', type: 'uuid', nullable: true })
   locationId?: string;
@@ -24,3 +24,4 @@ export class InventoryEntity {
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
 }
+

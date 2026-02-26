@@ -1,11 +1,11 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/inventory/domain/ports/document.repository.port";
 import { SERIES_REPOSITORY, DocumentSeriesRepository } from "src/modules/inventory/domain/ports/document-series.repository.port";
 import { LEDGER_REPOSITORY, LedgerRepository } from "src/modules/inventory/domain/ports/ledger.repository.port";
 import { INVENTORY_REPOSITORY, InventoryRepository } from "src/modules/inventory/domain/ports/inventory.repository.port";
 import { INVENTORY_LOCK, InventoryLock } from "src/modules/inventory/domain/ports/inventory-lock.port";
 import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
-import { TransactionContext } from "src/modules/inventory/domain/ports/unit-of-work.port";
+import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
 import { DocStatus } from "src/modules/inventory/domain/value-objects/doc-status";
 import { InventoryDocument } from "src/modules/inventory/domain/entities/inventory-document";
@@ -76,7 +76,7 @@ export class PostProductionDocumentsUseCase {
 
     const outKeys = params.consumption.map((c) => ({
       warehouseId: params.order.fromWarehouseId,
-      variantId: c.variantId,
+      stockItemId: c.variantId,
       locationId: c.locationId,
     }));
     await this.lock.lockSnapshots(outKeys, tx);
@@ -100,7 +100,7 @@ export class PostProductionDocumentsUseCase {
       await this.inventoryRepo.incrementOnHand(
         {
           warehouseId: params.order.fromWarehouseId,
-          variantId: c.variantId,
+          stockItemId: c.variantId,
           locationId: c.locationId,
           delta: -c.qty,
         },
@@ -149,7 +149,7 @@ export class PostProductionDocumentsUseCase {
 
     const inKeys = params.items.map((i) => ({
       warehouseId: params.order.toWarehouseId,
-      variantId: i.finishedVariantId,
+      stockItemId: i.finishedVariantId,
       locationId: i.toLocationId,
     }));
     await this.lock.lockSnapshots(inKeys, tx);
@@ -173,7 +173,7 @@ export class PostProductionDocumentsUseCase {
       await this.inventoryRepo.incrementOnHand(
         {
           warehouseId: params.order.toWarehouseId,
-          variantId: item.finishedVariantId,
+          stockItemId: item.finishedVariantId,
           locationId: item.toLocationId ?? undefined,
           delta: item.quantity,
         },

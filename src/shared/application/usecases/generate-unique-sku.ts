@@ -1,6 +1,6 @@
 import { buildSkuBase } from 'src/shared/utilidades/utils/buildSkuBase';
 import { InternalServerErrorException } from '@nestjs/common';
-import { TransactionContext } from 'src/modules/inventory/domain/ports/unit-of-work.port';
+import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
 import { SkuCounterRepository } from 'src/modules/catalog/domain/ports/sku-counter.repository';
 
 export async function generateUniqueSku(

@@ -7,9 +7,10 @@ export class ListInventoryQueryDto {
 
   @IsOptional()
   @IsUUID()
-  variantId?: string;
+  stockItemId?: string;
   
   @IsOptional()
   @IsUUID()
   locationId?: string;
 }
+

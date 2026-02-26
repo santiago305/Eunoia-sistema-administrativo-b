@@ -1,5 +1,6 @@
 export interface GetAvailabilityInput {
   warehouseId: string;
-  variantId: string;
+  stockItemId: string;
   locationId?:string;
 }
+

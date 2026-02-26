@@ -1,5 +1,5 @@
-﻿import { LedgerEntry } from '../entities/ledger-entry';
-import { TransactionContext } from './unit-of-work.port';
+import { LedgerEntry } from '../entities/ledger-entry';
+import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
 
 export const LEDGER_REPOSITORY = Symbol('LEDGER_REPOSITORY');
 
@@ -8,7 +8,7 @@ export interface LedgerRepository {
   list(
     params: {
       warehouseId?: string;
-      variantId?: string;
+      stockItemId?: string;
       locationId?:string;
       from?: Date;
       to?: Date;
@@ -24,3 +24,4 @@ export interface LedgerRepository {
     limit: number;
   }>;
 }
+

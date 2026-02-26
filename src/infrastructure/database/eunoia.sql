@@ -96,7 +96,11 @@ create index if not exists idx_users_role on users(role_id);
 -- - name: nombre del producto
 -- - description: descripción
 -- - base_unit_id: unidad base del producto (FK units)
--- - variant_default_id: variante por defecto (FK product_variants)
+-- - sku: código SKU (único)
+-- - barcode: código de barras (único opcional)
+-- - attributes: atributos en JSON (ej: {"talla":"M","color":"Azul"})
+-- - price: precio de venta
+-- - cost: costo
 -- - type: tipo de producto (enum product_type)
 -- - is_active: si está disponible/activo
 -- - created_at: fecha de creación
@@ -106,10 +110,14 @@ create type product_type as enum ('PRIMA', 'FINISHED');
 
 create table products (
   product_id uuid primary key default uuid_generate_v4(),
+  base_unit_id uuid not null, 
   name varchar(180) not null,
   description text,
-  base_unit_id uuid not null,
-  variant_default_id uuid,
+  sku varchar(80) not null unique,
+  barcode varchar(80) unique,
+  attributes jsonb not null default '{}'::jsonb,
+  price numeric(12,2) not null,
+  cost numeric(12,2) not null,
   type product_type,
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
@@ -129,8 +137,7 @@ create table products (
 -- - barcode: código de barras (único opcional)
 -- - attributes: atributos en JSON (ej: {"talla":"M","color":"Azul"})
 -- - price: precio de venta
--- - cost: costo (opcional)
--- - default_variant: variante por defecto del producto
+-- - cost: costo
 -- - is_active: activo/inactivo
 -- - created_at: fecha de creación
 -- ---------------------------------------------------------
@@ -141,8 +148,7 @@ create table product_variants (
   barcode varchar(80) unique,
   attributes jsonb not null default '{}'::jsonb,
   price numeric(12,2) not null,
-  cost numeric(12,2),
-  default_variant boolean not null default false,
+  cost numeric(12,2) not null,
   is_active boolean not null default true,
   created_at timestamptz not null default now()
 );
@@ -150,10 +156,76 @@ create table product_variants (
 -- Índice para listar variantes por producto
 create index idx_variants_product on product_variants(product_id);
 
--- FK: variante por defecto del producto
-alter table products
-  add constraint fk_products_variant_default
-  foreign key (variant_default_id) references product_variants(variant_id);
+-- =========================
+-- 1.1) Stock Items (super tipo)
+-- =========================
+
+-- ---------------------------------------------------------
+-- TABLA: stock_items
+-- Para quÃ© sirve:
+-- - Identidad Ãºnica "stockeable" (PRODUCT o VARIANT).
+-- Columnas (ES):
+-- - stock_item_id: id del stock item (uuid)
+-- - type: tipo de item (enum stock_item_type)
+-- - is_active: activo/inactivo
+-- - created_at: fecha de creaciÃ³n
+-- ---------------------------------------------------------
+create type stock_item_type as enum ('PRODUCT','VARIANT');
+
+create table stock_items (
+  stock_item_id uuid primary key default uuid_generate_v4(),
+  type stock_item_type not null,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create index idx_stock_items_type on stock_items(type);
+
+-- ---------------------------------------------------------
+-- TABLA: stock_item_products
+-- Para quÃ© sirve:
+-- - Vincula stock_item con product.
+-- Columnas (ES):
+-- - stock_item_id: FK a stock_items
+-- - product_id: FK a products (Ãºnico)
+-- ---------------------------------------------------------
+create table stock_item_products (
+  stock_item_id uuid primary key references stock_items(stock_item_id) on delete cascade,
+  product_id uuid not null references products(product_id) on delete cascade,
+  unique (product_id)
+);
+
+-- ---------------------------------------------------------
+-- TABLA: stock_item_variants
+-- Para quÃ© sirve:
+-- - Vincula stock_item con product_variants.
+-- Columnas (ES):
+-- - stock_item_id: FK a stock_items
+-- - variant_id: FK a product_variants (Ãºnico)
+-- ---------------------------------------------------------
+create table stock_item_variants (
+  stock_item_id uuid primary key references stock_items(stock_item_id) on delete cascade,
+  variant_id uuid not null references product_variants(variant_id) on delete cascade,
+  unique (variant_id)
+);
+
+create index idx_sip_product on stock_item_products(product_id);
+create index idx_siv_variant on stock_item_variants(variant_id);
+
+-- ---------------------------------------------------------
+-- TABLA: sku_counters
+-- Para qué sirve:
+-- - Controla el correlativo interno para generación de SKU.
+-- Qué información guarda:
+-- - Último número usado por cada contador.
+-- Columnas (ES):
+-- - counter_id: id del contador (string)
+-- - last_number: último número asignado
+-- ---------------------------------------------------------
+create table sku_counters (
+  counter_id uuid primary key default uuid_generate_v4(),
+  last_number int not null
+);
 
 -- ---------------------------------------------------------
 -- TABLA: units
@@ -290,7 +362,7 @@ create index idx_locations_wh on warehouse_locations(warehouse_id);
 -- Columnas (ES):
 -- - warehouse_id: almacén
 -- - location_id: ubicación interna (opcional)
--- - variant_id: SKU/variante
+-- - stock_item_id: item stockeable
 -- - on_hand: stock físico disponible en mano
 -- - reserved: stock reservado (no se puede vender)
 -- - available: disponible = on_hand - reserved (calculado)
@@ -299,7 +371,7 @@ create index idx_locations_wh on warehouse_locations(warehouse_id);
 create table inventory (
   warehouse_id uuid not null references warehouses(warehouse_id),
   location_id uuid references warehouse_locations(location_id),
-  variant_id uuid not null references product_variants(variant_id),
+  stock_item_id uuid not null references stock_items(stock_item_id),
 
   on_hand int not null default 0,
   reserved int not null default 0,
@@ -307,11 +379,11 @@ create table inventory (
 
   updated_at timestamptz not null default now(),
 
-  primary key (warehouse_id, location_id, variant_id)
+  primary key (warehouse_id, location_id, stock_item_id)
 );
 
-create index idx_inventory_variant on inventory(variant_id);
-create index idx_inventory_wh_variant on inventory(warehouse_id, variant_id);
+create index idx_inventory_stock_item on inventory(stock_item_id);
+create index idx_inventory_wh_stock_item on inventory(warehouse_id, stock_item_id);
 
 -- =========================
 -- 4) Reservas (ecommerce)
@@ -334,7 +406,7 @@ create type reservation_status as enum ('ACTIVE','RELEASED','CONSUMED','EXPIRED'
 -- - reservation_id: id de reserva
 -- - warehouse_id: almacén
 -- - location_id: ubicación (opcional)
--- - variant_id: SKU
+-- - stock_item_id: item stockeable
 -- - quantity: cantidad reservada
 -- - status: estado de la reserva
 -- - reference_type: tipo referencia (ORDER/CART/MANUAL)
@@ -347,7 +419,7 @@ create table stock_reservations (
   reservation_id uuid primary key default uuid_generate_v4(),
   warehouse_id uuid not null references warehouses(warehouse_id),
   location_id uuid references warehouse_locations(location_id),
-  variant_id uuid not null references product_variants(variant_id),
+  stock_item_id uuid not null references stock_items(stock_item_id),
 
   quantity int not null check (quantity > 0),
   status reservation_status not null default 'ACTIVE',
@@ -360,7 +432,7 @@ create table stock_reservations (
   created_at timestamptz not null default now()
 );
 
-create index idx_res_active on stock_reservations(status, variant_id, warehouse_id);
+create index idx_res_active on stock_reservations(status, stock_item_id, warehouse_id);
 create index idx_res_created_by on stock_reservations(created_by);
 
 -- =========================
@@ -487,7 +559,7 @@ create index idx_inv_docs_posted_by on inventory_documents(posted_by);
 -- Columnas (ES):
 -- - item_id: id del item
 -- - doc_id: documento padre (FK)
--- - variant_id: SKU
+-- - stock_item_id: item stockeable
 -- - from_location_id: ubicación origen (opcional)
 -- - to_location_id: ubicación destino (opcional)
 -- - quantity: cantidad movida
@@ -497,7 +569,7 @@ create table inventory_document_items (
   item_id uuid primary key default uuid_generate_v4(),
   doc_id uuid not null references inventory_documents(doc_id) on delete cascade,
 
-  variant_id uuid not null references product_variants(variant_id),
+  stock_item_id uuid not null references stock_items(stock_item_id),
   from_location_id uuid references warehouse_locations(location_id),
   to_location_id uuid references warehouse_locations(location_id),
 
@@ -506,7 +578,7 @@ create table inventory_document_items (
 );
 
 create index idx_doc_items_doc on inventory_document_items(doc_id);
-create index idx_doc_items_variant on inventory_document_items(variant_id);
+create index idx_doc_items_stock_item on inventory_document_items(stock_item_id);
 
 -- Dirección del movimiento:
 -- IN: entrada
@@ -525,7 +597,7 @@ create type inv_direction as enum ('IN','OUT');
 -- - doc_id: documento que originó el movimiento
 -- - warehouse_id: almacén afectado
 -- - location_id: ubicación (opcional)
--- - variant_id: SKU afectado
+-- - stock_item_id: item afectado
 -- - direction: IN/OUT
 -- - quantity: cantidad
 -- - unit_cost: costo unitario (si aplica)
@@ -538,7 +610,7 @@ create table inventory_ledger (
 
   warehouse_id uuid not null references warehouses(warehouse_id),
   location_id uuid references warehouse_locations(location_id),
-  variant_id uuid not null references product_variants(variant_id),
+  stock_item_id uuid not null references stock_items(stock_item_id),
 
   direction inv_direction not null,
   quantity int not null check (quantity > 0),
@@ -547,7 +619,7 @@ create table inventory_ledger (
   created_at timestamptz not null default now()
 );
 
-create index idx_ledger_variant_date on inventory_ledger(variant_id, created_at desc);
+create index idx_ledger_stock_item_date on inventory_ledger(stock_item_id, created_at desc);
 create index idx_ledger_doc on inventory_ledger(doc_id);
 
 -- =========================
@@ -563,7 +635,7 @@ create index idx_ledger_doc on inventory_ledger(doc_id);
 -- Columnas (ES):
 -- - rule_id: id regla
 -- - warehouse_id: almacén
--- - variant_id: SKU
+-- - stock_item_id: item stockeable
 -- - min_qty: mínimo deseado
 -- - reorder_point: punto de reorden (cuando bajar de aquí, avisar)
 -- - max_qty: máximo objetivo (opcional)
@@ -572,14 +644,14 @@ create index idx_ledger_doc on inventory_ledger(doc_id);
 create table reorder_rules (
   rule_id uuid primary key default uuid_generate_v4(),
   warehouse_id uuid not null references warehouses(warehouse_id),
-  variant_id uuid not null references product_variants(variant_id),
+  stock_item_id uuid not null references stock_items(stock_item_id),
 
   min_qty int not null default 0,
   reorder_point int not null default 0,
   max_qty int,
   lead_time_days int not null default 0,
 
-  unique (warehouse_id, variant_id)
+  unique (warehouse_id, stock_item_id)
 );
 
 -- =========================

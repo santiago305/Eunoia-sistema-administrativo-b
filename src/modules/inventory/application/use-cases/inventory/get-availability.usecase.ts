@@ -1,6 +1,6 @@
 import { Inject, Injectable, BadRequestException } from '@nestjs/common';
 import { INVENTORY_REPOSITORY, InventoryRepository } from '../../../domain/ports/inventory.repository.port';
-import { TransactionContext } from '../../../domain/ports/unit-of-work.port';
+import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
 import { GetAvailabilityInput } from '../../dto/inventory/input/get-availability';
 import { AvailabilityOutput } from '../../dto/inventory/output/availability-out';
 
@@ -12,15 +12,15 @@ export class GetAvailabilityUseCase {
   ) {}
 
   async execute(input: GetAvailabilityInput, tx?: TransactionContext): Promise<AvailabilityOutput> {
-    if (!input.warehouseId || !input.variantId) {
-      throw new BadRequestException('warehouseId y variantId son obligatorios');
+    if (!input.warehouseId || !input.stockItemId) {
+      throw new BadRequestException('warehouseId y stockItemId son obligatorios');
     }
 
     const snapshot = await this.inventoryRepo.getSnapshot(input, tx);
     if (!snapshot) {
       return {
         warehouseId: input.warehouseId,
-        variantId: input.variantId,
+        stockItemId: input.stockItemId,
         locationId: input.locationId,
         onHand: 0,
         reserved: 0,
@@ -30,7 +30,7 @@ export class GetAvailabilityUseCase {
 
     return {
       warehouseId: snapshot.warehouseId,
-      variantId: snapshot.variantId,
+      stockItemId: snapshot.stockItemId,
       locationId: snapshot.locationId,
       onHand: snapshot.onHand,
       reserved: snapshot.reserved,
@@ -38,3 +38,4 @@ export class GetAvailabilityUseCase {
     };
   }
 }
+

@@ -6,8 +6,8 @@ import { ProductVariant } from 'src/modules/catalog/domain/entity/product-varian
 import { ProductVariantEntity } from '../entities/product-variant.entity';
 import { ProductEntity } from '../entities/product.entity';
 import { UnitEntity } from '../entities/unit.entity';
-import { TransactionContext } from 'src/modules/inventory/domain/ports/unit-of-work.port';
-import { TypeormTransactionContext } from 'src/modules/inventory/adapters/out/typeorm/uow/typeorm.transaction-context';
+import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
+import { TypeormTransactionContext } from 'src/shared/domain/ports/typeorm-transaction-context';
 import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo';
 import { Money } from 'src/modules/catalog/domain/value-object/money.vo';
 import { ProductVariantWithProductInfo } from 'src/modules/catalog/domain/read-models/product-variant-with-product-info.rm';

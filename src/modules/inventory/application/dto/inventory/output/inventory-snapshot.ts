@@ -1,6 +1,6 @@
 export interface InventorySnapshotOutput {
   warehouseId: string;
-  variantId: string;
+  stockItemId: string;
   locationId?: string;
   onHand: number;
   reserved: number;

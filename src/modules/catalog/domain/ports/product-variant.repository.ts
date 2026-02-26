@@ -1,4 +1,4 @@
-import { TransactionContext } from "src/modules/inventory/domain/ports/unit-of-work.port";
+import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { ProductVariant } from "../entity/product-variant";
 import { Money } from "../value-object/money.vo";
 import { ProductId } from "../value-object/product-id.vo";

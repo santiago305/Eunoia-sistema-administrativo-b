@@ -1,7 +1,7 @@
 // src/modules/suppliers/application/usecases/supplier/update.usecase.ts
 import { BadRequestException, Inject, NotFoundException } from "@nestjs/common";
 import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
-import { UNIT_OF_WORK, UnitOfWork } from "src/modules/inventory/domain/ports/unit-of-work.port";
+import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { SUPPLIER_REPOSITORY, SupplierRepository } from "src/modules/suppliers/domain/ports/supplier.repository";
 import { UpdateSupplierInput } from "../../dtos/supplier/input/update.input";
 

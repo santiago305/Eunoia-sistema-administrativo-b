@@ -1,7 +1,7 @@
 export class Inventory {
   constructor(
     public readonly warehouseId: string,
-    public readonly variantId: string,
+    public readonly stockItemId: string,
     public onHand: number,
     public reserved: number,
     public available: number | null,
@@ -13,3 +13,4 @@ export class Inventory {
     this.available = this.onHand - this.reserved;
   }
 }
+

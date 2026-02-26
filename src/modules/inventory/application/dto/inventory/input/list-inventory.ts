@@ -1,5 +1,5 @@
 export interface ListInventoryInput {
   warehouseId?: string;
-  variantId?: string;
+  stockItemId?: string;
   locationId?: string;
 }

@@ -13,7 +13,7 @@ import { VariantAttributes } from 'src/modules/catalog/domain/value-object/varia
 import { CreateProductVariantInput } from '../../dto/product-variants/input/create-product-variant';
 import { CLOCK, ClockPort } from 'src/modules/inventory/domain/ports/clock.port';
 import { generateUniqueSku } from '../../../../../shared/application/usecases/generate-unique-sku';
-import { UNIT_OF_WORK, UnitOfWork } from 'src/modules/inventory/domain/ports/unit-of-work.port';
+import { UNIT_OF_WORK, UnitOfWork } from 'src/shared/domain/ports/unit-of-work.port';
 import { SKU_COUNTER_REPOSITORY, SkuCounterRepository } from 'src/modules/catalog/domain/ports/sku-counter.repository';
 
 export class CreateProductVariant {

@@ -1,4 +1,4 @@
-import { TransactionContext } from "src/modules/inventory/domain/ports/unit-of-work.port";
+import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { Supplier } from "../entity/supplier";
 import { SupplierDocType } from "../object-values/supplier-doc-type";
 

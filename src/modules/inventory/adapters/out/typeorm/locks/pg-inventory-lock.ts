@@ -1,8 +1,8 @@
-﻿import { Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InventoryLock } from '../../../../domain/ports/inventory-lock.port';
-import { TransactionContext } from '../../../../domain/ports/unit-of-work.port';
-import { TypeormTransactionContext } from '../uow/typeorm.transaction-context';
+import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
 import { EntityManager } from 'typeorm';
+import { TypeormTransactionContext } from 'src/shared/infrastructure/typeorm/typeorm.transaction-context';
 
 @Injectable()
 export class PgInventoryLock implements InventoryLock {
@@ -15,14 +15,15 @@ export class PgInventoryLock implements InventoryLock {
   }
 
   async lockSnapshots(
-    keys: Array<{ warehouseId: string; variantId: string; locationId?: string }>,
+    keys: Array<{ warehouseId: string; stockItemId: string; locationId?: string }>,
     tx: TransactionContext,
   ): Promise<void> {
     const manager = this.getManager(tx);
 
     for (const key of keys) {
-      const lockKey = `inv:${key.warehouseId}:${key.variantId}:${key.locationId ?? 'null'}`;
+      const lockKey = `inv:${key.warehouseId}:${key.stockItemId}:${key.locationId ?? 'null'}`;
       await manager.query('SELECT pg_advisory_xact_lock(hashtext($1))', [lockKey]);
     }
   }
 }
+

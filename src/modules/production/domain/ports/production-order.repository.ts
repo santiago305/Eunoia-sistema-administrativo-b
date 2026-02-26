@@ -1,4 +1,4 @@
-import { TransactionContext } from "src/modules/inventory/domain/ports/unit-of-work.port";
+import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { ProductionOrder } from "../entity/production-order.entity";
 import { ProductionOrderItem } from "../entity/production-order-item";
 import { ProductionStatus } from "../value-objects/production-status";

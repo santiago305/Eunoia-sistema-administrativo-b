@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Inject, InternalServerErrorException } from "@nestjs/common";
 import { Product } from "src/modules/catalog/domain/entity/product";
-import { UNIT_OF_WORK, UnitOfWork } from "src/modules/inventory/domain/ports/unit-of-work.port";
+import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
 import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/domain/ports/product.repository";
 import { CreateProductInput } from "../../dto/products/input/create-product";
@@ -17,7 +17,7 @@ export class CreateProduct {
     @Inject(CLOCK) private readonly clock: ClockPort,
   ) {}
 
-  async execute(input: CreateProductInput): Promise<{type: string, message: string}> {
+  async execute(input: CreateProductInput): Promise<Product> {
     return this.uow.runInTransaction(async (tx) => {
       const now = this.clock.now();
 
@@ -69,12 +69,8 @@ export class CreateProduct {
         null,
       );
 
-      try {
-        await this.productRepo.create(product, tx);
-        return {
-          type: "success",
-          message: "Producto creado exitosamente"
-        };
+      try { 
+        return await this.productRepo.create(product, tx);
       } catch {
         throw new InternalServerErrorException({
           type: "error",

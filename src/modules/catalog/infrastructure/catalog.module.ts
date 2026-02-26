@@ -44,8 +44,8 @@ import { CreateProductRecipe } from '../application/usecases/product-recipe/crea
 import { DeleteProductRecipe } from '../application/usecases/product-recipe/delete.usecase';
 import { ListProductRecipesByVariant } from '../application/usecases/product-recipe/list-by-variant.usecase';
 
-import { UNIT_OF_WORK } from 'src/modules/inventory/domain/ports/unit-of-work.port';
-import { TypeormUnitOfWork } from 'src/modules/inventory/adapters/out/typeorm/uow/typeorm.unit-of-work';
+import { UNIT_OF_WORK } from 'src/shared/domain/ports/unit-of-work.port';
+import { TypeormUnitOfWork } from 'src/shared/infrastructure/typeorm/typeorm.unit-of-work';
 import { CLOCK } from 'src/modules/inventory/domain/ports/clock.port';
 
 import { ProductsController } from '../adapters/in/controllers/product.controller';
@@ -56,9 +56,11 @@ import { ProductRecipesController } from '../adapters/in/controllers/product-rec
 import { SearchProductsPaginated } from '../application/usecases/product/search-paginated.usecase';
 import { CatalogSummaryController } from '../adapters/in/controllers/catalog-summary.controller';
 import { GetCatalogSummary } from '../application/usecases/catalog/get-summary.usecase';
+import { InventoryModule } from 'src/modules/inventory/infrastructure/inventory.module';
 
 @Module({
   imports: [
+    InventoryModule,
     TypeOrmModule.forFeature([
       ProductEntity,
       ProductVariantEntity,

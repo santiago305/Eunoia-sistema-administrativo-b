@@ -1,4 +1,4 @@
-import { GetLedgerUseCase } from '../ladger/get-ledger.usecase';
+import { GetLedgerUseCase } from './get-ledger.usecase';
 import { LedgerRepository } from '../../../domain/ports/ledger.repository.port';
 import { LedgerEntry } from '../../../domain/entities/ledger-entry';
 import { Direction } from '../../../domain/value-objects/direction';
@@ -37,7 +37,7 @@ describe('GetLedgerUseCase', () => {
           docId: 'DOC-1',
           warehouseId: 'WH-1',
           locationId: 'LOC-1',
-          variantId: 'VAR-1',
+          stockItemId: 'VAR-1',
           direction: Direction.IN,
           quantity: 10,
           unitCost: 5,
@@ -50,3 +50,4 @@ describe('GetLedgerUseCase', () => {
     });
   });
 });
+

@@ -1,4 +1,4 @@
-﻿import { BadRequestException } from '@nestjs/common';
+import { BadRequestException } from '@nestjs/common';
 import { GetAvailabilityUseCase } from './get-availability.usecase';
 import { InventoryRepository } from '../../../domain/ports/inventory.repository.port';
 import { Inventory } from '../../../domain/entities/inventory';
@@ -14,14 +14,14 @@ describe('GetAvailabilityUseCase', () => {
       incrementReserved: jest.fn(),
     } as unknown as InventoryRepository);
 
-  it('lanza error si falta warehouseId o variantId', async () => {
+  it('lanza error si falta warehouseId o stockItemId', async () => {
     const repo = makeRepo();
     const useCase = new GetAvailabilityUseCase(repo);
 
     await expect(
       useCase.execute({
         warehouseId: '',
-        variantId: '',
+        stockItemId: '',
       }),
     ).rejects.toThrow(BadRequestException);
   });
@@ -33,12 +33,12 @@ describe('GetAvailabilityUseCase', () => {
 
     const result = await useCase.execute({
       warehouseId: 'WH-1',
-      variantId: 'VAR-1',
+      stockItemId: 'VAR-1',
     });
 
     expect(result).toEqual({
       warehouseId: 'WH-1',
-      variantId: 'VAR-1',
+      stockItemId: 'VAR-1',
       locationId: undefined,
       onHand: 0,
       reserved: 0,
@@ -54,13 +54,13 @@ describe('GetAvailabilityUseCase', () => {
 
     const result = await useCase.execute({
       warehouseId: 'WH-1',
-      variantId: 'VAR-1',
+      stockItemId: 'VAR-1',
       locationId: 'LOC-1',
     });
 
     expect(result).toEqual({
       warehouseId: 'WH-1',
-      variantId: 'VAR-1',
+      stockItemId: 'VAR-1',
       locationId: 'LOC-1',
       onHand: 10,
       reserved: 2,
@@ -68,3 +68,4 @@ describe('GetAvailabilityUseCase', () => {
     });
   });
 });
+

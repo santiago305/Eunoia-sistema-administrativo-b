@@ -1,8 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, Repository } from "typeorm";
-import { TypeormTransactionContext } from "src/modules/inventory/adapters/out/typeorm/uow/typeorm.transaction-context";
-import { TransactionContext } from "src/modules/inventory/domain/ports/unit-of-work.port";
+import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
+import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { Warehouse } from "src/modules/warehouses/domain/entities/warehouse";
 import { WarehouseRepository } from "src/modules/warehouses/domain/ports/warehouse.repository.port";
 import { WarehouseId } from "src/modules/warehouses/domain/value-objects/warehouse-id.vo";

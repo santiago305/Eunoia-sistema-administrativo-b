@@ -1,9 +1,9 @@
-﻿import { Type } from 'class-transformer';
+import { Type } from 'class-transformer';
 import { IsInt, IsNumber, IsUUID, Min } from 'class-validator';
 
 export class HttpAddItemTransferDto {
   @IsUUID()
-  variantId: string;
+  stockItemId: string;
 
   @Type(() => Number)
   @IsInt()
@@ -21,3 +21,4 @@ export class HttpAddItemTransferDto {
   @Min(0)
   unitCost?: number;
 }
+

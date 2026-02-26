@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, NotFoundException } from "@nestjs/common";
-import { UNIT_OF_WORK, UnitOfWork } from "src/modules/inventory/domain/ports/unit-of-work.port";
+import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { Money } from "src/modules/catalog/domain/value-object/money.vo";
 import { SupplierVariant } from "src/modules/suppliers/domain/entity/supplierVariant";
 import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/modules/catalog/domain/ports/product-variant.repository";

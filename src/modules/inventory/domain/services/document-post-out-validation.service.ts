@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Inject } from '@nestjs/common';
 import { INVENTORY_REPOSITORY, InventoryRepository } from '../ports/inventory.repository.port';
-import { TransactionContext } from '../ports/unit-of-work.port';
+import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
 
 @Injectable()
 export class DocumentPostOutValidationService {
@@ -10,7 +10,7 @@ export class DocumentPostOutValidationService {
   ) {}
 
   async validateOutStock(
-    items: Array<{ variantId: string; quantity: number; fromLocationId?: string }>,
+    items: Array<{ stockItemId: string; quantity: number; fromLocationId?: string }>,
     warehouseId: string,
     tx: TransactionContext,
   ): Promise<{
@@ -18,7 +18,7 @@ export class DocumentPostOutValidationService {
     suficientes: Array<{ itemId: string; required: number; available: number; verify: string }>;
   }> {
     //validar que no se repitan los mismos productos en salida (OUT)
-    this.verifyVariantId(items);
+    this.verifyStockItemId(items);
     
     const insuficientes: Array<{ itemId: string; required: number; available: number; verify: string }> = [];
     const suficientes: Array<{ itemId: string; required: number; available: number; verify: string }> = [];
@@ -27,7 +27,7 @@ export class DocumentPostOutValidationService {
       const snapshot = await this.inventoryRepo.getSnapshot(
         {
           warehouseId,
-          variantId: i.variantId,
+          stockItemId: i.stockItemId,
           locationId: i.fromLocationId
         },
         tx,
@@ -39,14 +39,14 @@ export class DocumentPostOutValidationService {
 
       if (available < i.quantity) {
         insuficientes.push({
-          itemId: i.variantId,
+          itemId: i.stockItemId,
           required: i.quantity,
           available,
           verify: 'El stock es insuficiente',
         });
       } else {
         suficientes.push({
-          itemId: i.variantId,
+          itemId: i.stockItemId,
           required: i.quantity,
           available,
           verify: 'El stock es suficiente',
@@ -56,15 +56,15 @@ export class DocumentPostOutValidationService {
 
     return { insuficientes, suficientes };
   }
-  private verifyVariantId(items: any) {
+  private verifyStockItemId(items: any) {
     const seen = new Set<string>();
     const repeated: string[] = [];
 
     for (const i of items) {
-      if (seen.has(i.variantId)) {
-        repeated.push(i.variantId);
+      if (seen.has(i.stockItemId)) {
+        repeated.push(i.stockItemId);
       } else {
-        seen.add(i.variantId);
+        seen.add(i.stockItemId);
       }
     }
 
@@ -76,3 +76,4 @@ export class DocumentPostOutValidationService {
     }
   }
 }
+

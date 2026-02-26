@@ -1,4 +1,4 @@
-﻿import { Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { InventoryController } from '../adapters/in/controller/inventory.controller';
@@ -16,14 +16,13 @@ import { DocumentTypeormRepository } from '../adapters/out/typeorm/repositories/
 import { LedgerTypeormRepository } from '../adapters/out/typeorm/repositories/ledger.typeorm.repo';
 import { DocumentSeriesTypeormRepository } from '../adapters/out/typeorm/repositories/document_serie.typeorm.repo';
 
-import { TypeormUnitOfWork } from '../adapters/out/typeorm/uow/typeorm.unit-of-work';
+import { TypeormUnitOfWork } from 'src/shared/infrastructure/typeorm/typeorm.unit-of-work';
 import { PgInventoryLock } from '../adapters/out/typeorm/locks/pg-inventory-lock';
 
 import { CreateDocumentUseCase } from '../application/use-cases/document-inventory/create-document.usecase';
 import { AddItemUseCase } from '../application/use-cases/document-item-inventory/add-item.usecase';
 import { GetAvailabilityUseCase } from '../application/use-cases/inventory/get-availability.usecase';
-import { PostDocumentUseCase } from '../application/use-cases/document-inventory/post-document.usecase';
-import { GetLedgerUseCase } from '../application/use-cases/ladger/get-ledger.usecase';
+import { GetLedgerUseCase } from '../application/use-cases/ledger/get-ledger.usecase';
 import { ListInventoryUseCase } from '../application/use-cases/inventory/list-inventory.usecase';
 import { ListDocumentsUseCase } from '../application/use-cases/document-inventory/list-documents.usecase';
 import { GetDocumentUseCase } from '../application/use-cases/document-inventory/get-document.usecase';
@@ -36,6 +35,8 @@ import { PostDocumentoOut } from '../application/use-cases/document-inventory/po
 import { PostDocumentoIn } from '../application/use-cases/document-inventory/post-document-in.usecase';
 import { PostDocumentoTransfer } from '../application/use-cases/document-inventory/post-document-transfer.usecase';
 import { PostDocumentoAdjustment } from '../application/use-cases/document-inventory/post-document-adjustment.usecase';
+import { CreateStockItemForProduct } from '../application/use-cases/stock-item/create-for-product.usecase';
+import { CreateStockItemForVariant } from '../application/use-cases/stock-item/create-for-variant.usecase';
 
 import { CreateDocumentSerieUseCase } from '../application/use-cases/document-serie/create-document-serie.usecase';
 import { GetDocumentSerieUseCase } from '../application/use-cases/document-serie/get-document-serie.usecase';
@@ -46,12 +47,21 @@ import { InventoryRulesService } from '../domain/services/inventory-rules.servic
 import { INVENTORY_REPOSITORY } from '../domain/ports/inventory.repository.port';
 import { DOCUMENT_REPOSITORY } from '../domain/ports/document.repository.port';
 import { LEDGER_REPOSITORY } from '../domain/ports/ledger.repository.port';
-import { UNIT_OF_WORK } from '../domain/ports/unit-of-work.port';
+import { UNIT_OF_WORK } from 'src/shared/domain/ports/unit-of-work.port';
 import { INVENTORY_LOCK } from '../domain/ports/inventory-lock.port';
 import { CLOCK } from '../domain/ports/clock.port';
 import { DocumentPostOutValidationService } from '../domain/services/document-post-out-validation.service';
 import { SERIES_REPOSITORY, DocumentSeriesRepository } from '../domain/ports/document-series.repository.port';
 import { SetDocumentSerieActive } from 'src/modules/inventory/application/use-cases/document-serie/set-active.usecase';
+import { StockItemEntity } from '../adapters/out/typeorm/entities/stock-item/stock-item.entity';
+import { StockItemProductEntity } from '../adapters/out/typeorm/entities/stock-item/stock-item-product.entity';
+import { StockItemVariantEntity } from '../adapters/out/typeorm/entities/stock-item/stock-item-variant.entity';
+import { STOCK_ITEM_REPOSITORY } from '../domain/ports/stock-item/stock-item.repository.port';
+import { StockItemTypeormRepository } from '../adapters/out/typeorm/repositories/stock-item/stock-item.typeorm.repo';
+import { STOCK_ITEM_PRODUCT_REPOSITORY } from '../domain/ports/stock-item/stock-item-product.repository.port';
+import { StockItemProductTypeormRepository } from '../adapters/out/typeorm/repositories/stock-item/stock-item-product.typeorm';
+import { STOCK_ITEM_VARIANT_REPOSITORY } from '../domain/ports/stock-item/stock-item-variant.repository.port';
+import { StockItemVariantTypeormRepository } from '../adapters/out/typeorm/repositories/stock-item/stock-item-variant.typeorm';
 
 @Module({
   imports: [
@@ -61,6 +71,9 @@ import { SetDocumentSerieActive } from 'src/modules/inventory/application/use-ca
       InventoryDocumentItemEntity,
       InventoryLedgerEntity,
       DocumentSerie,
+      StockItemEntity,
+      StockItemProductEntity,
+      StockItemVariantEntity
     ]),
   ],
   controllers: [InventoryController, DocumentsController, LedgerController, DocumentSeriesController],
@@ -76,11 +89,12 @@ import { SetDocumentSerieActive } from 'src/modules/inventory/application/use-ca
     CreateDocumentUseCase,
     AddItemUseCase,
     GetAvailabilityUseCase,
-    PostDocumentUseCase,
     PostDocumentoOut,
     PostDocumentoIn,
     PostDocumentoTransfer,
     PostDocumentoAdjustment,
+    CreateStockItemForProduct,
+    CreateStockItemForVariant,
     GetLedgerUseCase,
     ListInventoryUseCase,
     ListDocumentsUseCase,
@@ -97,6 +111,9 @@ import { SetDocumentSerieActive } from 'src/modules/inventory/application/use-ca
     { provide: SERIES_REPOSITORY, useClass: DocumentSeriesTypeormRepository },
     { provide: UNIT_OF_WORK, useClass: TypeormUnitOfWork },
     { provide: INVENTORY_LOCK, useClass: PgInventoryLock },
+    { provide: STOCK_ITEM_REPOSITORY, useClass: StockItemTypeormRepository },
+    { provide: STOCK_ITEM_PRODUCT_REPOSITORY, useClass: StockItemProductTypeormRepository },
+    { provide: STOCK_ITEM_VARIANT_REPOSITORY, useClass: StockItemVariantTypeormRepository },
     {
       provide: CLOCK,
       useValue: { now: () => new Date() },
@@ -110,6 +127,8 @@ import { SetDocumentSerieActive } from 'src/modules/inventory/application/use-ca
     SERIES_REPOSITORY,
     INVENTORY_LOCK,
     CLOCK,
+    CreateStockItemForProduct,
+    CreateStockItemForVariant,
   ],
 })
 export class InventoryModule {}

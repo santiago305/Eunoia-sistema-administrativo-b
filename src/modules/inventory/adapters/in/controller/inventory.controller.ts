@@ -1,4 +1,4 @@
-﻿import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard';
 import { GetAvailabilityUseCase } from 'src/modules/inventory/application/use-cases/inventory/get-availability.usecase';
 import { ListInventoryUseCase } from 'src/modules/inventory/application/use-cases/inventory/list-inventory.usecase';
@@ -17,7 +17,7 @@ export class InventoryController {
   list(@Query() query: ListInventoryQueryDto) {
     return this.listInventory.execute({
       warehouseId: query.warehouseId,
-      variantId: query.variantId,
+      stockItemId: query.stockItemId,
       locationId: query.locationId,
     });
   }
@@ -26,9 +26,10 @@ export class InventoryController {
   availability(@Query() query: AvailabilityQueryDto) {
     return this.getAvailability.execute({
       warehouseId: query.warehouseId,
-      variantId: query.variantId,
+      stockItemId: query.stockItemId,
       locationId: query.locationId,
     });
   }
 
 }
+

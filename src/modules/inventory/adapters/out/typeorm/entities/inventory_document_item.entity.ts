@@ -1,4 +1,4 @@
-﻿import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('inventory_document_items')
 export class InventoryDocumentItemEntity {
@@ -8,8 +8,8 @@ export class InventoryDocumentItemEntity {
   @Column({ name: 'doc_id', type: 'uuid' })
   docId: string;
 
-  @Column({ name: 'variant_id', type: 'uuid' })
-  variantId: string;
+  @Column({ name: 'stock_item_id', type: 'uuid' })
+  stockItemId: string;
 
   @Column({ name: 'from_location_id', type: 'uuid', nullable: true })
   fromLocationId?: string;
@@ -20,6 +20,7 @@ export class InventoryDocumentItemEntity {
   @Column({ name: 'quantity', type: 'int' })
   quantity: number;
 
-  @Column({ name: 'unit_cost', type: 'numeric', nullable: true })
+  @Column({ name: 'unit_cost', type: 'numeric', precision: 12, scale: 2, nullable: true })
   unitCost?: number | null;
 }
+

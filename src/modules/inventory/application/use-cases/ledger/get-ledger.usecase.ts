@@ -15,26 +15,26 @@ export class GetLedgerUseCase {
     const page = input.page && input.page > 0 ? input.page : 1;
     const limit = input.limit && input.limit > 0 ? input.limit : 20;
     const { items, total } = await this.ledgerRepo.list({
-          ...input,
-          page,
-          limit,
-        });
+      ...input,
+      page,
+      limit,
+    });
 
-        return {
-          items: items.map((e) => ({
-            id: e.id!,
-            docId: e.docId,
-            warehouseId: e.warehouseId,
-            locationId: e.locationId,
-            variantId: e.variantId,
-            direction: e.direction,
-            quantity: e.quantity,
-            unitCost: e.unitCost ?? null,
-            createdAt: e.createdAt,
-          })),
-          total,
-          page,
-          limit,
-        };
+    return {
+      items: items.map((e) => ({
+        id: e.id!,
+        docId: e.docId,
+        warehouseId: e.warehouseId,
+        locationId: e.locationId,
+        stockItemId: e.stockItemId,
+        direction: e.direction,
+        quantity: e.quantity,
+        unitCost: e.unitCost ?? null,
+        createdAt: e.createdAt,
+      })),
+      total,
+      page,
+      limit,
+    };
     }
   }
