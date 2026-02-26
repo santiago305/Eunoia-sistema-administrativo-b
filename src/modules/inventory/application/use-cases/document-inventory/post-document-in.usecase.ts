@@ -55,7 +55,7 @@ export class PostDocumentoIn {
       // lock de snapshots que vamos a tocar
       const keys = items.map((i) => ({
         warehouseId: doc.toWarehouseId!,
-        variantId: i.variantId,
+        stockItemId: i.stockItemId,
         locationId: i.toLocationId
       }));
       
@@ -72,7 +72,7 @@ export class PostDocumentoIn {
             undefined,
             doc.id!,
             warehouseId,
-            item.variantId,
+            item.stockItemId,
             Direction.IN,
             item.quantity,
             item.unitCost ?? null,
@@ -84,7 +84,7 @@ export class PostDocumentoIn {
         await this.inventoryRepo.incrementOnHand(
           {
             warehouseId,
-            variantId: item.variantId,
+            stockItemId: item.stockItemId,
             locationId: item.toLocationId,
             delta: item.quantity,
           },
@@ -105,3 +105,4 @@ export class PostDocumentoIn {
     });
   }
 }
+

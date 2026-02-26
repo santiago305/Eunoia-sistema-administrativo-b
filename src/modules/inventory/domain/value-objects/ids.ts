@@ -1,4 +1,4 @@
-﻿const normalizeId = (value: string, label: string) => {
+const normalizeId = (value: string, label: string) => {
   const v = value?.trim();
   if (!v) {
     throw new Error(`${label} invalido`);
@@ -41,10 +41,10 @@ export class LocationId {
   }
 }
 
-export class VariantId {
+export class StockItemId {
   readonly value: string;
   constructor(value: string) {
-    this.value = normalizeId(value, 'variantId');
+    this.value = normalizeId(value, 'stockItemId');
   }
 }
 
@@ -61,3 +61,4 @@ export class SeriesId {
     this.value = normalizeId(value, 'seriesId');
   }
 }
+

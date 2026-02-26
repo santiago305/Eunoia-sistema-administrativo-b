@@ -1,4 +1,4 @@
-﻿import { Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, MoreThanOrEqual, LessThanOrEqual } from 'typeorm';
 import { LedgerRepository } from '../../../../domain/ports/ledger.repository.port';
@@ -29,7 +29,7 @@ private getRepo(tx?: TransactionContext) {
       docId: e.docId,
       warehouseId: e.warehouseId,
       locationId: e.locationId ?? null,
-      variantId: e.variantId,
+      stockItemId: e.stockItemId,
       direction: e.direction,
       quantity: e.quantity,
       unitCost: e.unitCost ?? null,
@@ -49,7 +49,7 @@ private getRepo(tx?: TransactionContext) {
   async list(
     params: {
       warehouseId?: string;
-      variantId?: string;
+      stockItemId?: string;
       locationId?: string;
       from?: Date;
       to?: Date;
@@ -68,7 +68,7 @@ private getRepo(tx?: TransactionContext) {
     const where: any = {};
     
     if (params.warehouseId) where.warehouseId = params.warehouseId;
-    if (params.variantId) where.variantId = params.variantId;
+    if (params.stockItemId) where.stockItemId = params.stockItemId;
     if (params.docId) where.docId = params.docId;
     if (params.locationId !== undefined) {
         where.locationId = params.locationId;
@@ -99,7 +99,7 @@ private getRepo(tx?: TransactionContext) {
             r.id,
             r.docId,
             r.warehouseId,
-            r.variantId,
+            r.stockItemId,
             r.direction as any,
             r.quantity,
             r.unitCost ?? null,
@@ -114,3 +114,4 @@ private getRepo(tx?: TransactionContext) {
   }
   
 }
+

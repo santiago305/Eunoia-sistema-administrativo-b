@@ -5,7 +5,6 @@ import { ProductionOrderItemOutput } from "../../dto/production-order/output/pro
 import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status";
 import { UNIT_OF_WORK, UnitOfWork } from "src/modules/inventory/domain/ports/unit-of-work.port";
 import { PRODUCT_RECIPE_REPOSITORY, ProductRecipeRepository } from "src/modules/catalog/domain/ports/product-recipe.repository";
-import { VariantId } from "src/modules/inventory/domain/value-objects/ids";
 import { INVENTORY_REPOSITORY, InventoryRepository } from "src/modules/inventory/domain/ports/inventory.repository.port";
 import { INVENTORY_LOCK, InventoryLock } from "src/modules/inventory/domain/ports/inventory-lock.port";
 
@@ -42,8 +41,8 @@ export class UpdateProductionOrderItem {
       const newFromLocationId = input.fromLocationId ?? current.fromLocationId;
       const newQty = input.quantity ?? current.quantity;
 
-      const prevRecipes = await this.recipeRepo.listByVariantId(new VariantId(current.finishedVariantId), tx);
-      const newRecipes = await this.recipeRepo.listByVariantId(new VariantId(newFinishedVariantId), tx);
+      const prevRecipes = await this.recipeRepo.listByVariantId(current.finishedVariantId, tx);
+      const newRecipes = await this.recipeRepo.listByVariantId(newFinishedVariantId, tx);
 
       // consolidar consumo anterior
       const prevConsumption = prevRecipes.map((r) => ({
@@ -77,7 +76,7 @@ export class UpdateProductionOrderItem {
       // lock snapshots
       const keys = diff.map((d) => ({
         warehouseId: order.fromWarehouseId,
-        variantId: d.variantId,
+        stockItemId: d.variantId,
         locationId: d.locationId,
       }));
       await this.lock.lockSnapshots(keys, tx);
@@ -87,7 +86,7 @@ export class UpdateProductionOrderItem {
         const snapshot = await this.inventoryRepo.getSnapshot(
           {
             warehouseId: order.fromWarehouseId,
-            variantId: d.variantId,
+            stockItemId: d.variantId,
             locationId: d.locationId,
           },
           tx,
@@ -127,7 +126,7 @@ export class UpdateProductionOrderItem {
         await this.inventoryRepo.incrementReserved(
           {
             warehouseId: order.fromWarehouseId,
-            variantId: d.variantId,
+            stockItemId: d.variantId,
             locationId: d.locationId,
             delta: d.qty,
           },

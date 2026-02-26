@@ -1,6 +1,5 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard';
-import { DocType } from 'src/modules/inventory/domain/value-objects/doc-type';
 import { CreateDocumentSerieUseCase } from 'src/modules/inventory/application/use-cases/document-serie/create-document-serie.usecase';
 import { GetDocumentSerieUseCase } from 'src/modules/inventory/application/use-cases/document-serie/get-document-serie.usecase';
 import { GetActiveDocumentSerieUseCase } from 'src/modules/inventory/application/use-cases/document-serie/get-document-series.usecase';

@@ -26,7 +26,7 @@ export class ConsumeReservedMaterialsUseCase {
   ): Promise<void> {
     const keys = params.consumption.map((c) => ({
       warehouseId: params.warehouseId,
-      variantId: c.variantId,
+      stockItemId: c.variantId,
       locationId: c.locationId,
     }));
 
@@ -36,7 +36,7 @@ export class ConsumeReservedMaterialsUseCase {
       const snapshot = await this.inventoryRepo.getSnapshot(
         {
           warehouseId: params.warehouseId,
-          variantId: c.variantId,
+         stockItemId: c.variantId,
           locationId: c.locationId,
         },
         tx,
@@ -78,7 +78,7 @@ export class ConsumeReservedMaterialsUseCase {
       await this.inventoryRepo.incrementReserved(
         {
           warehouseId: params.warehouseId,
-          variantId: c.variantId,
+          stockItemId: c.variantId,
           locationId: c.locationId,
           delta: params.reserveMode ? c.qty : -c.qty,
         },

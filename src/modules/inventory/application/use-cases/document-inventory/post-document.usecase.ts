@@ -1,4 +1,4 @@
-﻿import { Inject, Injectable, BadRequestException } from '@nestjs/common';
+import { Inject, Injectable, BadRequestException } from '@nestjs/common';
 import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../../domain/ports/document.repository.port';
 import { INVENTORY_REPOSITORY, InventoryRepository } from '../../../domain/ports/inventory.repository.port';
 import { LEDGER_REPOSITORY, LedgerRepository } from '../../../domain/ports/ledger.repository.port';
@@ -63,7 +63,7 @@ export class PostDocumentUseCase {
       const snapshots = await this.inventoryRepo.findByKeys(keys, tx);
       const snapshotMap = new Map<string, Inventory>();
       for (const s of snapshots) {
-        snapshotMap.set(this.keyOf(s.warehouseId, s.variantId, s.locationId), s);
+        snapshotMap.set(this.keyOf(s.warehouseId, s.stockItemId, s.locationId), s);
       }
 
       const now = this.clock.now();
@@ -74,7 +74,7 @@ export class PostDocumentUseCase {
           const fromWarehouseId = doc.fromWarehouseId!;
           const toWarehouseId = doc.toWarehouseId!;
 
-          const fromSnapshot = this.getSnapshot(snapshotMap, fromWarehouseId, item.variantId, item.fromLocationId);
+          const fromSnapshot = this.getSnapshot(snapshotMap, fromWarehouseId, item.stockItemId, item.fromLocationId);
           this.ensureAvailable(fromSnapshot, item.quantity);
 
           entries.push(
@@ -82,7 +82,7 @@ export class PostDocumentUseCase {
               undefined,
               doc.id!,
               fromWarehouseId,
-              item.variantId,
+              item.stockItemId,
               Direction.OUT,
               item.quantity,
               item.unitCost ?? null,
@@ -93,7 +93,7 @@ export class PostDocumentUseCase {
               undefined,
               doc.id!,
               toWarehouseId,
-              item.variantId,
+              item.stockItemId,
               Direction.IN,
               item.quantity,
               item.unitCost ?? null,
@@ -106,7 +106,7 @@ export class PostDocumentUseCase {
             {
               warehouseId: fromWarehouseId,
               locationId: item.fromLocationId,
-              variantId: item.variantId,
+              stockItemId: item.stockItemId,
               delta: -item.quantity,
             },
             tx,
@@ -116,7 +116,7 @@ export class PostDocumentUseCase {
             {
               warehouseId: toWarehouseId,
               locationId: item.toLocationId,
-              variantId: item.variantId,
+              stockItemId: item.stockItemId,
               delta: item.quantity,
             },
             tx,
@@ -138,7 +138,7 @@ export class PostDocumentUseCase {
           const snapshot = this.getSnapshot(
             snapshotMap,
             warehouseId,
-            item.variantId,
+            item.stockItemId,
             item.toLocationId ?? item.fromLocationId,
           );
           if (item.quantity < 0) {
@@ -153,7 +153,7 @@ export class PostDocumentUseCase {
               undefined,
               doc.id!,
               warehouseId,
-              item.variantId,
+              item.stockItemId,
               direction,
               qty,
               item.unitCost ?? null,
@@ -166,7 +166,7 @@ export class PostDocumentUseCase {
             {
               warehouseId,
               locationId: item.toLocationId ?? item.fromLocationId,
-              variantId: item.variantId,
+              stockItemId: item.stockItemId,
               delta: item.quantity,
             },
             tx,
@@ -188,7 +188,7 @@ export class PostDocumentUseCase {
           const snapshot = this.getSnapshot(
             snapshotMap,
             warehouseId,
-            item.variantId,
+            item.stockItemId,
             item.toLocationId ?? item.fromLocationId,
           );
           const diff = item.quantity - snapshot.onHand;
@@ -209,7 +209,7 @@ export class PostDocumentUseCase {
               undefined,
               doc.id!,
               warehouseId,
-              item.variantId,
+              item.stockItemId,
               direction,
               qty,
               item.unitCost ?? null,
@@ -222,7 +222,7 @@ export class PostDocumentUseCase {
             {
               warehouseId,
               locationId: item.toLocationId ?? item.fromLocationId,
-              variantId: item.variantId,
+              stockItemId: item.stockItemId,
               delta: diff,
             },
             tx,
@@ -242,7 +242,7 @@ export class PostDocumentUseCase {
               undefined,
               doc.id!,
               warehouseId,
-              item.variantId,
+              item.stockItemId,
               Direction.IN,
               item.quantity,
               item.unitCost ?? null,
@@ -255,7 +255,7 @@ export class PostDocumentUseCase {
             {
               warehouseId,
               locationId: item.toLocationId ?? item.fromLocationId,
-              variantId: item.variantId,
+              stockItemId: item.stockItemId,
               delta: item.quantity,
             },
             tx,
@@ -270,7 +270,7 @@ export class PostDocumentUseCase {
           //   throw new BadRequestException('OUT requiere warehouseId');
           // }
 
-          const snapshot = this.getSnapshot(snapshotMap, warehouseId, item.variantId, item.fromLocationId);
+          const snapshot = this.getSnapshot(snapshotMap, warehouseId, item.stockItemId, item.fromLocationId);
           this.ensureAvailable(snapshot, item.quantity);
 
           entries.push(
@@ -278,7 +278,7 @@ export class PostDocumentUseCase {
               undefined,
               doc.id!,
               warehouseId,
-              item.variantId,
+              item.stockItemId,
               Direction.OUT,
               item.quantity,
               item.unitCost ?? null,
@@ -291,7 +291,7 @@ export class PostDocumentUseCase {
             {
               warehouseId,
               locationId: item.fromLocationId,
-              variantId: item.variantId,
+              stockItemId: item.stockItemId,
               delta: -item.quantity,
             },
             tx,
@@ -327,21 +327,21 @@ export class PostDocumentUseCase {
     }
   }
 
-  private keyOf(warehouseId: string, variantId: string, locationId?: string) {
-    return `${warehouseId}::${variantId}::${locationId ?? 'null'}`;
+  private keyOf(warehouseId: string, stockItemId: string, locationId?: string) {
+    return `${warehouseId}::${stockItemId}::${locationId ?? 'null'}`;
   }
 
   private getSnapshot(
     map: Map<string, Inventory>,
     warehouseId: string,
-    variantId: string,
+    stockItemId: string,
     locationId?: string,
   ): Inventory {
-    const key = this.keyOf(warehouseId, variantId, locationId);
+    const key = this.keyOf(warehouseId, stockItemId, locationId);
     const existing = map.get(key);
     if (existing) return existing;
 
-    return new Inventory(warehouseId, variantId, 0, 0, 0, locationId);
+    return new Inventory(warehouseId, stockItemId, 0, 0, 0, locationId);
   }
 
   private buildKeys(
@@ -349,32 +349,33 @@ export class PostDocumentUseCase {
     fromWarehouseId: string | undefined,
     toWarehouseId: string | undefined,
     items: InventoryDocumentItem[],
-  ): Array<{ warehouseId: string; variantId: string; locationId?: string }> {
-    const keys: Array<{ warehouseId: string; variantId: string; locationId?: string }> = [];
-    const addKey = (warehouseId: string, variantId: string, locationId?: string) => {
-      const key = this.keyOf(warehouseId, variantId, locationId);
-      if (!keys.find((k) => this.keyOf(k.warehouseId, k.variantId, k.locationId) === key)) {
-        keys.push({ warehouseId, variantId, locationId });
+  ): Array<{ warehouseId: string; stockItemId: string; locationId?: string }> {
+    const keys: Array<{ warehouseId: string; stockItemId: string; locationId?: string }> = [];
+    const addKey = (warehouseId: string, stockItemId: string, locationId?: string) => {
+      const key = this.keyOf(warehouseId, stockItemId, locationId);
+      if (!keys.find((k) => this.keyOf(k.warehouseId, k.stockItemId, k.locationId) === key)) {
+        keys.push({ warehouseId, stockItemId, locationId });
       }
     };
 
     for (const item of items) {
       if (docType === DocType.TRANSFER) {
         if (fromWarehouseId) {
-          addKey(fromWarehouseId, item.variantId, item.fromLocationId);
+          addKey(fromWarehouseId, item.stockItemId, item.fromLocationId);
         }
         if (toWarehouseId) {
-          addKey(toWarehouseId, item.variantId, item.toLocationId);
+          addKey(toWarehouseId, item.stockItemId, item.toLocationId);
         }
         continue;
       }
 
       const warehouseId = toWarehouseId ?? fromWarehouseId;
       if (warehouseId) {
-        addKey(warehouseId, item.variantId, item.toLocationId ?? item.fromLocationId);
+        addKey(warehouseId, item.stockItemId, item.toLocationId ?? item.fromLocationId);
       }
     }
 
     return keys;
   }
 }
+

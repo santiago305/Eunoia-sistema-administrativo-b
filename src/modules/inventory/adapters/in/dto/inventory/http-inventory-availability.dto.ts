@@ -7,9 +7,10 @@ export class AvailabilityQueryDto {
 
   @IsUUID()
   @IsNotEmpty()
-  variantId: string;
+  stockItemId: string;
 
   @IsOptional()
   @IsUUID()
   locationId?: string;
 }
+

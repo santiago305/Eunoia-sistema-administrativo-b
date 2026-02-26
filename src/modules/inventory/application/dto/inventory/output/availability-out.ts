@@ -1,6 +1,6 @@
 export interface AvailabilityOutput {
   warehouseId: string;
-  variantId: string;
+  stockItemId: string;
   locationId?: string;
   onHand: number;
   reserved: number;

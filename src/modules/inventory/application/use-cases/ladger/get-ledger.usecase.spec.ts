@@ -37,7 +37,7 @@ describe('GetLedgerUseCase', () => {
           docId: 'DOC-1',
           warehouseId: 'WH-1',
           locationId: 'LOC-1',
-          variantId: 'VAR-1',
+          stockItemId: 'VAR-1',
           direction: Direction.IN,
           quantity: 10,
           unitCost: 5,
@@ -50,3 +50,4 @@ describe('GetLedgerUseCase', () => {
     });
   });
 });
+

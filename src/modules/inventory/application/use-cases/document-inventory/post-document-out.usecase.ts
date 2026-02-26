@@ -56,7 +56,7 @@ export class PostDocumentoOut {
       }
       const keys = items.map((i) => ({
         warehouseId: doc.fromWarehouseId!,
-        variantId: i.variantId,
+        stockItemId: i.stockItemId,
         locationId: i.fromLocationId
       }));
 
@@ -88,7 +88,7 @@ export class PostDocumentoOut {
             undefined,
             doc.id!,
             warehouseId,
-            item.variantId,
+            item.stockItemId,
             Direction.OUT,
             item.quantity,
             item.unitCost ?? null,
@@ -100,7 +100,7 @@ export class PostDocumentoOut {
         await this.inventoryRepo.incrementOnHand(
           {
             warehouseId,
-            variantId: item.variantId,
+            stockItemId: item.stockItemId,
             locationId:item.fromLocationId,
             delta: -item.quantity,
           },
@@ -121,3 +121,4 @@ export class PostDocumentoOut {
     });
   }
 }
+

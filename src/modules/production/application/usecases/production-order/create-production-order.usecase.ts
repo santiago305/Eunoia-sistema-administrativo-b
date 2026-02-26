@@ -3,7 +3,6 @@ import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modu
 import { ProductionOrder } from "src/modules/production/domain/entity/production-order.entity";
 import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status";
 import { CreateProductionOrderInput } from "../../dto/production-order/input/create-production-order";
-import { ProductionOrderOutput } from "../../dto/production-order/output/production-order-out";
 import { UNIT_OF_WORK, UnitOfWork } from "src/modules/inventory/domain/ports/unit-of-work.port";
 import { DocumentSeriesRepository, SERIES_REPOSITORY } from "src/modules/inventory/domain/ports/document-series.repository.port";
 import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";

@@ -14,7 +14,7 @@ export class LedgerController {
   list(@Query() query: GetLedgerQueryDto) {
     return this.getLedger.execute({
       warehouseId: query.warehouseId,
-      variantId: query.variantId,
+      stockItemId: query.stockItemId,
       locationId: query.locationId,
       docId: query.docId,
       from: query.from ?ParseDateLocal(query.from) : undefined,
@@ -25,3 +25,4 @@ export class LedgerController {
   }
   
 }
+

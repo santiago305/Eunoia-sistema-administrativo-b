@@ -1,4 +1,4 @@
-﻿import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { INVENTORY_REPOSITORY, InventoryRepository } from '../../../domain/ports/inventory.repository.port';
 import { ListInventoryInput } from '../../dto/inventory/input/list-inventory';
 import { InventorySnapshotOutput } from '../../dto/inventory/output/inventory-snapshot';
@@ -14,7 +14,7 @@ export class ListInventoryUseCase {
     const rows = await this.inventoryRepo.listSnapshots(input);
     return rows.map((s) => ({
       warehouseId: s.warehouseId,
-      variantId: s.variantId,
+      stockItemId: s.stockItemId,
       locationId: s.locationId,
       onHand: s.onHand,
       reserved: s.reserved,
@@ -22,3 +22,4 @@ export class ListInventoryUseCase {
     }));
   }
 }
+

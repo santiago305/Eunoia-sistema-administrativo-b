@@ -1,4 +1,4 @@
-﻿import { InjectRepository } from '@nestjs/typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Injectable } from '@nestjs/common';
 import { InventoryRepository } from '../../../../domain/ports/inventory.repository.port';
@@ -29,7 +29,7 @@ export class InventoryTypeormRepository implements InventoryRepository {
   async getSnapshot(
     params: {
       warehouseId: string;
-      variantId: string;
+      stockItemId: string;
       locationId?: string;
     },
     tx?: TransactionContext,
@@ -38,7 +38,7 @@ export class InventoryTypeormRepository implements InventoryRepository {
     const row = await repo.findOne({
       where: {
         warehouseId: params.warehouseId,
-        variantId: params.variantId,
+        stockItemId: params.stockItemId,
         locationId: params.locationId ?? null,
       },
     });
@@ -47,7 +47,7 @@ export class InventoryTypeormRepository implements InventoryRepository {
 
     return new Inventory(
       row.warehouseId,
-      row.variantId,
+      row.stockItemId,
       row.onHand,
       row.reserved,
       row.available,
@@ -57,7 +57,7 @@ export class InventoryTypeormRepository implements InventoryRepository {
   }
 
   async findByKeys(
-    keys: Array<{ warehouseId: string; variantId: string; locationId?: string }>,
+    keys: Array<{ warehouseId: string; stockItemId: string; locationId?: string }>,
     tx?: TransactionContext,
   ): Promise<Inventory[]> {
     const snapshots = await Promise.all(keys.map((k) => this.getSnapshot(k, tx)));
@@ -67,7 +67,7 @@ export class InventoryTypeormRepository implements InventoryRepository {
   async listSnapshots(
     params: {
       warehouseId?: string;
-      variantId?: string;
+      stockItemId?: string;
       locationId?: string;
     },
     tx?: TransactionContext,
@@ -78,8 +78,8 @@ export class InventoryTypeormRepository implements InventoryRepository {
     if (params.warehouseId) {
       qb.andWhere('i.warehouseId = :warehouseId', { warehouseId: params.warehouseId });
     }
-    if (params.variantId) {
-      qb.andWhere('i.variantId = :variantId', { variantId: params.variantId });
+    if (params.stockItemId) {
+      qb.andWhere('i.stockItemId = :stockItemId', { stockItemId: params.stockItemId });
     }
     if (params.locationId !== undefined) {
       qb.andWhere('i.locationId = :locationId', { locationId: params.locationId });
@@ -90,7 +90,7 @@ export class InventoryTypeormRepository implements InventoryRepository {
       (row) =>
         new Inventory(
           row.warehouseId,
-          row.variantId,
+          row.stockItemId,
           row.onHand,
           row.reserved,
           row.available,
@@ -104,7 +104,7 @@ export class InventoryTypeormRepository implements InventoryRepository {
     const repo = this.getRepo(tx);
     await repo.save({
       warehouseId: snapshot.warehouseId,
-      variantId: snapshot.variantId,
+      stockItemId: snapshot.stockItemId,
       locationId: snapshot.locationId ?? null,
       onHand: snapshot.onHand,
       reserved: snapshot.reserved,
@@ -115,7 +115,7 @@ export class InventoryTypeormRepository implements InventoryRepository {
   async incrementOnHand(
     params: {
       warehouseId: string;
-      variantId: string;
+      stockItemId: string;
       locationId?: string;
       delta: number;
     },
@@ -126,7 +126,7 @@ export class InventoryTypeormRepository implements InventoryRepository {
     const reserved = current?.reserved ?? 0;
     const snapshot = new Inventory(
       params.warehouseId,
-      params.variantId,
+      params.stockItemId,
       onHand,
       reserved,
       onHand - reserved,
@@ -139,7 +139,7 @@ export class InventoryTypeormRepository implements InventoryRepository {
   async incrementReserved(
     params: {
       warehouseId: string;
-      variantId: string;
+      stockItemId: string;
       locationId?: string;
       delta: number;
     },
@@ -150,7 +150,7 @@ export class InventoryTypeormRepository implements InventoryRepository {
     const reserved = (current?.reserved ?? 0) + params.delta;
     const snapshot = new Inventory(
       params.warehouseId,
-      params.variantId,
+      params.stockItemId,
       onHand,
       reserved,
       onHand - reserved,
@@ -160,3 +160,4 @@ export class InventoryTypeormRepository implements InventoryRepository {
     return snapshot;
   }
 }
+

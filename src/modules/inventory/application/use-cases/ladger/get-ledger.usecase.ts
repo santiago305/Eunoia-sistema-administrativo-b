@@ -26,7 +26,7 @@ export class GetLedgerUseCase {
             docId: e.docId,
             warehouseId: e.warehouseId,
             locationId: e.locationId,
-            variantId: e.variantId,
+            stockItemId: e.stockItemId,
             direction: e.direction,
             quantity: e.quantity,
             unitCost: e.unitCost ?? null,

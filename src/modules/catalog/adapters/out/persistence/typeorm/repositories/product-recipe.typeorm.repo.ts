@@ -6,7 +6,6 @@ import { ProductRecipe } from 'src/modules/catalog/domain/entity/product-recipe'
 import { ProductRecipeEntity } from '../entities/product-recipe.entity';
 import { TransactionContext } from 'src/modules/inventory/domain/ports/unit-of-work.port';
 import { TypeormTransactionContext } from 'src/modules/inventory/adapters/out/typeorm/uow/typeorm.transaction-context';
-import { VariantId } from 'src/modules/inventory/domain/value-objects/ids';
 
 @Injectable()
 export class ProductRecipeTypeormRepository implements ProductRecipeRepository {
@@ -37,8 +36,8 @@ export class ProductRecipeTypeormRepository implements ProductRecipeRepository {
     return this.toDomain(saved);
   }
 
-  async listByVariantId(variantId: VariantId, tx?: TransactionContext): Promise<ProductRecipe[]> {
-    const rows = await this.getRepo(tx).find({ where: { finishedVariantId: variantId.value } });
+  async listByVariantId(variantId: string, tx?: TransactionContext): Promise<ProductRecipe[]> {
+    const rows = await this.getRepo(tx).find({ where: { finishedVariantId: variantId } });
     return rows.map((row) => this.toDomain(row));
   }
 

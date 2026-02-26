@@ -16,7 +16,7 @@ export class GetLedgerQueryDto {
 
   @IsOptional()
   @IsUUID()
-  variantId?: string;
+  stockItemId?: string;
 
   @IsOptional()
   @IsUUID()
@@ -47,3 +47,4 @@ export class GetLedgerQueryDto {
   @Max(200)
   limit?: number;
 }
+

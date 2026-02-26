@@ -55,7 +55,7 @@ export class PostDocumentoAdjustment {
 
       const keys = items.map((i) => ({
         warehouseId,
-        variantId: i.variantId,
+        stockItemId: i.stockItemId,
         locationId: i.fromLocationId
       }));
       await this.lock.lockSnapshots(keys, tx);
@@ -73,7 +73,7 @@ export class PostDocumentoAdjustment {
           const snapshot = await this.inventoryRepo.getSnapshot(
             {
               warehouseId,
-              variantId: item.variantId,
+              stockItemId: item.stockItemId,
               locationId: item.fromLocationId
             },
             tx,
@@ -96,7 +96,7 @@ export class PostDocumentoAdjustment {
             undefined,
             doc.id!,
             warehouseId,
-            item.variantId,
+            item.stockItemId,
             direction,
             qty,
             item.unitCost ?? null,
@@ -108,7 +108,7 @@ export class PostDocumentoAdjustment {
         await this.inventoryRepo.incrementOnHand(
           {
             warehouseId,
-            variantId: item.variantId,
+            stockItemId: item.stockItemId,
             locationId: item.fromLocationId,
             delta: item.quantity,
           },
@@ -129,3 +129,4 @@ export class PostDocumentoAdjustment {
     });
   }
 }
+

@@ -1,4 +1,4 @@
-﻿import { Inventory } from '../entities/inventory';
+import { Inventory } from '../entities/inventory';
 import { TransactionContext } from './unit-of-work.port';
 
 export const INVENTORY_REPOSITORY = Symbol('INVENTORY_REPOSITORY');
@@ -7,21 +7,21 @@ export interface InventoryRepository {
   getSnapshot(
     params: {
       warehouseId: string;
-      variantId: string;
+      stockItemId: string;
       locationId?: string;
     },
     tx?: TransactionContext,
   ): Promise<Inventory | null>;
 
   findByKeys(
-    keys: Array<{ warehouseId: string; variantId: string; locationId?: string }>,
+    keys: Array<{ warehouseId: string; stockItemId: string; locationId?: string }>,
     tx?: TransactionContext,
   ): Promise<Inventory[]>;
 
   listSnapshots(
     params: {
       warehouseId?: string;
-      variantId?: string;
+      stockItemId?: string;
       locationId?: string;
     },
     tx?: TransactionContext,
@@ -32,7 +32,7 @@ export interface InventoryRepository {
   incrementOnHand(
     params: {
       warehouseId: string;
-      variantId: string;
+      stockItemId: string;
       locationId?: string;
       delta: number;
     },
@@ -42,10 +42,11 @@ export interface InventoryRepository {
   incrementReserved(
     params: {
       warehouseId: string;
-      variantId: string;
+      stockItemId: string;
       locationId?: string;
       delta: number;
     },
     tx?: TransactionContext,
   ): Promise<Inventory>;
 }
+

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, InternalServerErrorException, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard';
 import { CreateProductVariant } from 'src/modules/catalog/application/usecases/product-variant/create.usecase';
 import { UpdateProductVariant } from 'src/modules/catalog/application/usecases/product-variant/update.usecase';
@@ -6,6 +6,7 @@ import { SetProductVariantActive } from 'src/modules/catalog/application/usecase
 import { GetProductVariant } from 'src/modules/catalog/application/usecases/product-variant/get-element-by-id.usercase';
 import { SearchProductVariants } from 'src/modules/catalog/application/usecases/product-variant/search.usecase';
 import { ListRowMaterialProductVariants } from 'src/modules/catalog/application/usecases/product-variant/list-row-material.usecase';
+import { CreateStockItemForVariant } from 'src/modules/inventory/application/use-cases/stock-item/create-for-variant.usecase';
 import {HttpCreateProductVariantDto} from '../dtos/product-variants/http-variant-create.dto'
 import {HttpUpdateProductVariantDto} from '../dtos/product-variants/http-variant-update.dto'
 import {HttpSetProductVariantActiveDto} from '../dtos/product-variants/http-variant-set-active.dto'
@@ -21,11 +22,23 @@ export class ProductVariantsController {
     private readonly getById: GetProductVariant,
     private readonly search: SearchProductVariants,
     private readonly listRowMaterial: ListRowMaterialProductVariants,
+    private readonly createStockItemForVariant: CreateStockItemForVariant,
   ) {}
 
   @Post()
-  create(@Body() dto: HttpCreateProductVariantDto) {
-    return this.createVariant.execute(dto);
+  async create(@Body() dto: HttpCreateProductVariantDto) {
+    const result = await this.createVariant.execute(dto);
+    const variantId = result?.id;
+    if (!variantId) {
+      throw new InternalServerErrorException({
+        type: 'error',
+        message: 'No se pudo obtener el id de la variante creada',
+      });
+    }
+    return await this.createStockItemForVariant.execute({
+      variantId,
+      isActive: dto.isActive ?? true,
+    });
   }
 
   @Patch(':id')

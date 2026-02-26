@@ -1,4 +1,4 @@
-﻿import { Inject, Injectable, BadRequestException } from '@nestjs/common';
+import { Inject, Injectable, BadRequestException } from '@nestjs/common';
 import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../../domain/ports/document.repository.port';
 import { AddItemInput } from '../../dto/document-item/input/add-item';
 import { ItemOutput } from '../../dto/document-item/output/item-out';
@@ -37,7 +37,7 @@ export class AddItemUseCase {
     //   item = new InventoryDocumentItem(
     //     undefined,
     //     input.docId,
-    //     input.variantId,
+    //     input.stockItemId,
     //     input.quantity,
     //     input.fromLocationId,
     //     input.toLocationId,
@@ -63,7 +63,7 @@ export class AddItemUseCase {
     item = new InventoryDocumentItem(
       undefined,
       input.docId,
-      input.variantId,
+      input.stockItemId,
       normalizedQty,
       input.fromLocationId,
       input.toLocationId,
@@ -74,7 +74,7 @@ export class AddItemUseCase {
     return {
       id: saved.id!,
       docId: saved.docId,
-      variantId: saved.variantId,
+      stockItemId: saved.stockItemId,
       quantity: saved.quantity,
       unitCost: saved.unitCost ?? null,
       fromLocationId: saved.fromLocationId, 
@@ -82,3 +82,4 @@ export class AddItemUseCase {
     };
   }
 }
+

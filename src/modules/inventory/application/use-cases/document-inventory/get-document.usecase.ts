@@ -1,4 +1,4 @@
-﻿import { Inject, Injectable, BadRequestException } from '@nestjs/common';
+import { Inject, Injectable, BadRequestException } from '@nestjs/common';
 import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../../domain/ports/document.repository.port';
 import { SERIES_REPOSITORY, DocumentSeriesRepository } from '../../../domain/ports/document-series.repository.port';
 import { DocumentIdInput } from '../../dto/document/input/document-id';
@@ -37,7 +37,7 @@ export class GetDocumentUseCase {
       items: items.map((i) => ({
         id: i.id!,
         docId: i.docId,
-        variantId: i.variantId,
+        stockItemId: i.stockItemId,
         quantity: i.quantity,
         unitCost: i.unitCost ?? null,
         fromLocationId: i.fromLocationId, 
@@ -46,3 +46,4 @@ export class GetDocumentUseCase {
     };
   }
 }
+

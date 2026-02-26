@@ -56,9 +56,11 @@ import { ProductRecipesController } from '../adapters/in/controllers/product-rec
 import { SearchProductsPaginated } from '../application/usecases/product/search-paginated.usecase';
 import { CatalogSummaryController } from '../adapters/in/controllers/catalog-summary.controller';
 import { GetCatalogSummary } from '../application/usecases/catalog/get-summary.usecase';
+import { InventoryModule } from 'src/modules/inventory/infrastructure/inventory.module';
 
 @Module({
   imports: [
+    InventoryModule,
     TypeOrmModule.forFeature([
       ProductEntity,
       ProductVariantEntity,

@@ -1,11 +1,11 @@
 import { Direction } from "src/modules/inventory/domain/value-objects/direction";
 
 export interface LedgerEntryOutput {
-  id: number;
+  id: string;
   docId: string;
   warehouseId: string;
   locationId?: string;
-  variantId: string;
+  stockItemId: string;
   direction: Direction;
   quantity: number;
   unitCost?: number | null;

@@ -1,4 +1,4 @@
-﻿import { Inject, Injectable, BadRequestException } from '@nestjs/common';
+import { Inject, Injectable, BadRequestException } from '@nestjs/common';
 import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../../domain/ports/document.repository.port';
 import { UpdateItemInput } from '../../dto/document-item/input/item-update';
 import { ItemOutput } from '../../dto/document-item/output/item-out';
@@ -67,7 +67,7 @@ export class UpdateItemUseCase {
     return {
       id: updated.id!,
       docId: updated.docId,
-      variantId: updated.variantId,
+      stockItemId: updated.stockItemId,
       quantity: updated.quantity,
       unitCost: updated.unitCost ?? null,
       fromLocationId: updated.fromLocationId,
@@ -75,3 +75,4 @@ export class UpdateItemUseCase {
     };
   }
 }
+

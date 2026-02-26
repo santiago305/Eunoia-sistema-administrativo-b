@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, InternalServerErrorException, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard';
 import { CreateProduct } from 'src/modules/catalog/application/usecases/product/created.usecase';
 import { UpdateProduct } from 'src/modules/catalog/application/usecases/product/update.usecase';
@@ -7,6 +7,7 @@ import { SearchProductsPaginated } from 'src/modules/catalog/application/usecase
 import { ListProductVariants } from 'src/modules/catalog/application/usecases/product-variant/list-by-product.usecase';
 import { GetProductWithVariants } from 'src/modules/catalog/application/usecases/product/get-with-variants.usecase';
 import { GetProductById } from 'src/modules/catalog/application/usecases/product/get-by-id.usecase';
+import { CreateStockItemForProduct } from 'src/modules/inventory/application/use-cases/stock-item/create-for-product.usecase';
 import { HttpCreateProductDto } from '../dtos/products/http-product-create.dto'
 import { HttpUpdateProductDto } from '../dtos/products/http-product-update.dto'
 import { HttpSetProductActiveDto } from '../dtos/products/http-product-set-active.dto'
@@ -22,12 +23,24 @@ export class ProductsController {
     private readonly getById: GetProductById,
     private readonly listVariants: ListProductVariants,
     private readonly getWithVariants: GetProductWithVariants,
+    private readonly createStockItemForProduct: CreateStockItemForProduct,
 
   ) {}
 
   @Post()
-  create(@Body() dto: HttpCreateProductDto) {
-    return this.createProduct.execute(dto);
+  async create(@Body() dto: HttpCreateProductDto) {
+    const product = await this.createProduct.execute(dto);
+    const productId = product.getId()?.value;
+    if (!productId) {
+      throw new InternalServerErrorException({
+        type: 'error',
+        message: 'No se pudo obtener el id del producto creado',
+      });
+    }
+    return await this.createStockItemForProduct.execute({
+      productId,
+      isActive: product.getIsActive(),
+    });
   }
 
   @Patch(':id')

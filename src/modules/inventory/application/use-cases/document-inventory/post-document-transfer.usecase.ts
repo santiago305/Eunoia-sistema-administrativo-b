@@ -72,8 +72,8 @@ export class PostDocumentoTransfer {
 
       //lockear origen y destino
       const keys = items.flatMap((i) => [
-        { warehouseId: doc.fromWarehouseId!, variantId: i.variantId, locationId: i.fromLocationId },
-        { warehouseId: doc.toWarehouseId!, variantId: i.variantId, locationId: i.toLocationId },
+        { warehouseId: doc.fromWarehouseId!, stockItemId: i.stockItemId, locationId: i.fromLocationId },
+        { warehouseId: doc.toWarehouseId!, stockItemId: i.stockItemId, locationId: i.toLocationId },
       ]);
       await this.lock.lockSnapshots(keys, tx);
 
@@ -91,7 +91,7 @@ export class PostDocumentoTransfer {
             undefined,
             doc.id!,
             fromWarehouseId,
-            item.variantId,
+            item.stockItemId,
             Direction.OUT,
             item.quantity,
             item.unitCost ?? null,
@@ -105,7 +105,7 @@ export class PostDocumentoTransfer {
             undefined,
             doc.id!,
             toWarehouseId,
-            item.variantId,
+            item.stockItemId,
             Direction.IN,
             item.quantity,
             item.unitCost ?? null,
@@ -116,7 +116,7 @@ export class PostDocumentoTransfer {
         await this.inventoryRepo.incrementOnHand(
           {
             warehouseId: fromWarehouseId,
-            variantId: item.variantId,
+            stockItemId: item.stockItemId,
             locationId:item.fromLocationId,
             delta: -item.quantity,
           },
@@ -126,7 +126,7 @@ export class PostDocumentoTransfer {
         await this.inventoryRepo.incrementOnHand(
           {
             warehouseId: toWarehouseId,
-            variantId: item.variantId,
+            stockItemId: item.stockItemId,
             locationId: item.toLocationId,
             delta: item.quantity,
           },
@@ -144,3 +144,4 @@ export class PostDocumentoTransfer {
     });
   }
 }
+

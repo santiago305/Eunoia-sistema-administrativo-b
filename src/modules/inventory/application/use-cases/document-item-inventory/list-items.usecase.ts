@@ -1,4 +1,4 @@
-﻿import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../../domain/ports/document.repository.port';
 import { ListDocumentItemsInput } from '../../dto/document-item/input/get-items-by-id-document';
 import { ItemOutput } from '../../dto/document-item/output/item-out';
@@ -15,7 +15,7 @@ export class ListDocumentItemsUseCase {
     return items.map((i) => ({
       id: i.id!,
       docId: i.docId,
-      variantId: i.variantId,
+      stockItemId: i.stockItemId,
       quantity: i.quantity,
       unitCost: i.unitCost ?? null,
       fromLocationId: i.fromLocationId, 
@@ -23,3 +23,4 @@ export class ListDocumentItemsUseCase {
     }));
   }
 }
+

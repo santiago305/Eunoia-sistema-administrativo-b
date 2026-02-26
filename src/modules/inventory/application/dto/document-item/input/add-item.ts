@@ -1,6 +1,6 @@
 export interface AddItemInput {
   docId: string;
-  variantId: string;
+  stockItemId: string;
   quantity?: number;
   fromLocationId?: string;
   toLocationId?: string;

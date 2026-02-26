@@ -5,7 +5,6 @@ import { ProductionOrderItemOutput } from "../../dto/production-order/output/pro
 import { ProductionOrderItem } from "src/modules/production/domain/entity/production-order-item";
 import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status";
 import { PRODUCT_RECIPE_REPOSITORY, ProductRecipeRepository } from "src/modules/catalog/domain/ports/product-recipe.repository";
-import { VariantId } from "src/modules/inventory/domain/value-objects/ids";
 import { UNIT_OF_WORK, UnitOfWork } from "src/modules/inventory/domain/ports/unit-of-work.port";
 import { ConsumeReservedMaterialsUseCase } from "./consume-reserved-materials.usecase";
 import { RecipeConsumptionLine } from "./build-consumption-from-recipes.usecase";
@@ -35,7 +34,7 @@ export class AddProductionOrderItem {
         throw new BadRequestException({ type: "error", message: "Cantidad no puede ser null" });
       }
 
-      const recipes = await this.recipeRepo.listByVariantId(new VariantId(input.finishedVariantId), tx);
+      const recipes = await this.recipeRepo.listByVariantId(input.finishedVariantId, tx);
 
       const consumption: RecipeConsumptionLine[] = recipes.map((r) => ({
         variantId: r.primaVariantId,
