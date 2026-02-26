@@ -25,6 +25,7 @@ export class TypeormUserReadRepository implements UserReadRepository {
       id: string;
       name: string;
       email: string;
+      telefono?: string;
       rol: string;
       roleId: string;
       deleted: boolean;
@@ -60,6 +61,7 @@ export class TypeormUserReadRepository implements UserReadRepository {
         'user.id',
         'user.name',
         'user.email',
+        'user.telefono As telefono',
         'role.description As rol',
         'role.roleId As roleId',
         'user.deleted',
@@ -112,6 +114,7 @@ export class TypeormUserReadRepository implements UserReadRepository {
     id: string;
     name: string;
     email: string;
+    telefono?: string;
     deleted: boolean;
     avatarUrl?: string;
     createdAt?: Date;
@@ -124,6 +127,7 @@ export class TypeormUserReadRepository implements UserReadRepository {
         'user.id',
         'user.name',
         'user.email',
+        'user.telefono',
         'user.deleted',
         'user.avatarUrl',
         'user.createdAt',
@@ -140,6 +144,7 @@ export class TypeormUserReadRepository implements UserReadRepository {
       id: user.id,
       name: user.name,
       email: user.email,
+      telefono: user.telefono,
       deleted: user.deleted,
       avatarUrl: this.normalizeAvatarUrl(user.avatarUrl),
       createdAt: user.createdAt,

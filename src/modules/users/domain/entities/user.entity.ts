@@ -11,6 +11,7 @@ export class User {
     public roleId: RoleId,
     public deleted: boolean = false,
     public avatarUrl?: string,
-    public createdAt?: Date
+    public createdAt?: Date,
+    public telefono?: string,
   ) {}
 }

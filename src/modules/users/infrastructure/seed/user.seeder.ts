@@ -17,14 +17,14 @@ export const seedUser = async (dataSource: DataSource) => {
       email: 'minecratf633@gmail.com',
       password: '123123123',
       roleDescription: RoleType.ADMIN,
-      avatarUrl: 'https://res.cloudinary.com/demo/image/upload/v1730059489/default-admin.png',
+      avatarUrl: '',
     },
     {
       name: 'MarAa',
       email: 'maria@example.com',
       password: '123123123',
       roleDescription: RoleType.ADVISER,
-      avatarUrl: 'https://res.cloudinary.com/demo/image/upload/v1730059490/default-user.png',
+      avatarUrl: '',
     },
   ];
 

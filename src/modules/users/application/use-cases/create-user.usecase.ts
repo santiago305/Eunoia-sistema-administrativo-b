@@ -68,6 +68,7 @@ export class CreateUserUseCase {
       password: new Password(hashedPassword),
       roleId: new RoleId(targetRoleId),
       avatarUrl: dto.avatarUrl,
+      telefono: dto.telefono,
     });
 
     try {

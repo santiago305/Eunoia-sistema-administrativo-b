@@ -58,6 +58,7 @@ create unique index if not exists ux_roles_description_normalized
 -- - password: contraseña hasheada
 -- - deleted: borrado lógico (true/false)
 -- - avatar_url: url del avatar (opcional)
+-- - telefono: telefono del usuario (opcional)
 -- - role_id: rol del usuario (FK a roles)
 -- - created_at: fecha de creación
 -- ---------------------------------------------------------
@@ -72,6 +73,7 @@ create table users (
   locked_until timestamp null,
   security_disabled_at timestamp null,
   avatar_url varchar(500),
+  telefono varchar(30),
   role_id uuid not null references roles(role_id),
   created_at timestamptz not null default now()
 );

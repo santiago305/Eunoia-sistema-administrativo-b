@@ -16,6 +16,7 @@ export interface UserReadRepository {
       id: string;
       name: string;
       email: string;
+      telefono?: string;
       rol: string;
       roleId: string; 
       deleted: boolean;
@@ -33,6 +34,7 @@ export interface UserReadRepository {
     id: string;
     name: string;
     email: string;
+    telefono?: string;
     deleted: boolean;
     avatarUrl?: string;
     createdAt?: Date;

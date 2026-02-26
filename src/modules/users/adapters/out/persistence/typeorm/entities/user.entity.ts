@@ -47,6 +47,9 @@ export class User {
   @Column({ name: 'avatar_url', type: 'varchar', length: 500, nullable: true })
   avatarUrl?: string;
 
+  @Column({ name: 'telefono', type: 'varchar', length: 30, nullable: true })
+  telefono?: string;
+
 
   /**
    * Rol asignado al usuario.

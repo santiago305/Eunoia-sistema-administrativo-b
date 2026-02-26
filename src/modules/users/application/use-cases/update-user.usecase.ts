@@ -2,7 +2,6 @@ import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { UpdateUserDto } from 'src/modules/users/adapters/in/dtos/update-user.dto';
 import { USER_REPOSITORY, UserRepository } from 'src/modules/users/application/ports/user.repository';
 import { USER_READ_REPOSITORY, UserReadRepository } from 'src/modules/users/application/ports/user-read.repository';
-import { Email } from 'src/modules/users/domain';
 import { successResponse } from 'src/shared/response-standard/response';
 
 @Injectable()
@@ -28,20 +27,16 @@ export class UpdateUserUseCase {
     if (!existingUser) throw new UnauthorizedException('Usuario no encontrado');
 
     if (dto.email) {
-      const normalizedEmail = dto.email;
-      if (normalizedEmail !== existingUser.email.value) {
-        const exists = await this.userRepository.existsByEmail(new Email(normalizedEmail));
-        if (exists) {
-          throw new UnauthorizedException('Este email ya estA registrado');
-        }
-        existingUser.email = new Email(normalizedEmail);
-      }
+      throw new UnauthorizedException('No puedes cambiar el email');
     }
     if (dto.roleId) {
       throw new UnauthorizedException('No puedes cambiar el rol');
     }
 
     if (dto.name) existingUser.name = dto.name;
+    if (dto.telefono !== undefined) {
+      existingUser.telefono = dto.telefono;
+    }
     if (dto.password) {
       throw new UnauthorizedException('No puedes cambiar la contrasena aqui');
     }

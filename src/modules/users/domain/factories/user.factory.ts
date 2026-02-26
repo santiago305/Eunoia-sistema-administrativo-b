@@ -10,6 +10,7 @@ export class UserFactory {
     password: Password;
     roleId: RoleId;
     avatarUrl?: string;
+    telefono?: string;
   }): User {
     return new User(
       undefined,
@@ -18,7 +19,9 @@ export class UserFactory {
       params.password,
       params.roleId,
       false,
-      params.avatarUrl
+      params.avatarUrl,
+      undefined,
+      params.telefono,
     );
   }
 
@@ -31,6 +34,7 @@ export class UserFactory {
     deleted: boolean;
     avatarUrl?: string;
     createdAt?: Date;
+    telefono?: string;
   }): User {
     return new User(
       params.id,
@@ -40,7 +44,8 @@ export class UserFactory {
       params.roleId,
       params.deleted,
       params.avatarUrl,
-      params.createdAt
+      params.createdAt,
+      params.telefono,
     );
   }
 }

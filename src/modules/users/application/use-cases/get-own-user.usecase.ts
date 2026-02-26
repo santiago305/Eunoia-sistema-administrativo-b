@@ -17,6 +17,7 @@ export class GetOwnUserUseCase {
       id: user.id,
       name: user.name,
       email: user.email,
+      telefono: user.telefono,
       avatarUrl: user.avatarUrl,
       role: user.role?.description,
     });

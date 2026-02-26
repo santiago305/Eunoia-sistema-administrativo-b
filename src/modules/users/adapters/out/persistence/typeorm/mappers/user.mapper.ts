@@ -22,6 +22,7 @@ export class UserMapper {
       deleted: orm.deleted,
       avatarUrl: orm.avatarUrl,
       createdAt: orm.createdAt,
+      telefono: orm.telefono,
     });
   }
 
@@ -33,6 +34,7 @@ export class UserMapper {
       password: domain.password.value,
       deleted: domain.deleted,
       avatarUrl: domain.avatarUrl,
+      telefono: domain.telefono,
       role: domain.roleId ? ({ roleId: domain.roleId.value } as OrmUser['role']) : undefined,
       createdAt: domain.createdAt,
     };
