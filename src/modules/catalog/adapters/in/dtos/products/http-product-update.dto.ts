@@ -25,10 +25,12 @@ export class HttpUpdateProductDto {
   @IsString()
   barcode?: string;
 
+  @IsOptional()
   @IsNumber()
   @Min(0)
   price: number;
 
+  @IsOptional()
   @IsNumber()
   @Min(0)
   cost: number;

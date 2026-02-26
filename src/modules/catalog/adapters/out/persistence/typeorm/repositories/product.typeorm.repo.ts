@@ -71,8 +71,16 @@ export class ProductTypeormRepository implements ProductRepository {
   }
 
   async searchPaginated(
-    params: { isActive?: boolean; name?: string; description?: string; type?: ProductType; page: number; q?: string; limit: number 
-      sku?:string, barcode?:string
+    params: {
+      isActive?: boolean;
+      name?: string;
+      description?: string;
+      type?: ProductType;
+      page: number;
+      q?: string;
+      limit: number;
+      sku?: string;
+      barcode?: string;
     },
     tx?: TransactionContext,
   ): Promise<{ items: Product[]; total: number }> {

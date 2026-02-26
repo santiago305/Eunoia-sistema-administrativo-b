@@ -37,8 +37,7 @@ export class UpdateProductVariant {
       if (input.sku?.trim()) {
         sku = input.sku.trim();
       }
-
-      // Si mandan attributes, recalculamos SKU preservando serie
+      
       if (input.attributes) {
         const product = await this.productRepo.findById(current.getProductId(), tx);
         if (!product) throw new NotFoundException({type: 'error', message: 'Producto no encontrado'});
@@ -50,6 +49,12 @@ export class UpdateProductVariant {
           input.attributes?.presentation,
           input.attributes?.variant,
         );
+      }
+      if (sku !== current.getSku()) {
+        const existingBySku = await this.variantRepo.findBySku(sku, tx);
+        if (existingBySku && existingBySku.getId() !== current.getId()) {
+          throw new ConflictException({type: 'error', message: 'SKU ya existe'});
+        }
       }
 
       const updated = await this.variantRepo.update(
