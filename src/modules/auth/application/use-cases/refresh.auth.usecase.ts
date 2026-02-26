@@ -46,6 +46,7 @@ export class RefreshAuthUseCase {
     );
 
     if (!tokenMatches) {
+      await this.sessionRepository.revokeById(params.user.sessionId, params.user.sub);
       throw new UnauthorizedException('Token de refresco invalido');
     }
 
