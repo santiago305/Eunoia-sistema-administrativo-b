@@ -57,7 +57,7 @@ export interface ProductRepository {
       limit: number;
     },
     tx?: TransactionContext,
-  ): Promise<{ items: Product[]; total: number }>;
+  ): Promise<{ items: Array<{ product: Product; baseUnitName?: string; baseUnitCode?: string }>; total: number }>;
 
   countAll(tx?: TransactionContext): Promise<number>;
   countByActive(isActive: boolean, tx?: TransactionContext): Promise<number>;

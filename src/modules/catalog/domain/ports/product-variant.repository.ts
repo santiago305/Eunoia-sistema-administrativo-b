@@ -4,6 +4,7 @@ import { Money } from "../value-object/money.vo";
 import { ProductId } from "../value-object/product-id.vo";
 import { AttributesRecord } from "../value-object/variant-attributes.vo";
 import { ProductVariantWithProductInfo } from "../read-models/product-variant-with-product-info.rm";
+import { RowMaterial } from "../read-models/row-materials";
 
 export const PRODUCT_VARIANT_REPOSITORY = Symbol("PRODUCT_VARIANT_REPOSITORY");
 
@@ -32,7 +33,7 @@ export interface ProductVariantRepository {
   findByBarcode(barcode: string, tx?: TransactionContext): Promise<ProductVariant | null>;
 
   listByProductId(productId: ProductId, tx?: TransactionContext): Promise<ProductVariant[]>;
-  listRowMaterial(tx?: TransactionContext): Promise<ProductVariantWithProductInfo[]>;
+  listRowMaterial(tx?: TransactionContext): Promise<RowMaterial[]>;
   listActiveByProductId(productId: ProductId, tx?: TransactionContext): Promise<ProductVariant[]>;
   listInactiveByProductId(productId: ProductId, tx?: TransactionContext): Promise<ProductVariant[]>;
 

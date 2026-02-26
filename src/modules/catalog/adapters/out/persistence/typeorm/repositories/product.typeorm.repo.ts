@@ -8,6 +8,7 @@ import { TransactionContext } from 'src/modules/inventory/domain/ports/unit-of-w
 import { TypeormTransactionContext } from 'src/modules/inventory/adapters/out/typeorm/uow/typeorm.transaction-context';
 import { ProductVariant } from 'src/modules/catalog/domain/entity/product-variant';
 import { ProductVariantEntity } from '../entities/product-variant.entity';
+import { UnitEntity } from '../entities/unit.entity';
 import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo';
 import { Money } from 'src/modules/catalog/domain/value-object/money.vo';
 import { ProductType } from 'src/modules/catalog/domain/value-object/productType';
@@ -71,13 +72,23 @@ export class ProductTypeormRepository implements ProductRepository {
   }
 
   async searchPaginated(
-    params: { isActive?: boolean; name?: string; description?: string; type?: ProductType; page: number; q?: string; limit: number 
-      sku?:string, barcode?:string
+    params: {
+      isActive?: boolean;
+      name?: string;
+      description?: string;
+      type?: ProductType;
+      page: number;
+      q?: string;
+      limit: number;
+      sku?: string;
+      barcode?: string;
     },
     tx?: TransactionContext,
-  ): Promise<{ items: Product[]; total: number }> {
+  ): Promise<{ items: Array<{ product: Product; baseUnitName?: string; baseUnitCode?: string }>; total: number }> {
     const repo = this.getRepo(tx);
-    const qb = repo.createQueryBuilder('p');
+    const qb = repo
+      .createQueryBuilder('p')
+      .leftJoin(UnitEntity, 'u', 'u.unit_id = p.base_unit_id');
 
     if (params.name) qb.andWhere('LOWER(p.name) ILIKE LOWER(:name)', { name: `%${params.name}%` });
     if (params.description) qb.andWhere('LOWER(p.description) ILIKE LOWER(:description)', { description: `%${params.description}%` });
@@ -90,11 +101,33 @@ export class ProductTypeormRepository implements ProductRepository {
     }
 
     const skip = (params.page - 1) * params.limit;
-    const [rows, total] = await qb.orderBy('p.created_at', 'DESC').skip(skip).take(params.limit).getManyAndCount();
+    const total = await qb.clone().getCount();
+    const { entities, raw } = await qb
+      .select([
+        'p.id',
+        'p.baseUnitId',
+        'p.name',
+        'p.description',
+        'p.sku',
+        'p.barcode',
+        'p.price',
+        'p.cost',
+        'p.attributes',
+        'p.isActive',
+        'p.type',
+        'p.createdAt',
+        'p.updatedAt',
+        'u.code',
+        'u.name',
+      ])
+      .orderBy('p.createdAt', 'DESC')
+      .skip(skip)
+      .take(params.limit)
+      .getRawAndEntities();
 
-    return {
-      items: rows.map((row) =>
-      new Product(
+    const items = entities.map((row, idx) => {
+      const r = raw[idx];
+      const product = new Product(
         ProductId.create(row.id),
         row.baseUnitId,
         row.name,
@@ -108,9 +141,15 @@ export class ProductTypeormRepository implements ProductRepository {
         row.type,
         row.createdAt,
         row.updatedAt,
-      )),
-      total,
-    };
+      );
+      return {
+        product,
+        baseUnitName: r.u_name,
+        baseUnitCode: r.u_code,
+      };
+    });
+
+    return { items, total };
   }
 
   async getByIdWithVariants(
