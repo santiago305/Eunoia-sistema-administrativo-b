@@ -10,7 +10,7 @@ export class GetProductByName {
 
   async execute(input: GetProductByNameInput): Promise<ProductOutput | { type: string, message: string }> {
     const name = input.name?.trim();
-    if (!name) return { type: "error", message: "El nombre es obligatorio" };
+    if (!name) throw new BadRequestException({ type: "error", message: "El nombre es obligatorio" });
 
     const product = await this.productRepo.findByName(name);
     if (!product) throw new NotFoundException({type:"error", message:"Producto no encontrado"});

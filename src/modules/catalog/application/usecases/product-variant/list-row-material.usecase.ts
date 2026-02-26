@@ -1,7 +1,6 @@
 import { Inject } from "@nestjs/common";
 import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/modules/catalog/domain/ports/product-variant.repository";
-import { ProductVariant } from "src/modules/catalog/domain/entity/product-variant";
-import { ProductVariantOutput } from "../../dto/product-variants/output/product-variant-out";
+import { RowMaterial } from "src/modules/catalog/domain/read-models/row-materials";
 
 export class ListRowMaterialProductVariants {
   constructor(
@@ -9,25 +8,17 @@ export class ListRowMaterialProductVariants {
     private readonly variantRepo: ProductVariantRepository,
   ) {}
 
-  async execute(): Promise<ProductVariantOutput[]> {
+  async execute(): Promise<RowMaterial[]> {
     const rows = await this.variantRepo.listRowMaterial();
     return rows.map((row) => {
-      const v: ProductVariant = row.variant;
       return {
-        id: v.getId(),
-        productId: v.getProductId().value,
+        primaId: row.primaId,
         productName: row.productName,
         productDescription: row.productDescription,
         baseUnitId: row.baseUnitId,
+        sku: row.sku,
         unitCode: row.unitCode,
         unitName: row.unitName,
-        sku: v.getSku(),
-        barcode: v.getBarcode(),
-        attributes: v.getAttributes(),
-        price: v.getPrice().getAmount(),
-        cost: v.getCost().getAmount(),
-        isActive: v.getIsActive(),
-        createdAt: v.getCreatedAt(),
       };
     });
   }

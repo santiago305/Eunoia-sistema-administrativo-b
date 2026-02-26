@@ -5,13 +5,15 @@ import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port"
 import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/domain/ports/product.repository";
 import { CreateProductInput } from "../../dto/products/input/create-product";
 import { Money } from "src/modules/catalog/domain/value-object/money.vo";
-import { generateUniqueProductSku } from "./generate-unique-sku";
 import { VariantAttributes } from "src/modules/catalog/domain/value-object/variant-attributes.vo";
+import { generateUniqueSku } from "src/shared/application/usecases/generate-unique-sku";
+import { SKU_COUNTER_REPOSITORY, SkuCounterRepository } from "src/modules/catalog/domain/ports/sku-counter.repository";
 
 export class CreateProduct {
   constructor(
     @Inject(UNIT_OF_WORK) private readonly uow: UnitOfWork,
     @Inject(PRODUCT_REPOSITORY) private readonly productRepo: ProductRepository,
+    @Inject(SKU_COUNTER_REPOSITORY) private readonly skuCounterRepo: SkuCounterRepository,
     @Inject(CLOCK) private readonly clock: ClockPort,
   ) {}
 
@@ -41,8 +43,14 @@ export class CreateProduct {
       }
 
       if (!sku) {
-        sku = await generateUniqueProductSku(this.productRepo, input.name, input.attributes?.color,
-        input.attributes?.presentation, input.attributes?.variant, tx);
+        sku = await generateUniqueSku(
+          this.skuCounterRepo,
+          input.name,
+          input.attributes?.color,
+          input.attributes?.presentation,
+          input.attributes?.variant,
+          tx,
+        );
       }
 
       const product = new Product(

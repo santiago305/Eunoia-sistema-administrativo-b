@@ -12,6 +12,7 @@ import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo
 import { Money } from 'src/modules/catalog/domain/value-object/money.vo';
 import { ProductVariantWithProductInfo } from 'src/modules/catalog/domain/read-models/product-variant-with-product-info.rm';
 import { AttributesRecord } from 'src/modules/catalog/domain/value-object/variant-attributes.vo';
+import { RowMaterial } from 'src/modules/catalog/domain/read-models/row-materials';
 
 @Injectable()
 export class ProductVariantTypeormRepository implements ProductVariantRepository {
@@ -210,13 +211,13 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
     return rows.map((row) => this.toDomain(row));
   }
 
-  async listRowMaterial(tx?: TransactionContext): Promise<ProductVariantWithProductInfo[]> {
-    const { entities, raw } = await this.getRepo(tx)
-      .createQueryBuilder('v')
-      .innerJoin(ProductEntity, 'p', 'p.product_id = v.product_id')
-      .innerJoin(UnitEntity, 'u', 'u.unit_id = p.base_unit_id')
-      .where('v.is_active = :isActive', { isActive: true })
-      .andWhere('p.type = :type', { type: 'PRIMA' })
+  async listRowMaterial(tx?: TransactionContext): Promise<RowMaterial[]> {
+    const raw = await this.getManager(tx)
+      .getRepository(ProductEntity)
+      .createQueryBuilder('p')
+      .leftJoin(ProductVariantEntity, 'v', 'v.product_id = p.product_id')
+      .leftJoin(UnitEntity, 'u', 'u.unit_id = p.base_unit_id')
+      .where('p.type = :type', { type: 'PRIMA' })
       .select([
         'v.id',
         'v.productId',
@@ -227,25 +228,25 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
         'v.cost',
         'v.isActive',
         'v.createdAt',
+        'p.id',
         'p.name',
         'p.description',
         'p.baseUnitId',
+        'p.sku',
         'u.code',
         'u.name',
       ])
-      .getRawAndEntities();
+      .getRawMany();
 
-    return entities.map((row, idx) => {
-      const r = raw[idx];
-      return {
-        variant: this.toDomain(row),
-        productName: r.p_name,
-        productDescription: r.p_description,
-        baseUnitId: r.p_baseUnitId ?? r.p_base_unit_id,
-        unitCode: r.u_code,
-        unitName: r.u_name,
-      };
-    });
+    return raw.map((r) => ({
+      primaId: r.v_variant_id ?? r.p_product_id,
+      productName: r.p_name,
+      productDescription: r.p_description,
+      sku: r.v_sku ?? r.p_sku,
+      baseUnitId: r.p_baseUnitId,
+      unitCode: r.u_code,
+      unitName: r.u_name,
+    }));
   }
 
   async listInactiveByProductId(productId: ProductId, tx?: TransactionContext): Promise<ProductVariant[]> {

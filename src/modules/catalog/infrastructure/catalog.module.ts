@@ -6,18 +6,21 @@ import { ProductVariantEntity } from '../adapters/out/persistence/typeorm/entiti
 import { UnitEntity } from '../adapters/out/persistence/typeorm/entities/unit.entity';
 import { ProductEquivalenceEntity } from '../adapters/out/persistence/typeorm/entities/product-equivalence.entity';
 import { ProductRecipeEntity } from '../adapters/out/persistence/typeorm/entities/product-recipe.entity';
+import { SkuCounterEntity } from '../adapters/out/persistence/typeorm/entities/sku-counter.entity';
 
 import { ProductTypeormRepository } from '../adapters/out/persistence/typeorm/repositories/product.typeorm.repo';
 import { ProductVariantTypeormRepository } from '../adapters/out/persistence/typeorm/repositories/product-variant.typeorm.repo';
 import { UnitTypeormRepository } from '../adapters/out/persistence/typeorm/repositories/unit.typeorm.repo';
 import { ProductEquivalenceTypeormRepository } from '../adapters/out/persistence/typeorm/repositories/product-equivalence.typeorm.repo';
 import { ProductRecipeTypeormRepository } from '../adapters/out/persistence/typeorm/repositories/product-recipe.typeorm.repo';
+import { SkuCounterTypeormRepository } from '../adapters/out/persistence/typeorm/repositories/sku-counter.typeorm.repo';
 
 import { PRODUCT_REPOSITORY } from '../domain/ports/product.repository';
 import { PRODUCT_VARIANT_REPOSITORY } from '../domain/ports/product-variant.repository';
 import { UNIT_REPOSITORY } from '../domain/ports/unit.repository';
 import { PRODUCT_EQUIVALENCE_REPOSITORY } from '../domain/ports/product-equivalence.repository';
 import { PRODUCT_RECIPE_REPOSITORY } from '../domain/ports/product-recipe.repository';
+import { SKU_COUNTER_REPOSITORY } from '../domain/ports/sku-counter.repository';
 
 import { CreateProduct } from '../application/usecases/product/created.usecase';
 import { UpdateProduct } from '../application/usecases/product/update.usecase';
@@ -56,7 +59,14 @@ import { GetCatalogSummary } from '../application/usecases/catalog/get-summary.u
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ProductEntity, ProductVariantEntity, UnitEntity, ProductEquivalenceEntity, ProductRecipeEntity]),
+    TypeOrmModule.forFeature([
+      ProductEntity,
+      ProductVariantEntity,
+      UnitEntity,
+      ProductEquivalenceEntity,
+      ProductRecipeEntity,
+      SkuCounterEntity,
+    ]),
   ],
   controllers: [ProductsController, ProductVariantsController, UnitsController, ProductEquivalencesController, ProductRecipesController
     ,CatalogSummaryController
@@ -93,11 +103,19 @@ import { GetCatalogSummary } from '../application/usecases/catalog/get-summary.u
     { provide: UNIT_REPOSITORY, useClass: UnitTypeormRepository },
     { provide: PRODUCT_EQUIVALENCE_REPOSITORY, useClass: ProductEquivalenceTypeormRepository },
     { provide: PRODUCT_RECIPE_REPOSITORY, useClass: ProductRecipeTypeormRepository },
+    { provide: SKU_COUNTER_REPOSITORY, useClass: SkuCounterTypeormRepository },
 
     // shared infra
     { provide: UNIT_OF_WORK, useClass: TypeormUnitOfWork },
     { provide: CLOCK, useValue: { now: () => new Date() } },
   ],
-  exports: [PRODUCT_REPOSITORY, PRODUCT_VARIANT_REPOSITORY, UNIT_REPOSITORY, PRODUCT_EQUIVALENCE_REPOSITORY, PRODUCT_RECIPE_REPOSITORY],
+  exports: [
+    PRODUCT_REPOSITORY,
+    PRODUCT_VARIANT_REPOSITORY,
+    UNIT_REPOSITORY,
+    PRODUCT_EQUIVALENCE_REPOSITORY,
+    PRODUCT_RECIPE_REPOSITORY,
+    SKU_COUNTER_REPOSITORY,
+  ],
 })
 export class CatalogModule {}
