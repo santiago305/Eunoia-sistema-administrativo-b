@@ -78,7 +78,7 @@ export class AuthController {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    return { message: 'OK' };
+    return { message: 'Iniciado sesión correctamente' };
   }
 
   @Post('logout')

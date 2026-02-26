@@ -15,16 +15,16 @@ export class LoginAuthDto {
   /**
    * Correo electronico del usuario. Debe ser una direccion de correo valida.
    */
-  @IsString()
-  @IsEmail()
+  @IsString({ message: 'El email debe ser una cadena de texto' })
+  @IsEmail({}, { message: 'El email debe tener un formato valido' })
   email: string;
 
   /**
    * Contrasena del usuario. Debe ser una contrasena segura, validada con la regla IsStrongPassword().
    */
-  @IsString()
-  @IsNotEmpty()
-  @MinLength(8)
+  @IsString({ message: 'La contrasena debe ser una cadena de texto' })
+  @IsNotEmpty({ message: 'La contrasena no puede estar vacia' })
+  @MinLength(8, { message: 'La contrasena debe tener al menos 8 caracteres' })
   // @IsStrongPassword()
   password: string;
 }
