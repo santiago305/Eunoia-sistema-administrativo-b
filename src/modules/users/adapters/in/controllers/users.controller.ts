@@ -186,7 +186,7 @@ export class UsersController {
   @UseInterceptors(
     FileInterceptor('avatar', {
       storage: memoryStorage(),
-      limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+      limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
       fileFilter: (req, file, cb) => {
         const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
         if (!allowed.includes(file.mimetype)) {
@@ -213,7 +213,7 @@ export class UsersController {
         maxWidth: 512,
         maxHeight: 512,
         quality: 80,
-        maxInputBytes: 2 * 1024 * 1024,
+        maxInputBytes: 50 * 1024 * 1024,
         maxInputPixels: 20_000_000,
         maxOutputBytes: 1 * 1024 * 1024,
       });
