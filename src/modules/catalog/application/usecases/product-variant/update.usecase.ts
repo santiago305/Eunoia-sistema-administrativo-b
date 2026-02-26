@@ -5,7 +5,7 @@ import { ProductVariant } from 'src/modules/catalog/domain/entity/product-varian
 import { Money } from 'src/modules/catalog/domain/value-object/money.vo';
 import { UpdateProductVariantInput } from '../../dto/product-variants/input/update-product-variant';
 import { ProductVariantOutput } from '../../dto/product-variants/output/product-variant-out';
-import { UNIT_OF_WORK, UnitOfWork } from 'src/modules/inventory/domain/ports/unit-of-work.port';
+import { UNIT_OF_WORK, UnitOfWork } from 'src/shared/domain/ports/unit-of-work.port';
 import { buildSkuPreservingSeries } from 'src/shared/utilidades/utils/updateSku';
 
 export class UpdateProductVariant {

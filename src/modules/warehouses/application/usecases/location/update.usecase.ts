@@ -1,6 +1,6 @@
 // src/modules/warehouses/application/usecases/location/update.usecase.ts
 import { BadRequestException, Inject } from "@nestjs/common";
-import { UNIT_OF_WORK, UnitOfWork } from "src/modules/inventory/domain/ports/unit-of-work.port";
+import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { LOCATION_REPOSITORY, LocartionRepository } from "src/modules/warehouses/domain/ports/location.repository.port";
 import { LocationId } from "src/modules/warehouses/domain/value-objects/location-id.vo";
 import { WarehouseId } from "src/modules/warehouses/domain/value-objects/warehouse-id.vo";

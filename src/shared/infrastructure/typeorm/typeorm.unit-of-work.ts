@@ -1,7 +1,7 @@
-﻿import { Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { UnitOfWork, TransactionContext } from '../../../../domain/ports/unit-of-work.port';
-import { TypeormTransactionContext } from './typeorm.transaction-context';
+import { UnitOfWork, TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
+import { TypeormTransactionContext } from 'src/shared/domain/ports/typeorm-transaction-context';
 
 @Injectable()
 export class TypeormUnitOfWork implements UnitOfWork {

@@ -1,4 +1,4 @@
-import { GetLedgerUseCase } from '../ladger/get-ledger.usecase';
+import { GetLedgerUseCase } from './get-ledger.usecase';
 import { LedgerRepository } from '../../../domain/ports/ledger.repository.port';
 import { LedgerEntry } from '../../../domain/entities/ledger-entry';
 import { Direction } from '../../../domain/value-objects/direction';

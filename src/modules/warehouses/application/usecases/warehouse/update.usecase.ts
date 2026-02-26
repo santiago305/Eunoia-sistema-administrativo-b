@@ -1,6 +1,6 @@
 // src/modules/warehouses/application/usecases/warehouse/update.usecase.ts
 import { BadRequestException, Inject } from "@nestjs/common";
-import { UNIT_OF_WORK, UnitOfWork } from "src/modules/inventory/domain/ports/unit-of-work.port";
+import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "src/modules/warehouses/domain/ports/warehouse.repository.port";
 import { UpdateWarehouseInput } from "../../dtos/warehouse/input/update.input";
 import { WarehouseOutput } from "../../dtos/warehouse/output/warehouse.out";

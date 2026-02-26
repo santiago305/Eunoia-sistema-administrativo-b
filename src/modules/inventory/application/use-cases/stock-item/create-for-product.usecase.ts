@@ -1,5 +1,5 @@
-import { ConflictException, Inject, InternalServerErrorException } from '@nestjs/common';
-import { UNIT_OF_WORK, UnitOfWork } from 'src/modules/inventory/domain/ports/unit-of-work.port';
+import { ConflictException, Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { UNIT_OF_WORK, UnitOfWork } from 'src/shared/domain/ports/unit-of-work.port';
 import { CLOCK, ClockPort } from 'src/modules/inventory/domain/ports/clock.port';
 import {
   STOCK_ITEM_REPOSITORY,
@@ -13,6 +13,7 @@ import { StockItem } from 'src/modules/inventory/domain/entities/stock-item/stoc
 import { StockItemProduct } from 'src/modules/inventory/domain/entities/stock-item/stock-item-product';
 import { StockItemType } from 'src/modules/inventory/domain/value-objects/stock-item-type';
 
+@Injectable()
 export class CreateStockItemForProduct {
   constructor(
     @Inject(UNIT_OF_WORK)
@@ -42,8 +43,9 @@ export class CreateStockItemForProduct {
         input.isActive ?? true,
         now
       );
+      let created: StockItem;
       try {
-        await this.stockItemRepo.create(stockItem, tx);
+        created = await this.stockItemRepo.create(stockItem, tx);
       } catch {
         throw new InternalServerErrorException({
           type:'error',
@@ -51,7 +53,7 @@ export class CreateStockItemForProduct {
         })
       }
       
-      const link = new StockItemProduct(stockItem.stockItemId, input.productId);
+      const link = new StockItemProduct(created.stockItemId, input.productId);
       try {
         await this.stockItemProductRepo.create(link, tx);
       } catch {

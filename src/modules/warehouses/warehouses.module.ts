@@ -1,9 +1,9 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
-import { TypeormUnitOfWork } from "src/modules/inventory/adapters/out/typeorm/uow/typeorm.unit-of-work";
+import { TypeormUnitOfWork } from "src/shared/infrastructure/typeorm/typeorm.unit-of-work";
 import { CLOCK } from "src/modules/inventory/domain/ports/clock.port";
-import { UNIT_OF_WORK } from "src/modules/inventory/domain/ports/unit-of-work.port";
+import { UNIT_OF_WORK } from "src/shared/domain/ports/unit-of-work.port";
 import { LocationsController } from "./adapters/in/controllers/location.controller";
 import { WarehousesController } from "./adapters/in/controllers/warehouse.controller";
 import { WarehouseLocationEntity } from "./adapters/out/persistence/typeorm/entities/warehouse-location";

@@ -1,4 +1,4 @@
-import { TransactionContext } from "src/modules/inventory/domain/ports/unit-of-work.port";
+import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { Warehouse } from "../entities/warehouse";
 import { WarehouseLocation } from "../entities/warehouse-location";
 import { WarehouseId } from "../value-objects/warehouse-id.vo";

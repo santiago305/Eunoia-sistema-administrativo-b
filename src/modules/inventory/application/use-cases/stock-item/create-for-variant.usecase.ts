@@ -1,5 +1,5 @@
-import { ConflictException, Inject, InternalServerErrorException } from '@nestjs/common';
-import { UNIT_OF_WORK, UnitOfWork } from 'src/modules/inventory/domain/ports/unit-of-work.port';
+import { ConflictException, Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { UNIT_OF_WORK, UnitOfWork } from 'src/shared/domain/ports/unit-of-work.port';
 import { CLOCK, ClockPort } from 'src/modules/inventory/domain/ports/clock.port';
 import {
   STOCK_ITEM_REPOSITORY,
@@ -13,6 +13,8 @@ import { StockItem } from 'src/modules/inventory/domain/entities/stock-item/stoc
 import { StockItemVariant } from 'src/modules/inventory/domain/entities/stock-item/stock-item-variant';
 import { StockItemType } from 'src/modules/inventory/domain/value-objects/stock-item-type';
 
+
+@Injectable()
 export class CreateStockItemForVariant {
   constructor(
     @Inject(UNIT_OF_WORK)
@@ -42,8 +44,10 @@ export class CreateStockItemForVariant {
         input.isActive ?? true,
         now
       );
+
+      let created:StockItem;
       try {
-        await this.stockItemRepo.create(stockItem, tx);
+        created = await this.stockItemRepo.create(stockItem, tx);
       } catch {
         throw new InternalServerErrorException({
           type:'error',
@@ -51,7 +55,7 @@ export class CreateStockItemForVariant {
         })
       }
       
-      const link = new StockItemVariant(stockItem.stockItemId, input.variantId);
+      const link = new StockItemVariant(created.stockItemId, input.variantId);
       try {
         await this.stockItemVariantRepo.create(link, tx);
       } catch {

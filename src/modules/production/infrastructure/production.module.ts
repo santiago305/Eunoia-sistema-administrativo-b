@@ -15,8 +15,8 @@ import { CancelProductionOrder } from "../application/usecases/production-order/
 import { AddProductionOrderItem } from "../application/usecases/production-order/add-production-order-item.usecase";
 import { UpdateProductionOrderItem } from "../application/usecases/production-order/update-production-order-item.usecase";
 import { RemoveProductionOrderItem } from "../application/usecases/production-order/remove-production-order-item.usecase";
-import { UNIT_OF_WORK } from "src/modules/inventory/domain/ports/unit-of-work.port";
-import { TypeormUnitOfWork } from "src/modules/inventory/adapters/out/typeorm/uow/typeorm.unit-of-work";
+import { UNIT_OF_WORK } from "src/shared/domain/ports/unit-of-work.port";
+import { TypeormUnitOfWork } from "src/shared/infrastructure/typeorm/typeorm.unit-of-work";
 import { BuildConsumptionFromRecipesUseCase } from "../application/usecases/production-order/build-consumption-from-recipes.usecase";
 import { ConsumeReservedMaterialsUseCase } from "../application/usecases/production-order/consume-reserved-materials.usecase";
 import { PostProductionDocumentsUseCase } from "../application/usecases/production-order/post-production-documents.usecase";

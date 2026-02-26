@@ -1,7 +1,7 @@
 // src/modules/warehouses/application/usecases/warehouse/create.usecase.ts
 import { BadRequestException, Inject } from "@nestjs/common";
 import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
-import { UNIT_OF_WORK, UnitOfWork } from "src/modules/inventory/domain/ports/unit-of-work.port";
+import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "src/modules/warehouses/domain/ports/warehouse.repository.port";
 import { Warehouse } from "src/modules/warehouses/domain/entities/warehouse";
 import { WarehouseId } from "src/modules/warehouses/domain/value-objects/warehouse-id.vo";

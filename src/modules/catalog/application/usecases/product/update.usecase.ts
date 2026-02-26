@@ -1,5 +1,5 @@
 import { ConflictException, Inject, InternalServerErrorException, NotFoundException } from "@nestjs/common";
-import { UNIT_OF_WORK, UnitOfWork } from "src/modules/inventory/domain/ports/unit-of-work.port";
+import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/domain/ports/product.repository";
 import { ProductId } from "src/modules/catalog/domain/value-object/product-id.vo";
 import { UpdateProductInput } from "../../dto/products/input/update-product";

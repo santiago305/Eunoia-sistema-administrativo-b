@@ -3,7 +3,7 @@ import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modu
 import { UpdateProductionOrderItemInput } from "../../dto/production-order/input/update-production-order-item";
 import { ProductionOrderItemOutput } from "../../dto/production-order/output/production-order-item-out";
 import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status";
-import { UNIT_OF_WORK, UnitOfWork } from "src/modules/inventory/domain/ports/unit-of-work.port";
+import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { PRODUCT_RECIPE_REPOSITORY, ProductRecipeRepository } from "src/modules/catalog/domain/ports/product-recipe.repository";
 import { INVENTORY_REPOSITORY, InventoryRepository } from "src/modules/inventory/domain/ports/inventory.repository.port";
 import { INVENTORY_LOCK, InventoryLock } from "src/modules/inventory/domain/ports/inventory-lock.port";

@@ -24,28 +24,18 @@ export class UpdateItemUseCase {
 
     let quantity: number | undefined;
 
-    if (doc.docType === DocType.CYCLE_COUNT) {
-      if (input.quantity === undefined || input.quantity === null) {
-        throw new BadRequestException('quantity es obligatorio para CYCLE_COUNT');
-      }
-      if (!Number.isInteger(input.quantity) || input.quantity < 0) {
-        throw new BadRequestException('quantity invalido para CYCLE_COUNT');
-      }
-      quantity = input.quantity;
-    } else {
-      if (input.quantity === undefined || input.quantity === null) {
-        throw new BadRequestException('quantity es obligatorio');
-      }
+    if (input.quantity === undefined || input.quantity === null) {
+      throw new BadRequestException('quantity es obligatorio');
+    }
 
-      const allowNegative = doc.docType === DocType.ADJUSTMENT;
-      try {
-        quantity = await this.rules.normalizeQuantity({
-          quantity: input.quantity,
-          allowNegative,
-        });
-      } catch (error: any) {
-        throw new BadRequestException(error?.message ?? 'Cantidad invalida');
-      }
+    const allowNegative = doc.docType === DocType.ADJUSTMENT;
+    try {
+      quantity = await this.rules.normalizeQuantity({
+        quantity: input.quantity,
+        allowNegative,
+      });
+    } catch (error: any) {
+      throw new BadRequestException(error?.message ?? 'Cantidad invalida');
     }
 
     const updated = await this.documentRepo.updateItem(

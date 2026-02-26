@@ -1,4 +1,4 @@
-﻿import { Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { InventoryController } from '../adapters/in/controller/inventory.controller';
@@ -16,14 +16,13 @@ import { DocumentTypeormRepository } from '../adapters/out/typeorm/repositories/
 import { LedgerTypeormRepository } from '../adapters/out/typeorm/repositories/ledger.typeorm.repo';
 import { DocumentSeriesTypeormRepository } from '../adapters/out/typeorm/repositories/document_serie.typeorm.repo';
 
-import { TypeormUnitOfWork } from '../adapters/out/typeorm/uow/typeorm.unit-of-work';
+import { TypeormUnitOfWork } from 'src/shared/infrastructure/typeorm/typeorm.unit-of-work';
 import { PgInventoryLock } from '../adapters/out/typeorm/locks/pg-inventory-lock';
 
 import { CreateDocumentUseCase } from '../application/use-cases/document-inventory/create-document.usecase';
 import { AddItemUseCase } from '../application/use-cases/document-item-inventory/add-item.usecase';
 import { GetAvailabilityUseCase } from '../application/use-cases/inventory/get-availability.usecase';
-import { PostDocumentUseCase } from '../application/use-cases/document-inventory/post-document.usecase';
-import { GetLedgerUseCase } from '../application/use-cases/ladger/get-ledger.usecase';
+import { GetLedgerUseCase } from '../application/use-cases/ledger/get-ledger.usecase';
 import { ListInventoryUseCase } from '../application/use-cases/inventory/list-inventory.usecase';
 import { ListDocumentsUseCase } from '../application/use-cases/document-inventory/list-documents.usecase';
 import { GetDocumentUseCase } from '../application/use-cases/document-inventory/get-document.usecase';
@@ -48,7 +47,7 @@ import { InventoryRulesService } from '../domain/services/inventory-rules.servic
 import { INVENTORY_REPOSITORY } from '../domain/ports/inventory.repository.port';
 import { DOCUMENT_REPOSITORY } from '../domain/ports/document.repository.port';
 import { LEDGER_REPOSITORY } from '../domain/ports/ledger.repository.port';
-import { UNIT_OF_WORK } from '../domain/ports/unit-of-work.port';
+import { UNIT_OF_WORK } from 'src/shared/domain/ports/unit-of-work.port';
 import { INVENTORY_LOCK } from '../domain/ports/inventory-lock.port';
 import { CLOCK } from '../domain/ports/clock.port';
 import { DocumentPostOutValidationService } from '../domain/services/document-post-out-validation.service';
@@ -90,7 +89,6 @@ import { StockItemVariantTypeormRepository } from '../adapters/out/typeorm/repos
     CreateDocumentUseCase,
     AddItemUseCase,
     GetAvailabilityUseCase,
-    PostDocumentUseCase,
     PostDocumentoOut,
     PostDocumentoIn,
     PostDocumentoTransfer,

@@ -7,8 +7,8 @@ import InventoryDocumentItem from '../../../../domain/entities/inventory-documen
 import { DocStatus } from '../../../../domain/value-objects/doc-status';
 import { InventoryDocumentEntity } from '../entities/inventory_document.entity';
 import { InventoryDocumentItemEntity } from '../entities/inventory_document_item.entity';
-import { TransactionContext } from '../../../../domain/ports/unit-of-work.port';
-import { TypeormTransactionContext } from '../uow/typeorm.transaction-context';
+import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
+import { TypeormTransactionContext } from 'src/shared/infrastructure/typeorm/typeorm.transaction-context';
 
 @Injectable()
 export class DocumentTypeormRepository implements DocumentRepository {

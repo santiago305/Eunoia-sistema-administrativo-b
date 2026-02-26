@@ -2,7 +2,7 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from "@nes
 import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/domain/ports/production-order.repository";
 import { RemoveProductionOrderItemInput } from "../../dto/production-order/input/remove-production-order-item";
 import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status";
-import { UNIT_OF_WORK, UnitOfWork } from "src/modules/inventory/domain/ports/unit-of-work.port";
+import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { PRODUCT_RECIPE_REPOSITORY, ProductRecipeRepository } from "src/modules/catalog/domain/ports/product-recipe.repository";
 import { ConsumeReservedMaterialsUseCase } from "./consume-reserved-materials.usecase";
 import { RecipeConsumptionLine } from "./build-consumption-from-recipes.usecase";

@@ -1,8 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, Repository } from "typeorm";
-import { TypeormTransactionContext } from "src/modules/inventory/adapters/out/typeorm/uow/typeorm.transaction-context";
-import { TransactionContext } from "src/modules/inventory/domain/ports/unit-of-work.port";
+import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
+import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { Supplier } from "src/modules/suppliers/domain/entity/supplier";
 import { SupplierRepository } from "src/modules/suppliers/domain/ports/supplier.repository";
 import { SupplierDocType } from "src/modules/suppliers/domain/object-values/supplier-doc-type";

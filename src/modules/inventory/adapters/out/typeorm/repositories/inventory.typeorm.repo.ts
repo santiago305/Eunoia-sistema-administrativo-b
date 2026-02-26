@@ -4,8 +4,9 @@ import { Injectable } from '@nestjs/common';
 import { InventoryRepository } from '../../../../domain/ports/inventory.repository.port';
 import { Inventory } from '../../../../domain/entities/inventory';
 import { InventoryEntity } from '../entities/inventory.entity';
-import { TransactionContext } from '../../../../domain/ports/unit-of-work.port';
-import { TypeormTransactionContext } from '../uow/typeorm.transaction-context';
+import { TransactionContext } from 'src/shared/domain/ports/transaction-context.port';
+import { TypeormTransactionContext } from 'src/shared/domain/ports/typeorm-transaction-context';
+
 
 @Injectable()
 export class InventoryTypeormRepository implements InventoryRepository {

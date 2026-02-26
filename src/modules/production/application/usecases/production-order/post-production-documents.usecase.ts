@@ -5,7 +5,7 @@ import { LEDGER_REPOSITORY, LedgerRepository } from "src/modules/inventory/domai
 import { INVENTORY_REPOSITORY, InventoryRepository } from "src/modules/inventory/domain/ports/inventory.repository.port";
 import { INVENTORY_LOCK, InventoryLock } from "src/modules/inventory/domain/ports/inventory-lock.port";
 import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
-import { TransactionContext } from "src/modules/inventory/domain/ports/unit-of-work.port";
+import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
 import { DocStatus } from "src/modules/inventory/domain/value-objects/doc-status";
 import { InventoryDocument } from "src/modules/inventory/domain/entities/inventory-document";

@@ -2,7 +2,7 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { INVENTORY_REPOSITORY, InventoryRepository } from "src/modules/inventory/domain/ports/inventory.repository.port";
 import { INVENTORY_LOCK, InventoryLock } from "src/modules/inventory/domain/ports/inventory-lock.port";
-import { TransactionContext } from "src/modules/inventory/domain/ports/unit-of-work.port";
+import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { RecipeConsumptionLine } from "./build-consumption-from-recipes.usecase";
 
 @Injectable()

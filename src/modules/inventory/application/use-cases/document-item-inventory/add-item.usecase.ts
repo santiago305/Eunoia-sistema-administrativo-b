@@ -25,26 +25,6 @@ export class AddItemUseCase {
 
     let item: InventoryDocumentItem;
 
-    //DESABILITE LA LOGICA DE CYCLE_COUNT, PORQUE NO ESTOY SEGURO DE QUE SEA UTIL TENER ESE METODO
-    // if (doc.docType === DocType.CYCLE_COUNT) {
-    //   if (input.quantity === undefined || input.quantity === null) {
-    //     throw new BadRequestException('quantity es obligatorio para CYCLE_COUNT');
-    //   }
-    //   if (!Number.isInteger(input.quantity) || input.quantity < 0) {
-    //     throw new BadRequestException('quantity invalido para CYCLE_COUNT');
-    //   }
-
-    //   item = new InventoryDocumentItem(
-    //     undefined,
-    //     input.docId,
-    //     input.stockItemId,
-    //     input.quantity,
-    //     input.fromLocationId,
-    //     input.toLocationId,
-    //     input.unitCost ?? null,
-    //   );
-    // } else {
-
     if (input.quantity === undefined || input.quantity === null) {
       throw new BadRequestException('quantity es obligatorio');
     }

@@ -4,8 +4,9 @@ import { Repository, Between, MoreThanOrEqual, LessThanOrEqual } from 'typeorm';
 import { LedgerRepository } from '../../../../domain/ports/ledger.repository.port';
 import { LedgerEntry } from '../../../../domain/entities/ledger-entry';
 import { InventoryLedgerEntity } from '../entities/inventory_ledger.entity';
-import { TransactionContext } from '../../../../domain/ports/unit-of-work.port';
-import { TypeormTransactionContext } from '../uow/typeorm.transaction-context';
+import { TransactionContext } from 'src/shared/domain/ports/transaction-context.port';
+import { TypeormTransactionContext } from 'src/shared/domain/ports/typeorm-transaction-context';
+
 
 @Injectable()
 export class LedgerTypeormRepository implements LedgerRepository {

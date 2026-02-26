@@ -5,7 +5,7 @@ import { ProductionOrderItemOutput } from "../../dto/production-order/output/pro
 import { ProductionOrderItem } from "src/modules/production/domain/entity/production-order-item";
 import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status";
 import { PRODUCT_RECIPE_REPOSITORY, ProductRecipeRepository } from "src/modules/catalog/domain/ports/product-recipe.repository";
-import { UNIT_OF_WORK, UnitOfWork } from "src/modules/inventory/domain/ports/unit-of-work.port";
+import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { ConsumeReservedMaterialsUseCase } from "./consume-reserved-materials.usecase";
 import { RecipeConsumptionLine } from "./build-consumption-from-recipes.usecase";
 

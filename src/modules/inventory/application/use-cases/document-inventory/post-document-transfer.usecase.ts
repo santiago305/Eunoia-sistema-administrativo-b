@@ -1,9 +1,9 @@
-import { UNIT_OF_WORK, UnitOfWork } from "src/modules/inventory/domain/ports/unit-of-work.port";
+import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
 import { INVENTORY_LOCK, InventoryLock } from "src/modules/inventory/domain/ports/inventory-lock.port";
 import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/inventory/domain/ports/document.repository.port";
 import { INVENTORY_REPOSITORY, InventoryRepository } from "src/modules/inventory/domain/ports/inventory.repository.port";
-import { BadRequestException, Inject } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { PostDocumentInput } from "../../dto/document/input/document-post";
 import { LedgerEntry } from "src/modules/inventory/domain/entities/ledger-entry";
 import { LEDGER_REPOSITORY, LedgerRepository } from "src/modules/inventory/domain/ports/ledger.repository.port";
@@ -11,6 +11,7 @@ import { Direction } from "src/modules/inventory/domain/value-objects/direction"
 import { DocumentPostOutValidationService } from "src/modules/inventory/domain/services/document-post-out-validation.service";
 import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
 
+@Injectable()
 export class PostDocumentoTransfer {
   constructor(
     @Inject(UNIT_OF_WORK)
@@ -56,6 +57,13 @@ export class PostDocumentoTransfer {
       if(doc.docType != DocType.TRANSFER){
         throw new BadRequestException("El tipo del documento no es el adecuado");
       }
+      
+      //lockear origen y destino
+      const keys = items.flatMap((i) => [
+        { warehouseId: doc.fromWarehouseId!, stockItemId: i.stockItemId, locationId: i.fromLocationId },
+        { warehouseId: doc.toWarehouseId!, stockItemId: i.stockItemId, locationId: i.toLocationId },
+      ]);
+      await this.lock.lockSnapshots(keys, tx);
 
       // validar stock en origen usando el servicio
       const { insuficientes } = await this.outValidator.validateOutStock(
@@ -69,14 +77,6 @@ export class PostDocumentoTransfer {
           message: { insuficientes },
         });
       }
-
-      //lockear origen y destino
-      const keys = items.flatMap((i) => [
-        { warehouseId: doc.fromWarehouseId!, stockItemId: i.stockItemId, locationId: i.fromLocationId },
-        { warehouseId: doc.toWarehouseId!, stockItemId: i.stockItemId, locationId: i.toLocationId },
-      ]);
-      await this.lock.lockSnapshots(keys, tx);
-
 
       const now = this.clock.now();
       const entries: LedgerEntry[] = [];

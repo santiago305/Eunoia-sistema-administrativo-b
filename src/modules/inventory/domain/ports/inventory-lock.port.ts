@@ -1,4 +1,4 @@
-import { TransactionContext } from './unit-of-work.port';
+import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
 
 export const INVENTORY_LOCK = Symbol('INVENTORY_LOCK');
 

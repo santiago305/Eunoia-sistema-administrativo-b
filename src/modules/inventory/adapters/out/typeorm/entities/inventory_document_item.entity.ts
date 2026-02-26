@@ -20,7 +20,7 @@ export class InventoryDocumentItemEntity {
   @Column({ name: 'quantity', type: 'int' })
   quantity: number;
 
-  @Column({ name: 'unit_cost', type: 'numeric', nullable: true })
+  @Column({ name: 'unit_cost', type: 'numeric', precision: 12, scale: 2, nullable: true })
   unitCost?: number | null;
 }
 

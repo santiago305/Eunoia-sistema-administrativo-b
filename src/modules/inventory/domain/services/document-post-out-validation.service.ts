@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Inject } from '@nestjs/common';
 import { INVENTORY_REPOSITORY, InventoryRepository } from '../ports/inventory.repository.port';
-import { TransactionContext } from '../ports/unit-of-work.port';
+import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
 
 @Injectable()
 export class DocumentPostOutValidationService {
