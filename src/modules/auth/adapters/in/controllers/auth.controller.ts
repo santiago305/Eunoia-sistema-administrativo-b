@@ -15,6 +15,7 @@ import { LoginAuthUseCase } from 'src/modules/auth/application/use-cases/login-a
 import { RefreshAuthUseCase } from 'src/modules/auth/application/use-cases/refresh.auth.usecase';
 import { GetAuthUserUseCase } from 'src/modules/auth/application/use-cases/get-auth-user.usecase';
 import { LoginAuthDto } from '../dtos/login-auth.dto';
+import { VerifyPasswordDto } from '../dtos/verify-password.dto';
 import { Request, Response } from 'express';
 import { ErrorResponse, isTypeResponse } from 'src/shared/response-standard/guard';
 import { successResponse } from 'src/shared/response-standard/response';
@@ -153,7 +154,7 @@ export class AuthController {
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   async verifyPassword(
     @UserDecorator() user: { id: string },
-    @Body() body: { currentPassword: string },
+    @Body() body: VerifyPasswordDto,
   ) {
     return this.verifyUserPasswordBySessionUseCase.execute({
       userId: user.id,
