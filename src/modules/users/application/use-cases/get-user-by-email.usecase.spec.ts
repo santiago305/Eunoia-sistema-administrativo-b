@@ -6,14 +6,14 @@ import { successResponse } from 'src/shared/response-standard/response';
 describe('GetUserByEmailUseCase', () => {
   const makeUseCase = (overrides?: { userReadRepository?: any }) => {
     const userReadRepository = overrides?.userReadRepository ?? {
-      findPublicByEmail: jest.fn(),
+      findManagementByEmail: jest.fn(),
     };
     return new GetUserByEmailUseCase(userReadRepository);
   };
 
   it('throws when not found', async () => {
     const useCase = makeUseCase({
-      userReadRepository: { findPublicByEmail: jest.fn().mockResolvedValue(null) },
+      userReadRepository: { findManagementByEmail: jest.fn().mockResolvedValue(null) },
     });
 
     await expect(
@@ -24,10 +24,11 @@ describe('GetUserByEmailUseCase', () => {
   it('returns success response for admin', async () => {
     const useCase = makeUseCase({
       userReadRepository: {
-        findPublicByEmail: jest.fn().mockResolvedValue({
+        findManagementByEmail: jest.fn().mockResolvedValue({
           id: 'user-1',
           email: 'ana@example.com',
           roleDescription: RoleType.ADVISER,
+          deleted: false,
         }),
       },
     });
@@ -38,6 +39,7 @@ describe('GetUserByEmailUseCase', () => {
         id: 'user-1',
         email: 'ana@example.com',
         rol: RoleType.ADVISER,
+        deleted: false,
       })
     );
   });
@@ -45,16 +47,34 @@ describe('GetUserByEmailUseCase', () => {
   it('rejects moderator when target is not adviser', async () => {
     const useCase = makeUseCase({
       userReadRepository: {
-        findPublicByEmail: jest.fn().mockResolvedValue({
+        findManagementByEmail: jest.fn().mockResolvedValue({
           id: 'user-1',
           email: 'ana@example.com',
           roleDescription: RoleType.ADMIN,
+          deleted: false,
         }),
       },
     });
 
     await expect(
       useCase.execute('ana@example.com', RoleType.MODERATOR)
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('rejects admin when target is admin', async () => {
+    const useCase = makeUseCase({
+      userReadRepository: {
+        findManagementByEmail: jest.fn().mockResolvedValue({
+          id: 'user-1',
+          email: 'ana@example.com',
+          roleDescription: RoleType.ADMIN,
+          deleted: false,
+        }),
+      },
+    });
+
+    await expect(
+      useCase.execute('ana@example.com', RoleType.ADMIN)
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });

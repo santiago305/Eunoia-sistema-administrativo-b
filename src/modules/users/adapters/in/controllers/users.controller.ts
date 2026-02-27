@@ -84,6 +84,7 @@ export class UsersController {
   async findAll(
     @Query('page') page: string,
     @Query('role') role: string,
+    @Query('q') q: string,
     @Query('sortBy') sortBy: string,
     @Query('order') order: 'ASC' | 'DESC',
     @Query('status') status: string,
@@ -97,7 +98,7 @@ export class UsersController {
     const pageNumber = parseInt(page) || 1;
     return this.listUsersUseCase.execute({
       page: pageNumber,
-      filters: { role },
+      filters: { role, q },
       sortBy: this.normalizeSortBy(sortBy),
       order: this.normalizeOrder(order),
       status: (status as UserListStatus | undefined) ?? 'all',
@@ -124,6 +125,20 @@ export class UsersController {
     return this.getUserByEmailUseCase.execute(email, user.role);
   }
 
+  @Get(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN, RoleType.MODERATOR)
+  findOneById(@Param('id') id: string, @CurrentUser() user: { role: RoleType }) {
+    return this.getUserUseCase.execute(id, user.role);
+  }
+
+  @Get('by-email/:email')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN, RoleType.MODERATOR)
+  findOneByEmail(@Param('email') email: string, @CurrentUser() user: { role: RoleType }) {
+    return this.getUserByEmailUseCase.execute(email, user.role);
+  }
+
   @Patch('me/update')
   @UseGuards(JwtAuthGuard)
   update(
@@ -147,11 +162,25 @@ export class UsersController {
     return this.deleteUserUseCase.execute(id, user.role);
   }
 
+  @Patch(':id/deactivate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN, RoleType.MODERATOR)
+  deactivate(@Param('id') id: string, @CurrentUser() user: { role: RoleType }) {
+    return this.deleteUserUseCase.execute(id, user.role);
+  }
+
   @Patch('restore/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleType.ADMIN)
-  restore(@Param('id') id: string) {
-    return this.restoreUserUseCase.execute(id);
+  @Roles(RoleType.ADMIN, RoleType.MODERATOR)
+  restore(@Param('id') id: string, @CurrentUser() user: { role: RoleType }) {
+    return this.restoreUserUseCase.execute(id, user.role);
+  }
+
+  @Patch(':id/activate')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN, RoleType.MODERATOR)
+  activate(@Param('id') id: string, @CurrentUser() user: { role: RoleType }) {
+    return this.restoreUserUseCase.execute(id, user.role);
   }
 
   @Patch('change-password/:id')

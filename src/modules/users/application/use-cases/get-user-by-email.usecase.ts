@@ -11,7 +11,7 @@ export class GetUserByEmailUseCase {
   ) {}
 
   async execute(email: string, requesterRole: RoleType) {
-    const user = await this.userReadRepository.findPublicByEmail(email);
+    const user = await this.userReadRepository.findManagementByEmail(email);
     if (!user) {
       throw new NotFoundException('No hemos encontrado el usuario');
     }
@@ -22,10 +22,15 @@ export class GetUserByEmailUseCase {
       id: user.id,
       email: user.email,
       rol: user.roleDescription,
+      deleted: user.deleted,
     });
   }
 
   private assertCanViewRole(requesterRole: RoleType, targetRole: string) {
+    if (requesterRole === RoleType.ADMIN && targetRole === RoleType.ADMIN) {
+      throw new UnauthorizedException('Acceso denegado');
+    }
+
     if (requesterRole === RoleType.MODERATOR && targetRole !== RoleType.ADVISER) {
       throw new UnauthorizedException('Acceso denegado');
     }

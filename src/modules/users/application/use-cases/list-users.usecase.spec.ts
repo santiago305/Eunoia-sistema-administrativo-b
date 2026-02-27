@@ -12,16 +12,28 @@ describe('ListUsersUseCase', () => {
 
   it('lists all users for admin by default', async () => {
     const userReadRepository = {
-      listUsers: jest.fn().mockResolvedValue([{ id: 'user-1' }]),
+      listUsers: jest.fn().mockResolvedValue([
+        { id: 'user-1', name: 'Ana', email: 'ana@example.com', rol: 'adviser', roleId: 'r1', deleted: false, createdAt: new Date(), password: 'hidden' },
+      ]),
     };
     const useCase = makeUseCase({ userReadRepository });
 
     const result = await useCase.execute({ page: 1 }, RoleType.ADMIN);
 
-    expect(result).toEqual([{ id: 'user-1' }]);
+    expect(result).toEqual([
+      expect.objectContaining({
+        id: 'user-1',
+        name: 'Ana',
+        email: 'ana@example.com',
+        rol: 'adviser',
+        roleId: 'r1',
+        deleted: false,
+      }),
+    ]);
+    expect(result[0]).not.toHaveProperty('password');
     expect(userReadRepository.listUsers).toHaveBeenCalledWith({
       page: 1,
-      filters: undefined,
+      filters: { allowedRoles: [RoleType.MODERATOR, RoleType.ADVISER], role: undefined },
       sortBy: undefined,
       order: undefined,
       status: 'all',
@@ -38,7 +50,7 @@ describe('ListUsersUseCase', () => {
 
     expect(userReadRepository.listUsers).toHaveBeenCalledWith({
       page: 2,
-      filters: undefined,
+      filters: { allowedRoles: [RoleType.MODERATOR, RoleType.ADVISER], role: undefined },
       sortBy: undefined,
       order: undefined,
       status: 'active',
@@ -58,10 +70,30 @@ describe('ListUsersUseCase', () => {
 
     expect(userReadRepository.listUsers).toHaveBeenCalledWith({
       page: 1,
-      filters: { role: RoleType.ADVISER },
+      filters: { role: RoleType.ADVISER, allowedRoles: [RoleType.ADVISER] },
       sortBy: undefined,
       order: undefined,
       status: 'inactive',
+    });
+  });
+
+  it('returns empty scope when admin requests admin role', async () => {
+    const userReadRepository = {
+      listUsers: jest.fn().mockResolvedValue([]),
+    };
+    const useCase = makeUseCase({ userReadRepository });
+
+    await useCase.execute(
+      { page: 1, filters: { role: RoleType.ADMIN } },
+      RoleType.ADMIN,
+    );
+
+    expect(userReadRepository.listUsers).toHaveBeenCalledWith({
+      page: 1,
+      filters: { role: '__none__', allowedRoles: [RoleType.MODERATOR, RoleType.ADVISER] },
+      sortBy: undefined,
+      order: undefined,
+      status: 'all',
     });
   });
 

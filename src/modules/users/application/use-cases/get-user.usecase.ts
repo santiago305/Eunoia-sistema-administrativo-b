@@ -11,7 +11,7 @@ export class GetUserUseCase {
   ) {}
 
   async execute(id: string, requesterRole: RoleType) {
-    const user = await this.userReadRepository.findPublicById(id);
+    const user = await this.userReadRepository.findManagementById(id);
     if (!user) {
       throw new NotFoundException('No hemos podido encotrar el usuario');
     }
@@ -30,6 +30,10 @@ export class GetUserUseCase {
   }
 
   private assertCanViewRole(requesterRole: RoleType, targetRole: string) {
+    if (requesterRole === RoleType.ADMIN && targetRole === RoleType.ADMIN) {
+      throw new UnauthorizedException('Acceso denegado');
+    }
+
     if (requesterRole === RoleType.MODERATOR && targetRole !== RoleType.ADVISER) {
       throw new UnauthorizedException('Acceso denegado');
     }

@@ -143,4 +143,29 @@ describe('CreateUserUseCase', () => {
       )
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
+
+  it('rejects admin creating admin', async () => {
+    const roleReadRepository: Partial<RoleReadRepository> = {
+      findById: jest.fn().mockResolvedValue({
+        id: 'role-1',
+        description: RoleType.ADMIN,
+        deleted: false,
+        createdAt: new Date(),
+      }),
+    };
+
+    const useCase = makeUseCase({ roleReadRepository });
+
+    await expect(
+      useCase.execute(
+        {
+          name: 'Ana',
+          email: 'ana@example.com',
+          password: 'secret',
+          roleId: 'role-1',
+        } as any,
+        RoleType.ADMIN
+      )
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
 });

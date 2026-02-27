@@ -16,7 +16,11 @@ export class TypeormUserReadRepository implements UserReadRepository {
 
   async listUsers(params: {
     page?: number;
-    filters?: { role?: string };
+    filters?: {
+      role?: string;
+      q?: string;
+      allowedRoles?: string[];
+    };
     sortBy?: string;
     order?: 'ASC' | 'DESC';
     status?: UserListStatus;
@@ -83,6 +87,18 @@ export class TypeormUserReadRepository implements UserReadRepository {
       query.andWhere('role.description = :role', { role: params.filters.role });
     }
 
+    if (params.filters?.allowedRoles && params.filters.allowedRoles.length > 0) {
+      query.andWhere('role.description IN (:...allowedRoles)', {
+        allowedRoles: params.filters.allowedRoles,
+      });
+    }
+
+    if (params.filters?.q) {
+      query.andWhere('(LOWER(user.name) LIKE :q OR LOWER(user.email) LIKE :q)', {
+        q: `%${params.filters.q.toLowerCase()}%`,
+      });
+    }
+
     query.orderBy(sortBy, order);
 
     return query.getRawMany();
@@ -107,6 +123,29 @@ export class TypeormUserReadRepository implements UserReadRepository {
       id: user.user_id,
       email: user.user_email,
       roleDescription: user.role_description,
+    };
+  }
+
+  async findManagementByEmail(email: string): Promise<{
+    id: string;
+    email: string;
+    roleDescription: string;
+    deleted: boolean;
+  } | null> {
+    const user = await this.ormRepository
+      .createQueryBuilder('user')
+      .leftJoin('user.role', 'role')
+      .select(['user.id', 'user.email', 'user.deleted', 'role.description'])
+      .where('user.email = :email', { email })
+      .getRawOne();
+
+    if (!user) return null;
+
+    return {
+      id: user.user_id,
+      email: user.user_email,
+      roleDescription: user.role_description,
+      deleted: user.user_deleted,
     };
   }
 
@@ -136,6 +175,50 @@ export class TypeormUserReadRepository implements UserReadRepository {
       ])
       .where('user.id = :id', { id })
       .andWhere('user.deleted = false')
+      .getOne();
+
+    if (!user || !user.role) return null;
+
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      telefono: user.telefono,
+      deleted: user.deleted,
+      avatarUrl: this.normalizeAvatarUrl(user.avatarUrl),
+      createdAt: user.createdAt,
+      role: {
+        id: user.role.roleId,
+        description: user.role.description,
+      },
+    };
+  }
+
+  async findManagementById(id: string): Promise<{
+    id: string;
+    name: string;
+    email: string;
+    telefono?: string;
+    deleted: boolean;
+    avatarUrl?: string;
+    createdAt?: Date;
+    role: { id: string; description: string };
+  } | null> {
+    const user = await this.ormRepository
+      .createQueryBuilder('user')
+      .leftJoin('user.role', 'role')
+      .select([
+        'user.id',
+        'user.name',
+        'user.email',
+        'user.telefono',
+        'user.deleted',
+        'user.avatarUrl',
+        'user.createdAt',
+        'role.roleId',
+        'role.description',
+      ])
+      .where('user.id = :id', { id })
       .getOne();
 
     if (!user || !user.role) return null;

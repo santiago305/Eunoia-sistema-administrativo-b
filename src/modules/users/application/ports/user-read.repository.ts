@@ -7,7 +7,11 @@ export type UserListStatus = (typeof USER_LIST_STATUSES)[number];
 export interface UserReadRepository {
   listUsers(params: {
     page?: number;
-    filters?: { role?: string };
+    filters?: {
+      role?: string;
+      q?: string;
+      allowedRoles?: string[];
+    };
     sortBy?: string;
     order?: 'ASC' | 'DESC';
     status?: UserListStatus;
@@ -30,7 +34,25 @@ export interface UserReadRepository {
     roleDescription: string;
   } | null>;
 
+  findManagementByEmail(email: string): Promise<{
+    id: string;
+    email: string;
+    roleDescription: string;
+    deleted: boolean;
+  } | null>;
+
   findPublicById(id: string): Promise<{
+    id: string;
+    name: string;
+    email: string;
+    telefono?: string;
+    deleted: boolean;
+    avatarUrl?: string;
+    createdAt?: Date;
+    role: { id: string; description: string };
+  } | null>;
+
+  findManagementById(id: string): Promise<{
     id: string;
     name: string;
     email: string;

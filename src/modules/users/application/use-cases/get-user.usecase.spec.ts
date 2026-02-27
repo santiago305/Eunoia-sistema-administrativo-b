@@ -6,14 +6,14 @@ import { successResponse } from 'src/shared/response-standard/response';
 describe('GetUserUseCase', () => {
   const makeUseCase = (overrides?: { userReadRepository?: any }) => {
     const userReadRepository = overrides?.userReadRepository ?? {
-      findPublicById: jest.fn(),
+      findManagementById: jest.fn(),
     };
     return new GetUserUseCase(userReadRepository);
   };
 
   it('throws when not found', async () => {
     const useCase = makeUseCase({
-      userReadRepository: { findPublicById: jest.fn().mockResolvedValue(null) },
+      userReadRepository: { findManagementById: jest.fn().mockResolvedValue(null) },
     });
 
     await expect(
@@ -24,7 +24,7 @@ describe('GetUserUseCase', () => {
   it('returns success response for admin', async () => {
     const useCase = makeUseCase({
       userReadRepository: {
-        findPublicById: jest.fn().mockResolvedValue({
+        findManagementById: jest.fn().mockResolvedValue({
           id: 'user-1',
           name: 'Ana',
           email: 'ana@example.com',
@@ -51,7 +51,7 @@ describe('GetUserUseCase', () => {
   it('rejects moderator when target is not adviser', async () => {
     const useCase = makeUseCase({
       userReadRepository: {
-        findPublicById: jest.fn().mockResolvedValue({
+        findManagementById: jest.fn().mockResolvedValue({
           id: 'user-1',
           name: 'Ana',
           email: 'ana@example.com',
@@ -63,6 +63,24 @@ describe('GetUserUseCase', () => {
 
     await expect(
       useCase.execute('user-1', RoleType.MODERATOR)
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('rejects admin when target is admin', async () => {
+    const useCase = makeUseCase({
+      userReadRepository: {
+        findManagementById: jest.fn().mockResolvedValue({
+          id: 'user-1',
+          name: 'Ana',
+          email: 'ana@example.com',
+          deleted: false,
+          role: { description: RoleType.ADMIN },
+        }),
+      },
+    });
+
+    await expect(
+      useCase.execute('user-1', RoleType.ADMIN)
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });

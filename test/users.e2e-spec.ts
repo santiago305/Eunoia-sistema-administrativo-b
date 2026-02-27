@@ -61,11 +61,11 @@ describe('UsersController (e2e)', () => {
     await app.init();
   });
 
-  it('/users/findAll (GET)', async () => {
+  it('/users (GET)', async () => {
     listUsersUseCase.execute.mockResolvedValue([{ id: 'user-1' }]);
 
     await request(app.getHttpServer())
-      .get('/users/findAll?page=1')
+      .get('/users?page=1')
       .expect(200)
       .expect([{ id: 'user-1' }]);
 
@@ -75,11 +75,11 @@ describe('UsersController (e2e)', () => {
     );
   });
 
-  it('/users/actives (GET)', async () => {
+  it('/users (GET active)', async () => {
     listUsersUseCase.execute.mockResolvedValue([{ id: 'user-2' }]);
 
     await request(app.getHttpServer())
-      .get('/users/actives?page=1')
+      .get('/users?page=1&status=active')
       .expect(200)
       .expect([{ id: 'user-2' }]);
 
@@ -89,16 +89,30 @@ describe('UsersController (e2e)', () => {
     );
   });
 
-  it('/users/desactive (GET)', async () => {
+  it('/users (GET inactive)', async () => {
     listUsersUseCase.execute.mockResolvedValue([{ id: 'user-3' }]);
 
     await request(app.getHttpServer())
-      .get('/users/desactive?page=1')
+      .get('/users?page=1&status=inactive')
       .expect(200)
       .expect([{ id: 'user-3' }]);
 
     expect(listUsersUseCase.execute).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'inactive' }),
+      RoleType.ADMIN
+    );
+  });
+
+  it('/users (GET search q)', async () => {
+    listUsersUseCase.execute.mockResolvedValue([{ id: 'user-4' }]);
+
+    await request(app.getHttpServer())
+      .get('/users?page=1&q=ana')
+      .expect(200)
+      .expect([{ id: 'user-4' }]);
+
+    expect(listUsersUseCase.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ filters: { role: undefined, q: 'ana' } }),
       RoleType.ADMIN
     );
   });
