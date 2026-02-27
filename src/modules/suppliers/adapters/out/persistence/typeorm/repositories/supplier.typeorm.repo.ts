@@ -121,7 +121,7 @@ export class SupplierTypeormRepository implements SupplierRepository {
 
     await repo.update({ id: params.supplierId }, patch);
     const updated = await repo.findOne({ where: { id: params.supplierId } });
-    return this.toDomain(updated!);
+    return updated ? this.toDomain(updated) : null;
   }
 
   async list(

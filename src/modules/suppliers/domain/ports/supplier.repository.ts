@@ -12,7 +12,7 @@ export interface SupplierRepository {
         tx?: TransactionContext,
     ): Promise<Supplier | null>;
 
-    create(supplier: Supplier, tx?: TransactionContext): Promise<Supplier>;
+    create(supplier: Supplier, tx?: TransactionContext): Promise<Supplier | null>;
 
     update(
         params: {
@@ -32,7 +32,7 @@ export interface SupplierRepository {
             updatedAt?: Date;
         },
         tx?: TransactionContext,
-    ): Promise<Supplier>;
+    ): Promise<Supplier | null>;
 
     list(
         params: {

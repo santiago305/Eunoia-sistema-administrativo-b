@@ -1,13 +1,15 @@
 import { IsBoolean, IsEmail, IsEnum, IsInt, IsOptional, IsString, Min } from "class-validator";
 import { SupplierDocType } from "src/modules/suppliers/domain/object-values/supplier-doc-type";
+import { IsValidDocumentNumber } from "../document-number.validator";
 
 export class HttpUpdateSupplierDto {
-  @IsOptional()
-  @IsEnum(SupplierDocType)
-  documentType?: SupplierDocType;
 
   @IsOptional()
-  @IsString()
+  @IsEnum(SupplierDocType)
+  documentType: SupplierDocType;
+
+  @IsOptional()
+  @IsValidDocumentNumber()
   documentNumber?: string;
 
   @IsOptional()
