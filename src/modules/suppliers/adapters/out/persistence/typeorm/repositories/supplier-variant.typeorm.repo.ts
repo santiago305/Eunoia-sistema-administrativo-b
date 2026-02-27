@@ -79,7 +79,7 @@ export class SupplierVariantTypeormRepository implements SupplierVariantReposito
 
     await repo.update({ supplierId: params.supplierId, variantId: params.variantId }, patch);
     const updated = await repo.findOne({ where: { supplierId: params.supplierId, variantId: params.variantId } });
-    return this.toDomain(updated!);
+    return updated ? this.toDomain(updated) : null;
   }
 
   async list(

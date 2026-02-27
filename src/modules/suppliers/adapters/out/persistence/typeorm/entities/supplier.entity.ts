@@ -1,7 +1,8 @@
-// src/modules/suppliers/adapters/out/persistence/typeorm/entities/supplier.entity.ts
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { SupplierDocType } from "src/modules/suppliers/domain/object-values/supplier-doc-type";
 
+
+@Index("ux_suppliers_document", ["documentType", "documentNumber"], { unique: true })
 @Entity("suppliers")
 export class SupplierEntity {
   @PrimaryGeneratedColumn("uuid", { name: "supplier_id" })

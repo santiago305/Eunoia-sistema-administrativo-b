@@ -1,4 +1,4 @@
-import { Inject, NotFoundException } from "@nestjs/common";
+import { ConflictException, Inject, NotFoundException } from "@nestjs/common";
 import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { Supplier } from "src/modules/suppliers/domain/entity/supplier";
@@ -19,7 +19,7 @@ export class CreateSupplierUsecase {
     return this.uow.runInTransaction(async (tx) => {
       const exists = await this.supplierRepo.findByDocument(input.documentType, input.documentNumber, tx);
       if (exists) {
-        throw new NotFoundException(
+        throw new ConflictException(
           {
             type:'error',
             message: "Proveedor ya existe"
@@ -44,12 +44,16 @@ export class CreateSupplierUsecase {
         undefined,
       );
 
-      await this.supplierRepo.create(supplier, tx);
+       try {
+        await this.supplierRepo.create(supplier, tx);
+        } catch {
+          throw new ConflictException({
+            type: "error",
+            message: "Proveedor ya existe",
+          });;
+        }
 
-      return {
-        type: "success",
-        message: "Proveedor creado con exito",
-      };
-    });
+        return { type: "success", message: "Proveedor creado con exito" };
+      });
   }
 }

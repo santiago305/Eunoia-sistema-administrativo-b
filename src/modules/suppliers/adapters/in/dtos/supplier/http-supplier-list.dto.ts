@@ -1,5 +1,6 @@
 import { Transform, Type } from "class-transformer";
-import { IsBooleanString, IsInt, IsOptional, IsString, Max, Min } from "class-validator";
+import { IsBooleanString, IsEnum, IsInt, IsOptional, IsString, Max, Min } from "class-validator";
+import { SupplierDocType } from "src/modules/suppliers/domain/object-values/supplier-doc-type";
 
 export class ListSupplierQueryDto {
   @IsOptional()
@@ -21,8 +22,8 @@ export class ListSupplierQueryDto {
   isActive?: string;
 
   @IsOptional()
-  @IsString()
-  documentType?: string;
+  @IsEnum(SupplierDocType)
+  documentType?: SupplierDocType;
 
   @IsOptional()
   @IsString()

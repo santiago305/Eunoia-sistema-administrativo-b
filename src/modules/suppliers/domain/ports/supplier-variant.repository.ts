@@ -11,7 +11,7 @@ export interface SupplierVariantRepository {
         tx?: TransactionContext,
     ): Promise<SupplierVariant | null>;
 
-    create(variant: SupplierVariant, tx?: TransactionContext): Promise<SupplierVariant>;
+    create(variant: SupplierVariant, tx?: TransactionContext): Promise<SupplierVariant | null>;
 
     update(
         params: {
@@ -22,7 +22,7 @@ export interface SupplierVariantRepository {
             leadTimeDays?: number;
         },
         tx?: TransactionContext,
-    ): Promise<SupplierVariant>;
+    ): Promise<SupplierVariant | null>;
 
     list(
         params: {

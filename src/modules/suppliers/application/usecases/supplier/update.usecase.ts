@@ -1,5 +1,4 @@
-// src/modules/suppliers/application/usecases/supplier/update.usecase.ts
-import { BadRequestException, Inject, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Inject, InternalServerErrorException, NotFoundException } from "@nestjs/common";
 import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { SUPPLIER_REPOSITORY, SupplierRepository } from "src/modules/suppliers/domain/ports/supplier.repository";
@@ -31,29 +30,36 @@ export class UpdateSupplierUsecase {
         });
       }
 
-      const updated = await this.supplierRepo.update(
-        {
-          supplierId: input.supplierId,
-          documentType: input.documentType,
-          documentNumber: input.documentNumber,
-          name: input.name,
-          lastName: input.lastName,
-          tradeName: input.tradeName,
-          address: input.address,
-          phone: input.phone,
-          email: input.email,
-          note: input.note,
-          leadTimeDays: input.leadTimeDays,
-          isActive: input.isActive,
-          updatedAt: this.clock.now(),
-        },
-        tx,
-      );
-
-      if (!updated) {
-        throw new NotFoundException({
+      try {
+        const updated = await this.supplierRepo.update(
+          {
+            supplierId: input.supplierId,
+            documentType: input.documentType,
+            documentNumber: input.documentNumber,
+            name: input.name,
+            lastName: input.lastName,
+            tradeName: input.tradeName,
+            address: input.address,
+            phone: input.phone,
+            email: input.email,
+            note: input.note,
+            leadTimeDays: input.leadTimeDays,
+            isActive: input.isActive,
+            updatedAt: this.clock.now(),
+          },
+          tx,
+        );
+  
+        if (!updated) {
+          throw new InternalServerErrorException({
+            type: "error",
+            message: "¡No se logro actualizar el proveedor, intenta nuevamente!"
+          });
+        }
+      } catch {
+        throw new ConflictException({
           type: "error",
-          message: "¡No se logro actualizar el proveedor, intenta nuevamente!"
+          message: "Documento ya registrado",
         });
       }
 

@@ -9,7 +9,6 @@ import { HttpCreateSupplierDto } from "../dtos/supplier/http-supplier-create.dto
 import { HttpUpdateSupplierDto } from "../dtos/supplier/http-supplier-update.dto";
 import { HttpSetSupplierActiveDto } from "../dtos/supplier/http-supplier-set-active.dto";
 import { ListSupplierQueryDto } from "../dtos/supplier/http-supplier-list.dto";
-import { SupplierDocType } from "src/modules/suppliers/domain/object-values/supplier-doc-type";
 
 @Controller("suppliers")
 @UseGuards(JwtAuthGuard)
@@ -34,7 +33,7 @@ export class SuppliersController {
       page: query.page,
       limit: query.limit,
       isActive,
-      documentType: query.documentType as SupplierDocType | undefined,
+      documentType: query.documentType,
       documentNumber: query.documentNumber,
       name: query.name,
       lastName: query.lastName,
