@@ -5,7 +5,6 @@ export const seedUnits = async (dataSource: DataSource): Promise<void> => {
   const repo = dataSource.getRepository(UnitEntity);
 
   const unitsToSeed = [
-    { code: '1/2 D', name: '1/2 DOCENA' },
     { code: 'BJ', name: 'BALDE' },
     { code: 'BLL', name: 'BARRILES' },
     { code: '4A', name: 'BOBINAS' },
