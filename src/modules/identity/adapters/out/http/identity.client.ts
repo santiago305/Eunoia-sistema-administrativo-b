@@ -41,6 +41,13 @@ export class DecolectaIdentityClient implements IdentityLookupRepository {
       });
 
       const body = await this.safeJson<DecolectaResponse>(res);
+      console.log("[identity] response", {
+        status: res.status,
+        ok: res.ok,
+        documentType: params.documentType,
+        documentNumber: params.documentNumber,
+        body,
+      });
 
       if (!res.ok) {
         throw this.mapError(res.status);

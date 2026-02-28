@@ -20,6 +20,13 @@ export const seedUser = async (dataSource: DataSource) => {
       avatarUrl: '',
     },
     {
+      name: 'Derbys',
+      email: 'admin@gmail.com',
+      password: '12345678',
+      roleDescription: RoleType.ADMIN,
+      avatarUrl: '',
+    },
+    {
       name: 'MarAa',
       email: 'maria@example.com',
       password: '123123123',
