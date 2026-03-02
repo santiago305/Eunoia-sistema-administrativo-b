@@ -211,43 +211,36 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
     return rows.map((row) => this.toDomain(row));
   }
 
-  async listRowMaterial(tx?: TransactionContext): Promise<RowMaterial[]> {
+  async listRowMaterialVariant(tx?: TransactionContext): Promise<RowMaterial[]> {
     const raw = await this.getManager(tx)
-      .getRepository(ProductEntity)
-      .createQueryBuilder('p')
-      .leftJoin(ProductVariantEntity, 'v', 'v.product_id = p.product_id')
+      .getRepository(ProductVariantEntity)
+      .createQueryBuilder('v')
+      .innerJoin(ProductEntity, 'p', 'p.product_id = v.product_id')
       .leftJoin(UnitEntity, 'u', 'u.unit_id = p.base_unit_id')
       .where('p.type = :type', { type: 'PRIMA' })
       .select([
         'v.id',
         'v.productId',
         'v.sku',
-        'v.barcode',
-        'v.attributes',
-        'v.price',
-        'v.cost',
-        'v.isActive',
-        'v.createdAt',
-        'p.id',
         'p.name',
         'p.description',
         'p.baseUnitId',
-        'p.sku',
         'u.code',
         'u.name',
       ])
       .getRawMany();
 
     return raw.map((r) => ({
-      primaId: r.v_variant_id ?? r.p_product_id,
+      primaId: r.v_variant_id,
       productName: r.p_name,
       productDescription: r.p_description,
-      sku: r.v_sku ?? r.p_sku,
+      sku: r.v_sku,
       baseUnitId: r.p_baseUnitId,
       unitCode: r.u_code,
       unitName: r.u_name,
     }));
   }
+
 
   async listInactiveByProductId(productId: ProductId, tx?: TransactionContext): Promise<ProductVariant[]> {
     const rows = await this.getRepo(tx).find({ where: { productId: productId.value, isActive: false } });

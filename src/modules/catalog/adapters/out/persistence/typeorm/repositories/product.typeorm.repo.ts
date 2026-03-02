@@ -13,6 +13,7 @@ import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo
 import { Money } from 'src/modules/catalog/domain/value-object/money.vo';
 import { ProductType } from 'src/modules/catalog/domain/value-object/productType';
 import { AttributesRecord } from 'src/modules/catalog/domain/value-object/variant-attributes.vo';
+import { RowMaterial } from 'src/modules/catalog/domain/read-models/row-materials';
 
 @Injectable()
 export class ProductTypeormRepository implements ProductRepository {
@@ -279,6 +280,34 @@ export class ProductTypeormRepository implements ProductRepository {
     });
     return rows.map((r) => ({ id: r.id, name: r.name, isActive: r.isActive, createdAt: r.createdAt }));
   }
+  async listRowMaterialProduct(tx?: TransactionContext): Promise<RowMaterial[]> {
+    const raw = await this.getManager(tx)
+      .getRepository(ProductEntity)
+      .createQueryBuilder('p')
+      .leftJoin(UnitEntity, 'u', 'u.unit_id = p.base_unit_id')
+      .where('p.type = :type', { type: 'PRIMA' })
+      .select([
+        'p.id',
+        'p.name',
+        'p.description',
+        'p.baseUnitId',
+        'p.sku',
+        'u.code',
+        'u.name',
+      ])
+      .getRawMany();
+
+    return raw.map((r) => ({
+      primaId: r.p_product_id,
+      productName: r.p_name,
+      productDescription: r.p_description,
+      sku: r.p_sku,
+      baseUnitId: r.p_baseUnitId,
+      unitCode: r.u_code,
+      unitName: r.u_name,
+    }));
+  }
+
   private toDomain(row: ProductEntity): Product {
     return new Product(
       ProductId.create(row.id),
