@@ -5,6 +5,7 @@ import { ProductId } from "../value-object/product-id.vo";
 import { ProductType } from "../value-object/productType";
 import { Money } from "../value-object/money.vo";
 import { AttributesRecord } from "../value-object/variant-attributes.vo";
+import { RowMaterial } from "../read-models/row-materials";
 
 export const PRODUCT_REPOSITORY = Symbol("PRODUCT_REPOSITORY");
 
@@ -13,6 +14,7 @@ export interface ProductRepository {
 
   findById(id: ProductId, tx?: TransactionContext): Promise<Product | null>;
   findByName(name: string, tx?: TransactionContext): Promise<Product | null>;
+  listRowMaterialProduct(tx?: TransactionContext): Promise<RowMaterial[]>;
 
   update(
     params: {

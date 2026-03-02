@@ -15,62 +15,67 @@ export class DecolectaIdentityClient implements IdentityLookupRepository {
     documentType: string;
     documentNumber: string;
   }): Promise<IdentityLookupResult<DniData | RucData>> {
-    const apiKey = envs.identity?.apiKey;
-    const baseUrl = envs.identity?.baseUrl;
     const timeoutMs = envs.identity?.timeoutMs ?? 4000;
-
-    if (!apiKey || !baseUrl) {
-      throw new HttpException({ type: "error", message: "Configuracion Identity incompleta" }, HttpStatus.SERVICE_UNAVAILABLE);
-    }
-    const { url } = this.resolveEndpoint(
+    const config = this.resolveProviderConfig(params.documentType);
+    const { url, method, body: requestBody } = this.resolveEndpoint(
       params.documentType,
-      this.normalizeBaseUrl(baseUrl),
+      this.normalizeBaseUrl(config.baseUrl),
+      params.documentNumber,
+      config.provider,
     );
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
       const res = await fetch(url, {
-        method: "POST",
+        method,
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
+          Authorization: `Bearer ${config.apiKey}`,
         },
-        body: JSON.stringify({ documento: params.documentNumber }),
+        body: requestBody,
         signal: controller.signal,
       });
 
-      const body = await this.safeJson<DecolectaResponse>(res);
+      const responseBody = await this.safeJson<DecolectaResponse | any>(res);
+      console.log("[identity] response", {
+        status: res.status,
+        ok: res.ok,
+        documentType: params.documentType,
+        documentNumber: params.documentNumber,
+        body: responseBody,
+        provider: config.provider,
+      });
 
       if (!res.ok) {
         throw this.mapError(res.status);
       }
 
-      if (!body || typeof body !== "object") {
+      if (!responseBody || typeof responseBody !== "object") {
         throw new HttpException(
           { type: "error", message: "Respuesta invalida del servicio externo" },
           HttpStatus.BAD_GATEWAY,
         );
       }
 
-      if (params.documentType === SupplierDocType.DNI) {
+      if (params.documentType === SupplierDocType.DNI && config.provider === "decolecta") {
         return {
           documentType: params.documentType,
           documentNumber: params.documentNumber,
           data: {
-            name: body?.message?.nombres ?? "",
-            lastName: `${body?.message?.apellido_paterno ?? ""} ${body?.message?.apellido_materno ?? ""}`.trim(),
+            name: responseBody?.first_name ?? "",
+            lastName: `${responseBody?.first_last_name ?? ""} ${responseBody?.second_last_name ?? ""}`.trim(),
           },
         };
       }
 
-      if (params.documentType === SupplierDocType.RUC) {
+      if (params.documentType === SupplierDocType.RUC && config.provider === "diurvan") {
         return {
           documentType: params.documentType,
           documentNumber: params.documentNumber,
           data: {
-            tradeName: body?.message?.nombre_completo ?? "",
-            address: `${body?.message?.direccion ?? ""} (Ubigueo-${body?.message?.ubigeo ?? ""})`.trim(),
+            tradeName: responseBody?.message?.nombre_completo ?? "",
+            address: `${responseBody?.message?.direccion ?? ""} (Ubigueo-${responseBody?.message?.ubigeo ?? ""})`.trim(),
           },
         };
       }
@@ -96,14 +101,31 @@ export class DecolectaIdentityClient implements IdentityLookupRepository {
     }
   }
 
-  private resolveEndpoint(documentType: string, baseUrl: string) {
+  private resolveEndpoint(
+    documentType: string,
+    baseUrl: string,
+    documentNumber: string,
+    provider: "decolecta" | "diurvan",
+  ) {
     if (documentType !== SupplierDocType.DNI && documentType !== SupplierDocType.RUC) {
       throw new HttpException("Tipo de documento no soportado", HttpStatus.BAD_REQUEST);
     }
 
-    const path = "dniruc";
-    const url = new URL(path, baseUrl);
-    return { url: url.toString() };
+    if (provider === "decolecta") {
+      if (documentType !== SupplierDocType.DNI) {
+        throw new HttpException("No se soporta este tipo de documento", HttpStatus.BAD_REQUEST);
+      }
+      const url = new URL("reniec/dni", baseUrl);
+      url.searchParams.set("numero", documentNumber);
+      return { url: url.toString(), method: "GET", body: undefined };
+    }
+
+    const url = new URL("dniruc", baseUrl);
+    return {
+      url: url.toString(),
+      method: "POST",
+      body: JSON.stringify({ documento: documentNumber }),
+    };
   }
 
   private async safeJson<T>(res: Response): Promise<T | null> {
@@ -152,5 +174,33 @@ export class DecolectaIdentityClient implements IdentityLookupRepository {
     const trimmed = baseUrl.trim();
     if (trimmed.endsWith("/")) return trimmed;
     return `${trimmed}/`;
+  }
+
+  private resolveProviderConfig(documentType: string) {
+    if (documentType === SupplierDocType.DNI) {
+      const apiKey = process.env.IDENTITY_API_DECOLECTA_KEY;
+      const baseUrl = process.env.IDENTITY_BASE_DECOLECTA_URL;
+      if (!apiKey || !baseUrl) {
+        throw new HttpException(
+          { type: "error", message: "Configuracion Decolecta incompleta" },
+          HttpStatus.SERVICE_UNAVAILABLE,
+        );
+      }
+      return { provider: "decolecta" as const, apiKey, baseUrl };
+    }
+
+    if (documentType === SupplierDocType.RUC) {
+      const apiKey = process.env.IDENTITY_API_DIURVAN_KEY;
+      const baseUrl = process.env.IDENTITY_BASE_DIURVAN_URL;
+      if (!apiKey || !baseUrl) {
+        throw new HttpException(
+          { type: "error", message: "Configuracion Diurvan incompleta" },
+          HttpStatus.SERVICE_UNAVAILABLE,
+        );
+      }
+      return { provider: "diurvan" as const, apiKey, baseUrl };
+    }
+
+    throw new HttpException("Tipo de documento no soportado", HttpStatus.BAD_REQUEST);
   }
 }
