@@ -49,13 +49,20 @@ export class RolesController {
   }
 
   @Get('')
-  findAll(@Query('status') status?: string) {
+  @Roles(RoleType.ADMIN, RoleType.MODERATOR)
+  findAll(
+    @Query('status') status?: string,
+    @CurrentUser() user?: { role: RoleType },
+  ) {
     if (status && !ROLE_LIST_STATUSES.includes(status as RoleListStatus)) {
       throw new BadRequestException(
         `Invalid status '${status}'. Allowed values: ${ROLE_LIST_STATUSES.join(', ')}`,
       );
     }
-    return this.listRolesUseCase.execute({ status: status as RoleListStatus | undefined });
+    return this.listRolesUseCase.execute(
+      { status: status as RoleListStatus | undefined },
+      user?.role,
+    );
   }
 
   @Get('/:id')
