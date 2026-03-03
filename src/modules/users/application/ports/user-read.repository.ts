@@ -28,6 +28,18 @@ export interface UserReadRepository {
     }>
   >;
 
+  countUsersByRole(params: {
+    filters?: {
+      role?: string;
+      q?: string;
+      allowedRoles?: string[];
+    };
+    status?: UserListStatus;
+  }): Promise<{
+    total: number;
+    byRole: Record<string, number>;
+  }>;
+
   findPublicByEmail(email: string): Promise<{
     id: string;
     email: string;

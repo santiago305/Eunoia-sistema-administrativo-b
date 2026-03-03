@@ -104,6 +104,58 @@ export class TypeormUserReadRepository implements UserReadRepository {
     return query.getRawMany();
   }
 
+  async countUsersByRole(params: {
+    filters?: {
+      role?: string;
+      q?: string;
+      allowedRoles?: string[];
+    };
+    status?: UserListStatus;
+  }): Promise<{
+    total: number;
+    byRole: Record<string, number>;
+  }> {
+    const query = this.ormRepository
+      .createQueryBuilder('user')
+      .leftJoin('user.role', 'role')
+      .select('role.description', 'role')
+      .addSelect('COUNT(user.id)', 'total');
+
+    const status = params.status ?? 'all';
+    if (status === 'active') {
+      query.where('user.deleted = false');
+    } else if (status === 'inactive') {
+      query.where('user.deleted = true');
+    } else {
+      query.where('1=1');
+    }
+
+    if (params.filters?.role) {
+      query.andWhere('role.description = :role', { role: params.filters.role });
+    }
+
+    if (params.filters?.allowedRoles && params.filters.allowedRoles.length > 0) {
+      query.andWhere('role.description IN (:...allowedRoles)', {
+        allowedRoles: params.filters.allowedRoles,
+      });
+    }
+
+    if (params.filters?.q) {
+      query.andWhere('(LOWER(user.name) LIKE :q OR LOWER(user.email) LIKE :q)', {
+        q: `%${params.filters.q.toLowerCase()}%`,
+      });
+    }
+
+    const rows = await query.groupBy('role.description').getRawMany<{ role: string; total: string }>();
+    const byRole = rows.reduce<Record<string, number>>((acc, row) => {
+      acc[row.role] = Number(row.total);
+      return acc;
+    }, {});
+    const total = Object.values(byRole).reduce((sum, count) => sum + count, 0);
+
+    return { total, byRole };
+  }
+
   async findPublicByEmail(email: string): Promise<{
     id: string;
     email: string;

@@ -8,6 +8,7 @@ import { GetUserByEmailUseCase } from '../application/use-cases/get-user-by-emai
 import { GetUserUseCase } from '../application/use-cases/get-user.usecase';
 import { GetUserWithPasswordByEmailUseCase } from '../application/use-cases/get-user-with-password-by-email.usecase';
 import { ListUsersUseCase } from '../application/use-cases/list-users.usecase';
+import { CountUsersByRoleUseCase } from '../application/use-cases/count-users-by-role.usecase';
 import { RestoreUserUseCase } from '../application/use-cases/restore-user.usecase';
 import { UpdateAvatarUseCase } from '../application/use-cases/update-avatar.usecase';
 import { UpdateUserUseCase } from '../application/use-cases/update-user.usecase';
@@ -40,6 +41,7 @@ import { LocalFileStorageService } from 'src/shared/utilidades/services/local-fi
     UpdateUserUseCase,
     ChangePasswordUseCase,
     ListUsersUseCase,
+    CountUsersByRoleUseCase,
     GetUserUseCase,
     GetUserByEmailUseCase,
     GetOwnUserUseCase,

@@ -24,6 +24,7 @@ import { GetOwnUserUseCase } from 'src/modules/users/application/use-cases/get-o
 import { GetUserByEmailUseCase } from 'src/modules/users/application/use-cases/get-user-by-email.usecase';
 import { GetUserUseCase } from 'src/modules/users/application/use-cases/get-user.usecase';
 import { ListUsersUseCase } from 'src/modules/users/application/use-cases/list-users.usecase';
+import { CountUsersByRoleUseCase } from 'src/modules/users/application/use-cases/count-users-by-role.usecase';
 import { RestoreUserUseCase } from 'src/modules/users/application/use-cases/restore-user.usecase';
 import { UpdateAvatarUseCase } from 'src/modules/users/application/use-cases/update-avatar.usecase';
 import { UpdateUserUseCase } from 'src/modules/users/application/use-cases/update-user.usecase';
@@ -58,6 +59,7 @@ export class UsersController {
     private readonly updateUserUseCase: UpdateUserUseCase,
     private readonly changePasswordUseCase: ChangePasswordUseCase,
     private readonly listUsersUseCase: ListUsersUseCase,
+    private readonly countUsersByRoleUseCase: CountUsersByRoleUseCase,
     private readonly getUserUseCase: GetUserUseCase,
     private readonly getUserByEmailUseCase: GetUserByEmailUseCase,
     private readonly getOwnUserUseCase: GetOwnUserUseCase,
@@ -109,6 +111,27 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   getProfile(@CurrentUser() user: { id: string }) {
     return this.getOwnUserUseCase.execute(user.id);
+  }
+
+  @Get('count-by-role')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN, RoleType.MODERATOR)
+  async countByRole(
+    @Query('role') role: string,
+    @Query('q') q: string,
+    @Query('status') status: string,
+    @CurrentUser() user: { role: RoleType },
+  ) {
+    if (status && !USER_LIST_STATUSES.includes(status as UserListStatus)) {
+      throw new BadRequestException(
+        `Invalid status '${status}'. Allowed values: ${USER_LIST_STATUSES.join(', ')}`,
+      );
+    }
+
+    return this.countUsersByRoleUseCase.execute({
+      filters: { role, q },
+      status: (status as UserListStatus | undefined) ?? 'all',
+    }, user.role);
   }
 
   @Get('search/:id')

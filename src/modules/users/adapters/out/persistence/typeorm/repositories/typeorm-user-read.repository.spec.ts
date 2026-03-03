@@ -50,6 +50,32 @@ describe('TypeormUserReadRepository', () => {
     expect(result).toEqual([{ id: 'user-1', email: 'ana@example.com' }]);
   });
 
+  it('countUsersByRole returns grouped totals', async () => {
+    const repo = makeRepo({
+      createQueryBuilder: jest.fn().mockReturnValue({
+        leftJoin: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        groupBy: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([
+          { role: 'admin', total: '2' },
+          { role: 'adviser', total: '3' },
+        ]),
+      }),
+    });
+
+    const result = await repo.countUsersByRole({ status: 'all' });
+    expect(result).toEqual({
+      total: 5,
+      byRole: {
+        admin: 2,
+        adviser: 3,
+      },
+    });
+  });
+
   it('findPublicById returns null when role missing', async () => {
     const repo = makeRepo({
       createQueryBuilder: jest.fn().mockReturnValue({
