@@ -280,20 +280,28 @@ export class ProductTypeormRepository implements ProductRepository {
     });
     return rows.map((r) => ({ id: r.id, name: r.name, isActive: r.isActive, createdAt: r.createdAt }));
   }
-  async listRowMaterialProduct(tx?: TransactionContext): Promise<RowMaterial[]> {
-    const raw = await this.getManager(tx)
+  
+  async listRowMaterialProduct(row: boolean = true, tx?: TransactionContext): Promise<RowMaterial[]> {
+    const qb = this.getManager(tx)
       .getRepository(ProductEntity)
-      .createQueryBuilder('p')
-      .leftJoin(UnitEntity, 'u', 'u.unit_id = p.base_unit_id')
-      .where('p.type = :type', { type: 'PRIMA' })
+      .createQueryBuilder("p")
+      .leftJoin(UnitEntity, "u", "u.unit_id = p.base_unit_id");
+
+    if (row) {
+      qb.where("p.type = :type", { type: ProductType.PRIMA });
+    } else {
+      qb.where("p.type = :type", { type: ProductType.FINISHED });
+    }
+
+    const raw = await qb
       .select([
-        'p.id',
-        'p.name',
-        'p.description',
-        'p.baseUnitId',
-        'p.sku',
-        'u.code',
-        'u.name',
+        "p.id",
+        "p.name",
+        "p.description",
+        "p.baseUnitId",
+        "p.sku",
+        "u.code",
+        "u.name",
       ])
       .getRawMany();
 
@@ -307,6 +315,7 @@ export class ProductTypeormRepository implements ProductRepository {
       unitName: r.u_name,
     }));
   }
+
 
   private toDomain(row: ProductEntity): Product {
     return new Product(

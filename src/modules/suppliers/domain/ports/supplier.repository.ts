@@ -34,6 +34,8 @@ export interface SupplierRepository {
         tx?: TransactionContext,
     ): Promise<Supplier | null>;
 
+    listAllActive(tx?:TransactionContext) : Promise<{items:Supplier[]}>;
+
     list(
         params: {
             documentType?: SupplierDocType;

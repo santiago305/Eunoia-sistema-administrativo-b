@@ -1,7 +1,8 @@
 import { ProductVariant } from "../entity/product-variant";
 
 export interface RowMaterial {
-    primaId: string;
+    primaId?: string;
+    stockItemId?: string;
     baseUnitId?: string;
     productName: string;
     productDescription: string | null;

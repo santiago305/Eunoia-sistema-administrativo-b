@@ -18,6 +18,9 @@ export interface WarehouseRepository{
         warehouse: Warehouse,
         tx?: TransactionContext
     ):Promise<Warehouse>;
+    listActive(
+        tx?: TransactionContext
+    ):Promise<Warehouse[]>;
     update( params:{
         warehouseId:WarehouseId,
         name?:string,

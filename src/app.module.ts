@@ -17,6 +17,8 @@ import { WarehousesModule } from './modules/warehouses/warehouses.module';
 import { ProductionModule } from './modules/production/infrastructure/production.module';
 import { SuppliersModule } from './modules/suppliers/suppliers.module';
 import { IdentityModule } from './modules/identity/identity.module';
+import { PaymentsModule } from './modules/payments/payments.module';
+import { PurchasesModule } from './modules/purchases/infrastructure/purchases.module';
 
 
 @Module({
@@ -40,6 +42,8 @@ import { IdentityModule } from './modules/identity/identity.module';
     ProductionModule,
     SuppliersModule,
     IdentityModule,
+    PaymentsModule,
+    PurchasesModule,
   ],
   providers: [
     {

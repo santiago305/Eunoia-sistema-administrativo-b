@@ -1,0 +1,90 @@
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { CreatePurchaseOrderUsecase } from "src/modules/purchases/application/usecases/purchase-order/create.usecase";
+import { UpdatePurchaseOrderUsecase } from "src/modules/purchases/application/usecases/purchase-order/update.usecase";
+import { ListPurchaseOrdersUsecase } from "src/modules/purchases/application/usecases/purchase-order/list.usecase";
+import { SetPurchaseOrderActiveUsecase } from "src/modules/purchases/application/usecases/purchase-order/set-active.usecase";
+import { ListPurchaseOrderItemsUsecase } from "src/modules/purchases/application/usecases/purchase-order-item/list.usecase";
+import { RemovePurchaseOrderItemUsecase } from "src/modules/purchases/application/usecases/purchase-order-item/remove.usecase";
+import { HttpCreatePurchaseOrderDto } from "../dtos/purchase-order/http-purchase-order-create.dto";
+import { HttpUpdatePurchaseOrderDto } from "../dtos/purchase-order/http-purchase-order-update.dto";
+import { HttpListPurchaseOrdersQueryDto } from "../dtos/purchase-order/http-purchase-order-list.dto";
+import { HttpSetPurchaseOrderActiveDto } from "../dtos/purchase-order/http-purchase-order-set-active.dto";
+
+@Controller("purchases/orders")
+@UseGuards(JwtAuthGuard)
+export class PurchaseOrdersController {
+  constructor(
+    private readonly createOrder: CreatePurchaseOrderUsecase,
+    private readonly updateOrder: UpdatePurchaseOrderUsecase,
+    private readonly listOrders: ListPurchaseOrdersUsecase,
+    private readonly setActiveOrder: SetPurchaseOrderActiveUsecase,
+    private readonly listItems: ListPurchaseOrderItemsUsecase,
+    private readonly removeItem: RemovePurchaseOrderItemUsecase,
+  ) {}
+
+  @Post()
+  async create(@Body() dto: HttpCreatePurchaseOrderDto) {
+    try {
+      const result = await this.createOrder.execute(dto);
+        return {
+          type: "success",
+          message: "Orden de compra creada correctamente",
+          order: {
+            ...result.order,
+            totalTaxed: result.order.totalTaxed.getAmount(),
+            totalExempted: result.order.totalExempted.getAmount(),
+            totalIgv: result.order.totalIgv.getAmount(),
+            purchaseValue: result.order.purchaseValue.getAmount(),
+            total: result.order.total.getAmount(),
+          },
+        };
+    } catch (error: any) {
+      const payload = error?.response ?? error;
+      return {
+        type: "error",
+        message: payload?.message ?? "Ocurrio un error al crear la orden de compra",
+      };
+    }
+  }
+
+
+  @Get()
+  list(@Query() query: HttpListPurchaseOrdersQueryDto) {
+    return this.listOrders.execute({
+      status: query.status,
+      supplierId: query.supplierId,
+      warehouseId: query.warehouseId,
+      documentType: query.documentType,
+      serie: query.serie,
+      correlative: query.correlative,
+      from: query.from,
+      to: query.to,
+      page: query.page,
+      limit: query.limit,
+    });
+  }
+
+  @Patch(":id")
+  update(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpUpdatePurchaseOrderDto) {
+    return this.updateOrder.execute({ poId: id, ...dto });
+  }
+
+  @Patch(":id/active")
+  setActive(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpSetPurchaseOrderActiveDto) {
+    return this.setActiveOrder.execute({ poId: id, isActive: dto.isActive });
+  }
+
+  @Get(":id/items")
+  listItemsByOrder(@Param("id", ParseUUIDPipe) id: string) {
+    return this.listItems.execute({ poId: id });
+  }
+
+  @Delete(":id/items/:itemId")
+  removeItemFromOrder(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Param("itemId", ParseUUIDPipe) itemId: string,
+  ) {
+    return this.removeItem.execute({ poItemId: itemId });
+  }
+}

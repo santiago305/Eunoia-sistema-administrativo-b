@@ -14,7 +14,7 @@ export interface ProductRepository {
 
   findById(id: ProductId, tx?: TransactionContext): Promise<Product | null>;
   findByName(name: string, tx?: TransactionContext): Promise<Product | null>;
-  listRowMaterialProduct(tx?: TransactionContext): Promise<RowMaterial[]>;
+  listRowMaterialProduct(row?: boolean,tx?: TransactionContext): Promise<RowMaterial[]>;
 
   update(
     params: {

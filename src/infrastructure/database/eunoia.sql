@@ -722,6 +722,31 @@ create table supplier_variants (
 -- CANCELLED: cancelado
 create type po_status as enum ('DRAFT','SENT','PARTIAL','RECEIVED','CANCELLED');
 
+CREATE TYPE afect_igv_type AS ENUM ('10', '20');
+--10: OPERACIONES GRAVADAS, LAS CUALES SI TIENEN IGV
+--20: OPERACIONES EXONERADAS, SIN IGV
+
+CREATE TYPE currency_type  AS ENUM ('PEN', 'USD');
+--PEN: SOLES
+--USD: DOLARES
+
+
+CREATE TYPE pay_doc_type AS ENUM ('PURCHASE', 'SALE');
+--SE DEFINE SI EL DOCUMENTO ES COMPRA O VENTA
+
+CREATE TYPE payment_form_type AS ENUM ('CONTADO', 'CREDITO');
+--SE DEFINE SI ES A CONTADO O A CREDITO LOS PAGOS DE LA VENTA O COMPRA
+
+CREATE TYPE payment_type AS ENUM ('YAPE', 'PLIN', 'TRANSFERENCIA', 'EFECTIVO', 'TARJETA');
+--TIPOS DE PAGO
+
+
+CREATE TYPE voucher_doc_type AS ENUM ('01', '03', '07', '08');
+--01: FACTURA
+--03: BOLETA
+--07: NOTA DE CREDITO
+--08: NOTA DE DEBITO
+
 -- ---------------------------------------------------------
 -- TABLA: purchase_orders
 -- Para qué sirve:
@@ -741,12 +766,34 @@ create table purchase_orders (
   po_id uuid primary key default uuid_generate_v4(),
   supplier_id uuid not null references suppliers(supplier_id),
   warehouse_id uuid not null references warehouses(warehouse_id),
-  status po_status not null default 'DRAFT',
-  expected_at date,
-  note text,
-  created_at timestamptz not null default now()
-);
+  document_type voucher_doc_type,
+  serie varchar,
+  correlative int,
 
+  currency currency_type,
+  payment_form payment_form_type,
+  credit_days int NOT NULL DEFAULT 0,
+  num_quotas int NOT NULL DEFAULT 0,
+
+  total_taxed numeric(12, 2) NOT NULL DEFAULT 0,
+  total_exempted numeric(12, 2) NOT NULL DEFAULT 0,
+  total_igv numeric(12, 2) NOT NULL DEFAULT 0,
+  purchase_value numeric(12, 2) NOT NULL DEFAULT 0,
+  total numeric(12, 2),
+
+  note text,
+
+  status public.po_status NOT NULL DEFAULT 'DRAFT',
+  expected_at date,
+  date_issue date,
+  date_expiration date,
+  is_active boolean NOT NULL DEFAULT true,
+
+  created_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  PRIMARY KEY (po_id)
+  constraint uq_po_doc unique (document_type, serie, correlative)
+);
 -- ---------------------------------------------------------
 -- TABLA: purchase_order_items
 -- Para qué sirve:
@@ -760,13 +807,77 @@ create table purchase_orders (
 -- - quantity: cantidad
 -- - unit_cost: costo unitario
 -- ---------------------------------------------------------
-create table purchase_order_items (
-  po_item_id uuid primary key default uuid_generate_v4(),
-  po_id uuid not null references purchase_orders(po_id) on delete cascade,
-  variant_id uuid not null references product_variants(variant_id),
-  quantity int not null check (quantity > 0),
-  unit_cost numeric(12,2) not null
+CREATE TABLE "public"."purchase_order_items" (
+  "po_item_id" uuid NOT NULL DEFAULT uuid_generate_v4(),
+  "po_id" uuid NOT NULL REFERENCES purchase_orders(po_id),
+  "stock_item_id" uuid NOT NULL REFERENCES stock_items(stock_item_id),
+  "equivalence" varchar,
+  "unit_base" varchar,
+  "factor" int,
+
+  "afect_type" afect_igv_type,
+
+  "quantity" int NOT NULL,
+  "porcentage_igv" numeric,
+  "base_without_igv" numeric(12, 2),
+  "amount_igv" numeric(12, 2),
+
+  "unit_value" numeric(12, 2),
+  "unit_price" numeric(12, 2) NOT NULL,
+  "purchase_value" numeric(12, 2),
+
+  PRIMARY KEY ("po_item_id"),
+  CHECK ("quantity" > 0)
+  CHECK ("porcentage_igv" >= 0)
+  CHECK ("base_without_igv" >= 0)
+  CHECK ("amount_igv" >= 0)
+  CHECK ("unit_value" >= 0)
+  CHECK ("unit_price" >= 0)
 );
+
+-- =========================
+-- NUEVAS TABLAS -- PAYMENTS
+-- =========================
+
+
+CREATE TABLE public.payment_documents (
+  pay_doc_id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  method payment_type NOT NULL,
+  date date NOT NULL,
+  operation_number varchar(60),
+  currency currency_type NOT NULL,
+  amount numeric(12, 2) NOT NULL,
+  note varchar(225),
+  from_document_type pay_doc_type NOT NULL,
+  PRIMARY KEY (pay_doc_id),
+  check (amount > 0)
+);
+
+create table public.credit_quotas (
+  quota_id uuid primary key default uuid_generate_v4(),
+  number int not null check (number >= 1),
+  expiration_date date not null,
+  payment_date date,
+  total_to_pay numeric(12,2) not null check (total_to_pay > 0),
+  total_paid numeric(12,2) not null default 0 check (total_paid >= 0 and total_paid <= total_to_pay),
+  created_at timestamptz not null default now()
+);
+
+CREATE TABLE public.payment_purchase (
+  pay_doc_id uuid PRIMARY KEY REFERENCES public.payment_documents(pay_doc_id) ON DELETE CASCADE,
+  po_id uuid NOT NULL REFERENCES public.purchase_orders(po_id),
+  quota_id uuid NULL REFERENCES public.credit_quotas(quota_id) ON DELETE SET NULL
+);
+
+
+create table public.credit_quota_purchases (
+  quota_id uuid primary key references public.credit_quotas(quota_id) on delete cascade,
+  po_id uuid not null references public.purchase_orders(po_id)
+);
+
+create index idx_payment_purchase_po on public.payment_purchase(po_id);
+create index idx_payment_purchase_quota on public.payment_purchase(quota_id);
+create index idx_quota_purchases_po on public.credit_quota_purchases(po_id);
 
 -- =========================
 -- 8) Producción

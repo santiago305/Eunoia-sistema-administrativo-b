@@ -8,6 +8,8 @@ import { Money } from "src/modules/catalog/domain/value-object/money.vo";
 import { VariantAttributes } from "src/modules/catalog/domain/value-object/variant-attributes.vo";
 import { generateUniqueSku } from "src/shared/application/usecases/generate-unique-sku";
 import { SKU_COUNTER_REPOSITORY, SkuCounterRepository } from "src/modules/catalog/domain/ports/sku-counter.repository";
+import { ProductEquivalence } from "src/modules/catalog/domain/entity/product-equivalence";
+import { PRODUCT_EQUIVALENCE_REPOSITORY, ProductEquivalenceRepository } from "src/modules/catalog/domain/ports/product-equivalence.repository";
 
 export class CreateProduct {
   constructor(
@@ -15,6 +17,7 @@ export class CreateProduct {
     @Inject(PRODUCT_REPOSITORY) private readonly productRepo: ProductRepository,
     @Inject(SKU_COUNTER_REPOSITORY) private readonly skuCounterRepo: SkuCounterRepository,
     @Inject(CLOCK) private readonly clock: ClockPort,
+    @Inject(PRODUCT_EQUIVALENCE_REPOSITORY) private readonly equivalenceRepo: ProductEquivalenceRepository,
   ) {}
 
   async execute(input: CreateProductInput): Promise<Product> {
@@ -69,14 +72,42 @@ export class CreateProduct {
         null,
       );
 
-      try { 
-        return await this.productRepo.create(product, tx);
+      let createdProduct: Product;
+      try {
+        createdProduct = await this.productRepo.create(product, tx);
       } catch {
         throw new InternalServerErrorException({
           type: "error",
           message: "No se logro crear el producto, por favor intente de nuevo",
         });
       }
+
+      const productId = createdProduct.getId()?.value;
+      if (!productId) {
+        throw new InternalServerErrorException({
+          type: "error",
+          message: "No se logro crear el producto, por favor intente de nuevo",
+        });
+      }
+
+      const equivalence = new ProductEquivalence(
+        undefined,
+        productId,
+        input.baseUnitId,
+        input.baseUnitId,
+        1,
+      );
+
+      try {
+        await this.equivalenceRepo.create(equivalence, tx);
+      } catch {
+        throw new InternalServerErrorException({
+          type: "error",
+          message: "No se logro crear la equivalencia de unidad base",
+        });
+      }
+
+      return createdProduct;
     });
   }
 }

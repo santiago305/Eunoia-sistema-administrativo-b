@@ -3,6 +3,7 @@ import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard
 import { CreateWarehouseUsecase } from "src/modules/warehouses/application/usecases/warehouse/create.usecase";
 import { GetWarehouseUsecase } from "src/modules/warehouses/application/usecases/warehouse/get-by-id.usecase";
 import { ListWarehousesUsecase } from "src/modules/warehouses/application/usecases/warehouse/list.usecase";
+import { ListActiveWarehousesUsecase } from "src/modules/warehouses/application/usecases/warehouse/list-active.usecase";
 import { SetWarehouseActiveUsecase } from "src/modules/warehouses/application/usecases/warehouse/set-active.usecase";
 import { UpdateWarehouseUsecase } from "src/modules/warehouses/application/usecases/warehouse/update.usecase";
 import { GetWarehouseWithLocationsUsecase } from "src/modules/warehouses/application/usecases/warehouse/get-with-locations.usecase";
@@ -20,6 +21,7 @@ export class WarehousesController {
     private readonly updateWarehouse: UpdateWarehouseUsecase,
     private readonly setWarehouseActive: SetWarehouseActiveUsecase,
     private readonly listWarehouses: ListWarehousesUsecase,
+    private readonly listActiveWarehouses: ListActiveWarehousesUsecase,
     private readonly getWarehouse: GetWarehouseUsecase,
     private readonly getWarehouseWithLocations: GetWarehouseWithLocationsUsecase,
   ) {}
@@ -45,6 +47,11 @@ export class WarehousesController {
       district: query.district,
       address: query.address,
     });
+  }
+
+  @Get("active")
+  listActive() {
+    return this.listActiveWarehouses.execute();
   }
 
   @Get(":id")

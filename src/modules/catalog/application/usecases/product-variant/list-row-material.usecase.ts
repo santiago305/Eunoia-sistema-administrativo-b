@@ -17,24 +17,27 @@ export class ListRowMaterialProductVariants {
     private readonly variantRepo: ProductVariantRepository,
   ) {}
 
-  async execute(): Promise<RowMaterial[]> {
+  async execute(row?:boolean): Promise<RowMaterial[]> {
+    //reutilizo la misma funcion pero ahora listo los productos terminados en ves
+    //de las materias primas
+
     const [products, variants] = await Promise.all([
-      this.productRepo.listRowMaterialProduct(),
-      this.variantRepo.listRowMaterialVariant(),
+      this.productRepo.listRowMaterialProduct(row),
+      this.variantRepo.listRowMaterialVariant(row),
     ]);
 
     const rows = [...products, ...variants];
 
     rows.sort((a, b) => a.sku.localeCompare(b.sku));
 
-    return rows.map((row) => ({
-      primaId: row.primaId,
-      productName: row.productName,
-      productDescription: row.productDescription,
-      baseUnitId: row.baseUnitId,
-      sku: row.sku,
-      unitCode: row.unitCode,
-      unitName: row.unitName,
+    return rows.map((r) => ({
+      ...(row ? { primaId: r.primaId } : { stockItemId: r.primaId }),
+      productName: r.productName,
+      productDescription: r.productDescription,
+      baseUnitId: r.baseUnitId,
+      sku: r.sku,
+      unitCode: r.unitCode,
+      unitName: r.unitName,
     }));
   }
 }
