@@ -13,6 +13,7 @@ import { Money } from 'src/modules/catalog/domain/value-object/money.vo';
 import { ProductVariantWithProductInfo } from 'src/modules/catalog/domain/read-models/product-variant-with-product-info.rm';
 import { AttributesRecord } from 'src/modules/catalog/domain/value-object/variant-attributes.vo';
 import { RowMaterial } from 'src/modules/catalog/domain/read-models/row-materials';
+import { ProductType } from 'src/modules/catalog/domain/value-object/productType';
 
 @Injectable()
 export class ProductVariantTypeormRepository implements ProductVariantRepository {
@@ -211,13 +212,20 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
     return rows.map((row) => this.toDomain(row));
   }
 
-  async listRowMaterialVariant(tx?: TransactionContext): Promise<RowMaterial[]> {
-    const raw = await this.getManager(tx)
+  async listRowMaterialVariant(row: boolean = true, tx?: TransactionContext): Promise<RowMaterial[]> {
+    const qb = this.getManager(tx)
       .getRepository(ProductVariantEntity)
       .createQueryBuilder('v')
       .innerJoin(ProductEntity, 'p', 'p.product_id = v.product_id')
-      .leftJoin(UnitEntity, 'u', 'u.unit_id = p.base_unit_id')
-      .where('p.type = :type', { type: 'PRIMA' })
+      .leftJoin(UnitEntity, 'u', 'u.unit_id = p.base_unit_id');
+
+    if (row) {
+      qb.where('p.type = :type', { type: ProductType.PRIMA });
+    } else {
+      qb.where('p.type = :type', { type: ProductType.FINISHED });
+    }
+
+    const raw = await qb
       .select([
         'v.id',
         'v.productId',

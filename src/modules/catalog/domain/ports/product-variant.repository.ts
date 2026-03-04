@@ -33,7 +33,7 @@ export interface ProductVariantRepository {
   findByBarcode(barcode: string, tx?: TransactionContext): Promise<ProductVariant | null>;
 
   listByProductId(productId: ProductId, tx?: TransactionContext): Promise<ProductVariant[]>;
-  listRowMaterialVariant(tx?: TransactionContext): Promise<RowMaterial[]>;
+  listRowMaterialVariant(row?:boolean, tx?: TransactionContext): Promise<RowMaterial[]>;
   listActiveByProductId(productId: ProductId, tx?: TransactionContext): Promise<ProductVariant[]>;
   listInactiveByProductId(productId: ProductId, tx?: TransactionContext): Promise<ProductVariant[]>;
 

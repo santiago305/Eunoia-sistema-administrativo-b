@@ -17,6 +17,7 @@ import { UpdateSupplierUsecase } from "./application/usecases/supplier/update.us
 import { SetSupplierActiveUsecase } from "./application/usecases/supplier/set-active.usecase";
 import { ListSuppliersUsecase } from "./application/usecases/supplier/list.usecase";
 import { GetSupplierUsecase } from "./application/usecases/supplier/get-by-id.usecase";
+import { ListAllActiveSuppliersUsecase } from "./application/usecases/supplier/list-all-active.usecase";
 import { CreateSupplierVariantUsecase } from "./application/usecases/supplier-variant/create.usecase";
 import { UpdateSupplierVariantUsecase } from "./application/usecases/supplier-variant/update.usecase";
 import { GetSupplierVariantUsecase } from "./application/usecases/supplier-variant/get-by-id.usecase";
@@ -33,6 +34,7 @@ import { SUPPLIER_VARIANT_REPOSITORY } from "./domain/ports/supplier-variant.rep
     SetSupplierActiveUsecase,
     ListSuppliersUsecase,
     GetSupplierUsecase,
+    ListAllActiveSuppliersUsecase,
     CreateSupplierVariantUsecase,
     UpdateSupplierVariantUsecase,
     GetSupplierVariantUsecase,

@@ -1,0 +1,43 @@
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Query, UseGuards } from "@nestjs/common";
+import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { CreateCreditQuotaUsecase } from "src/modules/payments/application/usecases/credit-quota/create.usecase";
+import { DeleteCreditQuotaUsecase } from "src/modules/payments/application/usecases/credit-quota/delete.usecase";
+import { GetCreditQuotaUsecase } from "src/modules/payments/application/usecases/credit-quota/get-by-id.usecase";
+import { ListCreditQuotasUsecase } from "src/modules/payments/application/usecases/credit-quota/list.usecase";
+import { HttpCreateCreditQuotaDto } from "../dtos/credit-quota/http-credit-quota-create.dto";
+import { HttpListCreditQuotasQueryDto } from "../dtos/credit-quota/http-credit-quota-list.dto";
+
+@Controller("payments/credit-quotas")
+@UseGuards(JwtAuthGuard)
+export class CreditQuotasController {
+  constructor(
+    private readonly createQuota: CreateCreditQuotaUsecase,
+    private readonly deleteQuota: DeleteCreditQuotaUsecase,
+    private readonly getQuota: GetCreditQuotaUsecase,
+    private readonly listQuotas: ListCreditQuotasUsecase,
+  ) {}
+
+  @Post()
+  create(@Body() dto: HttpCreateCreditQuotaDto) {
+    return this.createQuota.execute(dto);
+  }
+
+  @Get()
+  list(@Query() query: HttpListCreditQuotasQueryDto) {
+    return this.listQuotas.execute({
+      poId: query.poId,
+      page: query.page,
+      limit: query.limit,
+    });
+  }
+
+  @Get(":id")
+  getById(@Param("id", ParseUUIDPipe) id: string) {
+    return this.getQuota.execute({ quotaId: id });
+  }
+
+  @Delete(":id")
+  remove(@Param("id", ParseUUIDPipe) id: string) {
+    return this.deleteQuota.execute(id);
+  }
+}

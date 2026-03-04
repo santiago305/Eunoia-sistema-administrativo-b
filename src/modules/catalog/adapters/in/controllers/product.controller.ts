@@ -12,6 +12,7 @@ import { HttpCreateProductDto } from '../dtos/products/http-product-create.dto'
 import { HttpUpdateProductDto } from '../dtos/products/http-product-update.dto'
 import { HttpSetProductActiveDto } from '../dtos/products/http-product-set-active.dto'
 import { ListProductQueryDto } from '../dtos/products/http-products-list.dto';
+import { ListRowMaterialProductVariants } from 'src/modules/catalog/application/usecases/product-variant/list-row-material.usecase';
 @Controller('catalog/products')
 @UseGuards(JwtAuthGuard)
 export class ProductsController {
@@ -24,6 +25,7 @@ export class ProductsController {
     private readonly listVariants: ListProductVariants,
     private readonly getWithVariants: GetProductWithVariants,
     private readonly createStockItemForProduct: CreateStockItemForProduct,
+    private readonly listRowMaterial: ListRowMaterialProductVariants,
 
   ) {}
 
@@ -69,6 +71,11 @@ export class ProductsController {
       page: query.page,
       limit: query.limit,
     });
+  }
+  @Get('variants/finished')
+  listRowMaterialVariants() {
+    const row = false;
+    return this.listRowMaterial.execute(row);
   }
 
   @Get(':id/variants')

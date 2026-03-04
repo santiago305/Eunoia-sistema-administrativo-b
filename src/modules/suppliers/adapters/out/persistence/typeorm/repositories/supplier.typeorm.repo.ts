@@ -171,6 +171,15 @@ export class SupplierTypeormRepository implements SupplierRepository {
     return { items: rows.map((r) => this.toDomain(r)), total };
   }
 
+  async listAllActive(tx?: TransactionContext): Promise<{ items: Supplier[] }> {
+    const rows = await this.getRepo(tx)
+      .createQueryBuilder("s")
+      .where("s.isActive = :isActive", { isActive: true })
+      .orderBy("s.createdAt", "DESC")
+      .getMany();
+    return { items: rows.map((r) => this.toDomain(r)) };
+  }
+
   async setActive(supplierId: string, isActive: boolean, tx?: TransactionContext): Promise<void> {
     await this.getRepo(tx).update({ id: supplierId }, { isActive });
   }

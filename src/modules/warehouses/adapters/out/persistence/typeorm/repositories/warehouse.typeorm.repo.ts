@@ -97,6 +97,14 @@ export class WarehouseTypeormRepo implements WarehouseRepository {
     return this.toDomain(saved);
   }
 
+  async listActive(tx?: TransactionContext): Promise<Warehouse[]> {
+    const rows = await this.getRepo(tx).find({
+      where: { isActive: true },
+      order: { createdAt: "DESC" },
+    });
+    return rows.map((r) => this.toDomain(r));
+  }
+
   async update(
     params: {
       warehouseId: WarehouseId;
