@@ -62,13 +62,13 @@ export class PurchaseOrderEntity {
   @Column({ name: "is_active", type: "boolean", default: true })
   isActive: boolean;
 
-  @Column({ name: "expected_at", type: "date", nullable: true })
+  @Column({ name: "expected_at", type: "timestamptz", nullable: true })
   expectedAt?: Date | null;
 
-  @Column({ name: "date_issue", type: "date", nullable: true })
+  @Column({ name: "date_issue", type: "timestamptz", nullable: true })
   dateIssue?: Date | null;
 
-  @Column({ name: "date_expiration", type: "date", nullable: true })
+  @Column({ name: "date_expiration", type: "timestamptz", nullable: true })
   dateExpiration?: Date | null;
 
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })

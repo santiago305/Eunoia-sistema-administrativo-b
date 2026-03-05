@@ -5,7 +5,10 @@ export const CREDIT_QUOTA_REPOSITORY = Symbol("CREDIT_QUOTA_REPOSITORY");
 
 export interface CreditQuotaRepository {
   findById(quotaId: string, tx?: TransactionContext): Promise<CreditQuota | null>;
+  findByPoId(poId: string, tx?: TransactionContext): Promise<CreditQuota[]>;
   create(quota: CreditQuota, tx?: TransactionContext): Promise<CreditQuota>;
+  updateTotalPaid(quotaId: string, totalPaid: number, tx?: TransactionContext): Promise<void>;
+  updatePaymentDate(quotaId: string, paymentDate: Date | null, tx?: TransactionContext): Promise<void>;
   deleteById(quotaId: string, tx?: TransactionContext): Promise<void>;
   list(
     params: { poId?: string; page?: number; limit?: number },

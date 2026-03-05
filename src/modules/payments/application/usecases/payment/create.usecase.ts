@@ -25,6 +25,8 @@ export class CreatePaymentUsecase {
 
   async execute(input: CreatePaymentInput, poId?:string): Promise<{ type: string; message: string }> {
     return this.uow.runInTransaction(async (tx) => {
+      let quotaToUpdate: { quotaId: string; totalPaid: number } | null = null;
+
       if (input.amount <= 0) {
         throw new BadRequestException({
           type: "error",
@@ -48,6 +50,7 @@ export class CreatePaymentUsecase {
             message: "Cuota no encontrada",
           });
         }
+        quotaToUpdate = { quotaId: quota.quotaId, totalPaid: quota.totalPaid };
 
         const link = await this.creditQuotaPurchaseRepo.findByQuotaId(input.quotaId, tx);
         if (!link) {
@@ -89,6 +92,11 @@ export class CreatePaymentUsecase {
       const purchaseLink = new PaymentPurchase(created.payDocId, poId ?? input.poId, input.quotaId);
       try {
         await this.paymentPurchaseRepo.create(purchaseLink, tx);
+        if (quotaToUpdate) {
+          const newTotalPaid = quotaToUpdate.totalPaid + input.amount;
+          await this.creditQuotaRepo.updateTotalPaid(quotaToUpdate.quotaId, newTotalPaid, tx);
+          await this.creditQuotaRepo.updatePaymentDate(quotaToUpdate.quotaId, date, tx);
+        }
       } catch {
         throw new BadRequestException({
           type: "error",

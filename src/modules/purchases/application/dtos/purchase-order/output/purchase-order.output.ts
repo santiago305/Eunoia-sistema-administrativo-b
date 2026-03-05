@@ -2,6 +2,7 @@ import { CurrencyType } from "src/modules/purchases/domain/value-objects/currenc
 import { PaymentFormType } from "src/modules/purchases/domain/value-objects/payment-form-type";
 import { PurchaseOrderStatus } from "src/modules/purchases/domain/value-objects/po-status";
 import { VoucherDocType } from "src/modules/purchases/domain/value-objects/voucher-doc-type";
+import { PaymentOutput } from "src/modules/payments/application/dtos/payment/output/payment.output";
 
 export interface PurchaseOrderOutput {
   poId: string;
@@ -19,6 +20,9 @@ export interface PurchaseOrderOutput {
   totalIgv: number;
   purchaseValue: number;
   total?: number;
+  totalPaid?: number;
+  totalToPay?: number;
+  payments?: PaymentOutput[];
   note?: string;
   status: PurchaseOrderStatus;
   isActive: boolean;

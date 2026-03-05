@@ -13,6 +13,10 @@ export interface WarehouseRepository{
         id: WarehouseId,
         tx?: TransactionContext,
     ): Promise<{ warehouse: Warehouse; items: WarehouseLocation[] } | null>;
+    findByName(
+        name: string,
+        tx?: TransactionContext
+    ): Promise<Warehouse | null>;
     
     create(
         warehouse: Warehouse,

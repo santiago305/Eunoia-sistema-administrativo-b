@@ -16,10 +16,12 @@ import { CreditQuotaPurchaseTypeormRepository } from "./adapters/out/persistence
 import { CreatePaymentUsecase } from "./application/usecases/payment/create.usecase";
 import { DeletePaymentUsecase } from "./application/usecases/payment/delete.usecase";
 import { GetPaymentUsecase } from "./application/usecases/payment/get-by-id.usecase";
+import { GetPaymentsByPoIdUsecase } from "./application/usecases/payment/get-by-po-id.usecase";
 import { ListPaymentsUsecase } from "./application/usecases/payment/list.usecase";
 import { CreateCreditQuotaUsecase } from "./application/usecases/credit-quota/create.usecase";
 import { DeleteCreditQuotaUsecase } from "./application/usecases/credit-quota/delete.usecase";
 import { GetCreditQuotaUsecase } from "./application/usecases/credit-quota/get-by-id.usecase";
+import { GetCreditQuotasByPoIdUsecase } from "./application/usecases/credit-quota/get-by-po-id.usecase";
 import { ListCreditQuotasUsecase } from "./application/usecases/credit-quota/list.usecase";
 import { PAYMENT_DOCUMENT_REPOSITORY } from "./domain/ports/payment-document.repository";
 import { PAYMENT_PURCHASE_REPOSITORY } from "./domain/ports/payment-purchase.repository";
@@ -33,10 +35,12 @@ import { CREDIT_QUOTA_PURCHASE_REPOSITORY } from "./domain/ports/credit-quota-pu
     CreatePaymentUsecase,
     DeletePaymentUsecase,
     GetPaymentUsecase,
+    GetPaymentsByPoIdUsecase,
     ListPaymentsUsecase,
     CreateCreditQuotaUsecase,
     DeleteCreditQuotaUsecase,
     GetCreditQuotaUsecase,
+    GetCreditQuotasByPoIdUsecase,
     ListCreditQuotasUsecase,
     { provide: PAYMENT_DOCUMENT_REPOSITORY, useClass: PaymentDocumentTypeormRepository },
     { provide: PAYMENT_PURCHASE_REPOSITORY, useClass: PaymentPurchaseTypeormRepository },

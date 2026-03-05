@@ -68,6 +68,60 @@ export class PaymentPurchaseTypeormRepository implements PaymentPurchaseReposito
     return row ? this.toDetail(row) : null;
   }
 
+  async findLatestByQuotaId(
+    quotaId: string,
+    excludePayDocId?: string,
+    tx?: TransactionContext,
+  ): Promise<PaymentPurchaseDetail | null> {
+    const qb = this.getRepo(tx)
+      .createQueryBuilder("pp")
+      .innerJoin(PaymentDocumentEntity, "pd", "pd.pay_doc_id = pp.pay_doc_id")
+      .where("pp.quota_id = :quotaId", { quotaId })
+      .select([
+        "pp.pay_doc_id AS pay_doc_id",
+        "pp.po_id AS po_id",
+        "pp.quota_id AS quota_id",
+        "pd.method AS method",
+        "pd.date AS date",
+        "pd.operation_number AS operation_number",
+        "pd.currency AS currency",
+        "pd.amount AS amount",
+        "pd.note AS note",
+        "pd.from_document_type AS from_document_type",
+      ])
+      .orderBy("pd.date", "DESC");
+
+    if (excludePayDocId) {
+      qb.andWhere("pp.pay_doc_id != :excludePayDocId", { excludePayDocId });
+    }
+
+    const row = await qb.getRawOne();
+    return row ? this.toDetail(row) : null;
+  }
+
+  async findByPoId(poId: string, tx?: TransactionContext): Promise<PaymentPurchaseDetail[]> {
+    const qb = this.getRepo(tx)
+      .createQueryBuilder("pp")
+      .innerJoin(PaymentDocumentEntity, "pd", "pd.pay_doc_id = pp.pay_doc_id")
+      .where("pp.po_id = :poId", { poId })
+      .select([
+        "pp.pay_doc_id AS pay_doc_id",
+        "pp.po_id AS po_id",
+        "pp.quota_id AS quota_id",
+        "pd.method AS method",
+        "pd.date AS date",
+        "pd.operation_number AS operation_number",
+        "pd.currency AS currency",
+        "pd.amount AS amount",
+        "pd.note AS note",
+        "pd.from_document_type AS from_document_type",
+      ])
+      .orderBy("pd.date", "DESC");
+
+    const rows = await qb.getRawMany();
+    return rows.map((row) => this.toDetail(row));
+  }
+
   async create(link: PaymentPurchase, tx?: TransactionContext): Promise<PaymentPurchase> {
     const repo = this.getRepo(tx);
     const row = repo.create({

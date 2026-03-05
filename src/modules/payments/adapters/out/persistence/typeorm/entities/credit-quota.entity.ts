@@ -8,10 +8,10 @@ export class CreditQuotaEntity {
   @Column({ name: "number", type: "int" })
   number: number;
 
-  @Column({ name: "expiration_date", type: "date" })
+  @Column({ name: "expiration_date", type: "timestamptz" })
   expirationDate: Date;
 
-  @Column({ name: "payment_date", type: "date", nullable: true })
+  @Column({ name: "payment_date", type: "timestamptz", nullable: true })
   paymentDate?: Date | null;
 
   @Column({ name: "total_to_pay", type: "numeric", precision: 12, scale: 2 })

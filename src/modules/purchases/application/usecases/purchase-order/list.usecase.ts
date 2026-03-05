@@ -2,13 +2,17 @@ import { Inject } from "@nestjs/common";
 import { PaginatedResult } from "src/shared/utilidades/dto/paginateResult";
 import { ParseDateLocal } from "src/shared/utilidades/utils/ParseDates";
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
+import { PAYMENT_PURCHASE_REPOSITORY, PaymentPurchaseRepository } from "src/modules/payments/domain/ports/payment-purchase.repository";
 import { ListPurchaseOrdersInput } from "../../dtos/purchase-order/input/list.input";
 import { PurchaseOrderOutput } from "../../dtos/purchase-order/output/purchase-order.output";
+import { PaymentOutput } from "src/modules/payments/application/dtos/payment/output/payment.output";
 
 export class ListPurchaseOrdersUsecase {
   constructor(
     @Inject(PURCHASE_ORDER)
     private readonly purchaseRepo: PurchaseOrderRepository,
+    @Inject(PAYMENT_PURCHASE_REPOSITORY)
+    private readonly paymentPurchaseRepo: PaymentPurchaseRepository,
   ) {}
 
   async execute(input: ListPurchaseOrdersInput): Promise<PaginatedResult<PurchaseOrderOutput>> {
@@ -28,31 +32,56 @@ export class ListPurchaseOrdersUsecase {
       limit,
     });
 
+    const itemsWithPayments = await Promise.all(
+      items.map(async (row) => {
+        const payments = await this.paymentPurchaseRepo.findByPoId(row.poId);
+        const paymentOutputs: PaymentOutput[] = payments.map((p) => ({
+          payDocId: p.payDocId,
+          method: p.method,
+          date: p.date,
+          operationNumber: p.operationNumber ?? null,
+          currency: p.currency,
+          amount: p.amount,
+          note: p.note ?? null,
+          fromDocumentType: p.fromDocumentType,
+          poId: p.poId,
+          quotaId: p.quotaId ?? null,
+        }));
+
+        const totalPaid = paymentOutputs.reduce((sum, p) => sum + (p.amount ?? 0), 0);
+        const totalPurchase = row.total?.getAmount() ?? 0;
+
+        return {
+          poId: row.poId,
+          supplierId: row.supplierId,
+          warehouseId: row.warehouseId,
+          documentType: row.documentType,
+          serie: row.serie,
+          correlative: row.correlative,
+          currency: row.currency,
+          paymentForm: row.paymentForm,
+          creditDays: row.creditDays,
+          numQuotas: row.numQuotas,
+          totalTaxed: row.totalTaxed.getAmount(),
+          totalExempted: row.totalExempted.getAmount(),
+          totalIgv: row.totalIgv.getAmount(),
+          purchaseValue: row.purchaseValue.getAmount(),
+          total: totalPurchase,
+          totalPaid,
+          totalToPay: totalPurchase - totalPaid,
+          note: row.note,
+          status: row.status,
+          isActive: row.isActive,
+          expectedAt: row.expectedAt,
+          dateIssue: row.dateIssue,
+          dateExpiration: row.dateExpiration,
+          createdAt: row.createdAt,
+        };
+      }),
+    );
+
     return {
-      items: items.map((row) => ({
-        poId: row.poId,
-        supplierId: row.supplierId,
-        warehouseId: row.warehouseId,
-        documentType: row.documentType,
-        serie: row.serie,
-        correlative: row.correlative,
-        currency: row.currency,
-        paymentForm: row.paymentForm,
-        creditDays: row.creditDays,
-        numQuotas: row.numQuotas,
-        totalTaxed: row.totalTaxed.getAmount(),
-        totalExempted: row.totalExempted.getAmount(),
-        totalIgv: row.totalIgv.getAmount(),
-        purchaseValue: row.purchaseValue.getAmount(),
-        total: row.total.getAmount(),
-        note: row.note,
-        status: row.status,
-        isActive: row.isActive,
-        expectedAt: row.expectedAt,
-        dateIssue: row.dateIssue,
-        dateExpiration: row.dateExpiration,
-        createdAt: row.createdAt,
-      })),
+      items: itemsWithPayments,
       total,
       page,
       limit,

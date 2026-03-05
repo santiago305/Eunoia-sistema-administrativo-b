@@ -3,6 +3,7 @@ import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard
 import { CreateCreditQuotaUsecase } from "src/modules/payments/application/usecases/credit-quota/create.usecase";
 import { DeleteCreditQuotaUsecase } from "src/modules/payments/application/usecases/credit-quota/delete.usecase";
 import { GetCreditQuotaUsecase } from "src/modules/payments/application/usecases/credit-quota/get-by-id.usecase";
+import { GetCreditQuotasByPoIdUsecase } from "src/modules/payments/application/usecases/credit-quota/get-by-po-id.usecase";
 import { ListCreditQuotasUsecase } from "src/modules/payments/application/usecases/credit-quota/list.usecase";
 import { HttpCreateCreditQuotaDto } from "../dtos/credit-quota/http-credit-quota-create.dto";
 import { HttpListCreditQuotasQueryDto } from "../dtos/credit-quota/http-credit-quota-list.dto";
@@ -14,6 +15,7 @@ export class CreditQuotasController {
     private readonly createQuota: CreateCreditQuotaUsecase,
     private readonly deleteQuota: DeleteCreditQuotaUsecase,
     private readonly getQuota: GetCreditQuotaUsecase,
+    private readonly getQuotasByPoId: GetCreditQuotasByPoIdUsecase,
     private readonly listQuotas: ListCreditQuotasUsecase,
   ) {}
 
@@ -29,6 +31,11 @@ export class CreditQuotasController {
       page: query.page,
       limit: query.limit,
     });
+  }
+
+  @Get("get-by-po/:poId")
+  listByPoId(@Param("poId", ParseUUIDPipe) poId: string) {
+    return this.getQuotasByPoId.execute({ poId });
   }
 
   @Get(":id")
