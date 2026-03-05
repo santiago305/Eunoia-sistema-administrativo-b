@@ -3,9 +3,7 @@ import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port"
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "src/modules/warehouses/domain/ports/warehouse.repository.port";
 import { Warehouse } from "src/modules/warehouses/domain/entities/warehouse";
-import { WarehouseId } from "src/modules/warehouses/domain/value-objects/warehouse-id.vo";
 import { CreateWarehouseInput } from "../../dtos/warehouse/input/create.input";
-import { WarehouseOutput } from "../../dtos/warehouse/output/warehouse.out";
 
 export class CreateWarehouseUsecase {
   constructor(
