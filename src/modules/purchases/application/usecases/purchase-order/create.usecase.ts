@@ -121,11 +121,7 @@ export class CreatePurchaseOrderUsecase {
         }
       }
 
-      if (po.paymentForm === PaymentFormType.CONTADO) {
-        if (!input.payments || input.payments.length === 0) {
-          throw new BadRequestException({ type: "error", message: "Debe registrar al menos un pago" });
-        }
-
+      if (po.paymentForm === PaymentFormType.CONTADO && input.payments && input.payments.length > 0) {
         for (const payment of input.payments) {
           if (payment.amount <= 0) {
             throw new BadRequestException({ type: "error", message: "Monto invalido" });
