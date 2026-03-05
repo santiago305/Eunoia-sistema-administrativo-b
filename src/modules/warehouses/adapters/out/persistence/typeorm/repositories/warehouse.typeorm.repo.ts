@@ -78,6 +78,14 @@ export class WarehouseTypeormRepo implements WarehouseRepository {
     return { warehouse: this.toDomain(warehouseRow), items };
   }
 
+  async findByName(name: string, tx?: TransactionContext): Promise<Warehouse | null> {
+    const row = await this.getRepo(tx)
+      .createQueryBuilder("w")
+      .where("LOWER(w.name) = LOWER(:name)", { name })
+      .getOne();
+    return row ? this.toDomain(row) : null;
+  }
+
 
   async create(warehouse: Warehouse, tx?: TransactionContext): Promise<Warehouse> {
     const repo = this.getRepo(tx);

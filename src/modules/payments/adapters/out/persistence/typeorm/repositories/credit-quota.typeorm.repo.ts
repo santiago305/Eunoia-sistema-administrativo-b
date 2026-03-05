@@ -43,6 +43,17 @@ export class CreditQuotaTypeormRepository implements CreditQuotaRepository {
     return row ? this.toDomain(row) : null;
   }
 
+  async findByPoId(poId: string, tx?: TransactionContext): Promise<CreditQuota[]> {
+    const rows = await this.getRepo(tx)
+      .createQueryBuilder("cq")
+      .innerJoin(CreditQuotaPurchaseEntity, "cqp", "cqp.quota_id = cq.quota_id")
+      .where("cqp.po_id = :poId", { poId })
+      .orderBy("cq.createdAt", "ASC")
+      .getMany();
+
+    return rows.map((r) => this.toDomain(r));
+  }
+
   async create(quota: CreditQuota, tx?: TransactionContext): Promise<CreditQuota> {
     const repo = this.getRepo(tx);
     const row = repo.create({
@@ -56,6 +67,14 @@ export class CreditQuotaTypeormRepository implements CreditQuotaRepository {
     });
     const saved = await repo.save(row);
     return this.toDomain(saved);
+  }
+
+  async updateTotalPaid(quotaId: string, totalPaid: number, tx?: TransactionContext): Promise<void> {
+    await this.getRepo(tx).update({ id: quotaId }, { totalPaid });
+  }
+
+  async updatePaymentDate(quotaId: string, paymentDate: Date | null, tx?: TransactionContext): Promise<void> {
+    await this.getRepo(tx).update({ id: quotaId }, { paymentDate });
   }
 
   async deleteById(quotaId: string, tx?: TransactionContext): Promise<void> {

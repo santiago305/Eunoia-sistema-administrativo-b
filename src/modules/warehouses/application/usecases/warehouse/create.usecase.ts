@@ -1,4 +1,3 @@
-// src/modules/warehouses/application/usecases/warehouse/create.usecase.ts
 import { BadRequestException, Inject } from "@nestjs/common";
 import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
@@ -20,6 +19,11 @@ export class CreateWarehouseUsecase {
 
   async execute(input: CreateWarehouseInput): Promise<{message:string, type:string}> {
     return this.uow.runInTransaction(async (tx) => {
+      const existing = await this.warehouseRepo.findByName(input.name, tx);
+      if (existing) {
+        throw new BadRequestException({ type: "error", message: "Ya existe un almacén con ese nombre" });
+      }
+
       const warehouse = new Warehouse(
         undefined,
         input.name,
@@ -33,7 +37,7 @@ export class CreateWarehouseUsecase {
       try {
         await this.warehouseRepo.create(warehouse, tx);
       } catch {
-        new BadRequestException("No se pudo crear el almacen");
+        throw new BadRequestException({ type: "error", message: "No se pudo crear el almacen" });
       }
 
       return {

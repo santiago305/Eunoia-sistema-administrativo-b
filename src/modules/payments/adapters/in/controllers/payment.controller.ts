@@ -3,6 +3,7 @@ import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard
 import { CreatePaymentUsecase } from "src/modules/payments/application/usecases/payment/create.usecase";
 import { DeletePaymentUsecase } from "src/modules/payments/application/usecases/payment/delete.usecase";
 import { GetPaymentUsecase } from "src/modules/payments/application/usecases/payment/get-by-id.usecase";
+import { GetPaymentsByPoIdUsecase } from "src/modules/payments/application/usecases/payment/get-by-po-id.usecase";
 import { ListPaymentsUsecase } from "src/modules/payments/application/usecases/payment/list.usecase";
 import { HttpCreatePaymentDto } from "../dtos/payment/http-payment-create.dto";
 import { HttpListPaymentsQueryDto } from "../dtos/payment/http-payment-list.dto";
@@ -14,6 +15,7 @@ export class PaymentsController {
     private readonly createPayment: CreatePaymentUsecase,
     private readonly deletePayment: DeletePaymentUsecase,
     private readonly getPayment: GetPaymentUsecase,
+    private readonly getPaymentsByPoId: GetPaymentsByPoIdUsecase,
     private readonly listPayments: ListPaymentsUsecase,
   ) {}
 
@@ -30,6 +32,11 @@ export class PaymentsController {
       page: query.page,
       limit: query.limit,
     });
+  }
+
+  @Get("get-by-po/:id")
+  listByPoId(@Param("id", ParseUUIDPipe) id: string) {
+    return this.getPaymentsByPoId.execute({ poId: id });
   }
 
   @Get(":id")

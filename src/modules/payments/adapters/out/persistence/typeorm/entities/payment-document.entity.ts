@@ -11,7 +11,7 @@ export class PaymentDocumentEntity {
   @Column({ name: "method", type: "enum", enum: PaymentType, enumName: "payment_type" })
   method: PaymentType;
 
-  @Column({ name: "date", type: "date" })
+  @Column({ name: "date", type: "timestamptz" })
   date: Date;
 
   @Column({ name: "operation_number", type: "varchar", length: 60, nullable: true })
