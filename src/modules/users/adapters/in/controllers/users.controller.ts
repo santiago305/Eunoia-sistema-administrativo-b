@@ -28,9 +28,11 @@ import { CountUsersByRoleUseCase } from 'src/modules/users/application/use-cases
 import { RestoreUserUseCase } from 'src/modules/users/application/use-cases/restore-user.usecase';
 import { UpdateAvatarUseCase } from 'src/modules/users/application/use-cases/update-avatar.usecase';
 import { UpdateUserUseCase } from 'src/modules/users/application/use-cases/update-user.usecase';
+import { UpdateUserRoleUseCase } from 'src/modules/users/application/use-cases/update-user-role.usecase';
 import { CreateUserDto } from 'src/modules/users/adapters/in/dtos/create-user.dto';
 import { UpdateUserDto } from 'src/modules/users/adapters/in/dtos/update-user.dto';
 import { ChangePasswordDto } from 'src/modules/users/adapters/in/dtos/change-password.dto';
+import { UpdateUserRoleDto } from 'src/modules/users/adapters/in/dtos/update-user-role.dto';
 import { Roles } from 'src/shared/utilidades/decorators';
 import { RoleType } from 'src/shared/constantes/constants';
 import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard';
@@ -57,6 +59,7 @@ export class UsersController {
   constructor(
     private readonly createUserUseCase: CreateUserUseCase,
     private readonly updateUserUseCase: UpdateUserUseCase,
+    private readonly updateUserRoleUseCase: UpdateUserRoleUseCase,
     private readonly changePasswordUseCase: ChangePasswordUseCase,
     private readonly listUsersUseCase: ListUsersUseCase,
     private readonly countUsersByRoleUseCase: CountUsersByRoleUseCase,
@@ -170,6 +173,18 @@ export class UsersController {
   ) {
     return this.updateUserUseCase.execute(user.id, dto, user.id);
   }
+
+  @Patch(':id/role')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(RoleType.ADMIN)
+  updateRole(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserRoleDto,
+    @CurrentUser() user: { role: RoleType }
+  ) {
+    return this.updateUserRoleUseCase.execute(id, dto.roleId, user.role);
+  }
+
   @Delete('me/avatar')
   @UseGuards(JwtAuthGuard)
   removeAvatar(

@@ -17,7 +17,8 @@ Base: `/api/users`
 - `GET /api/users/me` (auth: `JWT`)
 - `GET /api/users/search/:id` (roles: `ADMIN`, `MODERATOR`)
 - `GET /api/users/email/:email` (roles: `ADMIN`, `MODERATOR`)
-- `PATCH /api/users/update/:id` (auth: `JWT`, solo dueno)
+- `PATCH /api/users/me/update` (auth: `JWT`, solo dueno)
+- `PATCH /api/users/:id/role` (roles: `ADMIN`, solo cambia rol)
 - `PATCH /api/users/delete/:id` (roles: `ADMIN`, `MODERATOR`)
 - `PATCH /api/users/restore/:id` (roles: `ADMIN`)
 - `PATCH /api/users/change-password/:id` (auth: `JWT`, solo dueno)
@@ -29,4 +30,4 @@ Base: `/api/users`
 - El upload de avatar usa `multipart/form-data` con campo `avatar`.
 - El backend procesa la imagen y la convierte a `webp` antes de persistirla.
 - Si falla la actualizacion en base de datos despues de guardar el archivo, se intenta limpiar el archivo para evitar huerfanos.
-- El avatar no se modifica por `PATCH /api/users/update/:id`; debe usarse el endpoint dedicado.
+- El avatar no se modifica por `PATCH /api/users/me/update`; debe usarse el endpoint dedicado.

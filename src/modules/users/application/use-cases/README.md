@@ -26,5 +26,7 @@ Casos de uso del modulo de usuarios.
 - `restore-user.usecase.spec.ts`: pruebas unitarias de restauracion.
 - `update-avatar.usecase.ts`: actualiza el avatar del usuario.
 - `update-avatar.usecase.spec.ts`: pruebas unitarias de actualizacion de avatar y errores.
+- `update-user-role.usecase.ts`: cambia el rol de un usuario (solo `ADMIN`).
+- `update-user-role.usecase.spec.ts`: pruebas unitarias de cambio de rol.
 - `update-user.usecase.ts`: actualiza datos del usuario.
 - `update-user.usecase.spec.ts`: pruebas unitarias de actualizacion (avatar y password se gestionan por endpoints dedicados).
