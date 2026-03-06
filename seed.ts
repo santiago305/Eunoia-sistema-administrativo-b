@@ -2,6 +2,7 @@ import { DataSource } from 'typeorm';
 import { envs } from './src/infrastructure/config/envs';
 import { Role } from './src/modules/roles/adapters/out/persistence/typeorm/entities/role.entity';
 import { User } from './src/modules/users/adapters/out/persistence/typeorm/entities/user.entity';
+import { Session } from './src/modules/sessions/adapters/out/persistence/typeorm/entities/session.entity';
 import { DocumentSerie } from 'src/modules/inventory/adapters/out/typeorm/entities/document_serie.entity'
 import { seedRoles } from './src/modules/roles/infrastructure/seed/role.seeder';
 import { seedUser } from './src/modules/users/infrastructure/seed/user.seeder';
@@ -35,7 +36,7 @@ const dataSource = new DataSource({
   database: envs.db.name,
   synchronize: true, // ya sincronizó antes
   logging: false,
-  entities: [Role, User, DocumentSerie, UnitEntity], // puedes agregar más entidades si quieres hacer seed de varias tablas
+  entities: [Role, User, Session, DocumentSerie, UnitEntity], // puedes agregar más entidades si quieres hacer seed de varias tablas
 });
 
 dataSource
@@ -52,3 +53,4 @@ dataSource
   .catch((err) => {
     console.error('Error al hacer seed:', err);
   });
+

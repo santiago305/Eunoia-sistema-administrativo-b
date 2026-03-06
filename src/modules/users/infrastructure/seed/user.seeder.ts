@@ -81,6 +81,10 @@ export const seedUser = async (dataSource: DataSource) => {
     console.log(`A Usuario ${name} creado exitosamente`);
   }
 
+
+    // Generacion masiva desactivada temporalmente:
+    // este bloque crea usuarios aleatorios hasta completar 10,000.
+
   const TARGET_TOTAL_USERS = 10000;
   const existingCount = await userRepo.count();
   const usersToGenerate = Math.max(0, TARGET_TOTAL_USERS - existingCount);
