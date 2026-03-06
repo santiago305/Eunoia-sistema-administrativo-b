@@ -24,8 +24,8 @@ export class TypeormUserReadRepository implements UserReadRepository {
     sortBy?: string;
     order?: 'ASC' | 'DESC';
     status?: UserListStatus;
-  }): Promise<
-    Array<{
+  }): Promise<{
+    items: Array<{
       id: string;
       name: string;
       email: string;
@@ -34,9 +34,12 @@ export class TypeormUserReadRepository implements UserReadRepository {
       roleId: string;
       deleted: boolean;
       createdAt: Date;
-    }>
-  > {
-    const pageSize = 20;
+    }>;
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
+    const pageSize = 15;
     const page = params.page ?? 1;
     const offset = (page - 1) * pageSize;
     // Whitelist de columnas para evitar inyeccion en orderBy
@@ -62,14 +65,14 @@ export class TypeormUserReadRepository implements UserReadRepository {
       .createQueryBuilder('user')
       .leftJoin('user.role', 'role')
       .select([
-        'user.id',
-        'user.name',
-        'user.email',
-        'user.telefono As telefono',
-        'role.description As rol',
-        'role.roleId As roleId',
-        'user.deleted',
-        'user.createdAt',
+        'user.id AS id',
+        'user.name AS name',
+        'user.email AS email',
+        'user.telefono AS telefono',
+        'role.description AS rol',
+        'role.roleId AS roleId',
+        'user.deleted AS deleted',
+        'user.createdAt AS createdAt',
       ])
       .skip(offset)
       .take(pageSize);
@@ -99,9 +102,16 @@ export class TypeormUserReadRepository implements UserReadRepository {
       });
     }
 
+    const total = await query.clone().getCount();
     query.orderBy(sortBy, order);
+    const items = await query.getRawMany();
 
-    return query.getRawMany();
+    return {
+      items,
+      total,
+      page,
+      pageSize,
+    };
   }
 
   async countUsersByRole(params: {
@@ -339,3 +349,4 @@ export class TypeormUserReadRepository implements UserReadRepository {
     return avatarUrl;
   }
 }
+

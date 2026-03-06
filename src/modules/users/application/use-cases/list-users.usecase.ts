@@ -29,7 +29,7 @@ export class ListUsersUseCase {
   ) {
     this.assertCanListUsers(requesterRole);
     const scopedParams = this.applyRoleScope(params, requesterRole);
-    const users = await this.userReadRepository.listUsers({
+    const result = await this.userReadRepository.listUsers({
       page: scopedParams.page,
       filters: scopedParams.filters,
       sortBy: scopedParams.sortBy,
@@ -37,7 +37,7 @@ export class ListUsersUseCase {
       status: scopedParams.status ?? 'all',
     });
 
-    return users.map((user) => ({
+    const items = result.items.map((user) => ({
       id: user.id,
       name: user.name,
       email: user.email,
@@ -47,6 +47,17 @@ export class ListUsersUseCase {
       deleted: user.deleted,
       createdAt: user.createdAt,
     }));
+    const totalPages = result.total === 0 ? 0 : Math.ceil(result.total / result.pageSize);
+
+    return {
+      items,
+      total: result.total,
+      page: result.page,
+      pageSize: result.pageSize,
+      totalPages,
+      hasPrev: result.page > 1,
+      hasNext: result.page < totalPages,
+    };
   }
 
   private assertCanListUsers(requesterRole: RoleType) {

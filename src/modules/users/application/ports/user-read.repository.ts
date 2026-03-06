@@ -15,18 +15,21 @@ export interface UserReadRepository {
     sortBy?: string;
     order?: 'ASC' | 'DESC';
     status?: UserListStatus;
-  }): Promise<
-    Array<{
+  }): Promise<{
+    items: Array<{
       id: string;
       name: string;
       email: string;
       telefono?: string;
       rol: string;
-      roleId: string; 
+      roleId: string;
       deleted: boolean;
       createdAt: Date;
-    }>
-  >;
+    }>;
+    total: number;
+    page: number;
+    pageSize: number;
+  }>;
 
   countUsersByRole(params: {
     filters?: {
