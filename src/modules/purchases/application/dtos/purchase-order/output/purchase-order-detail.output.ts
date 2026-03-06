@@ -1,0 +1,37 @@
+import { CurrencyType } from "src/modules/purchases/domain/value-objects/currency-type";
+import { PaymentFormType } from "src/modules/purchases/domain/value-objects/payment-form-type";
+import { PurchaseOrderStatus } from "src/modules/purchases/domain/value-objects/po-status";
+import { VoucherDocType } from "src/modules/purchases/domain/value-objects/voucher-doc-type";
+import { PaymentOutput } from "src/modules/payments/application/dtos/payment/output/payment.output";
+import { CreditQuotaOutput } from "src/modules/payments/application/dtos/credit-quota/output/credit-quota.output";
+import { PurchaseOrderItemOutput } from "../../purchase-order-item/output/purchase-order-item.output";
+
+export interface PurchaseOrderDetailOutput {
+  poId: string;
+  supplierId: string;
+  warehouseId: string;
+  documentType?: VoucherDocType;
+  serie?: string;
+  correlative?: number;
+  currency?: CurrencyType;
+  paymentForm?: PaymentFormType;
+  creditDays: number;
+  numQuotas: number;
+  totalTaxed: number;
+  totalExempted: number;
+  totalIgv: number;
+  purchaseValue: number;
+  total?: number;
+  totalPaid?: number;
+  totalToPay?: number;
+  items: PurchaseOrderItemOutput[];
+  quotas: CreditQuotaOutput[];
+  payments: PaymentOutput[];
+  note?: string;
+  status: PurchaseOrderStatus;
+  isActive: boolean;
+  expectedAt?: Date;
+  dateIssue?: Date;
+  dateExpiration?: Date;
+  createdAt?: Date;
+}

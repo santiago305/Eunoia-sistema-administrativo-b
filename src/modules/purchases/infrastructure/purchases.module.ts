@@ -10,6 +10,7 @@ import { PurchaseOrderItemTypeormRepository } from "../adapters/out/persistence/
 import { CreatePurchaseOrderUsecase } from "../application/usecases/purchase-order/create.usecase";
 import { UpdatePurchaseOrderUsecase } from "../application/usecases/purchase-order/update.usecase";
 import { ListPurchaseOrdersUsecase } from "../application/usecases/purchase-order/list.usecase";
+import { GetPurchaseOrderUsecase } from "../application/usecases/purchase-order/get-by-id.usecase";
 import { SetPurchaseOrderActiveUsecase } from "../application/usecases/purchase-order/set-active.usecase";
 import { AddPurchaseOrderItemUsecase } from "../application/usecases/purchase-order-item/add.usecase";
 import { ListPurchaseOrderItemsUsecase } from "../application/usecases/purchase-order-item/list.usecase";
@@ -25,6 +26,7 @@ import { PaymentsModule } from "src/modules/payments/payments.module";
     CreatePurchaseOrderUsecase,
     UpdatePurchaseOrderUsecase,
     ListPurchaseOrdersUsecase,
+    GetPurchaseOrderUsecase,
     SetPurchaseOrderActiveUsecase,
     AddPurchaseOrderItemUsecase,
     ListPurchaseOrderItemsUsecase,
