@@ -46,6 +46,7 @@ export class ListUsersUseCase {
       roleId: user.roleId,
       deleted: user.deleted,
       createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
     }));
     const totalPages = result.total === 0 ? 0 : Math.ceil(result.total / result.pageSize);
 

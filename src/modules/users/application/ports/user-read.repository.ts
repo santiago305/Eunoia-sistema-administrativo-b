@@ -25,6 +25,7 @@ export interface UserReadRepository {
       roleId: string;
       deleted: boolean;
       createdAt: Date;
+      updatedAt?: Date;
     }>;
     total: number;
     page: number;

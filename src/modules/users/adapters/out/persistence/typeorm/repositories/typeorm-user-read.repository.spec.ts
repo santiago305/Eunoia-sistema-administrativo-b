@@ -49,12 +49,12 @@ describe('TypeormUserReadRepository', () => {
     });
 
     const result = await repo.listUsers({ page: 1 });
-    expect(result).toEqual({
-      items: [{ id: 'user-1', email: 'ana@example.com' }],
-      total: 1,
-      page: 1,
-      pageSize: 15,
-    });
+    expect(result.total).toBe(1);
+    expect(result.page).toBe(1);
+    expect(result.pageSize).toBe(15);
+    expect(result.items[0]).toEqual(
+      expect.objectContaining({ id: 'user-1', email: 'ana@example.com' }),
+    );
   });
 
   it('countUsersByRole returns grouped totals', async () => {

@@ -34,6 +34,7 @@ export class TypeormUserReadRepository implements UserReadRepository {
       roleId: string;
       deleted: boolean;
       createdAt: Date;
+      updatedAt?: Date;
     }>;
     total: number;
     page: number;
@@ -92,7 +93,7 @@ export class TypeormUserReadRepository implements UserReadRepository {
 
     const total = await baseQuery.clone().getCount();
 
-    const items = await baseQuery
+    const rawItems = await baseQuery
       .clone()
       .select([
         'user.id AS id',
@@ -102,12 +103,21 @@ export class TypeormUserReadRepository implements UserReadRepository {
         'role.description AS rol',
         'role.roleId AS roleId',
         'user.deleted AS deleted',
-        'user.createdAt AS createdAt',
+        'user.createdAt AS "createdAt"',
+        'user.updatedAt AS "updatedAt"',
       ])
       .orderBy(sortBy, order)
       .offset(offset)
       .limit(pageSize)
       .getRawMany();
+
+    const items = rawItems.map((item) => ({
+      ...item,
+      createdAt: (item as { createdAt?: Date; createdat?: Date }).createdAt
+        ?? (item as { createdAt?: Date; createdat?: Date }).createdat,
+      updatedAt: (item as { updatedAt?: Date; updatedat?: Date }).updatedAt
+        ?? (item as { updatedAt?: Date; updatedat?: Date }).updatedat,
+    }));
 
     return {
       items,
