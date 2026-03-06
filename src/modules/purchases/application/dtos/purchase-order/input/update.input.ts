@@ -2,6 +2,9 @@ import { CurrencyType } from "src/modules/purchases/domain/value-objects/currenc
 import { PaymentFormType } from "src/modules/purchases/domain/value-objects/payment-form-type";
 import { PurchaseOrderStatus } from "src/modules/purchases/domain/value-objects/po-status";
 import { VoucherDocType } from "src/modules/purchases/domain/value-objects/voucher-doc-type";
+import { AddPurchaseOrderItemInput } from "../../purchase-order-item/input/add.input";
+import { CreatePaymentInput } from "src/modules/payments/application/dtos/payment/input/create.input";
+import { CreateCreditQuotaInput } from "src/modules/payments/application/dtos/credit-quota/input/create.input";
 
 export interface UpdatePurchaseOrderInput {
   poId: string;
@@ -24,4 +27,7 @@ export interface UpdatePurchaseOrderInput {
   expectedAt?: string;
   dateIssue?: string;
   dateExpiration?: string;
+  items?: AddPurchaseOrderItemInput[];
+  payments?: CreatePaymentInput[];
+  quotas?: CreateCreditQuotaInput[];
 }

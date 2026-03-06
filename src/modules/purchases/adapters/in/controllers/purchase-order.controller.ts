@@ -3,6 +3,7 @@ import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard
 import { CreatePurchaseOrderUsecase } from "src/modules/purchases/application/usecases/purchase-order/create.usecase";
 import { UpdatePurchaseOrderUsecase } from "src/modules/purchases/application/usecases/purchase-order/update.usecase";
 import { ListPurchaseOrdersUsecase } from "src/modules/purchases/application/usecases/purchase-order/list.usecase";
+import { GetPurchaseOrderUsecase } from "src/modules/purchases/application/usecases/purchase-order/get-by-id.usecase";
 import { SetPurchaseOrderActiveUsecase } from "src/modules/purchases/application/usecases/purchase-order/set-active.usecase";
 import { ListPurchaseOrderItemsUsecase } from "src/modules/purchases/application/usecases/purchase-order-item/list.usecase";
 import { RemovePurchaseOrderItemUsecase } from "src/modules/purchases/application/usecases/purchase-order-item/remove.usecase";
@@ -18,6 +19,7 @@ export class PurchaseOrdersController {
     private readonly createOrder: CreatePurchaseOrderUsecase,
     private readonly updateOrder: UpdatePurchaseOrderUsecase,
     private readonly listOrders: ListPurchaseOrdersUsecase,
+    private readonly getOrder: GetPurchaseOrderUsecase,
     private readonly setActiveOrder: SetPurchaseOrderActiveUsecase,
     private readonly listItems: ListPurchaseOrderItemsUsecase,
     private readonly removeItem: RemovePurchaseOrderItemUsecase,
@@ -63,6 +65,11 @@ export class PurchaseOrdersController {
       page: query.page,
       limit: query.limit,
     });
+  }
+
+  @Get(":id")
+  getById(@Param("id", ParseUUIDPipe) id: string) {
+    return this.getOrder.execute({ poId: id });
   }
 
   @Patch(":id")

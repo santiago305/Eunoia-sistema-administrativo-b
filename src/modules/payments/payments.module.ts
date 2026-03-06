@@ -51,6 +51,7 @@ import { CREDIT_QUOTA_PURCHASE_REPOSITORY } from "./domain/ports/credit-quota-pu
   ],
   exports: [
     CreatePaymentUsecase,
+    DeletePaymentUsecase,
     CreateCreditQuotaUsecase,
     PAYMENT_DOCUMENT_REPOSITORY,
     PAYMENT_PURCHASE_REPOSITORY,

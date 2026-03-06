@@ -10,6 +10,8 @@ export const PURCHASE_ORDER = Symbol('PURCHASE_ORDER');
 export interface PurchaseOrderRepository{
     create(purchase: PurchaseOrder, tx?: TransactionContext):Promise<PurchaseOrder>;
 
+    findById(poId: string, tx?: TransactionContext): Promise<PurchaseOrder | null>;
+
     update(
         params: {
             poId: string;

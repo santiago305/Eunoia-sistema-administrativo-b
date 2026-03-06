@@ -58,6 +58,11 @@ export class PurchaseOrderTypeormRepository implements PurchaseOrderRepository {
     );
   }
 
+  async findById(poId: string, tx?: TransactionContext): Promise<PurchaseOrder | null> {
+    const row = await this.getRepo(tx).findOne({ where: { id: poId } });
+    return row ? this.toDomain(row) : null;
+  }
+
   async create(purchase: PurchaseOrder, tx?: TransactionContext): Promise<PurchaseOrder> {
     const repo = this.getRepo(tx);
     const row = repo.create({

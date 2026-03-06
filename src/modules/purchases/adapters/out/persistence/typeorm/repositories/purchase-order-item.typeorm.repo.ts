@@ -36,12 +36,12 @@ export class PurchaseOrderItemTypeormRepository implements PurchaseOrderItemRepo
       row.factor,
       row.afectType,
       row.quantity,
-      Money.create(row.porcentageIgv ?? 0),
-      Money.create(row.baseWithoutIgv ?? 0),
-      Money.create(row.amountIgv ?? 0),
-      Money.create(row.unitValue ?? 0),
-      Money.create(row.unitPrice ?? 0),
-      Money.create(row.purchaseValue ?? 0),
+      Money.create(Number(row.porcentageIgv ?? 0)),
+      Money.create(Number(row.baseWithoutIgv ?? 0)),
+      Money.create(Number(row.amountIgv ?? 0)),
+      Money.create(Number(row.unitValue ?? 0)),
+      Money.create(Number(row.unitPrice ?? 0)),
+      Money.create(Number(row.purchaseValue ?? 0)),
     );
   }
 

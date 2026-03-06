@@ -1,9 +1,12 @@
-import { IsDateString, IsEnum, IsInt, IsNumber, IsOptional, IsString, IsUUID, Min } from "class-validator";
+import { IsArray, IsDateString, IsEnum, IsInt, IsNumber, IsOptional, IsString, IsUUID, Min, ValidateNested } from "class-validator";
 import { Type } from "class-transformer";
 import { CurrencyType } from "src/modules/purchases/domain/value-objects/currency-type";
 import { PaymentFormType } from "src/modules/purchases/domain/value-objects/payment-form-type";
 import { PurchaseOrderStatus } from "src/modules/purchases/domain/value-objects/po-status";
 import { VoucherDocType } from "src/modules/purchases/domain/value-objects/voucher-doc-type";
+import { HttpCreatePaymentDto } from "src/modules/payments/adapters/in/dtos/payment/http-payment-create.dto";
+import { HttpCreateCreditQuotaDto } from "src/modules/payments/adapters/in/dtos/credit-quota/http-credit-quota-create.dto";
+import { HttpUpdateItemDto } from "../purchase-order-item/http-update-item";
 
 export class HttpUpdatePurchaseOrderDto {
   @IsOptional()
@@ -91,4 +94,22 @@ export class HttpUpdatePurchaseOrderDto {
   @IsOptional()
   @IsDateString()
   dateExpiration?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => HttpUpdateItemDto)
+  items?: HttpUpdateItemDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => HttpCreatePaymentDto)
+  payments?: HttpCreatePaymentDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => HttpCreateCreditQuotaDto)
+  quotas?: HttpCreateCreditQuotaDto[];
 }
