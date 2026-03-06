@@ -35,8 +35,8 @@ describe('TypeormUserReadRepository', () => {
       createQueryBuilder: jest.fn().mockReturnValue({
         leftJoin: jest.fn().mockReturnThis(),
         select: jest.fn().mockReturnThis(),
-        skip: jest.fn().mockReturnThis(),
-        take: jest.fn().mockReturnThis(),
+        offset: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
         clone: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),

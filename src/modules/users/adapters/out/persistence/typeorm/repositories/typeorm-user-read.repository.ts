@@ -61,9 +61,39 @@ export class TypeormUserReadRepository implements UserReadRepository {
     const sortBy = sortByMap[sortByKey] ?? 'user.createdAt';
     const order = params.order === 'ASC' ? 'ASC' : 'DESC';
 
-    const query = this.ormRepository
+    const baseQuery = this.ormRepository
       .createQueryBuilder('user')
-      .leftJoin('user.role', 'role')
+      .leftJoin('user.role', 'role');
+
+    const status = params.status ?? 'all';
+    if (status === 'active') {
+      baseQuery.where('user.deleted = false');
+    } else if (status === 'inactive') {
+      baseQuery.where('user.deleted = true');
+    } else {
+      baseQuery.where('1=1');
+    }
+
+    if (params.filters?.role) {
+      baseQuery.andWhere('role.description = :role', { role: params.filters.role });
+    }
+
+    if (params.filters?.allowedRoles && params.filters.allowedRoles.length > 0) {
+      baseQuery.andWhere('role.description IN (:...allowedRoles)', {
+        allowedRoles: params.filters.allowedRoles,
+      });
+    }
+
+    if (params.filters?.q) {
+      baseQuery.andWhere('(LOWER(user.name) LIKE :q OR LOWER(user.email) LIKE :q)', {
+        q: `%${params.filters.q.toLowerCase()}%`,
+      });
+    }
+
+    const total = await baseQuery.clone().getCount();
+
+    const items = await baseQuery
+      .clone()
       .select([
         'user.id AS id',
         'user.name AS name',
@@ -74,37 +104,10 @@ export class TypeormUserReadRepository implements UserReadRepository {
         'user.deleted AS deleted',
         'user.createdAt AS createdAt',
       ])
-      .skip(offset)
-      .take(pageSize);
-
-    const status = params.status ?? 'all';
-    if (status === 'active') {
-      query.where('user.deleted = false');
-    } else if (status === 'inactive') {
-      query.where('user.deleted = true');
-    } else {
-      query.where('1=1');
-    }
-
-    if (params.filters?.role) {
-      query.andWhere('role.description = :role', { role: params.filters.role });
-    }
-
-    if (params.filters?.allowedRoles && params.filters.allowedRoles.length > 0) {
-      query.andWhere('role.description IN (:...allowedRoles)', {
-        allowedRoles: params.filters.allowedRoles,
-      });
-    }
-
-    if (params.filters?.q) {
-      query.andWhere('(LOWER(user.name) LIKE :q OR LOWER(user.email) LIKE :q)', {
-        q: `%${params.filters.q.toLowerCase()}%`,
-      });
-    }
-
-    const total = await query.clone().getCount();
-    query.orderBy(sortBy, order);
-    const items = await query.getRawMany();
+      .orderBy(sortBy, order)
+      .offset(offset)
+      .limit(pageSize)
+      .getRawMany();
 
     return {
       items,
