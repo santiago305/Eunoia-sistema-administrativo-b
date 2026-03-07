@@ -167,8 +167,7 @@ export class PurchaseOrderTypeormRepository implements PurchaseOrderRepository {
       supplierId?: string;
       warehouseId?: string;
       documentType?: VoucherDocType;
-      serie?: string;
-      correlative?: number;
+      number?: string;
       from?: Date;
       to?: Date;
       page?: number;
@@ -183,8 +182,12 @@ export class PurchaseOrderTypeormRepository implements PurchaseOrderRepository {
     if (params.supplierId) qb.andWhere("po.supplierId = :supplierId", { supplierId: params.supplierId });
     if (params.warehouseId) qb.andWhere("po.warehouseId = :warehouseId", { warehouseId: params.warehouseId });
     if (params.documentType) qb.andWhere("po.documentType = :documentType", { documentType: params.documentType });
-    if (params.serie) qb.andWhere("po.serie ILIKE :serie", { serie: `%${params.serie}%` });
-    if (params.correlative !== undefined) qb.andWhere("po.correlative = :correlative", { correlative: params.correlative });
+    if (params.number) {
+      const number = params.number.trim();
+      qb.andWhere("concat(coalesce(po.serie, ''), '-', coalesce(po.correlative::text, '')) ILIKE :number", {
+        number: `%${number}%`,
+      });
+    }
     if (params.from) qb.andWhere("po.dateIssue >= :from", { from: params.from });
     if (params.to) qb.andWhere("po.dateIssue <= :to", { to: params.to });
 

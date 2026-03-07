@@ -3,6 +3,10 @@ import { ProductEntity } from "../../adapters/out/persistence/typeorm/entities/p
 import { ProductVariantEntity } from "../../adapters/out/persistence/typeorm/entities/product-variant.entity";
 import { UnitEntity } from "../../adapters/out/persistence/typeorm/entities/unit.entity";
 import { ProductType } from "../../domain/value-object/productType";
+import { StockItemEntity } from "src/modules/inventory/adapters/out/typeorm/entities/stock-item/stock-item.entity";
+import { StockItemProductEntity } from "src/modules/inventory/adapters/out/typeorm/entities/stock-item/stock-item-product.entity";
+import { StockItemVariantEntity } from "src/modules/inventory/adapters/out/typeorm/entities/stock-item/stock-item-variant.entity";
+import { StockItemType } from "src/modules/inventory/domain/value-objects/stock-item-type";
 
 type SeedProductsOptions = {
   finishedCount?: number;
@@ -79,6 +83,9 @@ export const seedProducts = async (
   const productRepo = dataSource.getRepository(ProductEntity);
   const variantRepo = dataSource.getRepository(ProductVariantEntity);
   const unitRepo = dataSource.getRepository(UnitEntity);
+  const stockItemRepo = dataSource.getRepository(StockItemEntity);
+  const stockItemProductRepo = dataSource.getRepository(StockItemProductEntity);
+  const stockItemVariantRepo = dataSource.getRepository(StockItemVariantEntity);
 
   const units = await unitRepo.find();
   if (units.length === 0) {
@@ -121,32 +128,61 @@ export const seedProducts = async (
       console.log(`Producto ${sku} ya existe, omitiendo...`);
     }
 
-    for (let v = 1; v <= variantsPerProduct; v++) {
-      const variantSku = `${sku}-V${v}`;
-      const variantExists = await variantRepo.findOne({ where: { sku: variantSku } });
-      if (variantExists) {
-        console.log(`Variante ${variantSku} ya existe, omitiendo...`);
-        continue;
-      }
-
-      const variantPrice =
-        type === ProductType.FINISHED ? product.price + v : product.price;
-
-      await variantRepo.save(
-        variantRepo.create({
+    const existingProductLink = await stockItemProductRepo.findOne({
+      where: { productId: product.id },
+    });
+    if (!existingProductLink) {
+      const stockItem = await stockItemRepo.save(
+        stockItemRepo.create({ type: StockItemType.PRODUCT, isActive: true }),
+      );
+      await stockItemProductRepo.save(
+        stockItemProductRepo.create({
+          stockItemId: stockItem.id,
           productId: product.id,
-          sku: variantSku,
-          barcode: `VB-${variantSku}`,
-          attributes: {
-            variant: `V${v}`,
-            color: v === 1 ? "Rojo" : "Azul",
-          },
-          price: Number(variantPrice.toFixed(2)),
-          cost: product.cost,
-          isActive: true,
         }),
       );
-      console.log(`Variante creada: ${variantSku}`);
+    }
+
+    for (let v = 1; v <= variantsPerProduct; v++) {
+      const variantSku = `${sku}-V${v}`;
+      let variant = await variantRepo.findOne({ where: { sku: variantSku } });
+      if (variant) {
+        console.log(`Variante ${variantSku} ya existe, omitiendo...`);
+      } else {
+        const variantPrice =
+          type === ProductType.FINISHED ? product.price + v : product.price;
+
+        variant = await variantRepo.save(
+          variantRepo.create({
+            productId: product.id,
+            sku: variantSku,
+            barcode: `VB-${variantSku}`,
+            attributes: {
+              variant: `V${v}`,
+              color: v === 1 ? "Rojo" : "Azul",
+            },
+            price: Number(variantPrice.toFixed(2)),
+            cost: product.cost,
+            isActive: true,
+          }),
+        );
+        console.log(`Variante creada: ${variantSku}`);
+      }
+
+      const existingVariantLink = await stockItemVariantRepo.findOne({
+        where: { variantId: variant.id },
+      });
+      if (!existingVariantLink) {
+        const stockItem = await stockItemRepo.save(
+          stockItemRepo.create({ type: StockItemType.VARIANT, isActive: true }),
+        );
+        await stockItemVariantRepo.save(
+          stockItemVariantRepo.create({
+            stockItemId: stockItem.id,
+            variantId: variant.id,
+          }),
+        );
+      }
     }
   };
 

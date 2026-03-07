@@ -6,8 +6,7 @@ export interface ListPurchaseOrdersInput {
   supplierId?: string;
   warehouseId?: string;
   documentType?: VoucherDocType;
-  serie?: string;
-  correlative?: number;
+  number?:string;
   from?: string;
   to?: string;
   page?: number;
