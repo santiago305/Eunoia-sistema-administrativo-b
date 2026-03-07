@@ -46,8 +46,7 @@ export interface PurchaseOrderRepository{
             supplierId?: string;
             warehouseId?: string;
             documentType?: VoucherDocType;
-            serie?: string;
-            correlative?: number;
+            number?: string;
             from?: Date;
             to?: Date;
             page?: number;

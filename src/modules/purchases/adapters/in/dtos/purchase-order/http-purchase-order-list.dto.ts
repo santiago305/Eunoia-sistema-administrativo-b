@@ -22,12 +22,7 @@ export class HttpListPurchaseOrdersQueryDto {
 
   @IsOptional()
   @IsString()
-  serie?: string;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  correlative?: number;
+  number?: string;
 
   @IsOptional()
   @IsDateString()
