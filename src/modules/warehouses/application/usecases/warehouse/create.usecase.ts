@@ -5,6 +5,9 @@ import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "src/modules/warehouse
 import { Warehouse } from "src/modules/warehouses/domain/entities/warehouse";
 import { CreateWarehouseInput } from "../../dtos/warehouse/input/create.input";
 
+import { CreateDocumentSerieUseCase } from "src/modules/inventory/application/use-cases/document-serie/create-document-serie.usecase";
+import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
+
 export class CreateWarehouseUsecase {
   constructor(
     @Inject(UNIT_OF_WORK)
@@ -13,9 +16,10 @@ export class CreateWarehouseUsecase {
     private readonly warehouseRepo: WarehouseRepository,
     @Inject(CLOCK)
     private readonly clock: ClockPort,
+    private readonly createSerieUseCase: CreateDocumentSerieUseCase,
   ) {}
 
-  async execute(input: CreateWarehouseInput): Promise<{message:string, type:string}> {
+  async execute(input: CreateWarehouseInput): Promise<{ message: string; type: string }> {
     return this.uow.runInTransaction(async (tx) => {
       const existing = await this.warehouseRepo.findByName(input.name, tx);
       if (existing) {
@@ -32,15 +36,37 @@ export class CreateWarehouseUsecase {
         true,
         this.clock.now(),
       );
+
+      let created: Warehouse;
       try {
-        await this.warehouseRepo.create(warehouse, tx);
+        created = await this.warehouseRepo.create(warehouse, tx);
       } catch {
         throw new BadRequestException({ type: "error", message: "No se pudo crear el almacen" });
       }
 
+      const defaults = [
+        { code: `IN-${input.name.slice(3)}`, name: "Ingreso", docType: DocType.IN },
+        { code: `OUT-${input.name.slice(3)}`, name: "Salida", docType: DocType.OUT },
+        { code: `TRF-${input.name.slice(3)}`, name: "Transferencia", docType: DocType.TRANSFER },
+        { code: `ADJ-${input.name.slice(3)}`, name: "Ajuste", docType: DocType.ADJUSTMENT },
+      ];
+
+      for (const d of defaults) {
+        await this.createSerieUseCase.execute({
+          code: d.code,
+          name: d.name,
+          docType: d.docType,
+          warehouseId: created.warehouseId.value,
+          nextNumber: 1,
+          padding: 6,
+          separator: "-",
+          isActive: true,
+        });
+      }
+
       return {
         message: "¡Varitante create con exito!",
-        type: "success"
+        type: "success",
       };
     });
   }

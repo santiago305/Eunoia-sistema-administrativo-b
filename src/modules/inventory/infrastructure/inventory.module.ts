@@ -127,8 +127,13 @@ import { StockItemVariantTypeormRepository } from '../adapters/out/typeorm/repos
     SERIES_REPOSITORY,
     INVENTORY_LOCK,
     CLOCK,
+    CreateDocumentSerieUseCase,
     CreateStockItemForProduct,
     CreateStockItemForVariant,
+    CreateDocumentUseCase,
+    AddItemUseCase,
+    PostDocumentoIn,
+    GetActiveDocumentSerieUseCase,
   ],
 })
 export class InventoryModule {}

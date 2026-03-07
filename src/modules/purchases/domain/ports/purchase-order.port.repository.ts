@@ -11,6 +11,7 @@ export interface PurchaseOrderRepository{
     create(purchase: PurchaseOrder, tx?: TransactionContext):Promise<PurchaseOrder>;
 
     findById(poId: string, tx?: TransactionContext): Promise<PurchaseOrder | null>;
+    listAllByStatus(status: PurchaseOrderStatus, tx?: TransactionContext): Promise<PurchaseOrder[]>;
 
     update(
         params: {

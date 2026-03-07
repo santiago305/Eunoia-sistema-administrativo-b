@@ -11,6 +11,8 @@ import { HttpCreatePurchaseOrderDto } from "../dtos/purchase-order/http-purchase
 import { HttpUpdatePurchaseOrderDto } from "../dtos/purchase-order/http-purchase-order-update.dto";
 import { HttpListPurchaseOrdersQueryDto } from "../dtos/purchase-order/http-purchase-order-list.dto";
 import { HttpSetPurchaseOrderActiveDto } from "../dtos/purchase-order/http-purchase-order-set-active.dto";
+import { RunExpectedAtUsecase } from "src/modules/purchases/application/usecases/purchase-order/run-expected-at.usecase";
+import { SetSentPurchaseOrderUsecase } from "src/modules/purchases/application/usecases/purchase-order/set-sent.usecase";
 
 @Controller("purchases/orders")
 @UseGuards(JwtAuthGuard)
@@ -23,6 +25,9 @@ export class PurchaseOrdersController {
     private readonly setActiveOrder: SetPurchaseOrderActiveUsecase,
     private readonly listItems: ListPurchaseOrderItemsUsecase,
     private readonly removeItem: RemovePurchaseOrderItemUsecase,
+    private readonly runExpected: RunExpectedAtUsecase,
+    private readonly setSent: SetSentPurchaseOrderUsecase
+
   ) {}
 
   @Post()
@@ -49,7 +54,15 @@ export class PurchaseOrdersController {
       };
     }
   }
+  @Patch(":id/sent")
+  setSentPurchase(@Param("id", ParseUUIDPipe) id: string) {
+    return this.setSent.execute(id);
+  }
 
+  @Post(":id/run-expected")
+  runExpectedAt(@Param("id", ParseUUIDPipe) id: string) {
+    return this.runExpected.execute(id);
+  }
 
   @Get()
   list(@Query() query: HttpListPurchaseOrdersQueryDto) {
