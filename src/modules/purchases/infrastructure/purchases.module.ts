@@ -18,9 +18,21 @@ import { RemovePurchaseOrderItemUsecase } from "../application/usecases/purchase
 import { PURCHASE_ORDER } from "../domain/ports/purchase-order.port.repository";
 import { PURCHASE_ORDER_ITEM } from "../domain/ports/purchase-order-item.port.repository";
 import { PaymentsModule } from "src/modules/payments/payments.module";
+import { PurchaseOrderExpectedBootstrap } from "../application/jobs/purchase-order-expected-bootstrap";
+import { PurchaseOrderExpectedScheduler } from "../application/jobs/purchase-order-expected-scheduler";
+import { RunExpectedAtUsecase } from "../application/usecases/purchase-order/run-expected-at.usecase";
+import { SetSentPurchaseOrderUsecase } from "../application/usecases/purchase-order/set-sent.usecase";
+import { InventoryModule } from "src/modules/inventory/infrastructure/inventory.module";
+import { PostInventoryFromPurchaseUsecase } from "../application/usecases/purchase-order/Inventory-purchase.usecase";
+import { UsersModule } from "src/modules/users/infrastructure/users.module";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([PurchaseOrderEntity, PurchaseOrderItemEntity]), PaymentsModule],
+  imports: [
+    TypeOrmModule.forFeature([PurchaseOrderEntity, PurchaseOrderItemEntity]),
+    PaymentsModule,
+    InventoryModule,
+    UsersModule,
+  ],
   controllers: [PurchaseOrdersController],
   providers: [
     CreatePurchaseOrderUsecase,
@@ -31,6 +43,11 @@ import { PaymentsModule } from "src/modules/payments/payments.module";
     AddPurchaseOrderItemUsecase,
     ListPurchaseOrderItemsUsecase,
     RemovePurchaseOrderItemUsecase,
+    RunExpectedAtUsecase,
+    PurchaseOrderExpectedScheduler,
+    PurchaseOrderExpectedBootstrap,
+    SetSentPurchaseOrderUsecase,
+    PostInventoryFromPurchaseUsecase,
     { provide: PURCHASE_ORDER, useClass: PurchaseOrderTypeormRepository },
     { provide: PURCHASE_ORDER_ITEM, useClass: PurchaseOrderItemTypeormRepository },
     { provide: UNIT_OF_WORK, useClass: TypeormUnitOfWork },

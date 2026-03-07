@@ -24,9 +24,13 @@ import { SetWarehouseActiveUsecase } from "./application/usecases/warehouse/set-
 import { UpdateWarehouseUsecase } from "./application/usecases/warehouse/update.usecase";
 import { LOCATION_REPOSITORY } from "./domain/ports/location.repository.port";
 import { WAREHOUSE_REPOSITORY } from "./domain/ports/warehouse.repository.port";
+import { InventoryModule } from "../inventory/infrastructure/inventory.module";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([WarehouseEntity, WarehouseLocationEntity])],
+  imports: [
+    TypeOrmModule.forFeature([WarehouseEntity, WarehouseLocationEntity]),
+    InventoryModule, 
+],
   controllers: [WarehousesController, LocationsController],
   providers: [
     CreateWarehouseUsecase,

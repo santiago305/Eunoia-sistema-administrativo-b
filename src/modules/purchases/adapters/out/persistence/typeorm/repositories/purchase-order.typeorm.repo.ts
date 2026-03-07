@@ -92,6 +92,19 @@ export class PurchaseOrderTypeormRepository implements PurchaseOrderRepository {
     const saved = await repo.save(row);
     return this.toDomain(saved);
   }
+  async listAllByStatus(
+    status: PurchaseOrderStatus,
+    tx?: TransactionContext,
+  ): Promise<PurchaseOrder[]> {
+    const repo = this.getRepo(tx);
+
+    const rows = await repo.find({
+      where: { status },
+      order: { createdAt: "DESC" },
+    });
+
+    return rows.map((r) => this.toDomain(r));
+  }
 
   async update(
     params: {

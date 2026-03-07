@@ -91,14 +91,14 @@ export class WarehouseTypeormRepo implements WarehouseRepository {
     const repo = this.getRepo(tx);
 
     const row = repo.create({
-      id: (warehouse as any).warehouseId?.value ?? (warehouse as any).warehouseId,
-      name: (warehouse as any).name,
-      department: (warehouse as any).department,
-      province: (warehouse as any).province,
-      district: (warehouse as any).district,
-      address: (warehouse as any).address ?? null,
-      isActive: (warehouse as any).isActive ?? true,
-      createdAt: (warehouse as any).createdAt ?? undefined,
+      id: undefined,
+      name: warehouse.name,
+      department: warehouse.department,
+      province: warehouse.province,
+      district: warehouse.district,
+      address: warehouse.address ?? null,
+      isActive: warehouse.isActive ?? true,
+      createdAt: warehouse.createdAt ?? undefined,
     });
 
     const saved = await repo.save(row);
