@@ -2,6 +2,7 @@ import { DataSource } from 'typeorm';
 import { envs } from './src/infrastructure/config/envs';
 import { Role } from './src/modules/roles/adapters/out/persistence/typeorm/entities/role.entity';
 import { User } from './src/modules/users/adapters/out/persistence/typeorm/entities/user.entity';
+import { Session } from './src/modules/sessions/adapters/out/persistence/typeorm/entities/session.entity';
 import { DocumentSerie } from 'src/modules/inventory/adapters/out/typeorm/entities/document_serie.entity'
 import { seedRoles } from './src/modules/roles/infrastructure/seed/role.seeder';
 import { seedUser } from './src/modules/users/infrastructure/seed/user.seeder';
@@ -75,3 +76,4 @@ dataSource
   .catch((err) => {
     console.error('Error al hacer seed:', err);
   });
+

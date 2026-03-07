@@ -12,6 +12,7 @@ import { CountUsersByRoleUseCase } from '../application/use-cases/count-users-by
 import { RestoreUserUseCase } from '../application/use-cases/restore-user.usecase';
 import { UpdateAvatarUseCase } from '../application/use-cases/update-avatar.usecase';
 import { UpdateUserUseCase } from '../application/use-cases/update-user.usecase';
+import { UpdateUserRoleUseCase } from '../application/use-cases/update-user-role.usecase';
 import { UsersController } from '../adapters/in/controllers/users.controller';
 import { User } from '../adapters/out/persistence/typeorm/entities/user.entity';
 import { Role } from '../../roles/adapters/out/persistence/typeorm/entities/role.entity';
@@ -39,6 +40,7 @@ import { LocalFileStorageService } from 'src/shared/utilidades/services/local-fi
   providers: [
     CreateUserUseCase,
     UpdateUserUseCase,
+    UpdateUserRoleUseCase,
     ChangePasswordUseCase,
     ListUsersUseCase,
     CountUsersByRoleUseCase,

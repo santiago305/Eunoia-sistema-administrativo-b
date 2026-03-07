@@ -5,6 +5,7 @@ import {
   ManyToOne,
   JoinColumn,
   CreateDateColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { Role } from '../../../../../../roles/adapters/out/persistence/typeorm/entities/role.entity';
 
@@ -60,6 +61,9 @@ export class User {
 
   @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
 
   @Column({ name: 'failed_login_attempts', type: 'int', default: 0 })
   failedLoginAttempts: number;

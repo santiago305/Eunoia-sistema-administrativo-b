@@ -24,8 +24,8 @@ export class TypeormUserReadRepository implements UserReadRepository {
     sortBy?: string;
     order?: 'ASC' | 'DESC';
     status?: UserListStatus;
-  }): Promise<
-    Array<{
+  }): Promise<{
+    items: Array<{
       id: string;
       name: string;
       email: string;
@@ -34,9 +34,13 @@ export class TypeormUserReadRepository implements UserReadRepository {
       roleId: string;
       deleted: boolean;
       createdAt: Date;
-    }>
-  > {
-    const pageSize = 20;
+      updatedAt?: Date;
+    }>;
+    total: number;
+    page: number;
+    pageSize: number;
+  }> {
+    const pageSize = 15;
     const page = params.page ?? 1;
     const offset = (page - 1) * pageSize;
     // Whitelist de columnas para evitar inyeccion en orderBy
@@ -58,50 +62,69 @@ export class TypeormUserReadRepository implements UserReadRepository {
     const sortBy = sortByMap[sortByKey] ?? 'user.createdAt';
     const order = params.order === 'ASC' ? 'ASC' : 'DESC';
 
-    const query = this.ormRepository
+    const baseQuery = this.ormRepository
       .createQueryBuilder('user')
-      .leftJoin('user.role', 'role')
-      .select([
-        'user.id',
-        'user.name',
-        'user.email',
-        'user.telefono As telefono',
-        'role.description As rol',
-        'role.roleId As roleId',
-        'user.deleted',
-        'user.createdAt',
-      ])
-      .skip(offset)
-      .take(pageSize);
+      .leftJoin('user.role', 'role');
 
     const status = params.status ?? 'all';
     if (status === 'active') {
-      query.where('user.deleted = false');
+      baseQuery.where('user.deleted = false');
     } else if (status === 'inactive') {
-      query.where('user.deleted = true');
+      baseQuery.where('user.deleted = true');
     } else {
-      query.where('1=1');
+      baseQuery.where('1=1');
     }
 
     if (params.filters?.role) {
-      query.andWhere('role.description = :role', { role: params.filters.role });
+      baseQuery.andWhere('role.description = :role', { role: params.filters.role });
     }
 
     if (params.filters?.allowedRoles && params.filters.allowedRoles.length > 0) {
-      query.andWhere('role.description IN (:...allowedRoles)', {
+      baseQuery.andWhere('role.description IN (:...allowedRoles)', {
         allowedRoles: params.filters.allowedRoles,
       });
     }
 
     if (params.filters?.q) {
-      query.andWhere('(LOWER(user.name) LIKE :q OR LOWER(user.email) LIKE :q)', {
+      baseQuery.andWhere('(LOWER(user.name) LIKE :q OR LOWER(user.email) LIKE :q)', {
         q: `%${params.filters.q.toLowerCase()}%`,
       });
     }
 
-    query.orderBy(sortBy, order);
+    const total = await baseQuery.clone().getCount();
 
-    return query.getRawMany();
+    const rawItems = await baseQuery
+      .clone()
+      .select([
+        'user.id AS id',
+        'user.name AS name',
+        'user.email AS email',
+        'user.telefono AS telefono',
+        'role.description AS rol',
+        'role.roleId AS roleId',
+        'user.deleted AS deleted',
+        'user.createdAt AS "createdAt"',
+        'user.updatedAt AS "updatedAt"',
+      ])
+      .orderBy(sortBy, order)
+      .offset(offset)
+      .limit(pageSize)
+      .getRawMany();
+
+    const items = rawItems.map((item) => ({
+      ...item,
+      createdAt: (item as { createdAt?: Date; createdat?: Date }).createdAt
+        ?? (item as { createdAt?: Date; createdat?: Date }).createdat,
+      updatedAt: (item as { updatedAt?: Date; updatedat?: Date }).updatedAt
+        ?? (item as { updatedAt?: Date; updatedat?: Date }).updatedat,
+    }));
+
+    return {
+      items,
+      total,
+      page,
+      pageSize,
+    };
   }
 
   async countUsersByRole(params: {
@@ -339,3 +362,4 @@ export class TypeormUserReadRepository implements UserReadRepository {
     return avatarUrl;
   }
 }
+

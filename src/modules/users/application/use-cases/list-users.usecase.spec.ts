@@ -5,22 +5,27 @@ import { RoleType } from 'src/shared/constantes/constants';
 describe('ListUsersUseCase', () => {
   const makeUseCase = (overrides?: { userReadRepository?: any }) => {
     const userReadRepository = overrides?.userReadRepository ?? {
-      listUsers: jest.fn().mockResolvedValue([]),
+      listUsers: jest.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 15 }),
     };
     return new ListUsersUseCase(userReadRepository);
   };
 
   it('lists all users for admin by default', async () => {
     const userReadRepository = {
-      listUsers: jest.fn().mockResolvedValue([
-        { id: 'user-1', name: 'Ana', email: 'ana@example.com', rol: 'adviser', roleId: 'r1', deleted: false, createdAt: new Date(), password: 'hidden' },
-      ]),
+      listUsers: jest.fn().mockResolvedValue({
+        items: [
+          { id: 'user-1', name: 'Ana', email: 'ana@example.com', rol: 'adviser', roleId: 'r1', deleted: false, createdAt: new Date(), password: 'hidden' },
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 15,
+      }),
     };
     const useCase = makeUseCase({ userReadRepository });
 
     const result = await useCase.execute({ page: 1 }, RoleType.ADMIN);
 
-    expect(result).toEqual([
+    expect(result.items).toEqual([
       expect.objectContaining({
         id: 'user-1',
         name: 'Ana',
@@ -30,7 +35,13 @@ describe('ListUsersUseCase', () => {
         deleted: false,
       }),
     ]);
-    expect(result[0]).not.toHaveProperty('password');
+    expect(result.items[0]).not.toHaveProperty('password');
+    expect(result.total).toBe(1);
+    expect(result.page).toBe(1);
+    expect(result.pageSize).toBe(15);
+    expect(result.totalPages).toBe(1);
+    expect(result.hasPrev).toBe(false);
+    expect(result.hasNext).toBe(false);
     expect(userReadRepository.listUsers).toHaveBeenCalledWith({
       page: 1,
       filters: { allowedRoles: [RoleType.MODERATOR, RoleType.ADVISER], role: undefined },
@@ -42,7 +53,7 @@ describe('ListUsersUseCase', () => {
 
   it('passes active status when requested', async () => {
     const userReadRepository = {
-      listUsers: jest.fn().mockResolvedValue([]),
+      listUsers: jest.fn().mockResolvedValue({ items: [], total: 0, page: 2, pageSize: 15 }),
     };
     const useCase = makeUseCase({ userReadRepository });
 
@@ -59,7 +70,7 @@ describe('ListUsersUseCase', () => {
 
   it('scopes moderator role to ADVISER and preserves requested status', async () => {
     const userReadRepository = {
-      listUsers: jest.fn().mockResolvedValue([]),
+      listUsers: jest.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 15 }),
     };
     const useCase = makeUseCase({ userReadRepository });
 
@@ -79,7 +90,7 @@ describe('ListUsersUseCase', () => {
 
   it('returns empty scope when admin requests admin role', async () => {
     const userReadRepository = {
-      listUsers: jest.fn().mockResolvedValue([]),
+      listUsers: jest.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 15 }),
     };
     const useCase = makeUseCase({ userReadRepository });
 

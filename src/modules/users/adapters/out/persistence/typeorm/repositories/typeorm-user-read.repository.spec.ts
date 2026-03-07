@@ -35,10 +35,12 @@ describe('TypeormUserReadRepository', () => {
       createQueryBuilder: jest.fn().mockReturnValue({
         leftJoin: jest.fn().mockReturnThis(),
         select: jest.fn().mockReturnThis(),
-        skip: jest.fn().mockReturnThis(),
-        take: jest.fn().mockReturnThis(),
+        offset: jest.fn().mockReturnThis(),
+        limit: jest.fn().mockReturnThis(),
+        clone: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
         andWhere: jest.fn().mockReturnThis(),
+        getCount: jest.fn().mockResolvedValue(1),
         orderBy: jest.fn().mockReturnThis(),
         getRawMany: jest
           .fn()
@@ -47,7 +49,12 @@ describe('TypeormUserReadRepository', () => {
     });
 
     const result = await repo.listUsers({ page: 1 });
-    expect(result).toEqual([{ id: 'user-1', email: 'ana@example.com' }]);
+    expect(result.total).toBe(1);
+    expect(result.page).toBe(1);
+    expect(result.pageSize).toBe(15);
+    expect(result.items[0]).toEqual(
+      expect.objectContaining({ id: 'user-1', email: 'ana@example.com' }),
+    );
   });
 
   it('countUsersByRole returns grouped totals', async () => {
