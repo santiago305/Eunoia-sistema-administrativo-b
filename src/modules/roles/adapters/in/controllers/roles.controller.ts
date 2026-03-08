@@ -17,6 +17,7 @@ import { RoleType } from 'src/shared/constantes/constants';
 import { RolesGuard } from 'src/shared/utilidades/guards/roles.guard';
 import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard';
 import { User as CurrentUser } from 'src/shared/utilidades/decorators/user.decorator';
+import { CsrfGuard } from 'src/shared/utilidades/guards/csrf.guard';
 import {
   ROLE_LIST_STATUSES,
   RoleListStatus,
@@ -44,6 +45,7 @@ export class RolesController {
   ) {}
 
   @Post('/create')
+  @UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
   create(@Body() dto: CreateRoleDto, @CurrentUser() user: { role: RoleType }) {
     return this.createRoleUseCase.execute(dto, user.role);
   }
@@ -71,16 +73,19 @@ export class RolesController {
   }
 
   @Patch('/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
   update(@Param('id') id: string, @Body() dto: UpdateRoleDto) {
     return this.updateRoleUseCase.execute(id, dto);
   }
 
   @Delete('/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
   remove(@Param('id') id: string) {
     return this.deleteRoleUseCase.execute(id);
   }
 
   @Patch(':id/restore')
+  @UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
   restore(@Param('id') id: string) {
     return this.restoreRoleUseCase.execute(id);
   }

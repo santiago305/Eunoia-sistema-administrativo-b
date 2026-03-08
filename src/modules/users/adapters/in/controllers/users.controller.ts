@@ -37,6 +37,7 @@ import { Roles } from 'src/shared/utilidades/decorators';
 import { RoleType } from 'src/shared/constantes/constants';
 import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/shared/utilidades/guards/roles.guard';
+import { CsrfGuard } from 'src/shared/utilidades/guards/csrf.guard';
 import { User as CurrentUser } from 'src/shared/utilidades/decorators/user.decorator';
 import { RemoveAvatarUseCase } from 'src/modules/users/application/use-cases/remove-avatar.usecase';
 import { IMAGE_PROCESSOR, ImageProcessor } from 'src/shared/application/ports/image-processor.port';
@@ -77,7 +78,7 @@ export class UsersController {
   ) {}
 
   @Post('create')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
   @Roles(RoleType.ADMIN, RoleType.MODERATOR)
   create(@Body() dto: CreateUserDto, @CurrentUser() user: { role: RoleType }) {
     return this.createUserUseCase.execute(dto, user.role);
@@ -166,7 +167,7 @@ export class UsersController {
   }
 
   @Patch('me/update')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, CsrfGuard)
   update(
     @Body() dto: UpdateUserDto,
     @CurrentUser() user: { id: string }
@@ -175,7 +176,7 @@ export class UsersController {
   }
 
   @Patch(':id/role')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
   @Roles(RoleType.ADMIN)
   updateRole(
     @Param('id') id: string,
@@ -186,7 +187,7 @@ export class UsersController {
   }
 
   @Delete('me/avatar')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, CsrfGuard)
   removeAvatar(
     @CurrentUser() user: { id: string }
   ) {
@@ -194,35 +195,35 @@ export class UsersController {
   }
 
   @Patch('delete/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
   @Roles(RoleType.ADMIN, RoleType.MODERATOR)
   remove(@Param('id') id: string, @CurrentUser() user: { role: RoleType }) {
     return this.deleteUserUseCase.execute(id, user.role);
   }
 
   @Patch(':id/deactivate')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
   @Roles(RoleType.ADMIN, RoleType.MODERATOR)
   deactivate(@Param('id') id: string, @CurrentUser() user: { role: RoleType }) {
     return this.deleteUserUseCase.execute(id, user.role);
   }
 
   @Patch('restore/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
   @Roles(RoleType.ADMIN, RoleType.MODERATOR)
   restore(@Param('id') id: string, @CurrentUser() user: { role: RoleType }) {
     return this.restoreUserUseCase.execute(id, user.role);
   }
 
   @Patch(':id/activate')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
   @Roles(RoleType.ADMIN, RoleType.MODERATOR)
   activate(@Param('id') id: string, @CurrentUser() user: { role: RoleType }) {
     return this.restoreUserUseCase.execute(id, user.role);
   }
 
   @Patch('change-password/:id')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, CsrfGuard)
   async changePassword(
     @Param('id') id: string,
     @Body() body: ChangePasswordDto,
@@ -235,7 +236,7 @@ export class UsersController {
   }
 
   @Patch('me/change-password')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, CsrfGuard)
   async changeOwnPassword(
     @Body() body: ChangePasswordDto,
     @CurrentUser() user: { id: string }
@@ -249,7 +250,7 @@ export class UsersController {
   }
 
   @Post('me/avatar')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, CsrfGuard)
   @UseInterceptors(
     FileInterceptor('avatar', {
       storage: memoryStorage(),
