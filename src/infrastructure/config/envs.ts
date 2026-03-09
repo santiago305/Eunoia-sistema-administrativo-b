@@ -5,6 +5,7 @@ import { StringValue } from 'ms';
 
 interface EnvVars {
     PORT: number;
+    TRUST_PROXY?: boolean;
     DB_HOST: string;
     DB_PORT: number;
     DB_USERNAME: string;
@@ -28,6 +29,7 @@ interface EnvVars {
 
 const envsSchema = joi.object({
     PORT: joi.number().required(),
+    TRUST_PROXY: joi.boolean().optional(),
     DB_HOST: joi.string().required(),
     DB_PORT: joi.number().required(),
     DB_USERNAME: joi.string().required(),
@@ -61,6 +63,7 @@ const envsVars:EnvVars = value
 
 export const envs = {
     port: envsVars.PORT,
+    trustProxy: envsVars.TRUST_PROXY ?? false,
     cookieSecret: envsVars.COOKIE_SECRET,
     jwt: {
         secret: envsVars.JWT_SECRET,

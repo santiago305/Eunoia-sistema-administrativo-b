@@ -14,6 +14,11 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
+  if (envs.trustProxy) {
+    // Required only when the app runs behind a trusted reverse proxy.
+    app.set('trust proxy', 1);
+  }
+
   //  Servir la carpeta de imAgenes pAblicas
   app.useStaticAssets(join(process.cwd(), 'assets'), {
     prefix: '/api/assets/',

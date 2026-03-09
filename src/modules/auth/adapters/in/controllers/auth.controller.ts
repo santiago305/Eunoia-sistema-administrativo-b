@@ -109,7 +109,6 @@ export class AuthController {
   // REFRESH TOKEN
   @UseGuards(JwtRefreshAuthGuard, CsrfGuard)
   @Post('refresh')
-  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   async refresh(
     @UserDecorator() user: any, // puede venir con userId o sub
     @Req() req: Request,
@@ -148,10 +147,8 @@ export class AuthController {
     return { message: 'OK' };
   }
 
-  
   @Post('verify-password')
   @UseGuards(JwtAuthGuard, CsrfGuard)
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   async verifyPassword(
     @UserDecorator() user: { id: string },
     @Body() body: VerifyPasswordDto,

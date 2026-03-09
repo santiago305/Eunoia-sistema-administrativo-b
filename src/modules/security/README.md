@@ -45,6 +45,11 @@ Base: `/api/security`
 - `GET /top-ips?hours=24&limit=20`
 - `GET /active-bans`
 - `GET /history/:ip?limit=100`
+- `GET /activity-series?hours=24&groupBy=hour`
+- `GET /reason-distribution?hours=24`
+- `GET /method-distribution?hours=24`
+- `GET /top-routes?hours=24&limit=5`
+- `GET /risk-score?hours=24`
 - `PATCH /blacklist`
   - body: `{ "ip": "1.2.3.4", "notes": "motivo" }`
 - `PATCH /blacklist/remove/:ip`

@@ -39,6 +39,55 @@ export class SecurityController {
     return this.getIpSecurityInsightsUseCase.getIpHistory(ip, limit ? Number(limit) : undefined);
   }
 
+  @Get('activity-series')
+  getActivitySeries(
+    @Query('hours') hours?: string,
+    @Query('groupBy') groupBy?: string,
+  ) {
+    return this.getIpSecurityInsightsUseCase.getActivitySeries({
+      hours: hours ? Number(hours) : undefined,
+      groupBy,
+    });
+  }
+
+  @Get('reason-distribution')
+  getReasonDistribution(
+    @Query('hours') hours?: string,
+  ) {
+    return this.getIpSecurityInsightsUseCase.getReasonDistribution({
+      hours: hours ? Number(hours) : undefined,
+    });
+  }
+
+  @Get('method-distribution')
+  getMethodDistribution(
+    @Query('hours') hours?: string,
+  ) {
+    return this.getIpSecurityInsightsUseCase.getMethodDistribution({
+      hours: hours ? Number(hours) : undefined,
+    });
+  }
+
+  @Get('top-routes')
+  getTopRoutes(
+    @Query('hours') hours?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.getIpSecurityInsightsUseCase.getTopRoutes({
+      hours: hours ? Number(hours) : undefined,
+      limit: limit ? Number(limit) : undefined,
+    });
+  }
+
+  @Get('risk-score')
+  getRiskScore(
+    @Query('hours') hours?: string,
+  ) {
+    return this.getIpSecurityInsightsUseCase.getRiskScore({
+      hours: hours ? Number(hours) : undefined,
+    });
+  }
+
   @Patch('blacklist')
   setManualBlacklist(
     @Body() dto: ManualBanDto,

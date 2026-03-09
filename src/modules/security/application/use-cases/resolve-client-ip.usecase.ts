@@ -4,10 +4,7 @@ import { Request } from 'express';
 @Injectable()
 export class ResolveClientIpUseCase {
   execute(req: Request): string {
-    const xForwardedFor = req.headers['x-forwarded-for'];
-    const forwardedRaw = Array.isArray(xForwardedFor) ? xForwardedFor[0] : xForwardedFor;
-    const firstForwarded = forwardedRaw?.split(',')[0]?.trim();
-    const candidate = firstForwarded || req.ip || 'unknown';
+    const candidate = req.ip || req.socket?.remoteAddress || 'unknown';
     return this.normalizeIp(candidate);
   }
 
