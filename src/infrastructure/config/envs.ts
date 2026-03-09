@@ -15,6 +15,11 @@ interface EnvVars {
     JWT_EXPIRES_IN: StringValue;
     JWT_ISSUER: StringValue;
     JWT_REFRESH_EXPIRES_IN: StringValue;
+    REDIS_HOST: string;
+    REDIS_PORT: number;
+    REDIS_PASSWORD?: string;
+    REDIS_DB?: number;
+    REDIS_TTL_MS?: number;
 
     IDENTITY_API_KEY?: string;
     IDENTITY_BASE_URL?: string;
@@ -33,6 +38,11 @@ const envsSchema = joi.object({
     JWT_EXPIRES_IN: joi.string().required(),
     JWT_ISSUER: joi.string().required(),
     JWT_REFRESH_EXPIRES_IN: joi.string().required(),
+    REDIS_HOST: joi.string().required(),
+    REDIS_PORT: joi.number().required(),
+    REDIS_PASSWORD: joi.string().allow('').optional(),
+    REDIS_DB: joi.number().optional(),
+    REDIS_TTL_MS: joi.number().optional(),
     IDENTITY_BASE_URL: joi.string().optional(),
     IDENTITY_API_KEY: joi.string().optional(),
     IDENTITY_TIMEOUT_MS: joi.number().optional(),
@@ -69,5 +79,12 @@ export const envs = {
         username: envsVars.DB_USERNAME,
         password: envsVars.DB_PASSWORD,
         name: envsVars.DB_NAME,
+    },
+    redis: {
+        host: envsVars.REDIS_HOST,
+        port: envsVars.REDIS_PORT,
+        password: envsVars.REDIS_PASSWORD,
+        db: envsVars.REDIS_DB ?? 0,
+        ttlMs: envsVars.REDIS_TTL_MS ?? 60_000,
     },
 }
