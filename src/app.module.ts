@@ -11,7 +11,7 @@ import { CatalogModule } from './modules/catalog/infrastructure/catalog.module';
 import { AppConfigModule } from './infrastructure/config/config.module';
 import { CommonModule } from './shared/common.module';
 import { DatabaseModule } from './infrastructure/database/database.module';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { getStorageToken, ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { WarehousesModule } from './modules/warehouses/warehouses.module';
 import { ProductionModule } from './modules/production/infrastructure/production.module';
@@ -25,6 +25,7 @@ import { envs } from './infrastructure/config/envs';
 import { SecurityModule } from './modules/security/infrastructure/security.module';
 import { SecurityThrottlerGuard } from './modules/security/adapters/in/guards/security-throttler.guard';
 import { IpBanGuard } from './modules/security/adapters/in/guards/ip-ban.guard';
+import { RedisThrottlerStorage } from './modules/security/infrastructure/providers/redis-throttler.storage';
 
 const redisAuth = envs.redis.password ? `:${encodeURIComponent(envs.redis.password)}@` : '';
 const redisUrl = `redis://${redisAuth}${envs.redis.host}:${envs.redis.port}/${envs.redis.db}`;
@@ -61,6 +62,10 @@ const redisUrl = `redis://${redisAuth}${envs.redis.host}:${envs.redis.port}/${en
     SecurityModule,
   ],
   providers: [
+    {
+      provide: getStorageToken(),
+      useClass: RedisThrottlerStorage,
+    },
     {
       provide: APP_GUARD,
       useClass: IpBanGuard,

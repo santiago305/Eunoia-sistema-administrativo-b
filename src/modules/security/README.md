@@ -38,6 +38,7 @@ Modulo de seguridad IP para rate limit, bans progresivos y blacklist manual.
 ## Integracion global
 - `IpBanGuard` y `SecurityThrottlerGuard` se registran como `APP_GUARD` en `AppModule`.
 - `ThrottlerModule` mantiene el limite global actual (`120/min`).
+- El storage del throttler es Redis (`RedisThrottlerStorage`), por lo que el contador se comparte entre instancias.
 
 ## Endpoints (admin)
 Base: `/api/security`
@@ -56,4 +57,3 @@ Todos estos endpoints requieren `JwtAuthGuard + RolesGuard` con rol `admin`.
 - `REDIS_PASSWORD`
 - `REDIS_DB`
 - `REDIS_TTL_MS`
-
