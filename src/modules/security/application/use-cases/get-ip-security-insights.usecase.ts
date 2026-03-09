@@ -5,7 +5,7 @@ import { IpViolation } from '../../adapters/out/persistence/typeorm/entities/ip-
 import { IpBan } from '../../adapters/out/persistence/typeorm/entities/ip-ban.entity';
 import { ResolveClientIpUseCase } from './resolve-client-ip.usecase';
 
-type GroupByGranularity = 'hour' | 'day';
+type GroupByGranularity = '5min' | '15min' | '30min' | 'hour' | 'day';
 const SECURITY_TIMEZONE = 'America/Lima';
 
 @Injectable()
@@ -92,13 +92,15 @@ export class GetIpSecurityInsightsUseCase {
   }
 
   async getActivitySeries(params: { hours?: number; groupBy?: string }) {
-    const { from, to } = this.resolveWindow(params.hours);
-    const groupBy = this.resolveGroupBy(params.groupBy);
+    const { from, to, hours } = this.resolveWindow(params.hours);
+    const groupBy = this.resolveGroupBy(params.groupBy, hours);
+    const violationBucketExpr = this.getSqlBucketExpr('v.created_at', groupBy);
+    const banBucketExpr = this.getSqlBucketExpr('b.updated_at', groupBy);
 
     const [violationRows, banRows] = await Promise.all([
       this.violationRepository
         .createQueryBuilder('v')
-        .select(`DATE_TRUNC('${groupBy}', v.created_at)`, 'bucket')
+        .select(violationBucketExpr, 'bucket')
         .addSelect('COUNT(*)', 'violations')
         .addSelect('COUNT(DISTINCT v.ip)', 'uniqueIps')
         .where('v.created_at >= :from AND v.created_at <= :to', { from, to })
@@ -107,7 +109,7 @@ export class GetIpSecurityInsightsUseCase {
         .getRawMany<{ bucket: string; violations: string; uniqueIps: string }>(),
       this.banRepository
         .createQueryBuilder('b')
-        .select(`DATE_TRUNC('${groupBy}', b.updated_at)`, 'bucket')
+        .select(banBucketExpr, 'bucket')
         .addSelect('COUNT(*)', 'bans')
         .where('b.updated_at >= :from AND b.updated_at <= :to', { from, to })
         .andWhere('(b.manual_permanent_ban = true OR b.banned_until IS NOT NULL)')
@@ -130,7 +132,8 @@ export class GetIpSecurityInsightsUseCase {
       banRows.map((row) => [this.toBucketKey(new Date(row.bucket), groupBy), Number(row.bans) || 0]),
     );
 
-    const series = this.buildTimeline(from, to, groupBy).map((bucketDate) => {
+    const timeline = this.buildTimeline(from, to, groupBy);
+    const series = timeline.map((bucketDate) => {
       const key = this.toBucketKey(bucketDate, groupBy);
       const violationInfo = violationMap.get(key) ?? { violations: 0, uniqueIps: 0 };
       return {
@@ -141,14 +144,7 @@ export class GetIpSecurityInsightsUseCase {
       };
     });
 
-    return {
-      from: from.toISOString(),
-      to: to.toISOString(),
-      generatedAt: new Date().toISOString(),
-      timeZone: SECURITY_TIMEZONE,
-      groupBy,
-      data: series,
-    };
+    return this.buildActivitySeriesPayload({ from, to, groupBy, series, timeline });
   }
 
   async getReasonDistribution(params: { hours?: number }) {
@@ -289,8 +285,15 @@ export class GetIpSecurityInsightsUseCase {
     return { from, to, hours: safeHours };
   }
 
-  private resolveGroupBy(groupBy?: string): GroupByGranularity {
-    return groupBy === 'day' ? 'day' : 'hour';
+  private resolveGroupBy(groupBy?: string, hours = 24): GroupByGranularity {
+    if (groupBy === 'day' || groupBy === 'hour' || groupBy === '30min' || groupBy === '15min' || groupBy === '5min') {
+      return groupBy;
+    }
+
+    if (hours <= 1) return '5min';
+    if (hours <= 6) return '15min';
+    if (hours < 24) return '30min';
+    return 'hour';
   }
 
   private toBucketKey(date: Date, groupBy: GroupByGranularity): string {
@@ -300,39 +303,153 @@ export class GetIpSecurityInsightsUseCase {
       return `${year}-${month}-${day}`;
     }
 
-    return `${year}-${month}-${day}T${hour}`;
+    if (groupBy === 'hour') {
+      return `${year}-${month}-${day}T${hour}`;
+    }
+
+    const minute = this.getZonedMinute(date);
+    return `${year}-${month}-${day}T${hour}:${minute}`;
+  }
+
+  private getZonedMinute(date: Date): string {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: SECURITY_TIMEZONE,
+      minute: '2-digit',
+    }).formatToParts(date);
+    return parts.find((part) => part.type === 'minute')?.value ?? '00';
+  }
+
+  private getStepMinutes(groupBy: GroupByGranularity): number {
+    if (groupBy === '5min') return 5;
+    if (groupBy === '15min') return 15;
+    if (groupBy === '30min') return 30;
+    if (groupBy === 'hour') return 60;
+    return 24 * 60;
+  }
+
+  private getSqlBucketExpr(field: string, groupBy: GroupByGranularity): string {
+    if (groupBy === 'day' || groupBy === 'hour') {
+      return `DATE_TRUNC('${groupBy}', ${field})`;
+    }
+
+    const bucketSeconds = this.getStepMinutes(groupBy) * 60;
+    return `TO_TIMESTAMP(FLOOR(EXTRACT(EPOCH FROM ${field}) / ${bucketSeconds}) * ${bucketSeconds})`;
+  }
+
+  private alignToStep(date: Date, stepMinutes: number): Date {
+    const aligned = new Date(date);
+    if (stepMinutes >= 24 * 60) {
+      aligned.setUTCHours(0, 0, 0, 0);
+      return aligned;
+    }
+
+    const stepMs = stepMinutes * 60 * 1000;
+    const floored = Math.floor(aligned.getTime() / stepMs) * stepMs;
+    return new Date(floored);
+  }
+
+  private toHourLabel(date: Date): string {
+    const { hour } = this.getZonedParts(date);
+    return `${hour}h`;
+  }
+
+  private toMinuteLabel(date: Date): string {
+    const { hour } = this.getZonedParts(date);
+    const minute = this.getZonedMinute(date);
+    return `${hour}:${minute}`;
+  }
+
+  private toDayLabel(date: Date): string {
+    const { year, month, day } = this.getZonedParts(date);
+    return `${year}-${month}-${day}`;
+  }
+
+  private toDateTimeLabel(date: Date): string {
+    const { year, month, day, hour } = this.getZonedParts(date);
+    const minute = this.getZonedMinute(date);
+    return `${year}-${month}-${day} ${hour}:${minute}`;
   }
 
   private toBucketLabel(date: Date, groupBy: GroupByGranularity): string {
-    const { year, month, day, hour } = this.getZonedParts(date);
-
-    if (groupBy === 'day') {
-      return `${year}-${month}-${day}`;
-    }
-
-    return `${hour}h`;
+    if (groupBy === 'day') return this.toDayLabel(date);
+    if (groupBy === 'hour') return this.toHourLabel(date);
+    return this.toMinuteLabel(date);
   }
 
   private buildTimeline(from: Date, to: Date, groupBy: GroupByGranularity): Date[] {
     const timeline: Date[] = [];
-    const cursor = new Date(from);
+    const stepMinutes = this.getStepMinutes(groupBy);
+    const cursor = this.alignToStep(from, stepMinutes);
 
-    if (groupBy === 'day') {
-      cursor.setUTCHours(0, 0, 0, 0);
-      while (cursor <= to) {
-        timeline.push(new Date(cursor));
-        cursor.setUTCDate(cursor.getUTCDate() + 1);
-      }
-      return timeline;
-    }
-
-    cursor.setUTCMinutes(0, 0, 0);
     while (cursor <= to) {
       timeline.push(new Date(cursor));
-      cursor.setUTCHours(cursor.getUTCHours() + 1);
+      cursor.setUTCMinutes(cursor.getUTCMinutes() + stepMinutes);
     }
+
     return timeline;
   }
+
+  private getGroupByDescription(groupBy: GroupByGranularity): string {
+    if (groupBy === '5min') return '5 minutes';
+    if (groupBy === '15min') return '15 minutes';
+    if (groupBy === '30min') return '30 minutes';
+    if (groupBy === 'hour') return '1 hour';
+    return '1 day';
+  }
+
+  private toBucketLabelWithDate(date: Date, groupBy: GroupByGranularity): string {
+    if (groupBy === 'day') return this.toDayLabel(date);
+    if (groupBy === 'hour') return this.toDateTimeLabel(date);
+    return this.toDateTimeLabel(date);
+  }
+
+  private toBucketLabelShort(date: Date, groupBy: GroupByGranularity): string {
+    if (groupBy === 'day') return this.toDayLabel(date);
+    if (groupBy === 'hour') return this.toHourLabel(date);
+    return this.toMinuteLabel(date);
+  }
+
+  private toActivityItemLabel(date: Date, groupBy: GroupByGranularity): string {
+    return this.toBucketLabelShort(date, groupBy);
+  }
+
+  private toActivityItemBucketStart(date: Date): string {
+    return date.toISOString();
+  }
+
+  private enrichActivitySeriesData(
+    series: Array<{ label: string; violations: number; bans: number; uniqueIps: number }>,
+    timeline: Date[],
+    groupBy: GroupByGranularity,
+  ) {
+    return series.map((item, index) => ({
+      ...item,
+      label: this.toActivityItemLabel(timeline[index], groupBy),
+      bucketStart: this.toActivityItemBucketStart(timeline[index]),
+      bucketStartLocal: this.formatLocalDateTime(timeline[index]),
+      bucketLabel: this.toBucketLabelWithDate(timeline[index], groupBy),
+    }));
+  }
+
+  private buildActivitySeriesPayload(params: {
+    from: Date;
+    to: Date;
+    groupBy: GroupByGranularity;
+    series: Array<{ label: string; violations: number; bans: number; uniqueIps: number }>;
+    timeline: Date[];
+  }) {
+    const enriched = this.enrichActivitySeriesData(params.series, params.timeline, params.groupBy);
+    return {
+      from: params.from.toISOString(),
+      to: params.to.toISOString(),
+      generatedAt: new Date().toISOString(),
+      timeZone: SECURITY_TIMEZONE,
+      groupBy: params.groupBy,
+      bucketSize: this.getGroupByDescription(params.groupBy),
+      data: enriched,
+    };
+  }
+
 
   private humanizeReason(reason: string): string {
     return (reason || 'unknown')
