@@ -1,9 +1,9 @@
--- =========================================================
--- STOCK + CATÁLOGO (PostgreSQL)
--- con USERS/ROLES y auditoría de movimientos
+﻿-- =========================================================
+-- STOCK + CATiLOGO (PostgreSQL)
+-- con USERS/ROLES y auditori­a de movimientos
 -- =========================================================
 -- Esta BD cubre:
--- - Catálogo (productos y variantes/SKU)
+-- - Catalogo (productos y variantes/SKU)
 -- - Almacenes y ubicaciones internas
 -- - Inventario actual (snapshot)
 -- - Reservas (ecommerce)
@@ -14,18 +14,18 @@
 -- =========================
 -- 0) Extensión para UUID
 -- =========================
--- Sirve para generar UUID automáticamente con uuid_generate_v4()
+-- Sirve para generar UUID automaticamente con uuid_generate_v4()
 create extension if not exists "uuid-ossp";
 
 -- =========================
--- 0.1) Roles + Users (para auditoría)
+-- 0.1) Roles + Users (para auditori­a)
 -- =========================
 
 -- ---------------------------------------------------------
 -- TABLA: roles
--- Para qué sirve:
--- - Define roles/jerarquías del sistema (admin, moderador, asesor, etc.)
--- Qué información guarda:
+-- Para que sirve:
+-- - Define roles/jerarqui­as del sistema (admin, moderador, asesor, etc.)
+-- Que información guarda:
 -- - Descripción del rol
 -- Columnas (ES):
 -- - role_id: id del rol (uuid)
@@ -47,14 +47,14 @@ create unique index if not exists ux_roles_description_normalized
 
 -- ---------------------------------------------------------
 -- TABLA: users
--- Para qué sirve:
--- - Usuarios del sistema. Se usa para saber "quién hizo qué" (auditoría).
--- Qué información guarda:
--- - Datos básicos de usuario + rol asignado
+-- Para que sirve:
+-- - Usuarios del sistema. Se usa para saber "quien hizo que" (auditori­a).
+-- Que información guarda:
+-- - Datos basicos de usuario + rol asignado
 -- Columnas (ES):
 -- - user_id: id del usuario (uuid)
 -- - name: nombre del usuario
--- - email: correo (único)
+-- - email: correo (unico)
 -- - password: contraseña hasheada
 -- - deleted: borrado lógico (true/false)
 -- - avatar_url: url del avatar (opcional)
@@ -78,31 +78,31 @@ create table users (
   created_at timestamptz not null default now()
 );
 
--- Índice para filtrar rápido por rol
+-- indice para filtrar rapido por rol
 create index if not exists idx_users_role on users(role_id);
 
 -- =========================
--- 1) Catálogo
+-- 1) Catalogo
 -- =========================
 
 -- ---------------------------------------------------------
 -- TABLA: products
--- Para qué sirve:
--- - Catálogo maestro de productos (concepto general).
--- Qué información guarda:
+-- Para que sirve:
+-- - Catalogo maestro de productos (concepto general).
+-- Que información guarda:
 -- - Nombre, descripción y estado activo/inactivo.
 -- Columnas (ES):
 -- - product_id: id del producto
 -- - name: nombre del producto
 -- - description: descripción
 -- - base_unit_id: unidad base del producto (FK units)
--- - sku: código SKU (único)
--- - barcode: código de barras (único opcional)
+-- - sku: código SKU (unico)
+-- - barcode: código de barras (unico opcional)
 -- - attributes: atributos en JSON (ej: {"talla":"M","color":"Azul"})
 -- - price: precio de venta
 -- - cost: costo
 -- - type: tipo de producto (enum product_type)
--- - is_active: si está disponible/activo
+-- - is_active: si esta disponible/activo
 -- - created_at: fecha de creación
 -- - updated_at: fecha de actualización
 -- ---------------------------------------------------------
@@ -126,15 +126,15 @@ create table products (
 
 -- ---------------------------------------------------------
 -- TABLA: product_variants
--- Para qué sirve:
+-- Para que sirve:
 -- - Variantes/SKU del producto (lo que realmente se vende y se stockea).
--- Qué información guarda:
--- - SKU, código de barras, atributos (tamaño, tipo, etc.), precio y costo.
+-- Que información guarda:
+-- - SKU, código de barras, atributos (tamai±o, tipo, etc.), precio y costo.
 -- Columnas (ES):
 -- - variant_id: id de la variante/SKU
 -- - product_id: producto padre (FK products)
--- - sku: código SKU (único)
--- - barcode: código de barras (único opcional)
+-- - sku: código SKU (unico)
+-- - barcode: código de barras (unico opcional)
 -- - attributes: atributos en JSON (ej: {"talla":"M","color":"Azul"})
 -- - price: precio de venta
 -- - cost: costo
@@ -153,7 +153,7 @@ create table product_variants (
   created_at timestamptz not null default now()
 );
 
--- Índice para listar variantes por producto
+-- indice para listar variantes por producto
 create index idx_variants_product on product_variants(product_id);
 
 -- =========================
@@ -162,65 +162,44 @@ create index idx_variants_product on product_variants(product_id);
 
 -- ---------------------------------------------------------
 -- TABLA: stock_items
--- Para quÃ© sirve:
--- - Identidad Ãºnica "stockeable" (PRODUCT o VARIANT).
+-- Para que sirve:
+-- - Identidad unica "stockeable" (PRODUCT o VARIANT).
 -- Columnas (ES):
 -- - stock_item_id: id del stock item (uuid)
 -- - type: tipo de item (enum stock_item_type)
+-- - product_id: FK a products (solo si type=PRODUCT)
+-- - variant_id: FK a product_variants (solo si type=VARIANT)
 -- - is_active: activo/inactivo
--- - created_at: fecha de creaciÃ³n
+-- - created_at: fecha de creación
 -- ---------------------------------------------------------
 create type stock_item_type as enum ('PRODUCT','VARIANT');
 
 create table stock_items (
   stock_item_id uuid primary key default uuid_generate_v4(),
   type stock_item_type not null,
+  product_id uuid references products(product_id) on delete set null,
+  variant_id uuid references product_variants(variant_id) on delete set null,
   is_active boolean not null default true,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  constraint chk_stock_items_type_ref check (
+    (type = 'PRODUCT' and product_id is not null and variant_id is null) or
+    (type = 'VARIANT' and variant_id is not null and product_id is null)
+  )
 );
 
 create index idx_stock_items_type on stock_items(type);
-
--- ---------------------------------------------------------
--- TABLA: stock_item_products
--- Para quÃ© sirve:
--- - Vincula stock_item con product.
--- Columnas (ES):
--- - stock_item_id: FK a stock_items
--- - product_id: FK a products (Ãºnico)
--- ---------------------------------------------------------
-create table stock_item_products (
-  stock_item_id uuid primary key references stock_items(stock_item_id) on delete cascade,
-  product_id uuid not null references products(product_id) on delete cascade,
-  unique (product_id)
-);
-
--- ---------------------------------------------------------
--- TABLA: stock_item_variants
--- Para quÃ© sirve:
--- - Vincula stock_item con product_variants.
--- Columnas (ES):
--- - stock_item_id: FK a stock_items
--- - variant_id: FK a product_variants (Ãºnico)
--- ---------------------------------------------------------
-create table stock_item_variants (
-  stock_item_id uuid primary key references stock_items(stock_item_id) on delete cascade,
-  variant_id uuid not null references product_variants(variant_id) on delete cascade,
-  unique (variant_id)
-);
-
-create index idx_sip_product on stock_item_products(product_id);
-create index idx_siv_variant on stock_item_variants(variant_id);
+create unique index ux_stock_items_product on stock_items(product_id);
+create unique index ux_stock_items_variant on stock_items(variant_id);
 
 -- ---------------------------------------------------------
 -- TABLA: sku_counters
--- Para qué sirve:
+-- Para que sirve:
 -- - Controla el correlativo interno para generación de SKU.
--- Qué información guarda:
--- - Último número usado por cada contador.
+-- Que información guarda:
+-- -Usado por cada contador.
 -- Columnas (ES):
 -- - counter_id: id del contador (string)
--- - last_number: último número asignado
+-- - last_number: Ultimo numero asignado
 -- ---------------------------------------------------------
 create table sku_counters (
   counter_id uuid primary key default uuid_generate_v4(),
@@ -229,13 +208,13 @@ create table sku_counters (
 
 -- ---------------------------------------------------------
 -- TABLA: units
--- Para qué sirve:
--- - Catálogo de unidades de medida (KG, GR, LT, UND, etc.).
--- Qué información guarda:
+-- Para que sirve:
+-- - Catalogo de unidades de medida (KG, GR, LT, UND, etc.).
+-- Que información guarda:
 -- - Código y nombre de la unidad.
 -- Columnas (ES):
 -- - unit_id: id de la unidad (uuid)
--- - code: código único de la unidad
+-- - code: código unico de la unidad
 -- - name: nombre descriptivo
 -- ---------------------------------------------------------
 create table units (
@@ -251,9 +230,9 @@ alter table products
 
 -- ---------------------------------------------------------
 -- TABLA: product_equivalences
--- Para qué sirve:
+-- Para que sirve:
 -- - Factores de conversión entre unidades por producto.
--- Qué información guarda:
+-- Que información guarda:
 -- - Producto, unidad origen/destino y factor de conversión.
 -- Columnas (ES):
 -- - equivalence_id: id de equivalencia
@@ -274,9 +253,9 @@ create index idx_product_equivalences_product on product_equivalences(product_id
 
 -- ---------------------------------------------------------
 -- TABLA: product_recipes
--- Para qué sirve:
+-- Para que sirve:
 -- - Recetas/BOM para fabricar una variante terminada.
--- Qué información guarda:
+-- Que información guarda:
 -- - Variante terminada, variante prima, cantidad y merma.
 -- Columnas (ES):
 -- - recipe_id: id receta
@@ -302,13 +281,13 @@ create index idx_product_recipes_prima on product_recipes(prima_variant_id);
 
 -- ---------------------------------------------------------
 -- TABLA: warehouses
--- Para qué sirve:
--- - Representa cada almacén físico (multi-almacén).
--- Qué información guarda:
+-- Para que sirve:
+-- - Representa cada almacen fi­sico (multi-almacen).
+-- Que información guarda:
 -- - Nombre, distrito y dirección.
 -- Columnas (ES):
--- - warehouse_id: id del almacén
--- - name: nombre del almacén
+-- - warehouse_id: id del almacen
+-- - name: nombre del almacen
 -- - distrito: distrito asociado (opcional)
 -- - address: dirección (opcional)
 -- - is_active: activo/inactivo
@@ -325,14 +304,14 @@ create table warehouses (
 
 -- ---------------------------------------------------------
 -- TABLA: warehouse_locations
--- Para qué sirve:
--- - Ubicaciones internas dentro de un almacén (estantes, pasillos, etc.)
+-- Para que sirve:
+-- - Ubicaciones internas dentro de un almacen (estantes, pasillos, etc.)
 -- - Es opcional, pero sirve para orden real.
--- Qué información guarda:
--- - Código interno por almacén y descripción.
+-- Que información guarda:
+-- - Código interno por almacen y descripción.
 -- Columnas (ES):
 -- - location_id: id de ubicación
--- - warehouse_id: almacén dueño (FK)
+-- - warehouse_id: almacen duei±o (FK)
 -- - code: código (ej: "A-01", "RACK-2")
 -- - description: descripción
 -- - is_active: activo/inactivo
@@ -354,19 +333,19 @@ create index idx_locations_wh on warehouse_locations(warehouse_id);
 
 -- ---------------------------------------------------------
 -- TABLA: inventory
--- Para qué sirve:
--- - "Foto" del stock actual por almacén/ubicación/SKU.
+-- Para que sirve:
+-- - "Foto" del stock actual por almacen/ubicación/SKU.
 -- - Esta tabla NO guarda historial, solo el estado actual.
--- Qué información guarda:
+-- Que información guarda:
 -- - on_hand (en mano), reserved (reservado), available (disponible calculado).
 -- Columnas (ES):
--- - warehouse_id: almacén
+-- - warehouse_id: almacen
 -- - location_id: ubicación interna (opcional)
 -- - stock_item_id: item stockeable
--- - on_hand: stock físico disponible en mano
+-- - on_hand: stock fi­sico disponible en mano
 -- - reserved: stock reservado (no se puede vender)
 -- - available: disponible = on_hand - reserved (calculado)
--- - updated_at: última actualización del snapshot
+-- - updated_at: ultima actualización del snapshot
 -- ---------------------------------------------------------
 create table inventory (
   warehouse_id uuid not null references warehouses(warehouse_id),
@@ -398,13 +377,13 @@ create type reservation_status as enum ('ACTIVE','RELEASED','CONSUMED','EXPIRED'
 
 -- ---------------------------------------------------------
 -- TABLA: stock_reservations
--- Para qué sirve:
+-- Para que sirve:
 -- - Evita sobreventa: reserva stock temporalmente (carrito/pedido/manual).
--- Qué información guarda:
+-- Que información guarda:
 -- - Cantidad reservada, referencia (pedido/carrito), expiración y usuario.
 -- Columnas (ES):
 -- - reservation_id: id de reserva
--- - warehouse_id: almacén
+-- - warehouse_id: almacen
 -- - location_id: ubicación (opcional)
 -- - stock_item_id: item stockeable
 -- - quantity: cantidad reservada
@@ -428,7 +407,7 @@ create table stock_reservations (
   reference_id uuid not null,
   expires_at timestamptz,
 
-  created_by uuid references users(user_id), -- quién creó la reserva (opcional, pero recomendado)
+  created_by uuid references users(user_id), -- quien creó la reserva (opcional, pero recomendado)
   created_at timestamptz not null default now()
 );
 
@@ -459,25 +438,25 @@ create type inv_doc_type as enum (
 
 -- Estados del documento:
 -- DRAFT: borrador (no afecta stock)
--- POSTED: contabilizado (sí afecta stock)
+-- POSTED: contabilizado (si­ afecta stock)
 -- CANCELLED: cancelado
 create type inv_doc_status as enum ('DRAFT','POSTED','CANCELLED');
 
 -- ---------------------------------------------------------
 -- TABLA: documents_series
--- Para qué sirve:
--- - Define series de numeración por tipo de documento (y opcional por almacén).
--- Qué información guarda:
+-- Para que sirve:
+-- - Define series de numeración por tipo de documento (y opcional por almacen).
+-- Que información guarda:
 -- - Código/Nombre de la serie, tipo de documento, correlativo y formato.
 -- Columnas (ES):
 -- - series_id: id de la serie (uuid)
 -- - code: código corto (ej: ING, SAL, TRA)
 -- - name: nombre de la serie
 -- - doc_type: tipo de documento (enum inv_doc_type)
--- - warehouse_id: almacén (opcional)
+-- - warehouse_id: almacen (opcional)
 -- - next_number: correlativo actual
 -- - padding: longitud del correlativo (000001)
--- - separator: separador entre código y número (ING-000001)
+-- - separator: separador entre código y numero (ING-000001)
 -- - is_active: activo/inactivo
 -- - created_at: fecha de creación
 -- - updated_at: fecha de actualización
@@ -489,7 +468,7 @@ create table documents_series (
   name varchar(80) not null,                 -- "Serie Ingresos Principal"
   doc_type inv_doc_type not null,            -- tu enum (TRANSFER, ADJUSTMENT, etc.)
 
-  warehouse_id uuid references warehouses(warehouse_id), -- opcional si numeras por almacén
+  warehouse_id uuid references warehouses(warehouse_id), -- opcional si numeras por almacen
   next_number integer not null default 1,     -- correlativo actual
   padding smallint not null default 6,        -- 000001
   separator varchar(2) not null default '-',  -- ING-000001
@@ -504,17 +483,17 @@ create table documents_series (
 
 -- ---------------------------------------------------------
 -- TABLA: inventory_documents
--- Para qué sirve:
+-- Para que sirve:
 -- - Cabecera del documento de inventario. Es el "evento" que explica un movimiento.
--- - Aquí se guarda la auditoría: quién creó y quién posteó.
--- Qué información guarda:
+-- - Aqui­ se guarda la auditori­a: quien creó y quien posteó.
+-- Que información guarda:
 -- - Tipo doc, estado, almacenes origen/destino, referencias externas.
 -- Columnas (ES):
 -- - doc_id: id del documento
 -- - doc_type: tipo de documento (enum)
 -- - status: estado (draft/posted/cancelled)
--- - from_warehouse_id: almacén origen (si aplica)
--- - to_warehouse_id: almacén destino (si aplica)
+-- - from_warehouse_id: almacen origen (si aplica)
+-- - to_warehouse_id: almacen destino (si aplica)
 -- - reference_type: tipo referencia (PO/ORDER/RMA/etc)
 -- - reference_id: id referencia externa
 -- - note: nota libre
@@ -538,9 +517,9 @@ create table inventory_documents (
 
   note text,
 
-  -- Auditoría:
-  created_by uuid references users(user_id), -- quién lo creó
-  posted_by uuid references users(user_id),  -- quién lo posteó (quién ejecutó el movimiento real)
+  -- Auditori­a:
+  created_by uuid references users(user_id), -- quien lo creó
+  posted_by uuid references users(user_id),  -- quien lo posteó (quien ejecutó el movimiento real)
   posted_at timestamptz,
 
   created_at timestamptz not null default now()
@@ -552,9 +531,9 @@ create index idx_inv_docs_posted_by on inventory_documents(posted_by);
 
 -- ---------------------------------------------------------
 -- TABLA: inventory_document_items
--- Para qué sirve:
--- - Detalle del documento: qué SKU y qué cantidad se mueve.
--- Qué información guarda:
+-- Para que sirve:
+-- - Detalle del documento: que SKU y que cantidad se mueve.
+-- Que información guarda:
 -- - SKU, cantidad, ubicaciones origen/destino (si se usa locations), costo unitario.
 -- Columnas (ES):
 -- - item_id: id del item
@@ -563,7 +542,7 @@ create index idx_inv_docs_posted_by on inventory_documents(posted_by);
 -- - from_location_id: ubicación origen (opcional)
 -- - to_location_id: ubicación destino (opcional)
 -- - quantity: cantidad movida
--- - unit_cost: costo unitario (útil para compras o valorización)
+-- - unit_cost: costo unitario (util para compras o valorización)
 -- ---------------------------------------------------------
 create table inventory_document_items (
   item_id uuid primary key default uuid_generate_v4(),
@@ -587,15 +566,15 @@ create type inv_direction as enum ('IN','OUT');
 
 -- ---------------------------------------------------------
 -- TABLA: inventory_ledger
--- Para qué sirve:
+-- Para que sirve:
 -- - Kardex / registro histórico inmutable de movimientos.
--- - Es la verdad histórica: de aquí salen reportes, auditoría y métricas.
--- Qué información guarda:
--- - doc_id, almacén, SKU, dirección, cantidad y costo.
+-- - Es la verdad histórica: de aqui­ salen reportes, auditori­a y metricas.
+-- Que información guarda:
+-- - doc_id, almacen, SKU, dirección, cantidad y costo.
 -- Columnas (ES):
 -- - ledger_id: id incremental del kardex
 -- - doc_id: documento que originó el movimiento
--- - warehouse_id: almacén afectado
+-- - warehouse_id: almacen afectado
 -- - location_id: ubicación (opcional)
 -- - stock_item_id: item afectado
 -- - direction: IN/OUT
@@ -623,23 +602,23 @@ create index idx_ledger_stock_item_date on inventory_ledger(stock_item_id, creat
 create index idx_ledger_doc on inventory_ledger(doc_id);
 
 -- =========================
--- 6) Reorden (stock “inteligente”)
+-- 6) Reorden (stock â€œinteligenteâ€)
 -- =========================
 
 -- ---------------------------------------------------------
 -- TABLA: reorder_rules
--- Para qué sirve:
--- - Reglas por almacén y SKU para alertas y reposición (stock inteligente).
--- Qué información guarda:
--- - mínimos, punto de reorden, máximo sugerido, lead time.
+-- Para que sirve:
+-- - Reglas por almacen y SKU para alertas y reposición (stock inteligente).
+-- Que información guarda:
+-- - mi­nimos, punto de reorden, maximo sugerido, lead time.
 -- Columnas (ES):
 -- - rule_id: id regla
--- - warehouse_id: almacén
+-- - warehouse_id: almacen
 -- - stock_item_id: item stockeable
--- - min_qty: mínimo deseado
--- - reorder_point: punto de reorden (cuando bajar de aquí, avisar)
--- - max_qty: máximo objetivo (opcional)
--- - lead_time_days: días que tarda en llegar reposición
+-- - min_qty: mi­nimo deseado
+-- - reorder_point: punto de reorden (cuando bajar de aqui­, avisar)
+-- - max_qty: maximo objetivo (opcional)
+-- - lead_time_days: di­as que tarda en llegar reposición
 -- ---------------------------------------------------------
 create table reorder_rules (
   rule_id uuid primary key default uuid_generate_v4(),
@@ -660,14 +639,14 @@ create table reorder_rules (
 
 -- ---------------------------------------------------------
 -- TABLA: suppliers
--- Para qué sirve:
--- - Catálogo de proveedores (para compras).
--- Qué información guarda:
+-- Para que sirve:
+-- - Catalogo de proveedores (para compras).
+-- Que información guarda:
 -- - nombre, contacto, dirección.
 -- Columnas (ES):
 -- - supplier_id: id proveedor
 -- - name: nombre
--- - phone: teléfono
+-- - phone: telefono
 -- - email: correo
 -- - address: dirección
 -- - created_at: fecha de creación
@@ -694,15 +673,15 @@ create table suppliers (
 
 -- ---------------------------------------------------------
 -- TABLA: supplier_variants
--- Para qué sirve:
--- - Relación proveedor <-> SKU (qué proveedor vende qué SKU).
--- Qué información guarda:
--- - sku de proveedor, último costo, lead time.
+-- Para que sirve:
+-- - Relación proveedor <-> SKU (que proveedor vende que SKU).
+-- Que información guarda:
+-- - sku de proveedor, ultimo costo, lead time.
 -- Columnas (ES):
 -- - supplier_id: proveedor
 -- - variant_id: SKU
 -- - supplier_sku: código del proveedor
--- - last_cost: último costo registrado
+-- - last_cost: ultimo costo registrado
 -- - lead_time_days: tiempo de entrega
 -- ---------------------------------------------------------
 create table supplier_variants (
@@ -749,16 +728,16 @@ CREATE TYPE voucher_doc_type AS ENUM ('01', '03', '07', '08');
 
 -- ---------------------------------------------------------
 -- TABLA: purchase_orders
--- Para qué sirve:
+-- Para que sirve:
 -- - Orden de compra (cabecera) para reponer stock.
--- Qué información guarda:
--- - proveedor, almacén destino, estado, fecha esperada, nota.
+-- Que información guarda:
+-- - proveedor, almacen destino, estado, fecha esperada, nota.
 -- Columnas (ES):
 -- - po_id: id orden compra
 -- - supplier_id: proveedor
--- - warehouse_id: almacén que recibirá
+-- - warehouse_id: almacen que recibira
 -- - status: estado de la OC
--- - expected_at: fecha esperada (día)
+-- - expected_at: fecha esperada (di­a)
 -- - note: observación
 -- - created_at: fecha creación
 -- ---------------------------------------------------------
@@ -796,9 +775,9 @@ create table purchase_orders (
 );
 -- ---------------------------------------------------------
 -- TABLA: purchase_order_items
--- Para qué sirve:
--- - Detalle de la orden de compra (qué SKU y qué cantidad se compra).
--- Qué información guarda:
+-- Para que sirve:
+-- - Detalle de la orden de compra (que SKU y que cantidad se compra).
+-- Que información guarda:
 -- - SKU, cantidad, costo.
 -- Columnas (ES):
 -- - po_item_id: id detalle
@@ -892,14 +871,14 @@ create type production_status as enum ('DRAFT','IN_PROGRESS','COMPLETED','CANCEL
 
 -- ---------------------------------------------------------
 -- TABLA: production_orders
--- Para qué sirve:
+-- Para que sirve:
 -- - Cabecera de órdenes de producción.
--- Qué información guarda:
--- - Almacén origen/destino, serie, correlativo, estado y auditoría.
+-- Que información guarda:
+-- - Almacen origen/destino, serie, correlativo, estado y auditori­a.
 -- Columnas (ES):
 -- - production_id: id de orden producción
--- - from_warehouse_id: almacén origen
--- - to_warehouse_id: almacén destino
+-- - from_warehouse_id: almacen origen
+-- - to_warehouse_id: almacen destino
 -- - serie_id: serie documental asociada
 -- - correlative: correlativo de la orden
 -- - status: estado de la orden
@@ -932,9 +911,9 @@ create index idx_production_orders_to_wh on production_orders(to_warehouse_id);
 
 -- ---------------------------------------------------------
 -- TABLA: production_order_items
--- Para qué sirve:
+-- Para que sirve:
 -- - Detalle de la orden de producción.
--- Qué información guarda:
+-- Que información guarda:
 -- - Variante final a fabricar, ubicación origen/destino, cantidad y costo unitario.
 -- Columnas (ES):
 -- - item_id: id del item

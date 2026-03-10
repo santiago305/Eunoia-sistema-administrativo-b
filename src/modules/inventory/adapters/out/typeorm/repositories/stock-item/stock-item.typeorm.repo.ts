@@ -28,11 +28,28 @@ export class StockItemTypeormRepository implements StockItemRepository {
   }
 
   private toDomain(row: StockItemEntity): StockItem {
-    return new StockItem(row.id, row.type, row.isActive, row.createdAt);
+    return new StockItem(
+      row.id,
+      row.type,
+      row.isActive,
+      row.productId ?? undefined,
+      row.variantId ?? undefined,
+      row.createdAt,
+    );
   }
 
   async findById(stockItemId: string, tx?: TransactionContext): Promise<StockItem | null> {
     const row = await this.getRepo(tx).findOne({ where: { id: stockItemId } });
+    return row ? this.toDomain(row) : null;
+  }
+
+  async findByProductId(productId: string, tx?: TransactionContext): Promise<StockItem | null> {
+    const row = await this.getRepo(tx).findOne({ where: { productId } });
+    return row ? this.toDomain(row) : null;
+  }
+
+  async findByVariantId(variantId: string, tx?: TransactionContext): Promise<StockItem | null> {
+    const row = await this.getRepo(tx).findOne({ where: { variantId } });
     return row ? this.toDomain(row) : null;
   }
 
@@ -46,6 +63,8 @@ export class StockItemTypeormRepository implements StockItemRepository {
     const row = repo.create({
       id: stockItem.stockItemId,
       type: stockItem.type,
+      productId: stockItem.productId ?? null,
+      variantId: stockItem.variantId ?? null,
       isActive: stockItem.isActive,
       createdAt: stockItem.createdAt,
     });
