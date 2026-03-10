@@ -26,7 +26,6 @@ export class PurchaseOrderExpectedScheduler {
       }),
     );
     this.scheduleMeta.set(poId, { expectedAtMs, scheduledAtMs: scheduledAt });
-    this.ensureMonitor();
     if (delay <= 0) {
       console.log(
         "[PurchaseOrderExpectedScheduler] execute-now",
