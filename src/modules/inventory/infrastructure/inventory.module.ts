@@ -54,14 +54,8 @@ import { DocumentPostOutValidationService } from '../domain/services/document-po
 import { SERIES_REPOSITORY, DocumentSeriesRepository } from '../domain/ports/document-series.repository.port';
 import { SetDocumentSerieActive } from 'src/modules/inventory/application/use-cases/document-serie/set-active.usecase';
 import { StockItemEntity } from '../adapters/out/typeorm/entities/stock-item/stock-item.entity';
-import { StockItemProductEntity } from '../adapters/out/typeorm/entities/stock-item/stock-item-product.entity';
-import { StockItemVariantEntity } from '../adapters/out/typeorm/entities/stock-item/stock-item-variant.entity';
 import { STOCK_ITEM_REPOSITORY } from '../domain/ports/stock-item/stock-item.repository.port';
 import { StockItemTypeormRepository } from '../adapters/out/typeorm/repositories/stock-item/stock-item.typeorm.repo';
-import { STOCK_ITEM_PRODUCT_REPOSITORY } from '../domain/ports/stock-item/stock-item-product.repository.port';
-import { StockItemProductTypeormRepository } from '../adapters/out/typeorm/repositories/stock-item/stock-item-product.typeorm';
-import { STOCK_ITEM_VARIANT_REPOSITORY } from '../domain/ports/stock-item/stock-item-variant.repository.port';
-import { StockItemVariantTypeormRepository } from '../adapters/out/typeorm/repositories/stock-item/stock-item-variant.typeorm';
 
 @Module({
   imports: [
@@ -71,9 +65,7 @@ import { StockItemVariantTypeormRepository } from '../adapters/out/typeorm/repos
       InventoryDocumentItemEntity,
       InventoryLedgerEntity,
       DocumentSerie,
-      StockItemEntity,
-      StockItemProductEntity,
-      StockItemVariantEntity
+      StockItemEntity
     ]),
   ],
   controllers: [InventoryController, DocumentsController, LedgerController, DocumentSeriesController],
@@ -112,8 +104,6 @@ import { StockItemVariantTypeormRepository } from '../adapters/out/typeorm/repos
     { provide: UNIT_OF_WORK, useClass: TypeormUnitOfWork },
     { provide: INVENTORY_LOCK, useClass: PgInventoryLock },
     { provide: STOCK_ITEM_REPOSITORY, useClass: StockItemTypeormRepository },
-    { provide: STOCK_ITEM_PRODUCT_REPOSITORY, useClass: StockItemProductTypeormRepository },
-    { provide: STOCK_ITEM_VARIANT_REPOSITORY, useClass: StockItemVariantTypeormRepository },
     {
       provide: CLOCK,
       useValue: { now: () => new Date() },

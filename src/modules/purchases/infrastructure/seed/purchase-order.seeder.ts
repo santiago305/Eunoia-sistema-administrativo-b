@@ -16,7 +16,6 @@ import { CurrencyType as PaymentCurrency } from "src/modules/payments/domain/val
 import { PayDocType } from "src/modules/payments/domain/value-objects/pay-doc-type";
 import { AfectIgvType } from "src/modules/purchases/domain/value-objects/afect-igv-type";
 import { StockItemEntity } from "src/modules/inventory/adapters/out/typeorm/entities/stock-item/stock-item.entity";
-import { StockItemVariantEntity } from "src/modules/inventory/adapters/out/typeorm/entities/stock-item/stock-item-variant.entity";
 import { ProductVariantEntity } from "src/modules/catalog/adapters/out/persistence/typeorm/entities/product-variant.entity";
 import { StockItemType } from "src/modules/inventory/domain/value-objects/stock-item-type";
 
@@ -28,26 +27,19 @@ const round2 = (value: number) => Number(value.toFixed(2));
 const ensureStockItemsForVariants = async (dataSource: DataSource): Promise<void> => {
   const variantRepo = dataSource.getRepository(ProductVariantEntity);
   const stockItemRepo = dataSource.getRepository(StockItemEntity);
-  const stockItemVariantRepo = dataSource.getRepository(StockItemVariantEntity);
 
   const variants = await variantRepo.find({ select: ["id"] });
   if (variants.length === 0) {
     throw new Error("No hay variantes. Ejecuta seedProducts primero.");
   }
 
-  const existingLinks = await stockItemVariantRepo.find();
-  const linkedVariantIds = new Set(existingLinks.map((l) => l.variantId));
+  const existingLinks = await stockItemRepo.find({ select: ["variantId"] });
+  const linkedVariantIds = new Set(existingLinks.map((l) => l.variantId).filter(Boolean));
 
   for (const variant of variants) {
     if (linkedVariantIds.has(variant.id)) continue;
-    const stockItem = await stockItemRepo.save(
-      stockItemRepo.create({ type: StockItemType.VARIANT, isActive: true }),
-    );
-    await stockItemVariantRepo.save(
-      stockItemVariantRepo.create({
-        stockItemId: stockItem.id,
-        variantId: variant.id,
-      }),
+    await stockItemRepo.save(
+      stockItemRepo.create({ type: StockItemType.VARIANT, isActive: true, variantId: variant.id }),
     );
   }
 };
@@ -146,7 +138,7 @@ export const seedPurchaseOrders = async (dataSource: DataSource, total: number =
         purchaseValue,
         total: totalAmount,
         note: isCredit ? "Compra a credito" : "Compra al contado",
-        status: PurchaseOrderStatus.SENT,
+        status: PurchaseOrderStatus.DRAFT,
         isActive: true,
         expectedAt,
         dateIssue,

@@ -4,8 +4,6 @@ import { ProductVariantEntity } from "../../adapters/out/persistence/typeorm/ent
 import { UnitEntity } from "../../adapters/out/persistence/typeorm/entities/unit.entity";
 import { ProductType } from "../../domain/value-object/productType";
 import { StockItemEntity } from "src/modules/inventory/adapters/out/typeorm/entities/stock-item/stock-item.entity";
-import { StockItemProductEntity } from "src/modules/inventory/adapters/out/typeorm/entities/stock-item/stock-item-product.entity";
-import { StockItemVariantEntity } from "src/modules/inventory/adapters/out/typeorm/entities/stock-item/stock-item-variant.entity";
 import { StockItemType } from "src/modules/inventory/domain/value-objects/stock-item-type";
 
 type SeedProductsOptions = {
@@ -84,8 +82,6 @@ export const seedProducts = async (
   const variantRepo = dataSource.getRepository(ProductVariantEntity);
   const unitRepo = dataSource.getRepository(UnitEntity);
   const stockItemRepo = dataSource.getRepository(StockItemEntity);
-  const stockItemProductRepo = dataSource.getRepository(StockItemProductEntity);
-  const stockItemVariantRepo = dataSource.getRepository(StockItemVariantEntity);
 
   const units = await unitRepo.find();
   if (units.length === 0) {
@@ -128,16 +124,12 @@ export const seedProducts = async (
       console.log(`Producto ${sku} ya existe, omitiendo...`);
     }
 
-    const existingProductLink = await stockItemProductRepo.findOne({
-      where: { productId: product.id },
-    });
+    const existingProductLink = await stockItemRepo.findOne({ where: { productId: product.id } });
     if (!existingProductLink) {
-      const stockItem = await stockItemRepo.save(
-        stockItemRepo.create({ type: StockItemType.PRODUCT, isActive: true }),
-      );
-      await stockItemProductRepo.save(
-        stockItemProductRepo.create({
-          stockItemId: stockItem.id,
+      await stockItemRepo.save(
+        stockItemRepo.create({
+          type: StockItemType.PRODUCT,
+          isActive: true,
           productId: product.id,
         }),
       );
@@ -169,16 +161,12 @@ export const seedProducts = async (
         console.log(`Variante creada: ${variantSku}`);
       }
 
-      const existingVariantLink = await stockItemVariantRepo.findOne({
-        where: { variantId: variant.id },
-      });
+      const existingVariantLink = await stockItemRepo.findOne({ where: { variantId: variant.id } });
       if (!existingVariantLink) {
-        const stockItem = await stockItemRepo.save(
-          stockItemRepo.create({ type: StockItemType.VARIANT, isActive: true }),
-        );
-        await stockItemVariantRepo.save(
-          stockItemVariantRepo.create({
-            stockItemId: stockItem.id,
+        await stockItemRepo.save(
+          stockItemRepo.create({
+            type: StockItemType.VARIANT,
+            isActive: true,
             variantId: variant.id,
           }),
         );

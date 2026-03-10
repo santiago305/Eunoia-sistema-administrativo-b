@@ -2,7 +2,6 @@ import { DataSource } from 'typeorm';
 import { envs } from './src/infrastructure/config/envs';
 import { Role } from './src/modules/roles/adapters/out/persistence/typeorm/entities/role.entity';
 import { User } from './src/modules/users/adapters/out/persistence/typeorm/entities/user.entity';
-import { Session } from './src/modules/sessions/adapters/out/persistence/typeorm/entities/session.entity';
 import { DocumentSerie } from 'src/modules/inventory/adapters/out/typeorm/entities/document_serie.entity'
 import { seedRoles } from './src/modules/roles/infrastructure/seed/role.seeder';
 import { seedUser } from './src/modules/users/infrastructure/seed/user.seeder';
@@ -26,8 +25,6 @@ import { PaymentPurchaseEntity } from 'src/modules/payments/adapters/out/persist
 import { CreditQuotaEntity } from 'src/modules/payments/adapters/out/persistence/typeorm/entities/credit-quota.entity';
 import { CreditQuotaPurchaseEntity } from 'src/modules/payments/adapters/out/persistence/typeorm/entities/credit-quota-purchase.entity';
 import { StockItemEntity } from 'src/modules/inventory/adapters/out/typeorm/entities/stock-item/stock-item.entity';
-import { StockItemVariantEntity } from 'src/modules/inventory/adapters/out/typeorm/entities/stock-item/stock-item-variant.entity';
-import { StockItemProductEntity } from 'src/modules/inventory/adapters/out/typeorm/entities/stock-item/stock-item-product.entity';
 import { seedPurchaseOrders } from 'src/modules/purchases/infrastructure/seed/purchase-order.seeder';
 /**
  * Script de ejecución que inicializa la base de datos con roles predefinidos.
@@ -74,8 +71,6 @@ const dataSource = new DataSource({
     CreditQuotaEntity,
     CreditQuotaPurchaseEntity,
     StockItemEntity,
-    StockItemVariantEntity,
-    StockItemProductEntity,
   ], // puedes agregar más entidades si quieres hacer seed de varias tablas
 });
 
@@ -90,10 +85,10 @@ dataSource
     for (const wh of warehouses) {
       await seedDocumentSeries(dataSource, wh.id);
     }
-    await seedSuppliers(dataSource, 10);
-    await seedProducts(dataSource, { finishedCount: 90, rawCount: 110, variantsPerProduct: 2 });
+    await seedSuppliers(dataSource, 10000);
+    await seedProducts(dataSource, { finishedCount: 4500, rawCount: 5500, variantsPerProduct: 2 });
     await seedProductEquivalences(dataSource, { minPerProduct: 1, maxPerProduct: 4 });
-    await seedPurchaseOrders(dataSource, 2000);
+    await seedPurchaseOrders(dataSource, 10000);
     await dataSource.destroy(); // cierra la conexión con la DB
     console.log('Seeding completo!');
   })
