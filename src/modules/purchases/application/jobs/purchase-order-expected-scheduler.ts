@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, InternalServerErrorException } from "@nestjs/common";
 import { RunExpectedAtUsecase } from "../usecases/purchase-order/run-expected-at.usecase";
 
 @Injectable()
@@ -16,42 +16,25 @@ export class PurchaseOrderExpectedScheduler {
     const scheduledAt = Date.now();
     const expectedAtMs = expectedAt.getTime();
     const delay = expectedAtMs - scheduledAt;
-    console.log(
-      "[PurchaseOrderExpectedScheduler] schedule",
-      JSON.stringify({
-        poId,
-        expectedAt: new Date(expectedAtMs).toISOString(),
-        scheduledAt: new Date(scheduledAt).toISOString(),
-        delayMs: delay,
-      }),
-    );
+    
     this.scheduleMeta.set(poId, { expectedAtMs, scheduledAtMs: scheduledAt });
     if (delay <= 0) {
-      console.log(
-        "[PurchaseOrderExpectedScheduler] execute-now",
-        JSON.stringify({
-          poId,
-          expectedAt: new Date(expectedAtMs).toISOString(),
-          now: new Date().toISOString(),
-          delayMs: delay,
-        }),
-      );
-      this.runExpected.execute(poId).catch(() => undefined);
+      this.runExpected.execute(poId).catch((err) => {
+        throw new InternalServerErrorException({
+          type:'error',
+          message:err
+        });
+      });
       return;
     }
 
-    const timer = setTimeout(() => {
-      const firedAt = Date.now();
-      console.log(
-        "[PurchaseOrderExpectedScheduler] timeout-fired",
-        JSON.stringify({
-          poId,
-          expectedAt: new Date(expectedAtMs).toISOString(),
-          firedAt: new Date(firedAt).toISOString(),
-          driftMs: firedAt - expectedAtMs,
-        }),
-      );
-      this.runExpected.execute(poId).catch(() => undefined);
+    const timer = setTimeout(() => {      
+      this.runExpected.execute(poId).catch((err) => {
+        throw new InternalServerErrorException({
+          type:'error',
+          message:err
+        });
+      });
       this.timers.delete(poId);
       this.scheduleMeta.delete(poId);
     }, delay);
@@ -62,7 +45,6 @@ export class PurchaseOrderExpectedScheduler {
   cancel(poId: string) {
     const timer = this.timers.get(poId);
     if (timer) {
-      console.log("[PurchaseOrderExpectedScheduler] cancel", JSON.stringify({ poId }));
       clearTimeout(timer);
       this.timers.delete(poId);
       this.scheduleMeta.delete(poId);
