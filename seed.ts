@@ -21,9 +21,7 @@ import { seedProductEquivalences } from 'src/modules/catalog/infrastructure/seed
 import { PurchaseOrderEntity } from 'src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-order.entity';
 import { PurchaseOrderItemEntity } from 'src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-order-item.entity';
 import { PaymentDocumentEntity } from 'src/modules/payments/adapters/out/persistence/typeorm/entities/payment-document.entity';
-import { PaymentPurchaseEntity } from 'src/modules/payments/adapters/out/persistence/typeorm/entities/payment-purchase.entity';
 import { CreditQuotaEntity } from 'src/modules/payments/adapters/out/persistence/typeorm/entities/credit-quota.entity';
-import { CreditQuotaPurchaseEntity } from 'src/modules/payments/adapters/out/persistence/typeorm/entities/credit-quota-purchase.entity';
 import { StockItemEntity } from 'src/modules/inventory/adapters/out/typeorm/entities/stock-item/stock-item.entity';
 import { seedPurchaseOrders } from 'src/modules/purchases/infrastructure/seed/purchase-order.seeder';
 /**
@@ -67,9 +65,7 @@ const dataSource = new DataSource({
     PurchaseOrderEntity,
     PurchaseOrderItemEntity,
     PaymentDocumentEntity,
-    PaymentPurchaseEntity,
     CreditQuotaEntity,
-    CreditQuotaPurchaseEntity,
     StockItemEntity,
   ], // puedes agregar más entidades si quieres hacer seed de varias tablas
 });

@@ -1,7 +1,7 @@
 import { BadRequestException, Inject } from "@nestjs/common";
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
 import { PURCHASE_ORDER_ITEM, PurchaseOrderItemRepository } from "src/modules/purchases/domain/ports/purchase-order-item.port.repository";
-import { PAYMENT_PURCHASE_REPOSITORY, PaymentPurchaseRepository } from "src/modules/payments/domain/ports/payment-purchase.repository";
+import { PAYMENT_DOCUMENT_REPOSITORY, PaymentDocumentRepository } from "src/modules/payments/domain/ports/payment-document.repository";
 import { CREDIT_QUOTA_REPOSITORY, CreditQuotaRepository } from "src/modules/payments/domain/ports/credit-quota.repository";
 import { GetPurchaseOrderInput } from "../../dtos/purchase-order/input/get-by-id.input";
 import { PurchaseOrderDetailOutput } from "../../dtos/purchase-order/output/purchase-order-detail.output";
@@ -15,8 +15,8 @@ export class GetPurchaseOrderUsecase {
     private readonly purchaseRepo: PurchaseOrderRepository,
     @Inject(PURCHASE_ORDER_ITEM)
     private readonly itemRepo: PurchaseOrderItemRepository,
-    @Inject(PAYMENT_PURCHASE_REPOSITORY)
-    private readonly paymentPurchaseRepo: PaymentPurchaseRepository,
+    @Inject(PAYMENT_DOCUMENT_REPOSITORY)
+    private readonly paymentDocRepo: PaymentDocumentRepository,
     @Inject(CREDIT_QUOTA_REPOSITORY)
     private readonly creditQuotaRepo: CreditQuotaRepository,
   ) {}
@@ -29,7 +29,7 @@ export class GetPurchaseOrderUsecase {
 
     const [items, payments, quotas] = await Promise.all([
       this.itemRepo.getByPurchaseId(order.poId),
-      this.paymentPurchaseRepo.findByPoId(order.poId),
+      this.paymentDocRepo.findByPoId(order.poId),
       this.creditQuotaRepo.findByPoId(order.poId),
     ]);
 
@@ -56,7 +56,7 @@ export class GetPurchaseOrderUsecase {
       amount: row.amount,
       note: row.note ?? null,
       fromDocumentType: row.fromDocumentType,
-      poId: row.poId,
+      poId: row.poId ?? "",
       quotaId: row.quotaId ?? null,
     }));
 
