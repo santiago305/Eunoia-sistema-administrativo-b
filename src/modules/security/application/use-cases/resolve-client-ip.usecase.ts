@@ -1,11 +1,32 @@
 import { Injectable } from '@nestjs/common';
 import { Request } from 'express';
+import { envs } from 'src/infrastructure/config/envs';
 
 @Injectable()
 export class ResolveClientIpUseCase {
   execute(req: Request): string {
-    const candidate = req.ip || req.socket?.remoteAddress || 'unknown';
-    return this.normalizeIp(candidate);
+    const isDevelopment = envs.nodeEnv === 'development';
+    const forwardedForHeader = req.headers['x-forwarded-for'];
+    const forwardedFor = Array.isArray(forwardedForHeader) ? forwardedForHeader[0] : forwardedForHeader;
+    const firstForwardedIp = forwardedFor?.split(',')[0]?.trim();
+
+    const candidate = isDevelopment
+      ? firstForwardedIp || req.ip || req.socket?.remoteAddress || 'unknown'
+      : req.ip || req.socket?.remoteAddress || 'unknown';
+    const resolvedIp = this.normalizeIp(candidate);
+
+    if (isDevelopment) {
+      console.log('[security][ip-resolver]', {
+        path: req.path,
+        method: req.method,
+        xForwardedFor: forwardedFor ?? null,
+        reqIp: req.ip ?? null,
+        remoteAddress: req.socket?.remoteAddress ?? null,
+        resolvedIp,
+      });
+    }
+
+    return resolvedIp;
   }
 
   normalizeIp(rawIp: string): string {
