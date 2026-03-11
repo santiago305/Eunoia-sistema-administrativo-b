@@ -819,44 +819,35 @@ CREATE TABLE "public"."purchase_order_items" (
 -- =========================
 
 
+create table public.credit_quotas (
+  quota_id uuid primary key default uuid_generate_v4(),
+  number int not null check (number >= 1),
+  expiration_date date not null,
+  payment_date timestamptz,
+  total_to_pay numeric(12,2) not null check (total_to_pay > 0),
+  total_paid numeric(12,2) not null default 0 check (total_paid >= 0 and total_paid <= total_to_pay),
+  from_document_type pay_doc_type not null,
+  po_id uuid null references public.purchase_orders(po_id),
+  created_at timestamptz not null default now()
+);
+
 CREATE TABLE public.payment_documents (
   pay_doc_id uuid NOT NULL DEFAULT uuid_generate_v4(),
   method payment_type NOT NULL,
-  date date NOT NULL,
+  date timestamptz NOT NULL,
   operation_number varchar(60),
   currency currency_type NOT NULL,
   amount numeric(12, 2) NOT NULL,
   note varchar(225),
   from_document_type pay_doc_type NOT NULL,
+  po_id uuid NULL REFERENCES public.purchase_orders(po_id),
+  quota_id uuid NULL REFERENCES public.credit_quotas(quota_id),
   PRIMARY KEY (pay_doc_id),
   check (amount > 0)
 );
-
-create table public.credit_quotas (
-  quota_id uuid primary key default uuid_generate_v4(),
-  number int not null check (number >= 1),
-  expiration_date date not null,
-  payment_date date,
-  total_to_pay numeric(12,2) not null check (total_to_pay > 0),
-  total_paid numeric(12,2) not null default 0 check (total_paid >= 0 and total_paid <= total_to_pay),
-  created_at timestamptz not null default now()
-);
-
-CREATE TABLE public.payment_purchase (
-  pay_doc_id uuid PRIMARY KEY REFERENCES public.payment_documents(pay_doc_id) ON DELETE CASCADE,
-  po_id uuid NOT NULL REFERENCES public.purchase_orders(po_id),
-  quota_id uuid NULL REFERENCES public.credit_quotas(quota_id) ON DELETE SET NULL
-);
-
-
-create table public.credit_quota_purchases (
-  quota_id uuid primary key references public.credit_quotas(quota_id) on delete cascade,
-  po_id uuid not null references public.purchase_orders(po_id)
-);
-
-create index idx_payment_purchase_po on public.payment_purchase(po_id);
-create index idx_payment_purchase_quota on public.payment_purchase(quota_id);
-create index idx_quota_purchases_po on public.credit_quota_purchases(po_id);
+create index idx_payment_documents_po on public.payment_documents(po_id);
+create index idx_payment_documents_quota on public.payment_documents(quota_id);
+create index idx_credit_quotas_po on public.credit_quotas(po_id);
 
 -- =========================
 -- 8) Producción

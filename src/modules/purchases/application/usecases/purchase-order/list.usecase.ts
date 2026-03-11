@@ -2,7 +2,7 @@ import { Inject } from "@nestjs/common";
 import { PaginatedResult } from "src/shared/utilidades/dto/paginateResult";
 import { ParseDateLocal } from "src/shared/utilidades/utils/ParseDates";
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
-import { PAYMENT_PURCHASE_REPOSITORY, PaymentPurchaseRepository } from "src/modules/payments/domain/ports/payment-purchase.repository";
+import { PAYMENT_DOCUMENT_REPOSITORY, PaymentDocumentRepository } from "src/modules/payments/domain/ports/payment-document.repository";
 import { ListPurchaseOrdersInput } from "../../dtos/purchase-order/input/list.input";
 import { PurchaseOrderOutput } from "../../dtos/purchase-order/output/purchase-order.output";
 import { PaymentOutput } from "src/modules/payments/application/dtos/payment/output/payment.output";
@@ -11,8 +11,8 @@ export class ListPurchaseOrdersUsecase {
   constructor(
     @Inject(PURCHASE_ORDER)
     private readonly purchaseRepo: PurchaseOrderRepository,
-    @Inject(PAYMENT_PURCHASE_REPOSITORY)
-    private readonly paymentPurchaseRepo: PaymentPurchaseRepository,
+    @Inject(PAYMENT_DOCUMENT_REPOSITORY)
+    private readonly paymentDocRepo: PaymentDocumentRepository,
   ) {}
 
   async execute(input: ListPurchaseOrdersInput): Promise<PaginatedResult<PurchaseOrderOutput>> {
@@ -33,7 +33,7 @@ export class ListPurchaseOrdersUsecase {
 
     const itemsWithPayments = await Promise.all(
       items.map(async (row) => {
-        const payments = await this.paymentPurchaseRepo.findByPoId(row.poId);
+        const payments = await this.paymentDocRepo.findByPoId(row.poId);
         const paymentOutputs: PaymentOutput[] = payments.map((p) => ({
           payDocId: p.payDocId,
           method: p.method,
@@ -43,7 +43,7 @@ export class ListPurchaseOrdersUsecase {
           amount: p.amount,
           note: p.note ?? null,
           fromDocumentType: p.fromDocumentType,
-          poId: p.poId,
+          poId: p.poId ?? "",
           quotaId: p.quotaId ?? null,
         }));
 

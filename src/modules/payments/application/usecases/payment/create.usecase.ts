@@ -1,11 +1,8 @@
 import { BadRequestException, Inject, NotFoundException } from "@nestjs/common";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { PaymentDocument } from "src/modules/payments/domain/entity/payment-document";
-import { PaymentPurchase } from "src/modules/payments/domain/entity/payment-purchase";
 import { PAYMENT_DOCUMENT_REPOSITORY, PaymentDocumentRepository } from "src/modules/payments/domain/ports/payment-document.repository";
-import { PAYMENT_PURCHASE_REPOSITORY, PaymentPurchaseRepository } from "src/modules/payments/domain/ports/payment-purchase.repository";
 import { CREDIT_QUOTA_REPOSITORY, CreditQuotaRepository } from "src/modules/payments/domain/ports/credit-quota.repository";
-import { CREDIT_QUOTA_PURCHASE_REPOSITORY, CreditQuotaPurchaseRepository } from "src/modules/payments/domain/ports/credit-quota-purchase.repository";
 import { PayDocType } from "src/modules/payments/domain/value-objects/pay-doc-type";
 import { CreatePaymentInput } from "../../dtos/payment/input/create.input";
 
@@ -15,17 +12,20 @@ export class CreatePaymentUsecase {
     private readonly uow: UnitOfWork,
     @Inject(PAYMENT_DOCUMENT_REPOSITORY)
     private readonly paymentDocRepo: PaymentDocumentRepository,
-    @Inject(PAYMENT_PURCHASE_REPOSITORY)
-    private readonly paymentPurchaseRepo: PaymentPurchaseRepository,
     @Inject(CREDIT_QUOTA_REPOSITORY)
     private readonly creditQuotaRepo: CreditQuotaRepository,
-    @Inject(CREDIT_QUOTA_PURCHASE_REPOSITORY)
-    private readonly creditQuotaPurchaseRepo: CreditQuotaPurchaseRepository,
   ) {}
 
   async execute(input: CreatePaymentInput, poId?:string): Promise<{ type: string; message: string }> {
     return this.uow.runInTransaction(async (tx) => {
       let quotaToUpdate: { quotaId: string; totalPaid: number } | null = null;
+      const paymentPoId = poId ?? input.poId;
+      if (!paymentPoId) {
+        throw new BadRequestException({
+          type: "error",
+          message: "Debe indicar la orden de compra",
+        });
+      }
 
       if (input.amount <= 0) {
         throw new BadRequestException({
@@ -52,15 +52,14 @@ export class CreatePaymentUsecase {
         }
         quotaToUpdate = { quotaId: quota.quotaId, totalPaid: quota.totalPaid };
 
-        const link = await this.creditQuotaPurchaseRepo.findByQuotaId(input.quotaId, tx);
-        if (!link) {
+        const porderId = paymentPoId;
+        if (!quota.poId) {
           throw new BadRequestException({
             type: "error",
             message: "La cuota no tiene orden de compra asociada",
           });
         }
-        const porderId = poId ?? input.poId
-        if (link.poId !== porderId) {
+        if (porderId && quota.poId !== porderId) {
           throw new BadRequestException({
             type: "error",
             message: "La cuota no pertenece a la orden de compra indicada",
@@ -77,11 +76,12 @@ export class CreatePaymentUsecase {
         PayDocType.PURCHASE,
         input.operationNumber,
         input.note,
+        paymentPoId,
+        input.quotaId,
       );
 
-      let created: PaymentDocument;
       try {
-        created = await this.paymentDocRepo.create(document, tx);
+        await this.paymentDocRepo.create(document, tx);
       } catch {
         throw new BadRequestException({
           type: "error",
@@ -89,9 +89,7 @@ export class CreatePaymentUsecase {
         });
       }
 
-      const purchaseLink = new PaymentPurchase(created.payDocId, poId ?? input.poId, input.quotaId);
       try {
-        await this.paymentPurchaseRepo.create(purchaseLink, tx);
         if (quotaToUpdate) {
           const newTotalPaid = quotaToUpdate.totalPaid + input.amount;
           await this.creditQuotaRepo.updateTotalPaid(quotaToUpdate.quotaId, newTotalPaid, tx);
