@@ -1,13 +1,9 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
 import { CurrencyType } from "src/modules/payments/domain/value-objects/currency-type";
 import { PayDocType } from "src/modules/payments/domain/value-objects/pay-doc-type";
 import { PaymentType } from "src/modules/payments/domain/value-objects/payment-type";
-import { PurchaseOrderEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-order.entity";
-import { CreditQuotaEntity } from "./credit-quota.entity";
 
 @Entity("payment_documents")
-@Index("idx_payment_documents_po", ["poId"])
-@Index("idx_payment_documents_quota", ["quotaId"])
 export class PaymentDocumentEntity {
   @PrimaryGeneratedColumn("uuid", { name: "pay_doc_id" })
   id: string;
@@ -32,18 +28,4 @@ export class PaymentDocumentEntity {
 
   @Column({ name: "from_document_type", type: "enum", enum: PayDocType, enumName: "pay_doc_type" })
   fromDocumentType: PayDocType;
-
-  @Column({ name: "po_id", type: "uuid", nullable: true })
-  poId?: string | null;
-
-  @ManyToOne(() => PurchaseOrderEntity, { nullable: true, onDelete: "SET NULL" })
-  @JoinColumn({ name: "po_id" })
-  purchaseOrder?: PurchaseOrderEntity | null;
-
-  @Column({ name: "quota_id", type: "uuid", nullable: true })
-  quotaId?: string | null;
-
-  @ManyToOne(() => CreditQuotaEntity, { nullable: true, onDelete: "SET NULL" })
-  @JoinColumn({ name: "quota_id" })
-  creditQuota?: CreditQuotaEntity | null;
 }

@@ -6,6 +6,7 @@ import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { CreditQuota } from "src/modules/payments/domain/entity/credit-quota";
 import { CreditQuotaRepository } from "src/modules/payments/domain/ports/credit-quota.repository";
 import { CreditQuotaEntity } from "../entities/credit-quota.entity";
+import { CreditQuotaPurchaseEntity } from "../entities/credit-quota-purchase.entity";
 
 @Injectable()
 export class CreditQuotaTypeormRepository implements CreditQuotaRepository {
@@ -32,10 +33,8 @@ export class CreditQuotaTypeormRepository implements CreditQuotaRepository {
       row.expirationDate,
       Number(row.totalToPay),
       Number(row.totalPaid),
-      row.fromDocumentType,
       row.paymentDate ?? undefined,
       row.createdAt ?? undefined,
-      row.poId ?? undefined,
     );
   }
 
@@ -47,7 +46,8 @@ export class CreditQuotaTypeormRepository implements CreditQuotaRepository {
   async findByPoId(poId: string, tx?: TransactionContext): Promise<CreditQuota[]> {
     const rows = await this.getRepo(tx)
       .createQueryBuilder("cq")
-      .where("cq.poId = :poId", { poId })
+      .innerJoin(CreditQuotaPurchaseEntity, "cqp", "cqp.quota_id = cq.quota_id")
+      .where("cqp.po_id = :poId", { poId })
       .orderBy("cq.createdAt", "ASC")
       .getMany();
 
@@ -63,8 +63,6 @@ export class CreditQuotaTypeormRepository implements CreditQuotaRepository {
       paymentDate: quota.paymentDate ?? null,
       totalToPay: quota.totalToPay,
       totalPaid: quota.totalPaid ?? 0,
-      fromDocumentType: quota.fromDocumentType,
-      poId: quota.poId ?? null,
       createdAt: quota.createdAt ?? undefined,
     });
     const saved = await repo.save(row);
@@ -91,7 +89,8 @@ export class CreditQuotaTypeormRepository implements CreditQuotaRepository {
     const qb = repo.createQueryBuilder("cq");
 
     if (params.poId) {
-      qb.andWhere("cq.poId = :poId", { poId: params.poId });
+      qb.innerJoin(CreditQuotaPurchaseEntity, "cqp", "cqp.quota_id = cq.quota_id")
+        .andWhere("cqp.po_id = :poId", { poId: params.poId });
     }
 
     const page = params.page ?? 1;

@@ -1,16 +1,16 @@
 import { Inject, NotFoundException } from "@nestjs/common";
-import { PAYMENT_DOCUMENT_REPOSITORY, PaymentDocumentRepository } from "src/modules/payments/domain/ports/payment-document.repository";
+import { PAYMENT_PURCHASE_REPOSITORY, PaymentPurchaseRepository } from "src/modules/payments/domain/ports/payment-purchase.repository";
 import { GetPaymentInput } from "../../dtos/payment/input/get-by-id.input";
 import { PaymentOutput } from "../../dtos/payment/output/payment.output";
 
 export class GetPaymentUsecase {
   constructor(
-    @Inject(PAYMENT_DOCUMENT_REPOSITORY)
-    private readonly paymentDocRepo: PaymentDocumentRepository,
+    @Inject(PAYMENT_PURCHASE_REPOSITORY)
+    private readonly paymentPurchaseRepo: PaymentPurchaseRepository,
   ) {}
 
   async execute(input: GetPaymentInput): Promise<PaymentOutput> {
-    const row = await this.paymentDocRepo.findById(input.payDocId);
+    const row = await this.paymentPurchaseRepo.findByPayDocId(input.payDocId);
     if (!row) {
       throw new NotFoundException({
         type: "error",
@@ -27,7 +27,7 @@ export class GetPaymentUsecase {
       amount: row.amount,
       note: row.note ?? null,
       fromDocumentType: row.fromDocumentType,
-      poId: row.poId ?? "",
+      poId: row.poId,
       quotaId: row.quotaId ?? null,
     };
   }

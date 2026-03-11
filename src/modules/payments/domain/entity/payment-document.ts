@@ -12,7 +12,5 @@ export class PaymentDocument {
     public readonly fromDocumentType: PayDocType,
     public readonly operationNumber?: string,
     public readonly note?: string,
-    public readonly poId?: string,
-    public readonly quotaId?: string,
   ) {}
 }

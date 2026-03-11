@@ -4,7 +4,9 @@ import { WarehouseEntity } from "src/modules/warehouses/adapters/out/persistence
 import { PurchaseOrderEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-order.entity";
 import { PurchaseOrderItemEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-order-item.entity";
 import { PaymentDocumentEntity } from "src/modules/payments/adapters/out/persistence/typeorm/entities/payment-document.entity";
+import { PaymentPurchaseEntity } from "src/modules/payments/adapters/out/persistence/typeorm/entities/payment-purchase.entity";
 import { CreditQuotaEntity } from "src/modules/payments/adapters/out/persistence/typeorm/entities/credit-quota.entity";
+import { CreditQuotaPurchaseEntity } from "src/modules/payments/adapters/out/persistence/typeorm/entities/credit-quota-purchase.entity";
 import { PaymentFormType } from "src/modules/purchases/domain/value-objects/payment-form-type";
 import { PurchaseOrderStatus } from "src/modules/purchases/domain/value-objects/po-status";
 import { VoucherDocType } from "src/modules/purchases/domain/value-objects/voucher-doc-type";
@@ -48,7 +50,9 @@ export const seedPurchaseOrders = async (dataSource: DataSource, total: number =
   const poRepo = dataSource.getRepository(PurchaseOrderEntity);
   const itemRepo = dataSource.getRepository(PurchaseOrderItemEntity);
   const paymentDocRepo = dataSource.getRepository(PaymentDocumentEntity);
+  const paymentPurchaseRepo = dataSource.getRepository(PaymentPurchaseEntity);
   const creditQuotaRepo = dataSource.getRepository(CreditQuotaEntity);
+  const creditQuotaPurchaseRepo = dataSource.getRepository(CreditQuotaPurchaseEntity);
   const stockItemRepo = dataSource.getRepository(StockItemEntity);
 
   const suppliers = await supplierRepo.find();
@@ -163,7 +167,7 @@ export const seedPurchaseOrders = async (dataSource: DataSource, total: number =
     }
 
     if (!isCredit) {
-      await paymentDocRepo.save(
+      const paymentDoc = await paymentDocRepo.save(
         paymentDocRepo.create({
           method: PaymentType.EFECTIVO,
           date: dateIssue,
@@ -172,6 +176,12 @@ export const seedPurchaseOrders = async (dataSource: DataSource, total: number =
           amount: totalAmount,
           note: "Pago total",
           fromDocumentType: PayDocType.PURCHASE,
+        }),
+      );
+
+      await paymentPurchaseRepo.save(
+        paymentPurchaseRepo.create({
+          payDocId: paymentDoc.id,
           poId: po.id,
         }),
       );
@@ -187,7 +197,11 @@ export const seedPurchaseOrders = async (dataSource: DataSource, total: number =
             totalToPay: q === numQuotas ? round2(totalAmount - quotaAmount * (numQuotas - 1)) : quotaAmount,
             totalPaid: 0,
             paymentDate: null,
-            fromDocumentType: PayDocType.PURCHASE,
+          }),
+        );
+        await creditQuotaPurchaseRepo.save(
+          creditQuotaPurchaseRepo.create({
+            quotaId: quota.id,
             poId: po.id,
           }),
         );
