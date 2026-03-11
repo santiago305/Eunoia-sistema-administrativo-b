@@ -1,4 +1,4 @@
-import { Inject, Injectable, OnApplicationBootstrap } from "@nestjs/common";
+import { Inject, Injectable, InternalServerErrorException, OnApplicationBootstrap } from "@nestjs/common";
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
 import { PurchaseOrderStatus } from "src/modules/purchases/domain/value-objects/po-status";
 import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
@@ -18,30 +18,17 @@ export class PurchaseOrderExpectedBootstrap implements OnApplicationBootstrap {
 
   async onApplicationBootstrap() {
     const orders = await this.purchaseRepo.listAllByStatus(PurchaseOrderStatus.SENT);
-    console.log(
-      "[PurchaseOrderExpectedBootstrap] start",
-      JSON.stringify({ total: orders.length, status: PurchaseOrderStatus.SENT }),
-    );
-
     const now = this.clock.now();
 
     for (const order of orders) {
       if (!order.expectedAt) continue;
-
-      const expectedAtMs = order.expectedAt.getTime();
-      const nowMs = now.getTime();
-      console.log(
-        "[PurchaseOrderExpectedBootstrap] check",
-        JSON.stringify({
-          poId: order.poId,
-          expectedAt: new Date(expectedAtMs).toISOString(),
-          now: new Date(nowMs).toISOString(),
-          diffMs: expectedAtMs - nowMs,
-        }),
-      );
-
       if (order.expectedAt.getTime() <= now.getTime()) {
-        await this.runExpected.execute(order.poId).catch(() => undefined);
+        await this.runExpected.execute(order.poId).catch((err) => {
+        throw new InternalServerErrorException({
+          type:'error',
+          message:err
+        });
+      });
       } else {
         this.scheduler.schedule(order.poId, order.expectedAt);
       }
