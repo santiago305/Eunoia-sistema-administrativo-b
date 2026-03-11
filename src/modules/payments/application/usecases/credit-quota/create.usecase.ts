@@ -2,10 +2,9 @@ import { BadRequestException, Inject } from "@nestjs/common";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
 import { CreditQuota } from "src/modules/payments/domain/entity/credit-quota";
-import { CreditQuotaPurchase } from "src/modules/payments/domain/entity/credit-quota-purchase";
 import { CREDIT_QUOTA_REPOSITORY, CreditQuotaRepository } from "src/modules/payments/domain/ports/credit-quota.repository";
-import { CREDIT_QUOTA_PURCHASE_REPOSITORY, CreditQuotaPurchaseRepository } from "src/modules/payments/domain/ports/credit-quota-purchase.repository";
 import { CreateCreditQuotaInput } from "../../dtos/credit-quota/input/create.input";
+import { PayDocType } from "src/modules/payments/domain/value-objects/pay-doc-type";
 
 export class CreateCreditQuotaUsecase {
   constructor(
@@ -13,8 +12,6 @@ export class CreateCreditQuotaUsecase {
     private readonly uow: UnitOfWork,
     @Inject(CREDIT_QUOTA_REPOSITORY)
     private readonly creditQuotaRepo: CreditQuotaRepository,
-    @Inject(CREDIT_QUOTA_PURCHASE_REPOSITORY)
-    private readonly creditQuotaPurchaseRepo: CreditQuotaPurchaseRepository,
     @Inject(CLOCK)
     private readonly clock: ClockPort,
   ) {}
@@ -50,8 +47,10 @@ export class CreateCreditQuotaUsecase {
         expirationDate,
         input.totalToPay,
         input.totalPaid ?? 0,
+        PayDocType.PURCHASE,
         paymentDate,
         this.clock.now(),
+        input.poId ?? poId,
       );
 
       let created: CreditQuota;
@@ -61,16 +60,6 @@ export class CreateCreditQuotaUsecase {
         throw new BadRequestException({
           type: "error",
           message: "No se pudo crear la cuota",
-        });
-      }
-
-      const link = new CreditQuotaPurchase(created.quotaId, input.poId ?? poId);
-      try {
-        await this.creditQuotaPurchaseRepo.create(link, tx);
-      } catch {
-        throw new BadRequestException({
-          type: "error",
-          message: "No se pudo vincular la cuota a la orden de compra",
         });
       }
 

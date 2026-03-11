@@ -7,15 +7,11 @@ import { PURCHASE_ORDER_ITEM, PurchaseOrderItemRepository } from "src/modules/pu
 import { PurchaseOrderItem } from "src/modules/purchases/domain/entities/purchase-order-item";
 import { PaymentFormType } from "src/modules/purchases/domain/value-objects/payment-form-type";
 import { PaymentDocument } from "src/modules/payments/domain/entity/payment-document";
-import { PaymentPurchase } from "src/modules/payments/domain/entity/payment-purchase";
 import { CreditQuota } from "src/modules/payments/domain/entity/credit-quota";
-import { CreditQuotaPurchase } from "src/modules/payments/domain/entity/credit-quota-purchase";
 import { CreateCreditQuotaInput } from "src/modules/payments/application/dtos/credit-quota/input/create.input";
 import { DeletePaymentUsecase } from "src/modules/payments/application/usecases/payment/delete.usecase";
 import { PAYMENT_DOCUMENT_REPOSITORY, PaymentDocumentRepository } from "src/modules/payments/domain/ports/payment-document.repository";
-import { PAYMENT_PURCHASE_REPOSITORY, PaymentPurchaseRepository } from "src/modules/payments/domain/ports/payment-purchase.repository";
 import { CREDIT_QUOTA_REPOSITORY, CreditQuotaRepository } from "src/modules/payments/domain/ports/credit-quota.repository";
-import { CREDIT_QUOTA_PURCHASE_REPOSITORY, CreditQuotaPurchaseRepository } from "src/modules/payments/domain/ports/credit-quota-purchase.repository";
 import { PayDocType } from "src/modules/payments/domain/value-objects/pay-doc-type";
 import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
 
@@ -29,13 +25,9 @@ export class UpdatePurchaseOrderUsecase {
     private readonly itemRepo: PurchaseOrderItemRepository,
     @Inject(PAYMENT_DOCUMENT_REPOSITORY)
     private readonly paymentDocRepo: PaymentDocumentRepository,
-    @Inject(PAYMENT_PURCHASE_REPOSITORY)
-    private readonly paymentPurchaseRepo: PaymentPurchaseRepository,
     private readonly deletePayment: DeletePaymentUsecase,
     @Inject(CREDIT_QUOTA_REPOSITORY)
     private readonly creditQuotaRepo: CreditQuotaRepository,
-    @Inject(CREDIT_QUOTA_PURCHASE_REPOSITORY)
-    private readonly creditQuotaPurchaseRepo: CreditQuotaPurchaseRepository,
     @Inject(CLOCK)
     private readonly clock: ClockPort,
   ) {}
@@ -150,7 +142,7 @@ export class UpdatePurchaseOrderUsecase {
         (isCredit && input.quotas !== undefined && quotasChanged);
 
       if (shouldDeletePayments) {
-        const existingPayments = await this.paymentPurchaseRepo.findByPoId(updated.poId, tx);
+        const existingPayments = await this.paymentDocRepo.findByPoId(updated.poId, tx);
         for (const payment of existingPayments) {
           try {
             await this.deletePayment.execute(payment.payDocId, tx);
@@ -189,12 +181,11 @@ export class UpdatePurchaseOrderUsecase {
               throw new NotFoundException({ type: "error", message: "Cuota no encontrada" });
             }
 
-            const link = await this.creditQuotaPurchaseRepo.findByQuotaId(payment.quotaId, tx);
-            if (!link) {
+            if (!quota.poId) {
               throw new BadRequestException({ type: "error", message: "La cuota no tiene orden de compra asociada" });
             }
 
-            if (link.poId !== updated.poId) {
+            if (quota.poId !== updated.poId) {
               throw new BadRequestException({
                 type: "error",
                 message: "La cuota no pertenece a la orden de compra indicada",
@@ -211,6 +202,8 @@ export class UpdatePurchaseOrderUsecase {
             PayDocType.PURCHASE,
             payment.operationNumber,
             payment.note,
+            updated.poId,
+            payment.quotaId,
           );
 
           let createdDoc: PaymentDocument;
@@ -220,12 +213,7 @@ export class UpdatePurchaseOrderUsecase {
             throw new BadRequestException({ type: "error", message: "No se pudo crear el documento de pago" });
           }
 
-          const purchaseLink = new PaymentPurchase(createdDoc.payDocId, updated.poId, payment.quotaId);
-          try {
-            await this.paymentPurchaseRepo.create(purchaseLink, tx);
-          } catch {
-            throw new BadRequestException({ type: "error", message: "No se pudo vincular el pago a la orden de compra" });
-          }
+          // pago ya queda asociado por poId / quotaId en payment_documents
         }
       }
 
@@ -255,8 +243,10 @@ export class UpdatePurchaseOrderUsecase {
             expirationDate,
             quotaInput.totalToPay,
             quotaInput.totalPaid ?? 0,
+            PayDocType.PURCHASE,
             paymentDate,
             this.clock.now(),
+            updated.poId,
           );
 
           let createdQuota: CreditQuota;
@@ -266,12 +256,7 @@ export class UpdatePurchaseOrderUsecase {
             throw new BadRequestException({ type: "error", message: "No se pudo crear la cuota" });
           }
 
-          const link = new CreditQuotaPurchase(createdQuota.quotaId, updated.poId);
-          try {
-            await this.creditQuotaPurchaseRepo.create(link, tx);
-          } catch {
-            throw new BadRequestException({ type: "error", message: "No se pudo vincular la cuota a la orden de compra" });
-          }
+          // cuota ya queda asociada por poId en credit_quotas
         }
       }
 
