@@ -82,6 +82,115 @@ create table users (
 create index if not exists idx_users_role on users(role_id);
 
 -- =========================
+-- 0.2) Companies + Payment Methods
+-- =========================
+
+-- ---------------------------------------------------------
+-- TABLA: companies
+-- Para que sirve:
+-- - Empresas del sistema.
+-- Columnas (ES):
+-- - company_id: id de la empresa (uuid)
+-- - name: nombre
+-- - ruc: ruc
+-- - ubigeo: ubigeo
+-- - department: departamento
+-- - province: provincia
+-- - district: distrito
+-- - urbanization: urbanizacion
+-- - address: direccion
+-- - phone: telefono
+-- - email: correo
+-- - cod_local: codigo local
+-- - sol_user: usuario sol
+-- - sol_pass: clave sol
+-- - logo_path: ruta de logo
+-- - production: si es ambiente productivo
+-- - is_active: activo/inactivo
+-- - created_at: fecha de creacion
+-- - update_at: fecha de actualizacion
+-- ---------------------------------------------------------
+create table companies (
+  company_id uuid primary key default uuid_generate_v4(),
+  name varchar(50) not null,
+  ruc varchar(30) not null,
+  ubigeo varchar(30),
+  department varchar(30),
+  province varchar(30),
+  district varchar(30),
+  urbanization varchar(100),
+  address varchar(300),
+  phone varchar(15),
+  email varchar(120),
+  cod_local varchar(30),
+  sol_user varchar,
+  sol_pass varchar,
+  logo_path varchar(500),
+  cert_path varchar(500),
+  production boolean not null default true,
+  is_active boolean not null default true,
+  created_at timestamptz not null,
+  updated_at timestamptz not null,
+  primary key (company_id)
+);
+
+-- ---------------------------------------------------------
+-- TABLA: payment_methods
+-- Para que sirve:
+-- - Catalogo de metodos de pago.
+-- Columnas (ES):
+-- - method_id: id del metodo (uuid)
+-- - name: nombre del metodo
+-- - number: numero/cuenta
+-- - description: descripcion corta
+-- - is_active: activo/inactivo
+-- ---------------------------------------------------------
+create table payment_methods (
+  method_id uuid primary key default uuid_generate_v4(),
+  name varchar(300) not null,
+  number varchar(30),
+  description varchar(20),
+  is_active boolean not null,
+  primary key (method_id)
+);
+
+-- ---------------------------------------------------------
+-- TABLA: company_methods
+-- Para que sirve:
+-- - Relacion empresas <-> metodos de pago.
+-- Columnas (ES):
+-- - method_id: metodo de pago (FK a payment_methods)
+-- - company_id: empresa (FK a companies)
+-- ---------------------------------------------------------
+create table company_methods (
+  method_id uuid not null,
+  company_id uuid not null,
+  primary key (company_id, method_id),
+  constraint fk_company_methods_method
+    foreign key (method_id) references payment_methods(method_id),
+  constraint fk_company_methods_company
+    foreign key (company_id) references companies(company_id)
+);
+
+-- ---------------------------------------------------------
+-- TABLA: supplier_methods
+-- Para que sirve:
+-- - Relacion proveedores <-> metodos de pago.
+-- Columnas (ES):
+-- - method_id: metodo de pago (FK a payment_methods)
+-- - supplier_id: proveedor (FK a suppliers)
+-- ---------------------------------------------------------
+create table supplier_methods (
+  method_id uuid not null,
+  supplier_id uuid,
+  primary key (supplier_id, method_id),
+  constraint fk_supplier_methods_method
+    foreign key (method_id) references payment_methods(method_id),
+  constraint fk_supplier_methods_supplier
+    foreign key (supplier_id) references suppliers(supplier_id)
+);
+
+-- =========================
 -- 1) Catalogo
 -- =========================
 
