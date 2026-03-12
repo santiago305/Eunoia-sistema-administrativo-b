@@ -19,7 +19,17 @@ Modulo de seguridad IP para rate limit, bans progresivos y blacklist manual.
   - `check-ip-ban.usecase.ts`
   - `register-ip-violation-and-apply-policy.usecase.ts`
   - `manage-manual-ip-blacklist.usecase.ts`
-  - `get-ip-security-insights.usecase.ts`
+  - `get-top-ips-security.usecase.ts`
+  - `get-active-bans-security.usecase.ts`
+  - `get-ip-history-security.usecase.ts`
+  - `get-activity-series-security.usecase.ts`
+  - `get-reason-distribution-security.usecase.ts`
+  - `get-method-distribution-security.usecase.ts`
+  - `get-top-routes-security.usecase.ts`
+  - `get-risk-score-security.usecase.ts`
+  - `get-risk-score-by-ip-security.usecase.ts`
+  - `export-security-audit-csv.usecase.ts`
+  - `security-insights.utils.ts`
 - `adapters/in/guards/`
   - `ip-ban.guard.ts` (bloquea requests baneadas antes de controladores)
   - `security-throttler.guard.ts` (registra violaciones al superar throttling)
@@ -42,19 +52,76 @@ Modulo de seguridad IP para rate limit, bans progresivos y blacklist manual.
 
 ## Endpoints (admin)
 Base: `/api/security`
-- `GET /top-ips?hours=24&limit=20`
+- `GET /top-ips?hours=24&limit=20&reason=throttled`
 - `GET /active-bans`
 - `GET /history/:ip?limit=100`
-- `GET /activity-series?hours=24&groupBy=hour`
+- `GET /activity-series?hours=24&groupBy=hour&reason=throttled`
 - `GET /reason-distribution?hours=24`
-- `GET /method-distribution?hours=24`
-- `GET /top-routes?hours=24&limit=5`
+- `GET /method-distribution?hours=24&reason=throttled`
+- `GET /top-routes?hours=24&limit=5&reason=throttled`
 - `GET /risk-score?hours=24`
+- `GET /risk-score/ip?ip=203.0.113.55&hours=24`
+- `GET /audit-export?hours=24&reason=throttled`
 - `PATCH /blacklist`
   - body: `{ "ip": "1.2.3.4", "notes": "motivo" }`
 - `PATCH /blacklist/remove/:ip`
 
 Todos estos endpoints requieren `JwtAuthGuard + RolesGuard` con rol `admin`.
+
+## Contratos nuevos
+
+### `GET /risk-score/ip`
+- Query:
+  - `ip` (string, requerido)
+  - `hours` (number, opcional, default 24, min 1, max 720)
+- Response JSON:
+```json
+{
+  "ip": "203.0.113.55",
+  "score": 72,
+  "level": "MEDIUM",
+  "label": "Moderado",
+  "windowHours": 24,
+  "generatedAt": "2026-03-12T18:00:00.000Z",
+  "details": {
+    "from": "2026-03-11T18:00:00.000Z",
+    "to": "2026-03-12T18:00:00.000Z",
+    "timeZone": "America/Lima",
+    "metrics": {
+      "violations": 10,
+      "distinctReasons": 3,
+      "hasActiveBan": true,
+      "isManualPermanentBan": false
+    },
+    "components": {
+      "fromViolations": 30,
+      "fromReasons": 12,
+      "fromActiveBan": 12,
+      "fromManualBan": 0
+    }
+  }
+}
+```
+
+### `GET /audit-export`
+- Query:
+  - `hours` (number, opcional, default 24, min 1, max 720)
+  - `reason` (string, opcional)
+- Response:
+  - `Content-Type: text/csv; charset=utf-8`
+  - `Content-Disposition: attachment; filename=security-audit-YYYY-MM-DD.csv`
+  - CSV columnas: `createdAt, createdAtLocal, ip, reason, path, method, userAgent`
+
+## Notas para frontend
+- El filtro `reason` ahora se soporta en:
+  - `/top-ips`
+  - `/activity-series`
+  - `/method-distribution`
+  - `/top-routes`
+- Si `reason` no se envia (o va vacio), se devuelve data sin filtro.
+- Para descargar CSV en navegador:
+  - usar `responseType: 'blob'` (axios) o `response.blob()` (fetch)
+  - leer `Content-Disposition` para nombre de archivo sugerido.
 
 ## Variables de entorno
 - `REDIS_HOST`

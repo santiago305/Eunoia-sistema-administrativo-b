@@ -1,18 +1,37 @@
-import { Body, Controller, Get, Param, Patch, Query, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Patch, Query, Res, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/shared/utilidades/guards/roles.guard';
 import { Roles, User as CurrentUser } from 'src/shared/utilidades/decorators';
 import { RoleType } from 'src/shared/constantes/constants';
-import { GetIpSecurityInsightsUseCase } from 'src/modules/security/application/use-cases/get-ip-security-insights.usecase';
 import { ManageManualIpBlacklistUseCase } from 'src/modules/security/application/use-cases/manage-manual-ip-blacklist.usecase';
 import { ManualBanDto } from '../dtos/manual-ban.dto';
+import { Response } from 'express';
+import { GetTopIpsSecurityUseCase } from 'src/modules/security/application/use-cases/get-top-ips-security.usecase';
+import { GetActiveBansSecurityUseCase } from 'src/modules/security/application/use-cases/get-active-bans-security.usecase';
+import { GetIpHistorySecurityUseCase } from 'src/modules/security/application/use-cases/get-ip-history-security.usecase';
+import { GetActivitySeriesSecurityUseCase } from 'src/modules/security/application/use-cases/get-activity-series-security.usecase';
+import { GetReasonDistributionSecurityUseCase } from 'src/modules/security/application/use-cases/get-reason-distribution-security.usecase';
+import { GetMethodDistributionSecurityUseCase } from 'src/modules/security/application/use-cases/get-method-distribution-security.usecase';
+import { GetTopRoutesSecurityUseCase } from 'src/modules/security/application/use-cases/get-top-routes-security.usecase';
+import { GetRiskScoreSecurityUseCase } from 'src/modules/security/application/use-cases/get-risk-score-security.usecase';
+import { GetRiskScoreByIpSecurityUseCase } from 'src/modules/security/application/use-cases/get-risk-score-by-ip-security.usecase';
+import { ExportSecurityAuditCsvUseCase } from 'src/modules/security/application/use-cases/export-security-audit-csv.usecase';
 
 @Controller('security')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(RoleType.ADMIN)
 export class SecurityController {
   constructor(
-    private readonly getIpSecurityInsightsUseCase: GetIpSecurityInsightsUseCase,
+    private readonly getTopIpsSecurityUseCase: GetTopIpsSecurityUseCase,
+    private readonly getActiveBansSecurityUseCase: GetActiveBansSecurityUseCase,
+    private readonly getIpHistorySecurityUseCase: GetIpHistorySecurityUseCase,
+    private readonly getActivitySeriesSecurityUseCase: GetActivitySeriesSecurityUseCase,
+    private readonly getReasonDistributionSecurityUseCase: GetReasonDistributionSecurityUseCase,
+    private readonly getMethodDistributionSecurityUseCase: GetMethodDistributionSecurityUseCase,
+    private readonly getTopRoutesSecurityUseCase: GetTopRoutesSecurityUseCase,
+    private readonly getRiskScoreSecurityUseCase: GetRiskScoreSecurityUseCase,
+    private readonly getRiskScoreByIpSecurityUseCase: GetRiskScoreByIpSecurityUseCase,
+    private readonly exportSecurityAuditCsvUseCase: ExportSecurityAuditCsvUseCase,
     private readonly manageManualIpBlacklistUseCase: ManageManualIpBlacklistUseCase,
   ) {}
 
@@ -20,15 +39,16 @@ export class SecurityController {
   getTopIps(
     @Query('hours') hours?: string,
     @Query('limit') limit?: string,
+    @Query('reason') reason?: string,
   ) {
     const parsedHours = hours ? Number(hours) : undefined;
     const parsedLimit = limit ? Number(limit) : undefined;
-    return this.getIpSecurityInsightsUseCase.getTopIps({ hours: parsedHours, limit: parsedLimit });
+    return this.getTopIpsSecurityUseCase.execute({ hours: parsedHours, limit: parsedLimit, reason });
   }
 
   @Get('active-bans')
   getActiveBans() {
-    return this.getIpSecurityInsightsUseCase.getActiveBans();
+    return this.getActiveBansSecurityUseCase.execute();
   }
 
   @Get('history/:ip')
@@ -36,17 +56,19 @@ export class SecurityController {
     @Param('ip') ip: string,
     @Query('limit') limit?: string,
   ) {
-    return this.getIpSecurityInsightsUseCase.getIpHistory(ip, limit ? Number(limit) : undefined);
+    return this.getIpHistorySecurityUseCase.execute(ip, limit ? Number(limit) : undefined);
   }
 
   @Get('activity-series')
   getActivitySeries(
     @Query('hours') hours?: string,
     @Query('groupBy') groupBy?: string,
+    @Query('reason') reason?: string,
   ) {
-    return this.getIpSecurityInsightsUseCase.getActivitySeries({
+    return this.getActivitySeriesSecurityUseCase.execute({
       hours: hours ? Number(hours) : undefined,
       groupBy,
+      reason,
     });
   }
 
@@ -54,7 +76,7 @@ export class SecurityController {
   getReasonDistribution(
     @Query('hours') hours?: string,
   ) {
-    return this.getIpSecurityInsightsUseCase.getReasonDistribution({
+    return this.getReasonDistributionSecurityUseCase.execute({
       hours: hours ? Number(hours) : undefined,
     });
   }
@@ -62,9 +84,11 @@ export class SecurityController {
   @Get('method-distribution')
   getMethodDistribution(
     @Query('hours') hours?: string,
+    @Query('reason') reason?: string,
   ) {
-    return this.getIpSecurityInsightsUseCase.getMethodDistribution({
+    return this.getMethodDistributionSecurityUseCase.execute({
       hours: hours ? Number(hours) : undefined,
+      reason,
     });
   }
 
@@ -72,10 +96,12 @@ export class SecurityController {
   getTopRoutes(
     @Query('hours') hours?: string,
     @Query('limit') limit?: string,
+    @Query('reason') reason?: string,
   ) {
-    return this.getIpSecurityInsightsUseCase.getTopRoutes({
+    return this.getTopRoutesSecurityUseCase.execute({
       hours: hours ? Number(hours) : undefined,
       limit: limit ? Number(limit) : undefined,
+      reason,
     });
   }
 
@@ -83,9 +109,42 @@ export class SecurityController {
   getRiskScore(
     @Query('hours') hours?: string,
   ) {
-    return this.getIpSecurityInsightsUseCase.getRiskScore({
+    return this.getRiskScoreSecurityUseCase.execute({
       hours: hours ? Number(hours) : undefined,
     });
+  }
+
+  @Get('risk-score/ip')
+  getRiskScoreByIp(
+    @Query('ip') ip?: string,
+    @Query('hours') hours?: string,
+  ) {
+    if (!ip?.trim()) {
+      throw new BadRequestException('Query param "ip" es requerido');
+    }
+
+    return this.getRiskScoreByIpSecurityUseCase.execute({
+      ip,
+      hours: hours ? Number(hours) : undefined,
+    });
+  }
+
+  @Get('audit-export')
+  async getAuditExport(
+    @Query('hours') hours: string | undefined,
+    @Query('reason') reason: string | undefined,
+    @Res() res: Response,
+  ) {
+    const csv = await this.exportSecurityAuditCsvUseCase.execute({
+      hours: hours ? Number(hours) : undefined,
+      reason,
+    });
+
+    const today = new Date().toISOString().slice(0, 10);
+    const filename = `security-audit-${today}.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+    return res.status(200).send(csv);
   }
 
   @Patch('blacklist')
