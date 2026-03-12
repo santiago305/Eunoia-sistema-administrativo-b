@@ -1,8 +1,6 @@
 import { CurrencyType } from "src/modules/payments/domain/value-objects/currency-type";
-import { PaymentType } from "src/modules/payments/domain/value-objects/payment-type";
-
 export interface CreatePaymentInput {
-  method: PaymentType;
+  method: string;
   date: string;
   operationNumber?: string;
   currency: CurrencyType;

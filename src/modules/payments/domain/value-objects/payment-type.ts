@@ -1,7 +1,0 @@
-export enum PaymentType {
-  YAPE = "YAPE",
-  PLIN = "PLIN",
-  TRANSFERENCIA = "TRANSFERENCIA",
-  EFECTIVO = "EFECTIVO",
-  TARJETA = "TARJETA",
-}
