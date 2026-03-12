@@ -5,8 +5,4 @@ export class HttpPaymentMethodUpdateDto {
   @IsString()
   @IsNotEmpty()
   name?: string;
-
-  @IsOptional()
-  @IsString()
-  number?: string;
 }

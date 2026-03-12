@@ -15,7 +15,6 @@ export class GetPaymentMethodByIdUsecase {
     return {
       methodId: method.methodId!,
       name: method.name,
-      number: method.number,
       isActive: method.isActive,
     };
   }

@@ -141,18 +141,16 @@ create table companies (
 -- Columnas (ES):
 -- - method_id: id del metodo (uuid)
 -- - name: nombre del metodo
--- - number: numero/cuenta
 -- - description: descripcion corta
 -- - is_active: activo/inactivo
 -- ---------------------------------------------------------
 create table payment_methods (
-  method_id uuid primary key default uuid_generate_v4(),
-  name varchar(300) not null,
-  number varchar(30),
-  description varchar(20),
-  is_active boolean not null,
-  primary key (method_id)
-);
+    method_id uuid primary key default uuid_generate_v4(),
+    name varchar(300) not null,
+    description varchar(20),
+    is_active boolean not null,
+    primary key (method_id)
+  );
 
 -- ---------------------------------------------------------
 -- TABLA: company_methods
@@ -163,9 +161,10 @@ create table payment_methods (
 -- - company_id: empresa (FK a companies)
 -- ---------------------------------------------------------
 create table company_methods (
-  method_id uuid not null,
-  company_id uuid not null,
-  primary key (company_id, method_id),
+    method_id uuid not null,
+    company_id uuid not null,
+    number varchar(30),
+    primary key (company_id, method_id),
   constraint fk_company_methods_method
     foreign key (method_id) references payment_methods(method_id),
   constraint fk_company_methods_company
@@ -181,9 +180,10 @@ create table company_methods (
 -- - supplier_id: proveedor (FK a suppliers)
 -- ---------------------------------------------------------
 create table supplier_methods (
-  method_id uuid not null,
-  supplier_id uuid,
-  primary key (supplier_id, method_id),
+    method_id uuid not null,
+    supplier_id uuid,
+    number varchar(30),
+    primary key (supplier_id, method_id),
   constraint fk_supplier_methods_method
     foreign key (method_id) references payment_methods(method_id),
   constraint fk_supplier_methods_supplier

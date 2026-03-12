@@ -6,10 +6,6 @@ export class HttpPaymentMethodCreateDto {
   name: string;
 
   @IsOptional()
-  @IsString()
-  number?: string;
-
-  @IsOptional()
   @IsBoolean()
   isActive?: boolean;
 }

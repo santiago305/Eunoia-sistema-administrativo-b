@@ -26,7 +26,7 @@ export class CompanyMethodTypeormRepository implements CompanyMethodRepository {
   }
 
   private toDomain(row: CompanyMethodEntity): CompanyMethod {
-    return new CompanyMethod(row.companyId, row.methodId);
+    return new CompanyMethod(row.companyId, row.methodId, row.number ?? undefined);
   }
 
   async findById(companyId: string, methodId: string, tx?: TransactionContext): Promise<CompanyMethod | null> {
@@ -39,6 +39,7 @@ export class CompanyMethodTypeormRepository implements CompanyMethodRepository {
     const row = repo.create({
       companyId: method.companyId,
       methodId: method.methodId,
+      number: method.number ?? null,
     });
     const saved = await repo.save(row);
     return this.toDomain(saved);

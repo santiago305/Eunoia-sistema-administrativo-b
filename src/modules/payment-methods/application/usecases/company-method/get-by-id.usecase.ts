@@ -18,6 +18,7 @@ export class GetCompanyMethodByIdUsecase {
     return successResponse("Relacion encontrada", {
       companyId: existing.companyId,
       methodId: existing.methodId,
+      number: existing.number,
     });
   }
 }

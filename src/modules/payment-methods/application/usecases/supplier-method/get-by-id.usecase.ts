@@ -18,6 +18,7 @@ export class GetSupplierMethodByIdUsecase {
     return successResponse("Relacion encontrada", {
       supplierId: existing.supplierId,
       methodId: existing.methodId,
+      number: existing.number,
     });
   }
 }
