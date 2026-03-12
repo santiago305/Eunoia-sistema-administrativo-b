@@ -26,7 +26,7 @@ export class SupplierMethodTypeormRepository implements SupplierMethodRepository
   }
 
   private toDomain(row: SupplierMethodEntity): SupplierMethod {
-    return new SupplierMethod(row.supplierId, row.methodId);
+    return new SupplierMethod(row.supplierId, row.methodId, row.number ?? undefined);
   }
 
   async findById(supplierId: string, methodId: string, tx?: TransactionContext): Promise<SupplierMethod | null> {
@@ -39,6 +39,7 @@ export class SupplierMethodTypeormRepository implements SupplierMethodRepository
     const row = repo.create({
       supplierId: method.supplierId,
       methodId: method.methodId,
+      number: method.number ?? null,
     });
     const saved = await repo.save(row);
     return this.toDomain(saved);

@@ -36,12 +36,13 @@ export class CreateSupplierMethodUsecase {
         throw new ConflictException(errorResponse("La relacion ya existe"));
       }
 
-      const relation = new SupplierMethod(input.supplierId, input.methodId);
+      const relation = new SupplierMethod(input.supplierId, input.methodId, input.number);
       try {
         await this.supplierMethodRepo.create(relation, tx);
         return successResponse("Relacion creada correctamente", {
           supplierId: input.supplierId,
           methodId: input.methodId,
+          number: input.number,
         });
       } catch {
         throw new BadRequestException(errorResponse("No se pudo crear la relacion"));

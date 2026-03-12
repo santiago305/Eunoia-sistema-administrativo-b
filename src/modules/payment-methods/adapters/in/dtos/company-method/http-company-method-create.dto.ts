@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsUUID } from "class-validator";
+import { IsNotEmpty, IsOptional, IsString, IsUUID } from "class-validator";
 
 export class HttpCompanyMethodCreateDto {
   @IsUUID()
@@ -8,4 +8,8 @@ export class HttpCompanyMethodCreateDto {
   @IsUUID()
   @IsNotEmpty()
   methodId: string;
+
+  @IsOptional()
+  @IsString()
+  number?: string;
 }

@@ -13,7 +13,6 @@ export class GetPaymentMethodsRecordsUsecase {
     return rows.map((m) => ({
       methodId: m.methodId!,
       name: m.name,
-      number: m.number,
       isActive: m.isActive,
     }));
   }

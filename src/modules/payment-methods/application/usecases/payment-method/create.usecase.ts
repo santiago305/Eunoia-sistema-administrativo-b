@@ -18,7 +18,6 @@ export class CreatePaymentMethodUsecase {
       const method = new PaymentMethod(
         undefined,
         input.name,
-        input.number,
         input.isActive ?? true,
       );
 

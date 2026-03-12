@@ -25,7 +25,7 @@ export class ListPaymentMethodsUsecase {
       items: items.map((m) => ({
         methodId: m.methodId!,
         name: m.name,
-        number: m.number,
+        number: undefined,
         isActive: m.isActive,
       })),
       total,

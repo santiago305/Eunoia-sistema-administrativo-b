@@ -71,6 +71,7 @@ export const seedSuppliers = async (dataSource: DataSource, count: number = 10):
     const methodIndexes = [0, 1, 2].map((offset) => (i - 1 + offset) % methods.length);
     for (const idx of methodIndexes) {
       const method = methods[idx];
+      const methodNumber = buildMethodNumber(method.name, i);
       const existingLink = await supplierMethodRepo.findOne({
         where: { supplierId: supplier.id, methodId: method.id },
       });
@@ -80,8 +81,23 @@ export const seedSuppliers = async (dataSource: DataSource, count: number = 10):
         supplierMethodRepo.create({
           supplierId: supplier.id,
           methodId: method.id,
+          number: methodNumber ?? null,
         }),
       );
     }
   }
+};
+
+const buildMethodNumber = (methodName: string, seed: number): string | null => {
+  const suffix = String(seed).padStart(6, "0");
+  if (methodName === "YAPE" || methodName === "PLIN") {
+    return `9${suffix}`;
+  }
+  if (methodName === "BCP" || methodName === "BBVA") {
+    return `00${suffix}123456`;
+  }
+  if (methodName === "EFECTIVO") {
+    return null;
+  }
+  return null;
 };

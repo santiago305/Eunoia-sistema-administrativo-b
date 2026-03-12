@@ -24,7 +24,6 @@ export class UpdatePaymentMethodUsecase {
           {
             methodId: input.methodId,
             name: input.name,
-            number: input.number,
           },
           tx,
         );

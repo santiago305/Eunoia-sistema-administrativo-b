@@ -36,12 +36,13 @@ export class CreateCompanyMethodUsecase {
         throw new ConflictException(errorResponse("La relacion ya existe"));
       }
 
-      const relation = new CompanyMethod(input.companyId, input.methodId);
+      const relation = new CompanyMethod(input.companyId, input.methodId, input.number);
       try {
         await this.companyMethodRepo.create(relation, tx);
         return successResponse("Relacion creada correctamente", {
           companyId: input.companyId,
           methodId: input.methodId,
+          number: input.number,
         });
       } catch {
         throw new BadRequestException(errorResponse("No se pudo crear la relacion"));

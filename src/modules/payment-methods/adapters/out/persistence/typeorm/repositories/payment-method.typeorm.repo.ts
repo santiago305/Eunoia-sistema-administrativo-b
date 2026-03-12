@@ -4,7 +4,7 @@ import { EntityManager, Repository } from "typeorm";
 import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { PaymentMethod } from "src/modules/payment-methods/domain/entity/payment-method";
-import { PaymentMethodRepository } from "src/modules/payment-methods/domain/ports/payment-method.repository";
+import { PaymentMethodRepository, PaymentMethodWithNumber } from "src/modules/payment-methods/domain/ports/payment-method.repository";
 import { CompanyMethodEntity } from "../entities/company-method.entity";
 import { PaymentMethodEntity } from "../entities/payment-method.entity";
 import { SupplierMethodEntity } from "../entities/supplier-method.entity";
@@ -31,7 +31,6 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
     return new PaymentMethod(
       row.id,
       row.name,
-      row.number ?? undefined,
       row.isActive,
     );
   }
@@ -41,26 +40,34 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
     return row ? this.toDomain(row) : null;
   }
 
-  async getByCompany(companyId: string, tx?: TransactionContext): Promise<PaymentMethod[]> {
-    const rows = await this.getRepo(tx)
+  async getByCompany(companyId: string, tx?: TransactionContext): Promise<PaymentMethodWithNumber[]> {
+    const qb = this.getRepo(tx)
       .createQueryBuilder("pm")
       .innerJoin(CompanyMethodEntity, "cm", "cm.methodId = pm.id")
       .where("cm.companyId = :companyId", { companyId })
       .orderBy("pm.name", "ASC")
-      .getMany();
+      .addSelect("cm.number", "cm_number");
 
-    return rows.map((r) => this.toDomain(r));
+    const result = await qb.getRawAndEntities();
+    return result.entities.map((row, idx) => ({
+      method: this.toDomain(row),
+      number: result.raw[idx]?.cm_number ?? undefined,
+    }));
   }
 
-  async getBySupplier(supplierId: string, tx?: TransactionContext): Promise<PaymentMethod[]> {
-    const rows = await this.getRepo(tx)
+  async getBySupplier(supplierId: string, tx?: TransactionContext): Promise<PaymentMethodWithNumber[]> {
+    const qb = this.getRepo(tx)
       .createQueryBuilder("pm")
       .innerJoin(SupplierMethodEntity, "sm", "sm.methodId = pm.id")
       .where("sm.supplierId = :supplierId", { supplierId })
       .orderBy("pm.name", "ASC")
-      .getMany();
+      .addSelect("sm.number", "sm_number");
 
-    return rows.map((r) => this.toDomain(r));
+    const result = await qb.getRawAndEntities();
+    return result.entities.map((row, idx) => ({
+      method: this.toDomain(row),
+      number: result.raw[idx]?.sm_number ?? undefined,
+    }));
   }
 
   async getRecords(tx?: TransactionContext): Promise<PaymentMethod[]> {
@@ -93,7 +100,6 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
     const row = repo.create({
       id: method.methodId,
       name: method.name,
-      number: method.number ?? null,
       isActive: method.isActive ?? true,
     });
 
@@ -102,14 +108,13 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
   }
 
   async update(
-    params: { methodId: string; name?: string; number?: string },
+    params: { methodId: string; name?: string },
     tx?: TransactionContext,
   ): Promise<PaymentMethod | null> {
     const repo = this.getRepo(tx);
     const patch: Partial<PaymentMethodEntity> = {};
 
     if (params.name !== undefined) patch.name = params.name;
-    if (params.number !== undefined) patch.number = params.number;
 
     await repo.update({ id: params.methodId }, patch);
     const updated = await repo.findOne({ where: { id: params.methodId } });

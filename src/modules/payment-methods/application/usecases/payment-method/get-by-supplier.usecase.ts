@@ -4,7 +4,7 @@ import { successResponse, errorResponse } from "src/shared/response-standard/res
 import { PAYMENT_METHOD_REPOSITORY, PaymentMethodRepository } from "src/modules/payment-methods/domain/ports/payment-method.repository";
 import { PaymentMethodOutput } from "../../dtos/payment-method/output/payment-method.output";
 import { GetPaymentMethodsBySupplierInput } from "../../dtos/payment-method/input/get-by-supplier.input";
-import { PaymentMethod } from "src/modules/payment-methods/domain/entity/payment-method";
+import { PaymentMethodWithNumber } from "src/modules/payment-methods/domain/ports/payment-method.repository";
 
 export class GetPaymentMethodsBySupplierUsecase {
   constructor(
@@ -14,12 +14,12 @@ export class GetPaymentMethodsBySupplierUsecase {
     private readonly paymentMethodRepo: PaymentMethodRepository,
   ) {}
 
-  private toOutput(method: PaymentMethod): PaymentMethodOutput {
+  private toOutput(item: PaymentMethodWithNumber): PaymentMethodOutput {
     return {
-      methodId: method.methodId!,
-      name: method.name,
-      number: method.number,
-      isActive: method.isActive,
+      methodId: item.method.methodId!,
+      name: item.method.name,
+      number: item.number ?? undefined,
+      isActive: item.method.isActive,
     };
   }
 
