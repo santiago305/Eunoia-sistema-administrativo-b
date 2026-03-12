@@ -49,8 +49,9 @@ export function resolveFrontendRiskLabel(label: string): string {
   return 'Alto';
 }
 
-export function toCsvValue(value: string): string {
-  const escaped = value.replace(/"/g, '""');
+export function toCsvValue(value: unknown): string {
+  const normalized = value === null || value === undefined ? '' : String(value);
+  const escaped = normalized.replace(/"/g, '""');
   return `"${escaped}"`;
 }
 

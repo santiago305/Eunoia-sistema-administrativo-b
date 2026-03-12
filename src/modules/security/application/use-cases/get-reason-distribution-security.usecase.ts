@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { IpViolation } from '../../adapters/out/persistence/typeorm/entities/ip-violation.entity';
+import { SecurityReasonCatalog } from '../../adapters/out/persistence/typeorm/entities/security-reason-catalog.entity';
 import { humanizeReason, resolveWindow, SECURITY_TIMEZONE } from './security-insights.utils';
 
 @Injectable()
@@ -9,6 +10,8 @@ export class GetReasonDistributionSecurityUseCase {
   constructor(
     @InjectRepository(IpViolation)
     private readonly violationRepository: Repository<IpViolation>,
+    @InjectRepository(SecurityReasonCatalog)
+    private readonly reasonCatalogRepository: Repository<SecurityReasonCatalog>,
   ) {}
 
   async execute(params: { hours?: number }) {
@@ -23,6 +26,9 @@ export class GetReasonDistributionSecurityUseCase {
       .orderBy('value', 'DESC')
       .getRawMany<{ name: string; value: string }>();
 
+    const catalogRows = await this.reasonCatalogRepository.find();
+    const labelByKey = new Map(catalogRows.map((item) => [item.key, item.label]));
+
     return {
       from: from.toISOString(),
       to: to.toISOString(),
@@ -31,10 +37,9 @@ export class GetReasonDistributionSecurityUseCase {
       data: rows.map((row) => ({
         key: row.name,
         name: row.name,
-        label: humanizeReason(row.name),
+        label: labelByKey.get(row.name) ?? humanizeReason(row.name),
         value: Number(row.value) || 0,
       })),
     };
   }
 }
-

@@ -18,6 +18,7 @@ import { CreditQuotaEntity } from 'src/modules/payments/adapters/out/persistence
 import { StockItemEntity } from 'src/modules/inventory/adapters/out/typeorm/entities/stock-item/stock-item.entity';
 import { PaymentMethodEntity } from 'src/modules/payment-methods/adapters/out/persistence/typeorm/entities/payment-method.entity';
 import { SupplierMethodEntity } from 'src/modules/payment-methods/adapters/out/persistence/typeorm/entities/supplier-method.entity';
+import { SecurityReasonCatalog } from 'src/modules/security/adapters/out/persistence/typeorm/entities/security-reason-catalog.entity';
 
 import { seedUser } from './src/modules/users/infrastructure/seed/user.seeder';
 import { seedDocumentSeries } from 'src/modules/inventory/infrastructure/seed/document_serie.seeder'
@@ -28,6 +29,7 @@ import { seedProducts } from 'src/modules/catalog/infrastructure/seed/product.se
 import { seedProductEquivalences } from 'src/modules/catalog/infrastructure/seed/product-equivalence.seeder';
 import { seedPurchaseOrders } from 'src/modules/purchases/infrastructure/seed/purchase-order.seeder';
 import { seedPaymentMethods } from 'src/modules/payment-methods/infrastructure/seed/payment-method.seeder';
+import { seedSecurityReasonCatalog } from 'src/modules/security/infrastructure/seed/security-reason-catalog.seeder';
 /**
  * Script de ejecución que inicializa la base de datos con roles predefinidos.
  *
@@ -73,6 +75,7 @@ const dataSource = new DataSource({
     StockItemEntity,
     PaymentMethodEntity,
     SupplierMethodEntity,
+    SecurityReasonCatalog,
   ], // puedes agregar más entidades si quieres hacer seed de varias tablas
 });
 
@@ -82,6 +85,7 @@ dataSource
     console.log('Iniciando seed...');
     await seedRoles(dataSource); // ejecuta la siembra de roles
     await seedUser(dataSource); // ejecuta la siembra de usuario
+    await seedSecurityReasonCatalog(dataSource);
     await seedUnits(dataSource);
     const warehouses = await seedWarehouses(dataSource);
     for (const wh of warehouses) {

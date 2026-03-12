@@ -16,6 +16,7 @@ import { GetTopRoutesSecurityUseCase } from 'src/modules/security/application/us
 import { GetRiskScoreSecurityUseCase } from 'src/modules/security/application/use-cases/get-risk-score-security.usecase';
 import { GetRiskScoreByIpSecurityUseCase } from 'src/modules/security/application/use-cases/get-risk-score-by-ip-security.usecase';
 import { ExportSecurityAuditCsvUseCase } from 'src/modules/security/application/use-cases/export-security-audit-csv.usecase';
+import { GetSecurityReasonsCatalogUseCase } from 'src/modules/security/application/use-cases/get-security-reasons-catalog.usecase';
 
 @Controller('security')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -32,6 +33,7 @@ export class SecurityController {
     private readonly getRiskScoreSecurityUseCase: GetRiskScoreSecurityUseCase,
     private readonly getRiskScoreByIpSecurityUseCase: GetRiskScoreByIpSecurityUseCase,
     private readonly exportSecurityAuditCsvUseCase: ExportSecurityAuditCsvUseCase,
+    private readonly getSecurityReasonsCatalogUseCase: GetSecurityReasonsCatalogUseCase,
     private readonly manageManualIpBlacklistUseCase: ManageManualIpBlacklistUseCase,
   ) {}
 
@@ -89,6 +91,17 @@ export class SecurityController {
     return this.getMethodDistributionSecurityUseCase.execute({
       hours: hours ? Number(hours) : undefined,
       reason,
+    });
+  }
+
+  @Get('reasons')
+  getReasons(
+    @Query('hours') hours?: string,
+    @Query('activeOnly') activeOnly?: string,
+  ) {
+    return this.getSecurityReasonsCatalogUseCase.execute({
+      hours: hours ? Number(hours) : undefined,
+      activeOnly: activeOnly === 'true',
     });
   }
 

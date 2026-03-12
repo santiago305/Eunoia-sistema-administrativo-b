@@ -1035,3 +1035,29 @@ create table production_order_items (
 
 create index idx_production_items_production on production_order_items(production_id);
 create index idx_production_items_finished_variant on production_order_items(finished_variant_id);
+
+-- ---------------------------------------------------------
+-- TABLA: security_reason_catalog
+-- Para que sirve:
+-- - Catalogo de motivos tecnicos de seguridad (reason key -> label).
+-- Que informacion guarda:
+-- - Clave tecnica estable para filtros, etiqueta visible y estado activo.
+-- ---------------------------------------------------------
+create table if not exists security_reason_catalog (
+  id uuid primary key default uuid_generate_v4(),
+  key varchar(120) not null unique,
+  label varchar(180) not null,
+  description varchar(500),
+  active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+insert into security_reason_catalog (key, label, description, active)
+values
+  ('rate_limit_exceeded', 'Rate Limit Exceeded', 'Limite de requests excedido por throttling', true),
+  ('temporary_ban_request', 'Temporary Ban Request', 'Solicitud de baneo temporal por reincidencia', true),
+  ('manual_permanent_ban_request', 'Manual Permanent Ban Request', 'Intento de acceso mientras la IP esta en blacklist permanente', true),
+  ('manual_permanent_ban', 'Manual Permanent Ban', 'Bloqueo permanente aplicado manualmente', true),
+  ('manual_unban', 'Manual Unban', 'Retiro manual de blacklist permanente', true)
+on conflict (key) do nothing;
