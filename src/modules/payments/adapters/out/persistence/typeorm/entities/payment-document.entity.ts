@@ -1,7 +1,6 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import { CurrencyType } from "src/modules/payments/domain/value-objects/currency-type";
 import { PayDocType } from "src/modules/payments/domain/value-objects/pay-doc-type";
-import { PaymentType } from "src/modules/payments/domain/value-objects/payment-type";
 import { PurchaseOrderEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-order.entity";
 import { CreditQuotaEntity } from "./credit-quota.entity";
 
@@ -12,8 +11,8 @@ export class PaymentDocumentEntity {
   @PrimaryGeneratedColumn("uuid", { name: "pay_doc_id" })
   id: string;
 
-  @Column({ name: "method", type: "enum", enum: PaymentType, enumName: "payment_type" })
-  method: PaymentType;
+  @Column({ name: "method", type: "varchar", length: 300 })
+  method: string;
 
   @Column({ name: "date", type: "timestamptz" })
   date: Date;

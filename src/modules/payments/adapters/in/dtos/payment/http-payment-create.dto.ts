@@ -1,10 +1,9 @@
 import { IsDateString, IsEnum, IsNumber, IsOptional, IsString, IsUUID, Min } from "class-validator";
 import { CurrencyType } from "src/modules/payments/domain/value-objects/currency-type";
-import { PaymentType } from "src/modules/payments/domain/value-objects/payment-type";
 
 export class HttpCreatePaymentDto {
-  @IsEnum(PaymentType)
-  method: PaymentType;
+  @IsString()
+  method: string;
 
   @IsDateString()
   date: string;

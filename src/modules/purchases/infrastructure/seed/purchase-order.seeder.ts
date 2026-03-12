@@ -9,7 +9,6 @@ import { PaymentFormType } from "src/modules/purchases/domain/value-objects/paym
 import { PurchaseOrderStatus } from "src/modules/purchases/domain/value-objects/po-status";
 import { VoucherDocType } from "src/modules/purchases/domain/value-objects/voucher-doc-type";
 import { CurrencyType as PurchaseCurrency } from "src/modules/purchases/domain/value-objects/currency-type";
-import { PaymentType } from "src/modules/payments/domain/value-objects/payment-type";
 import { CurrencyType as PaymentCurrency } from "src/modules/payments/domain/value-objects/currency-type";
 import { PayDocType } from "src/modules/payments/domain/value-objects/pay-doc-type";
 import { AfectIgvType } from "src/modules/purchases/domain/value-objects/afect-igv-type";
@@ -165,7 +164,7 @@ export const seedPurchaseOrders = async (dataSource: DataSource, total: number =
     if (!isCredit) {
       await paymentDocRepo.save(
         paymentDocRepo.create({
-          method: PaymentType.EFECTIVO,
+          method: "EFECTIVO",
           date: dateIssue,
           operationNumber: `OP-${correlative}`,
           currency: PaymentCurrency.PEN,

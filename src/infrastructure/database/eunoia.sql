@@ -825,7 +825,6 @@ CREATE TYPE pay_doc_type AS ENUM ('PURCHASE', 'SALE');
 CREATE TYPE payment_form_type AS ENUM ('CONTADO', 'CREDITO');
 --SE DEFINE SI ES A CONTADO O A CREDITO LOS PAGOS DE LA VENTA O COMPRA
 
-CREATE TYPE payment_type AS ENUM ('YAPE', 'PLIN', 'TRANSFERENCIA', 'EFECTIVO', 'TARJETA');
 --TIPOS DE PAGO
 
 
@@ -942,7 +941,7 @@ create table public.credit_quotas (
 
 CREATE TABLE public.payment_documents (
   pay_doc_id uuid NOT NULL DEFAULT uuid_generate_v4(),
-  method payment_type NOT NULL,
+  method varchar(300) NOT NULL,
   date timestamptz NOT NULL,
   operation_number varchar(60),
   currency currency_type NOT NULL,

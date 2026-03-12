@@ -16,6 +16,8 @@ import { PurchaseOrderEntity } from 'src/modules/purchases/adapters/out/persiste
 import { PaymentDocumentEntity } from 'src/modules/payments/adapters/out/persistence/typeorm/entities/payment-document.entity';
 import { CreditQuotaEntity } from 'src/modules/payments/adapters/out/persistence/typeorm/entities/credit-quota.entity';
 import { StockItemEntity } from 'src/modules/inventory/adapters/out/typeorm/entities/stock-item/stock-item.entity';
+import { PaymentMethodEntity } from 'src/modules/payment-methods/adapters/out/persistence/typeorm/entities/payment-method.entity';
+import { SupplierMethodEntity } from 'src/modules/payment-methods/adapters/out/persistence/typeorm/entities/supplier-method.entity';
 
 import { seedUser } from './src/modules/users/infrastructure/seed/user.seeder';
 import { seedDocumentSeries } from 'src/modules/inventory/infrastructure/seed/document_serie.seeder'
@@ -25,6 +27,7 @@ import { seedSuppliers } from 'src/modules/suppliers/infrastructure/seed/supplie
 import { seedProducts } from 'src/modules/catalog/infrastructure/seed/product.seeder';
 import { seedProductEquivalences } from 'src/modules/catalog/infrastructure/seed/product-equivalence.seeder';
 import { seedPurchaseOrders } from 'src/modules/purchases/infrastructure/seed/purchase-order.seeder';
+import { seedPaymentMethods } from 'src/modules/payment-methods/infrastructure/seed/payment-method.seeder';
 /**
  * Script de ejecución que inicializa la base de datos con roles predefinidos.
  *
@@ -68,6 +71,8 @@ const dataSource = new DataSource({
     PaymentDocumentEntity,
     CreditQuotaEntity,
     StockItemEntity,
+    PaymentMethodEntity,
+    SupplierMethodEntity,
   ], // puedes agregar más entidades si quieres hacer seed de varias tablas
 });
 
@@ -82,6 +87,7 @@ dataSource
     for (const wh of warehouses) {
       await seedDocumentSeries(dataSource, wh.id);
     }
+    await seedPaymentMethods(dataSource);
     await seedSuppliers(dataSource, 10000);
     await seedProducts(dataSource, { finishedCount: 4500, rawCount: 5500, variantsPerProduct: 2 });
     await seedProductEquivalences(dataSource, { minPerProduct: 1, maxPerProduct: 4 });
