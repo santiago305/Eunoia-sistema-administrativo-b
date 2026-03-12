@@ -1,0 +1,35 @@
+import { BadRequestException, Inject } from "@nestjs/common";
+import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
+import { successResponse, errorResponse } from "src/shared/response-standard/response";
+import { PaymentMethod } from "src/modules/payment-methods/domain/entity/payment-method";
+import { PAYMENT_METHOD_REPOSITORY, PaymentMethodRepository } from "src/modules/payment-methods/domain/ports/payment-method.repository";
+import { CreatePaymentMethodInput } from "../../dtos/payment-method/input/create.input";
+
+export class CreatePaymentMethodUsecase {
+  constructor(
+    @Inject(UNIT_OF_WORK)
+    private readonly uow: UnitOfWork,
+    @Inject(PAYMENT_METHOD_REPOSITORY)
+    private readonly paymentMethodRepo: PaymentMethodRepository,
+  ) {}
+
+  async execute(input: CreatePaymentMethodInput) {
+    return this.uow.runInTransaction(async (tx) => {
+      const method = new PaymentMethod(
+        undefined,
+        input.name,
+        input.number,
+        input.isActive ?? true,
+      );
+
+      try {
+        const saved = await this.paymentMethodRepo.create(method, tx);
+        return successResponse("Metodo de pago creado correctamente", {
+          methodId: saved.methodId,
+        });
+      } catch {
+        throw new BadRequestException(errorResponse("No se pudo crear el metodo de pago"));
+      }
+    });
+  }
+}
