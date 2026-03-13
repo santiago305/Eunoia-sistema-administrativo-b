@@ -15,6 +15,7 @@ import { CLOCK, ClockPort } from 'src/modules/inventory/domain/ports/clock.port'
 import { generateUniqueSku } from '../../../../../shared/application/usecases/generate-unique-sku';
 import { UNIT_OF_WORK, UnitOfWork } from 'src/shared/domain/ports/unit-of-work.port';
 import { SKU_COUNTER_REPOSITORY, SkuCounterRepository } from 'src/modules/catalog/domain/ports/sku-counter.repository';
+import { CreateStockItemForVariant } from 'src/modules/inventory/application/use-cases/stock-item/create-for-variant.usecase';
 
 export class CreateProductVariant {
   constructor(
@@ -28,11 +29,12 @@ export class CreateProductVariant {
     private readonly skuCounterRepo: SkuCounterRepository,
     @Inject(CLOCK)
     private readonly clock: ClockPort,
+    private readonly createStockItemForVariant: CreateStockItemForVariant,
   ) {}
 
   async execute(
     input: CreateProductVariantInput,
-  ): Promise<{ message: string; type: string; id: string }> {
+  ): Promise<{ message: string; type: string }> {
     return this.uow.runInTransaction(async (tx) => {
       const productId = ProductId.create(input.productId);
 
@@ -80,16 +82,29 @@ export class CreateProductVariant {
       this.clock.now(),
     );
 
+    let create:ProductVariant;
     try {
-      const created = await this.variantRepo.create(variant, tx);
-      return {
-        type: "success",
-        message: "¡Variante creada con éxito!",
-        id: created.getId(),
-      };
+      create = await this.variantRepo.create(variant, tx);
     } catch  {
       throw new BadRequestException({type: 'error', message: 'No se pudo crear la variante'});
     }
+    
+    try {
+      await this.createStockItemForVariant.execute(
+        {
+          variantId: create.getId(),
+          isActive: input.isActive,
+        },
+        tx,
+      );
+    } catch {
+      throw new BadRequestException({type: 'error', message: 'No se pudo crear el stock item'});
+    }
+
+    return {
+      type: "success",
+      message: "¡Variante creada con éxito!",
+    };
   });
   }
 }

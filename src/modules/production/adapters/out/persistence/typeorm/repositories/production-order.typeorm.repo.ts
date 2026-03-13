@@ -9,6 +9,7 @@ import { ProductionOrderEntity } from "../entities/production_order.entity";
 import { ProductionOrderItemEntity } from "../entities/production_order_item.entity";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
+import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
 
 @Injectable()
 export class ProductionOrderTypeormRepository implements ProductionOrderRepository {
@@ -42,7 +43,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
   return new ProductionOrderItem(
     row.id,
     row.productionId,
-    row.finishedVariantId,
+    row.finishedItemId,
     row.fromLocationId,
     row.toLocationId,
     row.quantity,
@@ -56,11 +57,12 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
     const saved = await repo.save({
       fromWarehouseId: order.fromWarehouseId,
       toWarehouseId: order.toWarehouseId,
+      docType: order.docType,
       serieId: order.serieId,
       correlative: order.correlative,
       status: order.status,
       reference: order.referense,
-      manufactureTime: order.manufactureTime,
+      manufactureDate: order.manufactureDate,
       createdBy: order.createdBy,
       updatedBy: order.updateBy ?? null,
     });
@@ -69,10 +71,11 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
       saved.id,
       saved.fromWarehouseId,
       saved.toWarehouseId,
+      saved.docType,
       saved.serieId,
       saved.correlative,
       saved.status as ProductionStatus,
-      saved.manufactureTime,
+      saved.manufactureDate,
       saved.createdBy,
       saved.createdAt,
       saved.reference ?? null,
@@ -90,10 +93,11 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
       row.id,
       row.fromWarehouseId,
       row.toWarehouseId,
+      row.docType,
       row.serieId,
       row.correlative,
       row.status as ProductionStatus,
-      row.manufactureTime,
+      row.manufactureDate,
       row.createdBy,
       row.createdAt,
       row.reference?? null,
@@ -151,10 +155,11 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
             row.id,
             row.fromWarehouseId,
             row.toWarehouseId,
+            row.docType,
             row.serieId,
             row.correlative,
             row.status as ProductionStatus,
-            row.manufactureTime,
+            row.manufactureDate,
             row.createdBy,
             row.createdAt,
             row.reference,
@@ -176,7 +181,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
       serieId?: string;
       correlative?: number;
       reference?: string;
-      manufactureTime?: number;
+      manufactureDate?: Date;
       updatedBy?: string;
       updatedAt?: Date;
     },
@@ -190,7 +195,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
     if (params.serieId !== undefined) patch.serieId = params.serieId;
     if (params.correlative !== undefined) patch.correlative = params.correlative;
     if (params.reference !== undefined) patch.reference = params.reference;
-    if (params.manufactureTime !== undefined) patch.manufactureTime = params.manufactureTime;
+    if (params.manufactureDate !== undefined) patch.manufactureDate = params.manufactureDate;
     if (params.updatedAt !== undefined) patch.updatedAt = params.updatedAt;
     if (params.updatedBy !== undefined) {
       (patch as any).updatedBy = params.updatedBy;
@@ -228,7 +233,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
         new ProductionOrderItem(
           r.id,
           r.productionId,
-          r.finishedVariantId,
+          r.finishedItemId,
           r.fromLocationId,
           r.toLocationId,
           r.quantity,
@@ -251,7 +256,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
     const repo = this.getItemRepo(tx);
     const saved = await repo.save({
       productionId: item.productionId,
-      finishedVariantId: item.finishedVariantId,
+      finishedItemId: item.finishedItemId,
       fromLocationId: item.fromLocationId,
       toLocationId: item.toLocationId,
       quantity: item.quantity,
@@ -261,7 +266,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
     return new ProductionOrderItem(
       saved.id,
       saved.productionId,
-      saved.finishedVariantId,
+      saved.finishedItemId,
       saved.fromLocationId,
       saved.toLocationId,
       saved.quantity,
@@ -273,7 +278,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
     params: {
       productionId: string;
       itemId: string;
-      finishedVariantId?: string;
+      finishedItemId?: string;
       fromLocationId?: string;
       toLocationId?: string;
       quantity?: number;
@@ -284,7 +289,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
     const repo = this.getItemRepo(tx);
     const patch: Partial<ProductionOrderItemEntity> = {};
 
-    if (params.finishedVariantId !== undefined) patch.finishedVariantId = params.finishedVariantId;
+    if (params.finishedItemId !== undefined) patch.finishedItemId = params.finishedItemId;
     if (params.fromLocationId !== undefined) patch.fromLocationId = params.fromLocationId;
     if (params.toLocationId !== undefined) patch.toLocationId = params.toLocationId;
     if (params.quantity !== undefined) patch.quantity = params.quantity;
@@ -299,7 +304,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
     return new ProductionOrderItem(
       updated.id,
       updated.productionId,
-      updated.finishedVariantId,
+      updated.finishedItemId,
       updated.fromLocationId,
       updated.toLocationId,
       updated.quantity,

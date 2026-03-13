@@ -6,7 +6,7 @@ export interface ProductionOrderListItemOutput {
   serieId: string;
   correlative: number;
   reference: string;
-  manufactureTime: number;
+  manufactureDate: Date;
   fromWarehouseId: string;
   toWarehouseId: string;
   createdAt: Date;

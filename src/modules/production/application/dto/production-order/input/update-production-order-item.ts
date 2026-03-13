@@ -1,7 +1,7 @@
 export interface UpdateProductionOrderItemInput {
   productionId: string;
   itemId: string;
-  finishedVariantId?: string;
+  finishedItemId?: string;
   fromLocationId?: string;
   toLocationId?: string;
   quantity?: number;

@@ -64,7 +64,7 @@ export class PostProductionDocumentsUseCase {
         new InventoryDocumentItem(
           undefined,
           outDoc.id!,
-          c.variantId,
+          c.stockItemId,
           c.qty,
           c.locationId,
           undefined,
@@ -76,7 +76,7 @@ export class PostProductionDocumentsUseCase {
 
     const outKeys = params.consumption.map((c) => ({
       warehouseId: params.order.fromWarehouseId,
-      stockItemId: c.variantId,
+      stockItemId: c.stockItemId,
       locationId: c.locationId,
     }));
     await this.lock.lockSnapshots(outKeys, tx);
@@ -88,7 +88,7 @@ export class PostProductionDocumentsUseCase {
           undefined,
           outDoc.id!,
           params.order.fromWarehouseId,
-          c.variantId,
+          c.stockItemId,
           Direction.OUT,
           c.qty,
           null,
@@ -100,7 +100,7 @@ export class PostProductionDocumentsUseCase {
       await this.inventoryRepo.incrementOnHand(
         {
           warehouseId: params.order.fromWarehouseId,
-          stockItemId: c.variantId,
+          stockItemId: c.stockItemId,
           locationId: c.locationId,
           delta: -c.qty,
         },
@@ -137,7 +137,7 @@ export class PostProductionDocumentsUseCase {
         new InventoryDocumentItem(
           undefined,
           inDoc.id!,
-          item.finishedVariantId,
+          item.finishedItemId,
           item.quantity,
           undefined,
           item.toLocationId ?? undefined,
@@ -149,7 +149,7 @@ export class PostProductionDocumentsUseCase {
 
     const inKeys = params.items.map((i) => ({
       warehouseId: params.order.toWarehouseId,
-      stockItemId: i.finishedVariantId,
+      stockItemId: i.finishedItemId,
       locationId: i.toLocationId,
     }));
     await this.lock.lockSnapshots(inKeys, tx);
@@ -161,7 +161,7 @@ export class PostProductionDocumentsUseCase {
           undefined,
           inDoc.id!,
           params.order.toWarehouseId,
-          item.finishedVariantId,
+          item.finishedItemId,
           Direction.IN,
           item.quantity,
           item.unitCost ?? null,
@@ -173,7 +173,7 @@ export class PostProductionDocumentsUseCase {
       await this.inventoryRepo.incrementOnHand(
         {
           warehouseId: params.order.toWarehouseId,
-          stockItemId: item.finishedVariantId,
+          stockItemId: item.finishedItemId,
           locationId: item.toLocationId ?? undefined,
           delta: item.quantity,
         },

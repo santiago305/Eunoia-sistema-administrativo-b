@@ -10,6 +10,7 @@ import { generateUniqueSku } from "src/shared/application/usecases/generate-uniq
 import { SKU_COUNTER_REPOSITORY, SkuCounterRepository } from "src/modules/catalog/domain/ports/sku-counter.repository";
 import { ProductEquivalence } from "src/modules/catalog/domain/entity/product-equivalence";
 import { PRODUCT_EQUIVALENCE_REPOSITORY, ProductEquivalenceRepository } from "src/modules/catalog/domain/ports/product-equivalence.repository";
+import { CreateStockItemForProduct } from "src/modules/inventory/application/use-cases/stock-item/create-for-product.usecase";
 
 export class CreateProduct {
   constructor(
@@ -18,6 +19,7 @@ export class CreateProduct {
     @Inject(SKU_COUNTER_REPOSITORY) private readonly skuCounterRepo: SkuCounterRepository,
     @Inject(CLOCK) private readonly clock: ClockPort,
     @Inject(PRODUCT_EQUIVALENCE_REPOSITORY) private readonly equivalenceRepo: ProductEquivalenceRepository,
+      private readonly createStockItemForProduct: CreateStockItemForProduct,
   ) {}
 
   async execute(input: CreateProductInput): Promise<Product> {
@@ -104,6 +106,21 @@ export class CreateProduct {
         throw new InternalServerErrorException({
           type: "error",
           message: "No se logro crear la equivalencia de unidad base",
+        });
+      }
+      
+      try {
+        await this.createStockItemForProduct.execute(
+          {
+            productId,
+            isActive: createdProduct.getIsActive(),
+          },
+          tx,
+        );
+      } catch (err) {
+        throw new InternalServerErrorException({
+          type: "error",
+          message: err,
         });
       }
 

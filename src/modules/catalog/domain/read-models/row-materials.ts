@@ -9,4 +9,5 @@ export interface RowMaterial {
     sku?: string | null;
     unitCode?: string;
     unitName?: string;
+    type?:string;
 }

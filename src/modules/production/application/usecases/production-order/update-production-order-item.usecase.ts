@@ -7,6 +7,7 @@ import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.p
 import { PRODUCT_RECIPE_REPOSITORY, ProductRecipeRepository } from "src/modules/catalog/domain/ports/product-recipe.repository";
 import { INVENTORY_REPOSITORY, InventoryRepository } from "src/modules/inventory/domain/ports/inventory.repository.port";
 import { INVENTORY_LOCK, InventoryLock } from "src/modules/inventory/domain/ports/inventory-lock.port";
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/domain/ports/stock-item/stock-item.repository.port";
 
 @Injectable()
 export class UpdateProductionOrderItem {
@@ -16,6 +17,8 @@ export class UpdateProductionOrderItem {
     private readonly orderRepo: ProductionOrderRepository,
     @Inject(PRODUCT_RECIPE_REPOSITORY)
     private readonly recipeRepo: ProductRecipeRepository,
+    @Inject(STOCK_ITEM_REPOSITORY)
+    private readonly stockItemRepo: StockItemRepository,
     @Inject(INVENTORY_REPOSITORY)
     private readonly inventoryRepo: InventoryRepository,
     @Inject(INVENTORY_LOCK)
@@ -37,46 +40,77 @@ export class UpdateProductionOrderItem {
         throw new NotFoundException({ type: "error", message: "Item no encontrado" });
       }
 
-      const newFinishedVariantId = input.finishedVariantId ?? current.finishedVariantId;
+      const stockItemCache = new Map<string, string>();
+      const getStockItemIdForVariant = async (variantId: string) => {
+        const cached = stockItemCache.get(variantId);
+        if (cached) return cached;
+        const stockItem = await this.stockItemRepo.findByVariantId(variantId, tx);
+        if (!stockItem?.stockItemId) {
+          throw new NotFoundException({ type: "error", message: "Stock item de materia prima no encontrado" });
+        }
+        stockItemCache.set(variantId, stockItem.stockItemId);
+        return stockItem.stockItemId;
+      };
+
+      const getVariantIdForFinishedItem = async (finishedItemId: string) => {
+        const finishedItem = await this.stockItemRepo.findById(finishedItemId, tx);
+        if (!finishedItem?.variantId) {
+          throw new NotFoundException({ type: "error", message: "Stock item de producto terminado no encontrado" });
+        }
+        return finishedItem.variantId;
+      };
+
+      const newFinishedItemId = input.finishedItemId ?? current.finishedItemId;
       const newFromLocationId = input.fromLocationId ?? current.fromLocationId;
       const newQty = input.quantity ?? current.quantity;
 
-      const prevRecipes = await this.recipeRepo.listByVariantId(current.finishedVariantId, tx);
+      const currentFinishedVariantId = await getVariantIdForFinishedItem(current.finishedItemId);
+      const newFinishedVariantId = await getVariantIdForFinishedItem(newFinishedItemId);
+
+      const prevRecipes = await this.recipeRepo.listByVariantId(currentFinishedVariantId, tx);
       const newRecipes = await this.recipeRepo.listByVariantId(newFinishedVariantId, tx);
 
       // consolidar consumo anterior
-      const prevConsumption = prevRecipes.map((r) => ({
-        variantId: r.primaVariantId,
-        locationId: current.fromLocationId ?? undefined,
-        qty: r.quantity * current.quantity,
-      }));
+      const prevConsumption = [];
+      for (const r of prevRecipes) {
+        const stockItemId = await getStockItemIdForVariant(r.primaVariantId);
+        prevConsumption.push({
+          stockItemId,
+          locationId: current.fromLocationId ?? undefined,
+          qty: r.quantity * current.quantity,
+        });
+      }
 
       // consumo nuevo
-      const nextConsumption = newRecipes.map((r) => ({
-        variantId: r.primaVariantId,
-        locationId: newFromLocationId ?? undefined,
-        qty: r.quantity * newQty,
-      }));
+      const nextConsumption = [];
+      for (const r of newRecipes) {
+        const stockItemId = await getStockItemIdForVariant(r.primaVariantId);
+        nextConsumption.push({
+          stockItemId,
+          locationId: newFromLocationId ?? undefined,
+          qty: r.quantity * newQty,
+        });
+      }
 
       // aplicar diferencia de reservas
-      const diffMap = new Map<string, { variantId: string; locationId?: string; qty: number }>();
+      const diffMap = new Map<string, { stockItemId: string; locationId?: string; qty: number }>();
 
-      const addToDiff = (variantId: string, locationId: string | undefined, qty: number) => {
-        const key = `${variantId}::${locationId ?? "null"}`;
+      const addToDiff = (stockItemId: string, locationId: string | undefined, qty: number) => {
+        const key = `${stockItemId}::${locationId ?? "null"}`;
         const curr = diffMap.get(key);
         if (curr) curr.qty += qty;
-        else diffMap.set(key, { variantId, locationId, qty });
+        else diffMap.set(key, { stockItemId, locationId, qty });
       };
 
-      for (const p of prevConsumption) addToDiff(p.variantId, p.locationId, -p.qty);
-      for (const n of nextConsumption) addToDiff(n.variantId, n.locationId, n.qty);
+      for (const p of prevConsumption) addToDiff(p.stockItemId, p.locationId, -p.qty);
+      for (const n of nextConsumption) addToDiff(n.stockItemId, n.locationId, n.qty);
 
       const diff = Array.from(diffMap.values()).filter((d) => d.qty !== 0);
 
       // lock snapshots
       const keys = diff.map((d) => ({
         warehouseId: order.fromWarehouseId,
-        stockItemId: d.variantId,
+        stockItemId: d.stockItemId,
         locationId: d.locationId,
       }));
       await this.lock.lockSnapshots(keys, tx);
@@ -86,7 +120,7 @@ export class UpdateProductionOrderItem {
         const snapshot = await this.inventoryRepo.getSnapshot(
           {
             warehouseId: order.fromWarehouseId,
-            stockItemId: d.variantId,
+            stockItemId: d.stockItemId,
             locationId: d.locationId,
           },
           tx,
@@ -100,7 +134,7 @@ export class UpdateProductionOrderItem {
             type: "error",
             message: "Materia prima insuficiente",
             item: {
-              primaVariantId: d.variantId,
+              stockItemId: d.stockItemId,
               locationId: d.locationId,
               required: d.qty,
               available,
@@ -113,7 +147,7 @@ export class UpdateProductionOrderItem {
             type: "error",
             message: "Reserva insuficiente",
             item: {
-              primaVariantId: d.variantId,
+              stockItemId: d.stockItemId,
               locationId: d.locationId,
               required: Math.abs(d.qty),
               reserved,
@@ -126,7 +160,7 @@ export class UpdateProductionOrderItem {
         await this.inventoryRepo.incrementReserved(
           {
             warehouseId: order.fromWarehouseId,
-            stockItemId: d.variantId,
+            stockItemId: d.stockItemId,
             locationId: d.locationId,
             delta: d.qty,
           },
@@ -142,7 +176,7 @@ export class UpdateProductionOrderItem {
       return {
         id: updated.productionItemId!,
         productionId: updated.productionId,
-        finishedVariantId: updated.finishedVariantId,
+        finishedItemId: updated.finishedItemId,
         fromLocationId: updated.fromLocationId,
         toLocationId: updated.toLocationId,
         quantity: updated.quantity,

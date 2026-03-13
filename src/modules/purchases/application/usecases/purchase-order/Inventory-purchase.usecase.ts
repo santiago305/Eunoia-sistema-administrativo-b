@@ -7,6 +7,7 @@ import { AddItemUseCase } from "src/modules/inventory/application/use-cases/docu
 import { PostDocumentoIn } from "src/modules/inventory/application/use-cases/document-inventory/post-document-in.usecase";
 import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
 import { GetActiveDocumentSerieUseCase } from "src/modules/inventory/application/use-cases/document-serie/get-document-series.usecase";
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/domain/ports/stock-item/stock-item.repository.port";
 
 @Injectable()
 export class PostInventoryFromPurchaseUsecase {
@@ -17,6 +18,8 @@ export class PostInventoryFromPurchaseUsecase {
     private readonly purchaseRepo: PurchaseOrderRepository,
     @Inject(PURCHASE_ORDER_ITEM)
     private readonly purchaseItemRepo: PurchaseOrderItemRepository,
+    @Inject(STOCK_ITEM_REPOSITORY)
+    private readonly stockItemRepo: StockItemRepository,
     private readonly createDocument: CreateDocumentUseCase,
     private readonly addItem: AddItemUseCase,
     private readonly postIn: PostDocumentoIn,
@@ -65,9 +68,13 @@ export class PostInventoryFromPurchaseUsecase {
       });
 
       for (const item of items) {
+        const stockItem = await this.stockItemRepo.findByProductIdOrVariantId(item.stockItemId);
+        if (!stockItem) {
+          throw new NotFoundException({ type: "error", message: "StockItem terminado no encontrado" });
+        }
         await this.addItem.execute({
           docId: doc.id,
-          stockItemId: item.stockItemId,
+          stockItemId: stockItem.stockItemId,
           quantity: item.quantity,
           toLocationId: params.toLocationId,
           unitCost: item.unitPrice.getAmount(), // o item.purchaseValue.getAmount()

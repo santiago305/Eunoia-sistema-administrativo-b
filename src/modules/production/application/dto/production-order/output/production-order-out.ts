@@ -8,6 +8,6 @@ export interface ProductionOrderOutput {
   correlative: number;
   status: ProductionStatus;
   reference: string;
-  manufactureTime: number;
+  manufactureDate: Date;
   createdAt: Date;
 }

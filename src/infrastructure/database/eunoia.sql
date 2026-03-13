@@ -968,6 +968,9 @@ create index idx_credit_quotas_po on public.credit_quotas(po_id);
 -- CANCELLED: cancelada
 create type production_status as enum ('DRAFT','IN_PROGRESS','COMPLETED','CANCELLED');
 
+-- Tipo de documento para producción
+create type doc_type as enum ('IN','OUT','TRANSFER','ADJUSTMENT','PRODUCTION');
+
 -- ---------------------------------------------------------
 -- TABLA: production_orders
 -- Para que sirve:
@@ -978,11 +981,12 @@ create type production_status as enum ('DRAFT','IN_PROGRESS','COMPLETED','CANCEL
 -- - production_id: id de orden producción
 -- - from_warehouse_id: almacen origen
 -- - to_warehouse_id: almacen destino
+-- - doc_type: tipo de documento
 -- - serie_id: serie documental asociada
 -- - correlative: correlativo de la orden
 -- - status: estado de la orden
 -- - reference: referencia externa/interna
--- - manufacture_time: tiempo estimado/fabricación
+-- - manufacture_date: fecha de fabricación
 -- - created_by: usuario creador (texto)
 -- - updated_by: usuario que actualizó (texto, opcional)
 -- - created_at: fecha creación
@@ -992,11 +996,12 @@ create table production_orders (
   production_id uuid primary key default uuid_generate_v4(),
   from_warehouse_id uuid not null references warehouses(warehouse_id),
   to_warehouse_id uuid not null references warehouses(warehouse_id),
+  doc_type doc_type not null default 'PRODUCTION',
   serie_id uuid not null references documents_series(series_id),
   correlative int not null,
   status production_status not null default 'DRAFT',
   reference varchar not null,
-  manufacture_time int not null,
+  manufacture_date timestamptz not null,
   created_by varchar not null,
   updated_by varchar,
   created_at timestamptz not null default now(),
@@ -1013,11 +1018,11 @@ create index idx_production_orders_to_wh on production_orders(to_warehouse_id);
 -- Para que sirve:
 -- - Detalle de la orden de producción.
 -- Que información guarda:
--- - Variante final a fabricar, ubicación origen/destino, cantidad y costo unitario.
+-- - Item final a fabricar, ubicación origen/destino, cantidad y costo unitario.
 -- Columnas (ES):
 -- - item_id: id del item
 -- - production_id: orden producción padre
--- - finished_variant_id: variante final
+-- - finished_item_id: item final (stock_item)
 -- - from_location_id: ubicación origen
 -- - to_location_id: ubicación destino
 -- - quantity: cantidad
@@ -1026,7 +1031,7 @@ create index idx_production_orders_to_wh on production_orders(to_warehouse_id);
 create table production_order_items (
   item_id uuid primary key default uuid_generate_v4(),
   production_id uuid not null references production_orders(production_id) on delete cascade,
-  finished_variant_id uuid not null references product_variants(variant_id),
+  finished_item_id uuid not null references stock_items(stock_item_id),
   from_location_id uuid not null references warehouse_locations(location_id),
   to_location_id uuid not null references warehouse_locations(location_id),
   quantity int not null check (quantity > 0),
@@ -1034,4 +1039,4 @@ create table production_order_items (
 );
 
 create index idx_production_items_production on production_order_items(production_id);
-create index idx_production_items_finished_variant on production_order_items(finished_variant_id);
+create index idx_production_items_finished_item on production_order_items(finished_item_id);

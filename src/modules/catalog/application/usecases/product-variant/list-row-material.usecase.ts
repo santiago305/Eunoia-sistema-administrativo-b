@@ -38,6 +38,7 @@ export class ListRowMaterialProductVariants {
       sku: r.sku,
       unitCode: r.unitCode,
       unitName: r.unitName,
+      type: r.type
     }));
   }
 }

@@ -22,23 +22,11 @@ export class ProductVariantsController {
     private readonly getById: GetProductVariant,
     private readonly search: SearchProductVariants,
     private readonly listRowMaterial: ListRowMaterialProductVariants,
-    private readonly createStockItemForVariant: CreateStockItemForVariant,
   ) {}
 
   @Post()
   async create(@Body() dto: HttpCreateProductVariantDto) {
-    const result = await this.createVariant.execute(dto);
-    const variantId = result?.id;
-    if (!variantId) {
-      throw new InternalServerErrorException({
-        type: 'error',
-        message: 'No se pudo obtener el id de la variante creada',
-      });
-    }
-    return await this.createStockItemForVariant.execute({
-      variantId,
-      isActive: dto.isActive ?? true,
-    });
+    return await this.createVariant.execute(dto);
   }
 
   @Patch(':id')

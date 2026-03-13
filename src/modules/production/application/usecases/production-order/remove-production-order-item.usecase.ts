@@ -6,6 +6,7 @@ import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.p
 import { PRODUCT_RECIPE_REPOSITORY, ProductRecipeRepository } from "src/modules/catalog/domain/ports/product-recipe.repository";
 import { ConsumeReservedMaterialsUseCase } from "./consume-reserved-materials.usecase";
 import { RecipeConsumptionLine } from "./build-consumption-from-recipes.usecase";
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/domain/ports/stock-item/stock-item.repository.port";
 
 @Injectable()
 export class RemoveProductionOrderItem {
@@ -15,6 +16,8 @@ export class RemoveProductionOrderItem {
     private readonly orderRepo: ProductionOrderRepository,
     @Inject(PRODUCT_RECIPE_REPOSITORY)
     private readonly recipeRepo: ProductRecipeRepository,
+    @Inject(STOCK_ITEM_REPOSITORY)
+    private readonly stockItemRepo: StockItemRepository,
     private readonly reserveMaterials: ConsumeReservedMaterialsUseCase,
   ) {}
 
@@ -34,12 +37,31 @@ export class RemoveProductionOrderItem {
         throw new NotFoundException({ type: "error", message: "Item no encontrado" });
       }
 
-      const recipes = await this.recipeRepo.listByVariantId(item.finishedVariantId, tx);
-      const consumption: RecipeConsumptionLine[] = recipes.map((r) => ({
-        variantId: r.primaVariantId,
-        locationId: item.fromLocationId ?? undefined,
-        qty: r.quantity * item.quantity,
-      }));
+      const finishedItem = await this.stockItemRepo.findById(item.finishedItemId, tx);
+      if (!finishedItem?.variantId) {
+        throw new NotFoundException({ type: "error", message: "Stock item de producto terminado no encontrado" });
+      }
+
+      const recipes = await this.recipeRepo.listByVariantId(finishedItem.variantId, tx);
+      const stockItemCache = new Map<string, string>();
+      const consumption: RecipeConsumptionLine[] = [];
+      for (const r of recipes) {
+        const cached = stockItemCache.get(r.primaVariantId);
+        let stockItemId = cached;
+        if (!stockItemId) {
+          const stockItem = await this.stockItemRepo.findByVariantId(r.primaVariantId, tx);
+          if (!stockItem?.stockItemId) {
+            throw new NotFoundException({ type: "error", message: "Stock item de materia prima no encontrado" });
+          }
+          stockItemId = stockItem.stockItemId;
+          stockItemCache.set(r.primaVariantId, stockItemId);
+        }
+        consumption.push({
+          stockItemId,
+          locationId: item.fromLocationId ?? undefined,
+          qty: r.quantity * item.quantity,
+        });
+      }
 
       // Liberar reserva
       await this.reserveMaterials.execute(

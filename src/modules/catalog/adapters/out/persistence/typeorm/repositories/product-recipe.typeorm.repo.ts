@@ -41,6 +41,33 @@ export class ProductRecipeTypeormRepository implements ProductRecipeRepository {
     return rows.map((row) => this.toDomain(row));
   }
 
+  async listByProductId(productId: string, tx?: TransactionContext): Promise<ProductRecipe[]> {
+    const rows = await this.getRepo(tx)
+      .createQueryBuilder('recipe')
+      .innerJoin(
+        'product_variants',
+        'variant',
+        'variant.variant_id = recipe.finished_variant_id',
+      )
+      .where('variant.product_id = :productId', { productId })
+      .getMany();
+    return rows.map((row) => this.toDomain(row));
+  }
+
+  async listByItemId(itemId: string, tx?: TransactionContext): Promise<ProductRecipe[]> {
+    const rows = await this.getRepo(tx)
+      .createQueryBuilder('recipe')
+      .leftJoin(
+        'product_variants',
+        'variant',
+        'variant.variant_id = recipe.finished_variant_id',
+      )
+      .where('recipe.finished_variant_id = :itemId', { itemId })
+      .orWhere('variant.product_id = :itemId', { itemId })
+      .getMany();
+    return rows.map((row) => this.toDomain(row));
+  }
+
   async findById(id: string, tx?: TransactionContext): Promise<ProductRecipe | null> {
     const row = await this.getRepo(tx).findOne({ where: { id } });
     if (!row) return null;

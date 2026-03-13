@@ -313,6 +313,7 @@ export class ProductTypeormRepository implements ProductRepository {
       baseUnitId: r.p_baseUnitId,
       unitCode: r.u_code,
       unitName: r.u_name,
+      type:'PRODUCT'
     }));
   }
 

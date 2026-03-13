@@ -1,5 +1,7 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status";
+import { ProductionOrderItemEntity } from "./production_order_item.entity";
+import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
 
 @Entity("production_orders")
 export class ProductionOrderEntity {
@@ -12,6 +14,9 @@ export class ProductionOrderEntity {
   @Column({ name: "to_warehouse_id", type: "uuid" })
   toWarehouseId: string;
 
+  @Column({ name: "doc_type", type: "enum", enum: DocType, enumName: "doc_type" })
+  docType: DocType;
+
   @Column({ name: "serie_id", type: "uuid" })
   serieId: string;
 
@@ -21,11 +26,11 @@ export class ProductionOrderEntity {
   @Column({ name: "status", type: "enum", enum: ProductionStatus, enumName: "production_status", default: ProductionStatus.DRAFT })
   status: ProductionStatus;
 
-  @Column({ name: "reference", type: "varchar" })
+  @Column({ name: "reference", type: "varchar", nullable:true })
   reference: string;
 
-  @Column({ name: "manufacture_time", type: "int" })
-  manufactureTime: number;
+  @Column({ name: "manufacture_date", type: "timestamptz" })
+  manufactureDate: Date;
 
   @Column({ name: "created_by", type: "varchar" })
   createdBy: string;
@@ -38,4 +43,7 @@ export class ProductionOrderEntity {
 
   @UpdateDateColumn({ name: "updated_at", type: "timestamptz" })
   updatedAt: Date;
+
+  @OneToMany(() => ProductionOrderItemEntity, (item) => item.production)
+  items?: ProductionOrderItemEntity[];
 }

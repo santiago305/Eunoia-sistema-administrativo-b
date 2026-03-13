@@ -1,10 +1,10 @@
-import { IsInt, IsOptional, IsUUID, Min } from "class-validator";
+import { IsInt, IsOptional, IsString, IsUUID, Min } from "class-validator";
 import { Type } from "class-transformer";
 
 export class HttpUpdateProductionOrderItemDto {
   @IsOptional()
   @IsUUID()
-  finishedVariantId?: string;
+  finishedItemId?: string;
 
   @IsOptional()
   @IsUUID()
@@ -25,4 +25,8 @@ export class HttpUpdateProductionOrderItemDto {
   @IsInt()
   @Min(0)
   unitCost?: number;
+
+  @IsString()
+  @IsOptional()
+  type?:string;
 }

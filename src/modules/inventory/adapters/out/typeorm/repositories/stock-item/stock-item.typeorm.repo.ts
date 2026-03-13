@@ -53,6 +53,13 @@ export class StockItemTypeormRepository implements StockItemRepository {
     return row ? this.toDomain(row) : null;
   }
 
+  async findByProductIdOrVariantId(itemId: string, tx?: TransactionContext): Promise<StockItem | null> {
+    const row = await this.getRepo(tx).findOne({
+      where: [{ productId: itemId }, { variantId: itemId }],
+    });
+    return row ? this.toDomain(row) : null;
+  }
+
   async findByType(type: StockItemType, tx?: TransactionContext): Promise<StockItem[]> {
     const rows = await this.getRepo(tx).find({ where: { type } });
     return rows.map((r) => this.toDomain(r));

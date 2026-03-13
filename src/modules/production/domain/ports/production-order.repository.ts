@@ -32,7 +32,7 @@ export interface ProductionOrderRepository {
       serieId?: string;
       correlative?: number;
       reference?: string;
-      manufactureTime?: number;
+      manufactureDate?: Date;
       updatedBy?: string;
       updatedAt?: Date;
     },
@@ -61,7 +61,7 @@ export interface ProductionOrderRepository {
     params: {
       productionId: string;
       itemId: string;
-      finishedVariantId?: string;
+      finishedItemId?: string;
       fromLocationId?: string;
       toLocationId?: string;
       quantity?: number;
