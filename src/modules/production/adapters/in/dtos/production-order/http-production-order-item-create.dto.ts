@@ -5,11 +5,13 @@ export class HttpAddProductionOrderItemDto {
   @IsUUID()
   finishedItemId: string;
 
+  @IsOptional()
   @IsUUID()
-  fromLocationId: string;
+  fromLocationId: string | null;
 
+  @IsOptional()
   @IsUUID()
-  toLocationId: string;
+  toLocationId: string | null;
 
   @Type(() => Number)
   @IsInt()

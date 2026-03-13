@@ -62,8 +62,8 @@ export interface ProductionOrderRepository {
       productionId: string;
       itemId: string;
       finishedItemId?: string;
-      fromLocationId?: string;
-      toLocationId?: string;
+      fromLocationId?: string | null;
+      toLocationId?: string | null;
       quantity?: number;
       unitCost?: number;
     },

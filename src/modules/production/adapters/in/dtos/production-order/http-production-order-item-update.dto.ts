@@ -8,11 +8,11 @@ export class HttpUpdateProductionOrderItemDto {
 
   @IsOptional()
   @IsUUID()
-  fromLocationId?: string;
+  fromLocationId?: string | null;
 
   @IsOptional()
   @IsUUID()
-  toLocationId?: string;
+  toLocationId?: string | null;
 
   @IsOptional()
   @Type(() => Number)

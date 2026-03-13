@@ -61,7 +61,7 @@ export class UpdateProductionOrderItem {
       };
 
       const newFinishedItemId = input.finishedItemId ?? current.finishedItemId;
-      const newFromLocationId = input.fromLocationId ?? current.fromLocationId;
+      const newFromLocationId = input.fromLocationId !== undefined ? input.fromLocationId : current.fromLocationId;
       const newQty = input.quantity ?? current.quantity;
 
       const currentFinishedVariantId = await getVariantIdForFinishedItem(current.finishedItemId);

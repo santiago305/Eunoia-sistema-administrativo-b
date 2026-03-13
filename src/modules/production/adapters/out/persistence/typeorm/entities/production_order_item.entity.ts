@@ -17,17 +17,17 @@ export class ProductionOrderItemEntity {
   @Column({ name: "finished_item_id", type: "uuid" })
   finishedItemId: string;
 
-  @Column({ name: "from_location_id", type: "uuid" })
-  fromLocationId: string;
+  @Column({ name: "from_location_id", type: "uuid", nullable: true })
+  fromLocationId: string | null;
 
-  @ManyToOne(() => WarehouseLocationEntity, { nullable: false })
+  @ManyToOne(() => WarehouseLocationEntity, { nullable: true })
   @JoinColumn({ name: "from_location_id" })
   fromLocation?: WarehouseLocationEntity;
 
-  @Column({ name: "to_location_id", type: "uuid" })
-  toLocationId: string;
+  @Column({ name: "to_location_id", type: "uuid", nullable: true })
+  toLocationId: string | null;
 
-  @ManyToOne(() => WarehouseLocationEntity, { nullable: false })
+  @ManyToOne(() => WarehouseLocationEntity, { nullable: true })
   @JoinColumn({ name: "to_location_id" })
   toLocation?: WarehouseLocationEntity;
 
