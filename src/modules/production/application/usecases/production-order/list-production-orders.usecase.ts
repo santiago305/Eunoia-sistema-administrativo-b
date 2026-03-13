@@ -20,7 +20,7 @@ export class ListProductionOrders {
         serieId: o.serieId,
         correlative: o.correlative,
         reference: o.referense,
-        manufactureTime: o.manufactureTime,
+        manufactureDate: o.manufactureDate,
         fromWarehouseId: o.fromWarehouseId,
         toWarehouseId: o.toWarehouseId,
         createdAt: o.createdAt,

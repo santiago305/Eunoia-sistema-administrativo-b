@@ -1,4 +1,6 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { ProductionOrderEntity } from "./production_order.entity";
+import { WarehouseLocationEntity } from "src/modules/warehouses/adapters/out/persistence/typeorm/entities/warehouse-location";
 
 @Entity("production_order_items")
 export class ProductionOrderItemEntity {
@@ -8,14 +10,26 @@ export class ProductionOrderItemEntity {
   @Column({ name: "production_id", type: "uuid" })
   productionId: string;
 
-  @Column({ name: "finished_variant_id", type: "uuid" })
-  finishedVariantId: string;
+  @ManyToOne(() => ProductionOrderEntity, (order) => order.items, { onDelete: "CASCADE" })
+  @JoinColumn({ name: "production_id" })
+  production?: ProductionOrderEntity;
 
-  @Column({ name: "from_location_id", type: "uuid" })
-  fromLocationId: string;
+  @Column({ name: "finished_item_id", type: "uuid" })
+  finishedItemId: string;
 
-  @Column({ name: "to_location_id", type: "uuid" })
-  toLocationId: string;
+  @Column({ name: "from_location_id", type: "uuid", nullable: true })
+  fromLocationId: string | null;
+
+  @ManyToOne(() => WarehouseLocationEntity, { nullable: true })
+  @JoinColumn({ name: "from_location_id" })
+  fromLocation?: WarehouseLocationEntity;
+
+  @Column({ name: "to_location_id", type: "uuid", nullable: true })
+  toLocationId: string | null;
+
+  @ManyToOne(() => WarehouseLocationEntity, { nullable: true })
+  @JoinColumn({ name: "to_location_id" })
+  toLocation?: WarehouseLocationEntity;
 
   @Column({ name: "quantity", type: "int" })
   quantity: number;

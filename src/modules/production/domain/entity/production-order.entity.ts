@@ -1,3 +1,4 @@
+import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
 import { ProductionStatus } from "../value-objects/production-status";
 
 export class ProductionOrder{
@@ -5,10 +6,11 @@ export class ProductionOrder{
         public readonly productionId:string,
         public readonly fromWarehouseId:string,
         public readonly toWarehouseId:string,
+        public readonly docType: DocType,
         public readonly serieId:string,
         public readonly correlative:number,
         public readonly status: ProductionStatus,
-        public readonly manufactureTime: number,
+        public readonly manufactureDate: Date,
         public readonly createdBy:string,
         public readonly createdAt:Date,
         public readonly referense?:string | null,
@@ -16,3 +18,4 @@ export class ProductionOrder{
         public readonly updateBy?:string | null,
     ){}
 }
+ 

@@ -1,5 +1,5 @@
 ﻿import { ConflictException, Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
-import { UNIT_OF_WORK, UnitOfWork } from 'src/shared/domain/ports/unit-of-work.port';
+import { TransactionContext, UNIT_OF_WORK, UnitOfWork } from 'src/shared/domain/ports/unit-of-work.port';
 import { CLOCK, ClockPort } from 'src/modules/inventory/domain/ports/clock.port';
 import {
   STOCK_ITEM_REPOSITORY,
@@ -19,9 +19,12 @@ export class CreateStockItemForProduct {
     private readonly clock: ClockPort,
   ) {}
 
-  async execute(input: { productId: string; isActive?: boolean }): Promise<{type:string, message:string}> {
-    return this.uow.runInTransaction(async (tx) => {
-      const exists = await this.stockItemRepo.findByProductId(input.productId, tx);
+  async execute(
+    input: { productId: string; isActive?: boolean },
+    tx?: TransactionContext,
+  ): Promise<{ type: string; message: string }> {
+    const work = async (ctx: TransactionContext) => {
+      const exists = await this.stockItemRepo.findByProductId(input.productId, ctx);
       if (exists) {
         throw new ConflictException({
           type: 'error',
@@ -39,15 +42,21 @@ export class CreateStockItemForProduct {
         now,
       );
       try {
-        await this.stockItemRepo.create(stockItem, tx);
+        await this.stockItemRepo.create(stockItem, ctx);
       } catch {
         throw new InternalServerErrorException({
-          type:'error',
-          message:'No se pudo crear el stock item'
-        })
+          type: 'error',
+          message: 'No se pudo crear el stock item',
+        });
       }
 
-      return {type: 'success', message:'¡Operación exitosa!'};
-    });
+      return { type: 'success', message: '¡Operación exitosa!' };
+    };
+
+    if (tx) {
+      return work(tx);
+    }
+
+    return this.uow.runInTransaction(work);
   }
 }

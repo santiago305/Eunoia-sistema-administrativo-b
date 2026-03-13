@@ -1,5 +1,6 @@
-import { IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Min } from "class-validator";
+import { IsArray, IsDate, IsOptional, IsString, IsUUID, ValidateNested } from "class-validator";
 import { Type } from "class-transformer";
+import { HttpAddProductionOrderItemDto } from "./http-production-order-item-create.dto";
 
 export class HttpCreateProductionOrderDto {
   @IsUUID()
@@ -15,8 +16,12 @@ export class HttpCreateProductionOrderDto {
   @IsOptional()
   reference: string;
 
-  @Type(() => Number)
-  @IsInt()
-  @Min(0)
-  manufactureTime: number;
+  @Type(() => Date)
+  @IsDate()
+  manufactureDate: Date;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => HttpAddProductionOrderItemDto)
+  items: HttpAddProductionOrderItemDto[];
 }

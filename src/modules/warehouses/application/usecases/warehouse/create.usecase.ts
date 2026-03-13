@@ -1,4 +1,4 @@
-import { BadRequestException, Inject } from "@nestjs/common";
+import { BadRequestException, Inject, InternalServerErrorException } from "@nestjs/common";
 import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "src/modules/warehouses/domain/ports/warehouse.repository.port";
@@ -7,6 +7,8 @@ import { CreateWarehouseInput } from "../../dtos/warehouse/input/create.input";
 
 import { CreateDocumentSerieUseCase } from "src/modules/inventory/application/use-cases/document-serie/create-document-serie.usecase";
 import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
+import { errorResponse, successResponse } from "src/shared/response-standard/response";
+import { CreateLocationUsecase } from "../location/create.usecase";
 
 export class CreateWarehouseUsecase {
   constructor(
@@ -17,6 +19,7 @@ export class CreateWarehouseUsecase {
     @Inject(CLOCK)
     private readonly clock: ClockPort,
     private readonly createSerieUseCase: CreateDocumentSerieUseCase,
+    private readonly createLocation: CreateLocationUsecase,
   ) {}
 
   async execute(input: CreateWarehouseInput): Promise<{ message: string; type: string }> {
@@ -41,33 +44,44 @@ export class CreateWarehouseUsecase {
       try {
         created = await this.warehouseRepo.create(warehouse, tx);
       } catch {
-        throw new BadRequestException({ type: "error", message: "No se pudo crear el almacen" });
+        throw new BadRequestException(errorResponse("No se pudo crear el almacen"));
       }
 
       const defaults = [
-        { code: `IN-${input.name.slice(3)}`, name: "Ingreso", docType: DocType.IN },
-        { code: `OUT-${input.name.slice(3)}`, name: "Salida", docType: DocType.OUT },
-        { code: `TRF-${input.name.slice(3)}`, name: "Transferencia", docType: DocType.TRANSFER },
-        { code: `ADJ-${input.name.slice(3)}`, name: "Ajuste", docType: DocType.ADJUSTMENT },
+        { code: `IN`, name: "Ingreso", docType: DocType.IN },
+        { code: `OUT`, name: "Salida", docType: DocType.OUT },
+        { code: `TRF`, name: "Transferencia", docType: DocType.TRANSFER },
+        { code: `ADJ`, name: "Ajuste", docType: DocType.ADJUSTMENT },
+        { code: `PRO`, name: "Ajuste", docType: DocType.PRODUCTION },
       ];
 
-      for (const d of defaults) {
-        await this.createSerieUseCase.execute({
-          code: d.code,
-          name: d.name,
-          docType: d.docType,
-          warehouseId: created.warehouseId.value,
-          nextNumber: 1,
-          padding: 6,
-          separator: "-",
-          isActive: true,
-        });
+      try {
+        for (const d of defaults) {
+          await this.createSerieUseCase.execute({
+            code: d.code,
+            name: d.name,
+            docType: d.docType,
+            warehouseId: created.warehouseId.value,
+            nextNumber: 1,
+            padding: 6,
+            separator: "-",
+            isActive: true,
+          });
+        }
+      } catch{
+        throw new InternalServerErrorException(errorResponse('No se pudieron crear series por defecto'));
+      }
+      try {
+        const location = {
+          warehouseId: created.warehouseId,
+          code: 'ANAQUEL 01'
+        }
+        await this.createLocation.execute(location, tx);
+      } catch(err){
+        throw new InternalServerErrorException(errorResponse(err));
       }
 
-      return {
-        message: "¡Varitante create con exito!",
-        type: "success",
-      };
+      return successResponse("¡Almacen creado con exito!");
     });
   }
 }

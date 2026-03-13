@@ -1,5 +1,5 @@
 import { BadRequestException, Inject } from "@nestjs/common";
-import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
+import { TransactionContext, UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { LOCATION_REPOSITORY, LocartionRepository } from "src/modules/warehouses/domain/ports/location.repository.port";
 import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "src/modules/warehouses/domain/ports/warehouse.repository.port";
 import { WarehouseLocation } from "src/modules/warehouses/domain/entities/warehouse-location";
@@ -16,10 +16,9 @@ export class CreateLocationUsecase {
     private readonly warehouseRepo: WarehouseRepository,
   ) {}
 
-  async execute(input: CreateLocationInput): Promise<LocationOutput> {
-    return this.uow.runInTransaction(async (tx) => {
-      
-      const warehouse = await this.warehouseRepo.findById(input.warehouseId, tx);
+  async execute(input: CreateLocationInput, tx?: TransactionContext): Promise<LocationOutput> {
+    const work = async (ctx: TransactionContext) => {
+      const warehouse = await this.warehouseRepo.findById(input.warehouseId, ctx);
       if (!warehouse) {
         throw new BadRequestException("Almacen no encontrado");
       }
@@ -33,7 +32,7 @@ export class CreateLocationUsecase {
         input.description,
       );
 
-      const saved = await this.locationRepo.create(location, tx);
+      const saved = await this.locationRepo.create(location, ctx);
       return {
         locationId: saved.locationId.value,
         warehouseId: saved.warehouseId.value,
@@ -41,6 +40,10 @@ export class CreateLocationUsecase {
         description: saved.description,
         isActive: saved.isActive,
       };
-    });
+    };
+    if (tx) {
+      return work(tx);
+    }
+    return this.uow.runInTransaction(work);
   }
 }

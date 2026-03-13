@@ -5,5 +5,5 @@ export interface UpdateProductionOrderInput {
   serieId?: string;
   correlative?: number;
   reference?: string;
-  manufactureTime?: number;
+  manufactureDate?: Date;
 }

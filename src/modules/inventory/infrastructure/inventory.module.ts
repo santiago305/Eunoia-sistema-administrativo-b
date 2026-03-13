@@ -117,6 +117,7 @@ import { StockItemTypeormRepository } from '../adapters/out/typeorm/repositories
     SERIES_REPOSITORY,
     INVENTORY_LOCK,
     CLOCK,
+    STOCK_ITEM_REPOSITORY,
     CreateDocumentSerieUseCase,
     CreateStockItemForProduct,
     CreateStockItemForVariant,

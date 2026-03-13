@@ -24,25 +24,13 @@ export class ProductsController {
     private readonly getById: GetProductById,
     private readonly listVariants: ListProductVariants,
     private readonly getWithVariants: GetProductWithVariants,
-    private readonly createStockItemForProduct: CreateStockItemForProduct,
     private readonly listRowMaterial: ListRowMaterialProductVariants,
 
   ) {}
 
   @Post()
   async create(@Body() dto: HttpCreateProductDto) {
-    const product = await this.createProduct.execute(dto);
-    const productId = product.getId()?.value;
-    if (!productId) {
-      throw new InternalServerErrorException({
-        type: 'error',
-        message: 'No se pudo obtener el id del producto creado',
-      });
-    }
-    return await this.createStockItemForProduct.execute({
-      productId,
-      isActive: product.getIsActive(),
-    });
+    return await this.createProduct.execute(dto);
   }
 
   @Patch(':id')

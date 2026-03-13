@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, InternalServerErrorException } from "@nestjs/common";
 import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/domain/ports/production-order.repository";
 import { ProductionOrder } from "src/modules/production/domain/entity/production-order.entity";
 import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status";
@@ -6,6 +6,10 @@ import { CreateProductionOrderInput } from "../../dto/production-order/input/cre
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { DocumentSeriesRepository, SERIES_REPOSITORY } from "src/modules/inventory/domain/ports/document-series.repository.port";
 import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
+import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
+import { errorResponse } from "src/shared/response-standard/response";
+import { AddProductionOrderItem } from "./add-production-order-item.usecase";
+import { StockItem } from "src/modules/inventory/domain/entities/stock-item/stock-item";
 
 @Injectable()
 export class CreateProductionOrder {
@@ -16,32 +20,24 @@ export class CreateProductionOrder {
     @Inject(SERIES_REPOSITORY)
     private readonly seriesRepo: DocumentSeriesRepository,
     @Inject(CLOCK)
-    private readonly clock: ClockPort
+    private readonly clock: ClockPort,
+    private readonly ItemProduction: AddProductionOrderItem
   ) {}
 
   async execute(input: CreateProductionOrderInput, userId:string): Promise<{type:string,message:string}> {
     return this.uow.runInTransaction(async (tx) => {
       if (!input.fromWarehouseId || !input.toWarehouseId || !input.serieId) {
-        throw new BadRequestException({
-          type:'error',
-          message:'fromWarehouseId, toWarehouseId y serieId son obligatorios'
-        });
+        throw new BadRequestException(
+          errorResponse('fromWarehouseId, toWarehouseId y serieId son obligatorios')
+        );
       }
-      if (input.manufactureTime === undefined || input.manufactureTime === null) {
-        throw new BadRequestException({
-          type:'error',
-          message:'manufactureTime es obligatorio'
-        });
+      if (!input.manufactureDate) {
+        throw new BadRequestException(errorResponse('manufactureDate es obligatorio'));
       }
 
       const serie = await this.seriesRepo.findById(input.serieId);
       if (!serie) {
-        throw new BadRequestException(
-          {
-            type: 'error',
-            message:'Serie invalida'
-          }
-        );
+        throw new BadRequestException(errorResponse('Serie invalida'));
       }
       const correlative = await this.seriesRepo.reserveNextNumber(input.serieId, tx);
 
@@ -49,10 +45,11 @@ export class CreateProductionOrder {
         undefined,
         input.fromWarehouseId,
         input.toWarehouseId,
+        DocType.PRODUCTION,
         input.serieId,
         correlative,
         ProductionStatus.DRAFT,
-        input.manufactureTime,
+        input.manufactureDate,
         userId,
         this.clock.now(),
         input.reference,
@@ -60,7 +57,27 @@ export class CreateProductionOrder {
         null,
       );
 
-      await this.orderRepo.create(order, tx);
+      let created:ProductionOrder;
+      try {
+        created = await this.orderRepo.create(order, tx);
+      } catch {
+        throw new InternalServerErrorException(errorResponse('Error al crear orden de compra'));
+      }
+
+      for (const item of input.items ?? []) {
+        await this.ItemProduction.execute(
+          {
+            productionId: created.productionId,
+            finishedItemId: item.finishedItemId,
+            fromLocationId: item.fromLocationId,
+            toLocationId: item.toLocationId,
+            quantity: item.quantity,
+            unitCost: item.unitCost,
+            type: item.type
+          },
+          tx,
+        );
+      }
 
       return {
           type:'success',

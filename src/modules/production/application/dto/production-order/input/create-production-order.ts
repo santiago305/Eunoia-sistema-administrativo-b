@@ -1,7 +1,10 @@
+import { AddProductionOrderItemInput } from "./add-production-order-item";
+
 export interface CreateProductionOrderInput {
   fromWarehouseId: string;
   toWarehouseId: string;
   serieId: string;
   reference?: string;
-  manufactureTime: number;
+  manufactureDate: Date;
+  items: AddProductionOrderItemInput[]
 }

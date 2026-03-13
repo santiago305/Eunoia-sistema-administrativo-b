@@ -1,8 +1,9 @@
 export interface AddProductionOrderItemInput {
-  productionId: string;
-  finishedVariantId: string;
-  fromLocationId: string;
-  toLocationId: string;
+  productionId?: string;
+  finishedItemId: string;
+  fromLocationId: string | null;
+  toLocationId: string | null;
   quantity: number;
   unitCost: number;
+  type?:string;
 }

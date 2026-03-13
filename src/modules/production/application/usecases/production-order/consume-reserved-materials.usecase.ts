@@ -26,49 +26,50 @@ export class ConsumeReservedMaterialsUseCase {
   ): Promise<void> {
     const keys = params.consumption.map((c) => ({
       warehouseId: params.warehouseId,
-      stockItemId: c.variantId,
+      stockItemId: c.stockItemId,
       locationId: c.locationId,
     }));
 
     await this.lock.lockSnapshots(keys, tx);
 
     for (const c of params.consumption) {
+      console.log('[reserveMaterials] checking snapshot', {
+        warehouseId: params.warehouseId,
+        stockItemId: c.stockItemId,
+        locationId:  null,
+        qty: c.qty,
+      });
       const snapshot = await this.inventoryRepo.getSnapshot(
         {
           warehouseId: params.warehouseId,
-         stockItemId: c.variantId,
-          locationId: c.locationId,
+          stockItemId: c.stockItemId,
+          locationId: null,
         },
         tx,
       );
+      console.log('[reserveMaterials] snapshot result', snapshot);
 
       const available = snapshot?.available ?? 0;
       const reserved = snapshot?.reserved ?? 0;
 
       if (params.reserveMode) {
+        if (!snapshot || available <= 0) {
+          throw new BadRequestException({
+            type: "error",
+            message: "No hay ningun stock del producto",
+          });
+        }
         if (available < c.qty) {
           throw new BadRequestException({
             type: "error",
-            message: "Materia prima insuficiente",
-            item: {
-              variantId: c.variantId,
-              locationId: c.locationId,
-              required: c.qty,
-              available,
-            },
+            message: "No hay stock suficiente",
           });
         }
       } else {
         if (reserved < c.qty) {
           throw new BadRequestException({
             type: "error",
-            message: "Reserva insuficiente",
-            item: {
-              variantId: c.variantId,
-              locationId: c.locationId,
-              required: c.qty,
-              reserved,
-            },
+            message: "Reserva insuficiente3",
           });
         }
       }
@@ -78,8 +79,8 @@ export class ConsumeReservedMaterialsUseCase {
       await this.inventoryRepo.incrementReserved(
         {
           warehouseId: params.warehouseId,
-          stockItemId: c.variantId,
-          locationId: c.locationId,
+          stockItemId: c.stockItemId,
+          locationId: null,
           delta: params.reserveMode ? c.qty : -c.qty,
         },
         tx,
