@@ -1,7 +1,8 @@
 import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status";
 
 export interface ProductionOrderListItemOutput {
-  id: string;
+  id?: string;
+  productionId?: string;
   status: ProductionStatus;
   serieId: string;
   correlative: number;

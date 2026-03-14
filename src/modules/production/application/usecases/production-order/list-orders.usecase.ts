@@ -15,7 +15,7 @@ export class ListProductionOrders {
 
     return {
       items: result.items.map((o) => ({
-        id: o.productionId!,
+        productionId: o.productionId!,
         status: o.status,
         serieId: o.serieId,
         correlative: o.correlative,

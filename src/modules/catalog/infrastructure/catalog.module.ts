@@ -28,12 +28,15 @@ import { SetProductActive } from '../application/usecases/product/set-active.use
 import { GetProductWithVariants } from '../application/usecases/product/get-with-variants.usecase';
 import { GetProductById } from '../application/usecases/product/get-by-id.usecase';
 import { GetProductByName } from '../application/usecases/product/get-by-name.usecase';
+import { ListFinishedActiveProducts } from '../application/usecases/product/list-finished-active.usecase';
+import { ListPrimaActiveProducts } from '../application/usecases/product/list-prima-active.usecase';
 
 import { CreateProductVariant } from '../application/usecases/product-variant/create.usecase';
 import { UpdateProductVariant } from '../application/usecases/product-variant/update.usecase';
 import { SetProductVariantActive } from '../application/usecases/product-variant/set-active.usecase';
 import { GetProductVariant } from '../application/usecases/product-variant/get-element-by-id.usercase';
 import { ListRowMaterialProductVariants } from '../application/usecases/product-variant/list-row-material.usecase';
+import { ListFinishedWithRecipesProductVariants } from '../application/usecases/product-variant/list-finished-with-recipes.usecase';
 import { SearchProductVariants } from '../application/usecases/product-variant/search.usecase';
 import { ListProductVariants } from '../application/usecases/product-variant/list-by-product.usecase';
 import { ListUnits } from '../application/usecases/unit/list.usecase';
@@ -81,12 +84,15 @@ import { InventoryModule } from 'src/modules/inventory/infrastructure/inventory.
     GetProductWithVariants,
     GetProductById,
     GetProductByName,
+    ListFinishedActiveProducts,
+    ListPrimaActiveProducts,
 
     CreateProductVariant,
     UpdateProductVariant,
     SetProductVariantActive,
     GetProductVariant,
     ListRowMaterialProductVariants,
+    ListFinishedWithRecipesProductVariants,
     SearchProductVariants,
     ListProductVariants,
     SearchProductsPaginated,

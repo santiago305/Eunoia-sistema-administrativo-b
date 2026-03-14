@@ -3,6 +3,7 @@ import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modu
 import { PRODUCT_RECIPE_REPOSITORY, ProductRecipeRepository } from "src/modules/catalog/domain/ports/product-recipe.repository";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/domain/ports/stock-item/stock-item.repository.port";
+import { errorResponse } from "src/shared/response-standard/response";
 
 export interface RecipeConsumptionLine {
   stockItemId: string;
@@ -27,12 +28,7 @@ export class BuildConsumptionFromRecipesUseCase {
   ): Promise<RecipeConsumptionLine[]> {
     const result = await this.orderRepo.getByIdWithItems(params.productionId, tx);
     if (!result) {
-      throw new NotFoundException(
-        {
-          type:'error',
-          message:'Orden de produccion no encontrada'
-        }
-      );
+      throw new NotFoundException(errorResponse('Orden de produccion no encontrada'));
     }
 
     const { items } = result;
@@ -41,21 +37,21 @@ export class BuildConsumptionFromRecipesUseCase {
 
     const stockItemCache = new Map<string, string>();
 
-    const getStockItemIdForVariant = async (variantId: string) => {
-      const cached = stockItemCache.get(variantId);
+    const getStockItemIdForVariant = async (itemId: string) => {
+      const cached = stockItemCache.get(itemId);
       if (cached) return cached;
-      const stockItem = await this.stockItemRepo.findByVariantId(variantId, tx);
+      const stockItem = await this.stockItemRepo.findByVariantId(itemId, tx);
       if (!stockItem?.stockItemId) {
-        throw new NotFoundException({ type: "error", message: "Stock item de materia prima no encontrado" });
+        throw new NotFoundException(errorResponse("Stock item de materia prima no encontrado"));
       }
-      stockItemCache.set(variantId, stockItem.stockItemId);
+      stockItemCache.set(itemId, stockItem.stockItemId);
       return stockItem.stockItemId;
     };
 
     const getVariantIdForFinishedItem = async (finishedItemId: string) => {
       const finishedItem = await this.stockItemRepo.findById(finishedItemId, tx);
       if (!finishedItem?.variantId) {
-        throw new NotFoundException({ type: "error", message: "Stock item de producto terminado no encontrado" });
+        throw new NotFoundException(errorResponse("Stock item de producto terminado no encontrado"));
       }
       return finishedItem.variantId;
     };

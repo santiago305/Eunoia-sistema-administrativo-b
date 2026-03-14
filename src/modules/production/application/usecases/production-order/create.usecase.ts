@@ -8,8 +8,7 @@ import { DocumentSeriesRepository, SERIES_REPOSITORY } from "src/modules/invento
 import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
 import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
 import { errorResponse } from "src/shared/response-standard/response";
-import { AddProductionOrderItem } from "./add-production-order-item.usecase";
-import { StockItem } from "src/modules/inventory/domain/entities/stock-item/stock-item";
+import { AddProductionOrderItem } from "./add-item.usecase";
 
 @Injectable()
 export class CreateProductionOrder {

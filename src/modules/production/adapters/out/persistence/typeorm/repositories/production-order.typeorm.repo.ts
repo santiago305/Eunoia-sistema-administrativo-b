@@ -106,6 +106,29 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
     );
   }
 
+  async listAllByStatus(status: ProductionStatus, tx?: TransactionContext): Promise<ProductionOrder[]> {
+    const repo = this.getOrderRepo(tx);
+    const rows = await repo.find({ where: { status }, order: { createdAt: "DESC" } });
+    return rows.map(
+      (row) =>
+        new ProductionOrder(
+          row.id,
+          row.fromWarehouseId,
+          row.toWarehouseId,
+          row.docType,
+          row.serieId,
+          row.correlative,
+          row.status as ProductionStatus,
+          row.manufactureDate,
+          row.createdBy,
+          row.createdAt,
+          row.reference ?? null,
+          row.updatedAt ?? null,
+          row.updatedBy ?? null,
+        ),
+    );
+  }
+
   async list(
     params: {
       status?: ProductionStatus;

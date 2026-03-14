@@ -15,6 +15,9 @@ export interface ProductRepository {
   findById(id: ProductId, tx?: TransactionContext): Promise<Product | null>;
   findByName(name: string, tx?: TransactionContext): Promise<Product | null>;
   listRowMaterialProduct(row?: boolean,tx?: TransactionContext): Promise<RowMaterial[]>;
+  listFinishedWithRecipesProduct(tx?: TransactionContext): Promise<RowMaterial[]>;
+  listFinishedActive(tx?: TransactionContext): Promise<Product[]>;
+  listPrimaActive(tx?: TransactionContext): Promise<Product[]>;
 
   update(
     params: {

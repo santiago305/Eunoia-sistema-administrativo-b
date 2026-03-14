@@ -250,6 +250,41 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
     }));
   }
 
+  async listFinishedWithRecipesVariant(tx?: TransactionContext): Promise<RowMaterial[]> {
+    const qb = this.getManager(tx)
+      .getRepository(ProductVariantEntity)
+      .createQueryBuilder('v')
+      .innerJoin(ProductEntity, 'p', 'p.product_id = v.product_id')
+      .innerJoin('product_recipes', 'r', 'r.finished_variant_id = v.variant_id')
+      .leftJoin(UnitEntity, 'u', 'u.unit_id = p.base_unit_id')
+      .where('p.type = :type', { type: ProductType.FINISHED })
+      .distinct(true);
+
+    const raw = await qb
+      .select([
+        'v.id',
+        'v.productId',
+        'v.sku',
+        'p.name',
+        'p.description',
+        'p.baseUnitId',
+        'u.code',
+        'u.name',
+      ])
+      .getRawMany();
+
+    return raw.map((r) => ({
+      primaId: r.v_variant_id,
+      productName: r.p_name,
+      productDescription: r.p_description,
+      sku: r.v_sku,
+      baseUnitId: r.p_baseUnitId,
+      unitCode: r.u_code,
+      unitName: r.u_name,
+      type: 'VARIANT',
+    }));
+  }
+
 
   async listInactiveByProductId(productId: ProductId, tx?: TransactionContext): Promise<ProductVariant[]> {
     const rows = await this.getRepo(tx).find({ where: { productId: productId.value, isActive: false } });

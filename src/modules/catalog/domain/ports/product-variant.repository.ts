@@ -34,6 +34,7 @@ export interface ProductVariantRepository {
 
   listByProductId(productId: ProductId, tx?: TransactionContext): Promise<ProductVariant[]>;
   listRowMaterialVariant(row?:boolean, tx?: TransactionContext): Promise<RowMaterial[]>;
+  listFinishedWithRecipesVariant(tx?: TransactionContext): Promise<RowMaterial[]>;
   listActiveByProductId(productId: ProductId, tx?: TransactionContext): Promise<ProductVariant[]>;
   listInactiveByProductId(productId: ProductId, tx?: TransactionContext): Promise<ProductVariant[]>;
 

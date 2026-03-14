@@ -1,4 +1,4 @@
-import { Body, Controller, Get, InternalServerErrorException, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard';
 import { CreateProduct } from 'src/modules/catalog/application/usecases/product/created.usecase';
 import { UpdateProduct } from 'src/modules/catalog/application/usecases/product/update.usecase';
@@ -7,12 +7,14 @@ import { SearchProductsPaginated } from 'src/modules/catalog/application/usecase
 import { ListProductVariants } from 'src/modules/catalog/application/usecases/product-variant/list-by-product.usecase';
 import { GetProductWithVariants } from 'src/modules/catalog/application/usecases/product/get-with-variants.usecase';
 import { GetProductById } from 'src/modules/catalog/application/usecases/product/get-by-id.usecase';
-import { CreateStockItemForProduct } from 'src/modules/inventory/application/use-cases/stock-item/create-for-product.usecase';
+import { ListFinishedActiveProducts } from 'src/modules/catalog/application/usecases/product/list-finished-active.usecase';
+import { ListPrimaActiveProducts } from 'src/modules/catalog/application/usecases/product/list-prima-active.usecase';
 import { HttpCreateProductDto } from '../dtos/products/http-product-create.dto'
 import { HttpUpdateProductDto } from '../dtos/products/http-product-update.dto'
 import { HttpSetProductActiveDto } from '../dtos/products/http-product-set-active.dto'
 import { ListProductQueryDto } from '../dtos/products/http-products-list.dto';
 import { ListRowMaterialProductVariants } from 'src/modules/catalog/application/usecases/product-variant/list-row-material.usecase';
+import { ListFinishedWithRecipesProductVariants } from 'src/modules/catalog/application/usecases/product-variant/list-finished-with-recipes.usecase';
 @Controller('catalog/products')
 @UseGuards(JwtAuthGuard)
 export class ProductsController {
@@ -22,9 +24,12 @@ export class ProductsController {
     private readonly setActive: SetProductActive,
     private readonly search: SearchProductsPaginated,
     private readonly getById: GetProductById,
+    private readonly listFinishedActive: ListFinishedActiveProducts,
+    private readonly listPrimaActive: ListPrimaActiveProducts,
     private readonly listVariants: ListProductVariants,
     private readonly getWithVariants: GetProductWithVariants,
     private readonly listRowMaterial: ListRowMaterialProductVariants,
+    private readonly finishedWithRecipes: ListFinishedWithRecipesProductVariants,
 
   ) {}
 
@@ -60,10 +65,24 @@ export class ProductsController {
       limit: query.limit,
     });
   }
+
+  @Get('finished/active')
+  listFinishedActiveProducts() {
+    return this.listFinishedActive.execute();
+  }
+
+  @Get('prima/active')
+  listPrimaActiveProducts() {
+    return this.listPrimaActive.execute();
+  }
   @Get('variants/finished')
   listRowMaterialVariants() {
     const row = false;
     return this.listRowMaterial.execute(row);
+  }
+  @Get('variants/finished-with-recipes')
+  listFinishedWithRecipes() {
+    return this.finishedWithRecipes.execute();
   }
 
   @Get(':id/variants')
