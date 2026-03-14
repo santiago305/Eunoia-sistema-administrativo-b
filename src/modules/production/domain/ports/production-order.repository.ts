@@ -8,6 +8,7 @@ export const PRODUCTION_ORDER_REPOSITORY = Symbol('PRODUCTION_ORDER_REPOSITORY')
 export interface ProductionOrderRepository {
   create(order: ProductionOrder, tx?: TransactionContext): Promise<ProductionOrder>;
   findById(id: string, tx?: TransactionContext): Promise<ProductionOrder | null>;
+  listAllByStatus(status: ProductionStatus, tx?: TransactionContext): Promise<ProductionOrder[]>;
   list(
     params: {
       status?: ProductionStatus;

@@ -7,6 +7,7 @@ import { PRODUCT_RECIPE_REPOSITORY, ProductRecipeRepository } from "src/modules/
 import { errorResponse } from "src/shared/response-standard/response";
 import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/domain/ports/stock-item/stock-item.repository.port";
 import { ConsumeReservedMaterialsUseCase } from "./consume-reserved-materials.usecase";
+import { ProductionOrderExpectedScheduler } from "../../jobs/production-order-expected-scheduler";
 
 @Injectable()
 export class StartProductionOrder {
@@ -19,6 +20,7 @@ export class StartProductionOrder {
     @Inject(STOCK_ITEM_REPOSITORY)
     private readonly stockItemRepo: StockItemRepository,
     private readonly reserveMaterials: ConsumeReservedMaterialsUseCase,
+    private readonly scheduler: ProductionOrderExpectedScheduler,
   ) {}
 
   async execute(params: { productionId: string }): Promise<{ type: string; message: string }> {
@@ -96,6 +98,8 @@ export class StartProductionOrder {
           throw new InternalServerErrorException(errorResponse('Error al apartar stockItem'));
         }
       }
+
+      this.scheduler.schedule(order.productionId, order.manufactureDate);
 
       return { type: "success", message: "Orden iniciada" };
     });
