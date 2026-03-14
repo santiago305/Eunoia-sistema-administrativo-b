@@ -12,7 +12,7 @@ import { UpdateProductionOrder } from "../application/usecases/production-order/
 import { StartProductionOrder } from "../application/usecases/production-order/start-production-order.usecase";
 import { CloseProductionOrder } from "../application/usecases/production-order/close-production-order.usecase";
 import { CancelProductionOrder } from "../application/usecases/production-order/cancel-production-order.usecase";
-import { AddProductionOrderItem } from "../application/usecases/production-order/add-production-order-item.usecase";
+import { AddProductionOrderItem } from "../application/usecases/production-order/add-item.usecase";
 import { UpdateProductionOrderItem } from "../application/usecases/production-order/update-production-order-item.usecase";
 import { RemoveProductionOrderItem } from "../application/usecases/production-order/remove-production-order-item.usecase";
 import { UNIT_OF_WORK } from "src/shared/domain/ports/unit-of-work.port";

@@ -317,6 +317,55 @@ export class ProductTypeormRepository implements ProductRepository {
     }));
   }
 
+  async listFinishedWithRecipesProduct(tx?: TransactionContext): Promise<RowMaterial[]> {
+    const qb = this.getManager(tx)
+      .getRepository(ProductEntity)
+      .createQueryBuilder('p')
+      .innerJoin('product_recipes', 'r', 'r.finished_variant_id = p.product_id')
+      .leftJoin(UnitEntity, 'u', 'u.unit_id = p.base_unit_id')
+      .where('p.type = :type', { type: ProductType.FINISHED })
+      .distinct(true);
+
+    const raw = await qb
+      .select([
+        'p.id',
+        'p.name',
+        'p.description',
+        'p.baseUnitId',
+        'p.sku',
+        'u.code',
+        'u.name',
+      ])
+      .getRawMany();
+
+    return raw.map((r) => ({
+      primaId: r.p_product_id,
+      productName: r.p_name,
+      productDescription: r.p_description,
+      sku: r.p_sku,
+      baseUnitId: r.p_baseUnitId,
+      unitCode: r.u_code,
+      unitName: r.u_name,
+      type: 'PRODUCT',
+    }));
+  }
+
+  async listFinishedActive(tx?: TransactionContext): Promise<Product[]> {
+    const rows = await this.getRepo(tx).find({
+      where: { type: ProductType.FINISHED, isActive: true },
+      order: { createdAt: 'DESC' },
+    });
+    return rows.map((row) => this.toDomain(row));
+  }
+
+  async listPrimaActive(tx?: TransactionContext): Promise<Product[]> {
+    const rows = await this.getRepo(tx).find({
+      where: { type: ProductType.PRIMA, isActive: true },
+      order: { createdAt: 'DESC' },
+    });
+    return rows.map((row) => this.toDomain(row));
+  }
+
 
   private toDomain(row: ProductEntity): Product {
     return new Product(

@@ -7,7 +7,7 @@ import { UpdateProductionOrder } from "src/modules/production/application/usecas
 import { StartProductionOrder } from "src/modules/production/application/usecases/production-order/start-production-order.usecase";
 import { CloseProductionOrder } from "src/modules/production/application/usecases/production-order/close-production-order.usecase";
 import { CancelProductionOrder } from "src/modules/production/application/usecases/production-order/cancel-production-order.usecase";
-import { AddProductionOrderItem } from "src/modules/production/application/usecases/production-order/add-production-order-item.usecase";
+import { AddProductionOrderItem } from "src/modules/production/application/usecases/production-order/add-item.usecase";
 import { UpdateProductionOrderItem } from "src/modules/production/application/usecases/production-order/update-production-order-item.usecase";
 import { RemoveProductionOrderItem } from "src/modules/production/application/usecases/production-order/remove-production-order-item.usecase";
 import { HttpCreateProductionOrderDto } from "../dtos/production-order/http-production-order-create.dto";
