@@ -14,16 +14,19 @@ export class ListProductionOrders {
     const result = await this.orderRepo.list(input);
 
     return {
-      items: result.items.map((o) => ({
-        productionId: o.productionId!,
-        status: o.status,
-        serieId: o.serieId,
-        correlative: o.correlative,
-        reference: o.referense,
-        manufactureDate: o.manufactureDate,
-        fromWarehouseId: o.fromWarehouseId,
-        toWarehouseId: o.toWarehouseId,
-        createdAt: o.createdAt,
+      items: result.items.map((item) => ({
+        productionId: item.order.productionId!,
+        status: item.order.status,
+        serieId: item.order.serieId,
+        correlative: item.order.correlative,
+        reference: item.order.referense,
+        manufactureDate: item.order.manufactureDate,
+        fromWarehouseId: item.order.fromWarehouseId,
+        toWarehouseId: item.order.toWarehouseId,
+        createdAt: item.order.createdAt,
+        fromWarehouse: item.fromWarehouse,
+        toWarehouse: item.toWarehouse,
+        serie: item.serie,
       })),
       total: result.total,
       page: result.page,
