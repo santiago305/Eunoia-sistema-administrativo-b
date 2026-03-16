@@ -1,6 +1,7 @@
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { ProductionOrder } from "../entity/production-order.entity";
 import { ProductionOrderItem } from "../entity/production-order-item";
+import { ProductionOrderListItemRM } from "../read-models/production-order-list-item.rm";
 import { ProductionStatus } from "../value-objects/production-status";
 
 export const PRODUCTION_ORDER_REPOSITORY = Symbol('PRODUCTION_ORDER_REPOSITORY');
@@ -20,7 +21,7 @@ export interface ProductionOrderRepository {
     },
     tx?: TransactionContext,
   ): Promise<{
-    items: ProductionOrder[];
+    items: ProductionOrderListItemRM[];
     total: number;
     page: number;
     limit: number;

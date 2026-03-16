@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { ProductionOrderRepository } from "src/modules/production/domain/ports/production-order.repository";
 import { ProductionOrder } from "src/modules/production/domain/entity/production-order.entity";
 import { ProductionOrderItem } from "src/modules/production/domain/entity/production-order-item";
@@ -10,6 +10,13 @@ import { ProductionOrderItemEntity } from "../entities/production_order_item.ent
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
 import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
+import { WarehouseEntity } from "src/modules/warehouses/adapters/out/persistence/typeorm/entities/warehouse";
+import { DocumentSerie } from "src/modules/inventory/adapters/out/typeorm/entities/document_serie.entity";
+import {
+  ProductionOrderListItemRM,
+  ProductionOrderListSerieRM,
+  ProductionOrderListWarehouseRM,
+} from "src/modules/production/domain/read-models/production-order-list-item.rm";
 
 @Injectable()
 export class ProductionOrderTypeormRepository implements ProductionOrderRepository {
@@ -140,13 +147,17 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
     },
     tx?: TransactionContext,
   ): Promise<{
-    items: ProductionOrder[];
+    items: ProductionOrderListItemRM[];
     total: number;
     page: number;
     limit: number;
   }> {
     const repo = this.getOrderRepo(tx);
-    const qb = repo.createQueryBuilder("p");
+    const qb = repo
+      .createQueryBuilder("p")
+      .innerJoin(WarehouseEntity, "wf", "wf.id = p.from_warehouse_id")
+      .innerJoin(WarehouseEntity, "wt", "wt.id = p.to_warehouse_id")
+      .innerJoin(DocumentSerie, "s", "s.serie_id = p.serie_id");
 
     if (params.status) {
       qb.andWhere("p.status = :status", { status: params.status });
@@ -171,25 +182,78 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
       .take(limit)
       .getManyAndCount();
 
+    const warehouseIds = Array.from(
+      new Set(rows.flatMap((r) => [r.fromWarehouseId, r.toWarehouseId]).filter(Boolean)),
+    );
+    const serieIds = Array.from(new Set(rows.map((r) => r.serieId).filter(Boolean)));
+
+    const warehouseRepo = this.getManager(tx).getRepository(WarehouseEntity);
+    const serieRepo = this.getManager(tx).getRepository(DocumentSerie);
+
+    const [warehouses, series] = await Promise.all([
+      warehouseIds.length ? warehouseRepo.find({ where: { id: In(warehouseIds) } }) : Promise.resolve([]),
+      serieIds.length ? serieRepo.find({ where: { id: In(serieIds) } }) : Promise.resolve([]),
+    ]);
+
+    const warehouseById = new Map<string, ProductionOrderListWarehouseRM>(
+      warehouses.map((w) => [
+        w.id,
+        {
+          id: w.id,
+          name: w.name,
+          department: w.department,
+          province: w.province,
+          district: w.district,
+          address: w.address ?? null,
+          isActive: w.isActive,
+          createdAt: w.createdAt,
+        },
+      ]),
+    );
+
+    const serieById = new Map<string, ProductionOrderListSerieRM>(
+      series.map((s) => [
+        s.id,
+        {
+          id: s.id,
+          code: s.code,
+          name: s.name,
+          docType: s.docType,
+          warehouseId: s.warehouseId,
+          nextNumber: s.nextNumber,
+          padding: s.padding,
+          separator: s.separator,
+          isActive: s.isActive,
+          createdAt: s.createdAt,
+        },
+      ]),
+    );
+
     return {
-      items: rows.map(
-        (row) =>
-          new ProductionOrder(
-            row.id,
-            row.fromWarehouseId,
-            row.toWarehouseId,
-            row.docType,
-            row.serieId,
-            row.correlative,
-            row.status as ProductionStatus,
-            row.manufactureDate,
-            row.createdBy,
-            row.createdAt,
-            row.reference,
-            row.updatedAt,
-            row.updatedBy ?? null,
-          ),
-      ),
+      items: rows.map((row) => {
+        const order = new ProductionOrder(
+          row.id,
+          row.fromWarehouseId,
+          row.toWarehouseId,
+          row.docType,
+          row.serieId,
+          row.correlative,
+          row.status as ProductionStatus,
+          row.manufactureDate,
+          row.createdBy,
+          row.createdAt,
+          row.reference,
+          row.updatedAt,
+          row.updatedBy ?? null,
+        );
+
+        return {
+          order,
+          fromWarehouse: row.fromWarehouseId ? warehouseById.get(row.fromWarehouseId) ?? null : null,
+          toWarehouse: row.toWarehouseId ? warehouseById.get(row.toWarehouseId) ?? null : null,
+          serie: row.serieId ? serieById.get(row.serieId) ?? null : null,
+        };
+      }),
       total,
       page,
       limit,
