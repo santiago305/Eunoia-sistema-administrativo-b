@@ -1,0 +1,45 @@
+import { Inject } from "@nestjs/common";
+import {
+  PRODUCT_REPOSITORY,
+  ProductRepository,
+} from "src/modules/catalog/domain/ports/product.repository";
+import {
+  PRODUCT_VARIANT_REPOSITORY,
+  ProductVariantRepository,
+} from "src/modules/catalog/domain/ports/product-variant.repository";
+import { RowMaterial } from "src/modules/catalog/domain/read-models/row-materials";
+
+export class SearchRowMaterialProductVariants {
+  constructor(
+    @Inject(PRODUCT_REPOSITORY)
+    private readonly productRepo: ProductRepository,
+    @Inject(PRODUCT_VARIANT_REPOSITORY)
+    private readonly variantRepo: ProductVariantRepository,
+  ) {}
+
+  async execute(params: { q: string; raw?: boolean; withRecipes?: boolean }): Promise<RowMaterial[]> {
+    const q = params.q?.trim();
+    if (!q) return [];
+
+    const raw = params.raw ?? true;
+    const withRecipes = params.withRecipes ?? false;
+    const [products, variants] = await Promise.all([
+      this.productRepo.searchRowMaterialProduct({ q, raw, withRecipes }),
+      this.variantRepo.searchRowMaterialVariant({ q, raw, withRecipes }),
+    ]);
+
+    const rows = [...products, ...variants];
+    rows.sort((a, b) => a.sku.localeCompare(b.sku));
+
+    return rows.map((r) => ({
+      ...(raw ? { primaId: r.primaId } : { itemId: r.primaId }),
+      productName: r.productName,
+      productDescription: r.productDescription,
+      baseUnitId: r.baseUnitId,
+      sku: r.sku,
+      unitCode: r.unitCode,
+      unitName: r.unitName,
+      type: r.type,
+    }));
+  }
+}

@@ -37,6 +37,7 @@ import { SetProductVariantActive } from '../application/usecases/product-variant
 import { GetProductVariant } from '../application/usecases/product-variant/get-element-by-id.usercase';
 import { ListRowMaterialProductVariants } from '../application/usecases/product-variant/list-row-material.usecase';
 import { ListFinishedWithRecipesProductVariants } from '../application/usecases/product-variant/list-finished-with-recipes.usecase';
+import { SearchRowMaterialProductVariants } from '../application/usecases/product-variant/search-row-material.usecase';
 import { SearchProductVariants } from '../application/usecases/product-variant/search.usecase';
 import { ListProductVariants } from '../application/usecases/product-variant/list-by-product.usecase';
 import { ListUnits } from '../application/usecases/unit/list.usecase';
@@ -92,6 +93,7 @@ import { InventoryModule } from 'src/modules/inventory/infrastructure/inventory.
     SetProductVariantActive,
     GetProductVariant,
     ListRowMaterialProductVariants,
+    SearchRowMaterialProductVariants,
     ListFinishedWithRecipesProductVariants,
     SearchProductVariants,
     ListProductVariants,

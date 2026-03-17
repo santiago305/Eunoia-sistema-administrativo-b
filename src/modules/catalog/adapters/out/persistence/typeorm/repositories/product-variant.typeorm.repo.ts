@@ -250,6 +250,58 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
     }));
   }
 
+  async searchRowMaterialVariant(
+    params: { q: string; raw?: boolean; withRecipes?: boolean },
+    tx?: TransactionContext,
+  ): Promise<RowMaterial[]> {
+    const q = params.q?.trim();
+    if (!q) return [];
+
+    const raw = params.raw ?? true;
+    const qb = this.getManager(tx)
+      .getRepository(ProductVariantEntity)
+      .createQueryBuilder('v')
+      .innerJoin(ProductEntity, 'p', 'p.product_id = v.product_id')
+      .leftJoin(UnitEntity, 'u', 'u.unit_id = p.base_unit_id');
+
+    if (params.withRecipes) {
+      qb.innerJoin('product_recipes', 'r', 'r.finished_variant_id = v.variant_id').distinct(true);
+    }
+
+    qb.where('p.type = :type', { type: raw ? ProductType.PRIMA : ProductType.FINISHED });
+    qb.andWhere(
+      new Brackets((qb1) => {
+        qb1
+          .where('v.sku ILIKE :q', { q: `%${q}%` })
+          .orWhere('p.name ILIKE :q', { q: `%${q}%` });
+      }),
+    );
+
+    const rows = await qb
+      .select([
+        'v.id',
+        'v.productId',
+        'v.sku',
+        'p.name',
+        'p.description',
+        'p.baseUnitId',
+        'u.code',
+        'u.name',
+      ])
+      .getRawMany();
+
+    return rows.map((r) => ({
+      primaId: r.v_variant_id,
+      productName: r.p_name,
+      productDescription: r.p_description,
+      sku: r.v_sku,
+      baseUnitId: r.p_baseUnitId,
+      unitCode: r.u_code,
+      unitName: r.u_name,
+      type: 'VARIANT',
+    }));
+  }
+
   async listFinishedWithRecipesVariant(tx?: TransactionContext): Promise<RowMaterial[]> {
     const qb = this.getManager(tx)
       .getRepository(ProductVariantEntity)

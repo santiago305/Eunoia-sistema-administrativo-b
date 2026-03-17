@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
 import { ProductRepository } from 'src/modules/catalog/domain/ports/product.repository';
 import { Product } from 'src/modules/catalog/domain/entity/product';
 import { ProductEntity } from '../entities/product.entity';
@@ -314,6 +314,56 @@ export class ProductTypeormRepository implements ProductRepository {
       unitCode: r.u_code,
       unitName: r.u_name,
       type:'PRODUCT'
+    }));
+  }
+
+  async searchRowMaterialProduct(
+    params: { q: string; raw?: boolean; withRecipes?: boolean },
+    tx?: TransactionContext,
+  ): Promise<RowMaterial[]> {
+    const q = params.q?.trim();
+    if (!q) return [];
+
+    const raw = params.raw ?? true;
+    const qb = this.getManager(tx)
+      .getRepository(ProductEntity)
+      .createQueryBuilder('p')
+      .leftJoin(UnitEntity, 'u', 'u.unit_id = p.base_unit_id');
+
+    if (params.withRecipes) {
+      qb.innerJoin('product_recipes', 'r', 'r.finished_variant_id = p.product_id').distinct(true);
+    }
+
+    qb.where('p.type = :type', { type: raw ? ProductType.PRIMA : ProductType.FINISHED });
+    qb.andWhere(
+      new Brackets((qb1) => {
+        qb1
+          .where('p.sku ILIKE :q', { q: `%${q}%` })
+          .orWhere('p.name ILIKE :q', { q: `%${q}%` });
+      }),
+    );
+
+    const rows = await qb
+      .select([
+        'p.id',
+        'p.name',
+        'p.description',
+        'p.baseUnitId',
+        'p.sku',
+        'u.code',
+        'u.name',
+      ])
+      .getRawMany();
+
+    return rows.map((r) => ({
+      primaId: r.p_product_id,
+      productName: r.p_name,
+      productDescription: r.p_description,
+      sku: r.p_sku,
+      baseUnitId: r.p_baseUnitId,
+      unitCode: r.u_code,
+      unitName: r.u_name,
+      type: 'PRODUCT',
     }));
   }
 
