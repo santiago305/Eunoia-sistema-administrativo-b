@@ -1,5 +1,8 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { Direction } from 'src/modules/inventory/domain/value-objects/direction';
+import { WarehouseEntity } from 'src/modules/warehouses/adapters/out/persistence/typeorm/entities/warehouse';
+import { StockItemEntity } from 'src/modules/inventory/adapters/out/typeorm/entities/stock-item/stock-item.entity';
+import { InventoryDocumentEntity } from 'src/modules/inventory/adapters/out/typeorm/entities/inventory_document.entity';
 
 @Entity('inventory_ledger')
 export class InventoryLedgerEntity {
@@ -9,14 +12,26 @@ export class InventoryLedgerEntity {
   @Column({ name: 'doc_id', type: 'uuid' })
   docId: string;
 
+  @ManyToOne(() => InventoryDocumentEntity, { nullable: false })
+  @JoinColumn({ name: 'doc_id' })
+  document: InventoryDocumentEntity;
+
   @Column({ name: 'warehouse_id', type: 'uuid' })
   warehouseId: string;
+
+  @ManyToOne(() => WarehouseEntity, { nullable: false })
+  @JoinColumn({ name: 'warehouse_id' })
+  warehouse: WarehouseEntity;
 
   @Column({ name: 'location_id', type: 'uuid', nullable: true })
   locationId?: string;
 
   @Column({ name: 'stock_item_id', type: 'uuid' })
   stockItemId: string;
+
+  @ManyToOne(() => StockItemEntity, { nullable: false })
+  @JoinColumn({ name: 'stock_item_id' })
+  stockItem: StockItemEntity;
 
   @Column({ name: 'direction', type: 'enum', enum: Direction, enumName: 'inv_direction' })
   direction: Direction;

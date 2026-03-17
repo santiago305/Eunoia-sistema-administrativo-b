@@ -2,6 +2,7 @@ import { NotFoundException } from "@nestjs/common";
 import { DocumentRepository } from "src/modules/inventory/domain/ports/document.repository.port";
 import { DocumentSeriesRepository } from "src/modules/inventory/domain/ports/document-series.repository.port";
 import { InventoryDocument } from "src/modules/inventory/domain/entities/inventory-document";
+import { ReferenceType } from "src/modules/inventory/domain/value-objects/reference-type";
 import { DocStatus } from "src/modules/inventory/domain/value-objects/doc-status";
 import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
@@ -12,7 +13,7 @@ export type CreateDraftDocumentParams = {
   fromWarehouseId?: string;
   toWarehouseId?: string;
   referenceId?: string;
-  referenceType?: string;
+  referenceType?: ReferenceType;
   note?: string;
   createdBy?: string;
 };

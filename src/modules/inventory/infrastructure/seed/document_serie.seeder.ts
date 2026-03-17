@@ -1,6 +1,8 @@
 import { DataSource } from 'typeorm';
 import { DocumentSerie } from '../../adapters/out/typeorm/entities/document_serie.entity';
 import { DocType } from '../../domain/value-objects/doc-type';
+import { CreateDocumentSerieUseCase } from '../../application/use-cases/document-serie/create-document-serie.usecase';
+import { DocumentSeriesTypeormRepository } from '../../adapters/out/typeorm/repositories/document_serie.typeorm.repo';
 
 // Warehouse de prueba (temporal)
 const TEST_WAREHOUSE_ID = '00000000-0000-0000-0000-000000000001';
@@ -10,6 +12,8 @@ export const seedDocumentSeries = async (
   warehouseId: string = TEST_WAREHOUSE_ID,
 ): Promise<void> => {
   const repo = dataSource.getRepository(DocumentSerie);
+  const seriesRepo = new DocumentSeriesTypeormRepository(repo);
+  const createSerie = new CreateDocumentSerieUseCase(seriesRepo);
 
   const seriesToSeed = [
     {
@@ -32,6 +36,11 @@ export const seedDocumentSeries = async (
       name: 'Ajustes de inventario',
       docType: DocType.ADJUSTMENT,
     },
+    {
+      code: 'PRO',
+      name: 'Produccion',
+      docType: DocType.PRODUCTION,
+    },
   ];
 
   for (const serie of seriesToSeed) {
@@ -49,7 +58,7 @@ export const seedDocumentSeries = async (
       continue;
     }
 
-    const entity = repo.create({
+    await createSerie.execute({
       code: serie.code,
       name: serie.name,
       docType: serie.docType,
@@ -59,8 +68,6 @@ export const seedDocumentSeries = async (
       separator: '-',
       isActive: true,
     });
-
-    await repo.save(entity);
 
     console.log(
       `Serie ${serie.code} creada para docType=${DocType[serie.docType]}`,

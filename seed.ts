@@ -11,6 +11,8 @@ import { SupplierEntity } from 'src/modules/suppliers/adapters/out/persistence/t
 import { ProductEntity } from 'src/modules/catalog/adapters/out/persistence/typeorm/entities/product.entity';
 import { ProductVariantEntity } from 'src/modules/catalog/adapters/out/persistence/typeorm/entities/product-variant.entity';
 import { ProductEquivalenceEntity } from 'src/modules/catalog/adapters/out/persistence/typeorm/entities/product-equivalence.entity';
+import { ProductRecipeEntity } from 'src/modules/catalog/adapters/out/persistence/typeorm/entities/product-recipe.entity';
+import { SkuCounterEntity } from 'src/modules/catalog/adapters/out/persistence/typeorm/entities/sku-counter.entity';
 import { PurchaseOrderItemEntity } from 'src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-order-item.entity';
 import { PurchaseOrderEntity } from 'src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-order.entity';
 import { PaymentDocumentEntity } from 'src/modules/payments/adapters/out/persistence/typeorm/entities/payment-document.entity';
@@ -27,6 +29,7 @@ import { seedWarehouses } from 'src/modules/warehouses/infrastructure/seed/wareh
 import { seedSuppliers } from 'src/modules/suppliers/infrastructure/seed/supplier.seeder';
 import { seedProducts } from 'src/modules/catalog/infrastructure/seed/product.seeder';
 import { seedProductEquivalences } from 'src/modules/catalog/infrastructure/seed/product-equivalence.seeder';
+import { seedProductRecipes } from 'src/modules/catalog/infrastructure/seed/product-recipe.seeder';
 import { seedPurchaseOrders } from 'src/modules/purchases/infrastructure/seed/purchase-order.seeder';
 import { seedPaymentMethods } from 'src/modules/payment-methods/infrastructure/seed/payment-method.seeder';
 import { seedSecurityReasonCatalog } from 'src/modules/security/infrastructure/seed/security-reason-catalog.seeder';
@@ -68,6 +71,8 @@ const dataSource = new DataSource({
     ProductEntity,
     ProductVariantEntity,
     ProductEquivalenceEntity,
+    ProductRecipeEntity,
+    SkuCounterEntity,
     PurchaseOrderEntity,
     PurchaseOrderItemEntity,
     PaymentDocumentEntity,
@@ -95,6 +100,7 @@ dataSource
     await seedSuppliers(dataSource, 10000);
     await seedProducts(dataSource, { finishedCount: 4500, rawCount: 5500, variantsPerProduct: 2 });
     await seedProductEquivalences(dataSource, { minPerProduct: 1, maxPerProduct: 4 });
+    await seedProductRecipes(dataSource, { minPerFinished: 1, maxPerFinished: 3 });
     await seedPurchaseOrders(dataSource, 10000);
     await dataSource.destroy(); // cierra la conexión con la DB
     console.log('Seeding completo!');

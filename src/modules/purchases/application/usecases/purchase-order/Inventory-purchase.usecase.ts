@@ -8,6 +8,8 @@ import { PostDocumentoIn } from "src/modules/inventory/application/use-cases/doc
 import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
 import { GetActiveDocumentSerieUseCase } from "src/modules/inventory/application/use-cases/document-serie/get-document-series.usecase";
 import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/domain/ports/stock-item/stock-item.repository.port";
+import { ReferenceType } from "src/modules/inventory/domain/value-objects/reference-type";
+import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/inventory/domain/ports/document.repository.port";
 
 @Injectable()
 export class PostInventoryFromPurchaseUsecase {
@@ -20,6 +22,8 @@ export class PostInventoryFromPurchaseUsecase {
     private readonly purchaseItemRepo: PurchaseOrderItemRepository,
     @Inject(STOCK_ITEM_REPOSITORY)
     private readonly stockItemRepo: StockItemRepository,
+    @Inject(DOCUMENT_REPOSITORY)
+    private readonly documentRepo: DocumentRepository,
     private readonly createDocument: CreateDocumentUseCase,
     private readonly addItem: AddItemUseCase,
     private readonly postIn: PostDocumentoIn,
@@ -62,7 +66,7 @@ export class PostInventoryFromPurchaseUsecase {
         serieId: serieId,
         toWarehouseId: params.toWarehouseId,
         referenceId: order.poId,
-        referenceType: "PURCHASE_ORDER",
+        referenceType: ReferenceType.PURCHASE,
         note: params.note,
         createdBy: params.createdBy,
       });
@@ -87,7 +91,43 @@ export class PostInventoryFromPurchaseUsecase {
         note: params.note,
       });
 
-      return { type: "success", message: "Documento IN posteado desde compra", docId: doc.id };
+      const docResult = await this.documentRepo.getByIdWithItems(doc.id);
+      const docPayload = docResult
+        ? {
+            doc: {
+              id: docResult.doc.id!,
+              docType: docResult.doc.docType,
+              status: docResult.doc.status,
+              serieId: docResult.doc.serieId,
+              correlative: docResult.doc.correlative,
+              fromWarehouseId: docResult.doc.fromWarehouseId,
+              toWarehouseId: docResult.doc.toWarehouseId,
+              referenceId: docResult.doc.referenceId,
+              referenceType: docResult.doc.referenceType,
+              note: docResult.doc.note,
+              createdBy: docResult.doc.createdBy,
+              postedBy: docResult.doc.postedBy,
+              postedAt: docResult.doc.postedAt,
+              createdAt: docResult.doc.createdAt,
+            },
+            items: docResult.items.map((i) => ({
+              id: i.id!,
+              docId: i.docId,
+              stockItemId: i.stockItemId,
+              quantity: i.quantity,
+              fromLocationId: i.fromLocationId,
+              toLocationId: i.toLocationId,
+              unitCost: i.unitCost ?? null,
+            })),
+          }
+        : undefined;
+
+      return {
+        type: "success",
+        message: "Documento IN posteado desde compra",
+        docId: doc.id,
+        document: docPayload,
+      };
     });
   }
 }

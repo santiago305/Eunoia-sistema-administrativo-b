@@ -1,4 +1,5 @@
 import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
+import { ReferenceType } from "src/modules/inventory/domain/value-objects/reference-type";
 
 export interface CreateDocumentInput {
   docType: DocType;
@@ -6,7 +7,7 @@ export interface CreateDocumentInput {
   fromWarehouseId?: string;
   toWarehouseId?: string;
   referenceId?: string;
-  referenceType?: string;
+  referenceType?: ReferenceType;
   note?: string;
   createdBy?: string;
 }

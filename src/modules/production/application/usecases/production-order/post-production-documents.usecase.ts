@@ -5,6 +5,7 @@ import { LEDGER_REPOSITORY, LedgerRepository } from "src/modules/inventory/domai
 import { INVENTORY_REPOSITORY, InventoryRepository } from "src/modules/inventory/domain/ports/inventory.repository.port";
 import { INVENTORY_LOCK, InventoryLock } from "src/modules/inventory/domain/ports/inventory-lock.port";
 import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/domain/ports/stock-item/stock-item.repository.port";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
 import { DocStatus } from "src/modules/inventory/domain/value-objects/doc-status";
@@ -16,6 +17,7 @@ import { ProductionOrder } from "src/modules/production/domain/entity/production
 import { ProductionOrderItem } from "src/modules/production/domain/entity/production-order-item";
 import { RecipeConsumptionLine } from "./build-consumption-from-recipes.usecase";
 import { createDraftDocument } from "../../utils/create-draft-document";
+import { ReferenceType } from "src/modules/inventory/domain/value-objects/reference-type";
 
 @Injectable()
 export class PostProductionDocumentsUseCase {
@@ -32,6 +34,8 @@ export class PostProductionDocumentsUseCase {
     private readonly lock: InventoryLock,
     @Inject(CLOCK)
     private readonly clock: ClockPort,
+    @Inject(STOCK_ITEM_REPOSITORY)
+    private readonly stockItemRepo: StockItemRepository,
   ) {}
 
   async execute(
@@ -53,7 +57,7 @@ export class PostProductionDocumentsUseCase {
         fromWarehouseId: params.order.fromWarehouseId,
         toWarehouseId: undefined,
         referenceId: params.order.productionId,
-        referenceType: "PRODUCTION_ORDER",
+        referenceType: ReferenceType.PRODUCTION,
         note: "Consumo de materia prima",
         createdBy: params.postedBy,
       },
@@ -127,7 +131,7 @@ export class PostProductionDocumentsUseCase {
         fromWarehouseId: undefined,
         toWarehouseId: params.order.toWarehouseId,
         referenceId: params.order.productionId,
-        referenceType: "PRODUCTION_ORDER",
+        referenceType: ReferenceType.PRODUCTION,
         note: "Ingreso de producto terminado",
         createdBy: params.postedBy,
       },
@@ -135,12 +139,25 @@ export class PostProductionDocumentsUseCase {
       tx,
     );
 
+    const finishedStockItemCache = new Map<string, string>();
+    const getFinishedStockItemId = async (finishedItemId: string) => {
+      const cached = finishedStockItemCache.get(finishedItemId);
+      if (cached) return cached;
+      const stockItem = await this.stockItemRepo.findByProductIdOrVariantId(finishedItemId, tx);
+      if (!stockItem?.stockItemId) {
+        throw new NotFoundException({ type: "error", message: "Stock item de producto terminado no encontrado" });
+      }
+      finishedStockItemCache.set(finishedItemId, stockItem.stockItemId);
+      return stockItem.stockItemId;
+    };
+
     for (const item of params.items) {
+      const finishedStockItemId = await getFinishedStockItemId(item.finishedItemId);
       await this.documentRepo.addItem(
         new InventoryDocumentItem(
           undefined,
           inDoc.id!,
-          item.finishedItemId,
+          finishedStockItemId,
           item.quantity,
           undefined,
           item.toLocationId ?? undefined,
@@ -150,21 +167,24 @@ export class PostProductionDocumentsUseCase {
       );
     }
 
-    const inKeys = params.items.map((i) => ({
-      warehouseId: params.order.toWarehouseId,
-      stockItemId: i.finishedItemId,
-      locationId: i.toLocationId,
-    }));
+    const inKeys = await Promise.all(
+      params.items.map(async (i) => ({
+        warehouseId: params.order.toWarehouseId,
+        stockItemId: await getFinishedStockItemId(i.finishedItemId),
+        locationId: i.toLocationId,
+      })),
+    );
     await this.lock.lockSnapshots(inKeys, tx);
 
     const inEntries: LedgerEntry[] = [];
     for (const item of params.items) {
+      const finishedStockItemId = await getFinishedStockItemId(item.finishedItemId);
       inEntries.push(
         new LedgerEntry(
           undefined,
           inDoc.id!,
           params.order.toWarehouseId,
-          item.finishedItemId,
+          finishedStockItemId,
           Direction.IN,
           item.quantity,
           item.unitCost ?? null,
@@ -176,7 +196,7 @@ export class PostProductionDocumentsUseCase {
       await this.inventoryRepo.incrementOnHand(
         {
           warehouseId: params.order.toWarehouseId,
-          stockItemId: item.finishedItemId,
+          stockItemId: finishedStockItemId,
           locationId: item.toLocationId ?? undefined,
           delta: item.quantity,
         },
