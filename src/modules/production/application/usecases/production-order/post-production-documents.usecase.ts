@@ -15,6 +15,7 @@ import { Direction } from "src/modules/inventory/domain/value-objects/direction"
 import { ProductionOrder } from "src/modules/production/domain/entity/production-order.entity";
 import { ProductionOrderItem } from "src/modules/production/domain/entity/production-order-item";
 import { RecipeConsumptionLine } from "./build-consumption-from-recipes.usecase";
+import { createDraftDocument } from "../../utils/create-draft-document";
 
 @Injectable()
 export class PostProductionDocumentsUseCase {
@@ -45,7 +46,7 @@ export class PostProductionDocumentsUseCase {
     const now = this.clock.now();
 
     // OUT: consumo de materia prima
-    const outDoc = await this.createDraftDocument(
+    const outDoc = await createDraftDocument(
       {
         docType: DocType.OUT,
         serieWarehouseId: params.order.fromWarehouseId,
@@ -56,6 +57,7 @@ export class PostProductionDocumentsUseCase {
         note: "Consumo de materia prima",
         createdBy: params.postedBy,
       },
+      { seriesRepo: this.seriesRepo, documentRepo: this.documentRepo },
       tx,
     );
 
@@ -118,7 +120,7 @@ export class PostProductionDocumentsUseCase {
     );
 
     // IN: ingreso de producto terminado
-    const inDoc = await this.createDraftDocument(
+    const inDoc = await createDraftDocument(
       {
         docType: DocType.IN,
         serieWarehouseId: params.order.toWarehouseId,
@@ -129,6 +131,7 @@ export class PostProductionDocumentsUseCase {
         note: "Ingreso de producto terminado",
         createdBy: params.postedBy,
       },
+      { seriesRepo: this.seriesRepo, documentRepo: this.documentRepo },
       tx,
     );
 
@@ -191,51 +194,5 @@ export class PostProductionDocumentsUseCase {
     );
   }
 
-  private async createDraftDocument(
-    params: {
-      docType: DocType;
-      serieWarehouseId: string;
-      fromWarehouseId?: string;
-      toWarehouseId?: string;
-      referenceId?: string;
-      referenceType?: string;
-      note?: string;
-      createdBy?: string;
-    },
-    tx: TransactionContext,
-  ): Promise<InventoryDocument> {
-    const series = await this.seriesRepo.findActiveFor({
-      docType: params.docType,
-      warehouseId: params.serieWarehouseId,
-      isActive: true,
-    }, tx);
 
-    if (!series || series.length === 0) {
-      throw new NotFoundException(
-        {
-          type:'error',
-          message:'Serie activa no encontrada'
-        }
-      );
-    }
-
-    const serie = series[0];
-    const correlative = await this.seriesRepo.reserveNextNumber(serie.id, tx);
-
-    const doc = new InventoryDocument(
-      undefined,
-      params.docType,
-      DocStatus.DRAFT,
-      serie.id,
-      correlative,
-      params.fromWarehouseId,
-      params.toWarehouseId,
-      params.referenceId,
-      params.referenceType,
-      params.note,
-      params.createdBy,
-    );
-
-    return this.documentRepo.createDraft(doc, tx);
-  }
 }

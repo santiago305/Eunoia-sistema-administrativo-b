@@ -31,17 +31,6 @@ export class CancelProductionOrder {
         throw new BadRequestException({ type: "error", message: "Ya esta cancelada la orden" });
       }
 
-      // liberar reserva de materia prima
-      const consumption = await this.buildConsumption.execute(
-        { productionId: params.productionId },
-        tx,
-      );
-
-      await this.consumeReserved.execute(
-        { warehouseId: order.fromWarehouseId, consumption, reserveMode: false },
-        tx,
-      );
-
       // eliminar items
       for (const item of items) {
         await this.orderRepo.removeItem(order.productionId, item.productionItemId, tx);

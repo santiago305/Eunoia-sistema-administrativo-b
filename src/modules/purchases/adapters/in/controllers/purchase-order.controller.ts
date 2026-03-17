@@ -13,6 +13,7 @@ import { HttpListPurchaseOrdersQueryDto } from "../dtos/purchase-order/http-purc
 import { HttpSetPurchaseOrderActiveDto } from "../dtos/purchase-order/http-purchase-order-set-active.dto";
 import { RunExpectedAtUsecase } from "src/modules/purchases/application/usecases/purchase-order/run-expected-at.usecase";
 import { SetSentPurchaseOrderUsecase } from "src/modules/purchases/application/usecases/purchase-order/set-sent.usecase";
+import { CancelPurchaseOrderUsecase } from "src/modules/purchases/application/usecases/purchase-order/cancel.usecase";
 
 @Controller("purchases/orders")
 @UseGuards(JwtAuthGuard)
@@ -26,8 +27,8 @@ export class PurchaseOrdersController {
     private readonly listItems: ListPurchaseOrderItemsUsecase,
     private readonly removeItem: RemovePurchaseOrderItemUsecase,
     private readonly runExpected: RunExpectedAtUsecase,
-    private readonly setSent: SetSentPurchaseOrderUsecase
-
+    private readonly setSent: SetSentPurchaseOrderUsecase,
+    private readonly cancelOrder: CancelPurchaseOrderUsecase,
   ) {}
 
   @Post()
@@ -57,6 +58,11 @@ export class PurchaseOrdersController {
   @Patch(":id/sent")
   setSentPurchase(@Param("id", ParseUUIDPipe) id: string) {
     return this.setSent.execute(id);
+  }
+
+  @Patch(":id/cancel")
+  cancel(@Param("id", ParseUUIDPipe) id: string) {
+    return this.cancelOrder.execute(id);
   }
 
   @Post(":id/run-expected")
