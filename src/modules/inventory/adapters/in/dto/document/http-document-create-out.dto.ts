@@ -1,5 +1,6 @@
 import { Equals, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { DocType } from 'src/modules/inventory/domain/value-objects/doc-type';
+import { ReferenceType } from 'src/modules/inventory/domain/value-objects/reference-type';
 
 export class HttpCreateDocumentOutDto {
   @Equals(DocType.OUT, {
@@ -21,7 +22,7 @@ export class HttpCreateDocumentOutDto {
   @IsString()
   @MaxLength(60)
   @IsNotEmpty()
-  referenceType?: string;
+  referenceType?: ReferenceType;
 
   @IsOptional()
   @IsString()

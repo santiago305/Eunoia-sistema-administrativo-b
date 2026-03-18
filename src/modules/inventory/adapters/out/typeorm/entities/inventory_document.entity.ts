@@ -1,6 +1,7 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
 import { DocType } from 'src/modules/inventory/domain/value-objects/doc-type';
 import { DocStatus } from 'src/modules/inventory/domain/value-objects/doc-status';
+import { ReferenceType } from 'src/modules/inventory/domain/value-objects/reference-type';
 
 
 @Entity('inventory_documents')
@@ -31,7 +32,7 @@ export class InventoryDocumentEntity {
   referenceId?: string;
 
   @Column({ name: 'reference_type', type: 'varchar', nullable: true })
-  referenceType?: string;
+  referenceType?: ReferenceType;
 
   @Column({ name: 'note', type: 'text', nullable: true })
   note?: string;

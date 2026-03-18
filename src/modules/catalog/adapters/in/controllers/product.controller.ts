@@ -15,6 +15,7 @@ import { HttpSetProductActiveDto } from '../dtos/products/http-product-set-activ
 import { ListProductQueryDto } from '../dtos/products/http-products-list.dto';
 import { ListRowMaterialProductVariants } from 'src/modules/catalog/application/usecases/product-variant/list-row-material.usecase';
 import { ListFinishedWithRecipesProductVariants } from 'src/modules/catalog/application/usecases/product-variant/list-finished-with-recipes.usecase';
+import { SearchRowMaterialProductVariants } from 'src/modules/catalog/application/usecases/product-variant/search-row-material.usecase';
 @Controller('catalog/products')
 @UseGuards(JwtAuthGuard)
 export class ProductsController {
@@ -30,6 +31,7 @@ export class ProductsController {
     private readonly getWithVariants: GetProductWithVariants,
     private readonly listRowMaterial: ListRowMaterialProductVariants,
     private readonly finishedWithRecipes: ListFinishedWithRecipesProductVariants,
+    private readonly searchRowMaterial: SearchRowMaterialProductVariants,
 
   ) {}
 
@@ -75,11 +77,24 @@ export class ProductsController {
   listPrimaActiveProducts() {
     return this.listPrimaActive.execute();
   }
+  
   @Get('variants/finished')
   listRowMaterialVariants() {
-    const row = false;
-    return this.listRowMaterial.execute(row);
+    const raw = false;
+    return this.listRowMaterial.execute(raw);
   }
+
+  @Get('variants/search')
+  searchRowMaterialVariants(
+    @Query('q') q: string,
+    @Query('raw') raw?: string,
+    @Query('withRecipes') withRecipes?: string,
+  ) {
+    const rawFlag = raw === undefined ? true : raw !== 'false';
+    const withRecipesFlag = withRecipes === 'true';
+    return this.searchRowMaterial.execute({ q, raw: rawFlag, withRecipes: withRecipesFlag });
+  }
+
   @Get('variants/finished-with-recipes')
   listFinishedWithRecipes() {
     return this.finishedWithRecipes.execute();

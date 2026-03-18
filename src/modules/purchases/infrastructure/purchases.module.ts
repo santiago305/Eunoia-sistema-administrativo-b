@@ -25,6 +25,7 @@ import { SetSentPurchaseOrderUsecase } from "../application/usecases/purchase-or
 import { InventoryModule } from "src/modules/inventory/infrastructure/inventory.module";
 import { PostInventoryFromPurchaseUsecase } from "../application/usecases/purchase-order/Inventory-purchase.usecase";
 import { UsersModule } from "src/modules/users/infrastructure/users.module";
+import { CancelPurchaseOrderUsecase } from "../application/usecases/purchase-order/cancel.usecase";
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { UsersModule } from "src/modules/users/infrastructure/users.module";
     PurchaseOrderExpectedScheduler,
     PurchaseOrderExpectedBootstrap,
     SetSentPurchaseOrderUsecase,
+    CancelPurchaseOrderUsecase,
     PostInventoryFromPurchaseUsecase,
     { provide: PURCHASE_ORDER, useClass: PurchaseOrderTypeormRepository },
     { provide: PURCHASE_ORDER_ITEM, useClass: PurchaseOrderItemTypeormRepository },

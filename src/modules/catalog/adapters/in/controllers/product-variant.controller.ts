@@ -6,6 +6,7 @@ import { SetProductVariantActive } from 'src/modules/catalog/application/usecase
 import { GetProductVariant } from 'src/modules/catalog/application/usecases/product-variant/get-element-by-id.usercase';
 import { SearchProductVariants } from 'src/modules/catalog/application/usecases/product-variant/search.usecase';
 import { ListRowMaterialProductVariants } from 'src/modules/catalog/application/usecases/product-variant/list-row-material.usecase';
+import { SearchRowMaterialProductVariants } from 'src/modules/catalog/application/usecases/product-variant/search-row-material.usecase';
 import { CreateStockItemForVariant } from 'src/modules/inventory/application/use-cases/stock-item/create-for-variant.usecase';
 import {HttpCreateProductVariantDto} from '../dtos/product-variants/http-variant-create.dto'
 import {HttpUpdateProductVariantDto} from '../dtos/product-variants/http-variant-update.dto'
@@ -22,6 +23,7 @@ export class ProductVariantsController {
     private readonly getById: GetProductVariant,
     private readonly search: SearchProductVariants,
     private readonly listRowMaterial: ListRowMaterialProductVariants,
+    private readonly searchRowMaterial: SearchRowMaterialProductVariants,
   ) {}
 
   @Post()
@@ -42,6 +44,17 @@ export class ProductVariantsController {
   @Get('row-materials')
   listRowMaterialVariants() {
     return this.listRowMaterial.execute();
+  }
+
+  @Get('row-materials/search')
+  searchRowMaterialVariants(
+    @Query('q') q: string,
+    @Query('raw') raw?: string,
+    @Query('withRecipes') withRecipes?: string,
+  ) {
+    const rawFlag = raw === undefined ? true : raw !== 'false';
+    const withRecipesFlag = withRecipes === 'true';
+    return this.searchRowMaterial.execute({ q, raw: rawFlag, withRecipes: withRecipesFlag });
   }
 
   @Get(':id')

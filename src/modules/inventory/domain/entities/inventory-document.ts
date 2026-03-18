@@ -1,6 +1,7 @@
 import  { DocStatus } from '../value-objects/doc-status';
 import { DocType } from '../value-objects/doc-type';
 import  InventoryDocumentItem  from './inventory-document-item';
+import { ReferenceType } from '../value-objects/reference-type';
 
 export class InventoryDocument {
   constructor(
@@ -12,7 +13,7 @@ export class InventoryDocument {
     public readonly fromWarehouseId?: string,
     public readonly toWarehouseId?: string,
     public readonly referenceId?: string,
-    public readonly referenceType?: string,
+    public readonly referenceType?: ReferenceType,
     public note?: string,
     public readonly createdBy?: string,
     public postedBy?: string,
