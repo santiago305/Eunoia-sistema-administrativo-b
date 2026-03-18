@@ -65,7 +65,6 @@ export class GetLedgerUseCase {
         docId: e.docId,
         document: e.document,
         referenceDoc: e.referenceDoc,
-        warehouse: e.warehouse,
         stockItem: e.stockItem,
         locationId: e.locationId,
         stockItemId: e.stockItemId,

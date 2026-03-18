@@ -103,6 +103,7 @@ export type LedgerProductionRefSnapshot = {
   toWarehouseId: string;
   docType: string;
   serieId: string;
+  serie?: string | null;
   correlative: number;
   status: string;
   reference?: string | null;
@@ -168,10 +169,8 @@ export class LedgerEntry {
     public readonly unitCost?: number | null,
     public readonly locationId?: string,
     public readonly createdAt?: Date,
-    public readonly warehouse?: LedgerWarehouseSnapshot,
     public readonly stockItem?: LedgerStockItemSnapshot,
     public readonly document?: LedgerDocumentSnapshot,
     public readonly referenceDoc?: LedgerReferenceDocSnapshot,
   ) {}
 }
-

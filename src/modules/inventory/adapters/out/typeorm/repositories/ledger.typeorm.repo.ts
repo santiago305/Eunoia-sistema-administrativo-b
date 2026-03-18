@@ -18,6 +18,7 @@ import { ProductionOrderEntity } from 'src/modules/production/adapters/out/persi
 import { WarehouseEntity } from 'src/modules/warehouses/adapters/out/persistence/typeorm/entities/warehouse';
 import { SupplierEntity } from 'src/modules/suppliers/adapters/out/persistence/typeorm/entities/supplier.entity';
 import { User } from 'src/modules/users/adapters/out/persistence/typeorm/entities/user.entity';
+import { DocumentSerie } from 'src/modules/inventory/adapters/out/typeorm/entities/document_serie.entity';
 
 
 @Injectable()
@@ -210,6 +211,7 @@ private getRepo(tx?: TransactionContext) {
     const warehouseRepo = manager.getRepository(WarehouseEntity);
     const supplierRepo = manager.getRepository(SupplierEntity);
     const userRepo = manager.getRepository(User);
+    const serieRepo = manager.getRepository(DocumentSerie);
 
     const purchases = purchaseIds.size
       ? await purchaseRepo.find({ where: { id: In([...purchaseIds]) } })
@@ -221,6 +223,7 @@ private getRepo(tx?: TransactionContext) {
     const warehouseIds = new Set<string>();
     const supplierIds = new Set<string>();
     const userIds = new Set<string>();
+    const serieIds = new Set<string>();
 
     for (const p of purchases) {
       warehouseIds.add(p.warehouseId);
@@ -229,6 +232,7 @@ private getRepo(tx?: TransactionContext) {
     for (const p of productions) {
       warehouseIds.add(p.fromWarehouseId);
       warehouseIds.add(p.toWarehouseId);
+      if (p.serieId) serieIds.add(p.serieId);
       if (p.createdBy) userIds.add(p.createdBy);
     }
 
@@ -241,30 +245,21 @@ private getRepo(tx?: TransactionContext) {
     const users = userIds.size
       ? await userRepo.find({ where: { id: In([...userIds]) } })
       : [];
+    const series = serieIds.size
+      ? await serieRepo.find({ where: { id: In([...serieIds]) } })
+      : [];
 
     const purchaseById = new Map(purchases.map((p) => [p.id, p]));
     const productionById = new Map(productions.map((p) => [p.id, p]));
     const warehouseById = new Map(warehouses.map((w) => [w.id, w]));
     const supplierById = new Map(suppliers.map((s) => [s.id, s]));
     const userById = new Map(users.map((u) => [u.id, u]));
+    const serieById = new Map(series.map((s) => [s.id, s]));
 
     return {
       items: rows.map(
         (r) =>
           {
-            const warehouse: LedgerWarehouseSnapshot | undefined = r.warehouse
-              ? {
-                  id: r.warehouse.id,
-                  name: r.warehouse.name,
-                  department: r.warehouse.department,
-                  province: r.warehouse.province,
-                  district: r.warehouse.district,
-                  address: r.warehouse.address ?? null,
-                  isActive: r.warehouse.isActive,
-                  createdAt: r.warehouse.createdAt,
-                }
-              : undefined;
-
             const stockItem: LedgerStockItemSnapshot | undefined = r.stockItem
               ? {
                   id: r.stockItem.id,
@@ -320,7 +315,6 @@ private getRepo(tx?: TransactionContext) {
               if (r.document.referenceType === ReferenceType.PURCHASE) {
                 const po = purchaseById.get(r.document.referenceId);
                 if (po) {
-                  const warehouseRef = warehouseById.get(po.warehouseId);
                   const supplierRef = supplierById.get(po.supplierId);
                   referenceDoc = {
                     type: ReferenceType.PURCHASE,
@@ -348,18 +342,6 @@ private getRepo(tx?: TransactionContext) {
                       dateExpiration: po.dateExpiration ?? null,
                       createdAt: po.createdAt,
                     },
-                    warehouse: warehouseRef
-                      ? {
-                          id: warehouseRef.id,
-                          name: warehouseRef.name,
-                          department: warehouseRef.department,
-                          province: warehouseRef.province,
-                          district: warehouseRef.district,
-                          address: warehouseRef.address ?? null,
-                          isActive: warehouseRef.isActive,
-                          createdAt: warehouseRef.createdAt,
-                        }
-                      : undefined,
                     supplier: supplierRef
                       ? {
                           id: supplierRef.id,
@@ -383,9 +365,8 @@ private getRepo(tx?: TransactionContext) {
               } else if (r.document.referenceType === ReferenceType.PRODUCTION) {
                 const prod = productionById.get(r.document.referenceId);
                 if (prod) {
-                  const fromWarehouseRef = warehouseById.get(prod.fromWarehouseId);
-                  const toWarehouseRef = warehouseById.get(prod.toWarehouseId);
                   const userRef = prod.createdBy ? userById.get(prod.createdBy) : undefined;
+                  const serieRef = prod.serieId ? serieById.get(prod.serieId) : undefined;
                   referenceDoc = {
                     type: ReferenceType.PRODUCTION,
                     production: {
@@ -394,6 +375,7 @@ private getRepo(tx?: TransactionContext) {
                       toWarehouseId: prod.toWarehouseId,
                       docType: prod.docType,
                       serieId: prod.serieId,
+                      serie: serieRef?.code ?? null,
                       correlative: prod.correlative,
                       status: prod.status,
                       reference: prod.reference ?? null,
@@ -403,30 +385,6 @@ private getRepo(tx?: TransactionContext) {
                       createdAt: prod.createdAt,
                       updatedAt: prod.updatedAt,
                     },
-                    fromWarehouse: fromWarehouseRef
-                      ? {
-                          id: fromWarehouseRef.id,
-                          name: fromWarehouseRef.name,
-                          department: fromWarehouseRef.department,
-                          province: fromWarehouseRef.province,
-                          district: fromWarehouseRef.district,
-                          address: fromWarehouseRef.address ?? null,
-                          isActive: fromWarehouseRef.isActive,
-                          createdAt: fromWarehouseRef.createdAt,
-                        }
-                      : undefined,
-                    toWarehouse: toWarehouseRef
-                      ? {
-                          id: toWarehouseRef.id,
-                          name: toWarehouseRef.name,
-                          department: toWarehouseRef.department,
-                          province: toWarehouseRef.province,
-                          district: toWarehouseRef.district,
-                          address: toWarehouseRef.address ?? null,
-                          isActive: toWarehouseRef.isActive,
-                          createdAt: toWarehouseRef.createdAt,
-                        }
-                      : undefined,
                     createdBy: userRef
                       ? {
                           id: userRef.id,
@@ -458,7 +416,6 @@ private getRepo(tx?: TransactionContext) {
               r.unitCost ?? null,
               r.locationId,
               r.createdAt,
-              warehouse,
               stockItem,
               document,
               referenceDoc,

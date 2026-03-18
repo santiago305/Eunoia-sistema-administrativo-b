@@ -82,6 +82,7 @@ export interface LedgerEntryOutput {
           toWarehouseId: string;
           docType: string;
           serieId: string;
+          serie?: string | null;
           correlative: number;
           status: string;
           reference?: string | null;
