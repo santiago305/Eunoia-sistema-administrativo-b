@@ -33,17 +33,20 @@ export class ConsumeReservedMaterialsUseCase {
     await this.lock.lockSnapshots(keys, tx);
 
     for (const c of params.consumption) {
+      const requestedLocationId = c.locationId ?? null;
+      const forcedLocationId = null;
       console.log('[reserveMaterials] checking snapshot', {
         warehouseId: params.warehouseId,
         stockItemId: c.stockItemId,
-        locationId:  null,
+        requestedLocationId,
+        forcedLocationId,
         qty: c.qty,
       });
       const snapshot = await this.inventoryRepo.getSnapshot(
         {
           warehouseId: params.warehouseId,
           stockItemId: c.stockItemId,
-          locationId: null,
+          locationId: forcedLocationId,
         },
         tx,
       );
@@ -54,12 +57,28 @@ export class ConsumeReservedMaterialsUseCase {
 
       if (params.reserveMode) {
         if (!snapshot || available <= 0) {
+          const snapshots = await this.inventoryRepo.listSnapshots(
+            {
+              warehouseId: params.warehouseId,
+              stockItemId: c.stockItemId,
+            },
+            tx,
+          );
+          console.log('[reserveMaterials] snapshots for stockItem', snapshots);
           throw new BadRequestException({
             type: "error",
             message: "No hay ningun stock del producto",
           });
         }
         if (available < c.qty) {
+          const snapshots = await this.inventoryRepo.listSnapshots(
+            {
+              warehouseId: params.warehouseId,
+              stockItemId: c.stockItemId,
+            },
+            tx,
+          );
+          console.log('[reserveMaterials] snapshots for stockItem', snapshots);
           throw new BadRequestException({
             type: "error",
             message: "No hay stock suficiente",
@@ -67,6 +86,14 @@ export class ConsumeReservedMaterialsUseCase {
         }
       } else {
         if (reserved < c.qty) {
+          const snapshots = await this.inventoryRepo.listSnapshots(
+            {
+              warehouseId: params.warehouseId,
+              stockItemId: c.stockItemId,
+            },
+            tx,
+          );
+          console.log('[reserveMaterials] snapshots for stockItem', snapshots);
           throw new BadRequestException({
             type: "error",
             message: "Reserva insuficiente3",
