@@ -28,5 +28,6 @@ export class PurchaseOrder {
     public readonly dateIssue?: Date,
     public readonly dateExpiration?: Date,
     public readonly createdAt?: Date,
+    public readonly createdBy?: string,
   ) {}
 }

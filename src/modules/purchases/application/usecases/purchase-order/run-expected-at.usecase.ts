@@ -43,15 +43,11 @@ export class RunExpectedAtUsecase {
           throw new BadRequestException({ type: "error", message: "La orden no tiene expectedAt" });
         }
 
-        const adminUser = await this.userRepo.findByEmail(new Email("admin@gmail.com"));
-        if (!adminUser) {
-          throw new NotFoundException({ type: "error", message: "Usuario admin@gmail.com no encontrado" });
-        }
 
         await this.inventoryPurchase.execute({
           poId: order.poId,
           toWarehouseId: order.warehouseId,
-          postedBy: adminUser.id,
+          postedBy: order.createdBy,
           note: "Ingreso por compra",
         });
 

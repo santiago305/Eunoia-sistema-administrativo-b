@@ -4,6 +4,7 @@ import { GetLedgerInput } from '../../dto/ledger/input/get-ledger';
 import { PaginatedLedgerResult } from '../../dto/ledger/output/paginated-ledger';
 import { STOCK_ITEM_REPOSITORY, StockItemRepository } from 'src/modules/inventory/domain/ports/stock-item/stock-item.repository.port';
 import { errorResponse } from 'src/shared/response-standard/response';
+import { ReferenceType } from 'src/modules/inventory/domain/value-objects/reference-type';
 
 
 @Injectable()
@@ -60,21 +61,108 @@ export class GetLedgerUseCase {
     }
 
     return {
-      items: items.map((e) => ({
-        id: e.id!,
-        docId: e.docId,
-        document: e.document,
-        referenceDoc: e.referenceDoc,
-        warehouse: e.warehouse,
-        stockItem: e.stockItem,
-        locationId: e.locationId,
-        stockItemId: e.stockItemId,
-        direction: e.direction,
-        quantity: e.quantity,
-        unitCost: e.unitCost ?? null,
-        createdAt: e.createdAt,
-        balance: e.id ? balanceById.get(e.id) : running,
-      })),
+      items: items.map((e) => {
+        const document = e.document
+          ? {
+              id: e.document.id,
+              docType: e.document.docType,
+              status: e.document.status,
+              serieId: e.document.serieId,
+              serie: e.document.serie ?? null,
+              correlative: e.document.correlative,
+              fromWarehouseId: e.document.fromWarehouseId,
+              toWarehouseId: e.document.toWarehouseId,
+              fromWarehouse: e.document.fromWarehouse ?? null,
+              toWarehouse: e.document.toWarehouse ?? null,
+              referenceId: e.document.referenceId,
+              referenceType: e.document.referenceType,
+              createdBy: e.document.createdBy,
+            }
+          : undefined;
+
+        const stockItem = e.stockItem
+          ? {
+              id: e.stockItem.id,
+              type: e.stockItem.type,
+              productId: e.stockItem.productId ?? null,
+              variantId: e.stockItem.variantId ?? null,
+              product: e.stockItem.product
+                ? {
+                    id: e.stockItem.product.id,
+                    name: e.stockItem.product.name,
+                    sku: e.stockItem.product.sku,
+                    unidad: e.stockItem.product.unidad,
+                  }
+                : null,
+              variant: e.stockItem.variant
+                ? {
+                    id: e.stockItem.variant.id,
+                    productId: e.stockItem.variant.productId,
+                    name: e.stockItem.variant.name,
+                    sku: e.stockItem.variant.sku,
+                    unidad: e.stockItem.variant.unidad,
+                  }
+                : null,
+            }
+          : undefined;
+
+        let referenceDoc = undefined;
+        if (e.referenceDoc?.type === ReferenceType.PURCHASE) {
+          referenceDoc = {
+            type: ReferenceType.PURCHASE,
+            purchase: {
+              id: e.referenceDoc.purchase.id,
+              supplierId: e.referenceDoc.purchase.supplierId,
+              warehouseId: e.referenceDoc.purchase.warehouseId,
+              documentType: e.referenceDoc.purchase.documentType ?? null,
+              serie: e.referenceDoc.purchase.serie ?? null,
+              correlative: e.referenceDoc.purchase.correlative ?? null,
+              expectedAt: e.referenceDoc.purchase.expectedAt ?? null,
+              dateIssue: e.referenceDoc.purchase.dateIssue ?? null,
+              dateExpiration: e.referenceDoc.purchase.dateExpiration ?? null,
+              createdAt: e.referenceDoc.purchase.createdAt,
+            },
+            supplier: e.referenceDoc.supplier,
+            createdBy: e.referenceDoc.createdBy,
+          };
+        } else if (e.referenceDoc?.type === ReferenceType.PRODUCTION) {
+          referenceDoc = {
+            type: ReferenceType.PRODUCTION,
+            production: {
+              id: e.referenceDoc.production.id,
+              fromWarehouseId: e.referenceDoc.production.fromWarehouseId,
+              toWarehouseId: e.referenceDoc.production.toWarehouseId,
+              docType: e.referenceDoc.production.docType,
+              serieId: e.referenceDoc.production.serieId,
+              serie: e.referenceDoc.production.serie ?? null,
+              correlative: e.referenceDoc.production.correlative,
+              status: e.referenceDoc.production.status,
+              reference: e.referenceDoc.production.reference ?? null,
+              manufactureDate: e.referenceDoc.production.manufactureDate,
+              createdBy: e.referenceDoc.production.createdBy,
+              updatedBy: e.referenceDoc.production.updatedBy ?? undefined,
+              createdAt: e.referenceDoc.production.createdAt,
+              updatedAt: e.referenceDoc.production.updatedAt,
+            },
+            createdBy: e.referenceDoc.createdBy,
+          };
+        }
+
+        return {
+          id: e.id!,
+          docId: e.docId,
+          document,
+          referenceDoc,
+          stockItem,
+          locationId: e.locationId,
+          stockItemId: e.stockItemId,
+          direction: e.direction,
+          quantity: e.quantity,
+          unitCost: e.unitCost ?? null,
+          createdAt: e.createdAt,
+          balance: e.id ? balanceById.get(e.id) : running,
+        };
+      }),
       total,
       page,
       limit,

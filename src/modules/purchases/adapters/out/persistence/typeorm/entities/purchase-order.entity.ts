@@ -71,6 +71,9 @@ export class PurchaseOrderEntity {
   @Column({ name: "date_expiration", type: "timestamptz", nullable: true })
   dateExpiration?: Date | null;
 
+  @Column({ name: "created_by", type: "uuid", nullable: true })
+  createdBy?: string | null;
+
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
 }
