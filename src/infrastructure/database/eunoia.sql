@@ -876,6 +876,7 @@ create table purchase_orders (
   date_expiration date,
   is_active boolean NOT NULL DEFAULT true,
 
+  created_by uuid,
   created_at timestamptz NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
   PRIMARY KEY (po_id)

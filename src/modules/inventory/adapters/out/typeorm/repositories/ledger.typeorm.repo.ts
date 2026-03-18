@@ -6,8 +6,7 @@ import {
   LedgerDocumentSnapshot,
   LedgerEntry,
   LedgerReferenceDocSnapshot,
-  LedgerStockItemSnapshot,
-  LedgerWarehouseSnapshot,
+  LedgerStockItemSnapshot
 } from '../../../../domain/entities/ledger-entry';
 import { InventoryLedgerEntity } from '../entities/inventory_ledger.entity';
 import { TransactionContext } from 'src/shared/domain/ports/transaction-context.port';
@@ -19,6 +18,8 @@ import { WarehouseEntity } from 'src/modules/warehouses/adapters/out/persistence
 import { SupplierEntity } from 'src/modules/suppliers/adapters/out/persistence/typeorm/entities/supplier.entity';
 import { User } from 'src/modules/users/adapters/out/persistence/typeorm/entities/user.entity';
 import { DocumentSerie } from 'src/modules/inventory/adapters/out/typeorm/entities/document_serie.entity';
+import { ProductEntity } from 'src/modules/catalog/adapters/out/persistence/typeorm/entities/product.entity';
+import { UnitEntity } from 'src/modules/catalog/adapters/out/persistence/typeorm/entities/unit.entity';
 
 
 @Injectable()
@@ -212,6 +213,8 @@ private getRepo(tx?: TransactionContext) {
     const supplierRepo = manager.getRepository(SupplierEntity);
     const userRepo = manager.getRepository(User);
     const serieRepo = manager.getRepository(DocumentSerie);
+    const productRepo = manager.getRepository(ProductEntity);
+    const unitRepo = manager.getRepository(UnitEntity);
 
     const purchases = purchaseIds.size
       ? await purchaseRepo.find({ where: { id: In([...purchaseIds]) } })
@@ -224,6 +227,17 @@ private getRepo(tx?: TransactionContext) {
     const supplierIds = new Set<string>();
     const userIds = new Set<string>();
     const serieIds = new Set<string>();
+
+    const unitIds = new Set<string>();
+    const productIdsForUnits = new Set<string>();
+
+    for (const r of rows) {
+      if (r.document?.serieId) serieIds.add(r.document.serieId);
+      if (r.document?.fromWarehouseId) warehouseIds.add(r.document.fromWarehouseId);
+      if (r.document?.toWarehouseId) warehouseIds.add(r.document.toWarehouseId);
+      if (r.stockItem?.product?.baseUnitId) unitIds.add(r.stockItem.product.baseUnitId);
+      if (r.stockItem?.variant?.productId) productIdsForUnits.add(r.stockItem.variant.productId);
+    }
 
     for (const p of purchases) {
       warehouseIds.add(p.warehouseId);
@@ -249,43 +263,63 @@ private getRepo(tx?: TransactionContext) {
       ? await serieRepo.find({ where: { id: In([...serieIds]) } })
       : [];
 
+    const productsForUnits = productIdsForUnits.size
+      ? await productRepo.find({ select: ['id', 'baseUnitId', 'name'], where: { id: In([...productIdsForUnits]) } })
+      : [];
+    for (const p of productsForUnits) {
+      if (p.baseUnitId) unitIds.add(p.baseUnitId);
+    }
+    const units = unitIds.size
+      ? await unitRepo.find({ where: { id: In([...unitIds]) } })
+      : [];
+
     const purchaseById = new Map(purchases.map((p) => [p.id, p]));
     const productionById = new Map(productions.map((p) => [p.id, p]));
-    const warehouseById = new Map(warehouses.map((w) => [w.id, w]));
     const supplierById = new Map(suppliers.map((s) => [s.id, s]));
     const userById = new Map(users.map((u) => [u.id, u]));
     const serieById = new Map(series.map((s) => [s.id, s]));
+    const warehouseById = new Map(warehouses.map((w) => [w.id, w]));
+
+    const unitById = new Map(units.map((u) => [u.id, u]));
+    const productById = new Map(productsForUnits.map((p) => [p.id, p]));
+    const productUnitByProductId = new Map(productsForUnits.map((p) => [p.id, p.baseUnitId]));
 
     return {
       items: rows.map(
         (r) =>
           {
+            const productUnitName = r.stockItem?.product?.baseUnitId
+              ? unitById.get(r.stockItem.product.baseUnitId)?.name ?? null
+              : null;
+            const variantProduct = r.stockItem?.variant?.productId
+              ? productById.get(r.stockItem.variant.productId)
+              : undefined;
+            const variantUnitId = r.stockItem?.variant?.productId
+              ? productUnitByProductId.get(r.stockItem.variant.productId)
+              : undefined;
+            const variantUnitName = variantUnitId ? unitById.get(variantUnitId)?.name ?? null : null;
+
             const stockItem: LedgerStockItemSnapshot | undefined = r.stockItem
               ? {
                   id: r.stockItem.id,
                   type: r.stockItem.type,
                   productId: r.stockItem.productId ?? null,
                   variantId: r.stockItem.variantId ?? null,
-                  isActive: r.stockItem.isActive,
-                  createdAt: r.stockItem.createdAt,
                   product: r.stockItem.product
                     ? {
                         id: r.stockItem.product.id,
                         name: r.stockItem.product.name,
                         sku: r.stockItem.product.sku,
-                        barcode: r.stockItem.product.barcode,
-                        isActive: r.stockItem.product.isActive,
-                        createdAt: r.stockItem.product.createdAt,
+                        unidad: productUnitName,
                       }
                     : null,
                   variant: r.stockItem.variant
                     ? {
                         id: r.stockItem.variant.id,
                         productId: r.stockItem.variant.productId,
+                        name: variantProduct?.name ?? null,
                         sku: r.stockItem.variant.sku,
-                        barcode: r.stockItem.variant.barcode,
-                        isActive: r.stockItem.variant.isActive,
-                        createdAt: r.stockItem.variant.createdAt,
+                        unidad: variantUnitName,
                       }
                     : null,
                 }
@@ -297,16 +331,30 @@ private getRepo(tx?: TransactionContext) {
                   docType: r.document.docType,
                   status: r.document.status,
                   serieId: r.document.serieId,
+                  serie: r.document.serieId
+                    ? (() => {
+                        const s = serieById.get(r.document.serieId);
+                        return s ? { id: s.id, code: s.code } : null;
+                      })()
+                    : null,
                   correlative: r.document.correlative ?? 0,
                   fromWarehouseId: r.document.fromWarehouseId,
                   toWarehouseId: r.document.toWarehouseId,
+                  fromWarehouse: r.document.fromWarehouseId
+                    ? (() => {
+                        const w = warehouseById.get(r.document.fromWarehouseId);
+                        return w ? { id: w.id, name: w.name } : null;
+                      })()
+                    : null,
+                  toWarehouse: r.document.toWarehouseId
+                    ? (() => {
+                        const w = warehouseById.get(r.document.toWarehouseId);
+                        return w ? { id: w.id, name: w.name } : null;
+                      })()
+                    : null,
                   referenceId: r.document.referenceId,
                   referenceType: r.document.referenceType,
-                  note: r.document.note,
                   createdBy: r.document.createdBy,
-                  postedBy: r.document.postedBy,
-                  postedAt: r.document.postedAt,
-                  createdAt: r.document.createdAt,
                 }
               : undefined;
 
@@ -316,6 +364,7 @@ private getRepo(tx?: TransactionContext) {
                 const po = purchaseById.get(r.document.referenceId);
                 if (po) {
                   const supplierRef = supplierById.get(po.supplierId);
+                  const createdByUser = userById.get(po.createdBy);
                   referenceDoc = {
                     type: ReferenceType.PURCHASE,
                     purchase: {
@@ -325,18 +374,6 @@ private getRepo(tx?: TransactionContext) {
                       documentType: po.documentType ?? null,
                       serie: po.serie ?? null,
                       correlative: po.correlative ?? null,
-                      currency: po.currency ?? null,
-                      paymentForm: po.paymentForm ?? null,
-                      creditDays: po.creditDays,
-                      numQuotas: po.numQuotas,
-                      totalTaxed: Number(po.totalTaxed),
-                      totalExempted: Number(po.totalExempted),
-                      totalIgv: Number(po.totalIgv),
-                      purchaseValue: Number(po.purchaseValue),
-                      total: Number(po.total),
-                      note: po.note ?? null,
-                      status: po.status,
-                      isActive: po.isActive,
                       expectedAt: po.expectedAt ?? null,
                       dateIssue: po.dateIssue ?? null,
                       dateExpiration: po.dateExpiration ?? null,
@@ -358,6 +395,13 @@ private getRepo(tx?: TransactionContext) {
                           isActive: supplierRef.isActive,
                           createdAt: supplierRef.createdAt,
                           updatedAt: supplierRef.updatedAt,
+                        }
+                      : undefined,
+                    createdBy: createdByUser
+                      ? {
+                          id: createdByUser.id,
+                          name: createdByUser.name,
+                          email: createdByUser.email,
                         }
                       : undefined,
                   };
@@ -390,15 +434,6 @@ private getRepo(tx?: TransactionContext) {
                           id: userRef.id,
                           name: userRef.name,
                           email: userRef.email,
-                          avatarUrl: userRef.avatarUrl,
-                          telefono: userRef.telefono,
-                          deleted: userRef.deleted,
-                          createdAt: userRef.createdAt,
-                          updatedAt: userRef.updatedAt,
-                          failedLoginAttempts: userRef.failedLoginAttempts,
-                          lockoutLevel: userRef.lockoutLevel,
-                          lockedUntil: userRef.lockedUntil,
-                          securityDisabledAt: userRef.securityDisabledAt,
                         }
                       : undefined,
                   };

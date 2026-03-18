@@ -9,16 +9,24 @@ export interface LedgerEntryOutput {
     docType: string;
     status: string;
     serieId: string;
+    serie?: {
+      id: string;
+      code: string;
+    } | null;
     correlative: number;
     fromWarehouseId?: string;
     toWarehouseId?: string;
+    fromWarehouse?: {
+      id: string;
+      name: string;
+    } | null;
+    toWarehouse?: {
+      id: string;
+      name: string;
+    } | null;
     referenceId?: string;
     referenceType?: ReferenceType;
-    note?: string;
     createdBy?: string;
-    postedBy?: string;
-    postedAt?: Date;
-    createdAt?: Date;
   };
   referenceDoc?:
     | {
@@ -30,31 +38,9 @@ export interface LedgerEntryOutput {
           documentType?: string | null;
           serie?: string | null;
           correlative?: number | null;
-          currency?: string | null;
-          paymentForm?: string | null;
-          creditDays: number;
-          numQuotas: number;
-          totalTaxed: number;
-          totalExempted: number;
-          totalIgv: number;
-          purchaseValue: number;
-          total: number;
-          note?: string | null;
-          status: string;
-          isActive: boolean;
           expectedAt?: Date | null;
           dateIssue?: Date | null;
           dateExpiration?: Date | null;
-          createdAt: Date;
-        };
-        warehouse?: {
-          id: string;
-          name: string;
-          department: string;
-          province: string;
-          district: string;
-          address?: string | null;
-          isActive: boolean;
           createdAt: Date;
         };
         supplier?: {
@@ -72,6 +58,11 @@ export interface LedgerEntryOutput {
           isActive: boolean;
           createdAt: Date;
           updatedAt: Date;
+        };
+        createdBy?: {
+          id: string;
+          name: string;
+          email: string;
         };
       }
     | {
@@ -92,73 +83,29 @@ export interface LedgerEntryOutput {
           createdAt: Date;
           updatedAt: Date;
         };
-        fromWarehouse?: {
-          id: string;
-          name: string;
-          department: string;
-          province: string;
-          district: string;
-          address?: string | null;
-          isActive: boolean;
-          createdAt: Date;
-        };
-        toWarehouse?: {
-          id: string;
-          name: string;
-          department: string;
-          province: string;
-          district: string;
-          address?: string | null;
-          isActive: boolean;
-          createdAt: Date;
-        };
         createdBy?: {
           id: string;
           name: string;
           email: string;
-          avatarUrl?: string;
-          telefono?: string;
-          deleted: boolean;
-          createdAt: Date;
-          updatedAt: Date;
-          failedLoginAttempts: number;
-          lockoutLevel: number;
-          lockedUntil: Date | null;
-          securityDisabledAt: Date | null;
         };
       };
-  warehouse?: {
-    id: string;
-    name: string;
-    department: string;
-    province: string;
-    district: string;
-    address?: string | null;
-    isActive: boolean;
-    createdAt: Date;
-  };
   stockItem?: {
     id: string;
     type: string;
     productId?: string | null;
     variantId?: string | null;
-    isActive: boolean;
-    createdAt: Date;
     product?: {
       id: string;
       name: string;
       sku: string;
-      barcode: string | null;
-      isActive: boolean;
-      createdAt: Date;
+      unidad?: string;
     } | null;
     variant?: {
       id: string;
       productId: string;
+      name?: string;
       sku: string;
-      barcode: string | null;
-      isActive: boolean;
-      createdAt: Date;
+      unidad?: string;
     } | null;
   };
   locationId?: string;

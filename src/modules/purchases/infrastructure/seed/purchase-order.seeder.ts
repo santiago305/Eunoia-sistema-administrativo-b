@@ -15,6 +15,7 @@ import { AfectIgvType } from "src/modules/purchases/domain/value-objects/afect-i
 import { StockItemEntity } from "src/modules/inventory/adapters/out/typeorm/entities/stock-item/stock-item.entity";
 import { ProductVariantEntity } from "src/modules/catalog/adapters/out/persistence/typeorm/entities/product-variant.entity";
 import { StockItemType } from "src/modules/inventory/domain/value-objects/stock-item-type";
+import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
 
 const IGV_RATE = 0.18;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -49,11 +50,14 @@ export const seedPurchaseOrders = async (dataSource: DataSource, total: number =
   const paymentDocRepo = dataSource.getRepository(PaymentDocumentEntity);
   const creditQuotaRepo = dataSource.getRepository(CreditQuotaEntity);
   const stockItemRepo = dataSource.getRepository(StockItemEntity);
+  const userRepo = dataSource.getRepository(User);
 
   const suppliers = await supplierRepo.find();
   const warehouses = await warehouseRepo.find();
+  const users = await userRepo.find({ select: ["id"] });
   if (suppliers.length === 0) throw new Error("No hay proveedores. Ejecuta seedSuppliers primero.");
   if (warehouses.length === 0) throw new Error("No hay almacenes. Ejecuta seedWarehouses primero.");
+  if (users.length === 0) throw new Error("No hay usuarios. Ejecuta seedUsers primero.");
 
   await ensureStockItemsForVariants(dataSource);
   const stockItems = await stockItemRepo.find();
@@ -73,6 +77,7 @@ export const seedPurchaseOrders = async (dataSource: DataSource, total: number =
     const isCredit = i <= half;
     const supplier = suppliers[i % suppliers.length];
     const warehouse = warehouses[i % warehouses.length];
+    const createdBy = users[i % users.length].id;
 
     const dateIssue = new Date(Date.now() - (i % 10) * DAY_MS);
     const expectedAt = new Date(Date.now() + ((i % 10) + 1) * DAY_MS);
@@ -138,6 +143,7 @@ export const seedPurchaseOrders = async (dataSource: DataSource, total: number =
         expectedAt,
         dateIssue,
         dateExpiration,
+        createdBy,
       }),
     );
 

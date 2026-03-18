@@ -30,7 +30,7 @@ export class CreatePurchaseOrderUsecase {
     private readonly clock: ClockPort,
   ) {}
 
-  async execute(input: CreatePurchaseOrderInput): Promise<{ order: PurchaseOrder }> {
+  async execute(input: CreatePurchaseOrderInput, createdBy: string): Promise<{ order: PurchaseOrder }> {
     return this.uow.runInTransaction(async (tx) => {
       const currency = input.currency ?? "PEN";
       const expectedAt = input.expectedAt ? new Date(input.expectedAt) : undefined;
@@ -71,6 +71,7 @@ export class CreatePurchaseOrderUsecase {
         dateIssue,
         dateExpiration,
         undefined,
+        createdBy,
       );
 
       let po: PurchaseOrder;

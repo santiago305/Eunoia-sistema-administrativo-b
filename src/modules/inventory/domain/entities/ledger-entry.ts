@@ -17,16 +17,24 @@ export type LedgerDocumentSnapshot = {
   docType: string;
   status: string;
   serieId: string;
+  serie?: {
+    id: string;
+    code: string;
+  } | null;
   correlative: number;
   fromWarehouseId?: string;
   toWarehouseId?: string;
+  fromWarehouse?: {
+    id: string;
+    name: string;
+  } | null;
+  toWarehouse?: {
+    id: string;
+    name: string;
+  } | null;
   referenceId?: string;
   referenceType?: ReferenceType;
-  note?: string;
   createdBy?: string;
-  postedBy?: string;
-  postedAt?: Date;
-  createdAt?: Date;
 };
 
 export type LedgerWarehouseRefSnapshot = {
@@ -61,15 +69,6 @@ export type LedgerUserRefSnapshot = {
   id: string;
   name: string;
   email: string;
-  avatarUrl?: string;
-  telefono?: string;
-  deleted: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-  failedLoginAttempts: number;
-  lockoutLevel: number;
-  lockedUntil: Date | null;
-  securityDisabledAt: Date | null;
 };
 
 export type LedgerPurchaseRefSnapshot = {
@@ -79,18 +78,6 @@ export type LedgerPurchaseRefSnapshot = {
   documentType?: string | null;
   serie?: string | null;
   correlative?: number | null;
-  currency?: string | null;
-  paymentForm?: string | null;
-  creditDays: number;
-  numQuotas: number;
-  totalTaxed: number;
-  totalExempted: number;
-  totalIgv: number;
-  purchaseValue: number;
-  total: number;
-  note?: string | null;
-  status: string;
-  isActive: boolean;
   expectedAt?: Date | null;
   dateIssue?: Date | null;
   dateExpiration?: Date | null;
@@ -118,14 +105,12 @@ export type LedgerReferenceDocSnapshot =
   | {
       type: ReferenceType.PURCHASE;
       purchase: LedgerPurchaseRefSnapshot;
-      warehouse?: LedgerWarehouseRefSnapshot;
       supplier?: LedgerSupplierRefSnapshot;
+      createdBy?: LedgerUserRefSnapshot;
     }
   | {
       type: ReferenceType.PRODUCTION;
       production: LedgerProductionRefSnapshot;
-      fromWarehouse?: LedgerWarehouseRefSnapshot;
-      toWarehouse?: LedgerWarehouseRefSnapshot;
       createdBy?: LedgerUserRefSnapshot;
     };
 
@@ -133,18 +118,15 @@ export type LedgerProductSnapshot = {
   id: string;
   name: string;
   sku: string;
-  barcode: string | null;
-  isActive: boolean;
-  createdAt: Date;
+  unidad?: string;
 };
 
 export type LedgerVariantSnapshot = {
   id: string;
   productId: string;
+  name?: string;
   sku: string;
-  barcode: string | null;
-  isActive: boolean;
-  createdAt: Date;
+  unidad?: string;
 };
 
 export type LedgerStockItemSnapshot = {
@@ -152,8 +134,6 @@ export type LedgerStockItemSnapshot = {
   type: string;
   productId?: string | null;
   variantId?: string | null;
-  isActive: boolean;
-  createdAt: Date;
   product?: LedgerProductSnapshot | null;
   variant?: LedgerVariantSnapshot | null;
 };

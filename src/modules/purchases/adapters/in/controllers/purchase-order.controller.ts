@@ -14,6 +14,7 @@ import { HttpSetPurchaseOrderActiveDto } from "../dtos/purchase-order/http-purch
 import { RunExpectedAtUsecase } from "src/modules/purchases/application/usecases/purchase-order/run-expected-at.usecase";
 import { SetSentPurchaseOrderUsecase } from "src/modules/purchases/application/usecases/purchase-order/set-sent.usecase";
 import { CancelPurchaseOrderUsecase } from "src/modules/purchases/application/usecases/purchase-order/cancel.usecase";
+import { User as CurrentUser } from "src/shared/utilidades/decorators/user.decorator";
 
 @Controller("purchases/orders")
 @UseGuards(JwtAuthGuard)
@@ -32,9 +33,9 @@ export class PurchaseOrdersController {
   ) {}
 
   @Post()
-  async create(@Body() dto: HttpCreatePurchaseOrderDto) {
+  async create(@Body() dto: HttpCreatePurchaseOrderDto, @CurrentUser() user: { id: string }) {
     try {
-      const result = await this.createOrder.execute(dto);
+      const result = await this.createOrder.execute(dto, user.id);
         return {
           type: "success",
           message: "Orden de compra creada correctamente",

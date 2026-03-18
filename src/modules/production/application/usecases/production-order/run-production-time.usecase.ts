@@ -38,14 +38,10 @@ export class RunProductionTimeUsecase {
         throw new BadRequestException({ type: "error", message: "Aun no se cumple el tiempo de produccion" });
       }
 
-      const adminUser = await this.userRepo.findByEmail(new Email("admin@gmail.com"));
-      if (!adminUser) {
-        throw new NotFoundException({ type: "error", message: "Usuario admin@gmail.com no encontrado" });
-      }
       try {
         const data = {
           productionId: order.productionId,
-          postedBy: adminUser.id,
+          postedBy: order.createdBy,
         };
         await this.closeOrder.execute(data, ctx);
       } catch {

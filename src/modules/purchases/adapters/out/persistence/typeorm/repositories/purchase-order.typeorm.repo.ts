@@ -55,6 +55,7 @@ export class PurchaseOrderTypeormRepository implements PurchaseOrderRepository {
       row.dateIssue ?? undefined,
       row.dateExpiration ?? undefined,
       row.createdAt ?? undefined,
+      row.createdBy ?? undefined,
     );
   }
 
@@ -87,6 +88,7 @@ export class PurchaseOrderTypeormRepository implements PurchaseOrderRepository {
       expectedAt: purchase.expectedAt ?? null,
       dateIssue: purchase.dateIssue ?? null,
       dateExpiration: purchase.dateExpiration ?? null,
+      createdBy: purchase.createdBy ?? null,
       createdAt: purchase.createdAt ?? undefined,
     });
     const saved = await repo.save(row);
