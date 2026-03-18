@@ -5,6 +5,24 @@ export const LEDGER_REPOSITORY = Symbol('LEDGER_REPOSITORY');
 
 export interface LedgerRepository {
   append(entries: LedgerEntry[], tx?: TransactionContext): Promise<void>;
+  getBalances(
+    params: {
+      warehouseId?: string;
+      stockItemId?: string;
+      locationId?: string;
+      from?: Date;
+      to?: Date;
+      docId?: string;
+    },
+    tx?: TransactionContext,
+  ): Promise<{
+    entradaRango: number;
+    salidaRango: number;
+    balanceRango: number;
+    balanceInicial: number;
+    balanceFinal: number;
+    balanceTotal: number;
+  }>;
   list(
     params: {
       warehouseId?: string;

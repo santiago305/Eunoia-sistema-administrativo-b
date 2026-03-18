@@ -59,6 +59,94 @@ private getRepo(tx?: TransactionContext) {
     return { from, to };
   }
 
+  private applyFilters(
+    qb: ReturnType<Repository<InventoryLedgerEntity>["createQueryBuilder"]>,
+    params: {
+      warehouseId?: string;
+      stockItemId?: string;
+      locationId?: string;
+      docId?: string;
+    },
+  ) {
+    if (params.warehouseId) qb.andWhere('l.warehouseId = :warehouseId', { warehouseId: params.warehouseId });
+    if (params.stockItemId) qb.andWhere('l.stockItemId = :stockItemId', { stockItemId: params.stockItemId });
+    if (params.docId) qb.andWhere('l.docId = :docId', { docId: params.docId });
+    if (params.locationId !== undefined) qb.andWhere('l.locationId = :locationId', { locationId: params.locationId });
+  }
+
+  async getBalances(
+    params: {
+      warehouseId?: string;
+      stockItemId?: string;
+      locationId?: string;
+      from?: Date;
+      to?: Date;
+      docId?: string;
+    },
+    tx?: TransactionContext,
+  ): Promise<{
+    entradaRango: number;
+    salidaRango: number;
+    balanceRango: number;
+    balanceInicial: number;
+    balanceFinal: number;
+    balanceTotal: number;
+  }> {
+    const repo = this.getRepo(tx);
+    const { from, to } = this.normalizeRange(params);
+
+    const sumRange = async (fromDate?: Date, toDate?: Date) => {
+      const qb = repo.createQueryBuilder('l');
+      qb
+        .select(
+          "COALESCE(SUM(l.quantity) FILTER (WHERE l.direction = :dirIn), 0)",
+          "inQty",
+        )
+        .addSelect(
+          "COALESCE(SUM(l.quantity) FILTER (WHERE l.direction = :dirOut), 0)",
+          "outQty",
+        );
+      qb.setParameters({ dirIn: "IN", dirOut: "OUT" });
+      this.applyFilters(qb, params);
+      if (fromDate && toDate) {
+        qb.andWhere('l.createdAt BETWEEN :from AND :to', { from: fromDate, to: toDate });
+      } else if (fromDate) {
+        qb.andWhere('l.createdAt >= :from', { from: fromDate });
+      } else if (toDate) {
+        qb.andWhere('l.createdAt <= :to', { to: toDate });
+      }
+      const raw = await qb.getRawOne<{ inQty: string | number; outQty: string | number }>();
+      const inQty = Number(raw?.inQty ?? 0);
+      const outQty = Number(raw?.outQty ?? 0);
+      return { inQty, outQty };
+    };
+
+    const range = await sumRange(from, to);
+    const entradaRango = range.inQty;
+    const salidaRango = range.outQty;
+    const balanceRango = entradaRango - salidaRango;
+
+    let balanceInicial = 0;
+    if (from) {
+      const beforeFrom = new Date(from.getTime() - 1);
+      const initial = await sumRange(undefined, beforeFrom);
+      balanceInicial = initial.inQty - initial.outQty;
+    }
+
+    const totalUpTo = await sumRange(undefined, to);
+    const balanceTotal = totalUpTo.inQty - totalUpTo.outQty;
+    const balanceFinal = balanceInicial + balanceRango;
+
+    return {
+      entradaRango,
+      salidaRango,
+      balanceRango,
+      balanceInicial,
+      balanceFinal,
+      balanceTotal,
+    };
+  }
+
   async list(
     params: {
       warehouseId?: string;
@@ -101,7 +189,7 @@ private getRepo(tx?: TransactionContext) {
 
     const [rows, total] = await repo.findAndCount({
       where,
-      order: { id: 'DESC' },
+      order: { createdAt: 'ASC' },
       skip,
       take: limit,
       relations: { warehouse: true, stockItem: { product: true, variant: true }, document: true },
@@ -384,4 +472,3 @@ private getRepo(tx?: TransactionContext) {
   }
   
 }
-

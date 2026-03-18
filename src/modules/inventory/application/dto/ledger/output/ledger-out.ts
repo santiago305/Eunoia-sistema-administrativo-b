@@ -166,4 +166,5 @@ export interface LedgerEntryOutput {
   quantity: number;
   unitCost?: number | null;
   createdAt?: Date;
+  balance?: number;
 }
