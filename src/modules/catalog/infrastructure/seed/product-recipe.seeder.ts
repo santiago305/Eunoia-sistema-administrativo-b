@@ -60,17 +60,23 @@ export const seedProductRecipes = async (
   }
 
   for (const finished of finishedVariants) {
-    const existingCount = await recipeRepo.count({
+    const existingRecipes = await recipeRepo.find({
+      select: ["primaVariantId"],
       where: { finishedVariantId: finished.id },
     });
-    if (existingCount > 0) {
+    const existingCount = existingRecipes.length;
+    if (existingCount >= minPerFinished) {
       continue;
     }
 
-    const total = randomBetween(minPerFinished, maxPerFinished);
-    const used = new Set<string>();
+    const total = Math.max(
+      minPerFinished,
+      randomBetween(minPerFinished, maxPerFinished),
+    );
+    const toCreate = Math.max(0, total - existingCount);
+    const used = new Set<string>(existingRecipes.map((r) => r.primaVariantId));
 
-    for (let i = 0; i < total; i++) {
+    for (let i = 0; i < toCreate; i++) {
       let raw = pickRandom(rawVariants);
       let guard = 0;
       while (used.has(raw.id) && guard < 10) {

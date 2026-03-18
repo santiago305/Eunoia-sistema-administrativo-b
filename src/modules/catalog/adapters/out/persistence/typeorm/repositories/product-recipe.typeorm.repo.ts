@@ -55,16 +55,9 @@ export class ProductRecipeTypeormRepository implements ProductRecipeRepository {
   }
 
   async listByItemId(itemId: string, tx?: TransactionContext): Promise<ProductRecipe[]> {
-    const rows = await this.getRepo(tx)
-      .createQueryBuilder('recipe')
-      .leftJoin(
-        'product_variants',
-        'variant',
-        'variant.variant_id = recipe.finished_variant_id',
-      )
-      .where('recipe.finished_variant_id = :itemId', { itemId })
-      .orWhere('variant.product_id = :itemId', { itemId })
-      .getMany();
+    const rows = await this.getRepo(tx).find({
+      where: { finishedVariantId: itemId },
+    });
     return rows.map((row) => this.toDomain(row));
   }
 
