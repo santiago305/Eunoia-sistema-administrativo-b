@@ -8,16 +8,13 @@ import { StartProductionOrder } from "src/modules/production/application/usecase
 import { CloseProductionOrder } from "src/modules/production/application/usecases/production-order/close.usecase";
 import { CancelProductionOrder } from "src/modules/production/application/usecases/production-order/cancel.usecase";
 import { AddProductionOrderItem } from "src/modules/production/application/usecases/production-order/add-item.usecase";
-import { UpdateProductionOrderItem } from "src/modules/production/application/usecases/production-order/update-production-order-item.usecase";
 import { RemoveProductionOrderItem } from "src/modules/production/application/usecases/production-order/remove-production-order-item.usecase";
 import { HttpCreateProductionOrderDto } from "../dtos/production-order/http-production-order-create.dto";
 import { HttpUpdateProductionOrderDto } from "../dtos/production-order/http-production-order-update.dto";
 import { HttpListProductionOrdersQueryDto } from "../dtos/production-order/http-production-order-list.dto";
 import { HttpAddProductionOrderItemDto } from "../dtos/production-order/http-production-order-item-create.dto";
-import { HttpUpdateProductionOrderItemDto } from "../dtos/production-order/http-production-order-item-update.dto";
 import { ParseDateLocal } from "src/shared/utilidades/utils/ParseDates";
 import { User as CurrentUser } from 'src/shared/utilidades/decorators/user.decorator';
-import { errorResponse } from "src/shared/response-standard/response";
 
 @Controller("production-orders")
 @UseGuards(JwtAuthGuard)
@@ -31,7 +28,6 @@ export class ProductionOrdersController {
     private readonly closeOrder: CloseProductionOrder,
     private readonly cancelOrder: CancelProductionOrder,
     private readonly addItem: AddProductionOrderItem,
-    private readonly updateItem: UpdateProductionOrderItem,
     private readonly removeItem: RemoveProductionOrderItem,
   ) {}
 
@@ -82,15 +78,6 @@ export class ProductionOrdersController {
   @Post(":id/items")
   addOrderItem(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpAddProductionOrderItemDto) {
     return this.addItem.execute({ productionId: id, ...dto });
-  }
-
-  @Patch(":id/items/:itemId")
-  updateOrderItem(
-    @Param("id", ParseUUIDPipe) id: string,
-    @Param("itemId", ParseUUIDPipe) itemId: string,
-    @Body() dto: HttpUpdateProductionOrderItemDto,
-  ) {
-    return this.updateItem.execute({ productionId: id, itemId, ...dto });
   }
 
   @Delete(":id/items/:itemId")

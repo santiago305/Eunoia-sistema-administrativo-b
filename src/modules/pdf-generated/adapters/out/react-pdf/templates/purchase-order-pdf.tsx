@@ -3,7 +3,7 @@ import { Document, Page, Text, View, StyleSheet, Image, DocumentProps } from "@r
 import { PurchaseOrderPdfData } from "src/modules/pdf-generated/domain/ports/pdf-renderer.port";
 
 const MM_TO_PT = 72 / 25.4;
-const TICKET_WIDTH = 80 * MM_TO_PT;
+const TICKET_WIDTH = 73 * MM_TO_PT;
 const TICKET_HEIGHT = 200 * MM_TO_PT;
 
 const styles = StyleSheet.create({

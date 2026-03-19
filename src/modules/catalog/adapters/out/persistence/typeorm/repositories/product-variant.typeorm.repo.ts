@@ -187,6 +187,50 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
     return this.toDomain(row);
   }
 
+  async findByIdWithProductInfo(
+    id: string,
+    tx?: TransactionContext,
+  ): Promise<ProductVariantWithProductInfo | null> {
+    const repo = this.getRepo(tx);
+    const qb = repo
+      .createQueryBuilder('v')
+      .innerJoin(ProductEntity, 'p', 'p.product_id = v.product_id')
+      .innerJoin(UnitEntity, 'u', 'u.unit_id = p.base_unit_id')
+      .where('v.id = :id', { id });
+
+    const { entities, raw } = await qb
+      .select([
+        'v.id',
+        'v.productId',
+        'v.sku',
+        'v.barcode',
+        'v.attributes',
+        'v.price',
+        'v.cost',
+        'v.isActive',
+        'v.createdAt',
+        'p.name',
+        'p.description',
+        'p.baseUnitId',
+        'u.code',
+        'u.name',
+      ])
+      .getRawAndEntities();
+
+    const row = entities[0];
+    if (!row) return null;
+
+    const r = raw[0];
+    return {
+      variant: this.toDomain(row),
+      productName: r.p_name,
+      productDescription: r.p_description,
+      baseUnitId: r.p_baseUnitId ?? r.p_base_unit_id,
+      unitCode: r.u_code,
+      unitName: r.u_name,
+    };
+  }
+
   async findBySku(sku: string, tx?: TransactionContext): Promise<ProductVariant | null> {
     const row = await this.getRepo(tx).findOne({ where: { sku } });
     if (!row) return null;

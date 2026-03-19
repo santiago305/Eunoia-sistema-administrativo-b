@@ -14,6 +14,7 @@ import { Money } from 'src/modules/catalog/domain/value-object/money.vo';
 import { ProductType } from 'src/modules/catalog/domain/value-object/productType';
 import { AttributesRecord } from 'src/modules/catalog/domain/value-object/variant-attributes.vo';
 import { RowMaterial } from 'src/modules/catalog/domain/read-models/row-materials';
+import { ProductWithUnitInfo } from 'src/modules/catalog/domain/read-models/product-with-unit-info.rm';
 
 @Injectable()
 export class ProductTypeormRepository implements ProductRepository {
@@ -59,6 +60,60 @@ export class ProductTypeormRepository implements ProductRepository {
     const row = await repo.findOne({ where: { id: id.value } });
     if (!row) return null;
     return this.toDomain(row);
+  }
+
+  async findByIdWithUnitInfo(id: ProductId, tx?: TransactionContext): Promise<ProductWithUnitInfo | null> {
+    const repo = this.getRepo(tx);
+    const qb = repo
+      .createQueryBuilder('p')
+      .leftJoin(UnitEntity, 'u', 'u.unit_id = p.base_unit_id')
+      .where('p.id = :id', { id: id.value });
+
+    const { entities, raw } = await qb
+      .select([
+        'p.id',
+        'p.baseUnitId',
+        'p.name',
+        'p.description',
+        'p.sku',
+        'p.barcode',
+        'p.price',
+        'p.cost',
+        'p.attributes',
+        'p.isActive',
+        'p.type',
+        'p.createdAt',
+        'p.updatedAt',
+        'u.code',
+        'u.name',
+      ])
+      .getRawAndEntities();
+
+    const row = entities[0];
+    if (!row) return null;
+
+    const r = raw[0];
+    const product = new Product(
+      ProductId.create(row.id),
+      row.baseUnitId,
+      row.name,
+      row.description,
+      row.sku,
+      row.barcode,
+      Money.create(Number(row.price)),
+      Money.create(Number(row.cost ?? 0)),
+      row.attributes,
+      row.isActive,
+      row.type,
+      row.createdAt,
+      row.updatedAt,
+    );
+
+    return {
+      product,
+      baseUnitName: r.u_name,
+      baseUnitCode: r.u_code,
+    };
   }
 
   async findByName(name: string, tx?: TransactionContext): Promise<Product | null> {

@@ -1,7 +1,7 @@
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { ProductionOrder } from "../entity/production-order.entity";
 import { ProductionOrderItem } from "../entity/production-order-item";
-import { ProductionOrderListItemRM } from "../read-models/production-order-list-item.rm";
+import { ProductionOrderListItemRM, ProductionOrderListSerieRM } from "../read-models/production-order-list-item.rm";
 import { ProductionStatus } from "../value-objects/production-status";
 
 export const PRODUCTION_ORDER_REPOSITORY = Symbol('PRODUCTION_ORDER_REPOSITORY');
@@ -54,10 +54,11 @@ export interface ProductionOrderRepository {
   findItemById(productionId: string, itemId: string, tx?: TransactionContext): Promise<ProductionOrderItem | null>;
 
   listItems(productionId: string, tx?: TransactionContext): Promise<ProductionOrderItem[]>;
+  removeItems(productionId: string, tx?: TransactionContext): Promise<number>;
   getByIdWithItems(
     productionId: string,
     tx?: TransactionContext,
-  ): Promise<{ order: ProductionOrder; items: ProductionOrderItem[] } | null>;
+  ): Promise<{ order: ProductionOrder; items: ProductionOrderItem[]; serie?: ProductionOrderListSerieRM | null } | null>;
   addItem(item: ProductionOrderItem, tx?: TransactionContext): Promise<ProductionOrderItem>;
   updateItem(
     params: {

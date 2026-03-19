@@ -329,14 +329,36 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
     );
   }
 
+  async removeItems(productionId: string, tx?: TransactionContext): Promise<number> {
+    const repo = this.getItemRepo(tx);
+    const result = await repo.delete({ productionId });
+    return result.affected ?? 0;
+  }
+
   async getByIdWithItems(
     productionId: string,
     tx?: TransactionContext,
-  ): Promise<{ order: ProductionOrder; items: ProductionOrderItem[] } | null> {
+  ): Promise<{ order: ProductionOrder; items: ProductionOrderItem[]; serie?: ProductionOrderListSerieRM | null } | null> {
     const order = await this.findById(productionId, tx);
     if (!order) return null;
     const items = await this.listItems(productionId, tx);
-    return { order, items };
+    const serieRepo = this.getManager(tx).getRepository(DocumentSerie);
+    const serieRow = await serieRepo.findOne({ where: { id: order.serieId } });
+    const serie: ProductionOrderListSerieRM | null = serieRow
+      ? {
+          id: serieRow.id,
+          code: serieRow.code,
+          name: serieRow.name,
+          docType: serieRow.docType,
+          warehouseId: serieRow.warehouseId,
+          nextNumber: serieRow.nextNumber,
+          padding: serieRow.padding,
+          separator: serieRow.separator,
+          isActive: serieRow.isActive,
+          createdAt: serieRow.createdAt,
+        }
+      : null;
+    return { order, items, serie };
   }
 
   async addItem(item: ProductionOrderItem, tx?: TransactionContext): Promise<ProductionOrderItem> {

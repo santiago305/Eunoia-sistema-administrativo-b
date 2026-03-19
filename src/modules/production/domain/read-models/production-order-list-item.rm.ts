@@ -1,4 +1,4 @@
-import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
+﻿import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
 import { ProductionOrder } from "../entity/production-order.entity";
 
 export interface ProductionOrderListWarehouseRM {

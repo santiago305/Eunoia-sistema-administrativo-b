@@ -1,3 +1,5 @@
+import { AddProductionOrderItemInput } from "./add-production-order-item";
+
 export interface UpdateProductionOrderInput {
   productionId: string;
   fromWarehouseId?: string;
@@ -6,4 +8,5 @@ export interface UpdateProductionOrderInput {
   correlative?: number;
   reference?: string;
   manufactureDate?: Date;
+  items: AddProductionOrderItemInput[]
 }
