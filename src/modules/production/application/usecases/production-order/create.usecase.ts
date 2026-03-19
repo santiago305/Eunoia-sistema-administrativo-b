@@ -62,20 +62,24 @@ export class CreateProductionOrder {
       } catch {
         throw new InternalServerErrorException(errorResponse('Error al crear orden de compra'));
       }
-
-      for (const item of input.items ?? []) {
-        await this.ItemProduction.execute(
-          {
-            productionId: created.productionId,
-            finishedItemId: item.finishedItemId,
-            fromLocationId: item.fromLocationId,
-            toLocationId: item.toLocationId,
-            quantity: item.quantity,
-            unitCost: item.unitCost,
-            type: item.type
-          },
-          tx,
-        );
+      
+      try {
+        for (const item of input.items ?? []) {
+          await this.ItemProduction.execute(
+            {
+              productionId: created.productionId,
+              finishedItemId: item.finishedItemId,
+              fromLocationId: item.fromLocationId,
+              toLocationId: item.toLocationId,
+              quantity: item.quantity,
+              unitCost: item.unitCost,
+              type: item.type
+            },
+            tx,
+          );
+        }
+      } catch {
+        throw new InternalServerErrorException(errorResponse('Error al ingresar items'));
       }
 
       return {

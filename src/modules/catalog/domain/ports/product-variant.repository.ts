@@ -29,6 +29,7 @@ export interface ProductVariantRepository {
   setActive(id: string, isActive: boolean, tx?: TransactionContext): Promise<void>;
 
   findById(id: string, tx?: TransactionContext): Promise<ProductVariant | null>;
+  findByIdWithProductInfo(id: string, tx?: TransactionContext): Promise<ProductVariantWithProductInfo | null>;
   findBySku(sku: string, tx?: TransactionContext): Promise<ProductVariant | null>;
   findByBarcode(barcode: string, tx?: TransactionContext): Promise<ProductVariant | null>;
 
