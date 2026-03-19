@@ -5,6 +5,7 @@ import { AfectIgvType } from "src/modules/purchases/domain/value-objects/afect-i
 
 export interface PurchaseOrderStockItemOutput {
   type: StockItemType;
+  stockItemId: string;
   product?: ProductOutput | null;
   variant?: ProductVariantOutput | null;
 }

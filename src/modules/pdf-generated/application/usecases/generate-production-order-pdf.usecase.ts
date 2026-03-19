@@ -1,0 +1,182 @@
+import { BadRequestException, Inject } from "@nestjs/common";
+import { join } from "path";
+import { pathToFileURL } from "url";
+import sharp from "sharp";
+import { COMPANY_REPOSITORY, CompanyRepository } from "src/modules/companies/domain/ports/company.repository";
+import { PDF_RENDERER, PdfRendererPort } from "src/modules/pdf-generated/domain/ports/pdf-renderer.port";
+import { GenerateProductionOrderPdfInput } from "../dtos/production-order/input/generate-production-order.input";
+import { ProductionOrderPdfData } from "../../domain/interfaces/production-data";
+import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/domain/ports/production-order.repository";
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/domain/ports/stock-item/stock-item.repository.port";
+import { StockItemType } from "src/modules/inventory/domain/value-objects/stock-item-type";
+import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/domain/ports/product.repository";
+import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/modules/catalog/domain/ports/product-variant.repository";
+import { ProductId } from "src/modules/catalog/domain/value-object/product-id.vo";
+import { ProductWithUnitInfo } from "src/modules/catalog/domain/read-models/product-with-unit-info.rm";
+import { ProductVariantWithProductInfo } from "src/modules/catalog/domain/read-models/product-variant-with-product-info.rm";
+import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "src/modules/warehouses/domain/ports/warehouse.repository.port";
+import { WarehouseId } from "src/modules/warehouses/domain/value-objects/warehouse-id.vo";
+
+const resolveLogoUrl = async (logoPath?: string) => {
+  if (!logoPath) return undefined;
+  if (/^(https?:|data:|file:)/i.test(logoPath)) return logoPath;
+
+  const normalized = logoPath.replace(/\\/g, "/");
+  let relative = normalized;
+
+  if (normalized.startsWith("/api/assets/")) {
+    relative = normalized.replace(/^\/api\/assets\//, "");
+  } else if (normalized.startsWith("/assets/")) {
+    relative = normalized.replace(/^\/assets\//, "");
+  } else {
+    relative = normalized.replace(/^\/+/, "");
+  }
+
+  const absolutePath = join(process.cwd(), "assets", relative);
+
+  if (/\.webp$/i.test(absolutePath)) {
+    try {
+      const pngBuffer = await sharp(absolutePath).png().toBuffer();
+      return `data:image/png;base64,${pngBuffer.toString("base64")}`;
+    } catch {
+      return pathToFileURL(absolutePath).toString();
+    }
+  }
+
+  return pathToFileURL(absolutePath).toString();
+};
+
+const formatUnitLabel = (code?: string | null, name?: string | null) => {
+  const label = [code, name].filter(Boolean).join(" - ");
+  return label || "N/A";
+};
+
+const formatNameWithSku = (name: string, sku?: string | null) => (sku ? `${name} (${sku})` : name);
+
+export class GenerateProductionOrderPdfUseCase {
+  constructor(
+    @Inject(PRODUCTION_ORDER_REPOSITORY)
+    private readonly productionRepo: ProductionOrderRepository,
+    @Inject(STOCK_ITEM_REPOSITORY)
+    private readonly stockItemRepo: StockItemRepository,
+    @Inject(PRODUCT_REPOSITORY)
+    private readonly productRepo: ProductRepository,
+    @Inject(PRODUCT_VARIANT_REPOSITORY)
+    private readonly variantRepo: ProductVariantRepository,
+    @Inject(WAREHOUSE_REPOSITORY)
+    private readonly warehouseRepo: WarehouseRepository,
+    @Inject(COMPANY_REPOSITORY)
+    private readonly companyRepo: CompanyRepository,
+    @Inject(PDF_RENDERER)
+    private readonly pdfRenderer: PdfRendererPort,
+  ) {}
+
+  async execute(input: GenerateProductionOrderPdfInput): Promise<Buffer> {
+    const result = await this.productionRepo.getByIdWithItems(input.productionId);
+    if (!result) {
+      throw new BadRequestException({ type: "error", message: "Orden de produccion no encontrada" });
+    }
+
+    const { order, items, serie } = result;
+
+    const [company, fromWarehouse, toWarehouse] = await Promise.all([
+      this.companyRepo.findSingle(),
+      order.fromWarehouseId ? this.warehouseRepo.findById(new WarehouseId(order.fromWarehouseId)) : null,
+      order.toWarehouseId ? this.warehouseRepo.findById(new WarehouseId(order.toWarehouseId)) : null,
+    ]);
+
+    const productInfoCache = new Map<string, ProductWithUnitInfo | null>();
+    const variantInfoCache = new Map<string, ProductVariantWithProductInfo | null>();
+
+    const getProductInfo = async (id: string) => {
+      if (productInfoCache.has(id)) return productInfoCache.get(id);
+      const row = await this.productRepo.findByIdWithUnitInfo(ProductId.create(id));
+      productInfoCache.set(id, row);
+      return row;
+    };
+
+    const getVariantInfo = async (id: string) => {
+      if (variantInfoCache.has(id)) return variantInfoCache.get(id);
+      const row = await this.variantRepo.findByIdWithProductInfo(id);
+      variantInfoCache.set(id, row);
+      return row;
+    };
+
+    const mappedItems = await Promise.all(
+      items.map(async (item) => {
+        const stockItem = await this.stockItemRepo.findByProductIdOrVariantId(item.finishedItemId);
+        let description = item.finishedItemId;
+        let unit = "N/A";
+
+        if (stockItem?.type === StockItemType.PRODUCT && stockItem.productId) {
+          const info = await getProductInfo(stockItem.productId);
+          if (info?.product) {
+            description = formatNameWithSku(info.product.getName(), info.product.getSku());
+            unit = formatUnitLabel(info.baseUnitCode, info.baseUnitName);
+          }
+        }
+
+        if (stockItem?.type === StockItemType.VARIANT && stockItem.variantId) {
+          const info = await getVariantInfo(stockItem.variantId);
+          if (info?.variant) {
+            const baseName = info.productName || description;
+            description = formatNameWithSku(baseName, info.variant.getSku());
+            unit = formatUnitLabel(info.unitCode, info.unitName);
+          }
+        }
+
+        const rawUnitCost = Number(item.unitCost ?? 0);
+        const unitCost = Number.isFinite(rawUnitCost) ? rawUnitCost : 0;
+        const total = unitCost * item.quantity;
+
+        return {
+          description,
+          unit,
+          quantity: item.quantity,
+          unitCost,
+          total,
+        };
+      }),
+    );
+
+    const totalCost = mappedItems.reduce((sum, row) => sum + row.total, 0);
+
+    const companyAddress = company?.address || [
+      company?.department,
+      company?.province,
+      company?.district,
+    ].filter(Boolean).join(" - ");
+
+    const numberRaw = order.correlative !== undefined ? String(order.correlative) : undefined;
+    const paddedNumber =
+      numberRaw && serie?.padding ? numberRaw.padStart(serie.padding, "0") : numberRaw;
+
+    const data: ProductionOrderPdfData = {
+      company: {
+        name: company?.name ?? "N/A",
+        ruc: company?.ruc ?? undefined,
+        address: companyAddress || undefined,
+        logoUrl: await resolveLogoUrl(company?.logoPath ?? undefined),
+      },
+      order: {
+        documentType: "ORDEN DE PRODUCCION",
+        serie: serie?.code ?? undefined,
+        number: paddedNumber ?? undefined,
+        issuedAt: order.createdAt ?? undefined,
+        manufactureDate: order.manufactureDate ?? undefined,
+        status: order.status ?? undefined,
+        reference: order.referense ?? undefined,
+        fromWarehouse: fromWarehouse?.name ?? undefined,
+        toWarehouse: toWarehouse?.name ?? undefined,
+      },
+      items: mappedItems,
+      totals: {
+        totalCost,
+      },
+    };
+
+    return this.pdfRenderer.renderProductionOrder(data);
+  }
+}
+
+

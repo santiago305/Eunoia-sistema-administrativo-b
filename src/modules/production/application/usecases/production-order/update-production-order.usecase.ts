@@ -15,7 +15,9 @@ export class UpdateProductionOrder {
     private readonly ItemProduction: AddProductionOrderItem
   ) {}
 
-  async execute(input: UpdateProductionOrderInput, userId:string): Promise<{type:string,message:string}> {
+  async execute(input: UpdateProductionOrderInput, userId:string): Promise<{type:string,message:string
+    productionId?:string
+  }> {
     return this.uow.runInTransaction(async (tx) => {
       const current = await this.orderRepo.findById(input.productionId, tx);
       if (!current) {
@@ -75,7 +77,8 @@ export class UpdateProductionOrder {
 
       return {
         type:'success',
-        message: '¡Documento actualizado con exito!'
+        message: '¡Documento actualizado con exito!',
+        productionId:input.productionId
       };
     });
   }
