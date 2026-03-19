@@ -4,13 +4,15 @@ import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard
 import { GenerateInvoicePdfUseCase } from "src/modules/pdf-generated/application/usecases/generate-invoice-pdf.usecase";
 import { HttpGenerateInvoiceDto } from "../dtos/http-generate-invoice.dto";
 import { GeneratePurchaseOrderPdfUseCase } from "src/modules/pdf-generated/application/usecases/generate-purchase-order-pdf.usecase";
+import { GenerateProductionOrderPdfUseCase } from "src/modules/pdf-generated/application/usecases/generate-production-order-pdf.usecase";
 
 @Controller("pdf-generated")
 @UseGuards(JwtAuthGuard)
 export class PdfGeneratedController {
   constructor(
     private readonly generateInvoicePdf: GenerateInvoicePdfUseCase,
-    private readonly generatePurchasePdf: GeneratePurchaseOrderPdfUseCase
+    private readonly generatePurchasePdf: GeneratePurchaseOrderPdfUseCase,
+    private readonly generateProductionPdf: GenerateProductionOrderPdfUseCase
   ) {}
 
   @Post("invoice")
@@ -28,4 +30,13 @@ export class PdfGeneratedController {
     res.setHeader("Content-Disposition", "inline; filename=purchase-order.pdf");
     return res.status(200).send(buffer);
   }
+
+  @Get("production/:id/pdf")
+  async getProductionPdf(@Param("id", ParseUUIDPipe) id: string, @Res() res: Response) {
+    const buffer = await this.generateProductionPdf.execute({ productionId: id });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", "inline; filename=production-order.pdf");
+    return res.status(200).send(buffer);
+  }
 }
+

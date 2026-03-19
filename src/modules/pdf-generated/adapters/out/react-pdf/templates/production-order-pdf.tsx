@@ -1,6 +1,6 @@
 import React from "react";
 import { Document, Page, Text, View, StyleSheet, Image, DocumentProps } from "@react-pdf/renderer";
-import { PurchaseOrderPdfData } from "src/modules/pdf-generated/domain/ports/pdf-renderer.port";
+import { ProductionOrderPdfData } from "src/modules/pdf-generated/domain/ports/pdf-renderer.port";
 
 const MM_TO_PT = 72 / 25.4;
 const TICKET_WIDTH = 73 * MM_TO_PT;
@@ -36,7 +36,7 @@ const styles = StyleSheet.create({
   companyName: {
     fontWeight: 700,
     textTransform: "uppercase",
-    fontSize:25
+    fontSize: 25,
   },
   logo: {
     width: 120,
@@ -88,6 +88,9 @@ const styles = StyleSheet.create({
   metaRight: {
     textAlign: "right",
   },
+  metaLeft: {
+    textAlign: "left",
+  },
   totals: {
     alignSelf: "stretch",
     width: "100%",
@@ -122,9 +125,12 @@ const formatDate = (date?: Date) => {
   return `${day}/${month}/${year}`;
 };
 
-const formatCurrency = (value: number) => value.toFixed(2);
+const formatCurrency = (value: number | string | null | undefined) => {
+  const num = Number(value ?? 0);
+  return Number.isFinite(num) ? num.toFixed(2) : "0.00";
+};
 
-export const PurchaseOrderPdf = ({ data }: { data: PurchaseOrderPdfData }): React.ReactElement<DocumentProps> => (
+export const ProductionOrderPdf = ({ data }: { data: ProductionOrderPdfData }): React.ReactElement<DocumentProps> => (
   <Document>
     <Page size={{ width: TICKET_WIDTH, height: TICKET_HEIGHT }} style={styles.page}>
       <View style={styles.headerRow}>
@@ -144,47 +150,43 @@ export const PurchaseOrderPdf = ({ data }: { data: PurchaseOrderPdfData }): Reac
 
       <View style={styles.infoBlock}>
         <Text>
-          <Text style={styles.label}>PROVEEDOR:</Text> {data.supplier.name}
-        </Text>
-        <Text>
-          <Text style={styles.label}>{data.supplier.documentType}:</Text> {data.supplier.document}
-        </Text>
-        {data.supplier.address ? (
-          <Text>
-            <Text style={styles.label}>DIRECCION:</Text> {data.supplier.address}
-          </Text>
-        ) : null}
-        <Text>
           <Text style={styles.label}>FECHA DE EMISION:</Text> {formatDate(data.order.issuedAt)}
         </Text>
-        {data.order.creditDays ? (
+        {data.order.manufactureDate ? (
           <Text>
-            <Text style={styles.label}>CREDITO:</Text> {data.order.creditDays} DIAS
+            <Text style={styles.label}>FECHA PRODUCCION:</Text> {formatDate(data.order.manufactureDate)}
           </Text>
         ) : null}
-        {data.order.paymentForm ? (
+        {data.order.fromWarehouse ? (
           <Text>
-            <Text style={styles.label}>FORMA DE PAGO:</Text> {data.order.paymentForm}
+            <Text style={styles.label}>ALMACEN ORIGEN:</Text> {data.order.fromWarehouse}
           </Text>
         ) : null}
-        <Text>
-          <Text style={styles.label}>MONEDA:</Text> {data.order.currency ?? ""}
-        </Text>
+        {data.order.toWarehouse ? (
+          <Text>
+            <Text style={styles.label}>ALMACEN DESTINO:</Text> {data.order.toWarehouse}
+          </Text>
+        ) : null}
+        {data.order.reference ? (
+          <Text>
+            <Text style={styles.label}>REFERENCIA:</Text> {data.order.reference}
+          </Text>
+        ) : null}
       </View>
 
       <View style={styles.tableHeader}>
         <Text style={[styles.headerCell, styles.headerUnit]}>UND</Text>
         <Text style={[styles.headerCell, styles.headerRight]}>CANT</Text>
-        <Text style={[styles.headerCell, styles.headerRight]}>P.U</Text>
+        <Text style={[styles.headerCell, styles.headerRight]}>COSTO</Text>
         <Text style={[styles.headerCell, styles.headerRight]}>TOTAL</Text>
       </View>
 
       {data.items.map((item, idx) => (
         <View key={idx} style={styles.itemBlock}>
           <View style={styles.itemMetaRow}>
-            <Text style={[styles.metaCell, styles.metaUnit]}>{item.unit}</Text>
+            <Text style={[styles.metaCell, styles.metaLeft]}>{item.unit}</Text>
             <Text style={[styles.metaCell, styles.metaRight]}>{item.quantity}</Text>
-            <Text style={[styles.metaCell, styles.metaRight]}>{formatCurrency(item.unitPrice)}</Text>
+            <Text style={[styles.metaCell, styles.metaRight]}>{formatCurrency(item.unitCost)}</Text>
             <Text style={[styles.metaCell, styles.metaRight]}>{formatCurrency(item.total)}</Text>
           </View>
           <Text style={styles.itemDesc}>{item.description}</Text>
@@ -193,22 +195,8 @@ export const PurchaseOrderPdf = ({ data }: { data: PurchaseOrderPdfData }): Reac
 
       <View style={styles.totals}>
         <View style={styles.totalsRow}>
-          <Text style={styles.totalsLabel}>OPER. GRAVADAS</Text>
-          <Text style={styles.totalsValue}>{formatCurrency(data.totals.taxed)}</Text>
-        </View>
-        <View style={styles.totalsRow}>
-          <Text style={styles.totalsLabel}>OPER. EXONERADAS</Text>
-          <Text style={styles.totalsValue}>{formatCurrency(data.totals.exempted)}</Text>
-        </View>
-        <View style={styles.totalsRow}>
-          <Text style={styles.totalsLabel}>
-            IGV{data.totals.igvPercentage !== undefined ? ` (${data.totals.igvPercentage}%)` : ""}
-          </Text>
-          <Text style={styles.totalsValue}>{formatCurrency(data.totals.igv)}</Text>
-        </View>
-        <View style={styles.totalsRow}>
-          <Text style={styles.totalsLabel}>TOTAL</Text>
-          <Text style={styles.totalsValue}>{formatCurrency(data.totals.total)}</Text>
+          <Text style={styles.totalsLabel}>TOTAL COSTO</Text>
+          <Text style={styles.totalsValue}>{formatCurrency(data.totals.totalCost)}</Text>
         </View>
       </View>
 

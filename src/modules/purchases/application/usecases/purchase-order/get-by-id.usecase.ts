@@ -45,7 +45,7 @@ export class GetPurchaseOrderUsecase {
 
     const itemOutputs: PurchaseOrderItemOutput[] = await Promise.all(
       items.map(async (row) => {
-        const stockItem = await this.stockItemRepo.findByProductIdOrVariantId(row.stockItemId);
+        let stockItem = await this.stockItemRepo.findByProductIdOrVariantId(row.stockItemId);
         if (!stockItem) {
           throw new BadRequestException({ type: "error", message: "Item de stock no encontrado" });
         }
@@ -62,6 +62,7 @@ export class GetPurchaseOrderUsecase {
           }
           stockItemOutput = {
             type: StockItemType.PRODUCT,
+            stockItemId:productInfo.product.getId().value,
             product: toProductOutput(productInfo.product, {
               baseUnitName: productInfo.baseUnitName,
               baseUnitCode: productInfo.baseUnitCode,
@@ -79,6 +80,7 @@ export class GetPurchaseOrderUsecase {
           }
           stockItemOutput = {
             type: StockItemType.VARIANT,
+            stockItemId: variantInfo.variant.getId(),
             variant: toVariantOutput(variantInfo.variant, {
               productName: variantInfo.productName,
               productDescription: variantInfo.productDescription,

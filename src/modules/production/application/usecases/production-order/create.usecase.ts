@@ -23,7 +23,9 @@ export class CreateProductionOrder {
     private readonly ItemProduction: AddProductionOrderItem
   ) {}
 
-  async execute(input: CreateProductionOrderInput, userId:string): Promise<{type:string,message:string}> {
+  async execute(input: CreateProductionOrderInput, userId:string): Promise<{type:string,message:string
+    productionId?:string
+  }> {
     return this.uow.runInTransaction(async (tx) => {
       if (!input.fromWarehouseId || !input.toWarehouseId || !input.serieId) {
         throw new BadRequestException(
@@ -84,7 +86,8 @@ export class CreateProductionOrder {
 
       return {
           type:'success',
-          message: '¡Orden de producción creada con exito!'
+          message: '¡Orden de producción creada con exito!',
+          productionId: created.productionId
       } 
     });
   }

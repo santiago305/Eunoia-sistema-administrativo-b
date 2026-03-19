@@ -61,7 +61,7 @@ export class GetLedgerUseCase {
     }
 
     return {
-      items: items.map((e) => {
+      items: ordered.map((e) => {
         const document = e.document
           ? {
               id: e.document.id,

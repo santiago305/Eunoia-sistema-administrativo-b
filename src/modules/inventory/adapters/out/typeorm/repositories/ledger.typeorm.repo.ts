@@ -191,7 +191,7 @@ private getRepo(tx?: TransactionContext) {
 
     const [rows, total] = await repo.findAndCount({
       where,
-      order: { createdAt: 'ASC' },
+      order: { createdAt: 'ASC', id: 'ASC' },
       skip,
       take: limit,
       relations: { warehouse: true, stockItem: { product: true, variant: true }, document: true },
