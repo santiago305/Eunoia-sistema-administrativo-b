@@ -26,12 +26,14 @@ import { InventoryModule } from "src/modules/inventory/infrastructure/inventory.
 import { PostInventoryFromPurchaseUsecase } from "../application/usecases/purchase-order/Inventory-purchase.usecase";
 import { UsersModule } from "src/modules/users/infrastructure/users.module";
 import { CancelPurchaseOrderUsecase } from "../application/usecases/purchase-order/cancel.usecase";
+import { CatalogModule } from "src/modules/catalog/infrastructure/catalog.module";
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([PurchaseOrderEntity, PurchaseOrderItemEntity]),
     PaymentsModule,
     InventoryModule,
+    CatalogModule,
     UsersModule,
   ],
   controllers: [PurchaseOrdersController],

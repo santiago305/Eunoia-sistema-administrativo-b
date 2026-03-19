@@ -14,6 +14,7 @@ import { PAYMENT_DOCUMENT_REPOSITORY, PaymentDocumentRepository } from "src/modu
 import { CREDIT_QUOTA_REPOSITORY, CreditQuotaRepository } from "src/modules/payments/domain/ports/credit-quota.repository";
 import { PayDocType } from "src/modules/payments/domain/value-objects/pay-doc-type";
 import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
+import { errorResponse } from "src/shared/response-standard/response";
 
 export class UpdatePurchaseOrderUsecase {
   constructor(
@@ -95,174 +96,167 @@ export class UpdatePurchaseOrderUsecase {
       const itemCurrency = updated.currency ?? input.currency ?? "PEN";
 
       if (input.items !== undefined) {
-        const existingItems = await this.itemRepo.getByPurchaseId(updated.poId, tx);
-        for (const item of existingItems) {
-          const removed = await this.itemRepo.remove(item.poItemId, tx);
-          if (!removed) {
+      try {
+        await this.itemRepo.removeByPurchaseId(input.poId, tx);
+      } catch {
+        throw new BadRequestException(errorResponse("No se pudo eliminar items de la orden de compra"));
+      }  
+
+      if (input.items.length > 0) {
+        for (const item of input.items) {
+          const orderItem = new PurchaseOrderItem(
+            undefined,
+            updated.poId,
+            item.stockItemId,
+            item.unitBase,
+            item.equivalence,
+            item.factor,
+            item.afectType,
+            item.quantity,
+            Money.create(item.porcentageIgv ?? 0, itemCurrency),
+            Money.create(item.baseWithoutIgv ?? 0, itemCurrency),
+            Money.create(item.amountIgv ?? 0, itemCurrency),
+            Money.create(item.unitValue ?? 0, itemCurrency),
+            Money.create(item.unitPrice ?? 0, itemCurrency),
+            Money.create(item.purchaseValue ?? 0, itemCurrency),
+          );
+
+          try {
+            await this.itemRepo.add(orderItem, tx);
+          } catch {
             throw new BadRequestException({
               type: "error",
-              message: "No se pudo eliminar items de la orden de compra",
+              message: "No se pudo agregar items a la orden de compra",
+            });
+          }
+        }
+      }
+    }
+
+    const shouldDeletePayments =
+      (!isCredit && input.payments !== undefined) ||
+      (isCredit && input.quotas !== undefined && quotasChanged);
+
+    if (shouldDeletePayments) {
+      const existingPayments = await this.paymentDocRepo.findByPoId(updated.poId, tx);
+      for (const payment of existingPayments) {
+        try {
+          await this.deletePayment.execute(payment.payDocId, tx);
+        } catch {
+          throw new BadRequestException({ type: "error", message: "No se pudo eliminar pagos de la orden de compra" });
+        }
+      }
+    }
+
+    const shouldReplaceQuotas = input.quotas !== undefined && (!isCredit || quotasChanged);
+    if (shouldReplaceQuotas) {
+      const quotasToDelete = existingQuotas.length > 0 ? existingQuotas : await this.creditQuotaRepo.findByPoId(updated.poId, tx);
+      for (const quota of quotasToDelete) {
+        try {
+          await this.creditQuotaRepo.deleteById(quota.quotaId, tx);
+        } catch {
+          throw new BadRequestException({ type: "error", message: "No se pudo eliminar cuotas de la orden de compra" });
+        }
+      }
+    }
+
+    if (updated.paymentForm === PaymentFormType.CONTADO && input.payments && input.payments.length > 0) {
+      for (const payment of input.payments) {
+        if (payment.amount <= 0) {
+          throw new BadRequestException({ type: "error", message: "Monto invalido" });
+        }
+
+        const payDate = new Date(payment.date);
+        if (Number.isNaN(payDate.getTime())) {
+          throw new BadRequestException({ type: "error", message: "Fecha invalida" });
+        }
+
+        if (payment.quotaId) {
+          const quota = await this.creditQuotaRepo.findById(payment.quotaId, tx);
+          if (!quota) {
+            throw new NotFoundException({ type: "error", message: "Cuota no encontrada" });
+          }
+
+          if (!quota.poId) {
+            throw new BadRequestException({ type: "error", message: "La cuota no tiene orden de compra asociada" });
+          }
+
+          if (quota.poId !== updated.poId) {
+            throw new BadRequestException({
+              type: "error",
+              message: "La cuota no pertenece a la orden de compra indicada",
             });
           }
         }
 
-        if (input.items.length > 0) {
-          for (const item of input.items) {
-            const orderItem = new PurchaseOrderItem(
-              undefined,
-              updated.poId,
-              item.stockItemId,
-              item.unitBase,
-              item.equivalence,
-              item.factor,
-              item.afectType,
-              item.quantity,
-              Money.create(item.porcentageIgv ?? 0, itemCurrency),
-              Money.create(item.baseWithoutIgv ?? 0, itemCurrency),
-              Money.create(item.amountIgv ?? 0, itemCurrency),
-              Money.create(item.unitValue ?? 0, itemCurrency),
-              Money.create(item.unitPrice ?? 0, itemCurrency),
-              Money.create(item.purchaseValue ?? 0, itemCurrency),
-            );
+        const document = new PaymentDocument(
+          undefined,
+          payment.method,
+          payDate,
+          payment.currency,
+          payment.amount,
+          PayDocType.PURCHASE,
+          payment.operationNumber,
+          payment.note,
+          updated.poId,
+          payment.quotaId,
+        );
 
-            try {
-              await this.itemRepo.add(orderItem, tx);
-            } catch {
-              throw new BadRequestException({
-                type: "error",
-                message: "No se pudo agregar items a la orden de compra",
-              });
-            }
-          }
+        try {
+         await this.paymentDocRepo.create(document, tx);
+        } catch {
+          throw new BadRequestException({ type: "error", message: "No se pudo crear el documento de pago" });
         }
+
+        // pago ya queda asociado por poId / quotaId en payment_documents
+      }
+    }
+
+    if (updated.paymentForm === PaymentFormType.CREDITO && input.quotas !== undefined && quotasChanged) {
+      if (input.quotas.length === 0) {
+        throw new BadRequestException({ type: "error", message: "Debe registrar al menos una cuota" });
       }
 
-      const shouldDeletePayments =
-        (!isCredit && input.payments !== undefined) ||
-        (isCredit && input.quotas !== undefined && quotasChanged);
-
-      if (shouldDeletePayments) {
-        const existingPayments = await this.paymentDocRepo.findByPoId(updated.poId, tx);
-        for (const payment of existingPayments) {
-          try {
-            await this.deletePayment.execute(payment.payDocId, tx);
-          } catch {
-            throw new BadRequestException({ type: "error", message: "No se pudo eliminar pagos de la orden de compra" });
-          }
+      for (const quotaInput of input.quotas) {
+        if (quotaInput.totalPaid !== undefined && quotaInput.totalPaid > quotaInput.totalToPay) {
+          throw new BadRequestException({ type: "error", message: "El total pagado no puede ser mayor al total a pagar" });
         }
+
+        const expirationDate = new Date(quotaInput.expirationDate);
+        if (Number.isNaN(expirationDate.getTime())) {
+          throw new BadRequestException({ type: "error", message: "Fecha de expiracion invalida" });
+        }
+
+        const paymentDate = quotaInput.paymentDate ? new Date(quotaInput.paymentDate) : undefined;
+        if (paymentDate && Number.isNaN(paymentDate.getTime())) {
+          throw new BadRequestException({ type: "error", message: "Fecha de pago invalida" });
+        }
+
+        const quota = new CreditQuota(
+          undefined,
+          quotaInput.number,
+          expirationDate,
+          quotaInput.totalToPay,
+          quotaInput.totalPaid ?? 0,
+          PayDocType.PURCHASE,
+          paymentDate,
+          this.clock.now(),
+          updated.poId,
+        );
+
+        try {
+          await this.creditQuotaRepo.create(quota, tx);
+        } catch {
+          throw new BadRequestException({ type: "error", message: "No se pudo crear la cuota" });
+        }
+
+        // cuota ya queda asociada por poId en credit_quotas
       }
+    }
 
-      const shouldReplaceQuotas = input.quotas !== undefined && (!isCredit || quotasChanged);
-      if (shouldReplaceQuotas) {
-        const quotasToDelete = existingQuotas.length > 0 ? existingQuotas : await this.creditQuotaRepo.findByPoId(updated.poId, tx);
-        for (const quota of quotasToDelete) {
-          try {
-            await this.creditQuotaRepo.deleteById(quota.quotaId, tx);
-          } catch {
-            throw new BadRequestException({ type: "error", message: "No se pudo eliminar cuotas de la orden de compra" });
-          }
-        }
-      }
-
-      if (updated.paymentForm === PaymentFormType.CONTADO && input.payments && input.payments.length > 0) {
-        for (const payment of input.payments) {
-          if (payment.amount <= 0) {
-            throw new BadRequestException({ type: "error", message: "Monto invalido" });
-          }
-
-          const payDate = new Date(payment.date);
-          if (Number.isNaN(payDate.getTime())) {
-            throw new BadRequestException({ type: "error", message: "Fecha invalida" });
-          }
-
-          if (payment.quotaId) {
-            const quota = await this.creditQuotaRepo.findById(payment.quotaId, tx);
-            if (!quota) {
-              throw new NotFoundException({ type: "error", message: "Cuota no encontrada" });
-            }
-
-            if (!quota.poId) {
-              throw new BadRequestException({ type: "error", message: "La cuota no tiene orden de compra asociada" });
-            }
-
-            if (quota.poId !== updated.poId) {
-              throw new BadRequestException({
-                type: "error",
-                message: "La cuota no pertenece a la orden de compra indicada",
-              });
-            }
-          }
-
-          const document = new PaymentDocument(
-            undefined,
-            payment.method,
-            payDate,
-            payment.currency,
-            payment.amount,
-            PayDocType.PURCHASE,
-            payment.operationNumber,
-            payment.note,
-            updated.poId,
-            payment.quotaId,
-          );
-
-          let createdDoc: PaymentDocument;
-          try {
-            createdDoc = await this.paymentDocRepo.create(document, tx);
-          } catch {
-            throw new BadRequestException({ type: "error", message: "No se pudo crear el documento de pago" });
-          }
-
-          // pago ya queda asociado por poId / quotaId en payment_documents
-        }
-      }
-
-      if (updated.paymentForm === PaymentFormType.CREDITO && input.quotas !== undefined && quotasChanged) {
-        if (input.quotas.length === 0) {
-          throw new BadRequestException({ type: "error", message: "Debe registrar al menos una cuota" });
-        }
-
-        for (const quotaInput of input.quotas) {
-          if (quotaInput.totalPaid !== undefined && quotaInput.totalPaid > quotaInput.totalToPay) {
-            throw new BadRequestException({ type: "error", message: "El total pagado no puede ser mayor al total a pagar" });
-          }
-
-          const expirationDate = new Date(quotaInput.expirationDate);
-          if (Number.isNaN(expirationDate.getTime())) {
-            throw new BadRequestException({ type: "error", message: "Fecha de expiracion invalida" });
-          }
-
-          const paymentDate = quotaInput.paymentDate ? new Date(quotaInput.paymentDate) : undefined;
-          if (paymentDate && Number.isNaN(paymentDate.getTime())) {
-            throw new BadRequestException({ type: "error", message: "Fecha de pago invalida" });
-          }
-
-          const quota = new CreditQuota(
-            undefined,
-            quotaInput.number,
-            expirationDate,
-            quotaInput.totalToPay,
-            quotaInput.totalPaid ?? 0,
-            PayDocType.PURCHASE,
-            paymentDate,
-            this.clock.now(),
-            updated.poId,
-          );
-
-          let createdQuota: CreditQuota;
-          try {
-            createdQuota = await this.creditQuotaRepo.create(quota, tx);
-          } catch {
-            throw new BadRequestException({ type: "error", message: "No se pudo crear la cuota" });
-          }
-
-          // cuota ya queda asociada por poId en credit_quotas
-        }
-      }
-
-      return { type: "success", message: "Orden de compra actualizada con exito" };
-    });
-  }
+    return { type: "success", message: "Orden de compra actualizada con exito" };
+  });
+}
 
   private hasQuotaChanges(existing: CreditQuota[], input: CreateCreditQuotaInput[]): boolean {
     if (existing.length !== input.length) return true;

@@ -11,10 +11,8 @@ import {
   ProductionOrderDetailOutput,
   ProductionOrderFinishedItemOutput,
 } from "../../dto/production-order/output/production-order-detail-out";
-import type { ProductOutput } from "src/modules/catalog/application/dto/products/output/product-out";
-import type { ProductVariantOutput } from "src/modules/catalog/application/dto/product-variants/output/product-variant-out";
-import type { Product } from "src/modules/catalog/domain/entity/product";
-import type { ProductVariant } from "src/modules/catalog/domain/entity/product-variant";
+import { toProductOutput, toVariantOutput } from "src/modules/production/application/utils/productVariant";
+
 
 @Injectable()
 export class GetProductionOrder {
@@ -56,7 +54,7 @@ export class GetProductionOrder {
             }
             finishedItem = {
               type: StockItemType.PRODUCT,
-              product: this.toProductOutput(productInfo.product, {
+              product: toProductOutput(productInfo.product, {
                 baseUnitName: productInfo.baseUnitName,
                 baseUnitCode: productInfo.baseUnitCode,
               }),
@@ -71,7 +69,7 @@ export class GetProductionOrder {
             }
             finishedItem = {
               type: StockItemType.VARIANT,
-              variant: this.toVariantOutput(variantInfo.variant, {
+              variant: toVariantOutput(variantInfo.variant, {
                 productName: variantInfo.productName,
                 productDescription: variantInfo.productDescription,
                 baseUnitId: variantInfo.baseUnitId,
@@ -125,55 +123,6 @@ export class GetProductionOrder {
     });
   }
 
-  private toProductOutput(
-    product: Product,
-    info?: { baseUnitName?: string; baseUnitCode?: string },
-  ): ProductOutput {
-    return {
-      id: product.getId()?.value!,
-      name: product.getName(),
-      description: product.getDescription(),
-      baseUnitId: product.getBaseUnitId(),
-      sku: product.getSku(),
-      barcode: product.getBarcode(),
-      price: product.getPrice().getAmount(),
-      cost: product.getCost().getAmount(),
-      attributes: product.getAttributes(),
-      isActive: product.getIsActive(),
-      type: product.getType(),
-      createdAt: product.getCreatedAt()!,
-      updatedAt: product.getUpdatedAt()!,
-      baseUnitName: info?.baseUnitName,
-      baseUnitCode: info?.baseUnitCode,
-    };
-  }
-
-  private toVariantOutput(
-    variant: ProductVariant,
-    info?: {
-      productName?: string;
-      productDescription?: string | null;
-      baseUnitId?: string;
-      unitCode?: string;
-      unitName?: string;
-    },
-  ): ProductVariantOutput {
-    return {
-      id: variant.getId(),
-      productId: variant.getProductId().value,
-      productName: info?.productName,
-      productDescription: info?.productDescription ?? null,
-      baseUnitId: info?.baseUnitId,
-      unitCode: info?.unitCode,
-      unitName: info?.unitName,
-      sku: variant.getSku(),
-      barcode: variant.getBarcode(),
-      attributes: variant.getAttributes(),
-      price: variant.getPrice().getAmount(),
-      cost: variant.getCost().getAmount(),
-      isActive: variant.getIsActive(),
-      createdAt: variant.getCreatedAt(),
-    };
-  }
+  
 
 }

@@ -72,6 +72,11 @@ export class PurchaseOrderItemTypeormRepository implements PurchaseOrderItemRepo
     return (result.affected ?? 0) > 0;
   }
 
+  async removeByPurchaseId(poId: string, tx?: TransactionContext): Promise<number> {
+    const result = await this.getRepo(tx).delete({ poId });
+    return result.affected ?? 0;
+  }
+
   async getByPurchaseId(poId: string, tx?: TransactionContext): Promise<PurchaseOrderItem[]> {
     const rows = await this.getRepo(tx).find({ where: { poId } });
     return rows.map((r) => this.toDomain(r));
