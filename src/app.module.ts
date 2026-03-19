@@ -28,6 +28,7 @@ import { IpBanGuard } from './modules/security/adapters/in/guards/ip-ban.guard';
 import { RedisThrottlerStorage } from './modules/security/infrastructure/providers/redis-throttler.storage';
 import { CompaniesModule } from './modules/companies/companies.module';
 import { PaymentMethodsModule } from './modules/payment-methods/payment-methods.module';
+import { PdfGeneratedModule } from './modules/pdf-generated/pdf-generated.module';
 
 const redisAuth = envs.redis.password ? `:${encodeURIComponent(envs.redis.password)}@` : '';
 const redisUrl = `redis://${redisAuth}${envs.redis.host}:${envs.redis.port}/${envs.redis.db}`;
@@ -63,6 +64,7 @@ const redisUrl = `redis://${redisAuth}${envs.redis.host}:${envs.redis.port}/${en
     PaymentMethodsModule,
     PurchasesModule,
     CompaniesModule,
+    PdfGeneratedModule,
     SecurityModule,
   ],
   providers: [
