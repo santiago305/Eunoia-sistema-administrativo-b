@@ -13,6 +13,7 @@ import { HttpCreateDocumentInDto } from '../dto/document/http-document-create-in
 import { HttpCreateDocumentOutDto } from '../dto/document/http-document-create-out.dto';
 import { HttpCreateDocumentTransferDto } from '../dto/document/http-document-create-transfer.dto';
 import { HttpCreateDocumentAdjustmentDto } from '../dto/document/http-document-create-adjustment.dto';
+import { HttpCreateAddItemPostOutDto } from '../dto/document/http-document-create-add-item-post-out.dto';
 import { HttpAddItemAdjustmentDto } from '../dto/document-item/http-add-item-adjustment.dto';
 import { HttpAddItemInDto } from '../dto/document-item/http-add-item-in.dto';
 import { HttpAddItemOutDto } from '../dto/document-item/http-add-item-out.dto';
@@ -23,6 +24,7 @@ import { PostDocumentoOut } from 'src/modules/inventory/application/use-cases/do
 import { PostDocumentoIn } from 'src/modules/inventory/application/use-cases/document-inventory/post-document-in.usecase';
 import { PostDocumentoTransfer } from 'src/modules/inventory/application/use-cases/document-inventory/post-document-transfer.usecase';
 import { PostDocumentoAdjustment } from 'src/modules/inventory/application/use-cases/document-inventory/post-document-adjustment.usecase';
+import { CreateAddItemPostOutUseCase } from 'src/modules/inventory/application/use-cases/document-inventory/create-add-item-post-out.usecase';
 import { ListDocumentsQueryDto } from '../dto/document/http-documents-list.dto';
 import { ParseDateLocal } from 'src/shared/utilidades/utils/ParseDates'
 @Controller('inventory/documents')
@@ -42,6 +44,7 @@ export class DocumentsController {
     private readonly postDocumentIn: PostDocumentoIn,
     private readonly postDocumentTransfer: PostDocumentoTransfer,
     private readonly postDocumentAdjustment: PostDocumentoAdjustment,
+    private readonly createDocumentPostOut: CreateAddItemPostOutUseCase,
   ) {}
 
  @Get()
@@ -91,6 +94,14 @@ export class DocumentsController {
   @Post('create-adjustment')
   createAdjustment(@Body() dto: HttpCreateDocumentAdjustmentDto, @CurrentUser() user: { id: string }) {
     return this.createDocument.execute({
+      ...dto,
+      createdBy: user.id,
+    });
+  }
+
+  @Post('create-add-item-post-out')
+  createAddItemPostOut(@Body() dto: HttpCreateAddItemPostOutDto, @CurrentUser() user: { id: string }) {
+    return this.createDocumentPostOut.execute({
       ...dto,
       createdBy: user.id,
     });

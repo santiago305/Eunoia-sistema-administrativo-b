@@ -11,6 +11,7 @@ import { ReactPdfRenderer } from "./adapters/out/react-pdf/react-pdf.renderer";
 import { GenerateInvoicePdfUseCase } from "./application/usecases/generate-invoice-pdf.usecase";
 import { GeneratePurchaseOrderPdfUseCase } from "./application/usecases/generate-purchase-order-pdf.usecase";
 import { GenerateProductionOrderPdfUseCase } from "./application/usecases/generate-production-order-pdf.usecase";
+import { GenerateInventoryDocumentPdfUseCase } from "./application/usecases/generate-inventory-document-pdf.usecase";
 import { PDF_RENDERER } from "./domain/ports/pdf-renderer.port";
 
 @Module({
@@ -28,14 +29,18 @@ import { PDF_RENDERER } from "./domain/ports/pdf-renderer.port";
     GenerateInvoicePdfUseCase,
     GeneratePurchaseOrderPdfUseCase,
     GenerateProductionOrderPdfUseCase,
+    GenerateInventoryDocumentPdfUseCase,
     { provide: PDF_RENDERER, useClass: ReactPdfRenderer },
   ],
   exports: [
     GenerateInvoicePdfUseCase,
     GeneratePurchaseOrderPdfUseCase,
     GenerateProductionOrderPdfUseCase,
+    GenerateInventoryDocumentPdfUseCase,
     PDF_RENDERER,
   ],
 })
 export class PdfGeneratedModule {}
+
+
 
