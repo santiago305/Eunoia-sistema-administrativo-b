@@ -35,6 +35,7 @@ import { PostDocumentoOut } from '../application/use-cases/document-inventory/po
 import { PostDocumentoIn } from '../application/use-cases/document-inventory/post-document-in.usecase';
 import { PostDocumentoTransfer } from '../application/use-cases/document-inventory/post-document-transfer.usecase';
 import { PostDocumentoAdjustment } from '../application/use-cases/document-inventory/post-document-adjustment.usecase';
+import { CreateAddItemPostOutUseCase } from '../application/use-cases/document-inventory/create-add-item-post-out.usecase';
 import { CreateStockItemForProduct } from '../application/use-cases/stock-item/create-for-product.usecase';
 import { CreateStockItemForVariant } from '../application/use-cases/stock-item/create-for-variant.usecase';
 
@@ -85,6 +86,7 @@ import { StockItemTypeormRepository } from '../adapters/out/typeorm/repositories
     PostDocumentoIn,
     PostDocumentoTransfer,
     PostDocumentoAdjustment,
+    CreateAddItemPostOutUseCase,
     CreateStockItemForProduct,
     CreateStockItemForVariant,
     GetLedgerUseCase,
