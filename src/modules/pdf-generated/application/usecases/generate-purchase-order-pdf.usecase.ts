@@ -280,7 +280,7 @@ export class GeneratePurchaseOrderPdfUseCase {
         const snapshot = await buildStockItemSnapshot(item.stockItemId, item.unitBase ?? undefined);
         return {
           description: buildDescription(snapshot, item.stockItemId),
-          unit: `${item.equivalence} x ${item.factor}`,
+          unit: `${item.equivalence}`,
           quantity: item.quantity,
           unitPrice: item.unitPrice.getAmount(),
           total: item.purchaseValue.getAmount(),
