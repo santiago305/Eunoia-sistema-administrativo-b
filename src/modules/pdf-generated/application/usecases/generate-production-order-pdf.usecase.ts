@@ -112,7 +112,7 @@ export class GenerateProductionOrderPdfUseCase {
           const info = await getProductInfo(stockItem.productId);
           if (info?.product) {
             description = formatNameWithSku(info.product.getName(), info.product.getSku());
-            unit = formatUnitLabel(info.baseUnitCode, info.baseUnitName);
+            unit = formatUnitLabel(info.baseUnitName);
           }
         }
 
@@ -121,7 +121,7 @@ export class GenerateProductionOrderPdfUseCase {
           if (info?.variant) {
             const baseName = info.productName || description;
             description = formatNameWithSku(baseName, info.variant.getSku());
-            unit = formatUnitLabel(info.unitCode, info.unitName);
+            unit = formatUnitLabel(info.unitName);
           }
         }
 
