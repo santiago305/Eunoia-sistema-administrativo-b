@@ -23,6 +23,7 @@ import { CreateDocumentUseCase } from '../application/use-cases/document-invento
 import { AddItemUseCase } from '../application/use-cases/document-item-inventory/add-item.usecase';
 import { GetAvailabilityUseCase } from '../application/use-cases/inventory/get-availability.usecase';
 import { GetLedgerUseCase } from '../application/use-cases/ledger/get-ledger.usecase';
+import { GetLedgerDailyTotalsUseCase } from '../application/use-cases/ledger/get-ledger-daily-totals.usecase';
 import { ListInventoryUseCase } from '../application/use-cases/inventory/list-inventory.usecase';
 import { ListDocumentsUseCase } from '../application/use-cases/document-inventory/list-documents.usecase';
 import { GetDocumentUseCase } from '../application/use-cases/document-inventory/get-document.usecase';
@@ -90,6 +91,7 @@ import { StockItemTypeormRepository } from '../adapters/out/typeorm/repositories
     CreateStockItemForProduct,
     CreateStockItemForVariant,
     GetLedgerUseCase,
+    GetLedgerDailyTotalsUseCase,
     ListInventoryUseCase,
     ListDocumentsUseCase,
     GetDocumentUseCase,

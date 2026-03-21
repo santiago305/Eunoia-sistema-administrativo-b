@@ -52,12 +52,23 @@ export class GetLedgerUseCase {
       return (a.id ?? "").localeCompare(b.id ?? "");
     });
 
-    let running = balances.balanceInicial;
     const balanceById = new Map<string, number>();
-    for (const e of ordered) {
-      const delta = e.direction === "IN" ? e.quantity : -e.quantity;
-      running += delta;
-      if (e.id) balanceById.set(e.id, running);
+    const usesDbBalance =
+      ordered.length > 0 && ordered.every((e) => typeof e.balance === "number");
+    let running = balances.balanceInicial;
+
+    if (usesDbBalance) {
+      for (const e of ordered) {
+        if (!e.id) continue;
+        const base = e.balance ?? 0;
+        balanceById.set(e.id, base + balances.balanceInicial);
+      }
+    } else {
+      for (const e of ordered) {
+        const delta = e.direction === "IN" ? e.quantity : -e.quantity;
+        running += delta;
+        if (e.id) balanceById.set(e.id, running);
+      }
     }
 
     return {
