@@ -23,6 +23,24 @@ export interface LedgerRepository {
     balanceFinal: number;
     balanceTotal: number;
   }>;
+  getDailyTotals(
+    params: {
+      warehouseId?: string;
+      stockItemId?: string;
+      locationId?: string;
+      from?: Date;
+      to?: Date;
+      docId?: string;
+    },
+    tx?: TransactionContext,
+  ): Promise<
+    {
+      day: string;
+      entrada: number;
+      salida: number;
+      balance: number;
+    }[]
+  >;
   list(
     params: {
       warehouseId?: string;

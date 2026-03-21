@@ -152,5 +152,6 @@ export class LedgerEntry {
     public readonly stockItem?: LedgerStockItemSnapshot,
     public readonly document?: LedgerDocumentSnapshot,
     public readonly referenceDoc?: LedgerReferenceDocSnapshot,
+    public readonly balance?: number,
   ) {}
 }
