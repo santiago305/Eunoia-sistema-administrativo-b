@@ -79,7 +79,7 @@ export class PostInventoryFromPurchaseUsecase {
         await this.addItem.execute({
           docId: doc.id,
           stockItemId: stockItem.stockItemId,
-          quantity: item.quantity,
+          quantity: item.quantity * item.factor,
           toLocationId: params.toLocationId,
           unitCost: item.unitPrice.getAmount(), // o item.purchaseValue.getAmount()
         });
