@@ -15,7 +15,7 @@ export class HttpAddPurchaseOrderItemDto {
   equivalence?: string;
 
   @IsOptional()
-  @IsInt()
+  @IsNumber()
   factor?: number;
 
   @IsOptional()

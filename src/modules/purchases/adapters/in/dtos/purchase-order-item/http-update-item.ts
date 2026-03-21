@@ -24,7 +24,7 @@ export class HttpUpdateItemDto {
   equivalence?: string;
 
   @IsOptional()
-  @IsInt()
+  @IsNumber()
   factor?: number;
 
   @IsOptional()
