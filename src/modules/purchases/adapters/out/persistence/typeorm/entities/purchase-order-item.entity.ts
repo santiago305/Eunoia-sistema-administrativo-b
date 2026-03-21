@@ -19,7 +19,7 @@ export class PurchaseOrderItemEntity {
   @Column({ name: "equivalence", type: "varchar", nullable: true })
   equivalencia?: string | null;
 
-  @Column({ name: "factor", type: "int", nullable: true })
+  @Column({ name: "factor", type: "numeric", nullable: true })
   factor?: number | null;
 
   @Column({ name: "afect_type", type: "enum", enum: AfectIgvType, enumName: "afect_igv_type" })
