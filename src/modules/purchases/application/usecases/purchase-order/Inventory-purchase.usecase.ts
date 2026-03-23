@@ -72,7 +72,10 @@ export class PostInventoryFromPurchaseUsecase {
       });
 
       for (const item of items) {
-        const stockItem = await this.stockItemRepo.findByProductIdOrVariantId(item.stockItemId);
+        let stockItem = await this.stockItemRepo.findById(item.stockItemId);
+        if (!stockItem) {
+          stockItem = await this.stockItemRepo.findByProductIdOrVariantId(item.stockItemId);
+        }
         if (!stockItem) {
           throw new NotFoundException({ type: "error", message: "StockItem terminado no encontrado" });
         }

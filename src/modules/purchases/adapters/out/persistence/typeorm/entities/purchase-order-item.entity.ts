@@ -19,13 +19,13 @@ export class PurchaseOrderItemEntity {
   @Column({ name: "equivalence", type: "varchar", nullable: true })
   equivalencia?: string | null;
 
-  @Column({ name: "factor", type: "numeric", nullable: true })
+  @Column({ name: "factor", type: "numeric", precision: 12, scale: 4, nullable: true })
   factor?: number | null;
 
   @Column({ name: "afect_type", type: "enum", enum: AfectIgvType, enumName: "afect_igv_type" })
   afectType: AfectIgvType;
 
-  @Column({ name: "quantity", type: "int" })
+  @Column({ name: "quantity", type: "numeric", precision:12, scale: 3})
   quantity: number;
 
   @Column({ name: "porcentage_igv", type: "numeric" })
@@ -37,10 +37,10 @@ export class PurchaseOrderItemEntity {
   @Column({ name: "amount_igv", type: "numeric", precision: 12, scale: 2 })
   amountIgv: number;
 
-  @Column({ name: "unit_value", type: "numeric", precision: 12, scale: 2 })
+  @Column({ name: "unit_value", type: "numeric", precision: 12, scale: 4 })
   unitValue: number;
 
-  @Column({ name: "unit_price", type: "numeric", precision: 12, scale: 2 })
+  @Column({ name: "unit_price", type: "numeric", precision: 12, scale: 4 })
   unitPrice: number;
 
   @Column({ name: "purchase_value", type: "numeric", precision: 12, scale: 2 })

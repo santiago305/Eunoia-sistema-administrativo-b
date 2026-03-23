@@ -98,10 +98,10 @@ dataSource
     }
     await seedPaymentMethods(dataSource);
     await seedSuppliers(dataSource, 10000);
-    await seedProducts(dataSource, { finishedCount: 4500, rawCount: 5500, variantsPerProduct: 2 });
-    await seedProductEquivalences(dataSource, { minPerProduct: 1, maxPerProduct: 4 });
-    await seedProductRecipes(dataSource, { minPerFinished: 1, maxPerFinished: 3 });
-    await seedPurchaseOrders(dataSource, 10000);
+    // await seedProducts(dataSource, { finishedCount: 4500, rawCount: 5500, variantsPerProduct: 2 });
+    // await seedProductEquivalences(dataSource, { minPerProduct: 1, maxPerProduct: 4 });
+    // await seedProductRecipes(dataSource, { minPerFinished: 1, maxPerFinished: 3 });
+    // await seedPurchaseOrders(dataSource, 10000);
     await dataSource.destroy(); // cierra la conexión con la DB
     console.log('Seeding completo!');
   })
