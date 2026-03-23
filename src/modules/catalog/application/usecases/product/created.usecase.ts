@@ -27,6 +27,7 @@ export class CreateProduct {
       const now = this.clock.now();
 
       const normalizedBarcode = input.barcode?.trim() || null;
+      const normalizedCustomSku = input.customSku?.trim() || null;
       if (normalizedBarcode) {
         const existsBarcode = await this.productRepo.findByBarcode(normalizedBarcode, tx);
         if (existsBarcode) throw new ConflictException({type: 'error', message: 'Barcode ya existe'});
@@ -72,6 +73,7 @@ export class CreateProduct {
         input.type,
         now,
         null,
+        normalizedCustomSku,
       );
 
       let createdProduct: Product;

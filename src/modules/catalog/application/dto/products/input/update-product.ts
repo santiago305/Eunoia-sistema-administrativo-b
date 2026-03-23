@@ -9,6 +9,7 @@ export interface UpdateProductInput {
   type?: ProductType;
   sku?: string;
   barcode?: string | null;
+  customSku?: string | null;
   attributes?: ProductVariantAttributes;
   price?: number;
   cost?: number;

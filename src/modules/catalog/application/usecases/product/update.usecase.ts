@@ -53,6 +53,7 @@ export class UpdateProduct {
           throw new ConflictException({ type: "error", message: "El SKU ya existe en otro producto" });
         }
       }
+      const customSku = input.customSku !== undefined ? (input.customSku?.trim() || null) : undefined;
       const updated = await this.productRepo.update(
       {
         id: ProductId.create(input.id),
@@ -61,6 +62,7 @@ export class UpdateProduct {
         baseUnitId: input.baseUnitId,
         sku: sku,
         barcode: input.barcode === null ? null : input.barcode?.trim(),
+        customSku,
         price: input.price !== undefined ? Money.create(input.price) : undefined,
         cost: input.cost !== undefined ? Money.create(input.cost) : undefined,
         attributes: input.attributes,

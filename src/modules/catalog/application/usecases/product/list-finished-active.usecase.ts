@@ -15,6 +15,7 @@ export class ListFinishedActiveProducts {
       description: product.getDescription(),
       baseUnitId: product.getBaseUnitId(),
       sku: product.getSku(),
+      customSku: product.getCustomSku() ?? null,
       barcode: product.getBarcode(),
       price: product.getPrice().getAmount(),
       cost: product.getCost().getAmount(),

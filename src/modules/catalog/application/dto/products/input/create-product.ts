@@ -6,6 +6,7 @@ export interface CreateProductInput {
   description?: string;
   baseUnitId: string;
   sku?: string;
+  customSku?: string | null;
   barcode?: string | null;
   price: number;
   cost: number;

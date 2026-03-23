@@ -45,6 +45,7 @@ export class ProductTypeormRepository implements ProductRepository {
       name: prod.getName(),
       description: prod.getDescription(),
       sku: prod.getSku(),
+      customSku: prod.getCustomSku() ?? null,
       barcode: prod.getBarcode(),
       price: prod.getPrice().getAmount(),
       cost: prod.getCost().getAmount(),
@@ -76,6 +77,7 @@ export class ProductTypeormRepository implements ProductRepository {
         'p.name',
         'p.description',
         'p.sku',
+        'p.customSku',
         'p.barcode',
         'p.price',
         'p.cost',
@@ -107,6 +109,7 @@ export class ProductTypeormRepository implements ProductRepository {
       row.type,
       row.createdAt,
       row.updatedAt,
+      row.customSku,
     );
 
     return {
@@ -165,6 +168,7 @@ export class ProductTypeormRepository implements ProductRepository {
         'p.name',
         'p.description',
         'p.sku',
+        'p.customSku',
         'p.barcode',
         'p.price',
         'p.cost',
@@ -197,6 +201,7 @@ export class ProductTypeormRepository implements ProductRepository {
         row.type,
         row.createdAt,
         row.updatedAt,
+        row.customSku,
       );
       return {
         product,
@@ -226,6 +231,7 @@ export class ProductTypeormRepository implements ProductRepository {
       baseUnitId?: string;
       sku?: string;
       barcode?: string | null;
+      customSku?: string | null;
       price?: Money;
       cost?: Money;
       attributes?: AttributesRecord;
@@ -241,6 +247,7 @@ export class ProductTypeormRepository implements ProductRepository {
     if (params.baseUnitId !== undefined) patch.baseUnitId = params.baseUnitId;
     if (params.sku !== undefined) patch.sku = params.sku;
     if (params.barcode !== undefined) patch.barcode = params.barcode;
+    if (params.customSku !== undefined) patch.customSku = params.customSku;
     if (params.price !== undefined) patch.price = params.price.getAmount();
     if (params.cost !== undefined) patch.cost = params.cost.getAmount();
     if (params.attributes !== undefined) patch.attributes = params.attributes;
@@ -487,6 +494,7 @@ export class ProductTypeormRepository implements ProductRepository {
       row.type,
       row.createdAt,
       row.updatedAt,
+      row.customSku,
     );
   }
 
