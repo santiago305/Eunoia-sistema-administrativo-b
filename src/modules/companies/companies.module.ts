@@ -10,11 +10,11 @@ import { LocalFileStorageService } from "src/shared/utilidades/services/local-fi
 import { CompanyController } from "./adapters/in/controllers/company.controller";
 import { CompanyEntity } from "./adapters/out/persistence/typeorm/entities/company.entity";
 import { CompanyTypeormRepository } from "./adapters/out/persistence/typeorm/repositories/company.typeorm.repo";
-import { CreateCompanyUsecase } from "./application/usecases/company/create.usecase";
-import { UpdateCompanyUsecase } from "./application/usecases/company/update.usecase";
-import { GetCompanyUsecase } from "./application/usecases/company/get.usecase";
-import { UpdateCompanyLogoUsecase } from "./application/usecases/company/update-logo.usecase";
-import { UpdateCompanyCertUsecase } from "./application/usecases/company/update-cert.usecase";
+import { CreateCompanyUsecase } from "./application/usecases/create.usecase";
+import { UpdateCompanyUsecase } from "./application/usecases/update.usecase";
+import { GetCompanyUsecase } from "./application/usecases/get.usecase";
+import { UpdateCompanyLogoUsecase } from "./application/usecases/update-logo.usecase";
+import { UpdateCompanyCertUsecase } from "./application/usecases/update-cert.usecase";
 import { COMPANY_REPOSITORY } from "./domain/ports/company.repository";
 
 @Module({

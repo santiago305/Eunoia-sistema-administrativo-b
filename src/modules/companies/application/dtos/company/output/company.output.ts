@@ -12,7 +12,6 @@ export interface CompanyOutput {
   email?: string;
   codLocal?: string;
   solUser?: string;
-  solPass?: string;
   logoPath?: string;
   certPath?: string;
   production: boolean;

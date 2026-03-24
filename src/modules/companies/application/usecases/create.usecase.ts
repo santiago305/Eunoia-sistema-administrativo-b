@@ -1,11 +1,11 @@
 import { BadRequestException, ConflictException, Inject, InternalServerErrorException } from "@nestjs/common";
-import { Email, InvalidEmailError } from "src/modules/users/domain";
-import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
+import { CompanyEmail } from "src/modules/companies/domain/value-objects/company-email.vo";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { errorResponse, successResponse } from "src/shared/response-standard/response";
-import { Company } from "src/modules/companies/domain/entity/company";
 import { COMPANY_REPOSITORY, CompanyRepository } from "src/modules/companies/domain/ports/company.repository";
-import { CreateCompanyInput } from "../../dtos/company/input/create.input";
+import { CompanyFactory } from "src/modules/companies/domain/factories/company.factory";
+import { CreateCompanyInput } from "../dtos/company/input/create.input";
+import { CompanyOutputMapper } from "../mappers/company-output.mapper";
 
 export class CreateCompanyUsecase {
   constructor(
@@ -13,8 +13,6 @@ export class CreateCompanyUsecase {
     private readonly uow: UnitOfWork,
     @Inject(COMPANY_REPOSITORY)
     private readonly companyRepo: CompanyRepository,
-    @Inject(CLOCK)
-    private readonly clock: ClockPort,
   ) {}
 
   async execute(input: CreateCompanyInput) {
@@ -27,8 +25,8 @@ export class CreateCompanyUsecase {
       let normalizedEmail: string | undefined;
       if (input.email) {
         try {
-          normalizedEmail = new Email(input.email).value;
-        } catch (error) {
+          normalizedEmail = new CompanyEmail(input.email).value;
+        } catch (error: unknown) {
           throw new BadRequestException(errorResponse("Email inválido"));
         }
       }
@@ -40,36 +38,23 @@ export class CreateCompanyUsecase {
         }
       }
 
-      const now = this.clock.now();
-      const company = new Company(
-        undefined,
-        input.name,
-        input.ruc,
-        input.ubigeo,
-        input.department,
-        input.province,
-        input.district,
-        input.urbanization,
-        input.address,
-        input.phone,
-        normalizedEmail,
-        input.codLocal,
-        input.solUser,
-        input.solPass,
-        undefined,
-        undefined,
-        input.production ?? true,
-        input.isActive ?? true,
-        now,
-        now,
-      );
+      const company = CompanyFactory.create({
+        ...input,
+        email: normalizedEmail,
+      });
 
       try {
-        await this.companyRepo.create(company, tx);
-      } catch (error) {
-        throw new InternalServerErrorException(errorResponse(error))
+        const createdCompany = await this.companyRepo.create(company, tx);
+
+        return successResponse(
+          "Empresa creada correctamente",
+          CompanyOutputMapper.toOutput(createdCompany),
+        );
+      } catch {
+        throw new InternalServerErrorException(
+          errorResponse("No se pudo crear la empresa"),
+        );
       }
-      return successResponse("Empresa creada correctamente");
     });
   }
 }
