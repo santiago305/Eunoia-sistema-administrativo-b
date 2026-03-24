@@ -16,6 +16,7 @@ export interface ProductVariantRepository {
       id: string;
       sku?: string;
       barcode?: string | null;
+      customSku?: string | null;
       attributes?: AttributesRecord;
       price?: Money;
       cost?: Money;

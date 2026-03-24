@@ -46,6 +46,7 @@ export function toVariantOutput(
     unitCode: info?.unitCode,
     unitName: info?.unitName,
     sku: variant.getSku(),
+    customSku: variant.getCustomSku() ?? null,
     barcode: variant.getBarcode(),
     attributes: variant.getAttributes(),
     price: variant.getPrice().getAmount(),

@@ -301,6 +301,7 @@ export class ProductTypeormRepository implements ProductRepository {
         Money.create(Number(r.cost ?? 0)),
         r.isActive,
         r.createdAt,
+        r.customSku,
       ),
     );
   }

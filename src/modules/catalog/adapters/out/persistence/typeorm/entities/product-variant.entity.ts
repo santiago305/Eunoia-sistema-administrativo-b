@@ -11,6 +11,9 @@ export class ProductVariantEntity {
   @Column({ type: 'varchar', length: 80, unique: true })
   sku: string;
 
+  @Column({ name: 'custom_sku', type: 'varchar', length: 80, nullable: true, unique:true })
+  customSku: string | null;
+
   @Column({ type: 'varchar', length: 80, unique: true, nullable: true })
   barcode: string | null;
 

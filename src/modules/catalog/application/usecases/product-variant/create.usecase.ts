@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Inject,
+  InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
 import { PRODUCT_REPOSITORY, ProductRepository } from 'src/modules/catalog/domain/ports/product.repository';
@@ -41,8 +42,10 @@ export class CreateProductVariant {
       const product = await this.productRepo.findById(productId, tx);
       if (!product) throw new NotFoundException({type: 'error', message: 'Producto no encontrado'});
 
-      if (input.barcode?.trim()) {
-        const existsBarcode = await this.variantRepo.findByBarcode(input.barcode.trim(), tx);
+      const normalizedBarcode = input.barcode?.trim() || null;
+      const normalizedCustomSku = input.customSku?.trim() || null;
+      if (normalizedBarcode) {
+        const existsBarcode = await this.variantRepo.findByBarcode(normalizedBarcode, tx);
         if (existsBarcode) throw new ConflictException({type: 'error', message: 'Barcode ya existe'});
       }
 
@@ -60,26 +63,27 @@ export class CreateProductVariant {
       throw new BadRequestException({ type: "error", message: "Attributes inválidos" });
     }
 
-    const sku =  explicitSku ??
-      (await generateUniqueSku(
-        this.skuCounterRepo,
-        product.getName(),
-        input.attributes?.color,
-        input.attributes?.variant,
-        input.attributes?.presentation,
-        tx,
-      ));
+    const next = await this.skuCounterRepo.reserveNext(tx); // global
+      if (!Number.isFinite(next) || next <= 0) {
+        throw new InternalServerErrorException({
+          type: 'error',
+          message: `No se pudo generar correlativo`,
+        });
+      }
+    
+      const sku = `${String(next).padStart(5, '0')}`;
 
     const variant = new ProductVariant(
       undefined,
       productId,
       sku,
-      input.barcode?.trim() || null,
+      normalizedBarcode,
       input.attributes,
       Money.create(input.price),
       Money.create(input.cost),
       input.isActive ?? true,
       this.clock.now(),
+      normalizedCustomSku,
     );
 
     let create:ProductVariant;

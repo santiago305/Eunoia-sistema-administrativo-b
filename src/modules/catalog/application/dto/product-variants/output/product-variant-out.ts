@@ -9,6 +9,7 @@ export interface ProductVariantOutput {
   unitCode?: string;
   unitName?: string;
   sku: string | null;
+  customSku: string | null;
   barcode: string | null;
   attributes: ProductVariantAttributes | null;
   price: number | null;

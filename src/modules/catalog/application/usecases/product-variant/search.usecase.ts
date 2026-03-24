@@ -37,6 +37,7 @@ export class SearchProductVariants {
         unitCode: x.unitCode,
         unitName: x.unitName,
         sku: x.variant.getSku(),
+        customSku: x.variant.getCustomSku() ?? null,
         barcode: x.variant.getBarcode(),
         attributes: x.variant.getAttributes(),
         price: x.variant.getPrice().getAmount(),

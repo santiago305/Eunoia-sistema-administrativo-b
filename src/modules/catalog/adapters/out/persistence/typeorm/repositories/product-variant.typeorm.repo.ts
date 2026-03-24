@@ -38,6 +38,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
     const saved = await repo.save({
       productId: variant.getProductId().value,
       sku: variant.getSku(),
+      customSku: variant.getCustomSku() ?? null,
       barcode: variant.getBarcode(),
       attributes: variant.getAttributes(),
       price: variant.getPrice().getAmount(),
@@ -98,6 +99,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
         'v.id',
         'v.productId',
         'v.sku',
+        'v.customSku',
         'v.barcode',
         'v.attributes',
         'v.price',
@@ -157,6 +159,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       id: string;
       sku?: string;
       barcode?: string | null;
+      customSku?: string | null;
       attributes?: AttributesRecord;
       price?: Money;
       cost?: Money;
@@ -167,6 +170,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
     const patch: Partial<ProductVariantEntity> = {};
     if (params.sku !== undefined) patch.sku = params.sku;
     if (params.barcode !== undefined) patch.barcode = params.barcode;
+    if (params.customSku !== undefined) patch.customSku = params.customSku;
     if (params.attributes !== undefined) patch.attributes = params.attributes;
     if (params.price !== undefined) patch.price = params.price.getAmount();
     if (params.cost !== undefined) patch.cost = params.cost.getAmount();
@@ -203,6 +207,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
         'v.id',
         'v.productId',
         'v.sku',
+        'v.customSku',
         'v.barcode',
         'v.attributes',
         'v.price',
@@ -447,6 +452,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       Money.create(Number(row.cost ?? 0)),
       row.isActive,
       row.createdAt,
+      row.customSku,
     );
   }
 }
