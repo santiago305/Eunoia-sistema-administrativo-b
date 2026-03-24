@@ -19,6 +19,7 @@ export class Product {
     private type: ProductType,
     private createdAt?: Date,
     private updatedAt?: Date,
+    private customSku?: string | null,
   ) {
     if (!name?.trim()) throw new Error("Product name is required");
   }
@@ -34,6 +35,7 @@ export class Product {
   getAttributes() { return this.attributes; }
   getIsActive() { return this.isActive; }
   getType() { return this.type; }
+  getCustomSku() { return this.customSku; }
   getCreatedAt() { return this.createdAt; }
   getUpdatedAt() { return this.updatedAt; }
 }

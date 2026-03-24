@@ -11,6 +11,10 @@ export class HttpCreateProductVariantDto {
   barcode?: string;
 
   @IsOptional()
+  @IsString()
+  customSku?: string | null;
+
+  @IsOptional()
   @ValidateNested()
   @Type(() => ProductVariantAttributesDto)
   attributes?: ProductVariantAttributesDto;

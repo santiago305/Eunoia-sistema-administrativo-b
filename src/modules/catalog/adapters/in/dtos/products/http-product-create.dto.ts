@@ -15,6 +15,10 @@ export class HttpCreateProductDto {
   baseUnitId: string;
 
   @IsOptional()
+  @IsString()
+  customSku?: string | null;
+
+  @IsOptional()
   @ValidateNested()
   @Type(() => ProductVariantAttributesDto)
   attributes?: ProductVariantAttributesDto;

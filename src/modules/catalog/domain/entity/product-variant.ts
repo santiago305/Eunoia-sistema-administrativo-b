@@ -12,6 +12,7 @@ export class ProductVariant {
     private readonly cost: Money,
     private readonly isActive: boolean,
     private readonly createdAt: Date,
+    private readonly customSku?: string | null,
   ) {
     if (!sku?.trim()) throw new Error("SKU is required");
   }
@@ -24,6 +25,7 @@ export class ProductVariant {
   }
   getProductId(): ProductId { return this.productId; }
   getSku(): string { return this.sku; }
+  getCustomSku(): string | null | undefined { return this.customSku; }
   getBarcode(): string | null { return this.barcode; }
   getAttributes(): AttributesRecord { return this.attributes; }
   getPrice(): Money { return this.price; }

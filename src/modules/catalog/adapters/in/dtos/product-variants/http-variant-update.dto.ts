@@ -8,6 +8,10 @@ export class HttpUpdateProductVariantDto {
   barcode?: string | null;
 
   @IsOptional()
+  @IsString()
+  customSku?: string | null;
+
+  @IsOptional()
   @ValidateNested()
   @Type(() => ProductVariantAttributesDto)
   attributes?: ProductVariantAttributesDto;

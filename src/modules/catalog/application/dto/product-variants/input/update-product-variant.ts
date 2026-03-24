@@ -4,6 +4,7 @@ export interface UpdateProductVariantInput {
   id: string;
   sku?: string;
   barcode?: string | null;
+  customSku?: string | null;
   attributes?: ProductVariantAttributes;
   price?: number;
   cost?: number;

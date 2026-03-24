@@ -33,6 +33,7 @@ export interface ProductRepository {
       baseUnitId?: string;
       sku?: string;
       barcode?: string | null;
+      customSku?: string | null;
       price?: Money;
       cost?: Money;
       attributes?: AttributesRecord;

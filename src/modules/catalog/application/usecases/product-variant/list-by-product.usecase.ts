@@ -20,6 +20,7 @@ export class ListProductVariants {
       id: v.getId(),
       productId: v.getProductId().value,
       sku: v.getSku(),
+      customSku: v.getCustomSku() ?? null,
       barcode: v.getBarcode(),
       attributes: v.getAttributes(),
       price: v.getPrice().getAmount(),

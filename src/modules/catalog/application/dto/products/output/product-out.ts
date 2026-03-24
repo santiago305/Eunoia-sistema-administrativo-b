@@ -6,6 +6,7 @@ export interface ProductOutput {
   name: string;
   description: string | null;
   sku: string;
+  customSku: string | null;
   barcode: string | null;
   price: number;
   cost: number;

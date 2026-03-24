@@ -32,35 +32,16 @@ export class UpdateProduct {
         }
       }
         
-      let sku = current.getSku();
 
-      if (input.sku?.trim()) {
-        sku = input.sku.trim();
-      }
-
-      if (input.attributes) {
-        sku = buildSkuPreservingSeries(
-          sku,
-          input.name ?? current.getName(),
-          input.attributes?.color,
-          input.attributes?.presentation,
-          input.attributes?.variant,
-        );
-      }
-      if (sku !== current.getSku()) {
-        const existingBySku = await this.productRepo.findBySku(sku, tx);
-        if (existingBySku && existingBySku.getId()?.value !== current.getId()?.value) {
-          throw new ConflictException({ type: "error", message: "El SKU ya existe en otro producto" });
-        }
-      }
+      const customSku = input.customSku !== undefined ? (input.customSku?.trim() || null) : undefined;
       const updated = await this.productRepo.update(
       {
         id: ProductId.create(input.id),
         name: input.name,
         description: input.description,
         baseUnitId: input.baseUnitId,
-        sku: sku,
         barcode: input.barcode === null ? null : input.barcode?.trim(),
+        customSku,
         price: input.price !== undefined ? Money.create(input.price) : undefined,
         cost: input.cost !== undefined ? Money.create(input.cost) : undefined,
         attributes: input.attributes,

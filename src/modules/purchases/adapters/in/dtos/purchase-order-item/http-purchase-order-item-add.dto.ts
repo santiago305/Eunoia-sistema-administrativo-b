@@ -1,5 +1,12 @@
-import { IsEnum, IsInt, IsNumber, IsOptional, IsString, IsUUID, Min } from "class-validator";
 import { Type } from "class-transformer";
+import {
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Min,
+} from "class-validator";
 import { AfectIgvType } from "src/modules/purchases/domain/value-objects/afect-igv-type";
 
 export class HttpAddPurchaseOrderItemDto {
@@ -9,13 +16,15 @@ export class HttpAddPurchaseOrderItemDto {
   @IsOptional()
   @IsString()
   unitBase?: string;
-  
+
   @IsOptional()
   @IsString()
   equivalence?: string;
 
   @IsOptional()
-  @IsNumber()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 4 })
+  @Min(0)
   factor?: number;
 
   @IsOptional()
@@ -23,36 +32,42 @@ export class HttpAddPurchaseOrderItemDto {
   afectType?: AfectIgvType;
 
   @Type(() => Number)
-  @IsInt()
-  @Min(1)
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Min(0.001)
   quantity: number;
 
   @IsOptional()
-  @IsNumber()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   porcentageIgv?: number;
 
   @IsOptional()
-  @IsNumber()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   baseWithoutIgv?: number;
 
   @IsOptional()
-  @IsNumber()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   amountIgv?: number;
 
   @IsOptional()
-  @IsNumber()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 4 })
   @Min(0)
   unitValue?: number;
 
-  @IsNumber()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 4 })
   @Min(0)
   unitPrice: number;
 
   @IsOptional()
-  @IsNumber()
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   purchaseValue?: number;
 }

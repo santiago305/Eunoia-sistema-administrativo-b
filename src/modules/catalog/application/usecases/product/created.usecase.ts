@@ -27,6 +27,7 @@ export class CreateProduct {
       const now = this.clock.now();
 
       const normalizedBarcode = input.barcode?.trim() || null;
+      const normalizedCustomSku = input.customSku?.trim() || null;
       if (normalizedBarcode) {
         const existsBarcode = await this.productRepo.findByBarcode(normalizedBarcode, tx);
         if (existsBarcode) throw new ConflictException({type: 'error', message: 'Barcode ya existe'});
@@ -38,7 +39,6 @@ export class CreateProduct {
         if (existsSku) throw new ConflictException({type: 'error', message: 'SKU ya existe'});
       }
 
-      let sku = explicitSku;
       let attributes: Record<string, unknown>;
 
       try {
@@ -47,16 +47,15 @@ export class CreateProduct {
         throw new BadRequestException({ type: "error", message: "Attributes inválidos" });
       }
 
-      if (!sku) {
-        sku = await generateUniqueSku(
-          this.skuCounterRepo,
-          input.name,
-          input.attributes?.color,
-          input.attributes?.presentation,
-          input.attributes?.variant,
-          tx,
-        );
-      }
+      const next = await this.skuCounterRepo.reserveNext(tx); // global
+        if (!Number.isFinite(next) || next <= 0) {
+          throw new InternalServerErrorException({
+            type: 'error',
+            message: `No se pudo generar correlativo`,
+          });
+        }
+      
+        const sku = `${String(next).padStart(5, '0')}`;
 
       const product = new Product(
         undefined,
@@ -72,6 +71,7 @@ export class CreateProduct {
         input.type,
         now,
         null,
+        normalizedCustomSku,
       );
 
       let createdProduct: Product;

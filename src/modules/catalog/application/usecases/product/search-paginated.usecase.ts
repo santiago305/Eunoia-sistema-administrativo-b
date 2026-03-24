@@ -45,6 +45,7 @@ export class SearchProductsPaginated {
           baseUnitId: p.getBaseUnitId(),
           name: p.getName(),
           sku: p.getSku(),
+          customSku: p.getCustomSku() ?? null,
           barcode: p.getBarcode(),
           cost: p.getCost().getAmount(),
           price: p.getPrice().getAmount(),
