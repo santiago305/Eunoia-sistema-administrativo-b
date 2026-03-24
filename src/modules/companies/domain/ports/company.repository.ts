@@ -1,5 +1,6 @@
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { Company } from "../entity/company";
+import { UpdateCompanyParams } from "../types/update-company.params";
 
 export const COMPANY_REPOSITORY = Symbol("COMPANY_REPOSITORY");
 
@@ -9,25 +10,10 @@ export interface CompanyRepository {
   existsByEmail(email: string, tx?: TransactionContext): Promise<boolean>;
   create(company: Company, tx?: TransactionContext): Promise<Company>;
   update(
-    params: {
+    params: UpdateCompanyParams & {
       companyId: string;
-      name?: string;
-      ruc?: string;
-      ubigeo?: string;
-      department?: string;
-      province?: string;
-      district?: string;
-      urbanization?: string;
-      address?: string;
-      phone?: string;
-      email?: string;
-      codLocal?: string;
-      solUser?: string;
-      solPass?: string;
       logoPath?: string;
       certPath?: string;
-      production?: boolean;
-      isActive?: boolean;
       createdAt?: Date;
       updatedAt?: Date;
     },
