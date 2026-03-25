@@ -9,6 +9,8 @@ import { InventoryDocumentEntity } from '../entities/inventory_document.entity';
 import { InventoryDocumentItemEntity } from '../entities/inventory_document_item.entity';
 import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
 import { TypeormTransactionContext } from 'src/shared/infrastructure/typeorm/typeorm.transaction-context';
+import { ReferenceType } from 'src/modules/inventory/domain/value-objects/reference-type';
+import { DocType } from 'src/modules/inventory/domain/value-objects/doc-type';
 
 @Injectable()
 export class DocumentTypeormRepository implements DocumentRepository {
@@ -164,6 +166,46 @@ export class DocumentTypeormRepository implements DocumentRepository {
     };
   }
 
+  async findByReference(
+    params: {
+      referenceType: ReferenceType;
+      referenceId: string;
+      docType?: DocType;
+    },
+    tx?: TransactionContext,
+  ): Promise<InventoryDocument[]> {
+    const repo = this.getDocRepo(tx);
+    const qb = repo
+      .createQueryBuilder('d')
+      .where('d.referenceType = :referenceType', { referenceType: params.referenceType })
+      .andWhere('d.referenceId = :referenceId', { referenceId: params.referenceId });
+
+    if (params.docType) {
+      qb.andWhere('d.docType = :docType', { docType: params.docType });
+    }
+
+    const rows = await qb.getMany();
+    return rows.map(
+      (row) =>
+        new InventoryDocument(
+          row.id,
+          row.docType as any,
+          row.status as any,
+          row.serieId,
+          row.correlative,
+          row.fromWarehouseId,
+          row.toWarehouseId,
+          row.referenceId,
+          row.referenceType,
+          row.note,
+          row.createdBy,
+          row.postedBy,
+          row.postedAt,
+          row.createdAt,
+        ),
+    );
+  }
+
   async listItems(docId: string, tx?: TransactionContext): Promise<InventoryDocumentItem[]> {
     const repo = this.getItemRepo(tx);
     const rows = await repo.find({ where: { docId } });
@@ -174,6 +216,7 @@ export class DocumentTypeormRepository implements DocumentRepository {
           r.docId,
           r.stockItemId,
           r.quantity,
+          r.wasteQty ?? 0,
           r.fromLocationId,
           r.toLocationId,
           r.unitCost ?? null,
@@ -199,6 +242,7 @@ export class DocumentTypeormRepository implements DocumentRepository {
       fromLocationId: item.fromLocationId,
       toLocationId: item.toLocationId,
       quantity: item.quantity,
+      wasteQty: item.wasteQty ?? 0,
       unitCost: item.unitCost ?? null,
     });
 
@@ -207,6 +251,7 @@ export class DocumentTypeormRepository implements DocumentRepository {
       saved.docId,
       saved.stockItemId,
       saved.quantity,
+      saved.wasteQty ?? 0,
       saved.fromLocationId,
       saved.toLocationId,
       saved.unitCost ?? null,
@@ -221,6 +266,7 @@ export class DocumentTypeormRepository implements DocumentRepository {
       fromLocationId?: string;
       toLocationId?: string;
       unitCost?: number | null;
+      wasteQty?: number | null;
     },
     tx?: TransactionContext,
   ): Promise<InventoryDocumentItem | null> {
@@ -231,6 +277,7 @@ export class DocumentTypeormRepository implements DocumentRepository {
     if (params.fromLocationId !== undefined) patch.fromLocationId = params.fromLocationId;
     if (params.toLocationId !== undefined) patch.toLocationId = params.toLocationId;
     if (params.unitCost !== undefined) patch.unitCost = params.unitCost;
+    if (params.wasteQty !== undefined) patch.wasteQty = params.wasteQty;
 
     await repo.update({ id: params.itemId, docId: params.docId }, patch);
 
@@ -242,6 +289,7 @@ export class DocumentTypeormRepository implements DocumentRepository {
       updated.docId,
       updated.stockItemId,
       updated.quantity,
+      updated.wasteQty ?? 0,
       updated.fromLocationId,
       updated.toLocationId,
       updated.unitCost ?? null,

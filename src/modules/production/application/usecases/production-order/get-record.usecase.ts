@@ -87,6 +87,7 @@ export class GetProductionOrder {
             fromLocationId: i.fromLocationId,
             toLocationId: i.toLocationId,
             quantity: i.quantity,
+            wasteQty: i.wasteQty ?? 0,
             unitCost: i.unitCost,
           };
         }),

@@ -20,6 +20,9 @@ export class InventoryDocumentItemEntity {
   @Column({ name: 'quantity', type: 'int' })
   quantity: number;
 
+  @Column({ name: 'waste_qty', type: 'numeric', precision: 12, scale: 6, default: 0 })
+  wasteQty: number;
+
   @Column({ name: 'unit_cost', type: 'numeric', precision: 12, scale: 2, nullable: true })
   unitCost?: number | null;
 }

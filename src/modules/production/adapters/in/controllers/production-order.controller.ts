@@ -9,10 +9,12 @@ import { CloseProductionOrder } from "src/modules/production/application/usecase
 import { CancelProductionOrder } from "src/modules/production/application/usecases/production-order/cancel.usecase";
 import { AddProductionOrderItem } from "src/modules/production/application/usecases/production-order/add-item.usecase";
 import { RemoveProductionOrderItem } from "src/modules/production/application/usecases/production-order/remove-production-order-item.usecase";
+import { UpdateProductionWaste } from "src/modules/production/application/usecases/production-order/update-waste.usecase";
 import { HttpCreateProductionOrderDto } from "../dtos/production-order/http-production-order-create.dto";
 import { HttpUpdateProductionOrderDto } from "../dtos/production-order/http-production-order-update.dto";
 import { HttpListProductionOrdersQueryDto } from "../dtos/production-order/http-production-order-list.dto";
 import { HttpAddProductionOrderItemDto } from "../dtos/production-order/http-production-order-item-create.dto";
+import { HttpUpdateProductionWasteDto } from "../dtos/production-order/http-production-order-waste.dto";
 import { ParseDateLocal } from "src/shared/utilidades/utils/ParseDates";
 import { User as CurrentUser } from 'src/shared/utilidades/decorators/user.decorator';
 
@@ -29,6 +31,7 @@ export class ProductionOrdersController {
     private readonly cancelOrder: CancelProductionOrder,
     private readonly addItem: AddProductionOrderItem,
     private readonly removeItem: RemoveProductionOrderItem,
+    private readonly updateWaste: UpdateProductionWaste,
   ) {}
 
   @Post()
@@ -68,6 +71,14 @@ export class ProductionOrdersController {
   @Post(":id/close")
   close(@Param("id", ParseUUIDPipe) id: string,  @CurrentUser() user: { id: string } ) {
     return this.closeOrder.execute({ productionId: id, postedBy: user.id });
+  }
+
+  @Patch(":id/waste")
+  updateProductionWaste(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: HttpUpdateProductionWasteDto,
+  ) {
+    return this.updateWaste.execute({ productionId: id, items: dto.items });
   }
 
   @Post(":id/cancel")

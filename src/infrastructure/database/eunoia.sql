@@ -662,7 +662,10 @@ create table inventory_document_items (
   to_location_id uuid references warehouse_locations(location_id),
 
   quantity int not null check (quantity > 0),
-  unit_cost numeric(12,2)
+  waste_qty numeric(12,6) not null default 0,
+  unit_cost numeric(12,2),
+  check (waste_qty >= 0),
+  check (waste_qty <= quantity)
 );
 
 create index idx_doc_items_doc on inventory_document_items(doc_id);
@@ -694,6 +697,7 @@ create type inv_direction as enum ('IN','OUT');
 create table inventory_ledger (
   ledger_id bigserial primary key,
   doc_id uuid not null references inventory_documents(doc_id),
+  doc_item_id uuid references inventory_document_items(item_id),
   series_id uuid references documents_series(series_id),
 
   warehouse_id uuid not null references warehouses(warehouse_id),
@@ -702,13 +706,17 @@ create table inventory_ledger (
 
   direction inv_direction not null,
   quantity int not null check (quantity > 0),
+  waste_qty numeric(12,6) not null default 0,
   unit_cost numeric(12,2),
+  check (waste_qty >= 0),
+  check (waste_qty <= quantity),
 
   created_at timestamptz not null default now()
 );
 
 create index idx_ledger_stock_item_date on inventory_ledger(stock_item_id, created_at desc);
 create index idx_ledger_doc on inventory_ledger(doc_id);
+create index idx_ledger_doc_item on inventory_ledger(doc_item_id);
 
 -- =========================
 -- 6) Reorden (stock â€œinteligenteâ€)
@@ -1036,7 +1044,10 @@ create table production_order_items (
   from_location_id uuid  null references warehouse_locations(location_id),
   to_location_id uuid  null references warehouse_locations(location_id),
   quantity int not null check (quantity > 0),
-  unit_cost numeric not null
+  waste_qty numeric(12,6) not null default 0,
+  unit_cost numeric not null,
+  check (waste_qty >= 0),
+  check (waste_qty <= quantity)
 );
 
 create index idx_production_items_production on production_order_items(production_id);

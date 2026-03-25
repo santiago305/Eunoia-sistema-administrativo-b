@@ -1,6 +1,9 @@
-import { Equals, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ArrayMinSize, Equals, IsArray, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength, ValidateNested } from 'class-validator';
 import { DocType } from 'src/modules/inventory/domain/value-objects/doc-type';
 import { ReferenceType } from 'src/modules/inventory/domain/value-objects/reference-type';
+import { HttpCreateAddItemPostOutItemDto } from './http-document-create-add-item-post-out.dto';
+import { HttpAddItemAdjustmentDto } from '../document-item/http-add-item-adjustment.dto';
 
 export class HttpCreateDocumentAdjustmentDto {
   @Equals(DocType.ADJUSTMENT, {
@@ -21,7 +24,6 @@ export class HttpCreateDocumentAdjustmentDto {
   @IsOptional()
   @IsString()
   @MaxLength(60)
-  @IsNotEmpty()
   referenceType?: ReferenceType;
 
   @IsOptional()
@@ -29,4 +31,10 @@ export class HttpCreateDocumentAdjustmentDto {
   @MaxLength(500)
   @IsNotEmpty()
   note?: string;
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => HttpAddItemAdjustmentDto)
+  items: HttpAddItemAdjustmentDto[];
 }

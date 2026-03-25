@@ -3,6 +3,7 @@ export interface ItemOutput {
   docId: string;
   stockItemId: string;
   quantity: number;
+  wasteQty?: number | null;
   unitCost?: number | null;
   fromLocationId?: string; 
   toLocationId?: string;   

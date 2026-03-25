@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, IsString, IsUUID, Min } from "class-validator";
+import { IsInt, IsNumber, IsOptional, IsString, IsUUID, Min } from "class-validator";
 import { Type } from "class-transformer";
 
 export class HttpAddProductionOrderItemDto {
@@ -18,8 +18,9 @@ export class HttpAddProductionOrderItemDto {
   @Min(1)
   quantity: number;
 
+  @IsOptional()
   @Type(() => Number)
-  @IsInt()
+  @IsNumber({ maxDecimalPlaces: 4 })
   @Min(0)
   unitCost: number;
 

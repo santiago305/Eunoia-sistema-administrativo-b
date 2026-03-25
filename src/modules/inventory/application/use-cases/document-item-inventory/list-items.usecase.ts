@@ -17,6 +17,7 @@ export class ListDocumentItemsUseCase {
       docId: i.docId,
       stockItemId: i.stockItemId,
       quantity: i.quantity,
+      wasteQty: i.wasteQty ?? 0,
       unitCost: i.unitCost ?? null,
       fromLocationId: i.fromLocationId, 
       toLocationId: i.toLocationId,    

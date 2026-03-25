@@ -40,6 +40,7 @@ export class AddProductionOrderItem {
         input.fromLocationId,
         input.toLocationId,
         input.quantity,
+        0,
         input.unitCost,
         input.type
       );
@@ -53,6 +54,7 @@ export class AddProductionOrderItem {
         fromLocationId: saved.fromLocationId,
         toLocationId: saved.toLocationId,
         quantity: saved.quantity,
+        wasteQty: saved.wasteQty ?? 0,
         unitCost: saved.unitCost,
       };
     };

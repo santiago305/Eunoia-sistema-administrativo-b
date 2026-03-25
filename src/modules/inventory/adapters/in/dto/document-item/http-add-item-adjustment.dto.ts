@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsNumber, IsUUID, Min } from 'class-validator';
+import { IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, MaxLength, Min } from 'class-validator';
 
 export class HttpAddItemAdjustmentDto {
   @IsUUID()
@@ -8,13 +8,20 @@ export class HttpAddItemAdjustmentDto {
   @Type(() => Number)
   @IsInt()
   quantity: number;
-
+  
   @IsUUID()
+  @IsOptional()
   fromLocationId: string;
 
+  @IsOptional()
   @Type(() => Number)
-  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @IsNumber({ maxDecimalPlaces: 4 })
   @Min(0)
   unitCost?: number;
+
+  @IsString()
+  @MaxLength(60)
+  @IsNotEmpty()
+  adjustmentType?: string;
 }
 

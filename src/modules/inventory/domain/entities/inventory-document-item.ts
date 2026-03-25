@@ -4,6 +4,7 @@ export default class InventoryDocumentItem {
     public readonly docId: string,
     public readonly stockItemId: string,
     public readonly quantity: number,
+    public readonly wasteQty?: number | null,
     public readonly fromLocationId?: string,
     public readonly toLocationId?: string,
     public readonly unitCost?: number | null,

@@ -77,6 +77,8 @@ export class PostDocumentoIn {
             Direction.IN,
             item.quantity,
             item.unitCost ?? null,
+            item.id,
+            item.wasteQty ?? 0,
             item.toLocationId,
             now,
           ),

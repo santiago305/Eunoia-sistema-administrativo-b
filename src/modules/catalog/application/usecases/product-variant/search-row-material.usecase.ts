@@ -40,6 +40,7 @@ export class SearchRowMaterialProductVariants {
       unitCode: r.unitCode,
       unitName: r.unitName,
       type: r.type,
+      attributes: r.attributes,
     }));
   }
 }

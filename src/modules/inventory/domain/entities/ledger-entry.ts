@@ -147,6 +147,8 @@ export class LedgerEntry {
     public readonly direction: Direction,
     public readonly quantity: number,
     public readonly unitCost?: number | null,
+    public readonly docItemId?: string | null,
+    public readonly wasteQty?: number | null,
     public readonly locationId?: string,
     public readonly createdAt?: Date,
     public readonly stockItem?: LedgerStockItemSnapshot,

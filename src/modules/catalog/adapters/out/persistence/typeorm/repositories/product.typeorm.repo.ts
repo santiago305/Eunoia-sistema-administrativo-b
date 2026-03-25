@@ -356,29 +356,31 @@ export class ProductTypeormRepository implements ProductRepository {
       qb.where("p.type = :type", { type: ProductType.FINISHED });
     }
 
-    const raw = await qb
-      .select([
-        "p.id",
-        "p.name",
-        "p.description",
-        "p.baseUnitId",
-        "p.sku",
-        "u.code",
-        "u.name",
-      ])
-      .getRawMany();
+      const raw = await qb
+        .select([
+          "p.id",
+          "p.name",
+          "p.description",
+          "p.baseUnitId",
+          "p.sku",
+          "p.attributes",
+          "u.code",
+          "u.name",
+        ])
+        .getRawMany();
 
     return raw.map((r) => ({
       primaId: r.p_product_id,
       productName: r.p_name,
-      productDescription: r.p_description,
-      sku: r.p_sku,
-      baseUnitId: r.p_baseUnitId,
-      unitCode: r.u_code,
-      unitName: r.u_name,
-      type:'PRODUCT'
-    }));
-  }
+        productDescription: r.p_description,
+        sku: r.p_sku,
+        baseUnitId: r.p_baseUnitId,
+        unitCode: r.u_code,
+        unitName: r.u_name,
+        type:'PRODUCT',
+        attributes: r.p_attributes,
+      }));
+    }
 
   async searchRowMaterialProduct(
     params: { q: string; raw?: boolean; withRecipes?: boolean },
@@ -406,29 +408,31 @@ export class ProductTypeormRepository implements ProductRepository {
       }),
     );
 
-    const rows = await qb
-      .select([
-        'p.id',
-        'p.name',
-        'p.description',
-        'p.baseUnitId',
-        'p.sku',
-        'u.code',
-        'u.name',
-      ])
-      .getRawMany();
+      const rows = await qb
+        .select([
+          'p.id',
+          'p.name',
+          'p.description',
+          'p.baseUnitId',
+          'p.sku',
+          'p.attributes',
+          'u.code',
+          'u.name',
+        ])
+        .getRawMany();
 
     return rows.map((r) => ({
       primaId: r.p_product_id,
       productName: r.p_name,
-      productDescription: r.p_description,
-      sku: r.p_sku,
-      baseUnitId: r.p_baseUnitId,
-      unitCode: r.u_code,
-      unitName: r.u_name,
-      type: 'PRODUCT',
-    }));
-  }
+        productDescription: r.p_description,
+        sku: r.p_sku,
+        baseUnitId: r.p_baseUnitId,
+        unitCode: r.u_code,
+        unitName: r.u_name,
+        type: 'PRODUCT',
+        attributes: r.p_attributes,
+      }));
+    }
 
   async listFinishedWithRecipesProduct(tx?: TransactionContext): Promise<RowMaterial[]> {
     const qb = this.getManager(tx)
@@ -439,29 +443,31 @@ export class ProductTypeormRepository implements ProductRepository {
       .where('p.type = :type', { type: ProductType.FINISHED })
       .distinct(true);
 
-    const raw = await qb
-      .select([
-        'p.id',
-        'p.name',
-        'p.description',
-        'p.baseUnitId',
-        'p.sku',
-        'u.code',
-        'u.name',
-      ])
-      .getRawMany();
+      const raw = await qb
+        .select([
+          'p.id',
+          'p.name',
+          'p.description',
+          'p.baseUnitId',
+          'p.sku',
+          'p.attributes',
+          'u.code',
+          'u.name',
+        ])
+        .getRawMany();
 
     return raw.map((r) => ({
       primaId: r.p_product_id,
       productName: r.p_name,
-      productDescription: r.p_description,
-      sku: r.p_sku,
-      baseUnitId: r.p_baseUnitId,
-      unitCode: r.u_code,
-      unitName: r.u_name,
-      type: 'PRODUCT',
-    }));
-  }
+        productDescription: r.p_description,
+        sku: r.p_sku,
+        baseUnitId: r.p_baseUnitId,
+        unitCode: r.u_code,
+        unitName: r.u_name,
+        type: 'PRODUCT',
+        attributes: r.p_attributes,
+      }));
+    }
 
   async listFinishedActive(tx?: TransactionContext): Promise<Product[]> {
     const rows = await this.getRepo(tx).find({

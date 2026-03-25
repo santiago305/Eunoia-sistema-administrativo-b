@@ -274,30 +274,32 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       qb.where('p.type = :type', { type: ProductType.FINISHED });
     }
 
-    const raw = await qb
-      .select([
-        'v.id',
-        'v.productId',
-        'v.sku',
-        'p.name',
-        'p.description',
-        'p.baseUnitId',
-        'u.code',
-        'u.name',
-      ])
-      .getRawMany();
+      const raw = await qb
+        .select([
+          'v.id',
+          'v.productId',
+          'v.sku',
+          'v.attributes',
+          'p.name',
+          'p.description',
+          'p.baseUnitId',
+          'u.code',
+          'u.name',
+        ])
+        .getRawMany();
 
     return raw.map((r) => ({
       primaId: r.v_variant_id,
       productName: r.p_name,
-      productDescription: r.p_description,
-      sku: r.v_sku,
-      baseUnitId: r.p_baseUnitId,
-      unitCode: r.u_code,
-      unitName: r.u_name,
-      type:'VARIANT'
-    }));
-  }
+        productDescription: r.p_description,
+        sku: r.v_sku,
+        baseUnitId: r.p_baseUnitId,
+        unitCode: r.u_code,
+        unitName: r.u_name,
+        type:'VARIANT',
+        attributes: r.v_attributes,
+      }));
+    }
 
   async searchRowMaterialVariant(
     params: { q: string; raw?: boolean; withRecipes?: boolean },
@@ -326,30 +328,32 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       }),
     );
 
-    const rows = await qb
-      .select([
-        'v.id',
-        'v.productId',
-        'v.sku',
-        'p.name',
-        'p.description',
-        'p.baseUnitId',
-        'u.code',
-        'u.name',
-      ])
-      .getRawMany();
+      const rows = await qb
+        .select([
+          'v.id',
+          'v.productId',
+          'v.sku',
+          'v.attributes',
+          'p.name',
+          'p.description',
+          'p.baseUnitId',
+          'u.code',
+          'u.name',
+        ])
+        .getRawMany();
 
     return rows.map((r) => ({
       primaId: r.v_variant_id,
       productName: r.p_name,
-      productDescription: r.p_description,
-      sku: r.v_sku,
-      baseUnitId: r.p_baseUnitId,
-      unitCode: r.u_code,
-      unitName: r.u_name,
-      type: 'VARIANT',
-    }));
-  }
+        productDescription: r.p_description,
+        sku: r.v_sku,
+        baseUnitId: r.p_baseUnitId,
+        unitCode: r.u_code,
+        unitName: r.u_name,
+        type: 'VARIANT',
+        attributes: r.v_attributes,
+      }));
+    }
 
   async listFinishedWithRecipesVariant(tx?: TransactionContext): Promise<RowMaterial[]> {
     const qb = this.getManager(tx)
@@ -361,30 +365,32 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       .where('p.type = :type', { type: ProductType.FINISHED })
       .distinct(true);
 
-    const raw = await qb
-      .select([
-        'v.id',
-        'v.productId',
-        'v.sku',
-        'p.name',
-        'p.description',
-        'p.baseUnitId',
-        'u.code',
-        'u.name',
-      ])
-      .getRawMany();
+      const raw = await qb
+        .select([
+          'v.id',
+          'v.productId',
+          'v.sku',
+          'v.attributes',
+          'p.name',
+          'p.description',
+          'p.baseUnitId',
+          'u.code',
+          'u.name',
+        ])
+        .getRawMany();
 
     return raw.map((r) => ({
       primaId: r.v_variant_id,
       productName: r.p_name,
-      productDescription: r.p_description,
-      sku: r.v_sku,
-      baseUnitId: r.p_baseUnitId,
-      unitCode: r.u_code,
-      unitName: r.u_name,
-      type: 'VARIANT',
-    }));
-  }
+        productDescription: r.p_description,
+        sku: r.v_sku,
+        baseUnitId: r.p_baseUnitId,
+        unitCode: r.u_code,
+        unitName: r.u_name,
+        type: 'VARIANT',
+        attributes: r.v_attributes,
+      }));
+    }
 
 
   async listInactiveByProductId(productId: ProductId, tx?: TransactionContext): Promise<ProductVariant[]> {

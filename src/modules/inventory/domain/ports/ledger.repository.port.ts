@@ -59,5 +59,9 @@ export interface LedgerRepository {
     page: number;
     limit: number;
   }>;
+  updateWasteByDocItem(
+    params: { docItemId: string; wasteQty: number },
+    tx?: TransactionContext,
+  ): Promise<boolean>;
 }
 

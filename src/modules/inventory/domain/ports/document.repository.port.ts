@@ -3,6 +3,7 @@ import InventoryDocumentItem from '../entities/inventory-document-item';
 import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
 import { DocStatus } from '../value-objects/doc-status';
 import { DocType } from '../value-objects/doc-type';
+import { ReferenceType } from '../value-objects/reference-type';
 
 export const DOCUMENT_REPOSITORY = Symbol('DOCUMENT_REPOSITORY');
 
@@ -26,6 +27,14 @@ export interface DocumentRepository {
     page:number;
     limit:number;
   }>;
+  findByReference(
+    params: {
+      referenceType: ReferenceType;
+      referenceId: string;
+      docType?: DocType;
+    },
+    tx?: TransactionContext,
+  ): Promise<InventoryDocument[]>;
   listItems(docId: string, tx?: TransactionContext): Promise<InventoryDocumentItem[]>;
   getByIdWithItems(
     docId: string,
@@ -40,6 +49,7 @@ export interface DocumentRepository {
       fromLocationId?: string;
       toLocationId?: string;
       unitCost?: number | null;
+      wasteQty?: number | null;
     },
     tx?: TransactionContext,
   ): Promise<InventoryDocumentItem | null>;

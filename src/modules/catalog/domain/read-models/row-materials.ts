@@ -10,4 +10,9 @@ export interface RowMaterial {
     unitCode?: string;
     unitName?: string;
     type?:string;
+    attributes?: {
+        presentation?: string;
+        variant?: string;
+        color?: string;
+    };
 }

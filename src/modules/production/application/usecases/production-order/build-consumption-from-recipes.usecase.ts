@@ -9,6 +9,7 @@ export interface RecipeConsumptionLine {
   stockItemId: string;
   locationId?: string;
   qty: number;
+  wasteQty?: number;
 }
 
 @Injectable()

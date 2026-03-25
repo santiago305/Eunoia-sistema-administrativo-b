@@ -12,13 +12,13 @@ import InventoryDocumentItem from '../../../domain/entities/inventory-document-i
 import { DocStatus } from '../../../domain/value-objects/doc-status';
 import { DocType } from '../../../domain/value-objects/doc-type';
 import { InventoryRulesService } from '../../../domain/services/inventory-rules.service';
-import { DocumentPostOutValidationService } from '../../../domain/services/document-post-out-validation.service';
 import { LedgerEntry } from '../../../domain/entities/ledger-entry';
 import { Direction } from '../../../domain/value-objects/direction';
-import { CreateAddItemPostOutInput } from '../../dto/document/input/create-add-item-post-out';
+import { CreateAddItemPostAdjustmentInput } from '../../dto/document/input/create-add-item-post-adjustment';
+import { errorResponse } from 'src/shared/response-standard/response';
 
 @Injectable()
-export class CreateAddItemPostOutUseCase {
+export class CreateAddItemPostAdjustmentUseCase {
   constructor(
     @Inject(UNIT_OF_WORK)
     private readonly uow: UnitOfWork,
@@ -36,37 +36,38 @@ export class CreateAddItemPostOutUseCase {
     private readonly clock: ClockPort,
     @Inject(INVENTORY_LOCK)
     private readonly lock: InventoryLock,
-    private readonly outValidator: DocumentPostOutValidationService,
     private readonly rules: InventoryRulesService,
   ) {}
 
-  async execute(input: CreateAddItemPostOutInput): Promise<{type:string,
-    message:string, docId:string
+  async execute(input: CreateAddItemPostAdjustmentInput): Promise<{
+    type: string;
+    message: string;
+    docId: string;
   }> {
     return this.uow.runInTransaction(async (tx) => {
       if (!input.docType || !input.serieId) {
-        throw new BadRequestException('docType y serieId son obligatorios');
+        throw new BadRequestException(errorResponse('docType y serieId son obligatorios'));
       }
 
-      if (input.docType !== DocType.OUT) {
-        throw new BadRequestException('El tipo de documento no es el adecuado');
+      if (input.docType !== DocType.ADJUSTMENT) {
+        throw new BadRequestException(errorResponse('El tipo de documento no es el adecuado'));
       }
 
       if (!input.fromWarehouseId) {
-        throw new BadRequestException('OUT requiere warehouseId');
+        throw new BadRequestException(errorResponse('ADJUSTMENT requiere un almacen'));
       }
-
+      
       if (!input.items || input.items.length === 0) {
-        throw new BadRequestException('El documento no tiene items');
+        throw new BadRequestException(errorResponse('El documento no tiene items'));
       }
 
       const serie = await this.seriesRepo.findById(input.serieId, tx);
       if (!serie) {
-        throw new NotFoundException('Serie no encontrada');
+        throw new NotFoundException(errorResponse('Serie no encontrada'));
       }
 
       if (serie.docType !== input.docType) {
-        throw new BadRequestException('docType no coincide con la serie');
+        throw new BadRequestException(errorResponse('docType no coincide con la serie'));
       }
 
       const correlative = await this.seriesRepo.reserveNextNumber(input.serieId, tx);
@@ -78,7 +79,7 @@ export class CreateAddItemPostOutUseCase {
         input.serieId,
         correlative,
         input.fromWarehouseId,
-        input.toWarehouseId,
+        undefined,
         input.referenceId,
         input.referenceType,
         input.note,
@@ -92,7 +93,24 @@ export class CreateAddItemPostOutUseCase {
 
       for (const r of input.items) {
         if (r.quantity === undefined || r.quantity === null) {
-          throw new BadRequestException('quantity es obligatorio');
+          throw new BadRequestException(errorResponse('quantity es obligatorio'));
+        }
+
+        const itemId = r.itemId ?? r.stockItemId;
+        if (!itemId) {
+          throw new BadRequestException(errorResponse('itemId o stockItemId es obligatorio'));
+        }
+
+        let stockItemId = stockItemCache.get(itemId);
+        if (!stockItemId) {
+          const stockItem =
+            (await this.stockItemRepo.findById(itemId, tx)) ??
+            (await this.stockItemRepo.findByProductIdOrVariantId(itemId, tx));
+          if (!stockItem?.stockItemId) {
+            throw new NotFoundException(errorResponse('Stock item no encontrado'));
+          }
+          stockItemId = stockItem.stockItemId;
+          stockItemCache.set(itemId, stockItemId);
         }
 
         const allowNegative = savedDoc.docType === DocType.ADJUSTMENT;
@@ -103,17 +121,7 @@ export class CreateAddItemPostOutUseCase {
             allowNegative,
           });
         } catch (error: any) {
-          throw new BadRequestException(error?.message ?? 'Cantidad invalida');
-        }
-
-        let stockItemId = stockItemCache.get(r.itemId);
-        if (!stockItemId) {
-          const stockItem = await this.stockItemRepo.findByProductIdOrVariantId(r.itemId, tx);
-          if (!stockItem?.stockItemId) {
-            throw new NotFoundException('Stock item no encontrado');
-          }
-          stockItemId = stockItem.stockItemId;
-          stockItemCache.set(r.itemId, stockItemId);
+          throw new BadRequestException(errorResponse('Cantidad invalida'));
         }
 
         const item = new InventoryDocumentItem(
@@ -123,7 +131,7 @@ export class CreateAddItemPostOutUseCase {
           normalizedQty,
           0,
           r.fromLocationId,
-          r.toLocationId,
+          undefined,
           r.unitCost ?? null,
         );
 
@@ -131,34 +139,41 @@ export class CreateAddItemPostOutUseCase {
         addedItems.push(savedItem);
       }
 
+      const warehouseId = savedDoc.fromWarehouseId!;
       const keys = addedItems.map((i) => ({
-        warehouseId: savedDoc.fromWarehouseId!,
+        warehouseId,
         stockItemId: i.stockItemId,
         locationId: i.fromLocationId,
       }));
 
       await this.lock.lockSnapshots(keys, tx);
 
-      const { insuficientes, suficientes } = await this.outValidator.validateOutStock(
-        addedItems,
-        savedDoc.fromWarehouseId!,
-        tx,
-      );
-
-      if (insuficientes.length > 0) {
-        throw new BadRequestException({
-          message: {
-            insuficientes,
-            suficientes,
-          },
-        });
-      }
-
       const now = this.clock.now();
       const entries: LedgerEntry[] = [];
 
       for (const item of addedItems) {
-        const warehouseId = savedDoc.fromWarehouseId!;
+        // si es ajuste negativo, validar stock
+        if (item.quantity < 0) {
+          const snapshot = await this.inventoryRepo.getSnapshot(
+            {
+              warehouseId,
+              stockItemId: item.stockItemId,
+              locationId: item.fromLocationId
+            },
+            tx,
+          );
+
+          const onHand = snapshot?.onHand ?? 0;
+          const reserved = snapshot?.reserved ?? 0;
+          const available = onHand - reserved;
+
+          if (available < Math.abs(item.quantity)) {
+            throw new BadRequestException("Stock insuficiente");
+          }
+        }
+
+        const direction = item.quantity > 0 ? Direction.IN : Direction.OUT;
+        const qty = Math.abs(item.quantity);
 
         entries.push(
           new LedgerEntry(
@@ -166,8 +181,8 @@ export class CreateAddItemPostOutUseCase {
             savedDoc.id!,
             warehouseId,
             item.stockItemId,
-            Direction.OUT,
-            item.quantity,
+            direction,
+            qty,
             item.unitCost ?? null,
             item.id,
             item.wasteQty ?? 0,
@@ -181,7 +196,7 @@ export class CreateAddItemPostOutUseCase {
             warehouseId,
             stockItemId: item.stockItemId,
             locationId: item.fromLocationId,
-            delta: -item.quantity,
+            delta: item.quantity,
           },
           tx,
         );
