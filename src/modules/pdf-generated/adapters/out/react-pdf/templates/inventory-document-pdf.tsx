@@ -179,8 +179,6 @@ export const InventoryDocumentPdf = ({ data }: { data: InventoryDocumentPdfData 
       <View style={styles.tableHeader}>
         <Text style={[styles.headerCell, styles.headerUnit]}>UND</Text>
         <Text style={[styles.headerCell, styles.headerRight]}>CANT</Text>
-        <Text style={[styles.headerCell, styles.headerRight]}>COSTO</Text>
-        <Text style={[styles.headerCell, styles.headerRight]}>TOTAL</Text>
       </View>
 
       {data.items.map((item, idx) => (
@@ -188,8 +186,6 @@ export const InventoryDocumentPdf = ({ data }: { data: InventoryDocumentPdfData 
           <View style={styles.itemMetaRow}>
             <Text style={[styles.metaCell, styles.metaLeft]}>{item.unit}</Text>
             <Text style={[styles.metaCell, styles.metaRight]}>{item.quantity}</Text>
-            <Text style={[styles.metaCell, styles.metaRight]}>{formatCurrency(item.unitCost)}</Text>
-            <Text style={[styles.metaCell, styles.metaRight]}>{formatCurrency(item.total)}</Text>
           </View>
           <Text style={styles.itemDesc}>{item.description}</Text>
         </View>

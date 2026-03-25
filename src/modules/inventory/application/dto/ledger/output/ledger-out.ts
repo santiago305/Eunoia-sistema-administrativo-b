@@ -112,6 +112,7 @@ export interface LedgerEntryOutput {
   stockItemId: string;
   direction: Direction;
   quantity: number;
+  wasteQty?: number | null;
   unitCost?: number | null;
   createdAt?: Date;
   balance?: number;

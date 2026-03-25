@@ -59,6 +59,7 @@ export class UpdateItemUseCase {
       docId: updated.docId,
       stockItemId: updated.stockItemId,
       quantity: updated.quantity,
+      wasteQty: updated.wasteQty ?? 0,
       unitCost: updated.unitCost ?? null,
       fromLocationId: updated.fromLocationId,
       toLocationId: updated.toLocationId,     

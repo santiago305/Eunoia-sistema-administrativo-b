@@ -65,30 +65,33 @@ export class PostProductionDocumentsUseCase {
       tx,
     );
 
+    const outDocItems: InventoryDocumentItem[] = [];
     for (const c of params.consumption) {
-      await this.documentRepo.addItem(
+      const saved = await this.documentRepo.addItem(
         new InventoryDocumentItem(
           undefined,
           outDoc.id!,
           c.stockItemId,
           c.qty,
+          c.wasteQty ?? 0,
           c.locationId,
           undefined,
           null,
         ),
         tx,
       );
+      outDocItems.push(saved);
     }
 
-    const outKeys = params.consumption.map((c) => ({
+    const outKeys = outDocItems.map((c) => ({
       warehouseId: params.order.fromWarehouseId,
       stockItemId: c.stockItemId,
-      locationId: c.locationId,
+      locationId: c.fromLocationId,
     }));
     await this.lock.lockSnapshots(outKeys, tx);
 
     const outEntries: LedgerEntry[] = [];
-    for (const c of params.consumption) {
+    for (const c of outDocItems) {
       outEntries.push(
         new LedgerEntry(
           undefined,
@@ -96,9 +99,11 @@ export class PostProductionDocumentsUseCase {
           params.order.fromWarehouseId,
           c.stockItemId,
           Direction.OUT,
-          c.qty,
+          c.quantity,
           null,
-          c.locationId,
+          c.id,
+          c.wasteQty ?? 0,
+          c.fromLocationId,
           now,
         ),
       );
@@ -107,8 +112,8 @@ export class PostProductionDocumentsUseCase {
         {
           warehouseId: params.order.fromWarehouseId,
           stockItemId: c.stockItemId,
-          locationId: c.locationId,
-          delta: -c.qty,
+          locationId: c.fromLocationId,
+          delta: -c.quantity,
         },
         tx,
       );
@@ -151,43 +156,47 @@ export class PostProductionDocumentsUseCase {
       return stockItem.stockItemId;
     };
 
+    const inDocItems: InventoryDocumentItem[] = [];
     for (const item of params.items) {
       const finishedStockItemId = await getFinishedStockItemId(item.finishedItemId);
-      await this.documentRepo.addItem(
+      const saved = await this.documentRepo.addItem(
         new InventoryDocumentItem(
           undefined,
           inDoc.id!,
           finishedStockItemId,
           item.quantity,
+          0,
           undefined,
           item.toLocationId ?? undefined,
           item.unitCost ?? null,
         ),
         tx,
       );
+      inDocItems.push(saved);
     }
 
     const inKeys = await Promise.all(
-      params.items.map(async (i) => ({
+      inDocItems.map(async (i) => ({
         warehouseId: params.order.toWarehouseId,
-        stockItemId: await getFinishedStockItemId(i.finishedItemId),
+        stockItemId: i.stockItemId,
         locationId: i.toLocationId,
       })),
     );
     await this.lock.lockSnapshots(inKeys, tx);
 
     const inEntries: LedgerEntry[] = [];
-    for (const item of params.items) {
-      const finishedStockItemId = await getFinishedStockItemId(item.finishedItemId);
+    for (const item of inDocItems) {
       inEntries.push(
         new LedgerEntry(
           undefined,
           inDoc.id!,
           params.order.toWarehouseId,
-          finishedStockItemId,
+          item.stockItemId,
           Direction.IN,
           item.quantity,
           item.unitCost ?? null,
+          item.id,
+          item.wasteQty ?? 0,
           item.toLocationId ?? undefined,
           now,
         ),
@@ -196,7 +205,7 @@ export class PostProductionDocumentsUseCase {
       await this.inventoryRepo.incrementOnHand(
         {
           warehouseId: params.order.toWarehouseId,
-          stockItemId: finishedStockItemId,
+          stockItemId: item.stockItemId,
           locationId: item.toLocationId ?? undefined,
           delta: item.quantity,
         },

@@ -9,5 +9,6 @@ export interface ProductionOrderItemOutput {
   fromLocationId: string | null;
   toLocationId: string | null;
   quantity: number;
+  wasteQty?: number | null;
   unitCost: number;
 }

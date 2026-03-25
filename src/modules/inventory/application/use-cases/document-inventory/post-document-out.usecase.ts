@@ -92,6 +92,8 @@ export class PostDocumentoOut {
             Direction.OUT,
             item.quantity,
             item.unitCost ?? null,
+            item.id,
+            item.wasteQty ?? 0,
             item.fromLocationId,
             now,
           ),

@@ -34,6 +34,9 @@ export class ProductionOrderItemEntity {
   @Column({ name: "quantity", type: "int" })
   quantity: number;
 
+  @Column({ name: "waste_qty", type: "numeric", precision: 12, scale: 6, default: 0 })
+  wasteQty: number;
+
   @Column({ name: "unit_cost", type: "numeric" })
   unitCost: number;
 }

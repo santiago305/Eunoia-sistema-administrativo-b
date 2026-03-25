@@ -57,7 +57,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       q?: string;
       productName?: string;
       productDescription?: string;
-      type?:string;
+      type?: string;
       page?: number;
       limit?: number;
     },
@@ -73,23 +73,51 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       .innerJoin(ProductEntity, 'p', 'p.product_id = v.product_id')
       .innerJoin(UnitEntity, 'u', 'u.unit_id = p.base_unit_id');
 
-    if (params.productId) qb.andWhere('v.product_id = :productId', { productId: params.productId.value });
-    if (params.isActive !== undefined) qb.andWhere('v.is_active = :isActive', { isActive: params.isActive });
-    if (params.sku) qb.andWhere('v.sku ILIKE :sku', { sku: `%${params.sku}%` });
-    if (params.barcode) qb.andWhere('v.barcode ILIKE :barcode', { barcode: `%${params.barcode}%` });
-    if (params.productName) qb.andWhere('p.name ILIKE :productName', { productName: `%${params.productName}%` });
-    if (params.type) qb.andWhere('p.type = :type', { type: params.type });
-    if (params.productDescription) {
-      qb.andWhere('p.description ILIKE :productDescription', { productDescription: `%${params.productDescription}%` });
+    const sku = params.sku?.trim();
+    const barcode = params.barcode?.trim();
+    const productName = params.productName?.trim();
+    const productDescription = params.productDescription?.trim();
+    const search = params.q?.trim();
+
+    if (params.productId) {
+      qb.andWhere('v.product_id = :productId', { productId: params.productId.value });
     }
-    if (params.q) {
+    if (params.isActive !== undefined) {
+      qb.andWhere('v.is_active = :isActive', { isActive: params.isActive });
+    }
+    if (sku) {
+      qb.andWhere('LOWER(v.sku) LIKE :sku', { sku: `%${sku.toLowerCase()}%` });
+    }
+    if (barcode) {
+      qb.andWhere('LOWER(v.barcode) LIKE :barcode', { barcode: `%${barcode.toLowerCase()}%` });
+    }
+    if (productName) {
+      qb.andWhere('LOWER(p.name) LIKE :productName', {
+        productName: `%${productName.toLowerCase()}%`,
+      });
+    }
+    if (params.type) {
+      qb.andWhere('p.type = :type', { type: params.type });
+    }
+    if (productDescription) {
+      qb.andWhere('LOWER(p.description) LIKE :productDescription', {
+        productDescription: `%${productDescription.toLowerCase()}%`,
+      });
+    }
+    if (search) {
+      const q = `%${search.toLowerCase()}%`;
+
       qb.andWhere(
         new Brackets((qb1) => {
           qb1
-            .where('v.sku ILIKE :q', { q: `%${params.q}%` })
-            .orWhere('v.barcode ILIKE :q', { q: `%${params.q}%` })
-            .orWhere('p.name ILIKE :q', { q: `%${params.q}%` })
-            .orWhere('p.description ILIKE :q', { q: `%${params.q}%` });
+            .where('LOWER(v.sku) LIKE :q', { q })
+            .orWhere('LOWER(v.barcode) LIKE :q', { q })
+            .orWhere('LOWER(v.custom_sku) LIKE :q', { q })
+            .orWhere('LOWER(p.name) LIKE :q', { q })
+            .orWhere('LOWER(p.description) LIKE :q', { q })
+            .orWhere(`LOWER(v.attributes->>'presentation') LIKE :q`, { q })
+            .orWhere(`LOWER(v.attributes->>'variant') LIKE :q`, { q })
+            .orWhere(`LOWER(v.attributes->>'color') LIKE :q`, { q });
         }),
       );
     }
@@ -116,7 +144,6 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       .skip(skip)
       .take(limit)
       .getRawAndEntities();
-
     const items = entities.map((row, idx) => {
       const r = raw[idx];
       return {
@@ -128,7 +155,6 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
         unitName: r.u_name,
       };
     });
-
     return { items, total };
   }
 
@@ -274,55 +300,63 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       qb.where('p.type = :type', { type: ProductType.FINISHED });
     }
 
-    const raw = await qb
-      .select([
-        'v.id',
-        'v.productId',
-        'v.sku',
-        'p.name',
-        'p.description',
-        'p.baseUnitId',
-        'u.code',
-        'u.name',
-      ])
-      .getRawMany();
+      const raw = await qb
+        .select([
+          'v.id',
+          'v.productId',
+          'v.sku',
+          'v.attributes',
+          'p.name',
+          'p.description',
+          'p.baseUnitId',
+          'u.code',
+          'u.name',
+        ])
+        .getRawMany();
 
     return raw.map((r) => ({
       primaId: r.v_variant_id,
       productName: r.p_name,
-      productDescription: r.p_description,
-      sku: r.v_sku,
-      baseUnitId: r.p_baseUnitId,
-      unitCode: r.u_code,
-      unitName: r.u_name,
-      type:'VARIANT'
-    }));
-  }
+        productDescription: r.p_description,
+        sku: r.v_sku,
+        baseUnitId: r.p_baseUnitId,
+        unitCode: r.u_code,
+        unitName: r.u_name,
+        type:'VARIANT',
+        attributes: r.v_attributes,
+      }));
+    }
 
   async searchRowMaterialVariant(
     params: { q: string; raw?: boolean; withRecipes?: boolean },
     tx?: TransactionContext,
   ): Promise<RowMaterial[]> {
-    const q = params.q?.trim();
-    if (!q) return [];
+    const search = params.q?.trim();
+    if (!search) return [];
 
+    const q = `%${search.toLowerCase()}%`;
     const raw = params.raw ?? true;
+
     const qb = this.getManager(tx)
       .getRepository(ProductVariantEntity)
       .createQueryBuilder('v')
       .innerJoin(ProductEntity, 'p', 'p.product_id = v.product_id')
       .leftJoin(UnitEntity, 'u', 'u.unit_id = p.base_unit_id');
-
     if (params.withRecipes) {
       qb.innerJoin('product_recipes', 'r', 'r.finished_variant_id = v.variant_id').distinct(true);
     }
-
     qb.where('p.type = :type', { type: raw ? ProductType.PRIMA : ProductType.FINISHED });
     qb.andWhere(
       new Brackets((qb1) => {
         qb1
-          .where('v.sku ILIKE :q', { q: `%${q}%` })
-          .orWhere('p.name ILIKE :q', { q: `%${q}%` });
+          .where('LOWER(v.sku) ILIKE :q', { q })
+          .orWhere('LOWER(v.barcode) ILIKE :q', { q })
+          .orWhere('LOWER(v.custom_sku) ILIKE :q', { q })
+          .orWhere('LOWER(p.name) ILIKE :q', { q })
+          .orWhere('LOWER(p.description) ILIKE :q', { q })
+          .orWhere(`LOWER(v.attributes->>'presentation') ILIKE :q`, { q })
+          .orWhere(`LOWER(v.attributes->>'variant') ILIKE :q`, { q })
+          .orWhere(`LOWER(v.attributes->>'color') ILIKE :q`, { q });
       }),
     );
 
@@ -331,6 +365,8 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
         'v.id',
         'v.productId',
         'v.sku',
+        'v.customSku',
+        'v.attributes',
         'p.name',
         'p.description',
         'p.baseUnitId',
@@ -348,6 +384,8 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       unitCode: r.u_code,
       unitName: r.u_name,
       type: 'VARIANT',
+      attributes: r.v_attributes,
+      customSku: r.v_custom_sku,
     }));
   }
 
@@ -361,18 +399,20 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       .where('p.type = :type', { type: ProductType.FINISHED })
       .distinct(true);
 
-    const raw = await qb
-      .select([
-        'v.id',
-        'v.productId',
-        'v.sku',
-        'p.name',
-        'p.description',
-        'p.baseUnitId',
-        'u.code',
-        'u.name',
-      ])
-      .getRawMany();
+      const raw = await qb
+        .select([
+          'v.id',
+          'v.productId',
+          'v.sku',
+          'v.customSku',
+          'v.attributes',
+          'p.name',
+          'p.description',
+          'p.baseUnitId',
+          'u.code',
+          'u.name',
+        ])
+        .getRawMany();
 
     return raw.map((r) => ({
       primaId: r.v_variant_id,
@@ -383,8 +423,10 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       unitCode: r.u_code,
       unitName: r.u_name,
       type: 'VARIANT',
-    }));
-  }
+      attributes: r.v_attributes,
+      customSku:r.v_custom_sku
+      }));
+    }
 
 
   async listInactiveByProductId(productId: ProductId, tx?: TransactionContext): Promise<ProductVariant[]> {

@@ -68,6 +68,7 @@ export interface ProductionOrderRepository {
       fromLocationId?: string | null;
       toLocationId?: string | null;
       quantity?: number;
+      wasteQty?: number;
       unitCost?: number;
     },
     tx?: TransactionContext,

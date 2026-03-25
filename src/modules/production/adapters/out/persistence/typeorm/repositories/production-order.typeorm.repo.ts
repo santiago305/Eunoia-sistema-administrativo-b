@@ -54,6 +54,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
     row.fromLocationId,
     row.toLocationId,
     row.quantity,
+    row.wasteQty ?? 0,
     row.unitCost,
   );
 }
@@ -324,6 +325,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
           r.fromLocationId,
           r.toLocationId,
           r.quantity,
+          r.wasteQty ?? 0,
           r.unitCost,
         ),
     );
@@ -369,6 +371,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
       fromLocationId: item.fromLocationId,
       toLocationId: item.toLocationId,
       quantity: item.quantity,
+      wasteQty: item.wasteQty ?? 0,
       unitCost: item.unitCost,
     });
 
@@ -379,6 +382,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
       saved.fromLocationId,
       saved.toLocationId,
       saved.quantity,
+      saved.wasteQty ?? 0,
       saved.unitCost,
     );
   }
@@ -391,6 +395,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
       fromLocationId?: string | null;
       toLocationId?: string | null;
       quantity?: number;
+      wasteQty?: number;
       unitCost?: number;
     },
     tx?: TransactionContext,
@@ -402,6 +407,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
     if (params.fromLocationId !== undefined) patch.fromLocationId = params.fromLocationId;
     if (params.toLocationId !== undefined) patch.toLocationId = params.toLocationId;
     if (params.quantity !== undefined) patch.quantity = params.quantity;
+    if (params.wasteQty !== undefined) patch.wasteQty = params.wasteQty;
     if (params.unitCost !== undefined) {
       (patch as any).unitCost = params.unitCost;
     }
@@ -417,6 +423,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
       updated.fromLocationId,
       updated.toLocationId,
       updated.quantity,
+      updated.wasteQty ?? 0,
       updated.unitCost,
     );
   }

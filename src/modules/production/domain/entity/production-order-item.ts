@@ -6,6 +6,7 @@ export class ProductionOrderItem {
         public readonly fromLocationId:string | null,
         public readonly toLocationId:string | null,
         public readonly quantity:number,
+        public readonly wasteQty:number = 0,
         public readonly unitCost:number,
         public readonly type?:string | null,
     ){}

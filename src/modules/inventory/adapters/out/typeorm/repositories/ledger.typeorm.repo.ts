@@ -42,11 +42,13 @@ private getRepo(tx?: TransactionContext) {
     const repo = this.getRepo(tx);
     const rows = entries.map((e) => ({
       docId: e.docId,
+      docItemId: e.docItemId ?? null,
       warehouseId: e.warehouseId,
       locationId: e.locationId ?? null,
       stockItemId: e.stockItemId,
       direction: e.direction,
       quantity: e.quantity,
+      wasteQty: e.wasteQty ?? 0,
       unitCost: e.unitCost ?? null,
     }));
     await repo.save(rows);
@@ -560,6 +562,8 @@ private getRepo(tx?: TransactionContext) {
               r.direction as any,
               r.quantity,
               r.unitCost ?? null,
+              r.docItemId ?? null,
+              r.wasteQty ?? 0,
               r.locationId,
               r.createdAt,
               stockItem,
@@ -573,6 +577,18 @@ private getRepo(tx?: TransactionContext) {
       page,
       limit,
     };
+  }
+
+  async updateWasteByDocItem(
+    params: { docItemId: string; wasteQty: number },
+    tx?: TransactionContext,
+  ): Promise<boolean> {
+    const repo = this.getRepo(tx);
+    const result = await repo.update(
+      { docItemId: params.docItemId },
+      { wasteQty: params.wasteQty },
+    );
+    return (result.affected ?? 0) > 0;
   }
   
 }

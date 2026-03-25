@@ -22,6 +22,7 @@ import { PgInventoryLock } from '../adapters/out/typeorm/locks/pg-inventory-lock
 import { CreateDocumentUseCase } from '../application/use-cases/document-inventory/create-document.usecase';
 import { AddItemUseCase } from '../application/use-cases/document-item-inventory/add-item.usecase';
 import { GetAvailabilityUseCase } from '../application/use-cases/inventory/get-availability.usecase';
+import { GetStockUseCase } from '../application/use-cases/inventory/get-stock.usecase';
 import { GetLedgerUseCase } from '../application/use-cases/ledger/get-ledger.usecase';
 import { GetLedgerDailyTotalsUseCase } from '../application/use-cases/ledger/get-ledger-daily-totals.usecase';
 import { ListInventoryUseCase } from '../application/use-cases/inventory/list-inventory.usecase';
@@ -37,6 +38,7 @@ import { PostDocumentoIn } from '../application/use-cases/document-inventory/pos
 import { PostDocumentoTransfer } from '../application/use-cases/document-inventory/post-document-transfer.usecase';
 import { PostDocumentoAdjustment } from '../application/use-cases/document-inventory/post-document-adjustment.usecase';
 import { CreateAddItemPostOutUseCase } from '../application/use-cases/document-inventory/create-add-item-post-out.usecase';
+import { CreateAddItemPostAdjustmentUseCase } from '../application/use-cases/document-inventory/create-add-item-post-adjustment.usecase';
 import { CreateStockItemForProduct } from '../application/use-cases/stock-item/create-for-product.usecase';
 import { CreateStockItemForVariant } from '../application/use-cases/stock-item/create-for-variant.usecase';
 
@@ -83,11 +85,13 @@ import { StockItemTypeormRepository } from '../adapters/out/typeorm/repositories
     CreateDocumentUseCase,
     AddItemUseCase,
     GetAvailabilityUseCase,
+    GetStockUseCase,
     PostDocumentoOut,
     PostDocumentoIn,
     PostDocumentoTransfer,
     PostDocumentoAdjustment,
     CreateAddItemPostOutUseCase,
+    CreateAddItemPostAdjustmentUseCase,
     CreateStockItemForProduct,
     CreateStockItemForVariant,
     GetLedgerUseCase,

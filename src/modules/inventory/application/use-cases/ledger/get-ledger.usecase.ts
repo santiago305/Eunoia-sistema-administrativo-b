@@ -169,6 +169,7 @@ export class GetLedgerUseCase {
           stockItemId: e.stockItemId,
           direction: e.direction,
           quantity: e.quantity,
+          wasteQty: e.wasteQty ?? null,
           unitCost: e.unitCost ?? null,
           createdAt: e.createdAt,
           balance: e.id ? balanceById.get(e.id) : running,
