@@ -149,18 +149,61 @@ export class ProductTypeormRepository implements ProductRepository {
       .createQueryBuilder('p')
       .leftJoin(UnitEntity, 'u', 'u.unit_id = p.base_unit_id');
 
-    if (params.name) qb.andWhere('LOWER(p.name) ILIKE LOWER(:name)', { name: `%${params.name}%` });
-    if (params.description) qb.andWhere('LOWER(p.description) ILIKE LOWER(:description)', { description: `%${params.description}%` });
-    if (params.type)   qb.andWhere('p.type = :type', { type: params.type });
-    if (params.sku)   qb.andWhere('p.sku = :sku', { sku: params.sku });
-    if (params.barcode)   qb.andWhere('p.barcode = :barcode', { barcode: params.barcode });
-    if (params.isActive !== undefined) qb.andWhere('p.is_active = :isActive', { isActive: params.isActive });
-    if (params.q) {
-      qb.andWhere('LOWER(p.sku) ILIKE LOWER(:q) OR LOWER(p.barcode) ILIKE LOWER(:q) OR LOWER(p.name) ILIKE LOWER(:q) OR LOWER(p.description) ILIKE LOWER(:q)', { q: `%${params.q}%` });
+    const name = params.name?.trim();
+    const description = params.description?.trim();
+    const sku = params.sku?.trim();
+    const barcode = params.barcode?.trim();
+    const search = params.q?.trim();
+
+    if (name) {
+      qb.andWhere('LOWER(p.name) LIKE :name', { name: `%${name.toLowerCase()}%` });
+    }
+
+    if (description) {
+      qb.andWhere('LOWER(p.description) LIKE :description', {
+        description: `%${description.toLowerCase()}%`,
+      });
+    }
+
+    if (params.type) {
+      qb.andWhere('p.type = :type', { type: params.type });
+    }
+
+    if (sku) {
+      qb.andWhere('LOWER(p.sku) LIKE :sku', { sku: `%${sku.toLowerCase()}%` });
+    }
+
+    if (barcode) {
+      qb.andWhere('LOWER(p.barcode) LIKE :barcode', {
+        barcode: `%${barcode.toLowerCase()}%`,
+      });
+    }
+
+    if (params.isActive !== undefined) {
+      qb.andWhere('p.is_active = :isActive', { isActive: params.isActive });
+    }
+
+    if (search) {
+      const q = `%${search.toLowerCase()}%`;
+
+      qb.andWhere(
+        new Brackets((qb1) => {
+          qb1
+            .where('LOWER(p.sku) LIKE :q', { q })
+            .orWhere('LOWER(p.barcode) LIKE :q', { q })
+            .orWhere('LOWER(p.name) LIKE :q', { q })
+            .orWhere('LOWER(p.description) LIKE :q', { q })
+            .orWhere('LOWER(p.custom_sku) LIKE :q', { q })
+            .orWhere(`LOWER(p.attributes->>'presentation') LIKE :q`, { q })
+            .orWhere(`LOWER(p.attributes->>'variant') LIKE :q`, { q })
+            .orWhere(`LOWER(p.attributes->>'color') LIKE :q`, { q });
+        }),
+      );
     }
 
     const skip = (params.page - 1) * params.limit;
     const total = await qb.clone().getCount();
+
     const { entities, raw } = await qb
       .select([
         'p.id',
@@ -203,6 +246,7 @@ export class ProductTypeormRepository implements ProductRepository {
         row.updatedAt,
         row.customSku,
       );
+
       return {
         product,
         baseUnitName: r.u_name,
@@ -363,6 +407,7 @@ export class ProductTypeormRepository implements ProductRepository {
           "p.description",
           "p.baseUnitId",
           "p.sku",
+          "p.customSku",
           "p.attributes",
           "u.code",
           "u.name",
@@ -372,24 +417,27 @@ export class ProductTypeormRepository implements ProductRepository {
     return raw.map((r) => ({
       primaId: r.p_product_id,
       productName: r.p_name,
-        productDescription: r.p_description,
-        sku: r.p_sku,
-        baseUnitId: r.p_baseUnitId,
-        unitCode: r.u_code,
-        unitName: r.u_name,
-        type:'PRODUCT',
-        attributes: r.p_attributes,
-      }));
+      productDescription: r.p_description,
+      sku: r.p_sku,
+      baseUnitId: r.p_baseUnitId,
+      unitCode: r.u_code,
+      unitName: r.u_name,
+      type:'PRODUCT',
+      attributes: r.p_attributes,
+      customSku:r.p_custom_sku
+    }));
     }
 
   async searchRowMaterialProduct(
     params: { q: string; raw?: boolean; withRecipes?: boolean },
     tx?: TransactionContext,
   ): Promise<RowMaterial[]> {
-    const q = params.q?.trim();
-    if (!q) return [];
+    const search = params.q?.trim();
+    if (!search) return [];
 
+    const q = `%${search.toLowerCase()}%`;
     const raw = params.raw ?? true;
+
     const qb = this.getManager(tx)
       .getRepository(ProductEntity)
       .createQueryBuilder('p')
@@ -400,39 +448,48 @@ export class ProductTypeormRepository implements ProductRepository {
     }
 
     qb.where('p.type = :type', { type: raw ? ProductType.PRIMA : ProductType.FINISHED });
+
     qb.andWhere(
       new Brackets((qb1) => {
         qb1
-          .where('p.sku ILIKE :q', { q: `%${q}%` })
-          .orWhere('p.name ILIKE :q', { q: `%${q}%` });
+          .where('LOWER(p.sku) LIKE :q', { q })
+          .orWhere('LOWER(p.barcode) LIKE :q', { q })
+          .orWhere('LOWER(p.name) LIKE :q', { q })
+          .orWhere('LOWER(p.description) LIKE :q', { q })
+          .orWhere('LOWER(p.custom_sku) LIKE :q', { q })
+          .orWhere(`LOWER(p.attributes->>'presentation') LIKE :q`, { q })
+          .orWhere(`LOWER(p.attributes->>'variant') LIKE :q`, { q })
+          .orWhere(`LOWER(p.attributes->>'color') LIKE :q`, { q });
       }),
     );
 
-      const rows = await qb
-        .select([
-          'p.id',
-          'p.name',
-          'p.description',
-          'p.baseUnitId',
-          'p.sku',
-          'p.attributes',
-          'u.code',
-          'u.name',
-        ])
-        .getRawMany();
+    const rows = await qb
+      .select([
+        'p.id',
+        'p.name',
+        'p.description',
+        'p.baseUnitId',
+        'p.sku',
+        'p.customSku',
+        'p.attributes',
+        'u.code',
+        'u.name',
+      ])
+      .getRawMany();
 
     return rows.map((r) => ({
       primaId: r.p_product_id,
       productName: r.p_name,
-        productDescription: r.p_description,
-        sku: r.p_sku,
-        baseUnitId: r.p_baseUnitId,
-        unitCode: r.u_code,
-        unitName: r.u_name,
-        type: 'PRODUCT',
-        attributes: r.p_attributes,
-      }));
-    }
+      productDescription: r.p_description,
+      sku: r.p_sku,
+      baseUnitId: r.p_baseUnitId,
+      unitCode: r.u_code,
+      unitName: r.u_name,
+      type: 'PRODUCT',
+      attributes: r.p_attributes,
+      customSku: r.p_custom_sku,
+    }));
+  }
 
   async listFinishedWithRecipesProduct(tx?: TransactionContext): Promise<RowMaterial[]> {
     const qb = this.getManager(tx)
@@ -450,6 +507,7 @@ export class ProductTypeormRepository implements ProductRepository {
           'p.description',
           'p.baseUnitId',
           'p.sku',
+          'p.customSku',
           'p.attributes',
           'u.code',
           'u.name',
@@ -459,14 +517,15 @@ export class ProductTypeormRepository implements ProductRepository {
     return raw.map((r) => ({
       primaId: r.p_product_id,
       productName: r.p_name,
-        productDescription: r.p_description,
-        sku: r.p_sku,
-        baseUnitId: r.p_baseUnitId,
-        unitCode: r.u_code,
-        unitName: r.u_name,
-        type: 'PRODUCT',
-        attributes: r.p_attributes,
-      }));
+      productDescription: r.p_description,
+      sku: r.p_sku,
+      baseUnitId: r.p_baseUnitId,
+      unitCode: r.u_code,
+      unitName: r.u_name,
+      type: 'PRODUCT',
+      attributes: r.p_attributes,
+      customSku:r.p_custom_sku
+    }));
     }
 
   async listFinishedActive(tx?: TransactionContext): Promise<Product[]> {

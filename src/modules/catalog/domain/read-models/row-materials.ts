@@ -15,4 +15,5 @@ export interface RowMaterial {
         variant?: string;
         color?: string;
     };
+    customSku?:string
 }

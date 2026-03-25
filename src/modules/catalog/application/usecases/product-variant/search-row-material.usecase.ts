@@ -41,6 +41,7 @@ export class SearchRowMaterialProductVariants {
       unitName: r.unitName,
       type: r.type,
       attributes: r.attributes,
+      customSku:r.customSku
     }));
   }
 }
