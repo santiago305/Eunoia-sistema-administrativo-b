@@ -6,7 +6,7 @@ import { IMAGE_PROCESSOR } from "src/shared/application/ports/image-processor.po
 import { FILE_STORAGE } from "src/shared/application/ports/file-storage.port";
 import { SharpImageProcessorService } from "src/shared/utilidades/services/sharp-image-processor.service";
 import { LocalFileStorageService } from "src/shared/utilidades/services/local-file-storage.service";
-import { CompanyController } from "./adapters/in/controllers/company.controller";
+import { CompanyController } from "./adapters/in/http/controllers/company.controller";
 import { CompanyEntity } from "./adapters/out/persistence/typeorm/entities/company.entity";
 import { CompanyTypeormRepository } from "./adapters/out/persistence/typeorm/repositories/company.typeorm.repo";
 import { CreateCompanyUsecase } from "./application/usecases/create.usecase";
