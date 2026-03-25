@@ -2,6 +2,8 @@ import { IsArray, IsNumber, IsOptional, IsUUID, Min, ValidateNested } from "clas
 import { Type } from "class-transformer";
 
 export class HttpProductionWasteItemDto {
+  
+  @IsOptional()
   @IsUUID()
   stockItemId: string;
 
@@ -16,7 +18,7 @@ export class HttpProductionWasteItemDto {
 
   @IsOptional()
   @IsUUID()
-  productionItemId?: string;
+  itemId?: string;
 }
 
 export class HttpUpdateProductionWasteDto {

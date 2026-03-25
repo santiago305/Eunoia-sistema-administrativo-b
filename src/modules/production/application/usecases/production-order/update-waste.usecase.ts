@@ -90,11 +90,11 @@ export class UpdateProductionWaste {
           throw new BadRequestException(errorResponse("No se pudo actualizar merma en el kardex"));
         }
 
-        if (item.productionItemId) {
+        if (item.itemId) {
           const updated = await this.orderRepo.updateItem(
             {
               productionId: input.productionId,
-              itemId: item.productionItemId,
+              itemId: item.itemId,
               wasteQty: item.wasteQty,
             },
             tx,

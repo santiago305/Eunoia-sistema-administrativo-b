@@ -1,8 +1,8 @@
 export interface UpdateProductionWasteItemInput {
-  stockItemId: string;
   wasteQty: number;
+  stockItemId?: string;
   locationId?: string | null;
-  productionItemId?: string;
+  itemId?: string;
 }
 
 export interface UpdateProductionWasteInput {

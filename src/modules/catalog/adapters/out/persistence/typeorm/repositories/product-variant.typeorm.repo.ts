@@ -349,14 +349,14 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
     qb.andWhere(
       new Brackets((qb1) => {
         qb1
-          .where('LOWER(v.sku) LIKE :q', { q })
-          .orWhere('LOWER(v.barcode) LIKE :q', { q })
-          .orWhere('LOWER(v.custom_sku) LIKE :q', { q })
-          .orWhere('LOWER(p.name) LIKE :q', { q })
-          .orWhere('LOWER(p.description) LIKE :q', { q })
-          .orWhere(`LOWER(v.attributes->>'presentation') LIKE :q`, { q })
-          .orWhere(`LOWER(v.attributes->>'variant') LIKE :q`, { q })
-          .orWhere(`LOWER(v.attributes->>'color') LIKE :q`, { q });
+          .where('LOWER(v.sku) ILIKE :q', { q })
+          .orWhere('LOWER(v.barcode) ILIKE :q', { q })
+          .orWhere('LOWER(v.custom_sku) ILIKE :q', { q })
+          .orWhere('LOWER(p.name) ILIKE :q', { q })
+          .orWhere('LOWER(p.description) ILIKE :q', { q })
+          .orWhere(`LOWER(v.attributes->>'presentation') ILIKE :q`, { q })
+          .orWhere(`LOWER(v.attributes->>'variant') ILIKE :q`, { q })
+          .orWhere(`LOWER(v.attributes->>'color') ILIKE :q`, { q });
       }),
     );
 
