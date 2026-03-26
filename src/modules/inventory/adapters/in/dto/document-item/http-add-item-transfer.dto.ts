@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsNumber, IsUUID, Min } from 'class-validator';
+import { IsInt, IsNumber, IsOptional, IsUUID, Min } from 'class-validator';
 
 export class HttpAddItemTransferDto {
   @IsUUID()
@@ -10,14 +10,17 @@ export class HttpAddItemTransferDto {
   @Min(1)
   quantity: number;
 
+  @IsOptional()
   @IsUUID()
-  fromLocationId: string;
+  fromLocationId?: string;
 
+  @IsOptional()
   @IsUUID()
-  toLocationId: string;
+  toLocationId?: string;
 
+  @IsOptional()
   @Type(() => Number)
-  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @IsNumber({ maxDecimalPlaces: 4 })
   @Min(0)
   unitCost?: number;
 }

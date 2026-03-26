@@ -14,6 +14,7 @@ import { HttpCreateDocumentOutDto } from '../dto/document/http-document-create-o
 import { HttpCreateDocumentTransferDto } from '../dto/document/http-document-create-transfer.dto';
 import { HttpCreateDocumentAdjustmentDto } from '../dto/document/http-document-create-adjustment.dto';
 import { HttpCreateAddItemPostOutDto } from '../dto/document/http-document-create-add-item-post-out.dto';
+import { HttpCreateAddItemPostTransferDto } from '../dto/document/http-document-create-add-item-post-transfer.dto';
 import { HttpAddItemAdjustmentDto } from '../dto/document-item/http-add-item-adjustment.dto';
 import { HttpAddItemInDto } from '../dto/document-item/http-add-item-in.dto';
 import { HttpAddItemOutDto } from '../dto/document-item/http-add-item-out.dto';
@@ -26,6 +27,7 @@ import { PostDocumentoTransfer } from 'src/modules/inventory/application/use-cas
 import { PostDocumentoAdjustment } from 'src/modules/inventory/application/use-cases/document-inventory/post-document-adjustment.usecase';
 import { CreateAddItemPostOutUseCase } from 'src/modules/inventory/application/use-cases/document-inventory/create-add-item-post-out.usecase';
 import { CreateAddItemPostAdjustmentUseCase } from 'src/modules/inventory/application/use-cases/document-inventory/create-add-item-post-adjustment.usecase';
+import { CreateAddItemPostTransferUseCase } from 'src/modules/inventory/application/use-cases/document-inventory/create-add-item-post-transfer.usecase';
 import { ListDocumentsQueryDto } from '../dto/document/http-documents-list.dto';
 import { ParseDateLocal } from 'src/shared/utilidades/utils/ParseDates'
 @Controller('inventory/documents')
@@ -47,6 +49,7 @@ export class DocumentsController {
     private readonly postDocumentAdjustment: PostDocumentoAdjustment,
     private readonly createDocumentPostOut: CreateAddItemPostOutUseCase,
     private readonly createDocumentPostAdjustment: CreateAddItemPostAdjustmentUseCase,
+    private readonly createDocumentPostTransfer: CreateAddItemPostTransferUseCase,
   ) {}
 
  @Get()
@@ -113,6 +116,14 @@ export class DocumentsController {
   @Post('create-add-item-post-adjustment')
   createAddItemPostAdjustment(@Body() dto: HttpCreateDocumentAdjustmentDto, @CurrentUser() user: { id: string }) {
     return this.createDocumentPostAdjustment.execute({
+      ...dto,
+      createdBy: user.id,
+    });
+  }
+
+  @Post('create-add-item-post-transfer')
+  createAddItemPostTransfer(@Body() dto: HttpCreateAddItemPostTransferDto, @CurrentUser() user: { id: string }) {
+    return this.createDocumentPostTransfer.execute({
       ...dto,
       createdBy: user.id,
     });
