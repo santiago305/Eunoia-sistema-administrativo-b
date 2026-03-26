@@ -26,7 +26,11 @@ export interface LedgerEntryOutput {
     } | null;
     referenceId?: string;
     referenceType?: ReferenceType;
-    createdBy?: string;
+    createdBy?: {
+      id: string;
+      name: string;
+      email: string;
+    } | null;
   };
   referenceDoc?:
     | {
