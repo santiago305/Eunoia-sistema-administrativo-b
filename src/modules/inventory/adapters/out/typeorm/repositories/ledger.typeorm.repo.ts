@@ -348,6 +348,7 @@ private getRepo(tx?: TransactionContext) {
       if (r.document?.serieId) serieIds.add(r.document.serieId);
       if (r.document?.fromWarehouseId) warehouseIds.add(r.document.fromWarehouseId);
       if (r.document?.toWarehouseId) warehouseIds.add(r.document.toWarehouseId);
+      if (r.document?.createdBy) userIds.add(r.document.createdBy);
       if (r.stockItem?.product?.baseUnitId) unitIds.add(r.stockItem.product.baseUnitId);
       if (r.stockItem?.variant?.productId) productIdsForUnits.add(r.stockItem.variant.productId);
     }
@@ -355,6 +356,7 @@ private getRepo(tx?: TransactionContext) {
     for (const p of purchases) {
       warehouseIds.add(p.warehouseId);
       supplierIds.add(p.supplierId);
+      if (p.createdBy) userIds.add(p.createdBy);
     }
     for (const p of productions) {
       warehouseIds.add(p.fromWarehouseId);
@@ -467,7 +469,16 @@ private getRepo(tx?: TransactionContext) {
                     : null,
                   referenceId: r.document.referenceId,
                   referenceType: r.document.referenceType,
-                  createdBy: r.document.createdBy,
+                  createdBy: r.document.createdBy
+                   ? (() => {
+                        const u = userById.get(r.document.createdBy);
+                        return u ? {
+                          id: u.id,
+                          name: u.name,
+                          email: u.email,
+                        } : null;
+                      })()
+                    : null,
                 }
               : undefined;
 

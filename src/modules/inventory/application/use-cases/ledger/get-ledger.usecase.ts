@@ -88,6 +88,7 @@ export class GetLedgerUseCase {
               referenceId: e.document.referenceId,
               referenceType: e.document.referenceType,
               createdBy: e.document.createdBy,
+              
             }
           : undefined;
 

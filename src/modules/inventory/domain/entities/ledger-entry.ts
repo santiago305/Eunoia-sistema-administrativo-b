@@ -34,7 +34,11 @@ export type LedgerDocumentSnapshot = {
   } | null;
   referenceId?: string;
   referenceType?: ReferenceType;
-  createdBy?: string;
+  createdBy?: {
+    id:string,
+    name:string
+    email:string
+  };
 };
 
 export type LedgerWarehouseRefSnapshot = {
