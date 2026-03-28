@@ -1,4 +1,4 @@
-import { Module } from "@nestjs/common";
+import { forwardRef, Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
 import { TypeormUnitOfWork } from "src/shared/infrastructure/typeorm/typeorm.unit-of-work";
@@ -29,8 +29,8 @@ import { InventoryModule } from "../inventory/infrastructure/inventory.module";
 @Module({
   imports: [
     TypeOrmModule.forFeature([WarehouseEntity, WarehouseLocationEntity]),
-    InventoryModule, 
-],
+    forwardRef(() => InventoryModule),
+  ],
   controllers: [WarehousesController, LocationsController],
   providers: [
     CreateWarehouseUsecase,
@@ -49,6 +49,7 @@ import { InventoryModule } from "../inventory/infrastructure/inventory.module";
     { provide: LOCATION_REPOSITORY, useClass: LocationTypeormRepo },
     { provide: UNIT_OF_WORK, useClass: TypeormUnitOfWork },
     { provide: CLOCK, useValue: { now: () => new Date() } },
+    
   ],
   exports: [WAREHOUSE_REPOSITORY, LOCATION_REPOSITORY],
 })

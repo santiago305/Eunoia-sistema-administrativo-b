@@ -3,6 +3,11 @@ import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../../domain/ports/d
 import { SERIES_REPOSITORY, DocumentSeriesRepository } from '../../../domain/ports/document-series.repository.port';
 import { ListDocumentsInput } from '../../dto/document/input/document-list';
 import { PaginatedDocumentOutputResult } from '../../dto/document/output/document-paginated';
+import { In } from 'typeorm';
+import { USER_READ_REPOSITORY, UserReadRepository } from 'src/modules/users/application/ports/user-read.repository';
+import { errorResponse } from 'src/shared/response-standard/response';
+import { WAREHOUSE_REPOSITORY, WarehouseRepository } from 'src/modules/warehouses/domain/ports/warehouse.repository.port';
+import { WarehouseId } from 'src/modules/warehouses/domain/value-objects/warehouse-id.vo';
 
 @Injectable()
 export class ListDocumentsUseCase {
@@ -11,6 +16,10 @@ export class ListDocumentsUseCase {
     private readonly documentRepo: DocumentRepository,
     @Inject(SERIES_REPOSITORY)
     private readonly seriesRepo: DocumentSeriesRepository,
+    @Inject(USER_READ_REPOSITORY)
+    private readonly userReadRepo: UserReadRepository,
+    @Inject(WAREHOUSE_REPOSITORY)
+    private readonly warehouseRepo: WarehouseRepository,
   ) {}
 
   async execute(input: ListDocumentsInput): Promise<PaginatedDocumentOutputResult> {
@@ -23,21 +32,43 @@ export class ListDocumentsUseCase {
         if (!serie) {
           const s = await this.seriesRepo.findById(d.serieId);
           if (!s) {
-            throw new BadRequestException('Serie invalida');
+            throw new BadRequestException(errorResponse('Serie invalida'));
           }
           serie = { id: s.id, code: s.code, correlative: s.nextNumber };
           cache.set(d.serieId, serie);
         }
 
+        let user = await this.userReadRepo.findPublicById(d.createdBy);
+        if (!user) {
+          throw new BadRequestException(errorResponse('Usuario creador del documento no encontrado'));            
+        }
+
+        const toWarehouse = d.toWarehouseId
+          ? await this.warehouseRepo.findById(new WarehouseId(d.toWarehouseId))
+          : null;
+        const fromWarehouse = d.fromWarehouseId
+          ? await this.warehouseRepo.findById(new WarehouseId(d.fromWarehouseId))
+          : null;
+
+        if(!toWarehouse) {
+          throw new BadRequestException(errorResponse('Almacen destino no encontrado'));
+        }
+
+        if(!fromWarehouse) {
+          throw new BadRequestException(errorResponse('Almacen origen no encontrado'));
+        }
         return {
           id: d.id!,
           docType: d.docType,
           status: d.status,
           serie: serie.code,
           correlative: d.correlative,
-          toWarehouse: d.toWarehouseId,
+          toWarehouse: toWarehouse.name,
+          fromWarehouse: fromWarehouse.name,
+          createdBy: user,
           createdAt: d.createdAt,
         };
+
       }),
     );
 
