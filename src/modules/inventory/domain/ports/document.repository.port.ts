@@ -4,6 +4,7 @@ import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
 import { DocStatus } from '../value-objects/doc-status';
 import { DocType } from '../value-objects/doc-type';
 import { ReferenceType } from '../value-objects/reference-type';
+import { ProductType } from 'src/modules/catalog/domain/value-object/productType';
 
 export const DOCUMENT_REPOSITORY = Symbol('DOCUMENT_REPOSITORY');
 
@@ -14,6 +15,7 @@ export interface DocumentRepository {
     params: {
       status?: DocStatus;
       docType?: DocType;
+      productType?: ProductType;
       warehouseId?: string;
       from?: Date;
       to?: Date;

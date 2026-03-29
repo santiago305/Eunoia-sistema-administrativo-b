@@ -2,6 +2,7 @@ import  { DocStatus } from '../value-objects/doc-status';
 import { DocType } from '../value-objects/doc-type';
 import  InventoryDocumentItem  from './inventory-document-item';
 import { ReferenceType } from '../value-objects/reference-type';
+import { ProductType } from 'src/modules/catalog/domain/value-object/productType';
 
 export class InventoryDocument {
   constructor(
@@ -19,6 +20,7 @@ export class InventoryDocument {
     public postedBy?: string,
     public postedAt?: Date,
     public readonly createdAt?: Date,
+    public readonly productType?: ProductType,
     public items: InventoryDocumentItem[] = [],
   ) {}
 

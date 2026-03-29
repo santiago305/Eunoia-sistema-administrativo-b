@@ -3,7 +3,6 @@ import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../../domain/ports/d
 import { SERIES_REPOSITORY, DocumentSeriesRepository } from '../../../domain/ports/document-series.repository.port';
 import { ListDocumentsInput } from '../../dto/document/input/document-list';
 import { PaginatedDocumentOutputResult } from '../../dto/document/output/document-paginated';
-import { In } from 'typeorm';
 import { USER_READ_REPOSITORY, UserReadRepository } from 'src/modules/users/application/ports/user-read.repository';
 import { errorResponse } from 'src/shared/response-standard/response';
 import { WAREHOUSE_REPOSITORY, WarehouseRepository } from 'src/modules/warehouses/domain/ports/warehouse.repository.port';
@@ -38,7 +37,7 @@ export class ListDocumentsUseCase {
           cache.set(d.serieId, serie);
         }
 
-        let user = await this.userReadRepo.findPublicById(d.createdBy);
+        let user = await this.userReadRepo.findManagementById(d.createdBy);
         if (!user) {
           throw new BadRequestException(errorResponse('Usuario creador del documento no encontrado'));            
         }
@@ -50,11 +49,11 @@ export class ListDocumentsUseCase {
           ? await this.warehouseRepo.findById(new WarehouseId(d.fromWarehouseId))
           : null;
 
-        if(!toWarehouse) {
+        if(!toWarehouse && d.toWarehouseId) {
           throw new BadRequestException(errorResponse('Almacen destino no encontrado'));
         }
 
-        if(!fromWarehouse) {
+        if(!fromWarehouse && d.fromWarehouseId) {
           throw new BadRequestException(errorResponse('Almacen origen no encontrado'));
         }
         return {
@@ -63,8 +62,8 @@ export class ListDocumentsUseCase {
           status: d.status,
           serie: serie.code,
           correlative: d.correlative,
-          toWarehouse: toWarehouse.name,
-          fromWarehouse: fromWarehouse.name,
+          toWarehouse: toWarehouse?.name,
+          fromWarehouse: fromWarehouse?.name,
           createdBy: user,
           createdAt: d.createdAt,
         };

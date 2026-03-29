@@ -48,6 +48,7 @@ export class RunExpectedAtUsecase {
           poId: order.poId,
           toWarehouseId: order.warehouseId,
           postedBy: order.createdBy,
+          createdBy: order.createdBy,
           note: "Ingreso por compra",
         });
 

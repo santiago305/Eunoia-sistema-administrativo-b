@@ -1,6 +1,8 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('inventory_document_items')
+@Index('idx_inv_doc_items_doc', ['docId'])
+@Index('idx_inv_doc_items_stock_item', ['stockItemId'])
 export class InventoryDocumentItemEntity {
   @PrimaryGeneratedColumn('uuid', { name: 'item_id' })
   id: string;

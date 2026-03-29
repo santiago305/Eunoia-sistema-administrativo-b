@@ -194,7 +194,8 @@ export const InventoryDocumentPdf = ({ data }: { data: InventoryDocumentPdfData 
       <View style={styles.totals}>
         <View style={styles.totalsRow}>
           <Text style={styles.totalsLabel}>TOTAL COSTO</Text>
-          <Text style={styles.totalsValue}>{formatCurrency(data.totals.totalCost)}</Text>
+          {/* <Text style={styles.totalsValue}>{formatCurrency(data.totals.totalCost)}</Text> */}
+          <Text style={styles.totalsValue}>0.00</Text>
         </View>
       </View>
 
