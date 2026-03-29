@@ -57,6 +57,7 @@ export class DocumentsController {
     return this.listDocuments.execute({
       status: query.status,
       docType: query.docType,
+      productType: query.productType,
       warehouseId: query.warehouseId,
       from: query.from ? ParseDateLocal(query.from, 'start') : undefined,
       to: query.to ? ParseDateLocal(query.to, 'end') : undefined,

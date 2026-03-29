@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { InventoryController } from '../adapters/in/controller/inventory.controller';
@@ -61,6 +61,8 @@ import { SetDocumentSerieActive } from 'src/modules/inventory/application/use-ca
 import { StockItemEntity } from '../adapters/out/typeorm/entities/stock-item/stock-item.entity';
 import { STOCK_ITEM_REPOSITORY } from '../domain/ports/stock-item/stock-item.repository.port';
 import { StockItemTypeormRepository } from '../adapters/out/typeorm/repositories/stock-item/stock-item.typeorm.repo';
+import { UsersModule } from 'src/modules/users/infrastructure/users.module';
+import { WarehousesModule } from 'src/modules/warehouses/warehouses.module';
 
 @Module({
   imports: [
@@ -70,8 +72,10 @@ import { StockItemTypeormRepository } from '../adapters/out/typeorm/repositories
       InventoryDocumentItemEntity,
       InventoryLedgerEntity,
       DocumentSerie,
-      StockItemEntity
+      StockItemEntity,
     ]),
+    UsersModule,
+    forwardRef(() => WarehousesModule),
   ],
   controllers: [InventoryController, DocumentsController, LedgerController, DocumentSeriesController],
   providers: [

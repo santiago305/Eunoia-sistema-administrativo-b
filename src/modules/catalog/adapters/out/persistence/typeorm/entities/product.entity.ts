@@ -1,7 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index } from 'typeorm';
 import { ProductType } from 'src/modules/catalog/domain/value-object/productType';
 
 @Entity('products')
+@Index('idx_products_type', ['type'])
 export class ProductEntity {
   @PrimaryGeneratedColumn('uuid', { name: 'product_id' })
   id: string;

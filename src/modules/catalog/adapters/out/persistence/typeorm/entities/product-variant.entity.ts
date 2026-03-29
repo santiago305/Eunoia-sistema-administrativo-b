@@ -1,6 +1,7 @@
 import { ProductVariantAttributes } from 'src/modules/catalog/application/dto/product-variants/input/attributes-product-variant';
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Index } from 'typeorm';
 @Entity('product_variants')
+@Index('idx_product_variants_product', ['productId'])
 export class ProductVariantEntity {
   @PrimaryGeneratedColumn('uuid', { name: 'variant_id' })
   id: string;

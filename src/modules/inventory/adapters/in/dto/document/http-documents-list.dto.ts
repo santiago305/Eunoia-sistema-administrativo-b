@@ -2,6 +2,7 @@ import { IsOptional, IsEnum, IsUUID, IsDateString, IsInt, Min, Max } from 'class
 import { Type } from 'class-transformer';
 import { DocStatus } from '../../../../domain/value-objects/doc-status';
 import { DocType } from '../../../../domain/value-objects/doc-type';
+import { ProductType } from 'src/modules/catalog/domain/value-object/productType';
 
 export class ListDocumentsQueryDto {
 
@@ -13,6 +14,11 @@ export class ListDocumentsQueryDto {
   @IsEnum(DocType)
   docType?: DocType;
 
+  @IsOptional()
+  @IsEnum(ProductType)
+  productType?: ProductType;
+
+  @IsOptional()
   @IsUUID()
   warehouseId?: string;
 

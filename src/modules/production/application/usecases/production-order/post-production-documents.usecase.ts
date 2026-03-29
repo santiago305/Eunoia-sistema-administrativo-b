@@ -8,8 +8,6 @@ import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port"
 import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/domain/ports/stock-item/stock-item.repository.port";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
-import { DocStatus } from "src/modules/inventory/domain/value-objects/doc-status";
-import { InventoryDocument } from "src/modules/inventory/domain/entities/inventory-document";
 import InventoryDocumentItem from "src/modules/inventory/domain/entities/inventory-document-item";
 import { LedgerEntry } from "src/modules/inventory/domain/entities/ledger-entry";
 import { Direction } from "src/modules/inventory/domain/value-objects/direction";

@@ -7,10 +7,14 @@ import InventoryDocumentItem from '../../../../domain/entities/inventory-documen
 import { DocStatus } from '../../../../domain/value-objects/doc-status';
 import { InventoryDocumentEntity } from '../entities/inventory_document.entity';
 import { InventoryDocumentItemEntity } from '../entities/inventory_document_item.entity';
+import { StockItemEntity } from '../entities/stock-item/stock-item.entity';
 import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
 import { TypeormTransactionContext } from 'src/shared/infrastructure/typeorm/typeorm.transaction-context';
 import { ReferenceType } from 'src/modules/inventory/domain/value-objects/reference-type';
 import { DocType } from 'src/modules/inventory/domain/value-objects/doc-type';
+import { ProductType } from 'src/modules/catalog/domain/value-object/productType';
+import { ProductEntity } from 'src/modules/catalog/adapters/out/persistence/typeorm/entities/product.entity';
+import { ProductVariantEntity } from 'src/modules/catalog/adapters/out/persistence/typeorm/entities/product-variant.entity';
 
 @Injectable()
 export class DocumentTypeormRepository implements DocumentRepository {
@@ -97,7 +101,8 @@ export class DocumentTypeormRepository implements DocumentRepository {
   async list(
     params: {
       status?: DocStatus;
-      docType?: string;
+      docType?: DocType;
+      productType?: ProductType;
       warehouseId?: string;
       from?: Date;
       to?: Date;
@@ -119,6 +124,15 @@ export class DocumentTypeormRepository implements DocumentRepository {
     }
     if (params.docType) {
       qb.andWhere('d.docType = :docType', { docType: params.docType });
+    }
+    if (params.productType) {
+      qb.innerJoin(InventoryDocumentItemEntity, 'i', 'i.docId = d.id')
+        .innerJoin(StockItemEntity, 's', 's.id = i.stockItemId')
+        .leftJoin(ProductEntity, 'p', 'p.id = s.productId')
+        .leftJoin(ProductVariantEntity, 'v', 'v.id = s.variantId')
+        .leftJoin(ProductEntity, 'pv', 'pv.id = v.productId')
+        .andWhere('(p.type = :productType OR pv.type = :productType)', { productType: params.productType })
+        .distinct(true);
     }
     if (params.warehouseId) {
       qb.andWhere('(d.fromWarehouseId = :wid OR d.toWarehouseId = :wid)', { wid: params.warehouseId });
