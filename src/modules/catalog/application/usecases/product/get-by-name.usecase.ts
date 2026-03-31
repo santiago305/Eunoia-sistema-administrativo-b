@@ -1,7 +1,7 @@
 import { BadRequestException, Inject, NotFoundException } from "@nestjs/common";
-import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/domain/ports/product.repository";
 import { GetProductByNameInput } from "../../dto/products/input/get-product-by-name";
 import { ProductOutput } from "../../dto/products/output/product-out";
+import { PRODUCT_REPOSITORY, ProductRepository } from "../../ports/product.repository";
 
 export class GetProductByName {
   constructor(

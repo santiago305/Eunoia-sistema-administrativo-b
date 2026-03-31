@@ -1,13 +1,13 @@
 import { BadRequestException, Inject, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common";
-import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/domain/ports/production-order.repository";
-import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status";
+import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
+import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { RecipeConsumptionLine } from "./build-consumption-from-recipes.usecase";
-import { PRODUCT_RECIPE_REPOSITORY, ProductRecipeRepository } from "src/modules/catalog/domain/ports/product-recipe.repository";
 import { errorResponse } from "src/shared/response-standard/response";
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/domain/ports/stock-item/stock-item.repository.port";
 import { ConsumeReservedMaterialsUseCase } from "./consume-reserved-materials.usecase";
 import { ProductionOrderExpectedScheduler } from "../../jobs/production-order-expected-scheduler";
+import { PRODUCT_RECIPE_REPOSITORY, ProductRecipeRepository } from "src/modules/catalog/application/ports/product-recipe.repository";
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
 
 @Injectable()
 export class StartProductionOrder {

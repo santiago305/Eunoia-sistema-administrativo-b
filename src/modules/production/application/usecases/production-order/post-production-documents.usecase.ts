@@ -1,11 +1,4 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
-import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/inventory/domain/ports/document.repository.port";
-import { SERIES_REPOSITORY, DocumentSeriesRepository } from "src/modules/inventory/domain/ports/document-series.repository.port";
-import { LEDGER_REPOSITORY, LedgerRepository } from "src/modules/inventory/domain/ports/ledger.repository.port";
-import { INVENTORY_REPOSITORY, InventoryRepository } from "src/modules/inventory/domain/ports/inventory.repository.port";
-import { INVENTORY_LOCK, InventoryLock } from "src/modules/inventory/domain/ports/inventory-lock.port";
-import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/domain/ports/stock-item/stock-item.repository.port";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
 import InventoryDocumentItem from "src/modules/inventory/domain/entities/inventory-document-item";
@@ -16,6 +9,13 @@ import { ProductionOrderItem } from "src/modules/production/domain/entity/produc
 import { RecipeConsumptionLine } from "./build-consumption-from-recipes.usecase";
 import { createDraftDocument } from "../../utils/create-draft-document";
 import { ReferenceType } from "src/modules/inventory/domain/value-objects/reference-type";
+import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
+import { SERIES_REPOSITORY, DocumentSeriesRepository } from "src/modules/inventory/application/ports/document-series.repository.port";
+import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/inventory/application/ports/document.repository.port";
+import { INVENTORY_LOCK, InventoryLock } from "src/modules/inventory/application/ports/inventory-lock.port";
+import { INVENTORY_REPOSITORY, InventoryRepository } from "src/modules/inventory/application/ports/inventory.repository.port";
+import { LEDGER_REPOSITORY, LedgerRepository } from "src/modules/inventory/application/ports/ledger.repository.port";
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
 
 @Injectable()
 export class PostProductionDocumentsUseCase {

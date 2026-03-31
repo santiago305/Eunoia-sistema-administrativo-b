@@ -1,7 +1,7 @@
 import { BadRequestException, Inject } from "@nestjs/common";
-import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "src/modules/warehouses/domain/ports/warehouse.repository.port";
 import { GetWarehouseWithLocationsInput } from "../../dtos/warehouse/input/get-with-locations.input";
 import { WarehouseWithLocationsOutput } from "../../dtos/warehouse/output/warehouse-with-locations.out";
+import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "../../ports/warehouse.repository.port";
 
 export class GetWarehouseWithLocationsUsecase {
   constructor(

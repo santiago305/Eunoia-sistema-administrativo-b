@@ -1,10 +1,10 @@
 import { BadRequestException, Inject } from "@nestjs/common";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
-import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
 import { CreditQuota } from "src/modules/payments/domain/entity/credit-quota";
 import { CREDIT_QUOTA_REPOSITORY, CreditQuotaRepository } from "src/modules/payments/domain/ports/credit-quota.repository";
 import { CreateCreditQuotaInput } from "../../dtos/credit-quota/input/create.input";
 import { PayDocType } from "src/modules/payments/domain/value-objects/pay-doc-type";
+import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
 
 export class CreateCreditQuotaUsecase {
   constructor(

@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, NotFoundException } from '@nestjs/common';
-import { PRODUCT_EQUIVALENCE_REPOSITORY, ProductEquivalenceRepository } from 'src/modules/catalog/domain/ports/product-equivalence.repository';
+import { PRODUCT_EQUIVALENCE_REPOSITORY, ProductEquivalenceRepository } from '../../ports/product-equivalence.repository';
 
 export class DeleteProductEquivalence {
   constructor(

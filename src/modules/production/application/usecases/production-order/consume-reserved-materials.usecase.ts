@@ -1,9 +1,9 @@
-// src/modules/production/application/usecases/production-order/consume-reserved-materials.usecase.ts
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
-import { INVENTORY_REPOSITORY, InventoryRepository } from "src/modules/inventory/domain/ports/inventory.repository.port";
-import { INVENTORY_LOCK, InventoryLock } from "src/modules/inventory/domain/ports/inventory-lock.port";
+
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { RecipeConsumptionLine } from "./build-consumption-from-recipes.usecase";
+import { INVENTORY_LOCK, InventoryLock } from "src/modules/inventory/application/ports/inventory-lock.port";
+import { INVENTORY_REPOSITORY, InventoryRepository } from "src/modules/inventory/application/ports/inventory.repository.port";
 
 @Injectable()
 export class ConsumeReservedMaterialsUseCase {
@@ -96,7 +96,7 @@ export class ConsumeReservedMaterialsUseCase {
           console.log('[reserveMaterials] snapshots for stockItem', snapshots);
           throw new BadRequestException({
             type: "error",
-            message: "Reserva insuficiente3",
+            message: "Reserva insuficiente",
           });
         }
       }

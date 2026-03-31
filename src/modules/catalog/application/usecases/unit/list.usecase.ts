@@ -1,6 +1,6 @@
 import { Inject } from "@nestjs/common";
-import { UNIT_REPOSITORY, UnitRepository } from "src/modules/catalog/domain/ports/unit.repository";
 import { UnitOutput } from "src/modules/catalog/application/dto/units/output/unit-out";
+import { UNIT_REPOSITORY, UnitRepository } from "../../ports/unit.repository";
 
 export class ListUnits {
   constructor(

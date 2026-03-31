@@ -1,7 +1,7 @@
 import { BadRequestException, Inject } from '@nestjs/common';
-import { PRODUCT_EQUIVALENCE_REPOSITORY, ProductEquivalenceRepository } from 'src/modules/catalog/domain/ports/product-equivalence.repository';
 import { ProductEquivalence } from 'src/modules/catalog/domain/entity/product-equivalence';
 import { CreateProductEquivalenceInput } from '../../dto/product-equivalences/input/create-product-equivalence';
+import { PRODUCT_EQUIVALENCE_REPOSITORY, ProductEquivalenceRepository } from '../../ports/product-equivalence.repository';
 
 export class CreateProductEquivalence {
   constructor(

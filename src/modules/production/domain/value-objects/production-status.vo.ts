@@ -5,3 +5,5 @@ export enum ProductionStatus {
   COMPLETED = 'COMPLETED',
   CANCELLED = 'CANCELLED',
 }
+export type ProductionStatusType = typeof ProductionStatus[keyof typeof ProductionStatus];
+

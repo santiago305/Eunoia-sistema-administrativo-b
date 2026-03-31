@@ -1,7 +1,7 @@
 import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { Direction } from 'src/modules/inventory/domain/value-objects/direction';
 import { WarehouseEntity } from 'src/modules/warehouses/adapters/out/persistence/typeorm/entities/warehouse';
-import { StockItemEntity } from 'src/modules/inventory/adapters/out/typeorm/entities/stock-item/stock-item.entity';
+import { StockItemEntity } from 'src/modules/inventory/adapters/out/typeorm/entities/stock-item.entity';
 import { InventoryDocumentEntity } from 'src/modules/inventory/adapters/out/typeorm/entities/inventory_document.entity';
 
 @Entity('inventory_ledger')

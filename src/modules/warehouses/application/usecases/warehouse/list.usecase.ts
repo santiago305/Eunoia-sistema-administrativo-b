@@ -1,9 +1,8 @@
-// src/modules/warehouses/application/usecases/warehouse/list.usecase.ts
 import { Inject } from "@nestjs/common";
-import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "src/modules/warehouses/domain/ports/warehouse.repository.port";
 import { ListWarehousesInput } from "../../dtos/warehouse/input/list.input";
 import { WarehouseOutput } from "../../dtos/warehouse/output/warehouse.out";
 import { PaginatedResult } from "src/shared/utilidades/dto/paginateResult";
+import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "../../ports/warehouse.repository.port";
 
 
 export class ListWarehousesUsecase {

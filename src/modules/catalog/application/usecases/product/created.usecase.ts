@@ -1,16 +1,15 @@
 import { BadRequestException, ConflictException, Inject, InternalServerErrorException } from "@nestjs/common";
 import { Product } from "src/modules/catalog/domain/entity/product";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
-import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
-import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/domain/ports/product.repository";
 import { CreateProductInput } from "../../dto/products/input/create-product";
 import { Money } from "src/modules/catalog/domain/value-object/money.vo";
 import { VariantAttributes } from "src/modules/catalog/domain/value-object/variant-attributes.vo";
-import { generateUniqueSku } from "src/shared/application/usecases/generate-unique-sku";
-import { SKU_COUNTER_REPOSITORY, SkuCounterRepository } from "src/modules/catalog/domain/ports/sku-counter.repository";
 import { ProductEquivalence } from "src/modules/catalog/domain/entity/product-equivalence";
-import { PRODUCT_EQUIVALENCE_REPOSITORY, ProductEquivalenceRepository } from "src/modules/catalog/domain/ports/product-equivalence.repository";
 import { CreateStockItemForProduct } from "src/modules/inventory/application/use-cases/stock-item/create-for-product.usecase";
+import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
+import { PRODUCT_EQUIVALENCE_REPOSITORY, ProductEquivalenceRepository } from "../../ports/product-equivalence.repository";
+import { PRODUCT_REPOSITORY, ProductRepository } from "../../ports/product.repository";
+import { SKU_COUNTER_REPOSITORY, SkuCounterRepository } from "../../ports/sku-counter.repository";
 
 export class CreateProduct {
   constructor(

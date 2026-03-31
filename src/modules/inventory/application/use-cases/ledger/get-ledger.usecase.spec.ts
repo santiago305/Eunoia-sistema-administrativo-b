@@ -1,8 +1,8 @@
 import { GetLedgerUseCase } from './get-ledger.usecase';
-import { LedgerRepository } from '../../../domain/ports/ledger.repository.port';
 import { LedgerEntry } from '../../../domain/entities/ledger-entry';
 import { Direction } from '../../../domain/value-objects/direction';
-import { StockItemRepository } from '../../../domain/ports/stock-item/stock-item.repository.port';
+import { LedgerRepository } from '../../ports/ledger.repository.port';
+import { StockItemRepository } from '../../ports/stock-item.repository.port';
 
 describe('GetLedgerUseCase', () => {
   const makeRepo = () =>

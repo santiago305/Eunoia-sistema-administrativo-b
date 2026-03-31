@@ -1,10 +1,10 @@
 import { BadRequestException, ConflictException, Inject, InternalServerErrorException, NotFoundException } from "@nestjs/common";
 import { Email } from "src/modules/users/domain";
-import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { errorResponse, successResponse } from "src/shared/response-standard/response";
 import { COMPANY_REPOSITORY, CompanyRepository } from "src/modules/companies/domain/ports/company.repository";
 import { UpdateCompanyInput } from "../../dtos/company/input/update.input";
+import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
 
 export class UpdateCompanyUsecase {
   constructor(

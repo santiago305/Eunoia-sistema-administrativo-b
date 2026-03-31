@@ -1,6 +1,6 @@
 import { Inject } from '@nestjs/common';
-import { PRODUCT_REPOSITORY, ProductRepository } from '../../../domain/ports/product.repository';
-import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from '../../../domain/ports/product-variant.repository';
+import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from '../../ports/product-variant.repository';
+import { PRODUCT_REPOSITORY, ProductRepository } from '../../ports/product.repository';
 
 type MonthSeries = { month: string; count: number };
 

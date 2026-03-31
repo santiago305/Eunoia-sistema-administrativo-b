@@ -1,15 +1,14 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
-import { ProductionOrderRepository } from "src/modules/production/domain/ports/production-order.repository";
+import { ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
 import { ProductionOrder } from "src/modules/production/domain/entity/production-order.entity";
 import { ProductionOrderItem } from "src/modules/production/domain/entity/production-order-item";
-import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status";
+import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
 import { ProductionOrderEntity } from "../entities/production_order.entity";
 import { ProductionOrderItemEntity } from "../entities/production_order_item.entity";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
-import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
 import { WarehouseEntity } from "src/modules/warehouses/adapters/out/persistence/typeorm/entities/warehouse";
 import { DocumentSerie } from "src/modules/inventory/adapters/out/typeorm/entities/document_serie.entity";
 import {
@@ -69,10 +68,10 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
       serieId: order.serieId,
       correlative: order.correlative,
       status: order.status,
-      reference: order.referense,
+      reference: order.reference,
       manufactureDate: order.manufactureDate,
       createdBy: order.createdBy,
-      updatedBy: order.updateBy ?? null,
+      updatedBy: order.updatedBy ?? null,
     });
 
     return new ProductionOrder(
@@ -338,29 +337,14 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
   }
 
   async getByIdWithItems(
-    productionId: string,
-    tx?: TransactionContext,
-  ): Promise<{ order: ProductionOrder; items: ProductionOrderItem[]; serie?: ProductionOrderListSerieRM | null } | null> {
+  productionId: string,
+  tx?: TransactionContext,
+  ): Promise<{ order: ProductionOrder; items: ProductionOrderItem[];} | null> {
     const order = await this.findById(productionId, tx);
     if (!order) return null;
     const items = await this.listItems(productionId, tx);
-    const serieRepo = this.getManager(tx).getRepository(DocumentSerie);
-    const serieRow = await serieRepo.findOne({ where: { id: order.serieId } });
-    const serie: ProductionOrderListSerieRM | null = serieRow
-      ? {
-          id: serieRow.id,
-          code: serieRow.code,
-          name: serieRow.name,
-          docType: serieRow.docType,
-          warehouseId: serieRow.warehouseId,
-          nextNumber: serieRow.nextNumber,
-          padding: serieRow.padding,
-          separator: serieRow.separator,
-          isActive: serieRow.isActive,
-          createdAt: serieRow.createdAt,
-        }
-      : null;
-    return { order, items, serie };
+
+    return { order, items };
   }
 
   async addItem(item: ProductionOrderItem, tx?: TransactionContext): Promise<ProductionOrderItem> {

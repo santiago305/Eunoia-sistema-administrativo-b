@@ -1,6 +1,6 @@
 import { Inject, NotFoundException } from '@nestjs/common';
-import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from 'src/modules/catalog/domain/ports/product-variant.repository';
 import { SetProductVariantActiveInput } from '../../dto/product-variants/input/set-active-product-variant';
+import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from '../../ports/product-variant.repository';
 
 export class SetProductVariantActive {
   constructor(

@@ -1,9 +1,8 @@
 import { Inject } from "@nestjs/common";
-import { LOCATION_REPOSITORY, LocartionRepository } from "src/modules/warehouses/domain/ports/location.repository.port";
-import { WarehouseId } from "src/modules/warehouses/domain/value-objects/warehouse-id.vo";
 import { ListLocationsInput } from "../../dtos/location/input/list.input";
 import { LocationOutput } from "../../dtos/location/output/location.output";
 import { PaginatedResult } from "src/shared/utilidades/dto/paginateResult";
+import { LOCATION_REPOSITORY, LocartionRepository } from "../../ports/location.repository.port";
 
 
 export class ListLocationsUsecase {

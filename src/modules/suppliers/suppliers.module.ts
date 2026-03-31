@@ -1,9 +1,7 @@
-// src/modules/suppliers/suppliers.module.ts
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
 import { TypeormUnitOfWork } from "src/shared/infrastructure/typeorm/typeorm.unit-of-work";
-import { CLOCK } from "src/modules/inventory/domain/ports/clock.port";
 import { UNIT_OF_WORK } from "src/shared/domain/ports/unit-of-work.port";
 import { CatalogModule } from "src/modules/catalog/infrastructure/catalog.module";
 import { SuppliersController } from "./adapters/in/controllers/supplier.controller";
@@ -24,6 +22,7 @@ import { GetSupplierVariantUsecase } from "./application/usecases/supplier-varia
 import { ListSupplierVariantsUsecase } from "./application/usecases/supplier-variant/list.usecase";
 import { SUPPLIER_REPOSITORY } from "./domain/ports/supplier.repository";
 import { SUPPLIER_VARIANT_REPOSITORY } from "./domain/ports/supplier-variant.repository";
+import { CLOCK } from "../inventory/application/ports/clock.port";
 
 @Module({
   imports: [TypeOrmModule.forFeature([SupplierEntity, SupplierVariantEntity]), CatalogModule],

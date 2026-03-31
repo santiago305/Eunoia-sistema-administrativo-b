@@ -9,17 +9,16 @@ import { COMPANY_REPOSITORY, CompanyRepository } from "src/modules/companies/dom
 import { PDF_RENDERER, PdfRendererPort } from "src/modules/pdf-generated/domain/ports/pdf-renderer.port";
 import { GeneratePurchaseOrderPdfInput } from "../dtos/purchase-order/input/generate-purchase-order.input";
 import { PurchaseOrderPdfData } from "../../domain/interfaces/purchase-data";
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/domain/ports/stock-item/stock-item.repository.port";
 import { StockItemType } from "src/modules/inventory/domain/value-objects/stock-item-type";
 import { StockItem } from "src/modules/inventory/domain/entities/stock-item/stock-item";
-import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/domain/ports/product.repository";
-import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/modules/catalog/domain/ports/product-variant.repository";
-import { UnitRepository, UNIT_REPOSITORY } from "src/modules/catalog/domain/ports/unit.repository";
 import { ProductId } from "src/modules/catalog/domain/value-object/product-id.vo";
 import { Product } from "src/modules/catalog/domain/entity/product";
 import { ProductVariant } from "src/modules/catalog/domain/entity/product-variant";
-import { Unit } from "src/modules/catalog/domain/entity/unit";
 import { SupplierDocType } from "src/modules/suppliers/domain/object-values/supplier-doc-type";
+import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/modules/catalog/application/ports/product-variant.repository";
+import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/application/ports/product.repository";
+import { UNIT_REPOSITORY, UnitRepository } from "src/modules/catalog/application/ports/unit.repository";
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
 
 const resolveLogoUrl = async (logoPath?: string) => {
   if (!logoPath) return undefined;

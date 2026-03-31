@@ -3,8 +3,8 @@ import { ProductEntity } from "../../adapters/out/persistence/typeorm/entities/p
 import { ProductVariantEntity } from "../../adapters/out/persistence/typeorm/entities/product-variant.entity";
 import { UnitEntity } from "../../adapters/out/persistence/typeorm/entities/unit.entity";
 import { ProductType } from "../../domain/value-object/productType";
-import { StockItemEntity } from "src/modules/inventory/adapters/out/typeorm/entities/stock-item/stock-item.entity";
-import { StockItemTypeormRepository } from "src/modules/inventory/adapters/out/typeorm/repositories/stock-item/stock-item.typeorm.repo";
+import { StockItemEntity } from "src/modules/inventory/adapters/out/typeorm/entities/stock-item.entity";
+import { StockItemTypeormRepository } from "src/modules/inventory/adapters/out/typeorm/repositories/stock-item.typeorm.repo";
 import { CreateStockItemForProduct } from "src/modules/inventory/application/use-cases/stock-item/create-for-product.usecase";
 import { CreateStockItemForVariant } from "src/modules/inventory/application/use-cases/stock-item/create-for-variant.usecase";
 import { TypeormUnitOfWork } from "src/shared/infrastructure/typeorm/typeorm.unit-of-work";

@@ -1,10 +1,11 @@
-import { InventoryDocument } from '../entities/inventory-document';
-import InventoryDocumentItem from '../entities/inventory-document-item';
-import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
-import { DocStatus } from '../value-objects/doc-status';
-import { DocType } from '../value-objects/doc-type';
-import { ReferenceType } from '../value-objects/reference-type';
+
 import { ProductType } from 'src/modules/catalog/domain/value-object/productType';
+import { TransactionContext } from 'src/shared/domain/ports/transaction-context.port';
+import { InventoryDocument } from '../../domain/entities/inventory-document';
+import InventoryDocumentItem from '../../domain/entities/inventory-document-item';
+import { DocStatus } from '../../domain/value-objects/doc-status';
+import { DocType } from '../../domain/value-objects/doc-type';
+import { ReferenceType } from '../../domain/value-objects/reference-type';
 
 export const DOCUMENT_REPOSITORY = Symbol('DOCUMENT_REPOSITORY');
 

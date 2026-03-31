@@ -2,10 +2,10 @@ import { BadRequestException, Inject, NotFoundException } from "@nestjs/common";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { Money } from "src/modules/catalog/domain/value-object/money.vo";
 import { SupplierVariant } from "src/modules/suppliers/domain/entity/supplierVariant";
-import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/modules/catalog/domain/ports/product-variant.repository";
 import { SUPPLIER_REPOSITORY, SupplierRepository } from "src/modules/suppliers/domain/ports/supplier.repository";
 import { SUPPLIER_VARIANT_REPOSITORY, SupplierVariantRepository } from "src/modules/suppliers/domain/ports/supplier-variant.repository";
 import { CreateSupplierVariantInput } from "../../dtos/supplier-variant/input/create.input";
+import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/modules/catalog/application/ports/product-variant.repository";
 
 export class CreateSupplierVariantUsecase {
   constructor(

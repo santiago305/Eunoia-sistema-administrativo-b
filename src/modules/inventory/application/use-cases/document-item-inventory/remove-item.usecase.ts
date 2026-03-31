@@ -1,6 +1,6 @@
 ﻿import { Inject, Injectable, BadRequestException } from '@nestjs/common';
-import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../../domain/ports/document.repository.port';
 import { RemoveItemInput } from '../../dto/document-item/output/item-remove';
+import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../ports/document.repository.port';
 
 @Injectable()
 export class RemoveItemUseCase {

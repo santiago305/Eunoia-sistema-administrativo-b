@@ -1,5 +1,5 @@
-import { Inventory } from '../entities/inventory';
 import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
+import { Inventory } from '../../domain/entities/inventory';
 
 export const INVENTORY_REPOSITORY = Symbol('INVENTORY_REPOSITORY');
 

@@ -1,8 +1,7 @@
-// src/modules/warehouses/application/usecases/warehouse/get-by-id.usecase.ts
 import { BadRequestException, Inject } from "@nestjs/common";
-import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "src/modules/warehouses/domain/ports/warehouse.repository.port";
 import { GetWarehouseInput } from "../../dtos/warehouse/input/get-by-id.input";
 import { WarehouseOutput } from "../../dtos/warehouse/output/warehouse.out";
+import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "../../ports/warehouse.repository.port";
 
 export class GetWarehouseUsecase {
   constructor(

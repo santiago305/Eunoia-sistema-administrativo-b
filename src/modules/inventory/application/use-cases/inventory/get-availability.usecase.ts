@@ -1,8 +1,8 @@
 import { Inject, Injectable, BadRequestException } from '@nestjs/common';
-import { INVENTORY_REPOSITORY, InventoryRepository } from '../../../domain/ports/inventory.repository.port';
 import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
 import { GetAvailabilityInput } from '../../dto/inventory/input/get-availability';
 import { AvailabilityOutput } from '../../dto/inventory/output/availability-out';
+import { INVENTORY_REPOSITORY, InventoryRepository } from '../../ports/inventory.repository.port';
 
 @Injectable()
 export class GetAvailabilityUseCase {

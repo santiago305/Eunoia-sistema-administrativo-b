@@ -1,12 +1,9 @@
 ﻿import { ConflictException, Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { TransactionContext, UNIT_OF_WORK, UnitOfWork } from 'src/shared/domain/ports/unit-of-work.port';
-import { CLOCK, ClockPort } from 'src/modules/inventory/domain/ports/clock.port';
-import {
-  STOCK_ITEM_REPOSITORY,
-  StockItemRepository,
-} from 'src/modules/inventory/domain/ports/stock-item/stock-item.repository.port';
 import { StockItem } from 'src/modules/inventory/domain/entities/stock-item/stock-item';
 import { StockItemType } from 'src/modules/inventory/domain/value-objects/stock-item-type';
+import { CLOCK, ClockPort } from '../../ports/clock.port';
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from '../../ports/stock-item.repository.port';
 
 
 @Injectable()

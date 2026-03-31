@@ -1,9 +1,9 @@
 import { BadRequestException, Inject, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common";
-import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/domain/ports/production-order.repository";
+import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
 import { AddProductionOrderItemInput } from "../../dto/production-order/input/add-production-order-item";
 import { ProductionOrderItemOutput } from "../../dto/production-order/output/production-order-item-out";
 import { ProductionOrderItem } from "src/modules/production/domain/entity/production-order-item";
-import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status";
+import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
 import { TransactionContext, UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { errorResponse } from "src/shared/response-standard/response";
 
@@ -30,7 +30,7 @@ export class AddProductionOrderItem {
         throw new BadRequestException({ type: "error", message: "Solo se puede agregar items a una orden en DRAFT" });
       }
       if (input.quantity === undefined || input.quantity === null || input.quantity === 0) {
-        throw new BadRequestException(errorResponse('Cantidad no validad'));
+        throw new BadRequestException(errorResponse('Cantidad no valida'));
       }
 
       const item = new ProductionOrderItem(

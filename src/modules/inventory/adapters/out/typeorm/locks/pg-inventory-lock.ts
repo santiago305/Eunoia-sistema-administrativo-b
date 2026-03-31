@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { InventoryLock } from '../../../../domain/ports/inventory-lock.port';
 import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
 import { EntityManager } from 'typeorm';
 import { TypeormTransactionContext } from 'src/shared/infrastructure/typeorm/typeorm.transaction-context';
+import { InventoryLock } from 'src/modules/inventory/application/ports/inventory-lock.port';
 
 @Injectable()
 export class PgInventoryLock implements InventoryLock {

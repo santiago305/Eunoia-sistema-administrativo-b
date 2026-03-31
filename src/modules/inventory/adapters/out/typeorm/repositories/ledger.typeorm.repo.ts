@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, MoreThanOrEqual, LessThanOrEqual, In } from 'typeorm';
-import { LedgerRepository } from '../../../../domain/ports/ledger.repository.port';
 import {
   LedgerDocumentSnapshot,
   LedgerEntry,
@@ -20,6 +19,7 @@ import { User } from 'src/modules/users/adapters/out/persistence/typeorm/entitie
 import { DocumentSerie } from 'src/modules/inventory/adapters/out/typeorm/entities/document_serie.entity';
 import { ProductEntity } from 'src/modules/catalog/adapters/out/persistence/typeorm/entities/product.entity';
 import { UnitEntity } from 'src/modules/catalog/adapters/out/persistence/typeorm/entities/unit.entity';
+import { LedgerRepository } from 'src/modules/inventory/application/ports/ledger.repository.port';
 
 
 @Injectable()

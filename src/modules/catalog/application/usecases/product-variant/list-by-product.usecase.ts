@@ -1,9 +1,9 @@
 import { Inject } from "@nestjs/common";
-import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/modules/catalog/domain/ports/product-variant.repository";
 import { ProductVariant } from "src/modules/catalog/domain/entity/product-variant";
 import { ProductId } from "src/modules/catalog/domain/value-object/product-id.vo";
 import { ListProductVariantsInput } from "../../dto/product-variants/input/list-product-variant";
 import { ProductVariantOutput } from "../../dto/product-variants/output/product-variant-out";
+import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "../../ports/product-variant.repository";
 
 export class ListProductVariants {
   constructor(

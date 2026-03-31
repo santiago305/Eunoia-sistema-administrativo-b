@@ -1,11 +1,11 @@
 import { ConflictException, Inject, InternalServerErrorException, NotFoundException } from '@nestjs/common';
-import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from 'src/modules/catalog/domain/ports/product-variant.repository';
-import { PRODUCT_REPOSITORY, ProductRepository } from 'src/modules/catalog/domain/ports/product.repository';
 import { ProductVariant } from 'src/modules/catalog/domain/entity/product-variant';
 import { Money } from 'src/modules/catalog/domain/value-object/money.vo';
 import { UpdateProductVariantInput } from '../../dto/product-variants/input/update-product-variant';
 import { ProductVariantOutput } from '../../dto/product-variants/output/product-variant-out';
 import { UNIT_OF_WORK, UnitOfWork } from 'src/shared/domain/ports/unit-of-work.port';
+import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from '../../ports/product-variant.repository';
+import { PRODUCT_REPOSITORY, ProductRepository } from '../../ports/product.repository';
 
 export class UpdateProductVariant {
   constructor(

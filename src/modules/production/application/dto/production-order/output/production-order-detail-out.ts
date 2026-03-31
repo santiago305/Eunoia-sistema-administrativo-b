@@ -1,7 +1,7 @@
 import type { ProductOutput } from "src/modules/catalog/application/dto/products/output/product-out";
 import type { ProductVariantOutput } from "src/modules/catalog/application/dto/product-variants/output/product-variant-out";
 import type { StockItemType } from "src/modules/inventory/domain/value-objects/stock-item-type";
-import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status";
+import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
 import type { ProductionOrderListSerieOutput } from "./production-order-paginated";
 
 export interface ProductionOrderFinishedItemOutput {
@@ -35,3 +35,4 @@ export interface ProductionOrderDetailOutput {
   createdAt: Date;
   items: ProductionOrderDetailItemOutput[];
 }
+

@@ -1,6 +1,6 @@
 import { Inject } from "@nestjs/common";
-import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/domain/ports/product.repository";
 import { ProductOutput } from "../../dto/products/output/product-out";
+import { PRODUCT_REPOSITORY, ProductRepository } from "../../ports/product.repository";
 
 export class ListPrimaActiveProducts {
   constructor(

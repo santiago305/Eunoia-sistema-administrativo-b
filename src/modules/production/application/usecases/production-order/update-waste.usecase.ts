@@ -1,13 +1,13 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
-import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/domain/ports/production-order.repository";
-import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/inventory/domain/ports/document.repository.port";
-import { LEDGER_REPOSITORY, LedgerRepository } from "src/modules/inventory/domain/ports/ledger.repository.port";
+import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
 import { UpdateProductionWasteInput } from "../../dto/production-order/input/update-production-waste";
 import { ReferenceType } from "src/modules/inventory/domain/value-objects/reference-type";
 import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
 import { DocStatus } from "src/modules/inventory/domain/value-objects/doc-status";
 import { errorResponse, successResponse } from "src/shared/response-standard/response";
+import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/inventory/application/ports/document.repository.port";
+import { LEDGER_REPOSITORY, LedgerRepository } from "src/modules/inventory/application/ports/ledger.repository.port";
 
 @Injectable()
 export class UpdateProductionWaste {

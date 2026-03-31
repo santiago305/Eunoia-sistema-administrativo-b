@@ -1,4 +1,4 @@
-import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status";
+import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
 
 export interface ListProductionOrdersInput {
   status?: ProductionStatus;

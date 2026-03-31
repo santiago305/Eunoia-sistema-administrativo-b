@@ -1,8 +1,8 @@
 import { Inject } from '@nestjs/common';
-import { PRODUCT_RECIPE_REPOSITORY, ProductRecipeRepository } from 'src/modules/catalog/domain/ports/product-recipe.repository';
 import { ListProductRecipeInput } from '../../dto/product-recipes/input/list-product-recipe';
 import { ProductRecipeOutput } from '../../dto/product-recipes/output/product-recipe-out';
 import { ProductRecipe } from 'src/modules/catalog/domain/entity/product-recipe';
+import { PRODUCT_RECIPE_REPOSITORY, ProductRecipeRepository } from '../../ports/product-recipe.repository';
 
 export class ListProductRecipesByVariant {
   constructor(

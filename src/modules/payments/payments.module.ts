@@ -1,7 +1,6 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { TypeormUnitOfWork } from "src/shared/infrastructure/typeorm/typeorm.unit-of-work";
-import { CLOCK } from "src/modules/inventory/domain/ports/clock.port";
 import { UNIT_OF_WORK } from "src/shared/domain/ports/unit-of-work.port";
 import { PaymentsController } from "./adapters/in/controllers/payment.controller";
 import { CreditQuotasController } from "./adapters/in/controllers/credit-quota.controller";
@@ -21,6 +20,7 @@ import { GetCreditQuotasByPoIdUsecase } from "./application/usecases/credit-quot
 import { ListCreditQuotasUsecase } from "./application/usecases/credit-quota/list.usecase";
 import { PAYMENT_DOCUMENT_REPOSITORY } from "./domain/ports/payment-document.repository";
 import { CREDIT_QUOTA_REPOSITORY } from "./domain/ports/credit-quota.repository";
+import { CLOCK } from "../inventory/application/ports/clock.port";
 
 @Module({
   imports: [TypeOrmModule.forFeature([PaymentDocumentEntity, CreditQuotaEntity])],

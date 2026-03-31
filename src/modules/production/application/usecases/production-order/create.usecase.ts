@@ -1,14 +1,15 @@
 import { BadRequestException, Inject, Injectable, InternalServerErrorException } from "@nestjs/common";
-import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/domain/ports/production-order.repository";
+import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
 import { ProductionOrder } from "src/modules/production/domain/entity/production-order.entity";
-import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status";
+import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
 import { CreateProductionOrderInput } from "../../dto/production-order/input/create-production-order";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
-import { DocumentSeriesRepository, SERIES_REPOSITORY } from "src/modules/inventory/domain/ports/document-series.repository.port";
-import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
-import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
+
 import { errorResponse } from "src/shared/response-standard/response";
 import { AddProductionOrderItem } from "./add-item.usecase";
+import { ProductionDocType } from "src/modules/production/domain/value-objects/doc-type.vo";
+import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
+import { SERIES_REPOSITORY, DocumentSeriesRepository } from "src/modules/inventory/application/ports/document-series.repository.port";
 
 @Injectable()
 export class CreateProductionOrder {
@@ -46,7 +47,7 @@ export class CreateProductionOrder {
         undefined,
         input.fromWarehouseId,
         input.toWarehouseId,
-        DocType.PRODUCTION,
+        ProductionDocType.PRODUCTION,
         input.serieId,
         correlative,
         ProductionStatus.DRAFT,

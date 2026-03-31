@@ -15,13 +15,6 @@ import { ProductEquivalenceTypeormRepository } from '../adapters/out/persistence
 import { ProductRecipeTypeormRepository } from '../adapters/out/persistence/typeorm/repositories/product-recipe.typeorm.repo';
 import { SkuCounterTypeormRepository } from '../adapters/out/persistence/typeorm/repositories/sku-counter.typeorm.repo';
 
-import { PRODUCT_REPOSITORY } from '../domain/ports/product.repository';
-import { PRODUCT_VARIANT_REPOSITORY } from '../domain/ports/product-variant.repository';
-import { UNIT_REPOSITORY } from '../domain/ports/unit.repository';
-import { PRODUCT_EQUIVALENCE_REPOSITORY } from '../domain/ports/product-equivalence.repository';
-import { PRODUCT_RECIPE_REPOSITORY } from '../domain/ports/product-recipe.repository';
-import { SKU_COUNTER_REPOSITORY } from '../domain/ports/sku-counter.repository';
-
 import { CreateProduct } from '../application/usecases/product/created.usecase';
 import { UpdateProduct } from '../application/usecases/product/update.usecase';
 import { SetProductActive } from '../application/usecases/product/set-active.usecase';
@@ -50,7 +43,6 @@ import { ListProductRecipesByVariant } from '../application/usecases/product-rec
 
 import { UNIT_OF_WORK } from 'src/shared/domain/ports/unit-of-work.port';
 import { TypeormUnitOfWork } from 'src/shared/infrastructure/typeorm/typeorm.unit-of-work';
-import { CLOCK } from 'src/modules/inventory/domain/ports/clock.port';
 
 import { ProductsController } from '../adapters/in/controllers/product.controller';
 import { ProductVariantsController } from '../adapters/in/controllers/product-variant.controller';
@@ -61,6 +53,13 @@ import { SearchProductsPaginated } from '../application/usecases/product/search-
 import { CatalogSummaryController } from '../adapters/in/controllers/catalog-summary.controller';
 import { GetCatalogSummary } from '../application/usecases/catalog/get-summary.usecase';
 import { InventoryModule } from 'src/modules/inventory/infrastructure/inventory.module';
+import { CLOCK } from 'src/modules/inventory/application/ports/clock.port';
+import { PRODUCT_EQUIVALENCE_REPOSITORY } from '../application/ports/product-equivalence.repository';
+import { PRODUCT_RECIPE_REPOSITORY } from '../application/ports/product-recipe.repository';
+import { PRODUCT_VARIANT_REPOSITORY } from '../application/ports/product-variant.repository';
+import { PRODUCT_REPOSITORY } from '../application/ports/product.repository';
+import { SKU_COUNTER_REPOSITORY } from '../application/ports/sku-counter.repository';
+import { UNIT_REPOSITORY } from '../application/ports/unit.repository';
 
 @Module({
   imports: [

@@ -1,8 +1,8 @@
 import { Inject, Injectable, BadRequestException } from '@nestjs/common';
-import { SERIES_REPOSITORY, DocumentSeriesRepository } from '../../../domain/ports/document-series.repository.port';
 import { CreateDocumentSerieInput } from '../../dto/document-serie/input/create-document-serie';
 import { DocumentSerieOutput } from '../../dto/document-serie/output/document-serie-out';
 import DocumentSerie from '../../../domain/entities/document-serie';
+import { SERIES_REPOSITORY, DocumentSeriesRepository } from '../../ports/document-series.repository.port';
 
 @Injectable()
 export class CreateDocumentSerieUseCase {

@@ -1,14 +1,14 @@
-import { BadRequestException, Inject, InternalServerErrorException, NotFoundException } from "@nestjs/common";
-import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/domain/ports/production-order.repository";
-import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status";
-import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
+import { BadRequestException, Inject, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common";
+import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
+import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
 import { errorResponse, successResponse } from "src/shared/response-standard/response";
 import { USER_REPOSITORY, UserRepository } from "src/modules/users/application/ports/user.repository";
-import { Email } from "src/modules/users/domain";
 import { CloseProductionOrder } from "./close.usecase";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
+import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
 
+@Injectable()
 export class RunProductionTimeUsecase {
   constructor(
     @Inject(UNIT_OF_WORK)

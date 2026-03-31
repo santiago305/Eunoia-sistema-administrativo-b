@@ -1,5 +1,5 @@
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
-import { ProductEquivalence } from "../entity/product-equivalence";
+import { ProductEquivalence } from "../../domain/entity/product-equivalence";
 
 
 export const PRODUCT_EQUIVALENCE_REPOSITORY = Symbol("PRODUCT_EQUIVALENCE_REPOSITORY");

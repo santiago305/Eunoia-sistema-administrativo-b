@@ -1,13 +1,7 @@
 import { Inject } from "@nestjs/common";
-import {
-  PRODUCT_REPOSITORY,
-  ProductRepository,
-} from "src/modules/catalog/domain/ports/product.repository";
-import {
-  PRODUCT_VARIANT_REPOSITORY,
-  ProductVariantRepository,
-} from "src/modules/catalog/domain/ports/product-variant.repository";
 import { RowMaterial } from "src/modules/catalog/domain/read-models/row-materials";
+import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "../../ports/product-variant.repository";
+import { PRODUCT_REPOSITORY, ProductRepository } from "../../ports/product.repository";
 
 export class SearchRowMaterialProductVariants {
   constructor(

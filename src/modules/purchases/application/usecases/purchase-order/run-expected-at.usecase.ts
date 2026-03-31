@@ -2,10 +2,9 @@ import { BadRequestException, Inject, NotFoundException } from "@nestjs/common";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
 import { PurchaseOrderStatus } from "src/modules/purchases/domain/value-objects/po-status";
-import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
 import { PostInventoryFromPurchaseUsecase } from "./Inventory-purchase.usecase";
 import { USER_REPOSITORY, UserRepository } from "src/modules/users/application/ports/user.repository";
-import { Email } from "src/modules/users/domain/value-objects/email.vo";
+import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
 
 export class RunExpectedAtUsecase {
   constructor(

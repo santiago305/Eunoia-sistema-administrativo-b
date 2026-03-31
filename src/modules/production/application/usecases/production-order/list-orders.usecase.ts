@@ -1,5 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/domain/ports/production-order.repository";
+import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
 import { ListProductionOrdersInput } from "../../dto/production-order/input/list-production-orders";
 import { PaginatedProductionOrderOutput } from "../../dto/production-order/output/production-order-paginated";
 
@@ -19,7 +19,7 @@ export class ListProductionOrders {
         status: item.order.status,
         serieId: item.order.serieId,
         correlative: item.order.correlative,
-        reference: item.order.referense,
+        reference: item.order.reference,
         manufactureDate: item.order.manufactureDate,
         fromWarehouseId: item.order.fromWarehouseId,
         toWarehouseId: item.order.toWarehouseId,

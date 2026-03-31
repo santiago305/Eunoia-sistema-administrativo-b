@@ -1,6 +1,6 @@
 import { IsOptional, IsEnum, IsUUID, IsDateString, IsInt, Min, Max } from "class-validator";
 import { Type } from "class-transformer";
-import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status";
+import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
 
 export class HttpListProductionOrdersQueryDto {
   @IsOptional()

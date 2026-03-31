@@ -1,12 +1,12 @@
 ﻿import { Inject, Injectable, BadRequestException } from '@nestjs/common';
-import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../../domain/ports/document.repository.port';
-import { SERIES_REPOSITORY, DocumentSeriesRepository } from '../../../domain/ports/document-series.repository.port';
 import { ListDocumentsInput } from '../../dto/document/input/document-list';
 import { PaginatedDocumentOutputResult } from '../../dto/document/output/document-paginated';
 import { USER_READ_REPOSITORY, UserReadRepository } from 'src/modules/users/application/ports/user-read.repository';
 import { errorResponse } from 'src/shared/response-standard/response';
-import { WAREHOUSE_REPOSITORY, WarehouseRepository } from 'src/modules/warehouses/domain/ports/warehouse.repository.port';
 import { WarehouseId } from 'src/modules/warehouses/domain/value-objects/warehouse-id.vo';
+import { WAREHOUSE_REPOSITORY, WarehouseRepository } from 'src/modules/warehouses/application/ports/warehouse.repository.port';
+import { SERIES_REPOSITORY, DocumentSeriesRepository } from '../../ports/document-series.repository.port';
+import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../ports/document.repository.port';
 
 @Injectable()
 export class ListDocumentsUseCase {

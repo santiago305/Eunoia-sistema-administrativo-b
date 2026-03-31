@@ -17,7 +17,7 @@ import { PurchaseOrderItemEntity } from 'src/modules/purchases/adapters/out/pers
 import { PurchaseOrderEntity } from 'src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-order.entity';
 import { PaymentDocumentEntity } from 'src/modules/payments/adapters/out/persistence/typeorm/entities/payment-document.entity';
 import { CreditQuotaEntity } from 'src/modules/payments/adapters/out/persistence/typeorm/entities/credit-quota.entity';
-import { StockItemEntity } from 'src/modules/inventory/adapters/out/typeorm/entities/stock-item/stock-item.entity';
+import { StockItemEntity } from 'src/modules/inventory/adapters/out/typeorm/entities/stock-item.entity';
 import { PaymentMethodEntity } from 'src/modules/payment-methods/adapters/out/persistence/typeorm/entities/payment-method.entity';
 import { SupplierMethodEntity } from 'src/modules/payment-methods/adapters/out/persistence/typeorm/entities/supplier-method.entity';
 import { SecurityReasonCatalog } from 'src/modules/security/adapters/out/persistence/typeorm/entities/security-reason-catalog.entity';

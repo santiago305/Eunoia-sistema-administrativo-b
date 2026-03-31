@@ -5,18 +5,17 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { PRODUCT_REPOSITORY, ProductRepository } from 'src/modules/catalog/domain/ports/product.repository';
-import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from 'src/modules/catalog/domain/ports/product-variant.repository';
 import { ProductVariant } from 'src/modules/catalog/domain/entity/product-variant';
 import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo';
 import { Money } from 'src/modules/catalog/domain/value-object/money.vo';
 import { VariantAttributes } from 'src/modules/catalog/domain/value-object/variant-attributes.vo';
 import { CreateProductVariantInput } from '../../dto/product-variants/input/create-product-variant';
-import { CLOCK, ClockPort } from 'src/modules/inventory/domain/ports/clock.port';
-import { generateUniqueSku } from '../../../../../shared/application/usecases/generate-unique-sku';
 import { UNIT_OF_WORK, UnitOfWork } from 'src/shared/domain/ports/unit-of-work.port';
-import { SKU_COUNTER_REPOSITORY, SkuCounterRepository } from 'src/modules/catalog/domain/ports/sku-counter.repository';
 import { CreateStockItemForVariant } from 'src/modules/inventory/application/use-cases/stock-item/create-for-variant.usecase';
+import { CLOCK, ClockPort } from 'src/modules/inventory/application/ports/clock.port';
+import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from '../../ports/product-variant.repository';
+import { PRODUCT_REPOSITORY, ProductRepository } from '../../ports/product.repository';
+import { SKU_COUNTER_REPOSITORY, SkuCounterRepository } from '../../ports/sku-counter.repository';
 
 export class CreateProductVariant {
   constructor(

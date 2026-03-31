@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { INVENTORY_REPOSITORY, InventoryRepository } from '../../../domain/ports/inventory.repository.port';
 import { ListInventoryInput } from '../../dto/inventory/input/list-inventory';
 import { InventorySnapshotOutput } from '../../dto/inventory/output/inventory-snapshot';
+import { INVENTORY_REPOSITORY, InventoryRepository } from '../../ports/inventory.repository.port';
 
 @Injectable()
 export class ListInventoryUseCase {

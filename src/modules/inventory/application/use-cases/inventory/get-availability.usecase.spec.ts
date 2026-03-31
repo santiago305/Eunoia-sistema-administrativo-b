@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { GetAvailabilityUseCase } from './get-availability.usecase';
-import { InventoryRepository } from '../../../domain/ports/inventory.repository.port';
 import { Inventory } from '../../../domain/entities/inventory';
+import { InventoryRepository } from '../../ports/inventory.repository.port';
 
 describe('GetAvailabilityUseCase', () => {
   const makeRepo = () =>

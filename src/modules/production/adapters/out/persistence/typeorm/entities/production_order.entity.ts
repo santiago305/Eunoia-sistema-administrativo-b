@@ -1,7 +1,7 @@
 import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
-import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status";
+import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
 import { ProductionOrderItemEntity } from "./production_order_item.entity";
-import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
+import { ProductionDocType } from "src/modules/production/domain/value-objects/doc-type.vo";
 
 @Entity("production_orders")
 export class ProductionOrderEntity {
@@ -14,8 +14,8 @@ export class ProductionOrderEntity {
   @Column({ name: "to_warehouse_id", type: "uuid" })
   toWarehouseId: string;
 
-  @Column({ name: "doc_type", type: "enum", enum: DocType, enumName: "doc_type" })
-  docType: DocType;
+  @Column({ name: "doc_type", type: "enum", enum: ProductionDocType, enumName: "doc_type" })
+  docType: ProductionDocType;
 
   @Column({ name: "serie_id", type: "uuid" })
   serieId: string;

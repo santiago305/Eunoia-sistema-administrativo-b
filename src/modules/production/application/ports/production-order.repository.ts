@@ -1,8 +1,8 @@
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
-import { ProductionOrder } from "../entity/production-order.entity";
-import { ProductionOrderItem } from "../entity/production-order-item";
-import { ProductionOrderListItemRM, ProductionOrderListSerieRM } from "../read-models/production-order-list-item.rm";
-import { ProductionStatus } from "../value-objects/production-status";
+import { ProductionOrder } from "../../domain/entity/production-order.entity";
+import { ProductionOrderItem } from "../../domain/entity/production-order-item";
+import { ProductionOrderListItemRM, ProductionOrderListSerieRM } from "../../domain/read-models/production-order-list-item.rm";
+import { ProductionStatus } from "../../domain/value-objects/production-status.vo";
 
 export const PRODUCTION_ORDER_REPOSITORY = Symbol('PRODUCTION_ORDER_REPOSITORY');
 

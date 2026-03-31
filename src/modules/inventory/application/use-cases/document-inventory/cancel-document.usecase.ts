@@ -1,8 +1,8 @@
 import { Inject, Injectable, BadRequestException } from '@nestjs/common';
-import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../../domain/ports/document.repository.port';
 import { PostDocumentInput } from '../../dto/document/input/document-post';
-import { CLOCK, ClockPort } from 'src/modules/inventory/domain/ports/clock.port';
 import { UNIT_OF_WORK, UnitOfWork } from 'src/shared/domain/ports/unit-of-work.port';
+import { CLOCK, ClockPort } from '../../ports/clock.port';
+import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../ports/document.repository.port';
 
 @Injectable()
 export class CancelDocumentUseCase {
@@ -29,7 +29,7 @@ export class CancelDocumentUseCase {
         { docId: doc.id!, postedBy: input.postedBy, note:input.note , postedAt: now },
           tx,
         );
-      return { status: '¡Documento cancelado con exito!' };
+      return { status: 'ï¿½Documento cancelado con exito!' };
     });
   }
 }
