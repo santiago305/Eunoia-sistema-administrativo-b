@@ -8,7 +8,7 @@ import { UnitEntity } from '../entities/unit.entity';
 import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
 import { TypeormTransactionContext } from 'src/shared/domain/ports/typeorm-transaction-context';
 import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo';
-import { Money } from 'src/modules/catalog/domain/value-object/money.vo';
+import { Money } from 'src/shared/value-objets/money.vo';
 import { ProductVariantWithProductInfo } from 'src/modules/catalog/domain/read-models/product-variant-with-product-info.rm';
 import { AttributesRecord } from 'src/modules/catalog/domain/value-object/variant-attributes.vo';
 import { RowMaterial } from 'src/modules/catalog/domain/read-models/row-materials';

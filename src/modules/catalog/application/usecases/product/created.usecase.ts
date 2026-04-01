@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, Inject, InternalServerErrorExce
 import { Product } from "src/modules/catalog/domain/entity/product";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { CreateProductInput } from "../../dto/products/input/create-product";
-import { Money } from "src/modules/catalog/domain/value-object/money.vo";
+import { Money } from "src/shared/value-objets/money.vo";
 import { VariantAttributes } from "src/modules/catalog/domain/value-object/variant-attributes.vo";
 import { ProductEquivalence } from "src/modules/catalog/domain/entity/product-equivalence";
 import { CreateStockItemForProduct } from "src/modules/inventory/application/use-cases/stock-item/create-for-product.usecase";

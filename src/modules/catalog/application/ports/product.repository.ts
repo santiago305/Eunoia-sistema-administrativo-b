@@ -3,7 +3,7 @@ import { Product } from "../../domain/entity/product";
 import { ProductVariant } from "../../domain/entity/product-variant";
 import { ProductWithUnitInfo } from "../../domain/read-models/product-with-unit-info.rm";
 import { RowMaterial } from "../../domain/read-models/row-materials";
-import { Money } from "../../domain/value-object/money.vo";
+import { Money } from "../../../../shared/value-objets/money.vo";
 import { ProductId } from "../../domain/value-object/product-id.vo";
 import { ProductType } from "../../domain/value-object/productType";
 import { AttributesRecord } from "../../domain/value-object/variant-attributes.vo";

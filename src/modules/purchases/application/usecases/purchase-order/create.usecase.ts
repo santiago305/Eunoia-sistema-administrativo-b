@@ -3,7 +3,7 @@ import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.p
 import { PurchaseOrder } from "src/modules/purchases/domain/entities/purchase-order";
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
 import { CreatePurchaseOrderInput } from "../../dtos/purchase-order/input/create.input";
-import { Money } from "src/modules/catalog/domain/value-object/money.vo";
+import { Money } from "src/shared/value-objets/money.vo";
 import { PURCHASE_ORDER_ITEM, PurchaseOrderItemRepository } from "src/modules/purchases/domain/ports/purchase-order-item.port.repository";
 import { PurchaseOrderItem } from "src/modules/purchases/domain/entities/purchase-order-item";
 import { PaymentFormType } from "src/modules/purchases/domain/value-objects/payment-form-type";

@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { ProductVariant } from 'src/modules/catalog/domain/entity/product-variant';
 import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo';
-import { Money } from 'src/modules/catalog/domain/value-object/money.vo';
+import { Money } from 'src/shared/value-objets/money.vo';
 import { VariantAttributes } from 'src/modules/catalog/domain/value-object/variant-attributes.vo';
 import { CreateProductVariantInput } from '../../dto/product-variants/input/create-product-variant';
 import { UNIT_OF_WORK, UnitOfWork } from 'src/shared/domain/ports/unit-of-work.port';

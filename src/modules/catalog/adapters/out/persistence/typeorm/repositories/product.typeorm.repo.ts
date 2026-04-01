@@ -9,7 +9,7 @@ import { ProductVariant } from 'src/modules/catalog/domain/entity/product-varian
 import { ProductVariantEntity } from '../entities/product-variant.entity';
 import { UnitEntity } from '../entities/unit.entity';
 import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo';
-import { Money } from 'src/modules/catalog/domain/value-object/money.vo';
+import { Money } from 'src/shared/value-objets/money.vo';
 import { ProductType } from 'src/modules/catalog/domain/value-object/productType';
 import { AttributesRecord } from 'src/modules/catalog/domain/value-object/variant-attributes.vo';
 import { RowMaterial } from 'src/modules/catalog/domain/read-models/row-materials';

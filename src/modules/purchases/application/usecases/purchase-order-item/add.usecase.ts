@@ -3,7 +3,7 @@ import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.p
 import { PurchaseOrderItem } from "src/modules/purchases/domain/entities/purchase-order-item";
 import { PURCHASE_ORDER_ITEM, PurchaseOrderItemRepository } from "src/modules/purchases/domain/ports/purchase-order-item.port.repository";
 import { AddPurchaseOrderItemInput } from "../../dtos/purchase-order-item/input/add.input";
-import { Money } from "src/modules/catalog/domain/value-object/money.vo";
+import { Money } from "src/shared/value-objets/money.vo";
 
 export class AddPurchaseOrderItemUsecase {
   constructor(

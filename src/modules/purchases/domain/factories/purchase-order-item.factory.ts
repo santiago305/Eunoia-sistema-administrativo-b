@@ -1,4 +1,4 @@
-import { Money } from "src/modules/catalog/domain/value-object/money.vo";
+import { Money } from "src/shared/value-objets/money.vo";
 import { PurchaseOrderItem } from "../entities/purchase-order-item";
 import { AfectIgvType } from "../value-objects/afect-igv-type";
 import { CurrencyType } from "../value-objects/currency-type";

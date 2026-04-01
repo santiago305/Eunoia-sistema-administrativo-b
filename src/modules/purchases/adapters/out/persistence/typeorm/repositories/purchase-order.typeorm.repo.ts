@@ -9,8 +9,9 @@ import { CurrencyType } from "src/modules/purchases/domain/value-objects/currenc
 import { PaymentFormType } from "src/modules/purchases/domain/value-objects/payment-form-type";
 import { PurchaseOrderStatus } from "src/modules/purchases/domain/value-objects/po-status";
 import { VoucherDocType } from "src/modules/purchases/domain/value-objects/voucher-doc-type";
-import { Money } from "src/modules/catalog/domain/value-object/money.vo";
+import { Money } from "src/shared/value-objets/money.vo";
 import { PurchaseOrderEntity } from "../entities/purchase-order.entity";
+import { PurchaseOrderMapper } from "../mappers/purchase-order.mapper";
 
 @Injectable()
 export class PurchaseOrderTypeormRepository implements PurchaseOrderRepository {
@@ -30,69 +31,16 @@ export class PurchaseOrderTypeormRepository implements PurchaseOrderRepository {
     return this.getManager(tx).getRepository(PurchaseOrderEntity);
   }
 
-  private toDomain(row: PurchaseOrderEntity): PurchaseOrder {
-    const currency = row.currency ?? "PEN";
-    return new PurchaseOrder(
-      row.id,
-      row.supplierId,
-      row.warehouseId,
-      Number(row.creditDays),
-      Number(row.numQuotas),
-      Money.create(Number(row.totalTaxed ?? 0), currency),
-      Money.create(Number(row.totalExempted ?? 0), currency),
-      Money.create(Number(row.totalIgv ?? 0), currency),
-      Money.create(Number(row.purchaseValue ?? 0), currency),
-      Money.create(Number(row.total ?? 0), currency),
-      row.documentType ?? undefined,
-      row.serie ?? undefined,
-      row.correlative ?? undefined,
-      row.currency ?? undefined,
-      row.paymentForm ?? undefined,
-      row.note ?? undefined,
-      row.status,
-      row.isActive,
-      row.expectedAt ?? undefined,
-      row.dateIssue ?? undefined,
-      row.dateExpiration ?? undefined,
-      row.createdAt ?? undefined,
-      row.createdBy ?? undefined,
-    );
-  }
-
   async findById(poId: string, tx?: TransactionContext): Promise<PurchaseOrder | null> {
     const row = await this.getRepo(tx).findOne({ where: { id: poId } });
-    return row ? this.toDomain(row) : null;
+    return row ? PurchaseOrderMapper.toDomain(row) : null;
   }
 
   async create(purchase: PurchaseOrder, tx?: TransactionContext): Promise<PurchaseOrder> {
     const repo = this.getRepo(tx);
-    const row = repo.create({
-      id: purchase.poId,
-      supplierId: purchase.supplierId,
-      warehouseId: purchase.warehouseId,
-      documentType: purchase.documentType ?? null,
-      serie: purchase.serie ?? null,
-      correlative: purchase.correlative ?? null,
-      currency: purchase.currency ?? null,
-      paymentForm: purchase.paymentForm ?? null,
-      creditDays: purchase.creditDays ?? 0,
-      numQuotas: purchase.numQuotas ?? 0,
-      totalTaxed: purchase.totalTaxed.getAmount(),
-      totalExempted: purchase.totalExempted.getAmount(),
-      totalIgv: purchase.totalIgv.getAmount(),
-      purchaseValue: purchase.purchaseValue.getAmount(),
-      total: purchase.total.getAmount(),
-      note: purchase.note ?? null,
-      status: purchase.status,
-      isActive: purchase.isActive ?? true,
-      expectedAt: purchase.expectedAt ?? null,
-      dateIssue: purchase.dateIssue ?? null,
-      dateExpiration: purchase.dateExpiration ?? null,
-      createdBy: purchase.createdBy ?? null,
-      createdAt: purchase.createdAt ?? undefined,
-    });
+    const row = repo.create(PurchaseOrderMapper.toPersistence(purchase));
     const saved = await repo.save(row);
-    return this.toDomain(saved);
+    return PurchaseOrderMapper.toDomain(saved);
   }
   async listAllByStatus(
     status: PurchaseOrderStatus,
@@ -105,7 +53,7 @@ export class PurchaseOrderTypeormRepository implements PurchaseOrderRepository {
       order: { createdAt: "DESC" },
     });
 
-    return rows.map((r) => this.toDomain(r));
+    return rows.map((r) => PurchaseOrderMapper.toDomain(r));
   }
 
   async update(
@@ -160,7 +108,7 @@ export class PurchaseOrderTypeormRepository implements PurchaseOrderRepository {
 
     await repo.update({ id: params.poId }, patch);
     const updated = await repo.findOne({ where: { id: params.poId } });
-    return updated ? this.toDomain(updated) : null;
+    return updated ? PurchaseOrderMapper.toDomain(updated) : null;
   }
 
   async list(
@@ -202,7 +150,7 @@ export class PurchaseOrderTypeormRepository implements PurchaseOrderRepository {
       .take(limit)
       .getManyAndCount();
 
-    return { items: rows.map((r) => this.toDomain(r)), total, page, limit };
+    return { items: rows.map((r) => PurchaseOrderMapper.toDomain(r)), total, page, limit };
   }
 
   async setActive(poId: string, isActive: boolean, tx?: TransactionContext): Promise<void> {

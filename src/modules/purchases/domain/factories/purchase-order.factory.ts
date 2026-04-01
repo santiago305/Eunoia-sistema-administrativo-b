@@ -1,4 +1,4 @@
-import { Money } from "src/modules/catalog/domain/value-object/money.vo";
+import { Money } from "src/shared/value-objets/money.vo";
 import { PurchaseOrder } from "../entities/purchase-order";
 import { CurrencyType } from "../value-objects/currency-type";
 import { PaymentFormType } from "../value-objects/payment-form-type";

@@ -3,7 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, Repository } from "typeorm";
 import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
-import { Money } from "src/modules/catalog/domain/value-object/money.vo";
+import { Money } from "src/shared/value-objets/money.vo";
 import { SupplierVariant } from "src/modules/suppliers/domain/entity/supplierVariant";
 import { SupplierVariantRepository } from "src/modules/suppliers/domain/ports/supplier-variant.repository";
 import { SupplierVariantEntity } from "../entities/supplier-variant.entity";
