@@ -21,7 +21,7 @@ describe('GetLedgerUseCase', () => {
     const stockRepo = makeStockRepo();
     const entries = [
       new LedgerEntry(
-        1,
+        "0",
         'DOC-1',
         'WH-1',
         'VAR-1',
