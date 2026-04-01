@@ -1,7 +1,7 @@
 import { BadRequestException, Inject, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common";
 import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
 import { UpdateProductionOrderInput } from "../../dto/production-order/input/update-production-order";
-import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
+import { DomainError } from "src/modules/production/domain/errors/domain.error";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { AddProductionOrderItem } from "./add-item.usecase";
 import { errorResponse } from "src/shared/response-standard/response";
@@ -28,13 +28,13 @@ export class UpdateProductionOrder {
           }
         );
       }
-      if (current.status !== ProductionStatus.DRAFT) {
-        throw new BadRequestException(
-          {
-            type:'error',
-            message:'Solo se puede actualizar una orden en DRAFT'
-          }
-        );
+      try {
+        current.assertCanUpdate();
+      } catch (err) {
+        if (err instanceof DomainError) {
+          throw new BadRequestException(errorResponse(err.message));
+        }
+        throw err;
       }
 
       const updated = await this.orderRepo.update(

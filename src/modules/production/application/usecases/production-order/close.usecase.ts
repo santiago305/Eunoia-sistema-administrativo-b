@@ -1,6 +1,7 @@
 import { BadRequestException, Inject, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common";
 import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
 import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
+import { DomainError } from "src/modules/production/domain/errors/domain.error";
 import { UNIT_OF_WORK, UnitOfWork, TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { ConsumeReservedMaterialsUseCase } from "./consume-reserved-materials.usecase";
 import { PostProductionDocumentsUseCase } from "./post-production-documents.usecase";
@@ -35,8 +36,13 @@ export class CloseProductionOrder {
 
       const { items, order } = result;
 
-      if (order.status !== ProductionStatus.IN_PROGRESS) {
-        throw new BadRequestException(errorResponse('Solo se puede cerrar una orden en proceso'));
+      try {
+        order.assertCanClose();
+      } catch (err) {
+        if (err instanceof DomainError) {
+          throw new BadRequestException(errorResponse(err.message));
+        }
+        throw err;
       }
 
       for (const item of items ?? []) {

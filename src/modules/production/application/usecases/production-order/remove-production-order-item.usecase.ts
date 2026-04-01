@@ -1,12 +1,13 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
 import { RemoveProductionOrderItemInput } from "../../dto/production-order/input/remove-production-order-item";
-import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
+import { DomainError } from "src/modules/production/domain/errors/domain.error";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { ConsumeReservedMaterialsUseCase } from "./consume-reserved-materials.usecase";
 import { RecipeConsumptionLine } from "./build-consumption-from-recipes.usecase";
 import { PRODUCT_RECIPE_REPOSITORY, ProductRecipeRepository } from "src/modules/catalog/application/ports/product-recipe.repository";
 import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
+import { errorResponse } from "src/shared/response-standard/response";
 
 @Injectable()
 export class RemoveProductionOrderItem {
@@ -27,8 +28,13 @@ export class RemoveProductionOrderItem {
       if (!order) {
         throw new NotFoundException({ type: "error", message: "Orden de produccion no encontrada" });
       }
-      if (order.status !== ProductionStatus.DRAFT) {
-        throw new BadRequestException({ type: "error", message: "Solo se puede eliminar items en DRAFT" });
+      try {
+        order.assertCanRemoveItem();
+      } catch (err) {
+        if (err instanceof DomainError) {
+          throw new BadRequestException(errorResponse(err.message));
+        }
+        throw err;
       }
 
       const { items } = (await this.orderRepo.getByIdWithItems(input.productionId, tx))!;

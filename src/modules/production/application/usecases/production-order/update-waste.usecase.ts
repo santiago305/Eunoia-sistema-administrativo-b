@@ -8,6 +8,8 @@ import { DocStatus } from "src/modules/inventory/domain/value-objects/doc-status
 import { errorResponse, successResponse } from "src/shared/response-standard/response";
 import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/inventory/application/ports/document.repository.port";
 import { LEDGER_REPOSITORY, LedgerRepository } from "src/modules/inventory/application/ports/ledger.repository.port";
+import { WastedQuantityError } from "src/modules/production/domain/value-objects/wate-quantity.error.vo";
+import { DomainError } from "src/modules/production/domain/errors/domain.error";
 
 @Injectable()
 export class UpdateProductionWaste {
@@ -66,8 +68,13 @@ export class UpdateProductionWaste {
         if (!docItem) {
           throw new BadRequestException(errorResponse("Item de consumo no encontrado para actualizar merma"));
         }
-        if (item.wasteQty < 0) {
-          throw new BadRequestException(errorResponse("Merma no puede ser negativa"));
+        try {
+          WastedQuantityError.create(item.wasteQty);
+        } catch (err) {
+          if (err instanceof DomainError) {
+            throw new BadRequestException(errorResponse(err.message));
+          }
+          throw err;
         }
         if (item.wasteQty > docItem.quantity) {
           throw new BadRequestException(errorResponse("Merma no puede ser mayor a la cantidad del item"));

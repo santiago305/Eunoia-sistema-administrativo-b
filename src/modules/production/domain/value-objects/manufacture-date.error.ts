@@ -12,7 +12,7 @@ export class ManufactureDate {
 
   assertNotFuture(now: Date): void {
     if (this.value.getTime() > now.getTime()) {
-      throw new InvalidManufactureDateError("Debe ser una fecha futura");
+      throw new InvalidManufactureDateError("fecha no válida");
     }
   }
 

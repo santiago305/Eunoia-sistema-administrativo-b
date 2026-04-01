@@ -1,6 +1,7 @@
 import { BadRequestException, Inject, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common";
 import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
 import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
+import { DomainError } from "src/modules/production/domain/errors/domain.error";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { RecipeConsumptionLine } from "./build-consumption-from-recipes.usecase";
 import { errorResponse } from "src/shared/response-standard/response";
@@ -26,29 +27,22 @@ export class StartProductionOrder {
   async execute(params: { productionId: string }): Promise<{ type: string; message: string }> {
     return this.uow.runInTransaction(async (tx) => {
       const result = await this.orderRepo.getByIdWithItems(params.productionId, tx);
-      
-      const { items, order } = result;
-      
-      if (!order) {
+      if (!result) {
         throw new NotFoundException(
         {
           type:'error',
           message:'Orden de produccion no encontrada'
         });
       }
-      if (order.status !== ProductionStatus.DRAFT) {
-        throw new BadRequestException(
-        {
-          type: 'error',
-          message: 'Solo se puede iniciar una orden en DRAFT'
-        });
-      }
-      if(items.length < 1){
-        throw new NotFoundException(
-        {
-          type:'error',
-          message:'¡No hay ningun item registrado!'
-        });
+      
+      const { items, order } = result;
+      try {
+        order.assertCanStart(items?.length ?? 0);
+      } catch (err) {
+        if (err instanceof DomainError) {
+          throw new BadRequestException(errorResponse(err.message));
+        }
+        throw err;
       }
 
       await this.orderRepo.setStatus(

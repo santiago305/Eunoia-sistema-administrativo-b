@@ -1,9 +1,11 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
 import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
+import { DomainError } from "src/modules/production/domain/errors/domain.error";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { BuildConsumptionFromRecipesUseCase } from "./build-consumption-from-recipes.usecase";
 import { ConsumeReservedMaterialsUseCase } from "./consume-reserved-materials.usecase";
+import { errorResponse } from "src/shared/response-standard/response";
 
 @Injectable()
 export class CancelProductionOrder {
@@ -24,11 +26,13 @@ export class CancelProductionOrder {
 
       const { order, items } = result;
 
-      if (order.status === ProductionStatus.COMPLETED) {
-        throw new BadRequestException({ type: "error", message: "No se puede cancelar una orden COMPLETED" });
-      }
-      if (order.status === ProductionStatus.CANCELLED) {
-        throw new BadRequestException({ type: "error", message: "Ya esta cancelada la orden" });
+      try {
+        order.assertCanCancel();
+      } catch (err) {
+        if (err instanceof DomainError) {
+          throw new BadRequestException(errorResponse(err.message));
+        }
+        throw err;
       }
 
       // eliminar items
