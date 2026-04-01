@@ -98,6 +98,62 @@ export class PurchaseOrderSerieNotFoundError extends DomainError {
   }
 }
 
+export class InvalidPurchaseOrderIdError extends DomainError {
+  constructor(message: string = "Id de orden de compra invalido") {
+    super(message);
+    this.name = "InvalidPurchaseOrderIdError";
+  }
+}
+
+export class InvalidPurchaseSupplierIdError extends DomainError {
+  constructor(message: string = "Id de proveedor invalido") {
+    super(message);
+    this.name = "InvalidPurchaseSupplierIdError";
+  }
+}
+
+export class InvalidPurchaseWarehouseIdError extends DomainError {
+  constructor(message: string = "Id de almacen invalido") {
+    super(message);
+    this.name = "InvalidPurchaseWarehouseIdError";
+  }
+}
+
+export class InvalidCreditDaysError extends DomainError {
+  constructor(message: string = "Dias de credito invalidos") {
+    super(message);
+    this.name = "InvalidCreditDaysError";
+  }
+}
+
+export class InvalidNumQuotasError extends DomainError {
+  constructor(message: string = "Numero de cuotas invalido") {
+    super(message);
+    this.name = "InvalidNumQuotasError";
+  }
+}
+
+export class InvalidPurchaseOrderDocumentError extends DomainError {
+  constructor(message: string = "Documento de compra invalido") {
+    super(message);
+    this.name = "InvalidPurchaseOrderDocumentError";
+  }
+}
+
+export class InvalidPurchaseSerieError extends DomainError {
+  constructor(message: string = "Serie invalida") {
+    super(message);
+    this.name = "InvalidPurchaseSerieError";
+  }
+}
+
+export class InvalidPurchaseCorrelativeError extends DomainError {
+  constructor(message: string = "Correlativo invalido") {
+    super(message);
+    this.name = "InvalidPurchaseCorrelativeError";
+  }
+}
+
 export class InvalidExpectedAtError extends DomainError {
   constructor(message: string = "Fecha esperada invalida") {
     super(message);

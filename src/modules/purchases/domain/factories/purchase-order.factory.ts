@@ -4,11 +4,15 @@ import { CurrencyType } from "../value-objects/currency-type";
 import { PaymentFormType } from "../value-objects/payment-form-type";
 import { PurchaseOrderStatus } from "../value-objects/po-status";
 import { VoucherDocType } from "../value-objects/voucher-doc-type";
-import {
-  InvalidExpectedAtError,
-  InvalidExpirationDateError,
-  InvalidIssueDateError,
-} from "../errors/purchase-order.errors";
+import { PurchaseOrderId } from "../value-objects/purchase-order-id.vo";
+import { PurchaseSupplierId } from "../value-objects/purchase-supplier-id.vo";
+import { PurchaseWarehouseId } from "../value-objects/purchase-warehouse-id.vo";
+import { PurchaseCreditDays } from "../value-objects/credit-days.vo";
+import { PurchaseNumQuotas } from "../value-objects/num-quotas.vo";
+import { PurchaseOrderDocument } from "../value-objects/purchase-order-document.vo";
+import { PurchaseExpectedAt } from "../value-objects/expected-at.vo";
+import { PurchaseIssueDate } from "../value-objects/issue-date.vo";
+import { PurchaseExpirationDate } from "../value-objects/expiration-date.vo";
 
 type DateInput = Date | string | undefined | null;
 
@@ -38,24 +42,33 @@ export class PurchaseOrderFactory {
     createdBy?: string;
   }): PurchaseOrder {
     const currency = params.currency ?? CurrencyType.PEN;
-    const expectedAt = this.parseDate(params.expectedAt, InvalidExpectedAtError);
-    const dateIssue = this.parseDate(params.dateIssue, InvalidIssueDateError);
-    const dateExpiration = this.parseDate(params.dateExpiration, InvalidExpirationDateError);
+    const supplierId = new PurchaseSupplierId(params.supplierId).value;
+    const warehouseId = new PurchaseWarehouseId(params.warehouseId).value;
+    const creditDays = PurchaseCreditDays.create(params.creditDays ?? 0).value;
+    const numQuotas = PurchaseNumQuotas.create(params.numQuotas ?? 0).value;
+    const document = PurchaseOrderDocument.create({
+      documentType: params.documentType,
+      serie: params.serie,
+      correlative: params.correlative,
+    });
+    const expectedAt = params.expectedAt ? PurchaseExpectedAt.create(params.expectedAt) : undefined;
+    const dateIssue = params.dateIssue ? PurchaseIssueDate.create(params.dateIssue) : undefined;
+    const dateExpiration = params.dateExpiration ? PurchaseExpirationDate.create(params.dateExpiration) : undefined;
 
     return new PurchaseOrder(
       undefined,
-      params.supplierId,
-      params.warehouseId,
-      params.creditDays ?? 0,
-      params.numQuotas ?? 0,
+      supplierId,
+      warehouseId,
+      creditDays,
+      numQuotas,
       Money.create(params.totalTaxed ?? 0, currency),
       Money.create(params.totalExempted ?? 0, currency),
       Money.create(params.totalIgv ?? 0, currency),
       Money.create(params.purchaseValue ?? 0, currency),
       Money.create(params.total ?? 0, currency),
-      params.documentType,
-      params.serie,
-      params.correlative,
+      document?.documentType,
+      document?.serie,
+      document?.correlative,
       currency,
       params.paymentForm,
       params.note,
@@ -95,24 +108,34 @@ export class PurchaseOrderFactory {
     createdBy?: string;
   }): PurchaseOrder {
     const currency = params.currency ?? CurrencyType.PEN;
-    const expectedAt = this.parseDate(params.expectedAt, InvalidExpectedAtError);
-    const dateIssue = this.parseDate(params.dateIssue, InvalidIssueDateError);
-    const dateExpiration = this.parseDate(params.dateExpiration, InvalidExpirationDateError);
+    const poId = new PurchaseOrderId(params.poId).value;
+    const supplierId = new PurchaseSupplierId(params.supplierId).value;
+    const warehouseId = new PurchaseWarehouseId(params.warehouseId).value;
+    const creditDays = PurchaseCreditDays.create(params.creditDays ?? 0).value;
+    const numQuotas = PurchaseNumQuotas.create(params.numQuotas ?? 0).value;
+    const document = PurchaseOrderDocument.create({
+      documentType: params.documentType,
+      serie: params.serie,
+      correlative: params.correlative,
+    });
+    const expectedAt = params.expectedAt ? PurchaseExpectedAt.create(params.expectedAt) : undefined;
+    const dateIssue = params.dateIssue ? PurchaseIssueDate.create(params.dateIssue) : undefined;
+    const dateExpiration = params.dateExpiration ? PurchaseExpirationDate.create(params.dateExpiration) : undefined;
 
     return new PurchaseOrder(
-      params.poId,
-      params.supplierId,
-      params.warehouseId,
-      params.creditDays ?? 0,
-      params.numQuotas ?? 0,
+      poId,
+      supplierId,
+      warehouseId,
+      creditDays,
+      numQuotas,
       Money.create(params.totalTaxed ?? 0, currency),
       Money.create(params.totalExempted ?? 0, currency),
       Money.create(params.totalIgv ?? 0, currency),
       Money.create(params.purchaseValue ?? 0, currency),
       Money.create(params.total ?? 0, currency),
-      params.documentType,
-      params.serie,
-      params.correlative,
+      document?.documentType,
+      document?.serie,
+      document?.correlative,
       currency,
       params.paymentForm,
       params.note,
@@ -126,15 +149,5 @@ export class PurchaseOrderFactory {
     );
   }
 
-  private static parseDate(
-    value: DateInput,
-    ErrorType: new () => Error,
-  ): Date | undefined {
-    if (value === undefined || value === null) return undefined;
-    const date = value instanceof Date ? value : new Date(value);
-    if (Number.isNaN(date.getTime())) {
-      throw new ErrorType();
-    }
-    return date;
-  }
+  private constructor() {}
 }

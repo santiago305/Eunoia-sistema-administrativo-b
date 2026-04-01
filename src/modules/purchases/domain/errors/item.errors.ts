@@ -21,6 +21,41 @@ export class PurchaseOrderItemNotFoundError extends DomainError {
   }
 }
 
+export class InvalidPurchaseOrderItemIdError extends DomainError {
+  constructor(message: string = "Id de item de orden invalido") {
+    super(message);
+    this.name = "InvalidPurchaseOrderItemIdError";
+  }
+}
+
+export class InvalidPurchaseStockItemIdError extends DomainError {
+  constructor(message: string = "Id de item de stock invalido") {
+    super(message);
+    this.name = "InvalidPurchaseStockItemIdError";
+  }
+}
+
+export class InvalidPurchaseQuantityError extends DomainError {
+  constructor(message: string = "Cantidad invalida") {
+    super(message);
+    this.name = "InvalidPurchaseQuantityError";
+  }
+}
+
+export class InvalidPurchaseFactorError extends DomainError {
+  constructor(message: string = "Factor invalido") {
+    super(message);
+    this.name = "InvalidPurchaseFactorError";
+  }
+}
+
+export class InvalidIgvPercentageError extends DomainError {
+  constructor(message: string = "Porcentaje IGV invalido") {
+    super(message);
+    this.name = "InvalidIgvPercentageError";
+  }
+}
+
 export class StockItemNotFoundError extends DomainError {
   constructor(message: string = "Item de stock no encontrado") {
     super(message);
