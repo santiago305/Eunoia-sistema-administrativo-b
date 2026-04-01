@@ -6,16 +6,16 @@ import { COMPANY_REPOSITORY, CompanyRepository } from "src/modules/companies/dom
 import { PDF_RENDERER, PdfRendererPort } from "src/modules/pdf-generated/domain/ports/pdf-renderer.port";
 import { GenerateProductionOrderPdfInput } from "../dtos/production-order/input/generate-production-order.input";
 import { ProductionOrderPdfData } from "../../domain/interfaces/production-data";
-import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/domain/ports/production-order.repository";
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/domain/ports/stock-item/stock-item.repository.port";
+import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
 import { StockItemType } from "src/modules/inventory/domain/value-objects/stock-item-type";
-import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/domain/ports/product.repository";
-import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/modules/catalog/domain/ports/product-variant.repository";
 import { ProductId } from "src/modules/catalog/domain/value-object/product-id.vo";
 import { ProductWithUnitInfo } from "src/modules/catalog/domain/read-models/product-with-unit-info.rm";
 import { ProductVariantWithProductInfo } from "src/modules/catalog/domain/read-models/product-variant-with-product-info.rm";
-import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "src/modules/warehouses/domain/ports/warehouse.repository.port";
 import { WarehouseId } from "src/modules/warehouses/domain/value-objects/warehouse-id.vo";
+import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/modules/catalog/application/ports/product-variant.repository";
+import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/application/ports/product.repository";
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
+import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "src/modules/warehouses/application/ports/warehouse.repository.port";
 
 const resolveLogoUrl = async (logoPath?: string) => {
   if (!logoPath) return undefined;
@@ -165,7 +165,7 @@ export class GenerateProductionOrderPdfUseCase {
         issuedAt: order.createdAt ?? undefined,
         manufactureDate: order.manufactureDate ?? undefined,
         status: order.status ?? undefined,
-        reference: order.referense ?? undefined,
+        reference: order.reference ?? undefined,
         fromWarehouse: fromWarehouse?.name ?? undefined,
         toWarehouse: toWarehouse?.name ?? undefined,
       },

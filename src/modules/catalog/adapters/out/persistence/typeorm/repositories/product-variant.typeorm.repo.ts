@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
-import { ProductVariantRepository } from 'src/modules/catalog/domain/ports/product-variant.repository';
 import { ProductVariant } from 'src/modules/catalog/domain/entity/product-variant';
 import { ProductVariantEntity } from '../entities/product-variant.entity';
 import { ProductEntity } from '../entities/product.entity';
@@ -14,6 +13,7 @@ import { ProductVariantWithProductInfo } from 'src/modules/catalog/domain/read-m
 import { AttributesRecord } from 'src/modules/catalog/domain/value-object/variant-attributes.vo';
 import { RowMaterial } from 'src/modules/catalog/domain/read-models/row-materials';
 import { ProductType } from 'src/modules/catalog/domain/value-object/productType';
+import { ProductVariantRepository } from 'src/modules/catalog/application/ports/product-variant.repository';
 
 @Injectable()
 export class ProductVariantTypeormRepository implements ProductVariantRepository {

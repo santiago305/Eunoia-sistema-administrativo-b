@@ -1,15 +1,15 @@
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
-import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
-import { INVENTORY_LOCK, InventoryLock } from "src/modules/inventory/domain/ports/inventory-lock.port";
-import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/inventory/domain/ports/document.repository.port";
-import { INVENTORY_REPOSITORY, InventoryRepository } from "src/modules/inventory/domain/ports/inventory.repository.port";
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { PostDocumentInput } from "../../dto/document/input/document-post";
 import { LedgerEntry } from "src/modules/inventory/domain/entities/ledger-entry";
-import { LEDGER_REPOSITORY, LedgerRepository } from "src/modules/inventory/domain/ports/ledger.repository.port";
 import { Direction } from "src/modules/inventory/domain/value-objects/direction";
 import { DocumentPostOutValidationService } from "src/modules/inventory/domain/services/document-post-out-validation.service";
 import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
+import { CLOCK, ClockPort } from "../../ports/clock.port";
+import { DOCUMENT_REPOSITORY, DocumentRepository } from "../../ports/document.repository.port";
+import { INVENTORY_LOCK, InventoryLock } from "../../ports/inventory-lock.port";
+import { INVENTORY_REPOSITORY, InventoryRepository } from "../../ports/inventory.repository.port";
+import { LEDGER_REPOSITORY, LedgerRepository } from "../../ports/ledger.repository.port";
 
 @Injectable()
 export class PostDocumentoTransfer {

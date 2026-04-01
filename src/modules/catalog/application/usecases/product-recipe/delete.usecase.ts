@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, NotFoundException } from '@nestjs/common';
-import { PRODUCT_RECIPE_REPOSITORY, ProductRecipeRepository } from 'src/modules/catalog/domain/ports/product-recipe.repository';
+import { PRODUCT_RECIPE_REPOSITORY, ProductRecipeRepository } from '../../ports/product-recipe.repository';
 
 export class DeleteProductRecipe {
   constructor(

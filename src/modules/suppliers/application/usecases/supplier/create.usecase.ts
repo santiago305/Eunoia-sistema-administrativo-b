@@ -1,9 +1,9 @@
 import { ConflictException, Inject, NotFoundException } from "@nestjs/common";
-import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { Supplier } from "src/modules/suppliers/domain/entity/supplier";
 import { SUPPLIER_REPOSITORY, SupplierRepository } from "src/modules/suppliers/domain/ports/supplier.repository";
 import { CreateSupplierInput } from "../../dtos/supplier/input/create.input";
+import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
 
 export class CreateSupplierUsecase {
   constructor(

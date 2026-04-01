@@ -2,7 +2,6 @@ import { forwardRef, Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
 import { TypeormUnitOfWork } from "src/shared/infrastructure/typeorm/typeorm.unit-of-work";
-import { CLOCK } from "src/modules/inventory/domain/ports/clock.port";
 import { UNIT_OF_WORK } from "src/shared/domain/ports/unit-of-work.port";
 import { LocationsController } from "./adapters/in/controllers/location.controller";
 import { WarehousesController } from "./adapters/in/controllers/warehouse.controller";
@@ -22,9 +21,10 @@ import { ListWarehousesUsecase } from "./application/usecases/warehouse/list.use
 import { ListActiveWarehousesUsecase } from "./application/usecases/warehouse/list-active.usecase";
 import { SetWarehouseActiveUsecase } from "./application/usecases/warehouse/set-active.usecase";
 import { UpdateWarehouseUsecase } from "./application/usecases/warehouse/update.usecase";
-import { LOCATION_REPOSITORY } from "./domain/ports/location.repository.port";
-import { WAREHOUSE_REPOSITORY } from "./domain/ports/warehouse.repository.port";
 import { InventoryModule } from "../inventory/infrastructure/inventory.module";
+import { CLOCK } from "../inventory/application/ports/clock.port";
+import { LOCATION_REPOSITORY } from "./application/ports/location.repository.port";
+import { WAREHOUSE_REPOSITORY } from "./application/ports/warehouse.repository.port";
 
 @Module({
   imports: [

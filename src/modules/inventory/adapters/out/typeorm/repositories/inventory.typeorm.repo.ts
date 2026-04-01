@@ -1,11 +1,11 @@
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Injectable } from '@nestjs/common';
-import { InventoryRepository } from '../../../../domain/ports/inventory.repository.port';
 import { Inventory } from '../../../../domain/entities/inventory';
 import { InventoryEntity } from '../entities/inventory.entity';
 import { TransactionContext } from 'src/shared/domain/ports/transaction-context.port';
 import { TypeormTransactionContext } from 'src/shared/domain/ports/typeorm-transaction-context';
+import { InventoryRepository } from 'src/modules/inventory/application/ports/inventory.repository.port';
 
 
 @Injectable()

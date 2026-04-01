@@ -1,5 +1,5 @@
 import { TransactionContext } from "src/shared/domain/ports/transaction-context.port";
-import { SkuCounter } from "../entity/sku-counter";
+import { SkuCounter } from "../../domain/entity/sku-counter";
 
 export const SKU_COUNTER_REPOSITORY = Symbol("SKU_COUNTER_REPOSITORY");
 

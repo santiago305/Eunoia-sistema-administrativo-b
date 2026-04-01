@@ -1,8 +1,8 @@
 import { Inject, Injectable, BadRequestException } from '@nestjs/common';
-import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../../domain/ports/document.repository.port';
-import { SERIES_REPOSITORY, DocumentSeriesRepository } from '../../../domain/ports/document-series.repository.port';
 import { DocumentIdInput } from '../../dto/document/input/document-id';
 import { DocumentDetailOutput } from '../../dto/document/output/document-detail-out';
+import { SERIES_REPOSITORY, DocumentSeriesRepository } from '../../ports/document-series.repository.port';
+import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../ports/document.repository.port';
 
 @Injectable()
 export class GetDocumentUseCase {

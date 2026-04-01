@@ -1,9 +1,9 @@
 import { Inject, Injectable, InternalServerErrorException, OnApplicationBootstrap } from "@nestjs/common";
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
 import { PurchaseOrderStatus } from "src/modules/purchases/domain/value-objects/po-status";
-import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
 import { PurchaseOrderExpectedScheduler } from "./purchase-order-expected-scheduler";
 import { RunExpectedAtUsecase } from "../usecases/purchase-order/run-expected-at.usecase";
+import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
 
 @Injectable()
 export class PurchaseOrderExpectedBootstrap implements OnApplicationBootstrap {

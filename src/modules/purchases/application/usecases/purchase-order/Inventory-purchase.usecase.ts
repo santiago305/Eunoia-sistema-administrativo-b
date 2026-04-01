@@ -7,9 +7,9 @@ import { AddItemUseCase } from "src/modules/inventory/application/use-cases/docu
 import { PostDocumentoIn } from "src/modules/inventory/application/use-cases/document-inventory/post-document-in.usecase";
 import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
 import { GetActiveDocumentSerieUseCase } from "src/modules/inventory/application/use-cases/document-serie/get-document-series.usecase";
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/domain/ports/stock-item/stock-item.repository.port";
 import { ReferenceType } from "src/modules/inventory/domain/value-objects/reference-type";
-import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/inventory/domain/ports/document.repository.port";
+import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/inventory/application/ports/document.repository.port";
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
 
 @Injectable()
 export class PostInventoryFromPurchaseUsecase {

@@ -1,6 +1,7 @@
-import DocumentSerie from "../entities/document-serie";
-import { DocType } from "../value-objects/doc-type";
-import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
+import { TransactionContext } from "src/shared/domain/ports/transaction-context.port";
+import DocumentSerie from "../../domain/entities/document-serie";
+import { DocType } from "../../domain/value-objects/doc-type";
+
 
 export const SERIES_REPOSITORY = Symbol('SERIES_REPOSITORY');
 

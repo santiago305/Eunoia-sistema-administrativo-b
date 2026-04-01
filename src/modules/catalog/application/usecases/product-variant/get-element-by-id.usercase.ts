@@ -1,8 +1,8 @@
 import { Inject, NotFoundException } from '@nestjs/common';
-import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from 'src/modules/catalog/domain/ports/product-variant.repository';
 import { ProductVariant } from 'src/modules/catalog/domain/entity/product-variant';
 import { GetProductVariantInput } from '../../dto/product-variants/input/get-by-id-product-variant';
 import { ProductVariantOutput } from '../../dto/product-variants/output/product-variant-out';
+import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from '../../ports/product-variant.repository';
 
 export class GetProductVariant {
   constructor(

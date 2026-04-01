@@ -1,10 +1,10 @@
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
-import { ProductVariant } from "../entity/product-variant";
-import { Money } from "../value-object/money.vo";
-import { ProductId } from "../value-object/product-id.vo";
-import { AttributesRecord } from "../value-object/variant-attributes.vo";
-import { ProductVariantWithProductInfo } from "../read-models/product-variant-with-product-info.rm";
-import { RowMaterial } from "../read-models/row-materials";
+import { ProductVariant } from "../../domain/entity/product-variant";
+import { ProductVariantWithProductInfo } from "../../domain/read-models/product-variant-with-product-info.rm";
+import { RowMaterial } from "../../domain/read-models/row-materials";
+import { Money } from "../../domain/value-object/money.vo";
+import { ProductId } from "../../domain/value-object/product-id.vo";
+import { AttributesRecord } from "../../domain/value-object/variant-attributes.vo";
 
 export const PRODUCT_VARIANT_REPOSITORY = Symbol("PRODUCT_VARIANT_REPOSITORY");
 

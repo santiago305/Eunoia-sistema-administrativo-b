@@ -1,8 +1,8 @@
 import { Inject } from "@nestjs/common";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
-import { LOCATION_REPOSITORY, LocartionRepository } from "src/modules/warehouses/domain/ports/location.repository.port";
-import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "src/modules/warehouses/domain/ports/warehouse.repository.port";
 import { SetActiveWarehouse } from "../../dtos/warehouse/input/set-active.input";
+import { LOCATION_REPOSITORY, LocartionRepository } from "../../ports/location.repository.port";
+import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "../../ports/warehouse.repository.port";
 
 export class SetWarehouseActiveUsecase {
   constructor(

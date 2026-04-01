@@ -1,7 +1,6 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { TypeormUnitOfWork } from "src/shared/infrastructure/typeorm/typeorm.unit-of-work";
-import { CLOCK } from "src/modules/inventory/domain/ports/clock.port";
 import { UNIT_OF_WORK } from "src/shared/domain/ports/unit-of-work.port";
 import { IMAGE_PROCESSOR } from "src/shared/application/ports/image-processor.port";
 import { FILE_STORAGE } from "src/shared/application/ports/file-storage.port";
@@ -16,6 +15,7 @@ import { GetCompanyUsecase } from "./application/usecases/get.usecase";
 import { UpdateCompanyLogoUsecase } from "./application/usecases/update-logo.usecase";
 import { UpdateCompanyCertUsecase } from "./application/usecases/update-cert.usecase";
 import { COMPANY_REPOSITORY } from "./domain/ports/company.repository";
+import { CLOCK } from "../inventory/application/ports/clock.port";
 
 @Module({
   imports: [TypeOrmModule.forFeature([CompanyEntity])],

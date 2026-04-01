@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ProductRecipeRepository } from 'src/modules/catalog/domain/ports/product-recipe.repository';
 import { ProductRecipe } from 'src/modules/catalog/domain/entity/product-recipe';
 import { ProductRecipeEntity } from '../entities/product-recipe.entity';
 import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
 import { TypeormTransactionContext } from 'src/shared/domain/ports/typeorm-transaction-context';
+import { ProductRecipeRepository } from 'src/modules/catalog/application/ports/product-recipe.repository';
 
 @Injectable()
 export class ProductRecipeTypeormRepository implements ProductRecipeRepository {

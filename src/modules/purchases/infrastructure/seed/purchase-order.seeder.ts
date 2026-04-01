@@ -12,7 +12,7 @@ import { CurrencyType as PurchaseCurrency } from "src/modules/purchases/domain/v
 import { CurrencyType as PaymentCurrency } from "src/modules/payments/domain/value-objects/currency-type";
 import { PayDocType } from "src/modules/payments/domain/value-objects/pay-doc-type";
 import { AfectIgvType } from "src/modules/purchases/domain/value-objects/afect-igv-type";
-import { StockItemEntity } from "src/modules/inventory/adapters/out/typeorm/entities/stock-item/stock-item.entity";
+import { StockItemEntity } from "src/modules/inventory/adapters/out/typeorm/entities/stock-item.entity";
 import { ProductVariantEntity } from "src/modules/catalog/adapters/out/persistence/typeorm/entities/product-variant.entity";
 import { StockItemType } from "src/modules/inventory/domain/value-objects/stock-item-type";
 import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";

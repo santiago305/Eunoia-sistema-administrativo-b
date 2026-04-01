@@ -1,4 +1,4 @@
-﻿import { DocumentSeriesRepository } from '../ports/document-series.repository.port';
+﻿import { DocumentSeriesRepository } from '../../application/ports/document-series.repository.port';
 import { Quantity } from '../value-objects/quantity.vo';
 
 export class InventoryRulesService {

@@ -1,9 +1,9 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
-import { LEDGER_REPOSITORY, LedgerRepository } from '../../../domain/ports/ledger.repository.port';
 import { GetLedgerDailyTotalsInput } from '../../dto/ledger/input/get-ledger-daily-totals';
 import { LedgerDailyTotal } from '../../dto/ledger/output/ledger-daily-totals';
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from 'src/modules/inventory/domain/ports/stock-item/stock-item.repository.port';
 import { errorResponse } from 'src/shared/response-standard/response';
+import { LEDGER_REPOSITORY, LedgerRepository } from '../../ports/ledger.repository.port';
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from '../../ports/stock-item.repository.port';
 
 @Injectable()
 export class GetLedgerDailyTotalsUseCase {

@@ -1,9 +1,9 @@
 import { Inject } from '@nestjs/common';
-import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from 'src/modules/catalog/domain/ports/product-variant.repository';
 import { ListProductVariantsInput } from '../../dto/product-variants/input/list-product-variant';
 import { ProductVariantOutput } from '../../dto/product-variants/output/product-variant-out';
 import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo';
 import { PaginatedResult } from '../../dto/product-variants/output/paginated-result';
+import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from '../../ports/product-variant.repository';
 export class SearchProductVariants {
   constructor(
     @Inject(PRODUCT_VARIANT_REPOSITORY)

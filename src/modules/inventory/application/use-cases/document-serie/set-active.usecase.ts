@@ -1,9 +1,9 @@
 import { Inject, BadRequestException, Injectable } from "@nestjs/common";
 import { SetDocumentSerieInput } from "../../dto/document-serie/input/set-active-document-serie";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
-import { SERIES_REPOSITORY, DocumentSeriesRepository } from "src/modules/inventory/domain/ports/document-series.repository.port";
-import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/inventory/domain/ports/document.repository.port";
 import { DocStatus } from "src/modules/inventory/domain/value-objects/doc-status";
+import { SERIES_REPOSITORY, DocumentSeriesRepository } from "../../ports/document-series.repository.port";
+import { DOCUMENT_REPOSITORY, DocumentRepository } from "../../ports/document.repository.port";
 
 @Injectable()
 export class SetDocumentSerieActive {

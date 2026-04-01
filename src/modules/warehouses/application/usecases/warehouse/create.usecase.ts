@@ -1,7 +1,5 @@
 import { BadRequestException, Inject, InternalServerErrorException } from "@nestjs/common";
-import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
-import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "src/modules/warehouses/domain/ports/warehouse.repository.port";
 import { Warehouse } from "src/modules/warehouses/domain/entities/warehouse";
 import { CreateWarehouseInput } from "../../dtos/warehouse/input/create.input";
 
@@ -9,6 +7,8 @@ import { CreateDocumentSerieUseCase } from "src/modules/inventory/application/us
 import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
 import { errorResponse, successResponse } from "src/shared/response-standard/response";
 import { CreateLocationUsecase } from "../location/create.usecase";
+import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
+import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "../../ports/warehouse.repository.port";
 
 export class CreateWarehouseUsecase {
   constructor(

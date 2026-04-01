@@ -2,17 +2,11 @@ import { BadRequestException, Inject } from "@nestjs/common";
 import { join } from "path";
 import { pathToFileURL } from "url";
 import sharp from "sharp";
-import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/inventory/domain/ports/document.repository.port";
-import { SERIES_REPOSITORY, DocumentSeriesRepository } from "src/modules/inventory/domain/ports/document-series.repository.port";
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/domain/ports/stock-item/stock-item.repository.port";
 import { StockItem } from "src/modules/inventory/domain/entities/stock-item/stock-item";
 import { StockItemType } from "src/modules/inventory/domain/value-objects/stock-item-type";
-import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/domain/ports/product.repository";
-import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/modules/catalog/domain/ports/product-variant.repository";
 import { ProductId } from "src/modules/catalog/domain/value-object/product-id.vo";
 import { ProductWithUnitInfo } from "src/modules/catalog/domain/read-models/product-with-unit-info.rm";
 import { ProductVariantWithProductInfo } from "src/modules/catalog/domain/read-models/product-variant-with-product-info.rm";
-import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "src/modules/warehouses/domain/ports/warehouse.repository.port";
 import { WarehouseId } from "src/modules/warehouses/domain/value-objects/warehouse-id.vo";
 import { COMPANY_REPOSITORY, CompanyRepository } from "src/modules/companies/domain/ports/company.repository";
 import { PDF_RENDERER, PdfRendererPort } from "src/modules/pdf-generated/domain/ports/pdf-renderer.port";
@@ -21,6 +15,12 @@ import { InventoryDocumentPdfData } from "../../domain/interfaces/inventory-docu
 import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
 import { DocStatus } from "src/modules/inventory/domain/value-objects/doc-status";
 import { ReferenceType } from "src/modules/inventory/domain/value-objects/reference-type";
+import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/modules/catalog/application/ports/product-variant.repository";
+import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/application/ports/product.repository";
+import { SERIES_REPOSITORY, DocumentSeriesRepository } from "src/modules/inventory/application/ports/document-series.repository.port";
+import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/inventory/application/ports/document.repository.port";
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
+import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "src/modules/warehouses/application/ports/warehouse.repository.port";
 
 const resolveLogoUrl = async (logoPath?: string) => {
   if (!logoPath) return undefined;

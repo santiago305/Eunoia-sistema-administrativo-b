@@ -1,7 +1,8 @@
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
-import { Warehouse } from "../entities/warehouse";
-import { WarehouseLocation } from "../entities/warehouse-location";
-import { WarehouseId } from "../value-objects/warehouse-id.vo";
+import { Warehouse } from "../../domain/entities/warehouse";
+import { WarehouseLocation } from "../../domain/entities/warehouse-location";
+import { WarehouseId } from "../../domain/value-objects/warehouse-id.vo";
+
 
 export const WAREHOUSE_REPOSITORY = Symbol('WAREHOUSE_REPOSITORY');
 export interface WarehouseRepository{

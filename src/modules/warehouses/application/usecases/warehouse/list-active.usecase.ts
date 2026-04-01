@@ -1,6 +1,6 @@
 import { Inject } from "@nestjs/common";
-import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "src/modules/warehouses/domain/ports/warehouse.repository.port";
 import { WarehouseOutput } from "../../dtos/warehouse/output/warehouse.out";
+import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "../../ports/warehouse.repository.port";
 
 export class ListActiveWarehousesUsecase {
   constructor(

@@ -49,20 +49,20 @@ import { GetActiveDocumentSerieUseCase } from '../application/use-cases/document
 
 import { InventoryRulesService } from '../domain/services/inventory-rules.service';
 
-import { INVENTORY_REPOSITORY } from '../domain/ports/inventory.repository.port';
-import { DOCUMENT_REPOSITORY } from '../domain/ports/document.repository.port';
-import { LEDGER_REPOSITORY } from '../domain/ports/ledger.repository.port';
-import { UNIT_OF_WORK } from 'src/shared/domain/ports/unit-of-work.port';
-import { INVENTORY_LOCK } from '../domain/ports/inventory-lock.port';
-import { CLOCK } from '../domain/ports/clock.port';
 import { DocumentPostOutValidationService } from '../domain/services/document-post-out-validation.service';
-import { SERIES_REPOSITORY, DocumentSeriesRepository } from '../domain/ports/document-series.repository.port';
 import { SetDocumentSerieActive } from 'src/modules/inventory/application/use-cases/document-serie/set-active.usecase';
-import { StockItemEntity } from '../adapters/out/typeorm/entities/stock-item/stock-item.entity';
-import { STOCK_ITEM_REPOSITORY } from '../domain/ports/stock-item/stock-item.repository.port';
-import { StockItemTypeormRepository } from '../adapters/out/typeorm/repositories/stock-item/stock-item.typeorm.repo';
+import { StockItemEntity } from '../adapters/out/typeorm/entities/stock-item.entity';
+import { StockItemTypeormRepository } from '../adapters/out/typeorm/repositories/stock-item.typeorm.repo';
 import { UsersModule } from 'src/modules/users/infrastructure/users.module';
 import { WarehousesModule } from 'src/modules/warehouses/warehouses.module';
+import { UNIT_OF_WORK } from 'src/shared/domain/ports/unit-of-work.port';
+import { CLOCK } from '../application/ports/clock.port';
+import { DocumentSeriesRepository, SERIES_REPOSITORY } from '../application/ports/document-series.repository.port';
+import { DOCUMENT_REPOSITORY } from '../application/ports/document.repository.port';
+import { INVENTORY_LOCK } from '../application/ports/inventory-lock.port';
+import { INVENTORY_REPOSITORY } from '../application/ports/inventory.repository.port';
+import { LEDGER_REPOSITORY } from '../application/ports/ledger.repository.port';
+import { STOCK_ITEM_REPOSITORY } from '../application/ports/stock-item.repository.port';
 
 @Module({
   imports: [

@@ -1,5 +1,5 @@
-import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status";
-import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
+import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
+import { ProductionDocType } from "src/modules/production/domain/value-objects/doc-type.vo";
 
 export interface ProductionOrderListWarehouseOutput {
   id: string;
@@ -16,7 +16,7 @@ export interface ProductionOrderListSerieOutput {
   id: string;
   code: string;
   name: string;
-  docType: DocType;
+  docType: ProductionDocType;
   warehouseId: string;
   nextNumber: number;
   padding: number;

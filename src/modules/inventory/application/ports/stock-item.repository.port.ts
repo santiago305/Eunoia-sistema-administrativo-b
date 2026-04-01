@@ -1,6 +1,7 @@
 import { TransactionContext } from 'src/shared/domain/ports/transaction-context.port';
-import { StockItemType } from '../../value-objects/stock-item-type';
-import { StockItem } from '../../entities/stock-item/stock-item';
+import { StockItem } from '../../domain/entities/stock-item/stock-item';
+import { StockItemType } from '../../domain/value-objects/stock-item-type';
+
 
 
 export const STOCK_ITEM_REPOSITORY = Symbol('STOCK_ITEM_REPOSITORY');

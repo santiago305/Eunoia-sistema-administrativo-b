@@ -1,12 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { UNIT_OF_WORK, UnitOfWork } from 'src/shared/domain/ports/unit-of-work.port';
-import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../../domain/ports/document.repository.port';
-import { SERIES_REPOSITORY, DocumentSeriesRepository } from '../../../domain/ports/document-series.repository.port';
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from '../../../domain/ports/stock-item/stock-item.repository.port';
-import { INVENTORY_REPOSITORY, InventoryRepository } from '../../../domain/ports/inventory.repository.port';
-import { LEDGER_REPOSITORY, LedgerRepository } from '../../../domain/ports/ledger.repository.port';
-import { CLOCK, ClockPort } from '../../../domain/ports/clock.port';
-import { INVENTORY_LOCK, InventoryLock } from '../../../domain/ports/inventory-lock.port';
+
 import { InventoryDocument } from '../../../domain/entities/inventory-document';
 import InventoryDocumentItem from '../../../domain/entities/inventory-document-item';
 import { DocStatus } from '../../../domain/value-objects/doc-status';
@@ -16,6 +10,13 @@ import { LedgerEntry } from '../../../domain/entities/ledger-entry';
 import { Direction } from '../../../domain/value-objects/direction';
 import { CreateAddItemPostAdjustmentInput } from '../../dto/document/input/create-add-item-post-adjustment';
 import { errorResponse } from 'src/shared/response-standard/response';
+import { CLOCK, ClockPort } from '../../ports/clock.port';
+import { SERIES_REPOSITORY, DocumentSeriesRepository } from '../../ports/document-series.repository.port';
+import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../ports/document.repository.port';
+import { INVENTORY_LOCK, InventoryLock } from '../../ports/inventory-lock.port';
+import { INVENTORY_REPOSITORY, InventoryRepository } from '../../ports/inventory.repository.port';
+import { LEDGER_REPOSITORY, LedgerRepository } from '../../ports/ledger.repository.port';
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from '../../ports/stock-item.repository.port';
 
 @Injectable()
 export class CreateAddItemPostAdjustmentUseCase {

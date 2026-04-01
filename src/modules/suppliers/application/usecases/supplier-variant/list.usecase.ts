@@ -1,4 +1,3 @@
-// src/modules/suppliers/application/usecases/supplier-variant/list.usecase.ts
 import { Inject } from "@nestjs/common";
 import { PaginatedResult } from "src/shared/utilidades/dto/paginateResult";
 import { SUPPLIER_VARIANT_REPOSITORY, SupplierVariantRepository } from "src/modules/suppliers/domain/ports/supplier-variant.repository";

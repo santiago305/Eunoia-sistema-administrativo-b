@@ -1,13 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { DocumentRepository } from '../../../../domain/ports/document.repository.port';
 import { InventoryDocument } from '../../../../domain/entities/inventory-document';
 import InventoryDocumentItem from '../../../../domain/entities/inventory-document-item';
 import { DocStatus } from '../../../../domain/value-objects/doc-status';
 import { InventoryDocumentEntity } from '../entities/inventory_document.entity';
 import { InventoryDocumentItemEntity } from '../entities/inventory_document_item.entity';
-import { StockItemEntity } from '../entities/stock-item/stock-item.entity';
+import { StockItemEntity } from '../entities/stock-item.entity';
 import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
 import { TypeormTransactionContext } from 'src/shared/infrastructure/typeorm/typeorm.transaction-context';
 import { ReferenceType } from 'src/modules/inventory/domain/value-objects/reference-type';
@@ -15,6 +14,7 @@ import { DocType } from 'src/modules/inventory/domain/value-objects/doc-type';
 import { ProductType } from 'src/modules/catalog/domain/value-object/productType';
 import { ProductEntity } from 'src/modules/catalog/adapters/out/persistence/typeorm/entities/product.entity';
 import { ProductVariantEntity } from 'src/modules/catalog/adapters/out/persistence/typeorm/entities/product-variant.entity';
+import { DocumentRepository } from 'src/modules/inventory/application/ports/document.repository.port';
 
 @Injectable()
 export class DocumentTypeormRepository implements DocumentRepository {

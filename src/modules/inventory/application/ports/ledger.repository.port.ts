@@ -1,5 +1,5 @@
-import { LedgerEntry } from '../entities/ledger-entry';
 import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
+import { LedgerEntry } from '../../domain/entities/ledger-entry';
 
 export const LEDGER_REPOSITORY = Symbol('LEDGER_REPOSITORY');
 

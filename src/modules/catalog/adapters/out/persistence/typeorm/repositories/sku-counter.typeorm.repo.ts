@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
-import { SkuCounterRepository } from 'src/modules/catalog/domain/ports/sku-counter.repository';
 import { SkuCounter } from 'src/modules/catalog/domain/entity/sku-counter';
 import { SkuCounterEntity } from '../entities/sku-counter.entity';
 import { TypeormTransactionContext } from 'src/shared/domain/ports/typeorm-transaction-context';
 import { TransactionContext } from 'src/shared/domain/ports/transaction-context.port';
+import { SkuCounterRepository } from 'src/modules/catalog/application/ports/sku-counter.repository';
 
 @Injectable()
 export class SkuCounterTypeormRepository implements SkuCounterRepository {

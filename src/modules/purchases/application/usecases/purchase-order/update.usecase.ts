@@ -13,8 +13,8 @@ import { DeletePaymentUsecase } from "src/modules/payments/application/usecases/
 import { PAYMENT_DOCUMENT_REPOSITORY, PaymentDocumentRepository } from "src/modules/payments/domain/ports/payment-document.repository";
 import { CREDIT_QUOTA_REPOSITORY, CreditQuotaRepository } from "src/modules/payments/domain/ports/credit-quota.repository";
 import { PayDocType } from "src/modules/payments/domain/value-objects/pay-doc-type";
-import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
 import { errorResponse } from "src/shared/response-standard/response";
+import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
 
 export class UpdatePurchaseOrderUsecase {
   constructor(

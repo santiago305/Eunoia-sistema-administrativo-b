@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../../domain/ports/document.repository.port';
 import { ListDocumentItemsInput } from '../../dto/document-item/input/get-items-by-id-document';
 import { ItemOutput } from '../../dto/document-item/output/item-out';
+import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../ports/document.repository.port';
 
 @Injectable()
 export class ListDocumentItemsUseCase {

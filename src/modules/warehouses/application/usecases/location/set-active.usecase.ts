@@ -1,7 +1,7 @@
 import { Inject } from "@nestjs/common";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
-import { LOCATION_REPOSITORY, LocartionRepository } from "src/modules/warehouses/domain/ports/location.repository.port";
 import { SetActiveInput } from "../../dtos/location/input/set-active.input";
+import { LOCATION_REPOSITORY, LocartionRepository } from "../../ports/location.repository.port";
 
 export class SetLocationActiveUsecase {
   constructor(

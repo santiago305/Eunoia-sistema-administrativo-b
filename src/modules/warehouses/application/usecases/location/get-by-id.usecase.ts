@@ -1,7 +1,7 @@
 import { BadRequestException, Inject } from "@nestjs/common";
-import { LOCATION_REPOSITORY, LocartionRepository } from "src/modules/warehouses/domain/ports/location.repository.port";
 import { GetByIdInput } from "../../dtos/location/input/get-by-id.input";
 import { LocationOutput } from "../../dtos/location/output/location.output";
+import { LOCATION_REPOSITORY, LocartionRepository } from "../../ports/location.repository.port";
 
 export class GetLocationUsecase {
   constructor(

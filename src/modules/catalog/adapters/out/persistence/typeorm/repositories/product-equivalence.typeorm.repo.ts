@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ProductEquivalenceRepository } from 'src/modules/catalog/domain/ports/product-equivalence.repository';
 import { ProductEquivalence } from 'src/modules/catalog/domain/entity/product-equivalence';
 import { ProductEquivalenceEntity } from '../entities/product-equivalence.entity';
 import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
 import { TypeormTransactionContext } from 'src/shared/domain/ports/typeorm-transaction-context';
+import { ProductEquivalenceRepository } from 'src/modules/catalog/application/ports/product-equivalence.repository';
 
 @Injectable()
 export class ProductEquivalenceTypeormRepository implements ProductEquivalenceRepository {

@@ -1,8 +1,8 @@
 import { Inject, NotFoundException } from "@nestjs/common";
 import { SetProductActiveInput } from "../../dto/products/input/set-active-product";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
-import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/domain/ports/product.repository";
 import { ProductId } from "src/modules/catalog/domain/value-object/product-id.vo";
+import { PRODUCT_REPOSITORY, ProductRepository } from "../../ports/product.repository";
 
 export class SetProductActive {
   constructor(

@@ -8,12 +8,12 @@ import { PurchaseOrderDetailOutput } from "../../dtos/purchase-order/output/purc
 import { PaymentOutput } from "src/modules/payments/application/dtos/payment/output/payment.output";
 import { PurchaseOrderItemOutput } from "../../dtos/purchase-order-item/output/purchase-order-item.output";
 import { CreditQuotaOutput } from "src/modules/payments/application/dtos/credit-quota/output/credit-quota.output";
-import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/modules/catalog/domain/ports/product-variant.repository";
-import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/domain/ports/product.repository";
 import { ProductId } from "src/modules/catalog/domain/value-object/product-id.vo";
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/domain/ports/stock-item/stock-item.repository.port";
 import { StockItemType } from "src/modules/inventory/domain/value-objects/stock-item-type";
 import { toProductOutput, toVariantOutput } from "src/modules/production/application/utils/productVariant";
+import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/modules/catalog/application/ports/product-variant.repository";
+import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/application/ports/product.repository";
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
 
 export class GetPurchaseOrderUsecase {
   constructor(

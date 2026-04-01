@@ -1,5 +1,5 @@
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
-import { ProductRecipe } from "../entity/product-recipe";
+import { ProductRecipe } from "../../domain/entity/product-recipe";
 
 export const PRODUCT_RECIPE_REPOSITORY = Symbol("PRODUCT_RECIPE_REPOSITORY");
 

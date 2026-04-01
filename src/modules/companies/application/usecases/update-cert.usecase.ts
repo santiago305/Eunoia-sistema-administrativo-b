@@ -4,8 +4,8 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { errorResponse, successResponse } from "src/shared/response-standard/response";
-import { CLOCK, ClockPort } from "src/modules/inventory/domain/ports/clock.port";
 import { COMPANY_REPOSITORY, CompanyRepository } from "src/modules/companies/domain/ports/company.repository";
+import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
 
 export class UpdateCompanyCertUsecase {
   constructor(

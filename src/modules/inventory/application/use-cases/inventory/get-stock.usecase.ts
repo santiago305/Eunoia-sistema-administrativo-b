@@ -1,10 +1,10 @@
 import { Inject, Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
-import { INVENTORY_REPOSITORY, InventoryRepository } from '../../../domain/ports/inventory.repository.port';
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from '../../../domain/ports/stock-item/stock-item.repository.port';
 import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
 import { GetStockInput } from '../../dto/inventory/input/get-stock';
 import { AvailabilityOutput } from '../../dto/inventory/output/availability-out';
 import { errorResponse } from 'src/shared/response-standard/response';
+import { INVENTORY_REPOSITORY, InventoryRepository } from '../../ports/inventory.repository.port';
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from '../../ports/stock-item.repository.port';
 
 @Injectable()
 export class GetStockUseCase {

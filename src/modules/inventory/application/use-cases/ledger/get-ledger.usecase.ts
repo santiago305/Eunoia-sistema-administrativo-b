@@ -1,10 +1,10 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
-import { LEDGER_REPOSITORY, LedgerRepository } from '../../../domain/ports/ledger.repository.port';
 import { GetLedgerInput } from '../../dto/ledger/input/get-ledger';
 import { PaginatedLedgerResult } from '../../dto/ledger/output/paginated-ledger';
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from 'src/modules/inventory/domain/ports/stock-item/stock-item.repository.port';
 import { errorResponse } from 'src/shared/response-standard/response';
 import { ReferenceType } from 'src/modules/inventory/domain/value-objects/reference-type';
+import { LEDGER_REPOSITORY, LedgerRepository } from '../../ports/ledger.repository.port';
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from '../../ports/stock-item.repository.port';
 
 
 @Injectable()

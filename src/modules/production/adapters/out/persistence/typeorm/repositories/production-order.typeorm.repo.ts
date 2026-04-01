@@ -1,15 +1,14 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
-import { ProductionOrderRepository } from "src/modules/production/domain/ports/production-order.repository";
+import { ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
 import { ProductionOrder } from "src/modules/production/domain/entity/production-order.entity";
 import { ProductionOrderItem } from "src/modules/production/domain/entity/production-order-item";
-import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status";
+import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
 import { ProductionOrderEntity } from "../entities/production_order.entity";
 import { ProductionOrderItemEntity } from "../entities/production_order_item.entity";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
-import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
 import { WarehouseEntity } from "src/modules/warehouses/adapters/out/persistence/typeorm/entities/warehouse";
 import { DocumentSerie } from "src/modules/inventory/adapters/out/typeorm/entities/document_serie.entity";
 import {
@@ -17,6 +16,7 @@ import {
   ProductionOrderListSerieRM,
   ProductionOrderListWarehouseRM,
 } from "src/modules/production/domain/read-models/production-order-list-item.rm";
+import { DocTypeMapper } from "../mappers/doc-type.mapper";
 
 @Injectable()
 export class ProductionOrderTypeormRepository implements ProductionOrderRepository {
@@ -69,10 +69,10 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
       serieId: order.serieId,
       correlative: order.correlative,
       status: order.status,
-      reference: order.referense,
+      reference: order.reference,
       manufactureDate: order.manufactureDate,
       createdBy: order.createdBy,
-      updatedBy: order.updateBy ?? null,
+      updatedBy: order.updatedBy ?? null,
     });
 
     return new ProductionOrder(
@@ -351,7 +351,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
           id: serieRow.id,
           code: serieRow.code,
           name: serieRow.name,
-          docType: serieRow.docType,
+          docType: DocTypeMapper.toProduction(serieRow.docType),
           warehouseId: serieRow.warehouseId,
           nextNumber: serieRow.nextNumber,
           padding: serieRow.padding,

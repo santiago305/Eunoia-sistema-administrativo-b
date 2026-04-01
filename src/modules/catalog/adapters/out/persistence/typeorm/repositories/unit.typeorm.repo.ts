@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { UnitRepository } from 'src/modules/catalog/domain/ports/unit.repository';
 import { Unit } from 'src/modules/catalog/domain/entity/unit';
 import { UnitEntity } from '../entities/unit.entity';
 import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
 import { TypeormTransactionContext } from 'src/shared/domain/ports/typeorm-transaction-context';
+import { UnitRepository } from 'src/modules/catalog/application/ports/unit.repository';
 
 @Injectable()
 export class UnitTypeormRepository implements UnitRepository {

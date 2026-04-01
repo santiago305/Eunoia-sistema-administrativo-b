@@ -1,5 +1,5 @@
-﻿import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
-import { ProductionOrder } from "../entity/production-order.entity";
+﻿import { ProductionOrder } from "../entity/production-order.entity";
+import { ProductionDocType } from "../value-objects/doc-type.vo";
 
 export interface ProductionOrderListWarehouseRM {
   id: string;
@@ -16,7 +16,7 @@ export interface ProductionOrderListSerieRM {
   id: string;
   code: string;
   name: string;
-  docType: DocType;
+  docType: ProductionDocType;
   warehouseId: string;
   nextNumber: number;
   padding: number;

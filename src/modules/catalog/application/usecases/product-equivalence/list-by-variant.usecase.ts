@@ -1,9 +1,9 @@
 import { Inject } from '@nestjs/common';
-import { PRODUCT_EQUIVALENCE_REPOSITORY, ProductEquivalenceRepository } from 'src/modules/catalog/domain/ports/product-equivalence.repository';
-import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from 'src/modules/catalog/domain/ports/product-variant.repository';
 import { ListProductEquivalenceInput } from '../../dto/product-equivalences/input/list-product-equivalence';
 import { ProductEquivalenceOutput } from '../../dto/product-equivalences/output/product-equivalence-out';
 import { ProductEquivalence } from 'src/modules/catalog/domain/entity/product-equivalence';
+import { PRODUCT_EQUIVALENCE_REPOSITORY, ProductEquivalenceRepository } from '../../ports/product-equivalence.repository';
+import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from '../../ports/product-variant.repository';
 
 export class ListProductEquivalencesByVariant {
   constructor(

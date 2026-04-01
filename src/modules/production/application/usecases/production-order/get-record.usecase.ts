@@ -1,10 +1,7 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
-import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/domain/ports/product.repository";
-import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/modules/catalog/domain/ports/product-variant.repository";
 import { ProductId } from "src/modules/catalog/domain/value-object/product-id.vo";
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/domain/ports/stock-item/stock-item.repository.port";
 import { StockItemType } from "src/modules/inventory/domain/value-objects/stock-item-type";
-import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/domain/ports/production-order.repository";
+import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { errorResponse } from "src/shared/response-standard/response";
 import {
@@ -12,6 +9,9 @@ import {
   ProductionOrderFinishedItemOutput,
 } from "../../dto/production-order/output/production-order-detail-out";
 import { toProductOutput, toVariantOutput } from "src/modules/production/application/utils/productVariant";
+import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/modules/catalog/application/ports/product-variant.repository";
+import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/application/ports/product.repository";
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
 
 
 @Injectable()
@@ -116,7 +116,7 @@ export class GetProductionOrder {
         serie,
         correlative: result.order.correlative,
         status: result.order.status,
-        reference: result.order.referense,
+        reference: result.order.reference,
         manufactureDate: result.order.manufactureDate,
         createdAt: result.order.createdAt,
         items,

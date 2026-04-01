@@ -3,11 +3,11 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, Repository } from "typeorm";
 import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
-import { LocartionRepository } from "src/modules/warehouses/domain/ports/location.repository.port";
 import { WarehouseLocation } from "src/modules/warehouses/domain/entities/warehouse-location";
 import { LocationId } from "src/modules/warehouses/domain/value-objects/location-id.vo";
 import { WarehouseId } from "src/modules/warehouses/domain/value-objects/warehouse-id.vo";
 import { WarehouseLocationEntity } from "../entities/warehouse-location";
+import { LocartionRepository } from "src/modules/warehouses/application/ports/location.repository.port";
 
 @Injectable()
 export class LocationTypeormRepo implements LocartionRepository {

@@ -1,8 +1,8 @@
 import { Inject, NotFoundException } from "@nestjs/common";
-import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/domain/ports/product.repository";
 import { ProductId } from "src/modules/catalog/domain/value-object/product-id.vo";
 import { GetProductByIdInput } from "../../dto/products/input/get-product-by-id"
 import { ProductDetailOutput } from "../../dto/products/output/product-with-variants";
+import { PRODUCT_REPOSITORY, ProductRepository } from "../../ports/product.repository";
 
 export class GetProductWithVariants {
   constructor(

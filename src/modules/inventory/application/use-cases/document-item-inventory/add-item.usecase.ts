@@ -1,11 +1,11 @@
 import { Inject, Injectable, BadRequestException } from '@nestjs/common';
-import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../../domain/ports/document.repository.port';
 import { AddItemInput } from '../../dto/document-item/input/add-item';
 import { ItemOutput } from '../../dto/document-item/output/item-out';
 import InventoryDocumentItem from '../../../domain/entities/inventory-document-item';
 import { InventoryRulesService } from '../../../domain/services/inventory-rules.service';
 import { DocType } from '../../../domain/value-objects/doc-type';
 import { UNIT_OF_WORK, UnitOfWork } from 'src/shared/domain/ports/unit-of-work.port';
+import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../ports/document.repository.port';
 
 @Injectable()
 export class AddItemUseCase {

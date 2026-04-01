@@ -4,7 +4,7 @@ import { ProductionOrderEntity } from "../adapters/out/persistence/typeorm/entit
 import { ProductionOrderItemEntity } from "../adapters/out/persistence/typeorm/entities/production_order_item.entity";
 import { ProductionOrdersController } from "../adapters/in/controllers/production-order.controller";
 import { ProductionOrderTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/production-order.typeorm.repo";
-import { PRODUCTION_ORDER_REPOSITORY } from "../domain/ports/production-order.repository";
+import { PRODUCTION_ORDER_REPOSITORY } from "../application/ports/production-order.repository";
 import { CreateProductionOrder } from "../application/usecases/production-order/create.usecase";
 import { ListProductionOrders } from "../application/usecases/production-order/list-orders.usecase";
 import { GetProductionOrder } from "../application/usecases/production-order/get-record.usecase";

@@ -5,10 +5,10 @@ import { EntityManager, Repository } from 'typeorm';
 import DocumentSerie from '../../../../domain/entities/document-serie';
 import { DocType } from '../../../../domain/value-objects/doc-type';
 import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
-import { DocumentSeriesRepository } from '../../../../domain/ports/document-series.repository.port';
 
 import { DocumentSerie as OrmSerie } from '../entities/document_serie.entity';
 import { TypeormTransactionContext } from 'src/shared/infrastructure/typeorm/typeorm.transaction-context';
+import { DocumentSeriesRepository } from 'src/modules/inventory/application/ports/document-series.repository.port';
 
 @Injectable()
 export class DocumentSeriesTypeormRepository implements DocumentSeriesRepository {

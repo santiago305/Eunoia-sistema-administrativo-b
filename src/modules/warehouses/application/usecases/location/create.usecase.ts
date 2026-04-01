@@ -1,10 +1,10 @@
 import { BadRequestException, Inject } from "@nestjs/common";
 import { TransactionContext, UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
-import { LOCATION_REPOSITORY, LocartionRepository } from "src/modules/warehouses/domain/ports/location.repository.port";
-import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "src/modules/warehouses/domain/ports/warehouse.repository.port";
 import { WarehouseLocation } from "src/modules/warehouses/domain/entities/warehouse-location";
 import { CreateLocationInput } from "../../dtos/location/input/create.input";
 import { LocationOutput } from "../../dtos/location/output/location.output";
+import { LOCATION_REPOSITORY, LocartionRepository } from "../../ports/location.repository.port";
+import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "../../ports/warehouse.repository.port";
 
 export class CreateLocationUsecase {
   constructor(
