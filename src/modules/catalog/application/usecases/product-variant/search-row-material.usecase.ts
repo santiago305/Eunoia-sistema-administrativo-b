@@ -23,7 +23,7 @@ export class SearchRowMaterialProductVariants {
     ]);
 
     const rows = [...products, ...variants];
-    rows.sort((a, b) => a.sku.localeCompare(b.sku));
+    rows.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()); 
 
     return rows.map((r) => ({
       ...(raw ? { primaId: r.primaId } : { itemId: r.primaId }),

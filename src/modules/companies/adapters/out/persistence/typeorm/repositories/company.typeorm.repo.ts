@@ -19,6 +19,7 @@ export class CompanyTypeormRepository implements CompanyRepository {
     const repo = this.getRepository(tx);
 
     const row = await repo.findOne({
+      where: { isActive: true },
       order: { createdAt: "ASC" },
     });
 

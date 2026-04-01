@@ -19,6 +19,7 @@ import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/module
 import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/application/ports/product.repository";
 import { UNIT_REPOSITORY, UnitRepository } from "src/modules/catalog/application/ports/unit.repository";
 import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
+import { errorResponse } from "src/shared/response-standard/response";
 
 const resolveLogoUrl = async (logoPath?: string) => {
   if (!logoPath) return undefined;
@@ -106,6 +107,19 @@ export class GeneratePurchaseOrderPdfUseCase {
       this.companyRepo.findSingle(),
       this.unitRepo.list(),
     ]);
+    
+    if (!units) {
+      throw new BadRequestException(errorResponse("Serie invalida"));
+    }
+    if (!company) {
+      throw new BadRequestException(errorResponse("Compañia invalida"));
+    }
+    if (!supplier) {
+      throw new BadRequestException(errorResponse("Almacén de origen invalido"));
+    }
+    if (!items) {
+      throw new BadRequestException(errorResponse("Almacén de destino invalido"));
+    }
 
     const unitById = new Map(units.map((u) => [u.unitId, u]));
     const unitByCode = new Map(units.map((u) => [u.code, u]));
