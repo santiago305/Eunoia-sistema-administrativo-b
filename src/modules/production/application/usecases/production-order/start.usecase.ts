@@ -28,12 +28,6 @@ export class StartProductionOrder {
       const result = await this.orderRepo.getByIdWithItems(params.productionId, tx);
       
       const { items, order } = result;
-      console.log('[StartProductionOrder] loaded', {
-        productionId: params.productionId,
-        orderStatus: order?.status,
-        fromWarehouseId: order?.fromWarehouseId,
-        itemsCount: items?.length ?? 0,
-      });
       
       if (!order) {
         throw new NotFoundException(
@@ -66,27 +60,10 @@ export class StartProductionOrder {
       );
 
       for (const item of items ?? []) {
-        console.log('[StartProductionOrder] item', {
-          productionItemId: item.productionItemId,
-          finishedItemId: item.finishedItemId,
-          quantity: item.quantity,
-          fromLocationId: item.fromLocationId,
-          toLocationId: item.toLocationId,
-        });
         const recipes = await this.recipeRepo.listByItemId(item.finishedItemId, tx);
         if (!recipes || recipes.length === 0) {
           throw new BadRequestException({ type: "error", message: "Receta no encontrada" });
         }
-        console.log('[StartProductionOrder] recipes', {
-          finishedItemId: item.finishedItemId,
-          count: recipes.length,
-          lines: recipes.map((r) => ({
-            finishedVariantId: r.finishedVariantId,
-            primaVariantId: r.primaVariantId,
-            qty: r.quantity,
-            waste: r.waste,
-          })),
-        });
 
         const stockItemCache = new Map<string, string>();
         const consumption: RecipeConsumptionLine[] = [];
@@ -101,23 +78,14 @@ export class StartProductionOrder {
             stockItemId = stockItem.stockItemId;
             stockItemCache.set(r.primaVariantId, stockItemId);
           }
-          console.log('[StartProductionOrder] consumption-line', {
-            primaVariantId: r.primaVariantId,
-            stockItemId,
-            recipeQty: r.quantity,
-            itemQty: item.quantity,
-            totalQty: r.quantity * item.quantity,
-          });
+
           consumption.push({
             stockItemId,
             locationId: undefined,
             qty: r.quantity * item.quantity,
           });
         }
-        console.log('[StartProductionOrder] reserveMaterials input', {
-          warehouseId: order.fromWarehouseId,
-          consumption,
-        });
+
         try {
           await this.reserveMaterials.execute(
             {

@@ -16,6 +16,7 @@ import {
   ProductionOrderListSerieRM,
   ProductionOrderListWarehouseRM,
 } from "src/modules/production/domain/read-models/production-order-list-item.rm";
+import { DocTypeMapper } from "../mappers/doc-type.mapper";
 
 @Injectable()
 export class ProductionOrderTypeormRepository implements ProductionOrderRepository {
@@ -337,14 +338,29 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
   }
 
   async getByIdWithItems(
-  productionId: string,
-  tx?: TransactionContext,
-  ): Promise<{ order: ProductionOrder; items: ProductionOrderItem[];} | null> {
+    productionId: string,
+    tx?: TransactionContext,
+  ): Promise<{ order: ProductionOrder; items: ProductionOrderItem[]; serie?: ProductionOrderListSerieRM | null } | null> {
     const order = await this.findById(productionId, tx);
     if (!order) return null;
     const items = await this.listItems(productionId, tx);
-
-    return { order, items };
+    const serieRepo = this.getManager(tx).getRepository(DocumentSerie);
+    const serieRow = await serieRepo.findOne({ where: { id: order.serieId } });
+    const serie: ProductionOrderListSerieRM | null = serieRow
+      ? {
+          id: serieRow.id,
+          code: serieRow.code,
+          name: serieRow.name,
+          docType: DocTypeMapper.toProduction(serieRow.docType),
+          warehouseId: serieRow.warehouseId,
+          nextNumber: serieRow.nextNumber,
+          padding: serieRow.padding,
+          separator: serieRow.separator,
+          isActive: serieRow.isActive,
+          createdAt: serieRow.createdAt,
+        }
+      : null;
+    return { order, items, serie };
   }
 
   async addItem(item: ProductionOrderItem, tx?: TransactionContext): Promise<ProductionOrderItem> {
