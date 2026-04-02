@@ -3,8 +3,9 @@ import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.p
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
 import { PurchaseOrderStatus } from "src/modules/purchases/domain/value-objects/po-status";
 import { PostInventoryFromPurchaseUsecase } from "./Inventory-purchase.usecase";
-import { USER_REPOSITORY, UserRepository } from "src/modules/users/application/ports/user.repository";
 import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
+import { PurchaseOrderId } from "src/modules/purchases/domain/value-objects/purchase-order-id.vo";
+import { DomainError } from "src/modules/purchases/domain/errors/domain.error";
 
 export class RunExpectedAtUsecase {
   constructor(
@@ -12,23 +13,25 @@ export class RunExpectedAtUsecase {
     private readonly uow: UnitOfWork,
     @Inject(PURCHASE_ORDER)
     private readonly purchaseRepo: PurchaseOrderRepository,
-    @Inject(USER_REPOSITORY)
-    private readonly userRepo: UserRepository,
     @Inject(CLOCK)
     private readonly clock: ClockPort,
     private readonly inventoryPurchase: PostInventoryFromPurchaseUsecase,
   ) {}
 
   async execute(poId: string): Promise<{ type: string; message: string }> {
+    let validatedPoId: string;
+    try {
+      validatedPoId = new PurchaseOrderId(poId).value;
+    } catch (err) {
+      if (err instanceof DomainError) {
+        throw new BadRequestException({ type: "error", message: err.message });
+      }
+      throw err;
+    }
+
     try {
       return await this.uow.runInTransaction(async (tx) => {
-        const startedAt = this.clock.now();
-        console.log(
-          "[RunExpectedAtUsecase] start",
-          JSON.stringify({ poId, startedAt: startedAt.toISOString() }),
-        );
-
-        const order = await this.purchaseRepo.findById(poId, tx);
+        const order = await this.purchaseRepo.findById(validatedPoId, tx);
         if (!order) {
           throw new NotFoundException({ type: "error", message: "Orden no encontrada" });
         }
@@ -37,11 +40,9 @@ export class RunExpectedAtUsecase {
           throw new BadRequestException({ type: "error", message: "La orden no está en estado SENT o PARTIAL" });
         }
 
-
         if (!order.expectedAt) {
           throw new BadRequestException({ type: "error", message: "La orden no tiene expectedAt" });
         }
-
 
         await this.inventoryPurchase.execute({
           poId: order.poId,
@@ -56,29 +57,14 @@ export class RunExpectedAtUsecase {
           tx,
         );
 
-        console.log(
-          "[RunExpectedAtUsecase] success",
-          JSON.stringify({
-            poId,
-            expectedAt: order.expectedAt.toISOString(),
-            finishedAt: this.clock.now().toISOString(),
-          }),
-        );
         return { type: "success", message: "Orden ejecutada y marcada como RECEIVED" };
       });
-    } catch (err) {
+    } catch {
       await this.purchaseRepo.update({
-        poId,
+        poId: validatedPoId,
         status: PurchaseOrderStatus.PARTIAL,
       });
-      console.log(
-        "[RunExpectedAtUsecase] failure",
-        JSON.stringify({
-          poId,
-          failedAt: this.clock.now().toISOString(),
-        }),
-      );
-      throw new BadRequestException({ type: "error", message: err });
+      throw new BadRequestException({ type: "error", message: "Error al ejecutar la orden" });
     }
   }
 }

@@ -4,14 +4,14 @@ import { CurrencyType } from "src/modules/purchases/domain/value-objects/currenc
 import { PurchaseOrderItemEntity } from "../entities/purchase-order-item.entity";
 
 export class PurchaseOrderItemMapper {
-  static toDomain(orm: PurchaseOrderItemEntity): PurchaseOrderItem {
+  static toDomain(orm: PurchaseOrderItemEntity, currency: CurrencyType): PurchaseOrderItem {
     return PurchaseOrderItemFactory.reconstitute({
       poItemId: orm.id,
       poId: orm.poId,
       stockItemId: orm.stockItemId,
-      unitBase: orm.unitBase as any,
-      equivalence: orm.equivalencia as any,
-      factor: orm.factor as any,
+      unitBase: orm.unitBase ?? "",
+      equivalence: orm.equivalencia ?? "",
+      factor: orm.factor ?? 1,
       afectType: orm.afectType,
       quantity: Number(orm.quantity ?? 0),
       porcentageIgv: Number(orm.porcentageIgv ?? 0),
@@ -20,7 +20,7 @@ export class PurchaseOrderItemMapper {
       unitValue: Number(orm.unitValue ?? 0),
       unitPrice: Number(orm.unitPrice ?? 0),
       purchaseValue: Number(orm.purchaseValue ?? 0),
-      currency: CurrencyType.PEN,
+      currency,
     });
   }
 
@@ -31,7 +31,7 @@ export class PurchaseOrderItemMapper {
       stockItemId: domain.stockItemId,
       unitBase: domain.unitBase ?? null,
       equivalencia: domain.equivalence ?? null,
-      factor: domain.factor ?? null,
+      factor: domain.factor ?? 1,
       afectType: domain.afectType ?? null,
       quantity: domain.quantity,
       porcentageIgv: domain.porcentageIgv.getAmount(),

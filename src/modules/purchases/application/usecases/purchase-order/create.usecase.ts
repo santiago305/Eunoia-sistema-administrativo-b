@@ -3,9 +3,7 @@ import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.p
 import { PurchaseOrder } from "src/modules/purchases/domain/entities/purchase-order";
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
 import { CreatePurchaseOrderInput } from "../../dtos/purchase-order/input/create.input";
-import { Money } from "src/shared/value-objets/money.vo";
 import { PURCHASE_ORDER_ITEM, PurchaseOrderItemRepository } from "src/modules/purchases/domain/ports/purchase-order-item.port.repository";
-import { PurchaseOrderItem } from "src/modules/purchases/domain/entities/purchase-order-item";
 import { PaymentFormType } from "src/modules/purchases/domain/value-objects/payment-form-type";
 import { PaymentDocument } from "src/modules/payments/domain/entity/payment-document";
 import { CreditQuota } from "src/modules/payments/domain/entity/credit-quota";
@@ -13,6 +11,9 @@ import { PAYMENT_DOCUMENT_REPOSITORY, PaymentDocumentRepository } from "src/modu
 import { CREDIT_QUOTA_REPOSITORY, CreditQuotaRepository } from "src/modules/payments/domain/ports/credit-quota.repository";
 import { PayDocType } from "src/modules/payments/domain/value-objects/pay-doc-type";
 import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
+import { PurchaseOrderFactory } from "src/modules/purchases/domain/factories/purchase-order.factory";
+import { PurchaseOrderItemFactory } from "src/modules/purchases/domain/factories/purchase-order-item.factory";
+import { DomainError } from "src/modules/purchases/domain/errors/domain.error";
 
 export class CreatePurchaseOrderUsecase {
   constructor(
@@ -33,46 +34,38 @@ export class CreatePurchaseOrderUsecase {
   async execute(input: CreatePurchaseOrderInput, createdBy: string): Promise<{ order: PurchaseOrder }> {
     return this.uow.runInTransaction(async (tx) => {
       const currency = input.currency ?? "PEN";
-      const expectedAt = input.expectedAt ? new Date(input.expectedAt) : undefined;
-      if (expectedAt && Number.isNaN(expectedAt.getTime())) {
-        throw new BadRequestException({ type: "error", message: "Fecha esperada invalida" });
-      }
 
-      const dateIssue = input.dateIssue ? new Date(input.dateIssue) : undefined;
-      if (dateIssue && Number.isNaN(dateIssue.getTime())) {
-        throw new BadRequestException({ type: "error", message: "Fecha de emision invalida" });
+      let data: PurchaseOrder;
+      try {
+        data = PurchaseOrderFactory.createNew({
+          supplierId: input.supplierId,
+          warehouseId: input.warehouseId,
+          creditDays: input.creditDays,
+          numQuotas: input.numQuotas,
+          totalTaxed: input.totalTaxed ?? 0,
+          totalExempted: input.totalExempted ?? 0,
+          totalIgv: input.totalIgv ?? 0,
+          purchaseValue: input.purchaseValue ?? 0,
+          total: input.total ?? 0,
+          documentType: input.documentType,
+          serie: input.serie,
+          correlative: input.correlative,
+          currency: input.currency,
+          paymentForm: input.paymentForm,
+          note: input.note,
+          status: input.status,
+          isActive: input.isActive ?? true,
+          expectedAt: input.expectedAt,
+          dateIssue: input.dateIssue,
+          dateExpiration: input.dateExpiration,
+          createdBy,
+        });
+      } catch (err) {
+        if (err instanceof DomainError || (err as any)?.name === "InvalidMoneyError") {
+          throw new BadRequestException({ type: "error", message: (err as Error).message });
+        }
+        throw err;
       }
-
-      const dateExpiration = input.dateExpiration ? new Date(input.dateExpiration) : undefined;
-      if (dateExpiration && Number.isNaN(dateExpiration.getTime())) {
-        throw new BadRequestException({ type: "error", message: "Fecha de vencimiento invalida" });
-      }
-
-      const data = new PurchaseOrder(
-        undefined,
-        input.supplierId,
-        input.warehouseId,
-        input.creditDays ?? 0,
-        input.numQuotas ?? 0,
-        Money.create(input.totalTaxed ?? 0, currency),
-        Money.create(input.totalExempted ?? 0, currency),
-        Money.create(input.totalIgv ?? 0, currency),
-        Money.create(input.purchaseValue ?? 0, currency),
-        Money.create(input.total ?? 0, currency),
-        input.documentType,
-        input.serie,
-        input.correlative,
-        input.currency,
-        input.paymentForm,
-        input.note,
-        input.status,
-        input.isActive ?? true,
-        expectedAt,
-        dateIssue,
-        dateExpiration,
-        undefined,
-        createdBy,
-      );
 
       let po: PurchaseOrder;
       try {
@@ -86,22 +79,30 @@ export class CreatePurchaseOrderUsecase {
 
       if (input.items && input.items.length > 0) {
         for (const item of input.items) {
-          const orderItem = new PurchaseOrderItem(
-            undefined,
-            po.poId,
-            item.stockItemId,
-            item.unitBase,
-            item.equivalence,
-            item.factor,
-            item.afectType,
-            item.quantity,
-            Money.create(item.porcentageIgv ?? 0, currency),
-            Money.create(item.baseWithoutIgv ?? 0, currency),
-            Money.create(item.amountIgv ?? 0, currency),
-            Money.create(item.unitValue ?? 0, currency),
-            Money.create(item.unitPrice ?? 0, currency),
-            Money.create(item.purchaseValue ?? 0, currency),
-          );
+          let orderItem;
+          try {
+            orderItem = PurchaseOrderItemFactory.createNew({
+              poId: po.poId,
+              stockItemId: item.stockItemId as any,
+              unitBase: item.unitBase as any,
+              equivalence: item.equivalence as any,
+              factor: item.factor as any,
+              afectType: item.afectType as any,
+              quantity: item.quantity as any,
+              porcentageIgv: item.porcentageIgv ?? 0,
+              baseWithoutIgv: item.baseWithoutIgv ?? 0,
+              amountIgv: item.amountIgv ?? 0,
+              unitValue: item.unitValue ?? 0,
+              unitPrice: item.unitPrice ?? 0,
+              purchaseValue: item.purchaseValue ?? 0,
+              currency: currency as any,
+            });
+          } catch (err) {
+            if (err instanceof DomainError || (err as any)?.name === "InvalidMoneyError") {
+              throw new BadRequestException({ type: "error", message: (err as Error).message });
+            }
+            throw err;
+          }
 
           try {
             await this.itemRepo.add(orderItem, tx);
@@ -153,14 +154,11 @@ export class CreatePurchaseOrderUsecase {
             payment.quotaId,
           );
 
-          let createdDoc: PaymentDocument;
           try {
-            createdDoc = await this.paymentDocRepo.create(document, tx);
+            await this.paymentDocRepo.create(document, tx);
           } catch {
             throw new BadRequestException({ type: "error", message: "No se pudo crear el documento de pago" });
           }
-
-          // pago ya queda asociado por poId / quotaId en payment_documents
         }
       }
 
@@ -196,14 +194,11 @@ export class CreatePurchaseOrderUsecase {
             po.poId,
           );
 
-          let createdQuota: CreditQuota;
           try {
-            createdQuota = await this.creditQuotaRepo.create(quota, tx);
+            await this.creditQuotaRepo.create(quota, tx);
           } catch {
             throw new BadRequestException({ type: "error", message: "No se pudo crear la cuota" });
           }
-
-          // cuota ya queda asociada por poId en credit_quotas
         }
       }
 

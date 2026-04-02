@@ -36,9 +36,9 @@ export class PurchaseOrderItemFactory {
     const stockItemId = new PurchaseStockItemId(params.stockItemId).value;
     const quantity = PurchaseQuantity.create(params.quantity).value;
     const factor =
-      params.factor === undefined || params.factor === null
-        ? params.factor
-        : PurchaseFactor.create(params.factor).value;
+    params.factor === undefined || params.factor === null
+      ? 1
+      : PurchaseFactor.create(params.factor).value;
     const igvPercentage = PurchaseIgvPercentage.create(
       PurchaseOrderItemFactory.toNumber(params.porcentageIgv),
     ).value;
@@ -84,9 +84,10 @@ export class PurchaseOrderItemFactory {
     const stockItemId = new PurchaseStockItemId(params.stockItemId).value;
     const quantity = PurchaseQuantity.create(params.quantity).value;
     const factor =
-      params.factor === undefined || params.factor === null
-        ? params.factor
-        : PurchaseFactor.create(params.factor).value;
+    params.factor === undefined || params.factor === null
+      ? 1
+      : PurchaseFactor.create(params.factor).value;
+
     const igvPercentage = PurchaseIgvPercentage.create(
       PurchaseOrderItemFactory.toNumber(params.porcentageIgv),
     ).value;

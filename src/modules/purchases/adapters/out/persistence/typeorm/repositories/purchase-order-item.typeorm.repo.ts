@@ -7,6 +7,7 @@ import { PurchaseOrderItem } from "src/modules/purchases/domain/entities/purchas
 import { PurchaseOrderItemRepository } from "src/modules/purchases/domain/ports/purchase-order-item.port.repository";
 import { PurchaseOrderItemEntity } from "../entities/purchase-order-item.entity";
 import { PurchaseOrderItemMapper } from "../mappers/purchase-order-item.mapper";
+import { CurrencyType } from "src/modules/purchases/domain/value-objects/currency-type";
 
 @Injectable()
 export class PurchaseOrderItemTypeormRepository implements PurchaseOrderItemRepository {
@@ -30,7 +31,8 @@ export class PurchaseOrderItemTypeormRepository implements PurchaseOrderItemRepo
     const repo = this.getRepo(tx);
     const row = repo.create(PurchaseOrderItemMapper.toPersistence(item));
     const saved = await repo.save(row);
-    return PurchaseOrderItemMapper.toDomain(saved);
+    const currency = item.unitPrice.getCurrency() as CurrencyType;
+    return PurchaseOrderItemMapper.toDomain(saved, currency);
   }
 
   async remove(poItemId: string, tx?: TransactionContext): Promise<boolean> {
@@ -43,8 +45,12 @@ export class PurchaseOrderItemTypeormRepository implements PurchaseOrderItemRepo
     return result.affected ?? 0;
   }
 
-  async getByPurchaseId(poId: string, tx?: TransactionContext): Promise<PurchaseOrderItem[]> {
+  async getByPurchaseId(
+    poId: string,
+    currency: CurrencyType,
+    tx?: TransactionContext,
+  ): Promise<PurchaseOrderItem[]> {
     const rows = await this.getRepo(tx).find({ where: { poId } });
-    return rows.map((r) => PurchaseOrderItemMapper.toDomain(r));
+    return rows.map((r) => PurchaseOrderItemMapper.toDomain(r, currency));
   }
 }

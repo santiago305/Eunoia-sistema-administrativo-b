@@ -10,6 +10,7 @@ import { GetActiveDocumentSerieUseCase } from "src/modules/inventory/application
 import { ReferenceType } from "src/modules/inventory/domain/value-objects/reference-type";
 import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/inventory/application/ports/document.repository.port";
 import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
+import { CurrencyType } from "src/modules/purchases/domain/value-objects/currency-type";
 
 @Injectable()
 export class PostInventoryFromPurchaseUsecase {
@@ -44,7 +45,7 @@ export class PostInventoryFromPurchaseUsecase {
         throw new NotFoundException({ type: "error", message: "Orden no encontrada" });
       }
 
-      const items = await this.purchaseItemRepo.getByPurchaseId(order.poId);
+      const items = await this.purchaseItemRepo.getByPurchaseId(order.poId, order.currency ?? CurrencyType.PEN);
       if (items.length === 0) {
         throw new BadRequestException({ type: "error", message: "La orden no tiene items" });
       }
