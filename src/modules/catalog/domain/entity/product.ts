@@ -1,4 +1,4 @@
-import { Money } from '../value-object/money.vo';
+import { Money } from '../../../../shared/value-objets/money.vo';
 import { ProductId } from '../value-object/product-id.vo';
 import { ProductType } from '../value-object/productType';
 import { AttributesRecord } from '../value-object/variant-attributes.vo';

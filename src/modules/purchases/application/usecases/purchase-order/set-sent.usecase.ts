@@ -3,6 +3,7 @@ import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.p
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
 import { PurchaseOrderStatus } from "src/modules/purchases/domain/value-objects/po-status";
 import { PurchaseOrderExpectedScheduler } from "src/modules/purchases/application/jobs/purchase-order-expected-scheduler";
+import { errorResponse, successResponse } from "src/shared/response-standard/response";
 
 export class SetSentPurchaseOrderUsecase {
   constructor(
@@ -17,15 +18,15 @@ export class SetSentPurchaseOrderUsecase {
     return this.uow.runInTransaction(async (tx) => {
       const order = await this.purchaseRepo.findById(poId, tx);
       if (!order) {
-        throw new NotFoundException({ type: "error", message: "Orden no encontrada" });
+        throw new NotFoundException(errorResponse("Orden no encontrada"));
       }
 
       if (!order.expectedAt) {
-        throw new BadRequestException({ type: "error", message: "La orden no tiene expectedAt" });
+        throw new BadRequestException(errorResponse("La orden no tiene expectedAt" ));
       }
 
       if (![PurchaseOrderStatus.DRAFT, PurchaseOrderStatus.PARTIAL].includes(order.status)) {
-        throw new BadRequestException({ type: "error", message: "Estado inválido para pasar a SENT" });
+        throw new BadRequestException(errorResponse("Estado inválido para pasar a SENT"));
       }
 
       const updated = await this.purchaseRepo.update(
@@ -34,12 +35,12 @@ export class SetSentPurchaseOrderUsecase {
       );
 
       if (!updated) {
-        throw new BadRequestException({ type: "error", message: "No se pudo actualizar estado" });
+        throw new BadRequestException(errorResponse("No se pudo actualizar estado" ));
       }
 
       this.scheduler.schedule(updated.poId, updated.expectedAt!);
 
-      return { type: "success", message: "Orden marcada como SENT y programada" };
+      return successResponse("Orden marcada como SENT y programada");
     });
   }
 }

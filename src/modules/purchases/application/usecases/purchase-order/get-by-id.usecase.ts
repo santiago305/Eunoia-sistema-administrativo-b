@@ -14,6 +14,7 @@ import { toProductOutput, toVariantOutput } from "src/modules/production/applica
 import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/modules/catalog/application/ports/product-variant.repository";
 import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/application/ports/product.repository";
 import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
+import { CurrencyType } from "src/modules/purchases/domain/value-objects/currency-type";
 
 export class GetPurchaseOrderUsecase {
   constructor(
@@ -38,7 +39,7 @@ export class GetPurchaseOrderUsecase {
     }
 
     const [items, payments, quotas] = await Promise.all([
-      this.itemRepo.getByPurchaseId(order.poId),
+      this.itemRepo.getByPurchaseId(order.poId, order.currency ?? CurrencyType.PEN),
       this.paymentDocRepo.findByPoId(order.poId),
       this.creditQuotaRepo.findByPoId(order.poId),
     ]);

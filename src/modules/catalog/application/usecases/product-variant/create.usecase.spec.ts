@@ -3,7 +3,7 @@ import { CreateProductVariant } from './create.usecase';
 import { Product } from 'src/modules/catalog/domain/entity/product';
 import { ProductVariant } from 'src/modules/catalog/domain/entity/product-variant';
 import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo';
-import { Money } from 'src/modules/catalog/domain/value-object/money.vo';
+import { Money } from 'src/shared/value-objets/money.vo';
 
 describe('CreateProductVariant', () => {
   const productUuid = '11111111-1111-4111-8111-111111111111';

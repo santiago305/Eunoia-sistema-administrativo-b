@@ -2,7 +2,7 @@ import { ConflictException, Inject, InternalServerErrorException, NotFoundExcept
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { ProductId } from "src/modules/catalog/domain/value-object/product-id.vo";
 import { UpdateProductInput } from "../../dto/products/input/update-product";
-import { Money } from "src/modules/catalog/domain/value-object/money.vo";
+import { Money } from "src/shared/value-objets/money.vo";
 import { PRODUCT_REPOSITORY, ProductRepository } from "../../ports/product.repository";
 export class UpdateProduct {
   constructor(

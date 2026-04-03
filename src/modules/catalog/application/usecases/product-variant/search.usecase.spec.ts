@@ -1,6 +1,6 @@
 import { SearchProductVariants } from './search.usecase';
 import { ProductVariant } from 'src/modules/catalog/domain/entity/product-variant';
-import { Money } from 'src/modules/catalog/domain/value-object/money.vo';
+import { Money } from 'src/shared/value-objets/money.vo';
 import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo';
 
 describe('SearchProductVariants', () => {

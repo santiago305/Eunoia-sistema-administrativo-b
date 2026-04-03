@@ -1,6 +1,6 @@
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { SupplierVariant } from "../entity/supplierVariant";
-import { Money } from "src/modules/catalog/domain/value-object/money.vo";
+import { Money } from "src/shared/value-objets/money.vo";
 
 export const SUPPLIER_VARIANT_REPOSITORY = Symbol('SUPPLIER_VARIANT_REPOSITORY');
 

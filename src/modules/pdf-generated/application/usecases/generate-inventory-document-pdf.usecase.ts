@@ -21,6 +21,7 @@ import { SERIES_REPOSITORY, DocumentSeriesRepository } from "src/modules/invento
 import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/inventory/application/ports/document.repository.port";
 import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
 import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "src/modules/warehouses/application/ports/warehouse.repository.port";
+import { errorResponse } from "src/shared/response-standard/response";
 
 const resolveLogoUrl = async (logoPath?: string) => {
   if (!logoPath) return undefined;
@@ -120,7 +121,16 @@ export class GenerateInventoryDocumentPdfUseCase {
     ]);
 
     if (!serie) {
-      throw new BadRequestException({ type: "error", message: "Serie invalida" });
+      throw new BadRequestException(errorResponse("Serie invalida"));
+    }
+    if (!company) {
+      throw new BadRequestException(errorResponse("Compañia invalida"));
+    }
+    if (!fromWarehouse) {
+      throw new BadRequestException(errorResponse("Almacén de origen invalido"));
+    }
+    if (!toWarehouse) {
+      throw new BadRequestException(errorResponse("Almacén de destino invalido"));
     }
 
     const stockItemCache = new Map<string, StockItem | null>();

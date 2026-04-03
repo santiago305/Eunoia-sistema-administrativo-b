@@ -1,4 +1,4 @@
-import { Money } from "src/modules/catalog/domain/value-object/money.vo";
+import { Money } from "src/shared/value-objets/money.vo";
 
 export class SupplierVariant {
     constructor(

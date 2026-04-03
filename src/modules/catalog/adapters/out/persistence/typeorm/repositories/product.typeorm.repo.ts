@@ -9,7 +9,7 @@ import { ProductVariant } from 'src/modules/catalog/domain/entity/product-varian
 import { ProductVariantEntity } from '../entities/product-variant.entity';
 import { UnitEntity } from '../entities/unit.entity';
 import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo';
-import { Money } from 'src/modules/catalog/domain/value-object/money.vo';
+import { Money } from 'src/shared/value-objets/money.vo';
 import { ProductType } from 'src/modules/catalog/domain/value-object/productType';
 import { AttributesRecord } from 'src/modules/catalog/domain/value-object/variant-attributes.vo';
 import { RowMaterial } from 'src/modules/catalog/domain/read-models/row-materials';
@@ -419,7 +419,7 @@ export class ProductTypeormRepository implements ProductRepository {
       productName: r.p_name,
       productDescription: r.p_description,
       sku: r.p_sku,
-      baseUnitId: r.p_baseUnitId,
+      baseUnitId: r.p_baseUnitId ?? r.p_base_unit_id,
       unitCode: r.u_code,
       unitName: r.u_name,
       type:'PRODUCT',
@@ -472,6 +472,7 @@ export class ProductTypeormRepository implements ProductRepository {
         'p.sku',
         'p.customSku',
         'p.attributes',
+        'p.createdAt',  
         'u.code',
         'u.name',
       ])
@@ -488,6 +489,7 @@ export class ProductTypeormRepository implements ProductRepository {
       type: 'PRODUCT',
       attributes: r.p_attributes,
       customSku: r.p_custom_sku,
+      createdAt: r.p_createdAt ?? r.p_created_at
     }));
   }
 

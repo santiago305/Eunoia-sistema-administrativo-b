@@ -2,7 +2,7 @@ import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { ProductVariant } from "../../domain/entity/product-variant";
 import { ProductVariantWithProductInfo } from "../../domain/read-models/product-variant-with-product-info.rm";
 import { RowMaterial } from "../../domain/read-models/row-materials";
-import { Money } from "../../domain/value-object/money.vo";
+import { Money } from "../../../../shared/value-objets/money.vo";
 import { ProductId } from "../../domain/value-object/product-id.vo";
 import { AttributesRecord } from "../../domain/value-object/variant-attributes.vo";
 

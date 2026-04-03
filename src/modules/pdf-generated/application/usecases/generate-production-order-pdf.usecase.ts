@@ -16,6 +16,7 @@ import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/module
 import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/application/ports/product.repository";
 import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
 import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "src/modules/warehouses/application/ports/warehouse.repository.port";
+import { errorResponse } from "src/shared/response-standard/response";
 
 const resolveLogoUrl = async (logoPath?: string) => {
   if (!logoPath) return undefined;
@@ -84,6 +85,15 @@ export class GenerateProductionOrderPdfUseCase {
       order.fromWarehouseId ? this.warehouseRepo.findById(new WarehouseId(order.fromWarehouseId)) : null,
       order.toWarehouseId ? this.warehouseRepo.findById(new WarehouseId(order.toWarehouseId)) : null,
     ]);
+    if (!company) {
+      throw new BadRequestException(errorResponse("Compañia invalida"));
+    }
+    if (!fromWarehouse) {
+      throw new BadRequestException(errorResponse("Almacén de origen invalido"));
+    }
+    if (!toWarehouse) {
+      throw new BadRequestException(errorResponse("Almacén de destino invalido"));
+    }
 
     const productInfoCache = new Map<string, ProductWithUnitInfo | null>();
     const variantInfoCache = new Map<string, ProductVariantWithProductInfo | null>();

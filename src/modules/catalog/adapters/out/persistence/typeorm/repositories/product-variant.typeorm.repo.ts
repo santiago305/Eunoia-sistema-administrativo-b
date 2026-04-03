@@ -8,7 +8,7 @@ import { UnitEntity } from '../entities/unit.entity';
 import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
 import { TypeormTransactionContext } from 'src/shared/domain/ports/typeorm-transaction-context';
 import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo';
-import { Money } from 'src/modules/catalog/domain/value-object/money.vo';
+import { Money } from 'src/shared/value-objets/money.vo';
 import { ProductVariantWithProductInfo } from 'src/modules/catalog/domain/read-models/product-variant-with-product-info.rm';
 import { AttributesRecord } from 'src/modules/catalog/domain/value-object/variant-attributes.vo';
 import { RowMaterial } from 'src/modules/catalog/domain/read-models/row-materials';
@@ -311,6 +311,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
           'p.baseUnitId',
           'u.code',
           'u.name',
+          'p.createdAt'
         ])
         .getRawMany();
 
@@ -324,6 +325,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
         unitName: r.u_name,
         type:'VARIANT',
         attributes: r.v_attributes,
+        createdAt: r.v_createdAt
       }));
     }
 
@@ -367,6 +369,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
         'v.sku',
         'v.customSku',
         'v.attributes',
+        'v.createdAt',
         'p.name',
         'p.description',
         'p.baseUnitId',
@@ -380,12 +383,13 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       productName: r.p_name,
       productDescription: r.p_description,
       sku: r.v_sku,
-      baseUnitId: r.p_baseUnitId,
+      baseUnitId: r.p_baseUnitId ?? r.p_base_unit_id,
       unitCode: r.u_code,
       unitName: r.u_name,
       type: 'VARIANT',
       attributes: r.v_attributes,
       customSku: r.v_custom_sku,
+      createdAt: r.v_createdAt ?? r.v_created_at
     }));
   }
 
