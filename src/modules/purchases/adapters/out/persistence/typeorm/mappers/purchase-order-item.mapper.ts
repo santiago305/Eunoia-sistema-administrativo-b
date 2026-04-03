@@ -5,13 +5,17 @@ import { PurchaseOrderItemEntity } from "../entities/purchase-order-item.entity"
 
 export class PurchaseOrderItemMapper {
   static toDomain(orm: PurchaseOrderItemEntity, currency: CurrencyType): PurchaseOrderItem {
+    const safeFactor =
+      orm.factor !== undefined && orm.factor !== null && Number(orm.factor) > 0
+        ? Number(orm.factor)
+        : 1;
     return PurchaseOrderItemFactory.reconstitute({
       poItemId: orm.id,
       poId: orm.poId,
       stockItemId: orm.stockItemId,
       unitBase: orm.unitBase ?? "",
       equivalence: orm.equivalencia ?? "",
-      factor: orm.factor ?? 1,
+      factor: safeFactor,
       afectType: orm.afectType,
       quantity: Number(orm.quantity ?? 0),
       porcentageIgv: Number(orm.porcentageIgv ?? 0),
