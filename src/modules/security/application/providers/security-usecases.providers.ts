@@ -8,6 +8,7 @@ import { GetReasonDistributionSecurityUseCase } from '../use-cases/get-reason-di
 import { GetRiskScoreByIpSecurityUseCase } from '../use-cases/get-risk-score-by-ip-security.usecase';
 import { GetRiskScoreSecurityUseCase } from '../use-cases/get-risk-score-security.usecase';
 import { GetSecurityReasonsCatalogUseCase } from '../use-cases/get-security-reasons-catalog.usecase';
+import { GetSecuritySummaryUseCase } from '../use-cases/get-security-summary.usecase';
 import { GetTopIpsSecurityUseCase } from '../use-cases/get-top-ips-security.usecase';
 import { GetTopRoutesSecurityUseCase } from '../use-cases/get-top-routes-security.usecase';
 import { ManageManualIpBlacklistUseCase } from '../use-cases/manage-manual-ip-blacklist.usecase';
@@ -28,6 +29,7 @@ export const securityUseCasesProviders = [
   GetTopRoutesSecurityUseCase,
   GetRiskScoreSecurityUseCase,
   GetRiskScoreByIpSecurityUseCase,
+  GetSecuritySummaryUseCase,
   ExportSecurityAuditCsvUseCase,
   GetSecurityReasonsCatalogUseCase,
 ];

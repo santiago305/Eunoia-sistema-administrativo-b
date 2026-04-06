@@ -17,6 +17,7 @@ import { GetRiskScoreSecurityUseCase } from 'src/modules/security/application/us
 import { GetRiskScoreByIpSecurityUseCase } from 'src/modules/security/application/use-cases/get-risk-score-by-ip-security.usecase';
 import { ExportSecurityAuditCsvUseCase } from 'src/modules/security/application/use-cases/export-security-audit-csv.usecase';
 import { GetSecurityReasonsCatalogUseCase } from 'src/modules/security/application/use-cases/get-security-reasons-catalog.usecase';
+import { GetSecuritySummaryUseCase } from 'src/modules/security/application/use-cases/get-security-summary.usecase';
 import { SecurityValidationApplicationError } from 'src/modules/security/application/errors/security-validation.error';
 
 @Controller('security')
@@ -33,20 +34,36 @@ export class SecurityController {
     private readonly getTopRoutesSecurityUseCase: GetTopRoutesSecurityUseCase,
     private readonly getRiskScoreSecurityUseCase: GetRiskScoreSecurityUseCase,
     private readonly getRiskScoreByIpSecurityUseCase: GetRiskScoreByIpSecurityUseCase,
+    private readonly getSecuritySummaryUseCase: GetSecuritySummaryUseCase,
     private readonly exportSecurityAuditCsvUseCase: ExportSecurityAuditCsvUseCase,
     private readonly getSecurityReasonsCatalogUseCase: GetSecurityReasonsCatalogUseCase,
     private readonly manageManualIpBlacklistUseCase: ManageManualIpBlacklistUseCase,
   ) {}
 
+  @Get('summary')
+  getSummary(@Query('hours') hours?: string) {
+    return this.getSecuritySummaryUseCase.execute({
+      hours: hours ? Number(hours) : undefined,
+    });
+  }
+
   @Get('top-ips')
   getTopIps(
     @Query('hours') hours?: string,
+    @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('reason') reason?: string,
+    @Query('sortBy') sortBy?: string,
+    @Query('sortOrder') sortOrder?: string,
   ) {
-    const parsedHours = hours ? Number(hours) : undefined;
-    const parsedLimit = limit ? Number(limit) : undefined;
-    return this.getTopIpsSecurityUseCase.execute({ hours: parsedHours, limit: parsedLimit, reason });
+    return this.getTopIpsSecurityUseCase.execute({
+      hours: hours ? Number(hours) : undefined,
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+      reason,
+      sortBy,
+      sortOrder,
+    });
   }
 
   @Get('active-bans')
