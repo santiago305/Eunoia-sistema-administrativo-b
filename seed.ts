@@ -41,7 +41,7 @@ import { seedWarehouses } from './src/modules/warehouses/infrastructure/seed/war
 import { seedDocumentSeries } from './src/modules/inventory/infrastructure/seed/document_serie.seeder';
 import { seedPaymentMethods } from './src/modules/payment-methods/infrastructure/seed/payment-method.seeder';
 import { seedSuppliers } from './src/modules/suppliers/infrastructure/seed/supplier.seeder';
-import { seedProducts } from './src/modules/catalog/infrastructure/seed/product.seeder';
+import { seedProductsManual } from './src/modules/catalog/infrastructure/seed/product.seeder';
 import { seedProductEquivalences } from './src/modules/catalog/infrastructure/seed/product-equivalence.seeder';
 import { seedProductRecipes } from './src/modules/catalog/infrastructure/seed/product-recipe.seeder';
 import { seedPurchaseOrders } from './src/modules/purchases/infrastructure/seed/purchase-order.seeder';
@@ -103,6 +103,7 @@ dataSource
     await seedSecurityReasonCatalog(dataSource);
     await seedSecurityIpActivity(dataSource);
     await seedUnits(dataSource);
+    await seedProductsManual(dataSource);
 
     const warehouses = await seedWarehouses(dataSource);
     for (const wh of warehouses) {

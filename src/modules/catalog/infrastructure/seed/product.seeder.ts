@@ -16,82 +16,379 @@ import { ProductEquivalenceTypeormRepository } from "../../adapters/out/persiste
 import { ProductEquivalenceEntity } from "../../adapters/out/persistence/typeorm/entities/product-equivalence.entity";
 import { CreateProduct } from "../../application/usecases/product/created.usecase";
 import { CreateProductVariant } from "../../application/usecases/product-variant/create.usecase";
-import { ProductOutput } from "../../application/dto/products/output/product-out";
-import { ProductId } from "../../domain/value-object/product-id.vo";
+import { ProductRecipeEntity } from "../../adapters/out/persistence/typeorm/entities/product-recipe.entity";
+import { ProductRecipeTypeormRepository } from "../../adapters/out/persistence/typeorm/repositories/product-recipe.typeorm.repo";
+import { CreateProductRecipe } from "../../application/usecases/product-recipe/create.usecase";
 
-type SeedProductsOptions = {
-  finishedCount?: number;
-  rawCount?: number;
-  variantsPerProduct?: number;
+type ManualProductSeed = {
+  product: {
+    customSku: string;
+    name: string;
+    description?: string;
+    baseUnitCode: string;
+    barcode?: string | null;
+    price: number;
+    cost: number;
+    attributes?: Record<string, unknown>;
+    type: ProductType;
+    isActive?: boolean;
+  };
+  variants?: Array<{
+    customSku: string;
+    barcode?: string | null;
+    price: number;
+    cost: number;
+    attributes?: Record<string, unknown>;
+    isActive?: boolean;
+  }>;
+  equivalences?: Array<{
+    fromUnitCode: string;
+    toUnitCode: string;
+    factor: number;
+  }>;
 };
 
-const pad = (value: number, size: number) => String(value).padStart(size, "0");
+type ManualRecipeSeed = {
+  finishedCustomSku: string;
+  primaCustomSku: string;
+  quantity: number;
+  waste?: number | null;
+};
 
-const FINISHED_BASE_NAMES = [
-  "Crema de manos",
-  "Crema corporal",
-  "Locion hidratante",
-  "Jabon liquido",
-  "Shampoo",
-  "Acondicionador",
-  "Gel de ducha",
-  "Exfoliante corporal",
-  "Tonico facial",
-  "Serum facial",
-  "Protector solar",
-  "Desodorante",
-  "Balsamo labial",
-  "Crema antiarrugas",
-  "Mascarilla facial",
-  "Crema de noche",
-  "Crema de dia",
-  "Agua micelar",
-  "Limpiador facial",
-  "Crema para pies",
+const PRODUCTS_MANUAL: ManualProductSeed[] = [
+  {
+    product: {
+      customSku: "JABON-01",
+      name: "Jabon",
+      description: "",
+      baseUnitCode: "NIU",
+      barcode: "",
+      price: 0,
+      cost: 0,
+      attributes: { presentation:"", variant: "Azufre", color: "" },
+      type: ProductType.FINISHED,
+      isActive: true,
+    },
+    equivalences: [
+      { fromUnitCode: "NIU", toUnitCode: "NIU", factor: 1 },
+    ],
+    variants: [
+      {
+        customSku: "JABON-02",
+        barcode: "",
+        price: 0,
+        cost: 0,
+        attributes: { presentation:"", variant: "Curcuma", color:"" },
+        isActive: true,
+      },
+    ],
+  },
+  {
+    product: {
+      customSku: "ARCILL-01",
+      name: "Arcilla para piel",
+      baseUnitCode: "NIU",
+      barcode: "",
+      price: 0,
+      cost: 0,
+      attributes: { presentation:"200gr", variant: "", color:"Verde" },
+      type: ProductType.FINISHED,
+      isActive: true,
+    },
+    equivalences: [
+      { fromUnitCode: "NIU", toUnitCode: "NIU", factor: 1 },
+    ],
+    variants: [
+      {
+        customSku: "ARCILL-02",
+        barcode: "",
+        price: 0,
+        cost: 0,
+        attributes: { presentation:"200gr", variant: "", color:"Rosa" },
+      },
+    ],
+  },
+  {
+    product: {
+      customSku: "AMPOLL-01",
+      name: "Ampolla antiacne",
+      baseUnitCode: "NIU",
+      barcode: "",
+      price: 0,
+      cost: 0,
+      attributes: { presentation:"35gr", variant: "", color:"" },
+      type: ProductType.FINISHED,
+      isActive: true,
+    },
+    equivalences: [
+      { fromUnitCode: "NIU", toUnitCode: "NIU", factor: 1 },
+    ],
+  },
+  {
+    product: {
+      customSku: "EMBOL-01",
+      name: "Emboltorio",
+      baseUnitCode: "NIU",
+      barcode: "",
+      price: 0,
+      cost: 0,
+      attributes: { presentation:"", variant: "Curcuma", color:"" },
+      type: ProductType.PRIMA,
+      isActive: true,
+    },
+    equivalences: [
+      { fromUnitCode: "NIU", toUnitCode: "NIU", factor: 1 },
+      { fromUnitCode: "NIU", toUnitCode: "PKE", factor: 500 },
+    ],
+    variants: [
+      {
+        customSku: "EMBOL-02",
+        barcode: "",
+        price: 0,
+        cost: 0,
+        attributes: { presentation:"", variant: "Azufre", color:"" },
+      },
+    ],
+  },
+  {
+    product: {
+      customSku: "PEGAT-01",
+      name: "Pegatina",
+      baseUnitCode: "NIU",
+      barcode: "",
+      price: 0,
+      cost: 0,
+      attributes: { presentation:"", variant: "Curcuma", color:"" },
+      type: ProductType.PRIMA,
+      isActive: true,
+    },
+    equivalences: [
+      { fromUnitCode: "NIU", toUnitCode: "NIU", factor: 1 },
+      { fromUnitCode: "NIU", toUnitCode: "PKE", factor: 500 },
+    ],
+    variants: [
+      {
+        customSku: "PEGAT-02",
+        barcode: "",
+        price: 0,
+        cost: 0,
+        attributes: { presentation:"", variant: "Azufre", color:"" },
+      },
+      {
+        customSku: "PEGAT-03",
+        barcode: "",
+        price: 0,
+        cost: 0,
+        attributes: { presentation:"", variant: "Ampolla", color:"" },
+      },
+    ],
+  },
+  {
+    product: {
+      customSku: "ARCILL-PRE-01",
+      name: "Arcilla preparada",
+      baseUnitCode: "GRM",
+      barcode: "",
+      price: 0,
+      cost: 0,
+      attributes: { presentation:"", variant: "Verde", color:"" },
+      type: ProductType.PRIMA,
+      isActive: true,
+    },
+    equivalences: [
+      { fromUnitCode: "GRM", toUnitCode: "GRM", factor: 1 },
+      { fromUnitCode: "GRM", toUnitCode: "KGM", factor: 1000 },
+    ],
+    variants: [
+      {
+        customSku: "ARCILL-PRE-02",
+        barcode: "",
+        price: 0,
+        cost: 0,
+        attributes: { presentation:"", variant: "Rosa", color:"" },
+      },
+    ],
+  },
+  {
+    product: {
+      customSku: "BOLSA-01",
+      name: "Bolsa",
+      baseUnitCode: "NIU",
+      barcode: "",
+      price: 0,
+      cost: 0,
+      attributes: { presentation:"", variant: "Verde", color:"" },
+      type: ProductType.PRIMA,
+      isActive: true,
+    },
+    equivalences: [
+      { fromUnitCode: "NIU", toUnitCode: "NIU", factor: 1 },
+      { fromUnitCode: "NIU", toUnitCode: "PKE", factor: 500 },
+    ],
+    variants: [
+      {
+        customSku: "BOLSA-02",
+        barcode: "",
+        price: 0,
+        cost: 0,
+        attributes: { presentation:"", variant: "Rosa", color:"" },
+      },
+    ],
+  },
+  {
+    product: {
+      customSku: "STICKER-01",
+      name: "Sticker",
+      baseUnitCode: "NIU",
+      barcode: "",
+      price: 0,
+      cost: 0,
+      attributes: { presentation:"", variant: "Verde", color:"" },
+      type: ProductType.PRIMA,
+      isActive: true,
+    },
+    equivalences: [
+      { fromUnitCode: "NIU", toUnitCode: "NIU", factor: 1 },
+      { fromUnitCode: "NIU", toUnitCode: "PKE", factor: 500 },
+    ],
+    variants: [
+      {
+        customSku: "STICKER-02",
+        barcode: "",
+        price: 0,
+        cost: 0,
+        attributes: { presentation:"", variant: "Rosa", color:"" },
+      },
+    ],
+  },
+  {
+    product: {
+      customSku: "LIQUIDO-01",
+      name: "Liquido",
+      baseUnitCode: "GRM",
+      barcode: "",
+      price: 0,
+      cost: 0,
+      attributes: { presentation:"", variant: "Ampoya", color:"" },
+      type: ProductType.PRIMA,
+      isActive: true,
+    },
+    equivalences: [
+      { fromUnitCode: "GRM", toUnitCode: "GRM", factor: 1 },
+      { fromUnitCode: "GRM", toUnitCode: "KGM", factor: 1000 },
+    ],
+  },
+  {
+    product: {
+    customSku: "EMBASE-01",
+    name: "Embase",
+    baseUnitCode: "NIU",
+    barcode: "",
+    price: 0,
+    cost: 0,
+    attributes: { presentation:"", variant: "Ampoya", color:"" },
+    type: ProductType.PRIMA,
+    isActive: true,
+  },
+  equivalences: [
+    { fromUnitCode: "NIU", toUnitCode: "NIU", factor: 1 },
+    { fromUnitCode: "NIU", toUnitCode: "BX", factor: 50 },
+  ],
+},
+];
+const RECIPES_MANUAL: ManualRecipeSeed[] = [
+  {
+    finishedCustomSku: "JABON-01",
+    primaCustomSku: "EMBOL-01",
+    quantity: 1,
+    waste: 0,
+  },
+  {
+    finishedCustomSku: "JABON-01",
+    primaCustomSku: "PEGAT-01",
+    quantity: 1,
+    waste: 0,
+  },
+
+  {
+    finishedCustomSku: "JABON-02",
+    primaCustomSku: "EMBOL-02",
+    quantity: 1,
+    waste: 0,
+  },
+  {
+    finishedCustomSku: "JABON-02",
+    primaCustomSku: "PEGAT-02",
+    quantity: 1,
+    waste: 0,
+  },
+  
+  {
+    finishedCustomSku: "ARCILL-01",
+    primaCustomSku: "ARCILL-PRE-01",
+    quantity: 200,
+    waste: 0,
+  },
+  {
+    finishedCustomSku: "ARCILL-01",
+    primaCustomSku: "BOLSA-01",
+    quantity: 1,
+    waste: 0,
+  },
+  {
+    finishedCustomSku: "ARCILL-01",
+    primaCustomSku: "STICKER-01",
+    quantity: 1,
+    waste: 0,
+  },
+
+  {
+    finishedCustomSku: "ARCILL-02",
+    primaCustomSku: "ARCILL-PRE-02",
+    quantity: 200,
+    waste: 0,
+  },
+  {
+    finishedCustomSku: "ARCILL-02",
+    primaCustomSku: "BOLSA-02",
+    quantity: 1,
+    waste: 0,
+  },
+  {
+    finishedCustomSku: "ARCILL-02",
+    primaCustomSku: "STICKER-02",
+    quantity: 1,
+    waste: 0,
+  },
+
+  {
+    finishedCustomSku: "AMPOLL-01",
+    primaCustomSku: "LIQUIDO-01",
+    quantity: 35,
+    waste: 0,
+  },
+  {
+    finishedCustomSku: "AMPOLL-01",
+    primaCustomSku: "EMBASE-01",
+    quantity: 1,
+    waste: 0,
+  },
+  {
+    finishedCustomSku: "AMPOLL-01",
+    primaCustomSku: "PEGAT-03",
+    quantity: 1,
+    waste: 0,
+  },
+
 ];
 
-const RAW_BASE_NAMES = [
-  "Glicerina vegetal",
-  "Aceite de coco",
-  "Aceite de almendras",
-  "Aceite de jojoba",
-  "Manteca de karite",
-  "Manteca de cacao",
-  "Alcohol cetilico",
-  "Cera emulsionante",
-  "Acido hialuronico",
-  "Vitamina E",
-  "Vitamina C",
-  "Pantenol",
-  "Niacinamida",
-  "Aloe vera",
-  "Extracto de manzanilla",
-  "Extracto de calendula",
-  "Fragancia floral",
-  "Fragancia citrica",
-  "Conservante cosmetico",
-  "Colorante cosmetico",
-  "Envase plastico 250ml",
-  "Envase PET 500ml",
-  "Envase vidrio 100ml",
-  "Tapa rosca 28mm",
-  "Tapa flip-top 24mm",
-  "Etiqueta frontal",
-  "Etiqueta trasera",
-  "Caja carton individual",
-  "Sachet muestra",
-  "Bomba dosificadora",
-];
-
-export const seedProducts = async (
-  dataSource: DataSource,
-  options: SeedProductsOptions = {},
-): Promise<void> => {
-  const finishedCount = options.finishedCount ?? 90;
-  const rawCount = options.rawCount ?? 110;
-  const variantsPerProduct = options.variantsPerProduct ?? 2;
-
+export const seedProductsManual = async (dataSource: DataSource): Promise<void> => {
   const unitRepo = dataSource.getRepository(UnitEntity);
+  const productEntityRepo = dataSource.getRepository(ProductEntity);
+  const variantEntityRepo = dataSource.getRepository(ProductVariantEntity);
+  const equivalenceEntityRepo = dataSource.getRepository(ProductEquivalenceEntity);
+  const recipeRepo = dataSource.getRepository(ProductRecipeEntity);
+
   const stockItemRepo = new StockItemTypeormRepository(
     dataSource.getRepository(StockItemEntity),
   );
@@ -107,18 +404,14 @@ export const seedProducts = async (
   const equivalenceRepo = new ProductEquivalenceTypeormRepository(
     dataSource.getRepository(ProductEquivalenceEntity),
   );
+  const recipeRepoPort = new ProductRecipeTypeormRepository(recipeRepo);
+  const createRecipe = new CreateProductRecipe(recipeRepoPort);
+
   const uow = new TypeormUnitOfWork(dataSource);
   const clock = { now: () => new Date() };
-  const createStockItemForProduct = new CreateStockItemForProduct(
-    uow,
-    stockItemRepo,
-    clock,
-  );
-  const createStockItemForVariant = new CreateStockItemForVariant(
-    uow,
-    stockItemRepo,
-    clock,
-  );
+  const createStockItemForProduct = new CreateStockItemForProduct(uow, stockItemRepo, clock);
+  const createStockItemForVariant = new CreateStockItemForVariant(uow, stockItemRepo, clock);
+
   const createProductUsecase = new CreateProduct(
     uow,
     productRepo,
@@ -127,6 +420,7 @@ export const seedProducts = async (
     equivalenceRepo,
     createStockItemForProduct,
   );
+
   const createVariantUsecase = new CreateProductVariant(
     uow,
     productRepo,
@@ -137,111 +431,128 @@ export const seedProducts = async (
   );
 
   const units = await unitRepo.find();
-  if (units.length === 0) {
-    throw new Error("No hay unidades base. Ejecuta seedUnits primero.");
-  }
+  const unitByCode = new Map(units.map((u) => [u.code, u]));
 
-  const createProduct = async (type: ProductType, index: number, seq: number) => {
-    const prefix = type === ProductType.FINISHED ? "FIN" : "PRI";
-    const sku = `${prefix}-${pad(seq, 4)}`;
-    const baseNames = type === ProductType.FINISHED ? FINISHED_BASE_NAMES : RAW_BASE_NAMES;
-    const baseName = baseNames[(seq - 1) % baseNames.length];
-    const name = `${baseName} ${pad(seq, 3)}`;
-    const description =
-      type === ProductType.FINISHED
-        ? "Cosmetico terminado para venta"
-        : "Ingrediente o material para produccion";
+  const resolveVariantByCustomSku = async (customSku: string) => {
+    let variant = await variantEntityRepo.findOne({ where: { customSku } });
+    if (variant) return variant;
 
-    const baseUnitId = units[index % units.length].id;
-    const baseCost = type === ProductType.FINISHED ? 10 + seq : 5 + seq / 2;
-    const price = type === ProductType.FINISHED ? baseCost * 1.4 : baseCost * 1.2;
-
-    let product = await productRepo.findBySku(sku);
+    const product = await productEntityRepo.findOne({ where: { customSku } });
     if (!product) {
-      try {
-        const createdProduct: ProductOutput = await createProductUsecase.execute({
-          name,
-          description,
-          baseUnitId,
-          sku,
-          barcode: `BC-${sku}`,
-          price: Number(price.toFixed(2)),
-          cost: Number(baseCost.toFixed(2)),
-          attributes: { tipo: type },
-          type,
-          isActive: true,
-        });
-        product = await productRepo.findById(ProductId.create(createdProduct.id));
-        console.log(`Producto creado: ${sku}`);
-      } catch {
-        console.log(`Producto ${sku} ya existe, omitiendo...`);
-        product = await productRepo.findBySku(sku);
-      }
-    } else {
-      console.log(`Producto ${sku} ya existe, omitiendo...`);
+      throw new Error(`No existe producto ni variante con customSku: ${customSku}`);
     }
 
-    if (!product) {
-      throw new Error(`No se pudo resolver el producto ${sku}`);
-    }
-
-    const productId = product.getId()?.value;
-    if (!productId) {
-      throw new Error(`Producto sin id: ${sku}`);
-    }
-
-    const existingProductLink = await stockItemRepo.findByProductId(productId);
-    if (!existingProductLink) {
-      await createStockItemForProduct.execute(
-        { productId, isActive: product.getIsActive() },
-      );
-    }
-
-    for (let v = 1; v <= variantsPerProduct; v++) {
-      const variantSku = `${sku}-V${v}`;
-      let variant = await variantRepo.findBySku(variantSku);
-      if (!variant) {
-        const variantPrice = type === ProductType.FINISHED ? price + v : price;
-        try {
-          const createdVariant = await createVariantUsecase.execute({
-            productId,
-            sku: variantSku,
-            barcode: `VB-${variantSku}`,
-            attributes: {
-              variant: `V${v}`,
-              color: v === 1 ? "Rojo" : "Azul",
-            },
-            price: Number(variantPrice.toFixed(2)),
-            cost: Number(baseCost.toFixed(2)),
-            isActive: true,
-          });
-          variant = await variantRepo.findById(createdVariant.variant.id);
-          console.log(`Variante creada: ${variantSku}`);
-        } catch {
-          console.log(`Variante ${variantSku} ya existe, omitiendo...`);
-          variant = await variantRepo.findBySku(variantSku);
-        }
-      } else {
-        console.log(`Variante ${variantSku} ya existe, omitiendo...`);
-      }
-
-      if (!variant) {
-        throw new Error(`No se pudo resolver la variante ${variantSku}`);
-      }
-
-      const existingVariantLink = await stockItemRepo.findByVariantId(variant.getId());
-      if (!existingVariantLink) {
-        await createStockItemForVariant.execute(
-          { variantId: variant.getId(), isActive: variant.getIsActive() },
-        );
-      }
-    }
+    let item:any;
+    return  item = product ?? variant;
   };
 
-  for (let i = 1; i <= finishedCount; i++) {
-    await createProduct(ProductType.FINISHED, i - 1, i);
+  for (const item of PRODUCTS_MANUAL) {
+    const baseUnit = unitByCode.get(item.product.baseUnitCode);
+    if (!baseUnit) {
+      throw new Error(`Unidad no encontrada: ${item.product.baseUnitCode}`);
+    }
+
+    let product = await productEntityRepo.findOne({
+      where: { customSku: item.product.customSku },
+    });
+
+    if (!product) {
+      await createProductUsecase.execute({
+        name: item.product.name,
+        description: item.product.description,
+        baseUnitId: baseUnit.id,
+        customSku: item.product.customSku,
+        barcode: item.product.barcode ?? null,
+        price: item.product.price,
+        cost: item.product.cost,
+        attributes: item.product.attributes ?? {},
+        type: item.product.type,
+        isActive: item.product.isActive ?? true,
+      });
+
+      product = await productEntityRepo.findOne({
+        where: { customSku: item.product.customSku },
+      });
+    }
+
+    if (!product) {
+      throw new Error(`No se pudo resolver producto ${item.product.customSku}`);
+    }
+
+    if (item.equivalences?.length) {
+      for (const eq of item.equivalences) {
+        const fromUnit = unitByCode.get(eq.fromUnitCode);
+        const toUnit = unitByCode.get(eq.toUnitCode);
+        if (!fromUnit || !toUnit) {
+          throw new Error(`Unidad inválida: ${eq.fromUnitCode} -> ${eq.toUnitCode}`);
+        }
+
+        const exists = await equivalenceEntityRepo.findOne({
+          where: {
+            productId: product.id,
+            fromUnitId: fromUnit.id,
+            toUnitId: toUnit.id,
+          },
+        });
+
+        if (!exists) {
+          await equivalenceEntityRepo.save(
+            equivalenceEntityRepo.create({
+              productId: product.id,
+              fromUnitId: fromUnit.id,
+              toUnitId: toUnit.id,
+              factor: eq.factor,
+            }),
+          );
+        }
+      }
+    }
+
+    for (const v of item.variants ?? []) {
+      let variant = await variantEntityRepo.findOne({
+        where: { customSku: v.customSku },
+      });
+
+      if (!variant) {
+        await createVariantUsecase.execute({
+          productId: product.id,
+          customSku: v.customSku,
+          barcode: v.barcode ?? null,
+          price: v.price,
+          cost: v.cost,
+          attributes: v.attributes ?? {},
+          isActive: v.isActive ?? true,
+        });
+
+        variant = await variantEntityRepo.findOne({
+          where: { customSku: v.customSku },
+        });
+      }
+
+      if (!variant) {
+        throw new Error(`No se pudo resolver variante ${v.customSku}`);
+      }
+    }
   }
-  for (let i = 1; i <= rawCount; i++) {
-    await createProduct(ProductType.PRIMA, finishedCount + i - 1, i);
+
+  for (const r of RECIPES_MANUAL) {
+    const finishedVariant = await resolveVariantByCustomSku(r.finishedCustomSku);
+    const primaVariant = await resolveVariantByCustomSku(r.primaCustomSku);
+
+    const exists = await recipeRepo.findOne({
+      where: {
+        finishedVariantId: finishedVariant.id,
+        primaVariantId: primaVariant.id,
+      },
+    });
+
+    if (!exists) {
+      await createRecipe.execute({
+        finishedVariantId: finishedVariant.id,
+        primaVariantId: primaVariant.id,
+        quantity: r.quantity,
+        waste: r.waste ?? null,
+      });
+    }
   }
 };
