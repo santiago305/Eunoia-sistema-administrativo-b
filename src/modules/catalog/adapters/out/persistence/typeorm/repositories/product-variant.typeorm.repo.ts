@@ -306,6 +306,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
           'v.id',
           'v.productId',
           'v.sku',
+          'v.customSku',
           'v.attributes',
           'p.name',
           'p.description',
@@ -321,12 +322,13 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       productName: r.p_name,
         productDescription: r.p_description,
         sku: r.v_sku,
-        baseUnitId: r.p_baseUnitId,
+        baseUnitId: r.p_baseUnit_id,
         unitCode: r.u_code,
         unitName: r.u_name,
         type:'VARIANT',
         attributes: r.v_attributes,
-        createdAt: r.v_createdAt
+        createdAt: r.v_createdAt,
+        customSku: r.v_custom_sku
       }));
     }
 
