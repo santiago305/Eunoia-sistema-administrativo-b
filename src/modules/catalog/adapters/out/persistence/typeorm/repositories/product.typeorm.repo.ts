@@ -421,7 +421,7 @@ export class ProductTypeormRepository implements ProductRepository {
       productName: r.p_name,
       productDescription: r.p_description,
       sku: r.p_sku,
-      baseUnitId: r.p_baseUnitId ?? r.p_base_unit_id,
+      baseUnitId: r.p_base_unit_id,
       unitCode: r.u_code,
       unitName: r.u_name,
       type:'PRODUCT',
