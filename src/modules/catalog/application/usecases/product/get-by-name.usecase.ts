@@ -2,34 +2,25 @@ import { BadRequestException, Inject, NotFoundException } from "@nestjs/common";
 import { GetProductByNameInput } from "../../dto/products/input/get-product-by-name";
 import { ProductOutput } from "../../dto/products/output/product-out";
 import { PRODUCT_REPOSITORY, ProductRepository } from "../../ports/product.repository";
+import { CatalogOutputMapper } from "../../mappers/catalog-output.mapper";
+import { ProductNotFoundApplicationError } from "../../errors/product-not-found.error";
 
 export class GetProductByName {
   constructor(
     @Inject(PRODUCT_REPOSITORY) private readonly productRepo: ProductRepository,
   ) {}
 
-  async execute(input: GetProductByNameInput): Promise<ProductOutput | { type: string, message: string }> {
+  async execute(input: GetProductByNameInput): Promise<ProductOutput> {
     const name = input.name?.trim();
-    if (!name) throw new BadRequestException({ type: "error", message: "El nombre es obligatorio" });
+    if (!name) {
+      throw new BadRequestException("El nombre es obligatorio");
+    }
 
     const product = await this.productRepo.findByName(name);
-    if (!product) throw new NotFoundException({type:"error", message:"Producto no encontrado"});
-    
-    return {
-      id: product.getId()?.value,
-      name: product.getName(),
-      description: product.getDescription(),
-      baseUnitId: product.getBaseUnitId(),
-      sku: product.getSku(),
-      customSku: product.getCustomSku() ?? null,
-      barcode: product.getBarcode(),
-      price: product.getPrice().getAmount(),
-      cost: product.getCost().getAmount(),
-      attributes: product.getAttributes(),
-      isActive: product.getIsActive(),
-      type: product.getType(),
-      createdAt: product.getCreatedAt(),
-      updatedAt: product.getUpdatedAt(),
-    };
+    if (!product) {
+      throw new NotFoundException(new ProductNotFoundApplicationError().message);
+    }
+
+    return CatalogOutputMapper.toProductOutput(product);
   }
 }

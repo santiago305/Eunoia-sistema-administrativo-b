@@ -13,6 +13,7 @@ import { LocationId } from "src/modules/warehouses/domain/value-objects/location
 import { CreateLocationInput } from "src/modules/warehouses/application/dtos/location/input/create.input";
 import { WarehouseId } from "src/modules/warehouses/domain/value-objects/warehouse-id.vo";
 import { UpdateLocationInput } from "src/modules/warehouses/application/dtos/location/input/update.input";
+import { WarehouseHttpMapper } from "src/modules/warehouses/application/mappers/warehouse-http.mapper";
 
 @Controller("warehouses/locations")
 @UseGuards(JwtAuthGuard)
@@ -27,28 +28,21 @@ export class LocationsController {
 
   @Post()
   create(@Body() dto: HttpCreateLocationDto) {
-    const datos: CreateLocationInput = {
-      warehouseId: new WarehouseId(dto.warehouseId),
-      code: dto.code,
-      description: dto.description,
-    };
-    return this.createLocation.execute(datos);
+    return this.createLocation.execute(WarehouseHttpMapper.toCreateLocationInput(dto));
   }
 
   @Get('all')
   list(@Query() query: ListLocationQueryDto) {
     const isActive = query.isActive === undefined ? undefined : query.isActive === "true";
-    const q = query.q?.trim();
-
-    return this.listLocations.execute({
+    return this.listLocations.execute(WarehouseHttpMapper.toListLocationInput({
       page: query.page,
       limit: query.limit,
       isActive,
-      q,
-      warehouseId: query.warehouseId ? new WarehouseId(query.warehouseId) : undefined,
+      q: query.q,
+      warehouseId: query.warehouseId,
       code: query.code,
       description: query.description,
-    });
+    }));
   }
 
   @Get(":id")
@@ -58,18 +52,13 @@ export class LocationsController {
 
   @Patch(":id")
   update(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpUpdateLocationDto) {
-    const locationIdConst = new LocationId(id);
-    const dato: UpdateLocationInput = {
-      locationId: locationIdConst,
-      warehouseId: new WarehouseId(dto.warehouseId),
-      code: dto.code,
-      description: dto.description
-    }
-    return this.updateLocation.execute({ locationId:locationIdConst , ...dato });
+    return this.updateLocation.execute(WarehouseHttpMapper.toUpdateLocationInput(id, dto));
   }
 
   @Patch(":id/active")
   setActive(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpSetLocationActiveDto) {
-    return this.setLocationActive.execute({ locationId: new LocationId(id), isActive: dto.isActive });
+    return this.setLocationActive.execute(
+      WarehouseHttpMapper.toSetLocationActiveInput(id, dto.isActive),
+    );
   }
 }

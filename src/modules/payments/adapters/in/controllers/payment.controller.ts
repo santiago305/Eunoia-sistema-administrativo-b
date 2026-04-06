@@ -5,6 +5,7 @@ import { DeletePaymentUsecase } from "src/modules/payments/application/usecases/
 import { GetPaymentUsecase } from "src/modules/payments/application/usecases/payment/get-by-id.usecase";
 import { GetPaymentsByPoIdUsecase } from "src/modules/payments/application/usecases/payment/get-by-po-id.usecase";
 import { ListPaymentsUsecase } from "src/modules/payments/application/usecases/payment/list.usecase";
+import { PaymentsHttpMapper } from "src/modules/payments/application/mappers/payments-http.mapper";
 import { HttpCreatePaymentDto } from "../dtos/payment/http-payment-create.dto";
 import { HttpListPaymentsQueryDto } from "../dtos/payment/http-payment-list.dto";
 
@@ -21,17 +22,17 @@ export class PaymentsController {
 
   @Post()
   create(@Body() dto: HttpCreatePaymentDto) {
-    return this.createPayment.execute(dto);
+    return this.createPayment.execute(PaymentsHttpMapper.toCreatePaymentInput(dto));
   }
 
   @Get()
   list(@Query() query: HttpListPaymentsQueryDto) {
-    return this.listPayments.execute({
+    return this.listPayments.execute(PaymentsHttpMapper.toListPaymentsInput({
       poId: query.poId,
       quotaId: query.quotaId,
       page: query.page,
       limit: query.limit,
-    });
+    }));
   }
 
   @Get("get-by-po/:id")

@@ -2,6 +2,7 @@ import { Inject, NotFoundException } from "@nestjs/common";
 import { ListProductsInput } from "../../dto/products/input/list-products";
 import { ProductOutput } from "../../dto/products/output/product-out";
 import { PRODUCT_REPOSITORY, ProductRepository } from "../../ports/product.repository";
+import { CatalogOutputMapper } from "../../mappers/catalog-output.mapper";
 
 export interface PaginatedResult<T> {
   items: T[];
@@ -33,30 +34,15 @@ export class SearchProductsPaginated {
 
     return {
       items: items.map((row) => {
-        const p = row.product;
+        const product = row.product;
         if (!row.baseUnitName || !row.baseUnitCode) {
-          throw new NotFoundException({
-            type: 'error',
-            message: `Unit not found for product ${p.getId()?.value}`,
-          });
+          throw new NotFoundException(`Unidad no encontrada para el producto ${product.getId()?.value}`);
         }
+
         return {
-          id: p.getId()?.value,
-          baseUnitId: p.getBaseUnitId(),
-          name: p.getName(),
-          sku: p.getSku(),
-          customSku: p.getCustomSku() ?? null,
-          barcode: p.getBarcode(),
-          cost: p.getCost().getAmount(),
-          price: p.getPrice().getAmount(),
-          attributes: p.getAttributes(),
-          description: p.getDescription(),
+          ...CatalogOutputMapper.toProductOutput(product),
           baseUnitName: row.baseUnitName,
           baseUnitCode: row.baseUnitCode,
-          isActive: p.getIsActive(),
-          type: p.getType(),
-          createdAt: p.getCreatedAt(),
-          updatedAt: p.getUpdatedAt(),
         };
       }),
       total,

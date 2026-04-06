@@ -30,6 +30,7 @@ import { CreateAddItemPostAdjustmentUseCase } from 'src/modules/inventory/applic
 import { CreateAddItemPostTransferUseCase } from 'src/modules/inventory/application/use-cases/document-inventory/create-add-item-post-transfer.usecase';
 import { ListDocumentsQueryDto } from '../dto/document/http-documents-list.dto';
 import { ParseDateLocal } from 'src/shared/utilidades/utils/ParseDates'
+import { InventoryHttpMapper } from 'src/modules/inventory/application/mappers/inventory-http.mapper';
 @Controller('inventory/documents')
 @UseGuards(JwtAuthGuard)
 export class DocumentsController {
@@ -54,7 +55,7 @@ export class DocumentsController {
 
  @Get()
   list(@Query() query: ListDocumentsQueryDto) {
-    return this.listDocuments.execute({
+    return this.listDocuments.execute(InventoryHttpMapper.toListDocumentsInput({
       status: query.status,
       docType: query.docType,
       productType: query.productType,
@@ -63,100 +64,71 @@ export class DocumentsController {
       to: query.to ? ParseDateLocal(query.to, 'end') : undefined,
       page: query.page,
       limit: query.limit,
-    });
+    }));
   }
 
   @Get(':id')
   get(@Param('id', ParseUUIDPipe) docId: string) {
-    return this.getDocument.execute({ docId });
+    return this.getDocument.execute(InventoryHttpMapper.toDocumentIdInput(docId));
   }
 
   @Get(':id/items')
   getItems(@Param('id', ParseUUIDPipe) docId: string) {
-    return this.listItems.execute({ docId });
+    return this.listItems.execute(InventoryHttpMapper.toListDocumentItemsInput(docId));
   }
 
   @Post('create-in')
   createIn(@Body() dto: HttpCreateDocumentInDto, @CurrentUser() user: { id: string }) {
-    return this.createDocument.execute({
-      ...dto,
-      createdBy: user.id,
-    });
+    return this.createDocument.execute(InventoryHttpMapper.toCreateDocumentInput(dto, user.id));
   }
   @Post('create-out')
   createOut(@Body() dto: HttpCreateDocumentOutDto, @CurrentUser() user: { id: string }) {
-    return this.createDocument.execute({
-      ...dto,
-      createdBy: user.id,
-    });
+    return this.createDocument.execute(InventoryHttpMapper.toCreateDocumentInput(dto, user.id));
   }
   @Post('create-transfer')
   createTransfer(@Body() dto: HttpCreateDocumentTransferDto, @CurrentUser() user: { id: string }) {
-    return this.createDocument.execute({
-      ...dto,
-      createdBy: user.id,
-    });
+    return this.createDocument.execute(InventoryHttpMapper.toCreateDocumentInput(dto, user.id));
   }
   @Post('create-adjustment')
   createAdjustment(@Body() dto: HttpCreateDocumentAdjustmentDto, @CurrentUser() user: { id: string }) {
-    return this.createDocument.execute({
-      ...dto,
-      createdBy: user.id,
-    });
+    return this.createDocument.execute(InventoryHttpMapper.toCreateDocumentInput(dto, user.id));
   }
   
 
   @Post('create-add-item-post-out')
   createAddItemPostOut(@Body() dto: HttpCreateAddItemPostOutDto, @CurrentUser() user: { id: string }) {
-    return this.createDocumentPostOut.execute({
-      ...dto,
-      createdBy: user.id,
-    });
+    return this.createDocumentPostOut.execute(InventoryHttpMapper.toCreateAddItemPostOutInput(dto, user.id));
   }
 
   @Post('create-add-item-post-adjustment')
   createAddItemPostAdjustment(@Body() dto: HttpCreateDocumentAdjustmentDto, @CurrentUser() user: { id: string }) {
-    return this.createDocumentPostAdjustment.execute({
-      ...dto,
-      createdBy: user.id,
-    });
+    return this.createDocumentPostAdjustment.execute(
+      InventoryHttpMapper.toCreateAddItemPostAdjustmentInput(dto, user.id),
+    );
   }
 
   @Post('create-add-item-post-transfer')
   createAddItemPostTransfer(@Body() dto: HttpCreateAddItemPostTransferDto, @CurrentUser() user: { id: string }) {
-    return this.createDocumentPostTransfer.execute({
-      ...dto,
-      createdBy: user.id,
-    });
+    return this.createDocumentPostTransfer.execute(
+      InventoryHttpMapper.toCreateAddItemPostTransferInput(dto, user.id),
+    );
   }
 
   @Post(':id/items-in')
   addIn(@Param('id', ParseUUIDPipe) docId: string, @Body() dto: HttpAddItemInDto) {
-    return this.addItem.execute({
-      ...dto,
-      docId,
-    });
+    return this.addItem.execute(InventoryHttpMapper.toAddItemInput(docId, dto));
   }
   @Post(':id/items-out')
   addOut(@Param('id', ParseUUIDPipe) docId: string, @Body() dto: HttpAddItemOutDto) {
-    return this.addItem.execute({
-      ...dto,
-      docId,
-    });
+    return this.addItem.execute(InventoryHttpMapper.toAddItemInput(docId, dto));
   }
   @Post(':id/items-transfer')
   addTransfer(@Param('id', ParseUUIDPipe) docId: string, @Body() dto: HttpAddItemTransferDto) {
-    return this.addItem.execute({
-      ...dto,
-      docId,
-    });
+    return this.addItem.execute(InventoryHttpMapper.toAddItemInput(docId, dto));
   }
   @Post(':id/items-adjustment')
   addAdjustment(@Param('id', ParseUUIDPipe) docId: string, @Body() dto: HttpAddItemAdjustmentDto) {
-    return this.addItem.execute({
-      ...dto,
-      docId,
-    });
+    return this.addItem.execute(InventoryHttpMapper.toAddItemInput(docId, dto));
   }
 
   @Patch(':id/items/:itemId')
@@ -165,60 +137,37 @@ export class DocumentsController {
     @Param('itemId', ParseUUIDPipe) itemId: string,
     @Body() dto: HttpUpdateItemDto,
   ) {
-    return this.updateItem.execute({
-      docId,
-      itemId,
-      ...dto,
-    });
+    return this.updateItem.execute(InventoryHttpMapper.toUpdateItemInput(docId, itemId, dto));
   }
 
   @Delete(':id/items/:itemId')
   remove(@Param('id', ParseUUIDPipe) docId: string, @Param('itemId', ParseUUIDPipe) itemId: string) {
-    return this.removeItem.execute({
-      docId,
-      itemId,
-    });
+    return this.removeItem.execute(InventoryHttpMapper.toRemoveItemInput(docId, itemId));
   }
 
   @Post(':id/post-out')
   postOut(@Param('id', ParseUUIDPipe) docId: string, @Body() dto: HttpPostDto, @CurrentUser() user: { id: string }) {
-    return this.postDocumentOut.execute({
-      docId,
-      postedBy: user.id,
-      note: dto.note
-    });
+    return this.postDocumentOut.execute(InventoryHttpMapper.toPostDocumentInput(docId, user.id, dto.note));
   }
   @Post(':id/post-in')
   postIn(@Param('id', ParseUUIDPipe) docId: string, @Body() dto: HttpPostDto, @CurrentUser() user: { id: string }) {
-    return this.postDocumentIn.execute({
-      docId,
-      postedBy: user.id,
-      note: dto.note
-    });
+    return this.postDocumentIn.execute(InventoryHttpMapper.toPostDocumentInput(docId, user.id, dto.note));
   }
   @Post(':id/post-adjustment')
   postAdjustment(@Param('id', ParseUUIDPipe) docId: string, @Body() dto: HttpPostDto, @CurrentUser() user: { id: string }) {
-    return this.postDocumentAdjustment.execute({
-      docId,
-      postedBy: user.id,
-      note: dto.note
-    });
+    return this.postDocumentAdjustment.execute(
+      InventoryHttpMapper.toPostDocumentInput(docId, user.id, dto.note),
+    );
   }
   @Post(':id/post-transfer')
   postTransfer(@Param('id', ParseUUIDPipe) docId: string, @Body() dto: HttpPostDto, @CurrentUser() user: { id: string }) {
-    return this.postDocumentTransfer.execute({
-      docId,
-      postedBy: user.id,
-      note: dto.note
-    });
+    return this.postDocumentTransfer.execute(
+      InventoryHttpMapper.toPostDocumentInput(docId, user.id, dto.note),
+    );
   }
   
   @Post(':id/cancel')
   cancel(@Param('id', ParseUUIDPipe) docId: string, @Body() dto: HttpPostDto, @CurrentUser() user: { id: string }) {
-    return this.cancelDocument.execute({
-      docId,
-      postedBy: user.id,
-      note: dto.note
-    });
+    return this.cancelDocument.execute(InventoryHttpMapper.toPostDocumentInput(docId, user.id, dto.note));
   }
 }

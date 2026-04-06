@@ -1,12 +1,12 @@
 import { BadRequestException, Inject, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common";
-import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
-import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
-import { DomainError } from "src/modules/production/domain/errors/domain.error";
-import { errorResponse, successResponse } from "src/shared/response-standard/response";
-import { CloseProductionOrder } from "./close.usecase";
-import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
-import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
+import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
+import { DomainError } from "src/modules/production/domain/errors/domain.error";
+import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
+import { TransactionContext, UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
+import { successResponse } from "src/shared/response-standard/response";
+import { ProductionOrderNotFoundApplicationError } from "../../errors/production-order-not-found.error";
+import { CloseProductionOrder } from "./close.usecase";
 
 @Injectable()
 export class RunProductionTimeUsecase {
@@ -18,30 +18,32 @@ export class RunProductionTimeUsecase {
     @Inject(CLOCK)
     private readonly clock: ClockPort,
     private readonly closeOrder: CloseProductionOrder,
-
   ) {}
 
   async execute(productionId: string, tx?: TransactionContext) {
     const run = async (ctx?: TransactionContext) => {
       const order = await this.orderRepo.findById(productionId, ctx);
       if (!order) {
-        throw new NotFoundException({ type: "error", message: "Orden de produccion no encontrada" });
+        throw new NotFoundException(new ProductionOrderNotFoundApplicationError().message);
       }
+
       try {
         order.assertCanAutoClose(this.clock.now());
       } catch (err) {
         if (err instanceof DomainError) {
-          throw new BadRequestException(errorResponse(err.message));
+          throw new BadRequestException(err.message);
         }
         throw err;
       }
 
       try {
-        const data = {
-          productionId: order.productionId,
-          postedBy: order.createdBy,
-        };
-        await this.closeOrder.execute(data, ctx);
+        await this.closeOrder.execute(
+          {
+            productionId: order.productionId,
+            postedBy: order.createdBy,
+          },
+          ctx,
+        );
       } catch {
         await this.orderRepo.setStatus(
           {
@@ -50,9 +52,10 @@ export class RunProductionTimeUsecase {
           },
           ctx,
         );
-        throw new InternalServerErrorException(errorResponse("Error a procesar producción "));
+        throw new InternalServerErrorException("Error al procesar produccion");
       }
-      return successResponse("ok si se cumple la funcion");
+
+      return successResponse("Produccion cerrada automaticamente");
     };
 
     if (tx) return run(tx);

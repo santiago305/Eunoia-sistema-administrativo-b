@@ -1,5 +1,5 @@
 import { ListRolesUseCase } from './list-roles.usecase';
-import { UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException } from '@nestjs/common';
 import { RoleType } from 'src/shared/constantes/constants';
 
 describe('ListRolesUseCase', () => {
@@ -70,7 +70,7 @@ describe('ListRolesUseCase', () => {
     const useCase = makeUseCase();
 
     await expect(useCase.execute(undefined, RoleType.ADVISER)).rejects.toBeInstanceOf(
-      UnauthorizedException,
+      ForbiddenException,
     );
   });
 });

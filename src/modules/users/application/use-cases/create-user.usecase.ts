@@ -1,4 +1,4 @@
-import { Inject, Injectable, UnauthorizedException  } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Inject, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { ROLE_REPOSITORY, RoleRepository } from 'src/modules/roles/application/ports/role.repository';
 import { ROLE_READ_REPOSITORY, RoleReadRepository } from 'src/modules/roles/application/ports/role-read.repository';
@@ -7,6 +7,8 @@ import { USER_REPOSITORY, UserRepository } from 'src/modules/users/application/p
 import { Email, Password, RoleId, UserFactory } from 'src/modules/users/domain';
 import { RoleType } from 'src/shared/constantes/constants';
 import { successResponse } from 'src/shared/response-standard/response';
+import { UserConflictApplicationError } from '../errors/user-conflict.error';
+import { UserForbiddenApplicationError } from '../errors/user-forbidden.error';
 
 @Injectable()
 export class CreateUserUseCase {
@@ -24,12 +26,12 @@ export class CreateUserUseCase {
     const isModerator = requesterRole === RoleType.MODERATOR;
 
     if (!isAdmin && !isModerator) {
-      throw new UnauthorizedException('No autorizado para crear usuarios');
+      throw new ForbiddenException(new UserForbiddenApplicationError('No autorizado para crear usuarios').message);
     }
 
     const exists = await this.userRepository.existsByEmail(new Email(dto.email));
     if (exists) {
-      throw new UnauthorizedException('Este email ya estA registrado');
+      throw new ConflictException(new UserConflictApplicationError('Este email ya esta registrado').message);
     }
 
     const hashedPassword = await argon2.hash(dto.password, {
@@ -42,24 +44,24 @@ export class CreateUserUseCase {
     if (dto.roleId) {
       const roleResult = await this.roleReadRepository.findById(dto.roleId);
       if (!roleResult) {
-        throw new UnauthorizedException('Rol inválido');
+        throw new NotFoundException('Rol invalido');
       }
       targetRoleId = roleResult.id;
       targetRoleDescription = roleResult.description;
     } else {
       const roleResult = await this.roleReadRepository.findByDescription(RoleType.ADVISER);
       if (!roleResult) {
-        throw new UnauthorizedException('Rol invǭlido');
+        throw new NotFoundException('Rol invalido');
       }
       targetRoleId = roleResult.id;
       targetRoleDescription = RoleType.ADVISER;
     }
 
     if (isModerator && targetRoleDescription !== RoleType.ADVISER) {
-      throw new UnauthorizedException('Solo puedes crear asesores');
+      throw new ForbiddenException(new UserForbiddenApplicationError('Solo puedes crear asesores').message);
     }
     if (isAdmin && targetRoleDescription === RoleType.ADMIN) {
-      throw new UnauthorizedException('No puedes crear administradores');
+      throw new ForbiddenException(new UserForbiddenApplicationError('No puedes crear administradores').message);
     }
 
     const domainUser = UserFactory.createNew({
@@ -74,9 +76,8 @@ export class CreateUserUseCase {
     try {
       await this.userRepository.save(domainUser);
       return successResponse('Usuario creado correctamente');
-    } catch (error) {
-      console.error('[CreateUserUseCase] error al crear un usuario: ', error);
-      throw new UnauthorizedException('Se ha producido un error al crear al usuario');
+    } catch {
+      throw new InternalServerErrorException('Se ha producido un error al crear al usuario');
     }
   }
 }

@@ -5,6 +5,7 @@ import { DeleteCreditQuotaUsecase } from "src/modules/payments/application/useca
 import { GetCreditQuotaUsecase } from "src/modules/payments/application/usecases/credit-quota/get-by-id.usecase";
 import { GetCreditQuotasByPoIdUsecase } from "src/modules/payments/application/usecases/credit-quota/get-by-po-id.usecase";
 import { ListCreditQuotasUsecase } from "src/modules/payments/application/usecases/credit-quota/list.usecase";
+import { PaymentsHttpMapper } from "src/modules/payments/application/mappers/payments-http.mapper";
 import { HttpCreateCreditQuotaDto } from "../dtos/credit-quota/http-credit-quota-create.dto";
 import { HttpListCreditQuotasQueryDto } from "../dtos/credit-quota/http-credit-quota-list.dto";
 
@@ -21,16 +22,16 @@ export class CreditQuotasController {
 
   @Post()
   create(@Body() dto: HttpCreateCreditQuotaDto) {
-    return this.createQuota.execute(dto);
+    return this.createQuota.execute(PaymentsHttpMapper.toCreateCreditQuotaInput(dto));
   }
 
   @Get()
   list(@Query() query: HttpListCreditQuotasQueryDto) {
-    return this.listQuotas.execute({
+    return this.listQuotas.execute(PaymentsHttpMapper.toListCreditQuotasInput({
       poId: query.poId,
       page: query.page,
       limit: query.limit,
-    });
+    }));
   }
 
   @Get("get-by-po/:poId")

@@ -3,6 +3,7 @@ import { PaginatedResult } from "src/shared/utilidades/dto/paginateResult";
 import { SUPPLIER_REPOSITORY, SupplierRepository } from "src/modules/suppliers/domain/ports/supplier.repository";
 import { ListSuppliersInput } from "../../dtos/supplier/input/list.input";
 import { SupplierOutput } from "../../dtos/supplier/output/supplier.output";
+import { SupplierOutputMapper } from "../../mappers/supplier-output.mapper";
 
 export class ListSuppliersUsecase {
   constructor(
@@ -29,22 +30,7 @@ export class ListSuppliersUsecase {
     });
 
     return {
-      items: items.map((s) => ({
-        supplierId: s.supplierId,
-        documentType: s.documentType,
-        documentNumber: s.documentNumber,
-        name: s.name,
-        lastName: s.lastName,
-        tradeName: s.tradeName,
-        address: s.address,
-        phone: s.phone,
-        email: s.email,
-        note: s.note,
-        leadTimeDays: s.leadTimeDays,
-        isActive: s.isActive,
-        createdAt: s.createdAt,
-        updatedAt: s.updatedAt,
-      })),
+      items: items.map((supplier) => SupplierOutputMapper.toSupplierOutput(supplier)),
       total,
       page,
       limit,

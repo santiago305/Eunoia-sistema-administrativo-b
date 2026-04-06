@@ -1,12 +1,11 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
+import { DomainError } from "src/modules/production/domain/errors/domain.error";
+import { ProductionOrderItemFactory } from "src/modules/production/domain/factories/production-order-item.factory";
+import { TransactionContext, UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { AddProductionOrderItemInput } from "../../dto/production-order/input/add-production-order-item";
 import { ProductionOrderItemOutput } from "../../dto/production-order/output/production-order-item-out";
-import { ProductionOrderItemFactory } from "src/modules/production/domain/factories/production-order-item.factory";
-import { DomainError } from "src/modules/production/domain/errors/domain.error";
-import { TransactionContext, UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
-import { errorResponse } from "src/shared/response-standard/response";
-
+import { ProductionOrderNotFoundApplicationError } from "../../errors/production-order-not-found.error";
 
 @Injectable()
 export class AddProductionOrderItem {
@@ -24,13 +23,14 @@ export class AddProductionOrderItem {
       const order = await this.orderRepo.findById(input.productionId, ctx);
 
       if (!order) {
-        throw new NotFoundException({ type: "error", message: "Orden de produccion no encontrada" });
+        throw new NotFoundException(new ProductionOrderNotFoundApplicationError().message);
       }
+
       try {
         order.assertCanAddItem();
       } catch (err) {
         if (err instanceof DomainError) {
-          throw new BadRequestException(errorResponse(err.message));
+          throw new BadRequestException(err.message);
         }
         throw err;
       }
@@ -48,7 +48,7 @@ export class AddProductionOrderItem {
         });
       } catch (err) {
         if (err instanceof DomainError) {
-          throw new BadRequestException(errorResponse(err.message));
+          throw new BadRequestException(err.message);
         }
         throw err;
       }

@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { ChangePasswordUseCase } from './change-password.usecase';
 import { Email, Password, RoleId, User } from 'src/modules/users/domain';
@@ -46,7 +46,7 @@ describe('ChangePasswordUseCase', () => {
 
     await expect(
       useCase.execute('user-1', 'old', 'new', 'user-2')
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('rejects blank new password', async () => {
@@ -54,7 +54,19 @@ describe('ChangePasswordUseCase', () => {
 
     await expect(
       useCase.execute('user-1', 'old', ' ', 'user-1')
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejects when user is not found', async () => {
+    const useCase = makeUseCase({
+      userRepository: {
+        findById: jest.fn().mockResolvedValue(null),
+      },
+    });
+
+    await expect(
+      useCase.execute('user-1', 'old', 'new', 'user-1')
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('rejects when current password mismatch', async () => {

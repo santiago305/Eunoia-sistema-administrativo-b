@@ -12,6 +12,7 @@ import { HttpPaymentMethodCreateDto } from "../dtos/payment-method/http-payment-
 import { HttpPaymentMethodUpdateDto } from "../dtos/payment-method/http-payment-method-update.dto";
 import { HttpPaymentMethodSetActiveDto } from "../dtos/payment-method/http-payment-method-set-active.dto";
 import { HttpPaymentMethodListQueryDto } from "../dtos/payment-method/http-payment-method-list.dto";
+import { PaymentMethodHttpMapper } from "src/modules/payment-methods/application/mappers/payment-method-http.mapper";
 
 @Controller("payment-methods")
 @UseGuards(JwtAuthGuard)
@@ -29,18 +30,18 @@ export class PaymentMethodsController {
 
   @Post()
   create(@Body() dto: HttpPaymentMethodCreateDto) {
-    return this.createPaymentMethod.execute(dto);
+    return this.createPaymentMethod.execute(PaymentMethodHttpMapper.toCreatePaymentMethodInput(dto));
   }
 
   @Get()
   list(@Query() query: HttpPaymentMethodListQueryDto) {
     const isActived = query.isActive === undefined ? undefined : query.isActive === "true";
-    return this.listPaymentMethods.execute({
-      name: query.name?.trim(),
+    return this.listPaymentMethods.execute(PaymentMethodHttpMapper.toListInput({
+      name: query.name,
       isActive: isActived,
       page: query.page,
       limit: query.limit,
-    });
+    }));
   }
 
   @Get("records")
@@ -68,7 +69,7 @@ export class PaymentMethodsController {
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: HttpPaymentMethodUpdateDto,
   ) {
-    return this.updatePaymentMethod.execute({ methodId: id, ...dto });
+    return this.updatePaymentMethod.execute(PaymentMethodHttpMapper.toUpdatePaymentMethodInput(id, dto));
   }
 
   @Patch(":id/active")
@@ -76,6 +77,8 @@ export class PaymentMethodsController {
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: HttpPaymentMethodSetActiveDto,
   ) {
-    return this.setPaymentMethodActive.execute({ methodId: id, isActive: dto.isActive });
+    return this.setPaymentMethodActive.execute(
+      PaymentMethodHttpMapper.toSetActiveInput(id, dto.isActive),
+    );
   }
 }

@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException } from '@nestjs/common';
 import { CountUsersByRoleUseCase } from './count-users-by-role.usecase';
 import { RoleType } from 'src/shared/constantes/constants';
 
@@ -74,6 +74,6 @@ describe('CountUsersByRoleUseCase', () => {
   it('rejects adviser access', async () => {
     const useCase = makeUseCase();
 
-    await expect(useCase.execute({}, RoleType.ADVISER)).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(useCase.execute({}, RoleType.ADVISER)).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

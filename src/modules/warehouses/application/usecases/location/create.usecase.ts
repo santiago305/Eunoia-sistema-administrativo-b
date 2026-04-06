@@ -1,10 +1,11 @@
 import { BadRequestException, Inject } from "@nestjs/common";
 import { TransactionContext, UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
-import { WarehouseLocation } from "src/modules/warehouses/domain/entities/warehouse-location";
 import { CreateLocationInput } from "../../dtos/location/input/create.input";
 import { LocationOutput } from "../../dtos/location/output/location.output";
 import { LOCATION_REPOSITORY, LocartionRepository } from "../../ports/location.repository.port";
 import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "../../ports/warehouse.repository.port";
+import { WarehouseFactory } from "src/modules/warehouses/domain/factories/warehouse.factory";
+import { WarehouseOutputMapper } from "../../mappers/warehouse-output.mapper";
 
 export class CreateLocationUsecase {
   constructor(
@@ -25,21 +26,14 @@ export class CreateLocationUsecase {
       if (!warehouse.isActive) {
         throw new BadRequestException("Almacen inactivo");
       }
-      const location = new WarehouseLocation(
-        undefined,
-        input.warehouseId,
-        input.code,
-        input.description,
-      );
+      const location = WarehouseFactory.createLocation({
+        warehouseId: input.warehouseId,
+        code: input.code,
+        description: input.description,
+      });
 
       const saved = await this.locationRepo.create(location, ctx);
-      return {
-        locationId: saved.locationId.value,
-        warehouseId: saved.warehouseId.value,
-        code: saved.code,
-        description: saved.description,
-        isActive: saved.isActive,
-      };
+      return WarehouseOutputMapper.toLocationOutput(saved);
     };
     if (tx) {
       return work(tx);

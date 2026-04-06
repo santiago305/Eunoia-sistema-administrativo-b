@@ -16,7 +16,7 @@ describe('TypeormUserRepository', () => {
     ormUser.email = 'ana@example.com';
     ormUser.password = 'hash';
     ormUser.deleted = false;
-    ormUser.role = { id: 'role-1' } as any;
+    ormUser.role = { roleId: 'role-1' } as any;
 
     const repo = makeRepo({
       findOne: jest.fn().mockResolvedValue(ormUser),
@@ -170,7 +170,7 @@ describe('TypeormUserRepository', () => {
     ormUser.email = 'ana@example.com';
     ormUser.password = 'hash';
     ormUser.deleted = false;
-    ormUser.role = { id: 'role-1' } as any;
+    ormUser.role = { roleId: 'role-1' } as any;
 
     const repo = makeRepo({
       create: jest.fn().mockReturnValue(ormUser),

@@ -3,6 +3,7 @@ import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
 import { GetAvailabilityInput } from '../../dto/inventory/input/get-availability';
 import { AvailabilityOutput } from '../../dto/inventory/output/availability-out';
 import { INVENTORY_REPOSITORY, InventoryRepository } from '../../ports/inventory.repository.port';
+import { InventoryOutputMapper } from '../../mappers/inventory-output.mapper';
 
 @Injectable()
 export class GetAvailabilityUseCase {
@@ -18,24 +19,10 @@ export class GetAvailabilityUseCase {
 
     const snapshot = await this.inventoryRepo.getSnapshot(input, tx);
     if (!snapshot) {
-      return {
-        warehouseId: input.warehouseId,
-        stockItemId: input.stockItemId,
-        locationId: input.locationId,
-        onHand: 0,
-        reserved: 0,
-        available: 0,
-      };
+      return InventoryOutputMapper.emptyAvailability(input);
     }
 
-    return {
-      warehouseId: snapshot.warehouseId,
-      stockItemId: snapshot.stockItemId,
-      locationId: snapshot.locationId,
-      onHand: snapshot.onHand,
-      reserved: snapshot.reserved,
-      available: snapshot.available,
-    };
+    return InventoryOutputMapper.toAvailabilityOutput(snapshot);
   }
 }
 

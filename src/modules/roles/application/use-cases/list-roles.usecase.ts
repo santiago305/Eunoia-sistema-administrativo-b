@@ -1,11 +1,13 @@
-import { Inject, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
 import {
   ROLE_READ_REPOSITORY,
   RoleListStatus,
   RoleReadRepository,
 } from '../ports/role-read.repository';
 import { RoleType } from 'src/shared/constantes/constants';
+import { RoleForbiddenApplicationError } from '../errors/role-forbidden.error';
 
+@Injectable()
 export class ListRolesUseCase {
   constructor(
     @Inject(ROLE_READ_REPOSITORY)
@@ -25,7 +27,7 @@ export class ListRolesUseCase {
 
   private assertCanListRoles(requesterRole?: RoleType) {
     if (requesterRole !== RoleType.ADMIN && requesterRole !== RoleType.MODERATOR) {
-      throw new UnauthorizedException('No autorizado para listar roles');
+      throw new ForbiddenException(new RoleForbiddenApplicationError('No autorizado para listar roles').message);
     }
   }
 }

@@ -8,17 +8,17 @@ describe('SearchProductVariants', () => {
   const variantUuid = '22222222-2222-4222-8222-222222222222';
 
   it('busca variantes y mapea salida', async () => {
-    const variant = new ProductVariant(
-      variantUuid,
-      ProductId.create(productUuid),
-      'CAB-00001',
-      '0001',
-      { color: 'Negro' },
-      Money.create(10),
-      Money.create(5),
-      true,
-      new Date('2026-02-10T12:00:00Z'),
-    );
+    const variant = ProductVariant.create({
+      id: variantUuid,
+      productId: ProductId.create(productUuid),
+      sku: 'CAB-00001',
+      barcode: '0001',
+      attributes: { color: 'Negro' },
+      price: Money.create(10),
+      cost: Money.create(5),
+      isActive: true,
+      createdAt: new Date('2026-02-10T12:00:00Z'),
+    });
 
     const variantRepo = {
       search: jest.fn().mockResolvedValue({
@@ -45,6 +45,7 @@ describe('SearchProductVariants', () => {
           id: variantUuid,
           productId: productUuid,
           sku: 'CAB-00001',
+          customSku: null,
           barcode: '0001',
           attributes: { color: 'Negro' },
           price: 10,

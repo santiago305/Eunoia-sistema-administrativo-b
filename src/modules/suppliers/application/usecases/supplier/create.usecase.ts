@@ -1,9 +1,9 @@
-import { ConflictException, Inject, NotFoundException } from "@nestjs/common";
+import { ConflictException, Inject } from "@nestjs/common";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
-import { Supplier } from "src/modules/suppliers/domain/entity/supplier";
 import { SUPPLIER_REPOSITORY, SupplierRepository } from "src/modules/suppliers/domain/ports/supplier.repository";
 import { CreateSupplierInput } from "../../dtos/supplier/input/create.input";
 import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
+import { SupplierFactory } from "src/modules/suppliers/domain/factories/supplier.factory";
 
 export class CreateSupplierUsecase {
   constructor(
@@ -15,45 +15,36 @@ export class CreateSupplierUsecase {
     private readonly clock: ClockPort,
   ) {}
 
-  async execute(input: CreateSupplierInput): Promise<{ type: string; message: string }> {
+  async execute(input: CreateSupplierInput): Promise<{ message: string }> {
     return this.uow.runInTransaction(async (tx) => {
       const exists = await this.supplierRepo.findByDocument(input.documentType, input.documentNumber, tx);
       if (exists) {
-        throw new ConflictException(
-          {
-            type:'error',
-            message: "Proveedor ya existe"
-          });
+        throw new ConflictException("Proveedor ya existe");
       }
 
       const now = this.clock.now();
-      const supplier = new Supplier(
-        undefined,
-        input.documentType,
-        input.documentNumber,
-        input.name,
-        input.lastName,
-        input.tradeName,
-        input.address,
-        input.phone,
-        input.email,
-        input.note,
-        input.leadTimeDays,
-        input.isActive ?? true,
-        now,
-        undefined,
-      );
-
-       try {
-        await this.supplierRepo.create(supplier, tx);
-        } catch {
-          throw new ConflictException({
-            type: "error",
-            message: "Proveedor ya existe",
-          });;
-        }
-
-        return { type: "success", message: "Proveedor creado con exito" };
+      const supplier = SupplierFactory.createSupplier({
+        documentType: input.documentType,
+        documentNumber: input.documentNumber,
+        name: input.name,
+        lastName: input.lastName,
+        tradeName: input.tradeName,
+        address: input.address,
+        phone: input.phone,
+        email: input.email,
+        note: input.note,
+        leadTimeDays: input.leadTimeDays,
+        isActive: input.isActive ?? true,
+        createdAt: now,
       });
+
+      try {
+        await this.supplierRepo.create(supplier, tx);
+      } catch {
+        throw new ConflictException("Proveedor ya existe");
+      }
+
+      return { message: "Proveedor creado con exito" };
+    });
   }
 }

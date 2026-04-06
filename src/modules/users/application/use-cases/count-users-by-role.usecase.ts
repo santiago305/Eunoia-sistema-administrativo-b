@@ -1,10 +1,11 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
 import {
   USER_READ_REPOSITORY,
   UserListStatus,
   UserReadRepository,
 } from 'src/modules/users/application/ports/user-read.repository';
 import { RoleType } from 'src/shared/constantes/constants';
+import { UserForbiddenApplicationError } from '../errors/user-forbidden.error';
 
 @Injectable()
 export class CountUsersByRoleUseCase {
@@ -54,7 +55,9 @@ export class CountUsersByRoleUseCase {
 
   private assertCanCountUsers(requesterRole: RoleType) {
     if (requesterRole !== RoleType.ADMIN && requesterRole !== RoleType.MODERATOR) {
-      throw new UnauthorizedException('No autorizado para consultar conteo de usuarios por rol');
+      throw new ForbiddenException(
+        new UserForbiddenApplicationError('No autorizado para consultar conteo de usuarios por rol').message,
+      );
     }
   }
 

@@ -27,13 +27,16 @@ export class SupplierVariantTypeormRepository implements SupplierVariantReposito
   }
 
   private toDomain(row: SupplierVariantEntity): SupplierVariant {
-    return new SupplierVariant(
-      row.supplierId,
-      row.variantId,
-      row.supplierSku ?? undefined,
-      row.lastCost === null || row.lastCost === undefined ? undefined : Money.create(Number(row.lastCost)),
-      row.leadTimeDays ?? undefined,
-    );
+    return SupplierVariant.create({
+      supplierId: row.supplierId,
+      variantId: row.variantId,
+      supplierSku: row.supplierSku ?? undefined,
+      lastCost:
+        row.lastCost === null || row.lastCost === undefined
+          ? undefined
+          : Money.create(Number(row.lastCost)),
+      leadTimeDays: row.leadTimeDays ?? undefined,
+    });
   }
 
   async findById(

@@ -1,4 +1,4 @@
-import { NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { GetUserByEmailUseCase } from './get-user-by-email.usecase';
 import { RoleType } from 'src/shared/constantes/constants';
 import { successResponse } from 'src/shared/response-standard/response';
@@ -58,7 +58,7 @@ describe('GetUserByEmailUseCase', () => {
 
     await expect(
       useCase.execute('ana@example.com', RoleType.MODERATOR)
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('rejects admin when target is admin', async () => {
@@ -75,6 +75,6 @@ describe('GetUserByEmailUseCase', () => {
 
     await expect(
       useCase.execute('ana@example.com', RoleType.ADMIN)
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

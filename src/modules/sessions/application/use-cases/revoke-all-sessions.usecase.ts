@@ -1,5 +1,6 @@
 import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { SESSION_REPOSITORY, SessionRepository } from '../ports/session.repository';
+import { SessionInvalidTokenApplicationError } from '../errors/session-invalid-token.error';
 
 @Injectable()
 export class RevokeAllSessionsUseCase {
@@ -12,7 +13,7 @@ export class RevokeAllSessionsUseCase {
     const id = params.userId?.trim();
     const currentSessionId = params.currentSessionId?.trim();
     if (!id) {
-      throw new UnauthorizedException('Token invalido o sin identificador');
+      throw new UnauthorizedException(new SessionInvalidTokenApplicationError().message);
     }
 
     const affected = await this.sessionRepository.revokeAllByUserId(id, currentSessionId);

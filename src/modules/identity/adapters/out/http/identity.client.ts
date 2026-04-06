@@ -8,6 +8,8 @@ import {
 } from "src/modules/identity/application/dtos/out";
 import { IdentityLookupRepository } from "src/modules/identity/domain/ports/identity-lookup.repository";
 import { SupplierDocType } from "src/modules/suppliers/domain/object-values/supplier-doc-type";
+import { IdentityExternalServiceError } from "src/modules/identity/application/errors/identity-external-service.error";
+import { IdentityValidationError } from "src/modules/identity/application/errors/identity-validation.error";
 
 @Injectable()
 export class DecolectaIdentityClient implements IdentityLookupRepository {
@@ -53,7 +55,7 @@ export class DecolectaIdentityClient implements IdentityLookupRepository {
 
       if (!responseBody || typeof responseBody !== "object") {
         throw new HttpException(
-          { type: "error", message: "Respuesta invalida del servicio externo" },
+          new IdentityExternalServiceError("Respuesta inválida del servicio externo").message,
           HttpStatus.BAD_GATEWAY,
         );
       }
@@ -81,19 +83,19 @@ export class DecolectaIdentityClient implements IdentityLookupRepository {
       }
 
       throw new HttpException(
-        { type: "error", message: "Tipo de documento no soportado" },
+        new IdentityValidationError("Tipo de documento no soportado").message,
         HttpStatus.BAD_REQUEST,
       );
     } catch (error) {
       if (error instanceof HttpException) throw error;
       if ((error as any)?.name === "AbortError") {
         throw new HttpException(
-          { type: "error", message: "Tiempo de espera agotado" },
+          new IdentityExternalServiceError("Tiempo de espera agotado").message,
           HttpStatus.GATEWAY_TIMEOUT,
         );
       }
       throw new HttpException(
-        { type: "error", message: "Error al consultar servicio externo" },
+        new IdentityExternalServiceError("Error al consultar servicio externo").message,
         HttpStatus.BAD_GATEWAY,
       );
     } finally {
@@ -108,12 +110,18 @@ export class DecolectaIdentityClient implements IdentityLookupRepository {
     provider: "decolecta" | "diurvan",
   ) {
     if (documentType !== SupplierDocType.DNI && documentType !== SupplierDocType.RUC) {
-      throw new HttpException("Tipo de documento no soportado", HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        new IdentityValidationError("Tipo de documento no soportado").message,
+        HttpStatus.BAD_REQUEST,
+      );
     }
 
     if (provider === "decolecta") {
       if (documentType !== SupplierDocType.DNI) {
-        throw new HttpException("No se soporta este tipo de documento", HttpStatus.BAD_REQUEST);
+        throw new HttpException(
+          new IdentityValidationError("No se soporta este tipo de documento").message,
+          HttpStatus.BAD_REQUEST,
+        );
       }
       const url = new URL("reniec/dni", baseUrl);
       url.searchParams.set("numero", documentNumber);
@@ -141,31 +149,31 @@ export class DecolectaIdentityClient implements IdentityLookupRepository {
   private mapError(status: number) {
     if (status >= 500) {
       return new HttpException(
-        { type: "error", message: "Servicio externo no disponible" },
+        new IdentityExternalServiceError("Servicio externo no disponible").message,
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
     if (status === 404) {
-      return new HttpException({ type: "error", message: "No encontrado" }, HttpStatus.NOT_FOUND);
+      return new HttpException(
+        new IdentityExternalServiceError("No encontrado").message,
+        HttpStatus.NOT_FOUND,
+      );
     }
     if (status === 401 || status === 403) {
-      return new HttpException({ type: "error", message: "No autorizado" }, HttpStatus.UNAUTHORIZED);
+      return new HttpException(
+        new IdentityExternalServiceError("No autorizado").message,
+        HttpStatus.UNAUTHORIZED,
+      );
     }
     if (status === 400) {
       return new HttpException(
-        {
-          type: "error",
-          message: "Solicitud invalida",
-        },
+        new IdentityValidationError("Solicitud inválida").message,
         HttpStatus.BAD_REQUEST,
       );
     }
 
     return new HttpException(
-      {
-        type: "error",
-        message: "Error inesperado",
-      },
+      new IdentityExternalServiceError("Error inesperado").message,
       HttpStatus.BAD_GATEWAY,
     );
   }
@@ -182,7 +190,7 @@ export class DecolectaIdentityClient implements IdentityLookupRepository {
       const baseUrl = process.env.IDENTITY_BASE_DECOLECTA_URL;
       if (!apiKey || !baseUrl) {
         throw new HttpException(
-          { type: "error", message: "Configuracion Decolecta incompleta" },
+          new IdentityExternalServiceError("Configuración Decolecta incompleta").message,
           HttpStatus.SERVICE_UNAVAILABLE,
         );
       }
@@ -194,13 +202,16 @@ export class DecolectaIdentityClient implements IdentityLookupRepository {
       const baseUrl = process.env.IDENTITY_BASE_DIURVAN_URL;
       if (!apiKey || !baseUrl) {
         throw new HttpException(
-          { type: "error", message: "Configuracion Diurvan incompleta" },
+          new IdentityExternalServiceError("Configuración Diurvan incompleta").message,
           HttpStatus.SERVICE_UNAVAILABLE,
         );
       }
       return { provider: "diurvan" as const, apiKey, baseUrl };
     }
 
-    throw new HttpException("Tipo de documento no soportado", HttpStatus.BAD_REQUEST);
+    throw new HttpException(
+      new IdentityValidationError("Tipo de documento no soportado").message,
+      HttpStatus.BAD_REQUEST,
+    );
   }
 }

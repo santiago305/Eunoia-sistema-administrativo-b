@@ -13,6 +13,9 @@ import {
   RoleReadRepository,
 } from '../ports/role-read.repository';
 import { RoleType } from 'src/shared/constantes/constants';
+import { RoleConflictApplicationError } from '../errors/role-conflict.error';
+import { RoleForbiddenApplicationError } from '../errors/role-forbidden.error';
+import { RoleNotFoundApplicationError } from '../errors/role-not-found.error';
 
 const PROTECTED_SYSTEM_ROLES = new Set<string>([
   RoleType.ADMIN,
@@ -41,7 +44,7 @@ export class UpdateRoleUseCase {
     const role = await this.roleRepository.findById(id);
 
     if (!role) {
-      throw new NotFoundException('Rol no encontrado');
+      throw new NotFoundException(new RoleNotFoundApplicationError().message);
     }
 
     const nextDescription = normalizedDescription;
@@ -49,13 +52,15 @@ export class UpdateRoleUseCase {
     const isSemanticDescriptionChange = nextDescription !== currentDescription;
 
     if (PROTECTED_SYSTEM_ROLES.has(currentDescription) && isSemanticDescriptionChange) {
-      throw new ForbiddenException('No se puede renombrar un rol base del sistema');
+      throw new ForbiddenException(
+        new RoleForbiddenApplicationError('No se puede renombrar un rol base del sistema').message,
+      );
     }
 
     if (isSemanticDescriptionChange) {
       const exists = await this.roleReadRepository.existsByDescription(nextDescription);
       if (exists) {
-        throw new ConflictException('Este rol ya existe');
+        throw new ConflictException(new RoleConflictApplicationError().message);
       }
     }
 
@@ -64,7 +69,7 @@ export class UpdateRoleUseCase {
       await this.roleRepository.save(role);
     } catch (error: any) {
       if (error?.code === '23505') {
-        throw new ConflictException('Este rol ya existe');
+        throw new ConflictException(new RoleConflictApplicationError().message);
       }
       throw error;
     }

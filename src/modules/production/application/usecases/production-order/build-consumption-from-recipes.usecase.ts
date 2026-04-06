@@ -3,7 +3,7 @@ import { PRODUCT_RECIPE_REPOSITORY, ProductRecipeRepository } from "src/modules/
 import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
 import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
-import { errorResponse } from "src/shared/response-standard/response";
+import { ProductionOrderNotFoundApplicationError } from "../../errors/production-order-not-found.error";
 
 export interface RecipeConsumptionLine {
   stockItemId: string;
@@ -29,22 +29,21 @@ export class BuildConsumptionFromRecipesUseCase {
   ): Promise<RecipeConsumptionLine[]> {
     const result = await this.orderRepo.getByIdWithItems(params.productionId, tx);
     if (!result) {
-      throw new NotFoundException(errorResponse('Orden de produccion no encontrada'));
+      throw new NotFoundException(new ProductionOrderNotFoundApplicationError().message);
     }
 
-    const { items } = result;
-
     const map = new Map<string, RecipeConsumptionLine>();
-
     const stockItemCache = new Map<string, string>();
 
     const getStockItemIdForVariant = async (itemId: string) => {
       const cached = stockItemCache.get(itemId);
       if (cached) return cached;
+
       const stockItem = await this.stockItemRepo.findByVariantId(itemId, tx);
       if (!stockItem?.stockItemId) {
-        throw new NotFoundException(errorResponse("Stock item de materia prima no encontrado"));
+        throw new NotFoundException("Stock item de materia prima no encontrado");
       }
+
       stockItemCache.set(itemId, stockItem.stockItemId);
       return stockItem.stockItemId;
     };
@@ -52,20 +51,20 @@ export class BuildConsumptionFromRecipesUseCase {
     const getVariantIdForFinishedItem = async (finishedItemId: string) => {
       const finishedItem = await this.stockItemRepo.findById(finishedItemId, tx);
       if (!finishedItem?.variantId) {
-        throw new NotFoundException(errorResponse("Stock item de producto terminado no encontrado"));
+        throw new NotFoundException("Stock item de producto terminado no encontrado");
       }
       return finishedItem.variantId;
     };
 
-    for (const item of items) {
+    for (const item of result.items) {
       const finishedVariantId = await getVariantIdForFinishedItem(item.finishedItemId);
       const recipes = await this.recipeRepo.listByVariantId(finishedVariantId, tx);
 
-      for (const r of recipes) {
-        const qty = r.quantity * item.quantity;
-        const loc = item.fromLocationId ?? undefined;
-        const stockItemId = await getStockItemIdForVariant(r.primaVariantId);
-        const key = `${stockItemId}::${loc ?? "null"}`;
+      for (const recipe of recipes) {
+        const qty = recipe.quantity * item.quantity;
+        const locationId = item.fromLocationId ?? undefined;
+        const stockItemId = await getStockItemIdForVariant(recipe.primaVariantId);
+        const key = `${stockItemId}::${locationId ?? "null"}`;
 
         const current = map.get(key);
         if (current) {
@@ -73,7 +72,7 @@ export class BuildConsumptionFromRecipesUseCase {
         } else {
           map.set(key, {
             stockItemId,
-            locationId: loc,
+            locationId,
             qty,
           });
         }

@@ -1,8 +1,10 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { USER_REPOSITORY, UserRepository } from 'src/modules/users/application/ports/user.repository';
 import { USER_READ_REPOSITORY, UserReadRepository } from 'src/modules/users/application/ports/user-read.repository';
 import { RoleType } from 'src/shared/constantes/constants';
 import { successResponse } from 'src/shared/response-standard/response';
+import { UserForbiddenApplicationError } from '../errors/user-forbidden.error';
+import { UserNotFoundApplicationError } from '../errors/user-not-found.error';
 
 @Injectable()
 export class RestoreUserUseCase {
@@ -15,33 +17,32 @@ export class RestoreUserUseCase {
 
   async execute(id: string, requesterRole: RoleType) {
     if (requesterRole !== RoleType.ADMIN && requesterRole !== RoleType.MODERATOR) {
-      throw new UnauthorizedException('No autorizado para restaurar usuarios');
+      throw new ForbiddenException(new UserForbiddenApplicationError('No autorizado para restaurar usuarios').message);
     }
 
     const target = await this.userReadRepository.findManagementById(id);
     if (!target) {
-      throw new UnauthorizedException('Usuario no encontrado');
+      throw new NotFoundException(new UserNotFoundApplicationError().message);
     }
 
     if (target.role.description === RoleType.ADMIN) {
-      throw new UnauthorizedException('No puedes restaurar usuarios administradores');
+      throw new ForbiddenException(new UserForbiddenApplicationError('No puedes restaurar usuarios administradores').message);
     }
 
     if (requesterRole === RoleType.MODERATOR && target.role.description !== RoleType.ADVISER) {
-      throw new UnauthorizedException('No estas autorizado para restaurar usuario');
+      throw new ForbiddenException(new UserForbiddenApplicationError('No estas autorizado para restaurar usuario').message);
     }
 
     const isDeleted = await this.userRepository.existsByIdAndDeleted(id, true);
     if (!isDeleted) {
-      throw new UnauthorizedException('Este usuario todavia no ha sido eliminado');
+      throw new NotFoundException('Este usuario todavia no ha sido eliminado');
     }
 
     try {
       await this.userRepository.updateDeleted(id, false);
       return successResponse('El usuario ha sido restaurado');
-    } catch (error) {
-      console.error('[RestoreUserUseCase] error de la accion', error);
-      throw new UnauthorizedException('No se pudo restaurar al usuario');
+    } catch {
+      throw new InternalServerErrorException('No se pudo restaurar al usuario');
     }
   }
 }

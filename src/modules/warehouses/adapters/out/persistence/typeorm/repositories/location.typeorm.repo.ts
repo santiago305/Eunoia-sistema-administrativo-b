@@ -8,6 +8,7 @@ import { LocationId } from "src/modules/warehouses/domain/value-objects/location
 import { WarehouseId } from "src/modules/warehouses/domain/value-objects/warehouse-id.vo";
 import { WarehouseLocationEntity } from "../entities/warehouse-location";
 import { LocartionRepository } from "src/modules/warehouses/application/ports/location.repository.port";
+import { WarehouseFactory } from "src/modules/warehouses/domain/factories/warehouse.factory";
 
 @Injectable()
 export class LocationTypeormRepo implements LocartionRepository {
@@ -28,13 +29,13 @@ export class LocationTypeormRepo implements LocartionRepository {
   }
 
   private toDomain(row: WarehouseLocationEntity): WarehouseLocation {
-    return new WarehouseLocation(
-      new LocationId(row.id),
-      new WarehouseId(row.warehouseId),
-      row.code,
-      row.description ?? undefined,
-      row.isActive
-    );
+    return WarehouseFactory.createLocation({
+      locationId: new LocationId(row.id),
+      warehouseId: new WarehouseId(row.warehouseId),
+      code: row.code,
+      description: row.description ?? undefined,
+      isActive: row.isActive,
+    });
   }
 
   async findById(locationId: LocationId, tx?: TransactionContext): Promise<WarehouseLocation | null> {

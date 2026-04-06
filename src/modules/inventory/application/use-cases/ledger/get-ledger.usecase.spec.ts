@@ -51,8 +51,11 @@ describe('GetLedgerUseCase', () => {
     expect(result).toEqual({
       items: [
         {
-          id: 1,
+          id: '0',
           docId: 'DOC-1',
+          document: undefined,
+          referenceDoc: undefined,
+          stockItem: undefined,
           stockItemId: 'VAR-1',
           locationId: 'LOC-1',
           direction: Direction.IN,
@@ -60,7 +63,7 @@ describe('GetLedgerUseCase', () => {
           wasteQty: 0,
           unitCost: 5,
           createdAt: new Date('2026-02-06T12:00:00Z'),
-          balance: 0,
+          balance: 10,
         },
       ],
       total: 1,

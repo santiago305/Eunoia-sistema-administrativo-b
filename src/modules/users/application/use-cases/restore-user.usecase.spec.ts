@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { RestoreUserUseCase } from './restore-user.usecase';
 import { successResponse } from 'src/shared/response-standard/response';
 import { RoleType } from 'src/shared/constantes/constants';
@@ -26,14 +26,30 @@ describe('RestoreUserUseCase', () => {
     expect(result).toEqual(successResponse('El usuario ha sido restaurado'));
   });
 
-  it('rejects when user not deleted', async () => {
+  it('rejects when requester role cannot restore users', async () => {
+    const useCase = makeUseCase();
+
+    await expect(useCase.execute('user-1', RoleType.ADVISER)).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('rejects when target user does not exist', async () => {
+    const useCase = makeUseCase({
+      userReadRepository: {
+        findManagementById: jest.fn().mockResolvedValue(null),
+      },
+    });
+
+    await expect(useCase.execute('user-1', RoleType.ADMIN)).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('rejects when user is not deleted', async () => {
     const useCase = makeUseCase({
       userRepository: {
         existsByIdAndDeleted: jest.fn().mockResolvedValue(false),
       },
     });
 
-    await expect(useCase.execute('user-1', RoleType.ADMIN)).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(useCase.execute('user-1', RoleType.ADMIN)).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('rejects moderator restoring non-adviser', async () => {
@@ -46,6 +62,19 @@ describe('RestoreUserUseCase', () => {
       },
     });
 
-    await expect(useCase.execute('user-1', RoleType.MODERATOR)).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(useCase.execute('user-1', RoleType.MODERATOR)).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('rejects restoring admin users', async () => {
+    const useCase = makeUseCase({
+      userReadRepository: {
+        findManagementById: jest.fn().mockResolvedValue({
+          id: 'user-1',
+          role: { description: RoleType.ADMIN },
+        }),
+      },
+    });
+
+    await expect(useCase.execute('user-1', RoleType.ADMIN)).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

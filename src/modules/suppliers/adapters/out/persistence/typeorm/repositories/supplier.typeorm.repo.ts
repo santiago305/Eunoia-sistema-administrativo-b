@@ -27,22 +27,22 @@ export class SupplierTypeormRepository implements SupplierRepository {
   }
 
   private toDomain(row: SupplierEntity): Supplier {
-    return new Supplier(
-      row.id,
-      row.documentType,
-      row.documentNumber,
-      row.name ?? undefined,
-      row.lastName ?? undefined,
-      row.tradeName ?? undefined,
-      row.address ?? undefined,
-      row.phone ?? undefined,
-      row.email ?? undefined,
-      row.note ?? undefined,
-      row.leadTimeDays ?? undefined,
-      row.isActive,
-      row.createdAt,
-      row.updatedAt,
-    );
+    return Supplier.create({
+      supplierId: row.id,
+      documentType: row.documentType,
+      documentNumber: row.documentNumber,
+      name: row.name ?? undefined,
+      lastName: row.lastName ?? undefined,
+      tradeName: row.tradeName ?? undefined,
+      address: row.address ?? undefined,
+      phone: row.phone ?? undefined,
+      email: row.email ?? undefined,
+      note: row.note ?? undefined,
+      leadTimeDays: row.leadTimeDays ?? undefined,
+      isActive: row.isActive,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+    });
   }
 
   async findById(supplierId: string, tx?: TransactionContext): Promise<Supplier | null> {

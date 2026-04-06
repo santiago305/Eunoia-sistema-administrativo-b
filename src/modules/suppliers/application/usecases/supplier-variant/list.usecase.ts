@@ -3,6 +3,7 @@ import { PaginatedResult } from "src/shared/utilidades/dto/paginateResult";
 import { SUPPLIER_VARIANT_REPOSITORY, SupplierVariantRepository } from "src/modules/suppliers/domain/ports/supplier-variant.repository";
 import { ListSupplierVariantsInput } from "../../dtos/supplier-variant/input/list.input";
 import { SupplierVariantOutput } from "../../dtos/supplier-variant/output/supplier-variant.output";
+import { SupplierOutputMapper } from "../../mappers/supplier-output.mapper";
 
 export class ListSupplierVariantsUsecase {
   constructor(
@@ -23,13 +24,7 @@ export class ListSupplierVariantsUsecase {
     });
 
     return {
-      items: items.map((row) => ({
-        supplierId: row.supplierId,
-        variantId: row.variantId,
-        supplierSku: row.supplierSku,
-        lastCost: row.lastCost?.getAmount(),
-        leadTimeDays: row.leadTimeDays,
-      })),
+      items: items.map((row) => SupplierOutputMapper.toSupplierVariantOutput(row)),
       total,
       page,
       limit,

@@ -6,6 +6,7 @@ import { HttpGenerateInvoiceDto } from "../dtos/http-generate-invoice.dto";
 import { GeneratePurchaseOrderPdfUseCase } from "src/modules/pdf-generated/application/usecases/generate-purchase-order-pdf.usecase";
 import { GenerateProductionOrderPdfUseCase } from "src/modules/pdf-generated/application/usecases/generate-production-order-pdf.usecase";
 import { GenerateInventoryDocumentPdfUseCase } from "src/modules/pdf-generated/application/usecases/generate-inventory-document-pdf.usecase";
+import { PdfGeneratedHttpMapper } from "src/modules/pdf-generated/application/mappers/pdf-generated-http.mapper";
 
 @Controller("pdf-generated")
 @UseGuards(JwtAuthGuard)
@@ -19,7 +20,9 @@ export class PdfGeneratedController {
 
   @Post("invoice")
   async createInvoice(@Body() dto: HttpGenerateInvoiceDto, @Res() res: Response) {
-    const buffer = await this.generateInvoicePdf.execute(dto);
+    const buffer = await this.generateInvoicePdf.execute(
+      PdfGeneratedHttpMapper.toInvoiceInput(dto),
+    );
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", "inline; filename=invoice.pdf");
@@ -27,7 +30,9 @@ export class PdfGeneratedController {
   }
   @Get("purchase/:id/pdf")
   async getPdf(@Param("id", ParseUUIDPipe) id: string, @Res() res: Response) {
-    const buffer = await this.generatePurchasePdf.execute({ poId: id });
+    const buffer = await this.generatePurchasePdf.execute(
+      PdfGeneratedHttpMapper.toPurchaseOrderInput(id),
+    );
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", "inline; filename=purchase-order.pdf");
     return res.status(200).send(buffer);
@@ -35,14 +40,18 @@ export class PdfGeneratedController {
 
   @Get("production/:id/pdf")
   async getProductionPdf(@Param("id", ParseUUIDPipe) id: string, @Res() res: Response) {
-    const buffer = await this.generateProductionPdf.execute({ productionId: id });
+    const buffer = await this.generateProductionPdf.execute(
+      PdfGeneratedHttpMapper.toProductionOrderInput(id),
+    );
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", "inline; filename=production-order.pdf");
     return res.status(200).send(buffer);
   }
   @Get("inventory/:id/pdf")
   async getInventoryDocumentPdf(@Param("id", ParseUUIDPipe) id: string, @Res() res: Response) {
-    const buffer = await this.generateInventoryDocumentPdf.execute({ docId: id });
+    const buffer = await this.generateInventoryDocumentPdf.execute(
+      PdfGeneratedHttpMapper.toInventoryDocumentInput(id),
+    );
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", "inline; filename=inventory-document.pdf");
     return res.status(200).send(buffer);

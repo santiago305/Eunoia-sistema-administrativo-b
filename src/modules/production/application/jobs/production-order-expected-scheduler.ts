@@ -22,20 +22,18 @@ export class ProductionOrderExpectedScheduler {
     this.scheduleMeta.set(productionId, { expectedAtMs, scheduledAtMs: scheduledAt });
     if (delay <= 0) {
       this.runExpected.execute(productionId).catch((err) => {
-        throw new InternalServerErrorException({
-          type: "error",
-          message: err,
-        });
+        throw new InternalServerErrorException(
+          err instanceof Error ? err.message : "Error al ejecutar producción esperada",
+        );
       });
       return;
     }
 
     const timer = setTimeout(() => {
       this.runExpected.execute(productionId).catch((err) => {
-        throw new InternalServerErrorException({
-          type: "error",
-          message: err,
-        });
+        throw new InternalServerErrorException(
+          err instanceof Error ? err.message : "Error al ejecutar producción esperada",
+        );
       });
       this.timers.delete(productionId);
       this.scheduleMeta.delete(productionId);

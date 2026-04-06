@@ -5,6 +5,7 @@ import { EntityManager, Repository } from 'typeorm';
 import DocumentSerie from '../../../../domain/entities/document-serie';
 import { DocType } from '../../../../domain/value-objects/doc-type';
 import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
+import { DocumentSerieFactory } from 'src/modules/inventory/domain/factories/document-serie.factory';
 
 import { DocumentSerie as OrmSerie } from '../entities/document_serie.entity';
 import { TypeormTransactionContext } from 'src/shared/infrastructure/typeorm/typeorm.transaction-context';
@@ -29,18 +30,18 @@ export class DocumentSeriesTypeormRepository implements DocumentSeriesRepository
   }
 
   private toDomain(row: OrmSerie): DocumentSerie {
-    return new DocumentSerie(
-      row.id,
-      row.code,
-      row.name,
-      row.docType,
-      row.warehouseId,
-      row.nextNumber,
-      row.padding,
-      row.separator,
-      row.isActive,
-      row.createdAt,
-    );
+    return DocumentSerieFactory.create({
+      id: row.id,
+      code: row.code,
+      name: row.name,
+      docType: row.docType,
+      warehouseId: row.warehouseId,
+      nextNumber: row.nextNumber,
+      padding: row.padding,
+      separator: row.separator,
+      isActive: row.isActive,
+      createdAt: row.createdAt,
+    });
   }
 
   async creatDocumentSerie(

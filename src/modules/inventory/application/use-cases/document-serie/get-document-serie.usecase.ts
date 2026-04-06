@@ -1,7 +1,9 @@
-import { Inject, Injectable, BadRequestException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { GetDocumentSerieInput } from '../../dto/document-serie/input/get-document-serie-by-id';
 import { DocumentSerieOutput } from '../../dto/document-serie/output/document-serie-out';
 import { SERIES_REPOSITORY, DocumentSeriesRepository } from '../../ports/document-series.repository.port';
+import { DocumentSerieOutputMapper } from '../../mappers/document-serie-output.mapper';
+import { DocumentSerieNotFoundApplicationError } from '../../errors/document-serie-not-found.error';
 
 @Injectable()
 export class GetDocumentSerieUseCase {
@@ -13,18 +15,9 @@ export class GetDocumentSerieUseCase {
   async execute(input: GetDocumentSerieInput): Promise<DocumentSerieOutput> {
     const serie = await this.seriesRepo.findById(input.id);
     if (!serie) {
-      throw new BadRequestException('Serie invalida');
+      throw new NotFoundException(new DocumentSerieNotFoundApplicationError().message);
     }
 
-    return {
-      id: serie.id,
-      code: serie.code,
-      name: serie.name,
-      docType: serie.docType,
-      warehouseId: serie.warehouseId,
-      nextNumber: serie.nextNumber,
-      isActive: serie.isActive,
-      createdAt: serie.createdAt,
-    };
+    return DocumentSerieOutputMapper.toOutput(serie);
   }
 }

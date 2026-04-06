@@ -12,6 +12,7 @@ import { ListWarehouseQueryDto } from "../dtos/warehouse/http-warehouse-list.dto
 import { HttpSetWarehouseActiveDto } from "../dtos/warehouse/http-warehouse-set-active.dto";
 import { HttpUpdateWarehouseDto } from "../dtos/warehouse/http-warehouse-update.dto";
 import { WarehouseId } from "src/modules/warehouses/domain/value-objects/warehouse-id.vo";
+import { WarehouseHttpMapper } from "src/modules/warehouses/application/mappers/warehouse-http.mapper";
 
 @Controller("warehouses")
 @UseGuards(JwtAuthGuard)
@@ -28,25 +29,23 @@ export class WarehousesController {
 
   @Post()
   create(@Body() dto: HttpCreateWarehouseDto) {
-    return this.createWarehouse.execute(dto);
+    return this.createWarehouse.execute(WarehouseHttpMapper.toCreateWarehouseInput(dto));
   }
 
   @Get()
   list(@Query() query: ListWarehouseQueryDto) {
     const isActive = query.isActive === undefined ? undefined : query.isActive === "true";
-    const q = query.q?.trim();
-
-    return this.listWarehouses.execute({
+    return this.listWarehouses.execute(WarehouseHttpMapper.toListWarehouseInput({
       page: query.page,
       limit: query.limit,
       isActive,
-      q,
+      q: query.q,
       name: query.name,
       department: query.department,
       province: query.province,
       district: query.district,
       address: query.address,
-    });
+    }));
   }
 
   @Get("active")
@@ -66,11 +65,13 @@ export class WarehousesController {
 
   @Patch(":id")
   update(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpUpdateWarehouseDto) {
-    return this.updateWarehouse.execute({ warehouseId: new WarehouseId(id), ...dto });
+    return this.updateWarehouse.execute(WarehouseHttpMapper.toUpdateWarehouseInput(id, dto));
   }
 
   @Patch(":id/active")
   setActive(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpSetWarehouseActiveDto) {
-    return this.setWarehouseActive.execute({ warehouseId: new WarehouseId(id), isActive: dto.isActive });
+    return this.setWarehouseActive.execute(
+      WarehouseHttpMapper.toSetWarehouseActiveInput(id, dto.isActive),
+    );
   }
 }

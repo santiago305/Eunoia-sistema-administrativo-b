@@ -5,7 +5,7 @@ import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/d
 import { PAYMENT_DOCUMENT_REPOSITORY, PaymentDocumentRepository } from "src/modules/payments/domain/ports/payment-document.repository";
 import { ListPurchaseOrdersInput } from "../../dtos/purchase-order/input/list.input";
 import { PurchaseOrderOutput } from "../../dtos/purchase-order/output/purchase-order.output";
-import { PaymentOutput } from "src/modules/payments/application/dtos/payment/output/payment.output";
+import { PurchaseOrderOutputMapper } from "../../mappers/purchase-order-output.mapper";
 
 export class ListPurchaseOrdersUsecase {
   constructor(
@@ -34,47 +34,17 @@ export class ListPurchaseOrdersUsecase {
     const itemsWithPayments = await Promise.all(
       items.map(async (row) => {
         const payments = await this.paymentDocRepo.findByPoId(row.poId);
-        const paymentOutputs: PaymentOutput[] = payments.map((p) => ({
-          payDocId: p.payDocId,
-          method: p.method,
-          date: p.date,
-          operationNumber: p.operationNumber ?? null,
-          currency: p.currency,
-          amount: p.amount,
-          note: p.note ?? null,
-          fromDocumentType: p.fromDocumentType,
-          poId: p.poId ?? "",
-          quotaId: p.quotaId ?? null,
-        }));
+        const paymentOutputs = payments.map((payment) =>
+          PurchaseOrderOutputMapper.toPaymentOutput(payment),
+        );
 
         const totalPaid = paymentOutputs.reduce((sum, p) => sum + (p.amount ?? 0), 0);
-        const totalPurchase = row.total?.getAmount() ?? 0;
+        const mappedOrder = PurchaseOrderOutputMapper.toOrderOutput(row);
 
         return {
-          poId: row.poId,
-          supplierId: row.supplierId,
-          warehouseId: row.warehouseId,
-          documentType: row.documentType,
-          serie: row.serie,
-          correlative: row.correlative,
-          currency: row.currency,
-          paymentForm: row.paymentForm,
-          creditDays: row.creditDays,
-          numQuotas: row.numQuotas,
-          totalTaxed: row.totalTaxed.getAmount(),
-          totalExempted: row.totalExempted.getAmount(),
-          totalIgv: row.totalIgv.getAmount(),
-          purchaseValue: row.purchaseValue.getAmount(),
-          total: totalPurchase,
+          ...mappedOrder,
           totalPaid,
-          totalToPay: totalPurchase - totalPaid,
-          note: row.note,
-          status: row.status,
-          isActive: row.isActive,
-          expectedAt: row.expectedAt,
-          dateIssue: row.dateIssue,
-          dateExpiration: row.dateExpiration,
-          createdAt: row.createdAt,
+          totalToPay: mappedOrder.total - totalPaid,
         };
       }),
     );

@@ -1,15 +1,14 @@
 import { BadRequestException, Inject, Injectable, InternalServerErrorException } from "@nestjs/common";
-import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
-import { ProductionOrder } from "src/modules/production/domain/entity/production-order.entity";
-import { ProductionOrderFactory } from "src/modules/production/domain/factories/production-order.factory";
-import { DomainError } from "src/modules/production/domain/errors/domain.error";
-import { CreateProductionOrderInput } from "../../dto/production-order/input/create-production-order";
-import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
-
-import { errorResponse } from "src/shared/response-standard/response";
-import { AddProductionOrderItem } from "./add-item.usecase";
 import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
 import { SERIES_REPOSITORY, DocumentSeriesRepository } from "src/modules/inventory/application/ports/document-series.repository.port";
+import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
+import { DomainError } from "src/modules/production/domain/errors/domain.error";
+import { ProductionOrder } from "src/modules/production/domain/entity/production-order.entity";
+import { ProductionOrderFactory } from "src/modules/production/domain/factories/production-order.factory";
+import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
+import { CreateProductionOrderInput } from "../../dto/production-order/input/create-production-order";
+import { ProductionOrderOutputMapper } from "../../mappers/production-order-output.mapper";
+import { AddProductionOrderItem } from "./add-item.usecase";
 
 @Injectable()
 export class CreateProductionOrder {
@@ -21,26 +20,24 @@ export class CreateProductionOrder {
     private readonly seriesRepo: DocumentSeriesRepository,
     @Inject(CLOCK)
     private readonly clock: ClockPort,
-    private readonly ItemProduction: AddProductionOrderItem
+    private readonly itemProduction: AddProductionOrderItem,
   ) {}
 
-  async execute(input: CreateProductionOrderInput, userId:string): Promise<{type:string,message:string
-    productionId?:string
-  }> {
+  async execute(input: CreateProductionOrderInput, userId: string) {
     return this.uow.runInTransaction(async (tx) => {
       if (!input.fromWarehouseId || !input.toWarehouseId || !input.serieId) {
-        throw new BadRequestException(
-          errorResponse('fromWarehouseId, toWarehouseId y serieId son obligatorios')
-        );
+        throw new BadRequestException("fromWarehouseId, toWarehouseId y serieId son obligatorios");
       }
+
       if (!input.manufactureDate) {
-        throw new BadRequestException(errorResponse('manufactureDate es obligatorio'));
+        throw new BadRequestException("manufactureDate es obligatorio");
       }
 
       const serie = await this.seriesRepo.findById(input.serieId);
       if (!serie) {
-        throw new BadRequestException(errorResponse('Serie invalida'));
+        throw new BadRequestException("Serie invalida");
       }
+
       const correlative = await this.seriesRepo.reserveNextNumber(input.serieId, tx);
 
       let order: ProductionOrder;
@@ -57,21 +54,21 @@ export class CreateProductionOrder {
         });
       } catch (err) {
         if (err instanceof DomainError) {
-          throw new BadRequestException(errorResponse(err.message));
+          throw new BadRequestException(err.message);
         }
         throw err;
       }
 
-      let created:ProductionOrder;
+      let created: ProductionOrder;
       try {
         created = await this.orderRepo.create(order, tx);
       } catch {
-        throw new InternalServerErrorException(errorResponse('Error al crear orden de compra'));
+        throw new InternalServerErrorException("Error al crear orden de produccion");
       }
-      
+
       try {
         for (const item of input.items ?? []) {
-          await this.ItemProduction.execute(
+          await this.itemProduction.execute(
             {
               productionId: created.productionId,
               finishedItemId: item.finishedItemId,
@@ -79,20 +76,20 @@ export class CreateProductionOrder {
               toLocationId: item.toLocationId,
               quantity: item.quantity,
               unitCost: item.unitCost,
-              type: item.type
+              type: item.type,
             },
             tx,
           );
         }
       } catch {
-        throw new InternalServerErrorException(errorResponse('Error al ingresar items'));
+        throw new InternalServerErrorException("Error al ingresar items");
       }
 
       return {
-          type:'success',
-          message: '¡Orden de producción creada con exito!',
-          productionId: created.productionId
-      } 
+        type: "success",
+        message: "Orden de produccion creada con exito",
+        order: ProductionOrderOutputMapper.toOrderOutput(created),
+      };
     });
   }
 }

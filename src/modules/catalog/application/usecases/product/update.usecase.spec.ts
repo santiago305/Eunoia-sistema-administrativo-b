@@ -2,6 +2,8 @@ import { NotFoundException } from '@nestjs/common';
 import { UpdateProduct } from './update.usecase';
 import { Product } from 'src/modules/catalog/domain/entity/product';
 import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo';
+import { Money } from 'src/shared/value-objets/money.vo';
+import { ProductType } from 'src/modules/catalog/domain/value-object/productType';
 
 describe('UpdateProduct', () => {
   it('actualiza un producto y retorna output', async () => {
@@ -15,10 +17,24 @@ describe('UpdateProduct', () => {
       runInTransaction: jest.fn(async (work) => work(tx)),
     };
 
+    const current = Product.create({
+      id: productId,
+      name: 'Cable',
+      description: 'Cable USB',
+      baseUnitId,
+      sku: '00001',
+      price: Money.create(10),
+      cost: Money.create(5),
+      attributes: {},
+      isActive: true,
+      type: ProductType.FINISHED,
+      createdAt,
+      updatedAt,
+    });
+
     const productRepo = {
-      update: jest.fn().mockResolvedValue(
-        new Product(productId, 'Cable', 'Cable USB', baseUnitId, true, undefined, createdAt, updatedAt),
-      ),
+      findById: jest.fn().mockResolvedValue(current),
+      update: jest.fn().mockResolvedValue(current),
     };
 
     const useCase = new UpdateProduct(uow as any, productRepo as any);
@@ -35,13 +51,24 @@ describe('UpdateProduct', () => {
       tx,
     );
     expect(result).toEqual({
-      id: productId.value,
-      name: 'Cable',
-      description: 'Cable USB',
-      baseUnitId,
-      isActive: true,
-      createdAt,
-      updatedAt,
+      type: 'success',
+      message: 'Producto actualizado con éxito',
+      product: {
+        id: productId.value,
+        name: 'Cable',
+        description: 'Cable USB',
+        baseUnitId,
+        sku: '00001',
+        customSku: null,
+        barcode: null,
+        price: 10,
+        cost: 5,
+        attributes: {},
+        type: ProductType.FINISHED,
+        isActive: true,
+        createdAt,
+        updatedAt,
+      },
     });
   });
 
@@ -52,7 +79,8 @@ describe('UpdateProduct', () => {
     };
 
     const productRepo = {
-      update: jest.fn().mockResolvedValue(null),
+      findById: jest.fn().mockResolvedValue(null),
+      update: jest.fn(),
     };
 
     const useCase = new UpdateProduct(uow as any, productRepo as any);

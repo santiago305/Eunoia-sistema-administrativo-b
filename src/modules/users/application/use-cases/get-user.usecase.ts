@@ -1,7 +1,9 @@
-import { Inject, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { USER_READ_REPOSITORY, UserReadRepository } from 'src/modules/users/application/ports/user-read.repository';
 import { RoleType } from 'src/shared/constantes/constants';
 import { successResponse } from 'src/shared/response-standard/response';
+import { UserForbiddenApplicationError } from '../errors/user-forbidden.error';
+import { UserNotFoundApplicationError } from '../errors/user-not-found.error';
 
 @Injectable()
 export class GetUserUseCase {
@@ -13,12 +15,12 @@ export class GetUserUseCase {
   async execute(id: string, requesterRole: RoleType) {
     const user = await this.userReadRepository.findManagementById(id);
     if (!user) {
-      throw new NotFoundException('No hemos podido encotrar el usuario');
+      throw new NotFoundException(new UserNotFoundApplicationError().message);
     }
 
     this.assertCanViewRole(requesterRole, user.role.description);
 
-    return successResponse('usuarios encontrado', {
+    return successResponse('Usuario encontrado', {
       id: user.id,
       name: user.name,
       email: user.email,
@@ -31,11 +33,11 @@ export class GetUserUseCase {
 
   private assertCanViewRole(requesterRole: RoleType, targetRole: string) {
     if (requesterRole === RoleType.ADMIN && targetRole === RoleType.ADMIN) {
-      throw new UnauthorizedException('Acceso denegado');
+      throw new ForbiddenException(new UserForbiddenApplicationError().message);
     }
 
     if (requesterRole === RoleType.MODERATOR && targetRole !== RoleType.ADVISER) {
-      throw new UnauthorizedException('Acceso denegado');
+      throw new ForbiddenException(new UserForbiddenApplicationError().message);
     }
   }
 }

@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { UpdateUserRoleUseCase } from './update-user-role.usecase';
 import { RoleType } from 'src/shared/constantes/constants';
 
@@ -59,7 +59,7 @@ describe('UpdateUserRoleUseCase', () => {
 
     await expect(
       useCase.execute('user-1', 'role-2', RoleType.MODERATOR),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('rejects assigning admin role', async () => {
@@ -75,7 +75,7 @@ describe('UpdateUserRoleUseCase', () => {
 
     await expect(
       useCase.execute('user-1', 'role-admin', RoleType.ADMIN),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('rejects changing role for admin target', async () => {
@@ -90,7 +90,19 @@ describe('UpdateUserRoleUseCase', () => {
 
     await expect(
       useCase.execute('user-1', 'role-2', RoleType.ADMIN),
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('rejects when target user does not exist', async () => {
+    const { useCase } = makeUseCase({
+      userReadRepository: {
+        findManagementById: jest.fn().mockResolvedValue(null),
+      },
+    });
+
+    await expect(
+      useCase.execute('user-1', 'role-2', RoleType.ADMIN),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 });
 

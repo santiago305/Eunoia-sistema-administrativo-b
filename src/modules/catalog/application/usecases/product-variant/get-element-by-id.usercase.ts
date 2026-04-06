@@ -1,8 +1,9 @@
 import { Inject, NotFoundException } from '@nestjs/common';
-import { ProductVariant } from 'src/modules/catalog/domain/entity/product-variant';
 import { GetProductVariantInput } from '../../dto/product-variants/input/get-by-id-product-variant';
 import { ProductVariantOutput } from '../../dto/product-variants/output/product-variant-out';
 import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from '../../ports/product-variant.repository';
+import { CatalogOutputMapper } from '../../mappers/catalog-output.mapper';
+import { ProductVariantNotFoundApplicationError } from '../../errors/product-variant-not-found.error';
 
 export class GetProductVariant {
   constructor(
@@ -12,23 +13,10 @@ export class GetProductVariant {
 
   async execute(input: GetProductVariantInput): Promise<ProductVariantOutput> {
     const variant = await this.variantRepo.findById(input.id);
-    if (!variant) throw new NotFoundException({type: 'error', message: 'Variant no encontrado'});
-    return this.toOutput(variant);
-  }
+    if (!variant) {
+      throw new NotFoundException(new ProductVariantNotFoundApplicationError().message);
+    }
 
-  private toOutput(v: ProductVariant): ProductVariantOutput {
-    return {
-      id: v.getId(),
-      productId: v.getProductId().value,
-      sku: v.getSku(),
-      customSku: v.getCustomSku() ?? null,
-      barcode: v.getBarcode(),
-      attributes: v.getAttributes(),
-      price: v.getPrice().getAmount(),
-      cost: v.getCost().getAmount(),
-      isActive: v.getIsActive(),
-      createdAt: v.getCreatedAt(),
-    };
+    return CatalogOutputMapper.toProductVariantOutput(variant);
   }
 }
-

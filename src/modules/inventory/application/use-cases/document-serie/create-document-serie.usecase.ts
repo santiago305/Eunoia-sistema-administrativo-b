@@ -1,8 +1,10 @@
 import { Inject, Injectable, BadRequestException } from '@nestjs/common';
 import { CreateDocumentSerieInput } from '../../dto/document-serie/input/create-document-serie';
 import { DocumentSerieOutput } from '../../dto/document-serie/output/document-serie-out';
-import DocumentSerie from '../../../domain/entities/document-serie';
 import { SERIES_REPOSITORY, DocumentSeriesRepository } from '../../ports/document-series.repository.port';
+import { DocumentSerieFactory } from '../../../domain/factories/document-serie.factory';
+import { DocumentSerieOutputMapper } from '../../mappers/document-serie-output.mapper';
+import { InvalidDocumentSerieError } from '../../../domain/errors/invalid-document-serie.error';
 
 @Injectable()
 export class CreateDocumentSerieUseCase {
@@ -12,34 +14,26 @@ export class CreateDocumentSerieUseCase {
   ) {}
 
   async execute(input: CreateDocumentSerieInput): Promise<DocumentSerieOutput> {
-    if (!input.code || !input.name || !input.docType || !input.warehouseId) {
-      throw new BadRequestException('code, name, docType y warehouseId son obligatorios');
+    let serie;
+    try {
+      serie = DocumentSerieFactory.create({
+        code: input.code,
+        name: input.name,
+        docType: input.docType,
+        warehouseId: input.warehouseId,
+        nextNumber: input.nextNumber,
+        padding: input.padding,
+        separator: input.separator,
+        isActive: input.isActive,
+      });
+    } catch (error) {
+      if (error instanceof InvalidDocumentSerieError) {
+        throw new BadRequestException(error.message);
+      }
+      throw error;
     }
 
-    const serie = new DocumentSerie(
-        undefined,
-      input.code,
-      input.name,
-      input.docType,
-      input.warehouseId,
-      input.nextNumber ?? 1,
-      input.padding ?? 6,
-      input.separator ?? '-',
-      input.isActive ?? true,
-      new Date(),
-    );
-
     const saved = await this.seriesRepo.creatDocumentSerie(serie);
-
-    return {
-      id: saved.id,
-      code: saved.code,
-      name: saved.name,
-      docType: saved.docType,
-      warehouseId: saved.warehouseId,
-      nextNumber: saved.nextNumber,
-      isActive: saved.isActive,
-      createdAt: saved.createdAt,
-    };
+    return DocumentSerieOutputMapper.toOutput(saved);
   }
 }

@@ -1,30 +1,13 @@
 import { forwardRef, Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
-import { TypeormUnitOfWork } from "src/shared/infrastructure/typeorm/typeorm.unit-of-work";
-import { UNIT_OF_WORK } from "src/shared/domain/ports/unit-of-work.port";
 import { LocationsController } from "./adapters/in/controllers/location.controller";
 import { WarehousesController } from "./adapters/in/controllers/warehouse.controller";
 import { WarehouseLocationEntity } from "./adapters/out/persistence/typeorm/entities/warehouse-location";
 import { WarehouseEntity } from "./adapters/out/persistence/typeorm/entities/warehouse";
-import { LocationTypeormRepo } from "./adapters/out/persistence/typeorm/repositories/location.typeorm.repo";
-import { WarehouseTypeormRepo } from "./adapters/out/persistence/typeorm/repositories/warehouse.typeorm.repo";
-import { CreateLocationUsecase } from "./application/usecases/location/create.usecase";
-import { GetLocationUsecase } from "./application/usecases/location/get-by-id.usecase";
-import { ListLocationsUsecase } from "./application/usecases/location/list.usecase";
-import { SetLocationActiveUsecase } from "./application/usecases/location/set-active.usecase";
-import { UpdateLocationUsecase } from "./application/usecases/location/update.usecase";
-import { CreateWarehouseUsecase } from "./application/usecases/warehouse/create.usecase";
-import { GetWarehouseUsecase } from "./application/usecases/warehouse/get-by-id.usecase";
-import { GetWarehouseWithLocationsUsecase } from "./application/usecases/warehouse/get-with-locations.usecase";
-import { ListWarehousesUsecase } from "./application/usecases/warehouse/list.usecase";
-import { ListActiveWarehousesUsecase } from "./application/usecases/warehouse/list-active.usecase";
-import { SetWarehouseActiveUsecase } from "./application/usecases/warehouse/set-active.usecase";
-import { UpdateWarehouseUsecase } from "./application/usecases/warehouse/update.usecase";
 import { InventoryModule } from "../inventory/infrastructure/inventory.module";
-import { CLOCK } from "../inventory/application/ports/clock.port";
 import { LOCATION_REPOSITORY } from "./application/ports/location.repository.port";
 import { WAREHOUSE_REPOSITORY } from "./application/ports/warehouse.repository.port";
+import { warehousesModuleProviders } from "./composition/container";
 
 @Module({
   imports: [
@@ -32,25 +15,7 @@ import { WAREHOUSE_REPOSITORY } from "./application/ports/warehouse.repository.p
     forwardRef(() => InventoryModule),
   ],
   controllers: [WarehousesController, LocationsController],
-  providers: [
-    CreateWarehouseUsecase,
-    UpdateWarehouseUsecase,
-    SetWarehouseActiveUsecase,
-    ListWarehousesUsecase,
-    ListActiveWarehousesUsecase,
-    GetWarehouseUsecase,
-    GetWarehouseWithLocationsUsecase,
-    CreateLocationUsecase,
-    UpdateLocationUsecase,
-    SetLocationActiveUsecase,
-    ListLocationsUsecase,
-    GetLocationUsecase,
-    { provide: WAREHOUSE_REPOSITORY, useClass: WarehouseTypeormRepo },
-    { provide: LOCATION_REPOSITORY, useClass: LocationTypeormRepo },
-    { provide: UNIT_OF_WORK, useClass: TypeormUnitOfWork },
-    { provide: CLOCK, useValue: { now: () => new Date() } },
-    
-  ],
+  providers: [...warehousesModuleProviders],
   exports: [WAREHOUSE_REPOSITORY, LOCATION_REPOSITORY],
 })
 export class WarehousesModule {}

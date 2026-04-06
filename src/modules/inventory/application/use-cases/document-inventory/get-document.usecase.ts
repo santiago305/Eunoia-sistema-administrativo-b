@@ -1,8 +1,10 @@
-import { Inject, Injectable, BadRequestException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { DocumentIdInput } from '../../dto/document/input/document-id';
 import { DocumentDetailOutput } from '../../dto/document/output/document-detail-out';
 import { SERIES_REPOSITORY, DocumentSeriesRepository } from '../../ports/document-series.repository.port';
 import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../ports/document.repository.port';
+import { DocumentOutputMapper } from '../../mappers/document-output.mapper';
+import { DocumentNotFoundApplicationError } from '../../errors/document-not-found.error';
 
 @Injectable()
 export class GetDocumentUseCase {
@@ -16,35 +18,18 @@ export class GetDocumentUseCase {
   async execute(input: DocumentIdInput): Promise<DocumentDetailOutput> {
     const result = await this.documentRepo.getByIdWithItems(input.docId);
     if (!result) {
-      throw new BadRequestException('Documento no encontrado');
+      throw new NotFoundException(new DocumentNotFoundApplicationError().message);
     }
 
-    const { doc, items } = result;
-    const serie = await this.seriesRepo.findById(doc.serieId);
+    const serie = await this.seriesRepo.findById(result.doc.serieId);
     if (!serie) {
-      throw new BadRequestException('Serie invalida');
+      throw new NotFoundException('Serie no encontrada');
     }
 
-    return {
-      doc: {
-        id: doc.id!,
-        docType: doc.docType,
-        status: doc.status,
-        serie: serie.code,
-        correlative: doc.correlative,
-        createdAt: doc.createdAt,
-      },
-      items: items.map((i) => ({
-        id: i.id!,
-        docId: i.docId,
-        stockItemId: i.stockItemId,
-        quantity: i.quantity,
-        wasteQty: i.wasteQty ?? 0,
-        unitCost: i.unitCost ?? null,
-        fromLocationId: i.fromLocationId, 
-        toLocationId: i.toLocationId,     
-      })),
-    };
+    return DocumentOutputMapper.toDetailOutput({
+      doc: result.doc,
+      serieCode: serie.code,
+      items: result.items,
+    });
   }
 }
-

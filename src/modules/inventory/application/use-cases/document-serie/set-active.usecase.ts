@@ -32,8 +32,9 @@ export class SetDocumentSerieActive {
           );
         }
       }
+
       await this.serieRepo.setActive(input.id, input.isActive, tx);
-      return { status: '¡Solicitud lograda con exito!' };
+      return { status: "Solicitud lograda con exito" };
     });
   }
 }

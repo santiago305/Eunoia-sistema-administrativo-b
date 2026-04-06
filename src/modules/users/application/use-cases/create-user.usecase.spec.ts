@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { CreateUserUseCase } from './create-user.usecase';
 import { RoleType } from 'src/shared/constantes/constants';
@@ -85,7 +85,7 @@ describe('CreateUserUseCase', () => {
 
     await expect(
       useCase.execute({ email: 'ana@example.com' } as any, RoleType.ADVISER)
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('rejects duplicate email', async () => {
@@ -97,7 +97,7 @@ describe('CreateUserUseCase', () => {
 
     await expect(
       useCase.execute({ email: 'ana@example.com' } as any, RoleType.ADMIN)
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 
   it('rejects when default adviser role is missing', async () => {
@@ -116,7 +116,7 @@ describe('CreateUserUseCase', () => {
         } as any,
         RoleType.ADMIN
       )
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('rejects moderator creating non adviser', async () => {
@@ -141,7 +141,7 @@ describe('CreateUserUseCase', () => {
         } as any,
         RoleType.MODERATOR
       )
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('rejects admin creating admin', async () => {
@@ -166,6 +166,6 @@ describe('CreateUserUseCase', () => {
         } as any,
         RoleType.ADMIN
       )
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

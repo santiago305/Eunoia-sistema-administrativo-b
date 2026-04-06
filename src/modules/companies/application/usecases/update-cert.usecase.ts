@@ -1,11 +1,8 @@
-import {
-  Inject,
-  InternalServerErrorException,
-  NotFoundException,
-} from "@nestjs/common";
-import { errorResponse, successResponse } from "src/shared/response-standard/response";
+import { Inject, InternalServerErrorException, NotFoundException } from "@nestjs/common";
 import { COMPANY_REPOSITORY, CompanyRepository } from "src/modules/companies/domain/ports/company.repository";
 import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
+import { successResponse } from "src/shared/response-standard/response";
+import { CompanyNotFoundApplicationError } from "../errors/company-not-found.error";
 
 export class UpdateCompanyCertUsecase {
   constructor(
@@ -17,7 +14,9 @@ export class UpdateCompanyCertUsecase {
 
   async execute(filePath: string) {
     const current = await this.companyRepo.findSingle();
-    if (!current) throw new NotFoundException(errorResponse("Empresa no encontrada"));
+    if (!current) {
+      throw new NotFoundException(new CompanyNotFoundApplicationError().message);
+    }
 
     const saved = await this.companyRepo.update({
       companyId: current.companyId!,
@@ -26,7 +25,7 @@ export class UpdateCompanyCertUsecase {
     });
 
     if (!saved) {
-      throw new InternalServerErrorException(errorResponse("No se pudo actualizar el certificado"));
+      throw new InternalServerErrorException("No se pudo actualizar el certificado");
     }
 
     return successResponse("Certificado actualizado correctamente", {

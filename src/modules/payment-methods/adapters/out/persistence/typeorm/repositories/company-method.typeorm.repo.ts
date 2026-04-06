@@ -26,7 +26,11 @@ export class CompanyMethodTypeormRepository implements CompanyMethodRepository {
   }
 
   private toDomain(row: CompanyMethodEntity): CompanyMethod {
-    return new CompanyMethod(row.companyId, row.methodId, row.number ?? undefined);
+    return CompanyMethod.create({
+      companyId: row.companyId,
+      methodId: row.methodId,
+      number: row.number ?? undefined,
+    });
   }
 
   async findById(companyId: string, methodId: string, tx?: TransactionContext): Promise<CompanyMethod | null> {

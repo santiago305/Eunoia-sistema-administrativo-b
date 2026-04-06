@@ -3,6 +3,7 @@ import { ListWarehousesInput } from "../../dtos/warehouse/input/list.input";
 import { WarehouseOutput } from "../../dtos/warehouse/output/warehouse.out";
 import { PaginatedResult } from "src/shared/utilidades/dto/paginateResult";
 import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "../../ports/warehouse.repository.port";
+import { WarehouseOutputMapper } from "../../mappers/warehouse-output.mapper";
 
 
 export class ListWarehousesUsecase {
@@ -28,16 +29,7 @@ export class ListWarehousesUsecase {
     });
 
     return {
-      items: items.map((w: any) => ({
-        warehouseId: w.warehouseId.value,
-        name: w.name,
-        department: w.department,
-        province: w.province,
-        district: w.district,
-        address: w.address,
-        isActive: w.isActive,
-        createdAt: w.createdAt,
-      })),
+      items: items.map((warehouse) => WarehouseOutputMapper.toWarehouseOutput(warehouse)),
       total,
       page,
       limit,

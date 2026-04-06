@@ -3,6 +3,7 @@ import { ListLocationsInput } from "../../dtos/location/input/list.input";
 import { LocationOutput } from "../../dtos/location/output/location.output";
 import { PaginatedResult } from "src/shared/utilidades/dto/paginateResult";
 import { LOCATION_REPOSITORY, LocartionRepository } from "../../ports/location.repository.port";
+import { WarehouseOutputMapper } from "../../mappers/warehouse-output.mapper";
 
 
 export class ListLocationsUsecase {
@@ -26,13 +27,7 @@ export class ListLocationsUsecase {
     });
 
     return {
-      items: items.map((l: any) => ({
-        locationId: l.locationId.value,
-        warehouseId: l.warehouseId.value,
-        code: l.code,
-        description: l.description,
-        isActive: l.isActive,
-      })),
+      items: items.map((location) => WarehouseOutputMapper.toLocationOutput(location)),
       total,
       page,
       limit,

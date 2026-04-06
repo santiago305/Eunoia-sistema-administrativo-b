@@ -7,7 +7,7 @@ import { PurchaseOrderId } from "src/modules/purchases/domain/value-objects/purc
 import { CurrencyType } from "src/modules/purchases/domain/value-objects/currency-type";
 import { DomainError } from "src/modules/purchases/domain/errors/domain.error";
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
-import { errorResponse } from "src/shared/response-standard/response";
+import { PurchaseOrderNotFoundApplicationError } from "../../errors/purchase-order-not-found.error";
 
 export class AddPurchaseOrderItemUsecase {
   constructor(
@@ -19,24 +19,25 @@ export class AddPurchaseOrderItemUsecase {
     private readonly purchaseRepo: PurchaseOrderRepository,
   ) {}
 
-  async execute(items: AddPurchaseOrderItemInput[], po_id: string): Promise<{ type: string; message: string }> {
+  async execute(items: AddPurchaseOrderItemInput[], po_id: string): Promise<{ message: string }> {
     return this.uow.runInTransaction(async (tx) => {
       let poId: string;
       try {
         poId = new PurchaseOrderId(po_id).value;
       } catch (err) {
         if (err instanceof DomainError || (err as any)?.name === "InvalidMoneyError") {
-          throw new BadRequestException({ type: "error", message: (err as Error).message });
+          throw new BadRequestException((err as Error).message);
         }
         throw err;
       }
-      
-      const order = await this.purchaseRepo.findById(poId, tx);
-      if (!order) throw new BadRequestException(errorResponse("Orden no encontrada"));
 
+      const order = await this.purchaseRepo.findById(poId, tx);
+      if (!order) {
+        throw new BadRequestException(new PurchaseOrderNotFoundApplicationError().message);
+      }
 
       for (const item of items) {
-        let data:any;
+        let data: any;
         try {
           data = PurchaseOrderItemFactory.createNew({
             poId,
@@ -56,7 +57,7 @@ export class AddPurchaseOrderItemUsecase {
           });
         } catch (err) {
           if (err instanceof DomainError || (err as any)?.name === "InvalidMoneyError") {
-            throw new BadRequestException({ type: "error", message: (err as Error).message });
+            throw new BadRequestException((err as Error).message);
           }
           throw err;
         }
@@ -64,14 +65,11 @@ export class AddPurchaseOrderItemUsecase {
         try {
           await this.itemRepo.add(data, tx);
         } catch {
-          throw new BadRequestException({
-            type: "error",
-            message: `No se pudo agregar el item ${item}`,
-          });
+          throw new BadRequestException("No se pudo agregar items a la orden de compra");
         }
       }
 
-      return { type: "success", message: "Items agregado con exito" };
+      return { message: "Items agregados con exito" };
     });
   }
 }

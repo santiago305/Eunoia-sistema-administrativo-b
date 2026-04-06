@@ -1,4 +1,4 @@
-import { NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { GetUserUseCase } from './get-user.usecase';
 import { RoleType } from 'src/shared/constantes/constants';
 import { successResponse } from 'src/shared/response-standard/response';
@@ -37,10 +37,11 @@ describe('GetUserUseCase', () => {
 
     const result = await useCase.execute('user-1', RoleType.ADMIN);
     expect(result).toEqual(
-      successResponse('usuarios encontrado', {
+      successResponse('Usuario encontrado', {
         id: 'user-1',
         name: 'Ana',
         email: 'ana@example.com',
+        telefono: undefined,
         avatarUrl: '/api/assets/users/avatar.webp',
         rol: RoleType.ADVISER,
         deleted: false,
@@ -63,7 +64,7 @@ describe('GetUserUseCase', () => {
 
     await expect(
       useCase.execute('user-1', RoleType.MODERATOR)
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('rejects admin when target is admin', async () => {
@@ -81,6 +82,6 @@ describe('GetUserUseCase', () => {
 
     await expect(
       useCase.execute('user-1', RoleType.ADMIN)
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

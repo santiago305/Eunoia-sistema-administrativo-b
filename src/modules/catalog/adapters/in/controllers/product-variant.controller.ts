@@ -13,6 +13,7 @@ import {HttpUpdateProductVariantDto} from '../dtos/product-variants/http-variant
 import {HttpSetProductVariantActiveDto} from '../dtos/product-variants/http-variant-set-active.dto'
 import { ListProductVariantsInput } from 'src/modules/catalog/application/dto/product-variants/input/list-product-variant';
 import { ListProductVariantsQueryDto } from '../dtos/product-variants/http-variant-list.dto'
+import { CatalogHttpMapper } from 'src/modules/catalog/application/mappers/catalog-http.mapper';
 @Controller('catalog/variants')
 @UseGuards(JwtAuthGuard)
 export class ProductVariantsController {
@@ -28,12 +29,12 @@ export class ProductVariantsController {
 
   @Post()
   async create(@Body() dto: HttpCreateProductVariantDto) {
-    return await this.createVariant.execute(dto);
+    return await this.createVariant.execute(CatalogHttpMapper.toCreateProductVariantInput(dto));
   }
 
   @Patch(':id')
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: HttpUpdateProductVariantDto) {
-    return this.updateVariant.execute({ ...dto, id });
+    return this.updateVariant.execute(CatalogHttpMapper.toUpdateProductVariantInput(id, dto));
   }
 
   @Patch(':id/active')
@@ -77,7 +78,7 @@ export class ProductVariantsController {
       limit: query.limit,
       page: query.page,
     };
-    return this.search.execute(dto);
+    return this.search.execute(CatalogHttpMapper.toListProductVariantsInput(dto));
   }
 
   

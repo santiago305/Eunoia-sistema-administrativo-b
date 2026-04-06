@@ -1,4 +1,4 @@
-import { Inject, Injectable, BadRequestException } from '@nestjs/common';
+import { Inject, Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { AddItemInput } from '../../dto/document-item/input/add-item';
 import { ItemOutput } from '../../dto/document-item/output/item-out';
 import InventoryDocumentItem from '../../../domain/entities/inventory-document-item';
@@ -6,6 +6,8 @@ import { InventoryRulesService } from '../../../domain/services/inventory-rules.
 import { DocType } from '../../../domain/value-objects/doc-type';
 import { UNIT_OF_WORK, UnitOfWork } from 'src/shared/domain/ports/unit-of-work.port';
 import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../ports/document.repository.port';
+import { DocumentOutputMapper } from '../../mappers/document-output.mapper';
+import { DocumentNotFoundApplicationError } from '../../errors/document-not-found.error';
 
 @Injectable()
 export class AddItemUseCase {
@@ -21,14 +23,11 @@ export class AddItemUseCase {
     return this.uow.runInTransaction(async (tx) => {
       const doc = await this.documentRepo.findById(input.docId, tx);
       if (!doc) {
-        throw new BadRequestException('Documento no encontrado');
+        throw new NotFoundException(new DocumentNotFoundApplicationError().message);
       }
       if (!doc.isDraft()) {
         throw new BadRequestException('Solo se puede agregar items a documentos en DRAFT');
       }
-
-      let item: InventoryDocumentItem;
-
       if (input.quantity === undefined || input.quantity === null) {
         throw new BadRequestException('quantity es obligatorio');
       }
@@ -44,7 +43,7 @@ export class AddItemUseCase {
         throw new BadRequestException(error?.message ?? 'Cantidad invalida');
       }
 
-      item = new InventoryDocumentItem(
+      const item = new InventoryDocumentItem(
         undefined,
         input.docId,
         input.stockItemId,
@@ -55,18 +54,7 @@ export class AddItemUseCase {
         input.unitCost ?? null,
       );
       const saved = await this.documentRepo.addItem(item, tx);
-
-      return {
-        id: saved.id!,
-        docId: saved.docId,
-        stockItemId: saved.stockItemId,
-        quantity: saved.quantity,
-        wasteQty: saved.wasteQty ?? 0,
-        unitCost: saved.unitCost ?? null,
-        fromLocationId: saved.fromLocationId,
-        toLocationId: saved.toLocationId,
-      };
+      return DocumentOutputMapper.toItemOutput(saved);
     });
   }
 }
-

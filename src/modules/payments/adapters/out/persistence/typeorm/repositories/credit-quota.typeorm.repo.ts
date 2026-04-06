@@ -26,17 +26,17 @@ export class CreditQuotaTypeormRepository implements CreditQuotaRepository {
   }
 
   private toDomain(row: CreditQuotaEntity): CreditQuota {
-    return new CreditQuota(
-      row.id,
-      row.number,
-      row.expirationDate,
-      Number(row.totalToPay),
-      Number(row.totalPaid),
-      row.fromDocumentType,
-      row.paymentDate ?? undefined,
-      row.createdAt ?? undefined,
-      row.poId ?? undefined,
-    );
+    return CreditQuota.create({
+      quotaId: row.id,
+      number: row.number,
+      expirationDate: row.expirationDate,
+      totalToPay: Number(row.totalToPay),
+      totalPaid: Number(row.totalPaid),
+      fromDocumentType: row.fromDocumentType,
+      paymentDate: row.paymentDate ?? undefined,
+      createdAt: row.createdAt ?? undefined,
+      poId: row.poId ?? undefined,
+    });
   }
 
   async findById(quotaId: string, tx?: TransactionContext): Promise<CreditQuota | null> {

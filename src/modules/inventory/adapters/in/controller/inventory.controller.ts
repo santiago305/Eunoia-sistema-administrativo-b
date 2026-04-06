@@ -6,6 +6,7 @@ import { ListInventoryUseCase } from 'src/modules/inventory/application/use-case
 import { ListInventoryQueryDto } from '../dto/inventory/http-inventory-list.dto';
 import { AvailabilityQueryDto } from '../dto/inventory/http-inventory-availability.dto';
 import { GetStockQueryDto } from '../dto/inventory/http-inventory-stock.dto';
+import { InventoryHttpMapper } from 'src/modules/inventory/application/mappers/inventory-http.mapper';
 
 @Controller('inventory')
 @UseGuards(JwtAuthGuard)
@@ -18,29 +19,17 @@ export class InventoryController {
 
   @Get()
   list(@Query() query: ListInventoryQueryDto) {
-    return this.listInventory.execute({
-      warehouseId: query.warehouseId,
-      stockItemId: query.stockItemId,
-      locationId: query.locationId,
-    });
+    return this.listInventory.execute(InventoryHttpMapper.toListInventoryInput(query));
   }
 
   @Get('availability')
   availability(@Query() query: AvailabilityQueryDto) {
-    return this.getAvailability.execute({
-      warehouseId: query.warehouseId,
-      stockItemId: query.stockItemId,
-      locationId: query.locationId,
-    });
+    return this.getAvailability.execute(InventoryHttpMapper.toAvailabilityInput(query));
   }
 
   @Get('get-stock')
   getStock(@Query() query: GetStockQueryDto) {
-    return this.getStocked.execute({
-      warehouseId: query.warehouseId,
-      itemId: query.itemId,
-      locationId: query.locationId,
-    });
+    return this.getStocked.execute(InventoryHttpMapper.toGetStockInput(query));
   }
 
 }

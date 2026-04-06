@@ -4,6 +4,8 @@ import {
   IdentityLookupRepository,
 } from "src/modules/identity/domain/ports/identity-lookup.repository";
 import { DniData, IdentityLookupResult, RucData } from "../dtos/out";
+import { LookupIdentityInput } from "../dtos/lookup-identity.input";
+import { IdentityLookupMapper } from "../mappers/identity-lookup.mapper";
 
 export class LookupIdentityUsecase {
   constructor(
@@ -11,10 +13,8 @@ export class LookupIdentityUsecase {
     private readonly identityRepo: IdentityLookupRepository,
   ) {}
 
-  execute(params: {
-    documentType: string;
-    documentNumber: string;
-  }): Promise<IdentityLookupResult<DniData | RucData>> {
-    return this.identityRepo.lookup(params);
+  async execute(input: LookupIdentityInput): Promise<IdentityLookupResult<DniData | RucData>> {
+    const result = await this.identityRepo.lookup(input);
+    return IdentityLookupMapper.toOutput(result);
   }
 }

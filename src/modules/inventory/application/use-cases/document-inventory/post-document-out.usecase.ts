@@ -1,10 +1,11 @@
-import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
-import { BadRequestException, Inject, Injectable } from "@nestjs/common";
-import { PostDocumentInput } from "../../dto/document/input/document-post";
+import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { LedgerEntry } from "src/modules/inventory/domain/entities/ledger-entry";
-import { Direction } from "src/modules/inventory/domain/value-objects/direction";
 import { DocumentPostOutValidationService } from "src/modules/inventory/domain/services/document-post-out-validation.service";
+import { Direction } from "src/modules/inventory/domain/value-objects/direction";
 import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
+import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
+import { PostDocumentInput } from "../../dto/document/input/document-post";
+import { DocumentNotFoundApplicationError } from "../../errors/document-not-found.error";
 import { CLOCK, ClockPort } from "../../ports/clock.port";
 import { DOCUMENT_REPOSITORY, DocumentRepository } from "../../ports/document.repository.port";
 import { INVENTORY_LOCK, InventoryLock } from "../../ports/inventory-lock.port";
@@ -29,18 +30,18 @@ export class PostDocumentoOut {
     private readonly lock: InventoryLock,
   ) {}
 
-  async execute(input: PostDocumentInput) {
+  async execute(input: PostDocumentInput): Promise<{ status: string }> {
     return this.uow.runInTransaction(async (tx) => {
       const result = await this.documentRepo.getByIdWithItems(input.docId, tx);
 
       if (!result) {
-        throw new BadRequestException("Documento no encontrado");
+        throw new NotFoundException(new DocumentNotFoundApplicationError().message);
       }
 
       const { doc, items } = result;
 
       if (!doc.isDraft()) {
-        throw new BadRequestException('Documento ya ha sido posteado');
+        throw new BadRequestException("Documento ya ha sido posteado");
       }
 
       if (!items.length) {
@@ -50,17 +51,19 @@ export class PostDocumentoOut {
       if (!doc.fromWarehouseId) {
         throw new BadRequestException("OUT requiere warehouseId");
       }
-      
-      if(doc.docType != DocType.OUT){
+
+      if (doc.docType !== DocType.OUT) {
         throw new BadRequestException("El tipo de documento no es el adecuado");
       }
-      const keys = items.map((i) => ({
-        warehouseId: doc.fromWarehouseId!,
-        stockItemId: i.stockItemId,
-        locationId: i.fromLocationId
-      }));
 
-      await this.lock.lockSnapshots(keys, tx);
+      await this.lock.lockSnapshots(
+        items.map((item) => ({
+          warehouseId: doc.fromWarehouseId!,
+          stockItemId: item.stockItemId,
+          locationId: item.fromLocationId,
+        })),
+        tx,
+      );
 
       const { insuficientes, suficientes } = await this.outValidator.validateOutStock(
         items,
@@ -81,13 +84,11 @@ export class PostDocumentoOut {
       const entries: LedgerEntry[] = [];
 
       for (const item of items) {
-        const warehouseId = doc.fromWarehouseId!;
-
         entries.push(
           new LedgerEntry(
             undefined,
             doc.id!,
-            warehouseId,
+            doc.fromWarehouseId!,
             item.stockItemId,
             Direction.OUT,
             item.quantity,
@@ -101,9 +102,9 @@ export class PostDocumentoOut {
 
         await this.inventoryRepo.incrementOnHand(
           {
-            warehouseId,
+            warehouseId: doc.fromWarehouseId!,
             stockItemId: item.stockItemId,
-            locationId:item.fromLocationId,
+            locationId: item.fromLocationId,
             delta: -item.quantity,
           },
           tx,
@@ -115,12 +116,11 @@ export class PostDocumentoOut {
       }
 
       await this.documentRepo.markPosted(
-        { docId: doc.id!, postedBy: input.postedBy, note: input.note , postedAt: now },
+        { docId: doc.id!, postedBy: input.postedBy, note: input.note, postedAt: now },
         tx,
       );
 
-      return { status: '¡Postedo con exito!' };
+      return { status: "Documento posteado con exito" };
     });
   }
 }
-

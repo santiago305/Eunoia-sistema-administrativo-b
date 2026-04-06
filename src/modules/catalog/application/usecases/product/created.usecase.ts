@@ -1,5 +1,4 @@
 import { BadRequestException, ConflictException, Inject, InternalServerErrorException } from "@nestjs/common";
-import { Product } from "src/modules/catalog/domain/entity/product";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { CreateProductInput } from "../../dto/products/input/create-product";
 import { Money } from "src/shared/value-objets/money.vo";
@@ -10,6 +9,8 @@ import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.
 import { PRODUCT_EQUIVALENCE_REPOSITORY, ProductEquivalenceRepository } from "../../ports/product-equivalence.repository";
 import { PRODUCT_REPOSITORY, ProductRepository } from "../../ports/product.repository";
 import { SKU_COUNTER_REPOSITORY, SkuCounterRepository } from "../../ports/sku-counter.repository";
+import { ProductFactory } from "src/modules/catalog/domain/factories/product.factory";
+import { CatalogOutputMapper } from "../../mappers/catalog-output.mapper";
 
 export class CreateProduct {
   constructor(
@@ -18,77 +19,67 @@ export class CreateProduct {
     @Inject(SKU_COUNTER_REPOSITORY) private readonly skuCounterRepo: SkuCounterRepository,
     @Inject(CLOCK) private readonly clock: ClockPort,
     @Inject(PRODUCT_EQUIVALENCE_REPOSITORY) private readonly equivalenceRepo: ProductEquivalenceRepository,
-      private readonly createStockItemForProduct: CreateStockItemForProduct,
+    private readonly createStockItemForProduct: CreateStockItemForProduct,
   ) {}
 
-  async execute(input: CreateProductInput): Promise<Product> {
+  async execute(input: CreateProductInput) {
     return this.uow.runInTransaction(async (tx) => {
       const now = this.clock.now();
 
       const normalizedBarcode = input.barcode?.trim() || null;
       const normalizedCustomSku = input.customSku?.trim() || null;
+
       if (normalizedBarcode) {
         const existsBarcode = await this.productRepo.findByBarcode(normalizedBarcode, tx);
-        if (existsBarcode) throw new ConflictException({type: 'error', message: 'Barcode ya existe'});
+        if (existsBarcode) throw new ConflictException("Barcode ya existe");
       }
-  
+
       const explicitSku = input.sku?.trim();
       if (explicitSku) {
         const existsSku = await this.productRepo.findBySku(explicitSku, tx);
-        if (existsSku) throw new ConflictException({type: 'error', message: 'SKU ya existe'});
+        if (existsSku) throw new ConflictException("SKU ya existe");
       }
 
       let attributes: Record<string, unknown>;
-
       try {
         attributes = VariantAttributes.create(input.attributes).toJSON();
       } catch {
-        throw new BadRequestException({ type: "error", message: "Attributes inválidos" });
+        throw new BadRequestException("Atributos inválidos");
       }
 
-      const next = await this.skuCounterRepo.reserveNext(tx); // global
-        if (!Number.isFinite(next) || next <= 0) {
-          throw new InternalServerErrorException({
-            type: 'error',
-            message: `No se pudo generar correlativo`,
-          });
-        }
-      
-        const sku = `${String(next).padStart(5, '0')}`;
+      const next = await this.skuCounterRepo.reserveNext(tx);
+      if (!Number.isFinite(next) || next <= 0) {
+        throw new InternalServerErrorException("No se pudo generar correlativo");
+      }
 
-      const product = new Product(
-        undefined,
-        input.baseUnitId,
-        input.name,
-        input.description ?? null,
+      const sku = `${String(next).padStart(5, "0")}`;
+
+      const product = ProductFactory.create({
+        baseUnitId: input.baseUnitId,
+        name: input.name,
+        description: input.description ?? null,
         sku,
-        normalizedBarcode,
-        Money.create(input.price),
-        Money.create(input.cost),
+        barcode: normalizedBarcode,
+        price: Money.create(input.price),
+        cost: Money.create(input.cost),
         attributes,
-        input.isActive ?? true,
-        input.type,
-        now,
-        null,
-        normalizedCustomSku,
-      );
+        isActive: input.isActive ?? true,
+        type: input.type,
+        createdAt: now,
+        updatedAt: null,
+        customSku: normalizedCustomSku,
+      });
 
-      let createdProduct: Product;
+      let createdProduct;
       try {
         createdProduct = await this.productRepo.create(product, tx);
       } catch {
-        throw new InternalServerErrorException({
-          type: "error",
-          message: "No se logro crear el producto, por favor intente de nuevo",
-        });
+        throw new InternalServerErrorException("No se logró crear el producto, por favor intente de nuevo");
       }
 
       const productId = createdProduct.getId()?.value;
       if (!productId) {
-        throw new InternalServerErrorException({
-          type: "error",
-          message: "No se logro crear el producto, por favor intente de nuevo",
-        });
+        throw new InternalServerErrorException("No se logró crear el producto, por favor intente de nuevo");
       }
 
       const equivalence = new ProductEquivalence(
@@ -102,12 +93,9 @@ export class CreateProduct {
       try {
         await this.equivalenceRepo.create(equivalence, tx);
       } catch {
-        throw new InternalServerErrorException({
-          type: "error",
-          message: "No se logro crear la equivalencia de unidad base",
-        });
+        throw new InternalServerErrorException("No se logró crear la equivalencia de unidad base");
       }
-      
+
       try {
         await this.createStockItemForProduct.execute(
           {
@@ -116,14 +104,11 @@ export class CreateProduct {
           },
           tx,
         );
-      } catch (err) {
-        throw new InternalServerErrorException({
-          type: "error",
-          message: err,
-        });
+      } catch {
+        throw new InternalServerErrorException("No se pudo crear el stock item");
       }
 
-      return createdProduct;
+      return CatalogOutputMapper.toProductOutput(createdProduct);
     });
   }
 }

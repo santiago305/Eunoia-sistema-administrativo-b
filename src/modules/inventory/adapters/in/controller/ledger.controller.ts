@@ -5,6 +5,7 @@ import { GetLedgerDailyTotalsUseCase } from 'src/modules/inventory/application/u
 import {ParseDateLocal } from 'src/shared/utilidades/utils/ParseDates';
 import { GetLedgerQueryDto } from '../dto/ledger/http-list-ledger.dto';
 import { GetLedgerDailyTotalsQueryDto } from '../dto/ledger/http-ledger-daily-totals.dto';
+import { InventoryHttpMapper } from 'src/modules/inventory/application/mappers/inventory-http.mapper';
 @Controller('inventory/ledger')
 @UseGuards(JwtAuthGuard)
 export class LedgerController {
@@ -15,7 +16,7 @@ export class LedgerController {
 
   @Get()
   list(@Query() query: GetLedgerQueryDto) {
-    return this.getLedger.execute({
+    return this.getLedger.execute(InventoryHttpMapper.toGetLedgerInput({
       warehouseId: query.warehouseId,
       stockItemId: query.stockItemId,
       locationId: query.locationId,
@@ -24,19 +25,19 @@ export class LedgerController {
       to: query.to ?ParseDateLocal(query.to) : undefined,
       page: query.page,
       limit: query.limit,
-    });
+    }));
   }
 
   @Get('totals/daily')
   totalsDaily(@Query() query: GetLedgerDailyTotalsQueryDto) {
-    return this.getLedgerDailyTotals.execute({
+    return this.getLedgerDailyTotals.execute(InventoryHttpMapper.toGetLedgerDailyTotalsInput({
       warehouseId: query.warehouseId,
       stockItemId: query.stockItemId,
       locationId: query.locationId,
       docId: query.docId,
       from: query.from ? ParseDateLocal(query.from) : undefined,
       to: query.to ? ParseDateLocal(query.to) : undefined,
-    });
+    }));
   }
   
 }

@@ -1,8 +1,9 @@
-import { Inject, Injectable, BadRequestException } from '@nestjs/common';
-import { PostDocumentInput } from '../../dto/document/input/document-post';
-import { UNIT_OF_WORK, UnitOfWork } from 'src/shared/domain/ports/unit-of-work.port';
-import { CLOCK, ClockPort } from '../../ports/clock.port';
-import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../ports/document.repository.port';
+import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
+import { PostDocumentInput } from "../../dto/document/input/document-post";
+import { DocumentNotFoundApplicationError } from "../../errors/document-not-found.error";
+import { CLOCK, ClockPort } from "../../ports/clock.port";
+import { DOCUMENT_REPOSITORY, DocumentRepository } from "../../ports/document.repository.port";
 
 @Injectable()
 export class CancelDocumentUseCase {
@@ -15,21 +16,29 @@ export class CancelDocumentUseCase {
     private readonly uow: UnitOfWork,
   ) {}
 
-  async execute(input: PostDocumentInput): Promise<{ status:string }> {
+  async execute(input: PostDocumentInput): Promise<{ status: string }> {
     return this.uow.runInTransaction(async (tx) => {
-       const doc = await this.documentRepo.findById(input.docId, tx);
+      const doc = await this.documentRepo.findById(input.docId, tx);
+
       if (!doc) {
-        throw new BadRequestException('Documento no encontrado');
+        throw new NotFoundException(new DocumentNotFoundApplicationError().message);
       }
+
       if (!doc.isDraft()) {
-        throw new BadRequestException('Solo se puede cancelar documentos en DRAFT');
+        throw new BadRequestException("Solo se puede cancelar documentos en DRAFT");
       }
-      const now = this.clock.now();
+
       await this.documentRepo.markCancelled(
-        { docId: doc.id!, postedBy: input.postedBy, note:input.note , postedAt: now },
-          tx,
-        );
-      return { status: '�Documento cancelado con exito!' };
+        {
+          docId: doc.id!,
+          postedBy: input.postedBy,
+          note: input.note,
+          postedAt: this.clock.now(),
+        },
+        tx,
+      );
+
+      return { status: "Documento cancelado con exito" };
     });
   }
 }

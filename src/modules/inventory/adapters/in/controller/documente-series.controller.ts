@@ -7,6 +7,7 @@ import { CreateDocumentSerieDto } from '../dto/document-serie/http-document-seri
 import { HttpSetDocumentSerieActiveDto } from '../dto/document-serie/http-document-serie-set-active.dto';
 import { SetDocumentSerieActive } from 'src/modules/inventory/application/use-cases/document-serie/set-active.usecase'
 import { DocumentSerieSearchDto } from '../dto/document-serie/http-document-serie-search.dto'
+import { InventoryHttpMapper } from 'src/modules/inventory/application/mappers/inventory-http.mapper';
 @Controller('inventory/document-series')
 @UseGuards(JwtAuthGuard)
 export class DocumentSeriesController {
@@ -19,7 +20,7 @@ export class DocumentSeriesController {
 
   @Post()
   create(@Body() dto: CreateDocumentSerieDto) {
-    return this.createSerie.execute(dto);
+    return this.createSerie.execute(InventoryHttpMapper.toCreateDocumentSerieInput(dto));
   }
 
   @Get(':id')
@@ -29,15 +30,11 @@ export class DocumentSeriesController {
 
   @Get()
   getActive(@Query() query: DocumentSerieSearchDto) {
-    return this.getActiveSerie.execute({
-      docType: query.docType,
-      warehouseId: query.warehouseId,
-      isActive: query.isActive
-    });
+    return this.getActiveSerie.execute(InventoryHttpMapper.toGetActiveDocumentSerieInput(query));
   }
 
   @Patch(':id/active')
   setActiveById(@Param('id', ParseUUIDPipe) id: string, @Body() dto: HttpSetDocumentSerieActiveDto) {
-    return this.setActive.execute({ id, isActive: dto.isActive });
+    return this.setActive.execute(InventoryHttpMapper.toSetDocumentSerieInput(id, dto.isActive));
   }
 }

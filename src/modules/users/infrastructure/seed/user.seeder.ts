@@ -49,14 +49,12 @@ export const seedUser = async (dataSource: DataSource) => {
   const adviserRole = roleMap.get(RoleType.ADVISER);
 
   if (!adminRole || !adviserRole || !moderatorRole) {
-    console.error('A Faltan roles base (admin/moderator/adviser). Ejecuta seed de roles primero.');
     return;
   }
 
   for (const { name, email, password, roleDescription, avatarUrl } of protectedUsers) {
     const role = roleMap.get(roleDescription);
     if (!role) {
-      console.error(`A Rol "${roleDescription}" no existe. Crea los roles primero.`);
       continue;
     }
 

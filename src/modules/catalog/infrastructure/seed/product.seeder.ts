@@ -16,6 +16,8 @@ import { ProductEquivalenceTypeormRepository } from "../../adapters/out/persiste
 import { ProductEquivalenceEntity } from "../../adapters/out/persistence/typeorm/entities/product-equivalence.entity";
 import { CreateProduct } from "../../application/usecases/product/created.usecase";
 import { CreateProductVariant } from "../../application/usecases/product-variant/create.usecase";
+import { ProductOutput } from "../../application/dto/products/output/product-out";
+import { ProductId } from "../../domain/value-object/product-id.vo";
 
 type SeedProductsOptions = {
   finishedCount?: number;
@@ -157,7 +159,7 @@ export const seedProducts = async (
     let product = await productRepo.findBySku(sku);
     if (!product) {
       try {
-        product = await createProductUsecase.execute({
+        const createdProduct: ProductOutput = await createProductUsecase.execute({
           name,
           description,
           baseUnitId,
@@ -169,6 +171,7 @@ export const seedProducts = async (
           type,
           isActive: true,
         });
+        product = await productRepo.findById(ProductId.create(createdProduct.id));
         console.log(`Producto creado: ${sku}`);
       } catch {
         console.log(`Producto ${sku} ya existe, omitiendo...`);
@@ -200,7 +203,7 @@ export const seedProducts = async (
       if (!variant) {
         const variantPrice = type === ProductType.FINISHED ? price + v : price;
         try {
-          await createVariantUsecase.execute({
+          const createdVariant = await createVariantUsecase.execute({
             productId,
             sku: variantSku,
             barcode: `VB-${variantSku}`,
@@ -212,11 +215,12 @@ export const seedProducts = async (
             cost: Number(baseCost.toFixed(2)),
             isActive: true,
           });
+          variant = await variantRepo.findById(createdVariant.variant.id);
           console.log(`Variante creada: ${variantSku}`);
         } catch {
           console.log(`Variante ${variantSku} ya existe, omitiendo...`);
+          variant = await variantRepo.findBySku(variantSku);
         }
-        variant = await variantRepo.findBySku(variantSku);
       } else {
         console.log(`Variante ${variantSku} ya existe, omitiendo...`);
       }

@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { DeleteUserUseCase } from './delete-user.usecase';
 import { RoleType } from 'src/shared/constantes/constants';
 import { successResponse } from 'src/shared/response-standard/response';
@@ -36,7 +36,7 @@ describe('DeleteUserUseCase', () => {
 
     await expect(
       useCase.execute('user-1', RoleType.MODERATOR)
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('rejects when user not active', async () => {
@@ -48,6 +48,6 @@ describe('DeleteUserUseCase', () => {
 
     await expect(
       useCase.execute('user-1', RoleType.ADMIN)
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

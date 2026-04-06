@@ -1,4 +1,4 @@
-import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, InternalServerErrorException } from '@nestjs/common';
 import { CreateRoleUseCase } from './create-role.usecase';
 import { RoleType } from 'src/shared/constantes/constants';
 import { successResponse } from 'src/shared/response-standard/response';
@@ -29,7 +29,7 @@ describe('CreateRoleUseCase', () => {
 
     await expect(
       useCase.execute({ description: 'Admin' } as any, RoleType.MODERATOR)
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('rejects duplicate role', async () => {
@@ -41,7 +41,7 @@ describe('CreateRoleUseCase', () => {
 
     await expect(
       useCase.execute({ description: 'Admin' } as any, RoleType.ADMIN)
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 
   it('normalizes description before duplicate check and save', async () => {
@@ -89,6 +89,6 @@ describe('CreateRoleUseCase', () => {
 
     await expect(
       useCase.execute({ description: 'Nuevo Rol' } as any, RoleType.ADMIN)
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    ).rejects.toBeInstanceOf(InternalServerErrorException);
   });
 });

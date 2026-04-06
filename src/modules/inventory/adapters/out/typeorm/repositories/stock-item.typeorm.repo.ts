@@ -5,6 +5,7 @@ import { StockItemEntity } from '../entities/stock-item.entity';
 import { TransactionContext } from 'src/shared/domain/ports/transaction-context.port';
 import { TypeormTransactionContext } from 'src/shared/domain/ports/typeorm-transaction-context';
 import { StockItem } from 'src/modules/inventory/domain/entities/stock-item/stock-item';
+import { StockItemFactory } from 'src/modules/inventory/domain/factories/stock-item.factory';
 import { StockItemType } from 'src/modules/inventory/domain/value-objects/stock-item-type';
 import { StockItemRepository } from 'src/modules/inventory/application/ports/stock-item.repository.port';
 
@@ -28,14 +29,14 @@ export class StockItemTypeormRepository implements StockItemRepository {
   }
 
   private toDomain(row: StockItemEntity): StockItem {
-    return new StockItem(
-      row.id,
-      row.type,
-      row.isActive,
-      row.productId ?? undefined,
-      row.variantId ?? undefined,
-      row.createdAt,
-    );
+    return StockItemFactory.create({
+      stockItemId: row.id,
+      type: row.type,
+      isActive: row.isActive,
+      productId: row.productId ?? undefined,
+      variantId: row.variantId ?? undefined,
+      createdAt: row.createdAt,
+    });
   }
 
   async findById(stockItemId: string, tx?: TransactionContext): Promise<StockItem | null> {

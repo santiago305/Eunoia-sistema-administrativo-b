@@ -1,7 +1,8 @@
 import { Inject, NotFoundException } from "@nestjs/common";
-import { successResponse, errorResponse } from "src/shared/response-standard/response";
+import { successResponse } from "src/shared/response-standard/response";
 import { COMPANY_METHOD_REPOSITORY, CompanyMethodRepository } from "src/modules/payment-methods/domain/ports/company-method.repository";
 import { GetCompanyMethodByIdInput } from "../../dtos/company-method/input/get-by-id.input";
+import { PaymentMethodRelationNotFoundError } from "../../errors/payment-method-relation-not-found.error";
 
 export class GetCompanyMethodByIdUsecase {
   constructor(
@@ -12,7 +13,7 @@ export class GetCompanyMethodByIdUsecase {
   async execute(input: GetCompanyMethodByIdInput) {
     const existing = await this.companyMethodRepo.findById(input.companyId, input.methodId);
     if (!existing) {
-      throw new NotFoundException(errorResponse("Relacion no encontrada"));
+      throw new NotFoundException(new PaymentMethodRelationNotFoundError().message);
     }
 
     return successResponse("Relacion encontrada", {

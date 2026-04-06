@@ -4,6 +4,8 @@ import {
   PasswordHasherReadRepository,
 } from 'src/modules/auth/application/ports/password-hasher-read.repository';
 import { USER_REPOSITORY, UserRepository } from 'src/modules/users/application/ports/user.repository';
+import { AuthInvalidTokenError } from '../errors/auth-invalid-token.error';
+import { AuthUserNotFoundError } from '../errors/auth-user-not-found.error';
 
 @Injectable()
 export class VerifyUserPasswordBySessionUseCase {
@@ -22,12 +24,12 @@ export class VerifyUserPasswordBySessionUseCase {
     const password = params?.password ?? '';
 
     if (!userId) {
-      throw new UnauthorizedException('Token invalido o sin identificador');
+      throw new UnauthorizedException(new AuthInvalidTokenError().message);
     }
 
     const user = await this.userRepository.findById(userId);
     if (!user) {
-      throw new UnauthorizedException('Usuario no encontrado');
+      throw new UnauthorizedException(new AuthUserNotFoundError().message);
     }
 
     if (!password.trim()) {

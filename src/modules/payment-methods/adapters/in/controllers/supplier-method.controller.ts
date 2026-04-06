@@ -4,6 +4,7 @@ import { CreateSupplierMethodUsecase } from "src/modules/payment-methods/applica
 import { DeleteSupplierMethodUsecase } from "src/modules/payment-methods/application/usecases/supplier-method/delete.usecase";
 import { GetSupplierMethodByIdUsecase } from "src/modules/payment-methods/application/usecases/supplier-method/get-by-id.usecase";
 import { HttpSupplierMethodCreateDto } from "../dtos/supplier-method/http-supplier-method-create.dto";
+import { PaymentMethodHttpMapper } from "src/modules/payment-methods/application/mappers/payment-method-http.mapper";
 
 @Controller("supplier-methods")
 @UseGuards(JwtAuthGuard)
@@ -16,7 +17,9 @@ export class SupplierMethodsController {
 
   @Post()
   create(@Body() dto: HttpSupplierMethodCreateDto) {
-    return this.createSupplierMethod.execute(dto);
+    return this.createSupplierMethod.execute(
+      PaymentMethodHttpMapper.toCreateSupplierMethodInput(dto),
+    );
   }
 
   @Get(":supplierId/:methodId")

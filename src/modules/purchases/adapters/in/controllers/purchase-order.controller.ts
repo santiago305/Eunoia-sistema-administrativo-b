@@ -15,6 +15,8 @@ import { RunExpectedAtUsecase } from "src/modules/purchases/application/usecases
 import { SetSentPurchaseOrderUsecase } from "src/modules/purchases/application/usecases/purchase-order/set-sent.usecase";
 import { CancelPurchaseOrderUsecase } from "src/modules/purchases/application/usecases/purchase-order/cancel.usecase";
 import { User as CurrentUser } from "src/shared/utilidades/decorators/user.decorator";
+import { PurchaseOrderHttpMapper } from "src/modules/purchases/application/mappers/purchase-order-http.mapper";
+import { PurchaseOrderOutputMapper } from "src/modules/purchases/application/mappers/purchase-order-output.mapper";
 
 @Controller("purchases/orders")
 @UseGuards(JwtAuthGuard)
@@ -35,18 +37,14 @@ export class PurchaseOrdersController {
   @Post()
   async create(@Body() dto: HttpCreatePurchaseOrderDto, @CurrentUser() user: { id: string }) {
     try {
-      const result = await this.createOrder.execute(dto, user.id);
+      const result = await this.createOrder.execute(
+        PurchaseOrderHttpMapper.toCreateInput(dto),
+        user.id,
+      );
         return {
           type: "success",
           message: "Orden de compra creada correctamente",
-          order: {
-            ...result.order,
-            totalTaxed: result.order.totalTaxed.getAmount(),
-            totalExempted: result.order.totalExempted.getAmount(),
-            totalIgv: result.order.totalIgv.getAmount(),
-            purchaseValue: result.order.purchaseValue.getAmount(),
-            total: result.order.total.getAmount(),
-          },
+          order: PurchaseOrderOutputMapper.toOrderOutput(result.order),
         };
     } catch (error: any) {
       const payload = error?.response ?? error;
@@ -73,7 +71,7 @@ export class PurchaseOrdersController {
 
   @Get()
   list(@Query() query: HttpListPurchaseOrdersQueryDto) {
-    return this.listOrders.execute({
+    return this.listOrders.execute(PurchaseOrderHttpMapper.toListInput({
       status: query.status,
       supplierId: query.supplierId,
       warehouseId: query.warehouseId,
@@ -83,7 +81,7 @@ export class PurchaseOrdersController {
       to: query.to,
       page: query.page,
       limit: query.limit,
-    });
+    }));
   }
 
   @Get(":id")
@@ -93,12 +91,12 @@ export class PurchaseOrdersController {
 
   @Patch(":id")
   update(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpUpdatePurchaseOrderDto) {
-    return this.updateOrder.execute({ poId: id, ...dto });
+    return this.updateOrder.execute(PurchaseOrderHttpMapper.toUpdateInput(id, dto));
   }
 
   @Patch(":id/active")
   setActive(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpSetPurchaseOrderActiveDto) {
-    return this.setActiveOrder.execute({ poId: id, isActive: dto.isActive });
+    return this.setActiveOrder.execute(PurchaseOrderHttpMapper.toSetActiveInput(id, dto.isActive));
   }
 
   @Get(":id/items")

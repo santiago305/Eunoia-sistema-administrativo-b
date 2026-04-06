@@ -10,6 +10,7 @@ import { WarehouseLocationEntity } from "../entities/warehouse-location";
 import { WarehouseLocation } from "src/modules/warehouses/domain/entities/warehouse-location";
 import { LocationId } from "src/modules/warehouses/domain/value-objects/location-id.vo";
 import { WarehouseRepository } from "src/modules/warehouses/application/ports/warehouse.repository.port";
+import { WarehouseFactory } from "src/modules/warehouses/domain/factories/warehouse.factory";
 
 @Injectable()
 export class WarehouseTypeormRepo implements WarehouseRepository {
@@ -30,16 +31,16 @@ export class WarehouseTypeormRepo implements WarehouseRepository {
   }
 
   private toDomain(row: WarehouseEntity): Warehouse {
-    return new Warehouse(
-      new WarehouseId(row.id),
-      row.name,
-      row.department,
-      row.province,
-      row.district,
-      row.address ?? undefined,
-      row.isActive,
-      row.createdAt
-    );
+    return WarehouseFactory.createWarehouse({
+      warehouseId: new WarehouseId(row.id),
+      name: row.name,
+      department: row.department,
+      province: row.province,
+      district: row.district,
+      address: row.address ?? undefined,
+      isActive: row.isActive,
+      createdAt: row.createdAt,
+    });
   }
 
   async findById(warehouseId: WarehouseId, tx?: TransactionContext): Promise<Warehouse | null> {
@@ -66,13 +67,13 @@ export class WarehouseTypeormRepo implements WarehouseRepository {
 
     const items = locationRows.map(
       (r) =>
-        new WarehouseLocation(
-          new LocationId(r.id),
-          new WarehouseId(r.warehouseId),
-          r.code,
-          r.description ?? undefined,
-          r.isActive
-        )
+        WarehouseFactory.createLocation({
+          locationId: new LocationId(r.id),
+          warehouseId: new WarehouseId(r.warehouseId),
+          code: r.code,
+          description: r.description ?? undefined,
+          isActive: r.isActive,
+        })
     );
 
     return { warehouse: this.toDomain(warehouseRow), items };

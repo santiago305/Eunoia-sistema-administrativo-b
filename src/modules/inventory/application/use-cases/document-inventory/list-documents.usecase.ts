@@ -1,12 +1,12 @@
-﻿import { Inject, Injectable, BadRequestException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { ListDocumentsInput } from '../../dto/document/input/document-list';
 import { PaginatedDocumentOutputResult } from '../../dto/document/output/document-paginated';
 import { USER_READ_REPOSITORY, UserReadRepository } from 'src/modules/users/application/ports/user-read.repository';
-import { errorResponse } from 'src/shared/response-standard/response';
 import { WarehouseId } from 'src/modules/warehouses/domain/value-objects/warehouse-id.vo';
 import { WAREHOUSE_REPOSITORY, WarehouseRepository } from 'src/modules/warehouses/application/ports/warehouse.repository.port';
 import { SERIES_REPOSITORY, DocumentSeriesRepository } from '../../ports/document-series.repository.port';
 import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../ports/document.repository.port';
+import { DocumentOutputMapper } from '../../mappers/document-output.mapper';
 
 @Injectable()
 export class ListDocumentsUseCase {
@@ -26,56 +26,56 @@ export class ListDocumentsUseCase {
     const cache = new Map<string, { id: string; code: string; correlative: number }>();
 
     const items = await Promise.all(
-      result.items.map(async (d) => {
-        let serie = cache.get(d.serieId);
+      result.items.map(async (doc) => {
+        let serie = cache.get(doc.serieId);
         if (!serie) {
-          const s = await this.seriesRepo.findById(d.serieId);
-          if (!s) {
-            throw new BadRequestException(errorResponse('Serie invalida'));
+          const foundSerie = await this.seriesRepo.findById(doc.serieId);
+          if (!foundSerie) {
+            throw new NotFoundException('Serie no encontrada');
           }
-          serie = { id: s.id, code: s.code, correlative: s.nextNumber };
-          cache.set(d.serieId, serie);
+          serie = { id: foundSerie.id, code: foundSerie.code, correlative: foundSerie.nextNumber };
+          cache.set(doc.serieId, serie);
         }
 
-        let user = await this.userReadRepo.findManagementById(d.createdBy);
+        const user = await this.userReadRepo.findManagementById(doc.createdBy);
         if (!user) {
-          throw new BadRequestException(errorResponse('Usuario creador del documento no encontrado'));            
+          throw new NotFoundException('Usuario creador del documento no encontrado');
         }
 
-        const toWarehouse = d.toWarehouseId
-          ? await this.warehouseRepo.findById(new WarehouseId(d.toWarehouseId))
+        const toWarehouse = doc.toWarehouseId
+          ? await this.warehouseRepo.findById(new WarehouseId(doc.toWarehouseId))
           : null;
-        const fromWarehouse = d.fromWarehouseId
-          ? await this.warehouseRepo.findById(new WarehouseId(d.fromWarehouseId))
+        const fromWarehouse = doc.fromWarehouseId
+          ? await this.warehouseRepo.findById(new WarehouseId(doc.fromWarehouseId))
           : null;
 
-        if(!toWarehouse && d.toWarehouseId) {
-          throw new BadRequestException(errorResponse('Almacen destino no encontrado'));
+        if (!toWarehouse && doc.toWarehouseId) {
+          throw new NotFoundException('Almacen destino no encontrado');
         }
 
-        if(!fromWarehouse && d.fromWarehouseId) {
-          throw new BadRequestException(errorResponse('Almacen origen no encontrado'));
+        if (!fromWarehouse && doc.fromWarehouseId) {
+          throw new NotFoundException('Almacen origen no encontrado');
         }
+
         return {
-          id: d.id!,
-          docType: d.docType,
-          status: d.status,
+          id: doc.id!,
+          docType: doc.docType,
+          status: doc.status,
           serie: serie.code,
-          correlative: d.correlative,
+          correlative: doc.correlative,
           toWarehouse: toWarehouse?.name,
           fromWarehouse: fromWarehouse?.name,
           createdBy: user,
-          createdAt: d.createdAt,
+          createdAt: doc.createdAt,
         };
-
       }),
     );
 
-    return {
+    return DocumentOutputMapper.toPaginatedOutput({
       items,
       total: result.total,
       page: result.page,
       limit: result.limit,
-    };
+    });
   }
 }

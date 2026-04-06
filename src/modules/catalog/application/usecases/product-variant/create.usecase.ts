@@ -5,7 +5,6 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import { ProductVariant } from 'src/modules/catalog/domain/entity/product-variant';
 import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo';
 import { Money } from 'src/shared/value-objets/money.vo';
 import { VariantAttributes } from 'src/modules/catalog/domain/value-object/variant-attributes.vo';
@@ -16,6 +15,9 @@ import { CLOCK, ClockPort } from 'src/modules/inventory/application/ports/clock.
 import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from '../../ports/product-variant.repository';
 import { PRODUCT_REPOSITORY, ProductRepository } from '../../ports/product.repository';
 import { SKU_COUNTER_REPOSITORY, SkuCounterRepository } from '../../ports/sku-counter.repository';
+import { ProductVariantFactory } from 'src/modules/catalog/domain/factories/product-variant.factory';
+import { CatalogOutputMapper } from '../../mappers/catalog-output.mapper';
+import { ProductNotFoundApplicationError } from '../../errors/product-not-found.error';
 
 export class CreateProductVariant {
   constructor(
@@ -32,82 +34,78 @@ export class CreateProductVariant {
     private readonly createStockItemForVariant: CreateStockItemForVariant,
   ) {}
 
-  async execute(
-    input: CreateProductVariantInput,
-  ): Promise<{ message: string; type: string }> {
+  async execute(input: CreateProductVariantInput) {
     return this.uow.runInTransaction(async (tx) => {
       const productId = ProductId.create(input.productId);
-
       const product = await this.productRepo.findById(productId, tx);
-      if (!product) throw new NotFoundException({type: 'error', message: 'Producto no encontrado'});
+
+      if (!product) {
+        throw new NotFoundException(new ProductNotFoundApplicationError().message);
+      }
 
       const normalizedBarcode = input.barcode?.trim() || null;
       const normalizedCustomSku = input.customSku?.trim() || null;
+
       if (normalizedBarcode) {
         const existsBarcode = await this.variantRepo.findByBarcode(normalizedBarcode, tx);
-        if (existsBarcode) throw new ConflictException({type: 'error', message: 'Barcode ya existe'});
+        if (existsBarcode) throw new ConflictException('Barcode ya existe');
       }
 
-    const explicitSku = input.sku?.trim();
-    if (explicitSku) {
-      const existsSku = await this.variantRepo.findBySku(explicitSku, tx);
-      if (existsSku) throw new ConflictException({type: 'error', message: 'SKU ya existe'});
-    }
+      const explicitSku = input.sku?.trim();
+      if (explicitSku) {
+        const existsSku = await this.variantRepo.findBySku(explicitSku, tx);
+        if (existsSku) throw new ConflictException('SKU ya existe');
+      }
 
-    let attributes: Record<string, unknown>;
+      try {
+        VariantAttributes.create(input.attributes);
+      } catch {
+        throw new BadRequestException("Atributos inválidos");
+      }
 
-    try {
-      attributes = VariantAttributes.create(input.attributes).toJSON();
-    } catch {
-      throw new BadRequestException({ type: "error", message: "Attributes inválidos" });
-    }
-
-    const next = await this.skuCounterRepo.reserveNext(tx); // global
+      const next = await this.skuCounterRepo.reserveNext(tx);
       if (!Number.isFinite(next) || next <= 0) {
-        throw new InternalServerErrorException({
-          type: 'error',
-          message: `No se pudo generar correlativo`,
-        });
+        throw new InternalServerErrorException('No se pudo generar correlativo');
       }
-    
+
       const sku = `${String(next).padStart(5, '0')}`;
 
-    const variant = new ProductVariant(
-      undefined,
-      productId,
-      sku,
-      normalizedBarcode,
-      input.attributes,
-      Money.create(input.price),
-      Money.create(input.cost),
-      input.isActive ?? true,
-      this.clock.now(),
-      normalizedCustomSku,
-    );
+      const variant = ProductVariantFactory.create({
+        productId,
+        sku,
+        barcode: normalizedBarcode,
+        attributes: input.attributes,
+        price: Money.create(input.price),
+        cost: Money.create(input.cost),
+        isActive: input.isActive ?? true,
+        createdAt: this.clock.now(),
+        customSku: normalizedCustomSku,
+      });
 
-    let create:ProductVariant;
-    try {
-      create = await this.variantRepo.create(variant, tx);
-    } catch  {
-      throw new BadRequestException({type: 'error', message: 'No se pudo crear la variante'});
-    }
-    
-    try {
-      await this.createStockItemForVariant.execute(
-        {
-          variantId: create.getId(),
-          isActive: input.isActive,
-        },
-        tx,
-      );
-    } catch {
-      throw new BadRequestException({type: 'error', message: 'No se pudo crear el stock item'});
-    }
+      let created;
+      try {
+        created = await this.variantRepo.create(variant, tx);
+      } catch {
+        throw new BadRequestException('No se pudo crear la variante');
+      }
 
-    return {
-      type: "success",
-      message: "¡Variante creada con éxito!",
-    };
-  });
+      try {
+        await this.createStockItemForVariant.execute(
+          {
+            variantId: created.getId(),
+            isActive: input.isActive,
+          },
+          tx,
+        );
+      } catch {
+        throw new BadRequestException('No se pudo crear el stock item');
+      }
+
+      return {
+        type: "success",
+        message: "Variante creada con éxito",
+        variant: CatalogOutputMapper.toProductVariantOutput(created),
+      };
+    });
   }
 }

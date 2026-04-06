@@ -17,6 +17,7 @@ import { HttpAddProductionOrderItemDto } from "../dtos/production-order/http-pro
 import { HttpUpdateProductionWasteDto } from "../dtos/production-order/http-production-order-waste.dto";
 import { ParseDateLocal } from "src/shared/utilidades/utils/ParseDates";
 import { User as CurrentUser } from 'src/shared/utilidades/decorators/user.decorator';
+import { ProductionOrderHttpMapper } from "src/modules/production/application/mappers/production-order-http.mapper";
 
 @Controller("production-orders")
 @UseGuards(JwtAuthGuard)
@@ -36,19 +37,19 @@ export class ProductionOrdersController {
 
   @Post()
   create(@Body() dto: HttpCreateProductionOrderDto, @CurrentUser() user: { id: string } ) {
-    return this.createOrder.execute(dto, user.id);
+    return this.createOrder.execute(ProductionOrderHttpMapper.toCreateInput(dto), user.id);
   }
 
   @Get()
   list(@Query() query: HttpListProductionOrdersQueryDto) {
-    return this.listOrders.execute({
+    return this.listOrders.execute(ProductionOrderHttpMapper.toListInput({
       status: query.status,
       warehouseId: query.warehouseId,
       from: query.from ? ParseDateLocal(query.from, "start") : undefined,
       to: query.to ? ParseDateLocal(query.to, "end") : undefined,
       page: query.page,
       limit: query.limit,
-    });
+    }));
   }
 
   @Get(":id")
@@ -60,7 +61,7 @@ export class ProductionOrdersController {
   update(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpUpdateProductionOrderDto
   ,@CurrentUser() user: { id: string } 
 ) {
-    return this.updateOrder.execute({ productionId: id, ...dto }, user.id);
+    return this.updateOrder.execute(ProductionOrderHttpMapper.toUpdateInput(id, dto), user.id);
   }
 
   @Post(":id/start")
@@ -78,7 +79,7 @@ export class ProductionOrdersController {
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: HttpUpdateProductionWasteDto,
   ) {
-    return this.updateWaste.execute({ productionId: id, items: dto.items });
+    return this.updateWaste.execute(ProductionOrderHttpMapper.toWasteInput(id, { items: dto.items }));
   }
 
   @Post(":id/cancel")
@@ -88,7 +89,7 @@ export class ProductionOrdersController {
 
   @Post(":id/items")
   addOrderItem(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpAddProductionOrderItemDto) {
-    return this.addItem.execute({ productionId: id, ...dto });
+    return this.addItem.execute(ProductionOrderHttpMapper.toAddItemInput(id, dto));
   }
 
   @Delete(":id/items/:itemId")

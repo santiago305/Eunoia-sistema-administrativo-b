@@ -1,6 +1,8 @@
-﻿import { Inject, Injectable, BadRequestException } from '@nestjs/common';
+import { Inject, Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { RemoveItemInput } from '../../dto/document-item/output/item-remove';
 import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../ports/document.repository.port';
+import { DocumentItemNotFoundApplicationError } from '../../errors/document-item-not-found.error';
+import { DocumentNotFoundApplicationError } from '../../errors/document-not-found.error';
 
 @Injectable()
 export class RemoveItemUseCase {
@@ -12,7 +14,7 @@ export class RemoveItemUseCase {
   async execute(input: RemoveItemInput): Promise<{ status: string }> {
     const doc = await this.documentRepo.findById(input.docId);
     if (!doc) {
-      throw new BadRequestException('Documento no encontrado');
+      throw new NotFoundException(new DocumentNotFoundApplicationError().message);
     }
     if (!doc.isDraft()) {
       throw new BadRequestException('Solo se puede eliminar items en DRAFT');
@@ -20,8 +22,9 @@ export class RemoveItemUseCase {
 
     const removed = await this.documentRepo.removeItem(input.docId, input.itemId);
     if (!removed) {
-      throw new BadRequestException('Item no encontrado para este documento');
+      throw new NotFoundException(new DocumentItemNotFoundApplicationError().message);
     }
-    return { status: '¡Item eliminado con exito!' };
+
+    return { status: 'Item eliminado con exito' };
   }
 }

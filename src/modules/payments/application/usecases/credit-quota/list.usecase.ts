@@ -3,6 +3,7 @@ import { PaginatedResult } from "src/shared/utilidades/dto/paginateResult";
 import { CREDIT_QUOTA_REPOSITORY, CreditQuotaRepository } from "src/modules/payments/domain/ports/credit-quota.repository";
 import { ListCreditQuotasInput } from "../../dtos/credit-quota/input/list.input";
 import { CreditQuotaOutput } from "../../dtos/credit-quota/output/credit-quota.output";
+import { CreditQuotaOutputMapper } from "../../mappers/credit-quota-output.mapper";
 
 export class ListCreditQuotasUsecase {
   constructor(
@@ -21,15 +22,7 @@ export class ListCreditQuotasUsecase {
     });
 
     return {
-      items: items.map((row) => ({
-        quotaId: row.quotaId,
-        number: row.number,
-        expirationDate: row.expirationDate,
-        paymentDate: row.paymentDate,
-        totalToPay: row.totalToPay,
-        totalPaid: row.totalPaid,
-        createdAt: row.createdAt,
-      })),
+      items: items.map((row) => CreditQuotaOutputMapper.toOutput(row)),
       total,
       page,
       limit,

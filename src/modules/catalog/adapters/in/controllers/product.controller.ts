@@ -16,6 +16,7 @@ import { ListProductQueryDto } from '../dtos/products/http-products-list.dto';
 import { ListRowMaterialProductVariants } from 'src/modules/catalog/application/usecases/product-variant/list-row-material.usecase';
 import { ListFinishedWithRecipesProductVariants } from 'src/modules/catalog/application/usecases/product-variant/list-finished-with-recipes.usecase';
 import { SearchRowMaterialProductVariants } from 'src/modules/catalog/application/usecases/product-variant/search-row-material.usecase';
+import { CatalogHttpMapper } from 'src/modules/catalog/application/mappers/catalog-http.mapper';
 @Controller('catalog/products')
 @UseGuards(JwtAuthGuard)
 export class ProductsController {
@@ -37,35 +38,33 @@ export class ProductsController {
 
   @Post()
   async create(@Body() dto: HttpCreateProductDto) {
-    return await this.createProduct.execute(dto);
+    return await this.createProduct.execute(CatalogHttpMapper.toCreateProductInput(dto));
   }
 
   @Patch(':id')
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: HttpUpdateProductDto) {
-    return this.updateProduct.execute({ ...dto, id });
+    return this.updateProduct.execute(CatalogHttpMapper.toUpdateProductInput(id, dto));
   }
 
   @Patch(':id/active')
   setActiveById(@Param('id', ParseUUIDPipe) id: string, @Body() dto: HttpSetProductActiveDto) {
-    return this.setActive.execute({ id, isActive: dto.isActive });
+    return this.setActive.execute(CatalogHttpMapper.toSetProductActiveInput(id, dto.isActive));
   }
 
   @Get()
   list(@Query() query: ListProductQueryDto) {
     const isActived = query.isActive === undefined ? undefined : query.isActive === 'true';
-    const q = query.q?.trim();
-
-    return this.search.execute({
+    return this.search.execute(CatalogHttpMapper.toListProductsInput({
       isActive: isActived,
       name: query.name,
       description: query.description,
       sku: query.sku,
       barcode: query.barcode,
       type: query.type,
-      q: q,
+      q: query.q,
       page: query.page,
       limit: query.limit,
-    });
+    }));
   }
 
   @Get('finished/active')

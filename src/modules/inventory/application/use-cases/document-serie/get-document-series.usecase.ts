@@ -1,7 +1,9 @@
-import { Inject, Injectable, BadRequestException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { GetActiveDocumentSerieInput } from '../../dto/document-serie/input/get-active-document-serie';
 import { DocumentSerieDetailOutput } from '../../dto/document-serie/output/document-serie-detail-out';
 import { SERIES_REPOSITORY, DocumentSeriesRepository } from '../../ports/document-series.repository.port';
+import { DocumentSerieOutputMapper } from '../../mappers/document-serie-output.mapper';
+import { DocumentSerieNotFoundApplicationError } from '../../errors/document-serie-not-found.error';
 
 @Injectable()
 export class GetActiveDocumentSerieUseCase {
@@ -18,20 +20,9 @@ export class GetActiveDocumentSerieUseCase {
     });
 
     if (!series || series.length === 0) {
-      throw new BadRequestException('Serie activa no encontrada');
+      throw new NotFoundException(new DocumentSerieNotFoundApplicationError().message);
     }
 
-    return {
-      items: series.map((serie) => ({
-        id: serie.id,
-        code: serie.code,
-        name: serie.name,
-        docType: serie.docType,
-        warehouseId: serie.warehouseId,
-        nextNumber: serie.nextNumber,
-        isActive: serie.isActive,
-        createdAt: serie.createdAt
-      })),
-    };
+    return DocumentSerieOutputMapper.toDetailOutput(series);
   }
 }

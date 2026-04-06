@@ -11,6 +11,7 @@ import { ReferenceType } from "src/modules/inventory/domain/value-objects/refere
 import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/inventory/application/ports/document.repository.port";
 import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
 import { CurrencyType } from "src/modules/purchases/domain/value-objects/currency-type";
+import { PurchaseOrderNotFoundApplicationError } from "../../errors/purchase-order-not-found.error";
 
 @Injectable()
 export class PostInventoryFromPurchaseUsecase {
@@ -42,29 +43,30 @@ export class PostInventoryFromPurchaseUsecase {
     return this.uow.runInTransaction(async () => {
       const order = await this.purchaseRepo.findById(params.poId);
       if (!order) {
-        throw new NotFoundException({ type: "error", message: "Orden no encontrada" });
+        throw new NotFoundException(new PurchaseOrderNotFoundApplicationError().message);
       }
 
       const items = await this.purchaseItemRepo.getByPurchaseId(order.poId, order.currency ?? CurrencyType.PEN);
       if (items.length === 0) {
-        throw new BadRequestException({ type: "error", message: "La orden no tiene items" });
+        throw new BadRequestException("La orden no tiene items");
       }
+
       let serie;
       try {
-        serie = await this.getSerie.execute
-        ({ docType: DocType.IN, warehouseId: params.toWarehouseId })
+        serie = await this.getSerie.execute({ docType: DocType.IN, warehouseId: params.toWarehouseId });
       } catch {
-        throw new NotFoundException({type:"error", message:"No hay ninguna serie asociada"})
+        throw new NotFoundException("No hay ninguna serie asociada");
       }
+
       if (!serie.items || serie.items.length === 0) {
-        throw new NotFoundException({ type: "error", message: "No hay ninguna serie asociada" });
+        throw new NotFoundException("No hay ninguna serie asociada");
       }
 
       const serieId = serie.items[0].id;
 
       const doc = await this.createDocument.execute({
         docType: DocType.IN,
-        serieId: serieId,
+        serieId,
         toWarehouseId: params.toWarehouseId,
         referenceId: order.poId,
         referenceType: ReferenceType.PURCHASE,
@@ -78,14 +80,15 @@ export class PostInventoryFromPurchaseUsecase {
           stockItem = await this.stockItemRepo.findByProductIdOrVariantId(item.stockItemId);
         }
         if (!stockItem) {
-          throw new NotFoundException({ type: "error", message: "StockItem terminado no encontrado" });
+          throw new NotFoundException("StockItem terminado no encontrado");
         }
+
         await this.addItem.execute({
           docId: doc.id,
           stockItemId: stockItem.stockItemId,
           quantity: item.quantity * item.factor,
           toLocationId: params.toLocationId,
-          unitCost: item.unitPrice.getAmount(), // o item.purchaseValue.getAmount()
+          unitCost: item.unitPrice.getAmount(),
         });
       }
 

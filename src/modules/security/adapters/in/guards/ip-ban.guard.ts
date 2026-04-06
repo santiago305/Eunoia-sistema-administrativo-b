@@ -3,6 +3,7 @@ import { Request } from 'express';
 import { ResolveClientIpUseCase } from 'src/modules/security/application/use-cases/resolve-client-ip.usecase';
 import { CheckIpBanUseCase } from 'src/modules/security/application/use-cases/check-ip-ban.usecase';
 import { RegisterIpViolationAndApplyPolicyUseCase } from 'src/modules/security/application/use-cases/register-ip-violation-and-apply-policy.usecase';
+import { SecurityForbiddenApplicationError } from 'src/modules/security/application/errors/security-forbidden.error';
 
 @Injectable()
 export class IpBanGuard implements CanActivate {
@@ -27,6 +28,6 @@ export class IpBanGuard implements CanActivate {
       userAgent: Array.isArray(req.headers['user-agent']) ? req.headers['user-agent'][0] : req.headers['user-agent'],
     });
 
-    throw new ForbiddenException('IP bloqueada temporal o permanentemente');
+    throw new ForbiddenException(new SecurityForbiddenApplicationError('IP bloqueada temporal o permanentemente').message);
   }
 }

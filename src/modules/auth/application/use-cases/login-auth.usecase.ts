@@ -1,4 +1,4 @@
-import { ForbiddenException, HttpException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, HttpException, HttpStatus, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import { LoginAuthDto } from 'src/modules/auth/adapters/in/dtos';
 import { TOKEN_READ_REPOSITORY, TokenReadRepository } from 'src/modules/auth/application/ports/token-read.repository';
 import { PASSWORD_HASHER_READ_REPOSITORY, PasswordHasherReadRepository } from 'src/modules/auth/application/ports/password-hasher-read.repository';
@@ -7,16 +7,19 @@ import { RoleType } from 'src/shared/constantes/constants';
 import { CreateSessionUseCase } from 'src/modules/sessions/application/use-cases/create-session.usecase';
 import { v4 as uuidv4 } from 'uuid';
 import { USER_REPOSITORY, UserRepository } from 'src/modules/users/application/ports/user.repository';
+import { AuthInvalidCredentialsError } from '../errors/auth-invalid-credentials.error';
+import { AuthUserDisabledError } from '../errors/auth-user-disabled.error';
+import { AuthAccountLockedError } from '../errors/auth-account-locked.error';
 
 @Injectable()
 export class LoginAuthUseCase {
   private readonly maxAttempts = 5;
   private readonly lockoutDurationsMs = [
-    1 * 60 * 1000,   // 1 min
-    5 * 60 * 1000,   // 5 min
-    30 * 60 * 1000,  // 30 min
-    60 * 60 * 1000,  // 1 h
-    24 * 60 * 60 * 1000, // 1 d
+    1 * 60 * 1000,
+    5 * 60 * 1000,
+    30 * 60 * 1000,
+    60 * 60 * 1000,
+    24 * 60 * 60 * 1000,
   ];
 
   constructor(
@@ -43,12 +46,18 @@ export class LoginAuthUseCase {
   private throwLocked(lockedUntil: Date) {
     const remainingMs = lockedUntil.getTime() - Date.now();
     const remaining = this.formatRemaining(remainingMs);
+    const error = new AuthAccountLockedError(
+      lockedUntil.toISOString(),
+      Math.max(0, Math.ceil(remainingMs / 1000)),
+      remaining,
+    );
+
     throw new HttpException(
       {
-        message: `Cuenta bloqueada. Intenta nuevamente en ${remaining}`,
+        message: error.message,
         details: {
-          lockedUntil: lockedUntil.toISOString(),
-          retryAfterSeconds: Math.max(0, Math.ceil(remainingMs / 1000)),
+          lockedUntil: error.lockedUntil,
+          retryAfterSeconds: error.retryAfterSeconds,
         },
       },
       423,
@@ -58,10 +67,10 @@ export class LoginAuthUseCase {
   private async validateUser(email: string, password: string) {
     const user = await this.getUserWithPasswordByEmailUseCase.execute(email);
 
-    if (!user) throw new UnauthorizedException('Credenciales invalidas');
+    if (!user) throw new UnauthorizedException(new AuthInvalidCredentialsError().message);
 
     if (user.securityDisabledAt) {
-      throw new ForbiddenException('Cuenta desactivada. Contacta a un administrador para reactivacion');
+      throw new ForbiddenException(new AuthUserDisabledError().message);
     }
 
     if (user.lockedUntil && user.lockedUntil > new Date()) {
@@ -84,7 +93,7 @@ export class LoginAuthUseCase {
             lockedUntil: null,
             securityDisabledAt: new Date(),
           });
-          throw new ForbiddenException('Cuenta desactivada. Contacta a un administrador para reactivacion');
+          throw new ForbiddenException(new AuthUserDisabledError().message);
         }
 
         const durationMs = this.lockoutDurationsMs[lockoutLevel - 1];
@@ -104,7 +113,7 @@ export class LoginAuthUseCase {
         lockedUntil: null,
       });
 
-      throw new UnauthorizedException('Credenciales invalidas');
+      throw new UnauthorizedException(new AuthInvalidCredentialsError().message);
     }
 
     await this.userRepository.updateSecurityById(user.id, {

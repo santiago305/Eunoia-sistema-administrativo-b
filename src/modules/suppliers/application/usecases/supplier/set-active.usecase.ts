@@ -2,6 +2,7 @@ import { Inject, InternalServerErrorException, NotFoundException } from "@nestjs
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { SUPPLIER_REPOSITORY, SupplierRepository } from "src/modules/suppliers/domain/ports/supplier.repository";
 import { SetSupplierActiveInput } from "../../dtos/supplier/input/set-active.input";
+import { SupplierNotFoundError } from "../../errors/supplier-not-found.error";
 
 export class SetSupplierActiveUsecase {
   constructor(
@@ -11,25 +12,19 @@ export class SetSupplierActiveUsecase {
     private readonly supplierRepo: SupplierRepository,
   ) {}
 
-  async execute(input: SetSupplierActiveInput): Promise<{ type: string; message: string }> {
+  async execute(input: SetSupplierActiveInput): Promise<{ message: string }> {
     return this.uow.runInTransaction(async (tx) => {
-
       const exist = await this.supplierRepo.findById(input.supplierId, tx);
 
-      if(!exist){
-        throw new NotFoundException({
-          type:'error',
-          message:'No se encontro proveedor'
-        });
+      if (!exist) {
+        throw new NotFoundException(new SupplierNotFoundError().message);
       }
+
       try {
         await this.supplierRepo.setActive(input.supplierId, input.isActive, tx);
-        return { type: "success", message: "Operacion realizada con exito" };
+        return { message: "Operacion realizada con exito" };
       } catch {
-        throw new InternalServerErrorException({
-          type:'error',
-          message:'No se pudo cambiar el estado del proveedor'
-        });
+        throw new InternalServerErrorException("No se pudo cambiar el estado del proveedor");
       }
     });
   }

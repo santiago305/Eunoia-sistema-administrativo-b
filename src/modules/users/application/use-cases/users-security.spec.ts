@@ -6,23 +6,29 @@ import { RoleType } from 'src/shared/constantes/constants';
 describe('Users security responses', () => {
   it('never returns password in list users response', async () => {
     const listUsersUseCase = new ListUsersUseCase({
-      listUsers: jest.fn().mockResolvedValue([
-        {
-          id: 'user-1',
-          name: 'Ana',
-          email: 'ana@example.com',
-          telefono: '555',
-          rol: RoleType.ADVISER,
-          roleId: 'role-1',
-          deleted: false,
-          createdAt: new Date(),
-          password: 'should-not-leak',
-        },
-      ]),
+      listUsers: jest.fn().mockResolvedValue({
+        items: [
+          {
+            id: 'user-1',
+            name: 'Ana',
+            email: 'ana@example.com',
+            telefono: '555',
+            rol: RoleType.ADVISER,
+            roleId: 'role-1',
+            deleted: false,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            password: 'should-not-leak',
+          },
+        ],
+        total: 1,
+        page: 1,
+        pageSize: 10,
+      }),
     } as any);
 
     const result = await listUsersUseCase.execute({ page: 1 }, RoleType.ADMIN);
-    expect(result[0]).not.toHaveProperty('password');
+    expect(result.items[0]).not.toHaveProperty('password');
   });
 
   it('returns only safe fields for detail and email queries', async () => {

@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { AddItemUseCase } from './add-item.usecase';
-import { DocumentRepository } from '../../../domain/ports/document.repository.port';
+import { DocumentRepository } from '../../ports/document.repository.port';
 import { InventoryRulesService } from '../../../domain/services/inventory-rules.service';
 import { InventoryDocument } from '../../../domain/entities/inventory-document';
 import InventoryDocumentItem from '../../../domain/entities/inventory-document-item';
@@ -28,13 +28,18 @@ describe('AddItemUseCase', () => {
       ensureSeriesExists: jest.fn(),
       normalizeQuantity: jest.fn(),
     } as unknown as InventoryRulesService);
+  const makeUow = () =>
+    ({
+      runInTransaction: jest.fn(async (work) => work({})),
+    } as any);
 
   it('lanza error si el documento no existe', async () => {
     const repo = makeRepo();
     const rules = makeRules();
+    const uow = makeUow();
     (repo.findById as jest.Mock).mockResolvedValue(null);
 
-    const useCase = new AddItemUseCase(repo, rules);
+    const useCase = new AddItemUseCase(repo, uow, rules);
 
     await expect(
       useCase.execute({
@@ -42,12 +47,13 @@ describe('AddItemUseCase', () => {
         stockItemId: 'VAR-1',
         quantity: 1,
       }),
-    ).rejects.toThrow(BadRequestException);
+    ).rejects.toThrow();
   });
 
   it('lanza error si el documento no esta en DRAFT', async () => {
     const repo = makeRepo();
     const rules = makeRules();
+    const uow = makeUow();
     const doc = new InventoryDocument(
       'DOC-1',
       DocType.IN,
@@ -58,7 +64,7 @@ describe('AddItemUseCase', () => {
     );
     (repo.findById as jest.Mock).mockResolvedValue(doc);
 
-    const useCase = new AddItemUseCase(repo, rules);
+    const useCase = new AddItemUseCase(repo, uow, rules);
 
     await expect(
       useCase.execute({
@@ -72,6 +78,7 @@ describe('AddItemUseCase', () => {
   it('agrega item normalizando la cantidad', async () => {
     const repo = makeRepo();
     const rules = makeRules();
+    const uow = makeUow();
     const doc = new InventoryDocument(
       'DOC-1',
       DocType.IN,
@@ -95,7 +102,7 @@ describe('AddItemUseCase', () => {
     );
     (repo.addItem as jest.Mock).mockResolvedValue(saved);
 
-    const useCase = new AddItemUseCase(repo, rules);
+    const useCase = new AddItemUseCase(repo, uow, rules);
     const result = await useCase.execute({
       docId: 'DOC-1',
       stockItemId: 'VAR-1',

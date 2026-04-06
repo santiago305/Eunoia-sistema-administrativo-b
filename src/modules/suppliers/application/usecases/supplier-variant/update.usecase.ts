@@ -1,8 +1,9 @@
 import { Inject, NotFoundException } from "@nestjs/common";
+import { SUPPLIER_VARIANT_REPOSITORY, SupplierVariantRepository } from "src/modules/suppliers/domain/ports/supplier-variant.repository";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { Money } from "src/shared/value-objets/money.vo";
-import { SUPPLIER_VARIANT_REPOSITORY, SupplierVariantRepository } from "src/modules/suppliers/domain/ports/supplier-variant.repository";
 import { UpdateSupplierVariantInput } from "../../dtos/supplier-variant/input/update.input";
+import { SupplierVariantNotFoundError } from "../../errors/supplier-variant-not-found.error";
 
 export class UpdateSupplierVariantUsecase {
   constructor(
@@ -12,7 +13,7 @@ export class UpdateSupplierVariantUsecase {
     private readonly supplierVariantRepo: SupplierVariantRepository,
   ) {}
 
-  async execute(input: UpdateSupplierVariantInput): Promise<{type:string,message:string}> {
+  async execute(input: UpdateSupplierVariantInput): Promise<{ message: string }> {
     return this.uow.runInTransaction(async (tx) => {
       const updated = await this.supplierVariantRepo.update(
         {
@@ -26,16 +27,10 @@ export class UpdateSupplierVariantUsecase {
       );
 
       if (!updated) {
-        throw new NotFoundException({
-          type: "error",
-          message: "Relacion proveedor-variante no encontrada"
-        });
+        throw new NotFoundException(new SupplierVariantNotFoundError().message);
       }
 
-      return {
-        type: "success",
-        message: "¡Operación lograda con exito!"
-      };
+      return { message: "Operacion realizada con exito" };
     });
   }
 }

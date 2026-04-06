@@ -1,7 +1,6 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { GetLedgerInput } from '../../dto/ledger/input/get-ledger';
 import { PaginatedLedgerResult } from '../../dto/ledger/output/paginated-ledger';
-import { errorResponse } from 'src/shared/response-standard/response';
 import { ReferenceType } from 'src/modules/inventory/domain/value-objects/reference-type';
 import { LEDGER_REPOSITORY, LedgerRepository } from '../../ports/ledger.repository.port';
 import { STOCK_ITEM_REPOSITORY, StockItemRepository } from '../../ports/stock-item.repository.port';
@@ -19,10 +18,10 @@ export class GetLedgerUseCase {
   async execute(input: GetLedgerInput): Promise<PaginatedLedgerResult> {
 
     if(!input.warehouseId){
-      throw new BadRequestException(errorResponse('Debes elegir un almacen'));
+      throw new BadRequestException('Debes elegir un almacen');
     }
     if(!input.stockItemId){
-      throw new BadRequestException(errorResponse('Debes elegir un producto'));
+      throw new BadRequestException('Debes elegir un producto');
     }
     const page = input.page && input.page > 0 ? input.page : 1;
     const limit = input.limit && input.limit > 0 ? input.limit : 20;

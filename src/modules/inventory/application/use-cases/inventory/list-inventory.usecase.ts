@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { ListInventoryInput } from '../../dto/inventory/input/list-inventory';
 import { InventorySnapshotOutput } from '../../dto/inventory/output/inventory-snapshot';
 import { INVENTORY_REPOSITORY, InventoryRepository } from '../../ports/inventory.repository.port';
+import { InventoryOutputMapper } from '../../mappers/inventory-output.mapper';
 
 @Injectable()
 export class ListInventoryUseCase {
@@ -12,14 +13,7 @@ export class ListInventoryUseCase {
 
   async execute(input: ListInventoryInput): Promise<InventorySnapshotOutput[]> {
     const rows = await this.inventoryRepo.listSnapshots(input);
-    return rows.map((s) => ({
-      warehouseId: s.warehouseId,
-      stockItemId: s.stockItemId,
-      locationId: s.locationId,
-      onHand: s.onHand,
-      reserved: s.reserved,
-      available: s.available,
-    }));
+    return rows.map((snapshot) => InventoryOutputMapper.toInventorySnapshotOutput(snapshot));
   }
 }
 

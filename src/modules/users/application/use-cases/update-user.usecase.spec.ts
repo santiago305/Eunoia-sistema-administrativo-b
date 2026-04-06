@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { UpdateUserUseCase } from './update-user.usecase';
 import { Email, Password, RoleId, User } from 'src/modules/users/domain';
 import { successResponse } from 'src/shared/response-standard/response';
@@ -47,10 +47,10 @@ describe('UpdateUserUseCase', () => {
 
     await expect(
       useCase.execute('user-1', {} as any, 'user-2')
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
-  it('rejects when email already exists', async () => {
+  it('rejects email change', async () => {
     const domainUser = new User(
       'user-1',
       'Ana',
@@ -68,14 +68,40 @@ describe('UpdateUserUseCase', () => {
 
     await expect(
       useCase.execute('user-1', { email: 'other@example.com' } as any, 'user-1')
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('rejects role change', async () => {
-    const useCase = makeUseCase();
+    const domainUser = new User(
+      'user-1',
+      'Ana',
+      new Email('ana@example.com'),
+      new Password('hash'),
+      new RoleId('role-1')
+    );
+    const useCase = makeUseCase({
+      userRepository: {
+        existsByIdAndDeleted: jest.fn().mockResolvedValue(true),
+        findById: jest.fn().mockResolvedValue(domainUser),
+        existsByEmail: jest.fn().mockResolvedValue(false),
+        save: jest.fn(),
+      },
+    });
 
     await expect(
       useCase.execute('user-1', { roleId: 'role-2' } as any, 'user-1')
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejects when user does not exist', async () => {
+    const useCase = makeUseCase({
+      userRepository: {
+        existsByIdAndDeleted: jest.fn().mockResolvedValue(false),
+      },
+    });
+
+    await expect(
+      useCase.execute('user-1', {} as any, 'user-1')
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

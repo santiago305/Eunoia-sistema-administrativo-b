@@ -2,6 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
 import { ListProductionOrdersInput } from "../../dto/production-order/input/list-production-orders";
 import { PaginatedProductionOrderOutput } from "../../dto/production-order/output/production-order-paginated";
+import { ProductionOrderOutputMapper } from "../../mappers/production-order-output.mapper";
 
 @Injectable()
 export class ListProductionOrders {
@@ -14,20 +15,7 @@ export class ListProductionOrders {
     const result = await this.orderRepo.list(input);
 
     return {
-      items: result.items.map((item) => ({
-        productionId: item.order.productionId!,
-        status: item.order.status,
-        serieId: item.order.serieId,
-        correlative: item.order.correlative,
-        reference: item.order.reference,
-        manufactureDate: item.order.manufactureDate,
-        fromWarehouseId: item.order.fromWarehouseId,
-        toWarehouseId: item.order.toWarehouseId,
-        createdAt: item.order.createdAt,
-        fromWarehouse: item.fromWarehouse,
-        toWarehouse: item.toWarehouse,
-        serie: item.serie,
-      })),
+      items: result.items.map((item) => ProductionOrderOutputMapper.toListItemOutput(item)),
       total: result.total,
       page: result.page,
       limit: result.limit,

@@ -7,12 +7,12 @@ import { CatalogModule } from "src/modules/catalog/infrastructure/catalog.module
 import { ProductionModule } from "src/modules/production/infrastructure/production.module";
 import { WarehousesModule } from "src/modules/warehouses/warehouses.module";
 import { PdfGeneratedController } from "./adapters/in/controllers/pdf-generated.controller";
-import { ReactPdfRenderer } from "./adapters/out/react-pdf/react-pdf.renderer";
-import { GenerateInvoicePdfUseCase } from "./application/usecases/generate-invoice-pdf.usecase";
-import { GeneratePurchaseOrderPdfUseCase } from "./application/usecases/generate-purchase-order-pdf.usecase";
-import { GenerateProductionOrderPdfUseCase } from "./application/usecases/generate-production-order-pdf.usecase";
 import { GenerateInventoryDocumentPdfUseCase } from "./application/usecases/generate-inventory-document-pdf.usecase";
+import { GenerateInvoicePdfUseCase } from "./application/usecases/generate-invoice-pdf.usecase";
+import { GenerateProductionOrderPdfUseCase } from "./application/usecases/generate-production-order-pdf.usecase";
+import { GeneratePurchaseOrderPdfUseCase } from "./application/usecases/generate-purchase-order-pdf.usecase";
 import { PDF_RENDERER } from "./domain/ports/pdf-renderer.port";
+import { pdfGeneratedModuleProviders } from "./composition/container";
 
 @Module({
   imports: [
@@ -25,13 +25,7 @@ import { PDF_RENDERER } from "./domain/ports/pdf-renderer.port";
     WarehousesModule,
   ],
   controllers: [PdfGeneratedController],
-  providers: [
-    GenerateInvoicePdfUseCase,
-    GeneratePurchaseOrderPdfUseCase,
-    GenerateProductionOrderPdfUseCase,
-    GenerateInventoryDocumentPdfUseCase,
-    { provide: PDF_RENDERER, useClass: ReactPdfRenderer },
-  ],
+  providers: [...pdfGeneratedModuleProviders],
   exports: [
     GenerateInvoicePdfUseCase,
     GeneratePurchaseOrderPdfUseCase,

@@ -1,18 +1,18 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/application/ports/product.repository";
+import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/modules/catalog/application/ports/product-variant.repository";
 import { ProductId } from "src/modules/catalog/domain/value-object/product-id.vo";
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
 import { StockItemType } from "src/modules/inventory/domain/value-objects/stock-item-type";
 import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
-import { errorResponse } from "src/shared/response-standard/response";
+import { toProductOutput, toVariantOutput } from "src/modules/production/application/utils/productVariant";
 import {
   ProductionOrderDetailOutput,
   ProductionOrderFinishedItemOutput,
 } from "../../dto/production-order/output/production-order-detail-out";
-import { toProductOutput, toVariantOutput } from "src/modules/production/application/utils/productVariant";
-import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/modules/catalog/application/ports/product-variant.repository";
-import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/application/ports/product.repository";
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
-
+import { ProductionOrderOutputMapper } from "../../mappers/production-order-output.mapper";
+import { ProductionOrderNotFoundApplicationError } from "../../errors/production-order-not-found.error";
 
 @Injectable()
 export class GetProductionOrder {
@@ -25,33 +25,37 @@ export class GetProductionOrder {
     @Inject(PRODUCT_REPOSITORY) private readonly productRepo: ProductRepository,
     @Inject(PRODUCT_VARIANT_REPOSITORY) private readonly variantRepo: ProductVariantRepository,
   ) {}
+
   async execute(params: { productionId: string }): Promise<ProductionOrderDetailOutput> {
     return this.uow.runInTransaction(async (tx) => {
       const result = await this.orderRepo.getByIdWithItems(params.productionId, tx);
       if (!result) {
-        throw new NotFoundException(errorResponse("No se encontro la orden de produccion"));
+        throw new NotFoundException(new ProductionOrderNotFoundApplicationError().message);
       }
 
       const items = await Promise.all(
-        result.items.map(async (i) => {
-          const stockItem = await this.stockItemRepo.findByProductIdOrVariantId(i.finishedItemId, tx);
+        result.items.map(async (item) => {
+          const stockItem = await this.stockItemRepo.findByProductIdOrVariantId(item.finishedItemId, tx);
           if (!stockItem) {
-            throw new NotFoundException(errorResponse("No se encontro el item de stock"));
+            throw new NotFoundException("No se encontro el item de stock");
           }
 
           let finishedItem: ProductionOrderFinishedItemOutput | null = null;
 
           if (stockItem.type === StockItemType.PRODUCT) {
             if (!stockItem.productId) {
-              throw new NotFoundException(errorResponse("No se encontro el producto"));
+              throw new NotFoundException("No se encontro el producto");
             }
+
             const productInfo = await this.productRepo.findByIdWithUnitInfo(
               ProductId.create(stockItem.productId),
               tx,
             );
+
             if (!productInfo) {
-              throw new NotFoundException(errorResponse("No se encontro el producto"));
+              throw new NotFoundException("No se encontro el producto");
             }
+
             finishedItem = {
               type: StockItemType.PRODUCT,
               product: toProductOutput(productInfo.product, {
@@ -61,12 +65,14 @@ export class GetProductionOrder {
             };
           } else if (stockItem.type === StockItemType.VARIANT) {
             if (!stockItem.variantId) {
-              throw new NotFoundException(errorResponse("No se encontro la variante"));
+              throw new NotFoundException("No se encontro la variante");
             }
+
             const variantInfo = await this.variantRepo.findByIdWithProductInfo(stockItem.variantId, tx);
             if (!variantInfo?.variant) {
-              throw new NotFoundException(errorResponse("No se encontro la variante"));
+              throw new NotFoundException("No se encontro la variante");
             }
+
             finishedItem = {
               type: StockItemType.VARIANT,
               variant: toVariantOutput(variantInfo.variant, {
@@ -80,15 +86,8 @@ export class GetProductionOrder {
           }
 
           return {
-            id: i.productionItemId!,
-            productionId: i.productionId,
-            finishedItemId: i.finishedItemId,
+            ...ProductionOrderOutputMapper.toItemOutput(item),
             finishedItem,
-            fromLocationId: i.fromLocationId,
-            toLocationId: i.toLocationId,
-            quantity: i.quantity,
-            wasteQty: i.wasteQty ?? 0,
-            unitCost: i.unitCost,
           };
         }),
       );
@@ -108,22 +107,11 @@ export class GetProductionOrder {
           }
         : null;
 
-      return {
-        id: result.order.productionId!,
-        fromWarehouseId: result.order.fromWarehouseId,
-        toWarehouseId: result.order.toWarehouseId,
-        serieId: result.order.serieId,
+      return ProductionOrderOutputMapper.toDetailOutput({
+        order: result.order,
         serie,
-        correlative: result.order.correlative,
-        status: result.order.status,
-        reference: result.order.reference,
-        manufactureDate: result.order.manufactureDate,
-        createdAt: result.order.createdAt,
         items,
-      };
+      });
     });
   }
-
-  
-
 }

@@ -3,6 +3,7 @@ import { PaginatedResult } from "src/shared/utilidades/dto/paginateResult";
 import { PAYMENT_DOCUMENT_REPOSITORY, PaymentDocumentRepository } from "src/modules/payments/domain/ports/payment-document.repository";
 import { ListPaymentsInput } from "../../dtos/payment/input/list.input";
 import { PaymentOutput } from "../../dtos/payment/output/payment.output";
+import { PaymentOutputMapper } from "../../mappers/payment-output.mapper";
 
 export class ListPaymentsUsecase {
   constructor(
@@ -22,18 +23,7 @@ export class ListPaymentsUsecase {
     });
 
     return {
-      items: items.map((row) => ({
-        payDocId: row.payDocId,
-        method: row.method,
-        date: row.date,
-        operationNumber: row.operationNumber ?? null,
-        currency: row.currency,
-        amount: row.amount,
-        note: row.note ?? null,
-        fromDocumentType: row.fromDocumentType,
-        poId: row.poId ?? "",
-        quotaId: row.quotaId ?? null,
-      })),
+      items: items.map((row) => PaymentOutputMapper.toOutput(row)),
       total,
       page,
       limit,

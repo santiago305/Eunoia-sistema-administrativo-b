@@ -2,6 +2,8 @@
 import { SearchProductsPaginated } from './search-paginated.usecase';
 import { Product } from 'src/modules/catalog/domain/entity/product';
 import { ProductId } from 'src/modules/catalog/domain/value-object/product-id.vo';
+import { Money } from 'src/shared/value-objets/money.vo';
+import { ProductType } from 'src/modules/catalog/domain/value-object/productType';
 
 describe('SearchProductsPaginated', () => {
   it('usa paginacion por defecto y mapea resultados', async () => {
@@ -10,16 +12,24 @@ describe('SearchProductsPaginated', () => {
     const productRepo = {
       searchPaginated: jest.fn().mockResolvedValue({
         items: [
-          new Product(
-            productId,
-            'Cable',
-            'Cable USB',
-            baseUnitId,
-            true,
-            undefined,
-            new Date('2026-02-10T10:00:00Z'),
-            new Date('2026-02-10T11:00:00Z'),
-          ),
+          {
+            product: Product.create({
+              id: productId,
+              name: 'Cable',
+              description: 'Cable USB',
+              baseUnitId,
+              sku: '00001',
+              price: Money.create(10),
+              cost: Money.create(5),
+              attributes: {},
+              isActive: true,
+              type: ProductType.FINISHED,
+              createdAt: new Date('2026-02-10T10:00:00Z'),
+              updatedAt: new Date('2026-02-10T11:00:00Z'),
+            }),
+            baseUnitName: 'Unidad',
+            baseUnitCode: 'UND',
+          },
         ],
         total: 1,
       }),
@@ -33,6 +43,8 @@ describe('SearchProductsPaginated', () => {
       isActive: undefined,
       name: undefined,
       description: undefined,
+      sku: undefined,
+      barcode: undefined,
       type: undefined,
       q: undefined,
       page: 1,
@@ -45,9 +57,18 @@ describe('SearchProductsPaginated', () => {
           name: 'Cable',
           description: 'Cable USB',
           baseUnitId,
+          sku: '00001',
+          customSku: null,
+          barcode: null,
+          price: 10,
+          cost: 5,
+          attributes: {},
+          type: ProductType.FINISHED,
           isActive: true,
           createdAt: new Date('2026-02-10T10:00:00Z'),
           updatedAt: new Date('2026-02-10T11:00:00Z'),
+          baseUnitName: 'Unidad',
+          baseUnitCode: 'UND',
         },
       ],
       total: 1,

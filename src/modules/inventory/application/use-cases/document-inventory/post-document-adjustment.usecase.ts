@@ -1,9 +1,10 @@
-import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
-import { BadRequestException, Inject, Injectable } from "@nestjs/common";
-import { PostDocumentInput } from "../../dto/document/input/document-post";
+import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { LedgerEntry } from "src/modules/inventory/domain/entities/ledger-entry";
 import { Direction } from "src/modules/inventory/domain/value-objects/direction";
 import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
+import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
+import { PostDocumentInput } from "../../dto/document/input/document-post";
+import { DocumentNotFoundApplicationError } from "../../errors/document-not-found.error";
 import { CLOCK, ClockPort } from "../../ports/clock.port";
 import { DOCUMENT_REPOSITORY, DocumentRepository } from "../../ports/document.repository.port";
 import { INVENTORY_LOCK, InventoryLock } from "../../ports/inventory-lock.port";
@@ -27,39 +28,40 @@ export class PostDocumentoAdjustment {
     private readonly ledgerRepo: LedgerRepository,
   ) {}
 
-  async execute(input: PostDocumentInput) {
+  async execute(input: PostDocumentInput): Promise<{ status: string }> {
     return this.uow.runInTransaction(async (tx) => {
       const result = await this.documentRepo.getByIdWithItems(input.docId, tx);
 
       if (!result) {
-        throw new BadRequestException("Documento no encontrado");
+        throw new NotFoundException(new DocumentNotFoundApplicationError().message);
       }
 
       const { doc, items } = result;
 
       if (!doc.isDraft()) {
-        throw new BadRequestException('Documento ya ha sido posteado');
+        throw new BadRequestException("Documento ya ha sido posteado");
       }
 
       if (!items.length) {
         throw new BadRequestException("El documento no tiene items");
       }
 
-      const warehouseId = doc.fromWarehouseId;
-      if (!warehouseId) {
+      if (!doc.fromWarehouseId) {
         throw new BadRequestException("ADJUSTMENT requiere un almacen");
       }
-      
-      if(doc.docType != DocType.ADJUSTMENT){
+
+      if (doc.docType !== DocType.ADJUSTMENT) {
         throw new BadRequestException("El tipo del documento no es el adecuado");
       }
 
-      const keys = items.map((i) => ({
-        warehouseId,
-        stockItemId: i.stockItemId,
-        locationId: i.fromLocationId
-      }));
-      await this.lock.lockSnapshots(keys, tx);
+      await this.lock.lockSnapshots(
+        items.map((item) => ({
+          warehouseId: doc.fromWarehouseId!,
+          stockItemId: item.stockItemId,
+          locationId: item.fromLocationId,
+        })),
+        tx,
+      );
 
       const now = this.clock.now();
       const entries: LedgerEntry[] = [];
@@ -69,37 +71,33 @@ export class PostDocumentoAdjustment {
           throw new BadRequestException("Cantidad invalida para ADJUSTMENT");
         }
 
-        // si es ajuste negativo, validar stock
         if (item.quantity < 0) {
           const snapshot = await this.inventoryRepo.getSnapshot(
             {
-              warehouseId,
+              warehouseId: doc.fromWarehouseId!,
               stockItemId: item.stockItemId,
-              locationId: item.fromLocationId
+              locationId: item.fromLocationId,
             },
             tx,
           );
 
-          const onHand = snapshot?.onHand ?? 0;
-          const reserved = snapshot?.reserved ?? 0;
-          const available = onHand - reserved;
-
+          const available = (snapshot?.onHand ?? 0) - (snapshot?.reserved ?? 0);
           if (available < Math.abs(item.quantity)) {
             throw new BadRequestException("Stock insuficiente");
           }
         }
 
         const direction = item.quantity > 0 ? Direction.IN : Direction.OUT;
-        const qty = Math.abs(item.quantity);
+        const quantity = Math.abs(item.quantity);
 
         entries.push(
           new LedgerEntry(
             undefined,
             doc.id!,
-            warehouseId,
+            doc.fromWarehouseId!,
             item.stockItemId,
             direction,
-            qty,
+            quantity,
             item.unitCost ?? null,
             item.id,
             item.wasteQty ?? 0,
@@ -110,7 +108,7 @@ export class PostDocumentoAdjustment {
 
         await this.inventoryRepo.incrementOnHand(
           {
-            warehouseId,
+            warehouseId: doc.fromWarehouseId!,
             stockItemId: item.stockItemId,
             locationId: item.fromLocationId,
             delta: item.quantity,
@@ -124,12 +122,11 @@ export class PostDocumentoAdjustment {
       }
 
       await this.documentRepo.markPosted(
-        { docId: doc.id!, postedBy: input.postedBy, note: input.note , postedAt: now },
+        { docId: doc.id!, postedBy: input.postedBy, note: input.note, postedAt: now },
         tx,
       );
 
-      return { status: '¡Postedo con exito!' };
+      return { status: "Documento posteado con exito" };
     });
   }
 }
-

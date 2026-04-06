@@ -1,6 +1,7 @@
 import { Inject } from "@nestjs/common";
 import { PAYMENT_METHOD_REPOSITORY, PaymentMethodRepository } from "src/modules/payment-methods/domain/ports/payment-method.repository";
 import { PaymentMethodOutput } from "../../dtos/payment-method/output/payment-method.output";
+import { PaymentMethodOutputMapper } from "../../mappers/payment-method-output.mapper";
 
 export class GetPaymentMethodsRecordsUsecase {
   constructor(
@@ -10,10 +11,6 @@ export class GetPaymentMethodsRecordsUsecase {
 
   async execute(): Promise<PaymentMethodOutput[]> {
     const rows = await this.paymentMethodRepo.getRecords();
-    return rows.map((m) => ({
-      methodId: m.methodId!,
-      name: m.name,
-      isActive: m.isActive,
-    }));
+    return rows.map((method) => PaymentMethodOutputMapper.toOutput(method));
   }
 }

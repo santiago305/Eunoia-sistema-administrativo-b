@@ -21,16 +21,12 @@ export class CreateProductEquivalence {
     try {
       await this.equivalenceRepo.create(equivalence);
     } catch {
-      throw new BadRequestException( {
-        type: 'error',
-        message: '¡Error al crear equivalence'
-      })
+      throw new BadRequestException('Error al crear equivalencia');
     }
 
     return {
       type: 'success',
-      message: '¡Equivalencia creada con exito!'
-    }
-
+      message: 'Equivalencia creada con éxito'
+    };
   }
 }

@@ -3,6 +3,7 @@ import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.p
 import { UpdateLocationInput } from "../../dtos/location/input/update.input";
 import { LocationOutput } from "../../dtos/location/output/location.output";
 import { LOCATION_REPOSITORY, LocartionRepository } from "../../ports/location.repository.port";
+import { WarehouseOutputMapper } from "../../mappers/warehouse-output.mapper";
 
 export class UpdateLocationUsecase {
   constructor(
@@ -34,13 +35,7 @@ export class UpdateLocationUsecase {
         throw new BadRequestException("Ubicacion no encontrada");
       }
 
-      return {
-        locationId: updated.locationId.value,
-        warehouseId: updated.warehouseId.value,
-        code: updated.code,
-        description: updated.description,
-        isActive: updated.isActive,
-      };
+      return WarehouseOutputMapper.toLocationOutput(updated);
     });
   }
 }

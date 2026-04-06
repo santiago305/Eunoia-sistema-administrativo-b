@@ -1,10 +1,11 @@
-import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
-import { BadRequestException, Inject, Injectable } from "@nestjs/common";
-import { PostDocumentInput } from "../../dto/document/input/document-post";
+import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { LedgerEntry } from "src/modules/inventory/domain/entities/ledger-entry";
-import { Direction } from "src/modules/inventory/domain/value-objects/direction";
 import { DocumentPostOutValidationService } from "src/modules/inventory/domain/services/document-post-out-validation.service";
+import { Direction } from "src/modules/inventory/domain/value-objects/direction";
 import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
+import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
+import { PostDocumentInput } from "../../dto/document/input/document-post";
+import { DocumentNotFoundApplicationError } from "../../errors/document-not-found.error";
 import { CLOCK, ClockPort } from "../../ports/clock.port";
 import { DOCUMENT_REPOSITORY, DocumentRepository } from "../../ports/document.repository.port";
 import { INVENTORY_LOCK, InventoryLock } from "../../ports/inventory-lock.port";
@@ -29,18 +30,18 @@ export class PostDocumentoTransfer {
     private readonly outValidator: DocumentPostOutValidationService,
   ) {}
 
-  async execute(input: PostDocumentInput) {
+  async execute(input: PostDocumentInput): Promise<{ status: string }> {
     return this.uow.runInTransaction(async (tx) => {
       const result = await this.documentRepo.getByIdWithItems(input.docId, tx);
 
       if (!result) {
-        throw new BadRequestException("Documento no encontrado");
+        throw new NotFoundException(new DocumentNotFoundApplicationError().message);
       }
 
       const { doc, items } = result;
 
       if (!doc.isDraft()) {
-        throw new BadRequestException('Documento ya ha sido posteado');
+        throw new BadRequestException("Documento ya ha sido posteado");
       }
 
       if (!items.length) {
@@ -48,24 +49,33 @@ export class PostDocumentoTransfer {
       }
 
       if (!doc.fromWarehouseId || !doc.toWarehouseId) {
-        throw new BadRequestException("TRANSFER requiere almacén origen y destino");
+        throw new BadRequestException("TRANSFER requiere almacen origen y destino");
       }
 
       if (doc.fromWarehouseId === doc.toWarehouseId) {
         throw new BadRequestException("TRANSFER requiere almacenes distintos");
       }
-      if(doc.docType != DocType.TRANSFER){
+
+      if (doc.docType !== DocType.TRANSFER) {
         throw new BadRequestException("El tipo del documento no es el adecuado");
       }
-      
-      //lockear origen y destino
-      const keys = items.flatMap((i) => [
-        { warehouseId: doc.fromWarehouseId!, stockItemId: i.stockItemId, locationId: i.fromLocationId },
-        { warehouseId: doc.toWarehouseId!, stockItemId: i.stockItemId, locationId: i.toLocationId },
-      ]);
-      await this.lock.lockSnapshots(keys, tx);
 
-      // validar stock en origen usando el servicio
+      await this.lock.lockSnapshots(
+        items.flatMap((item) => [
+          {
+            warehouseId: doc.fromWarehouseId!,
+            stockItemId: item.stockItemId,
+            locationId: item.fromLocationId,
+          },
+          {
+            warehouseId: doc.toWarehouseId!,
+            stockItemId: item.stockItemId,
+            locationId: item.toLocationId,
+          },
+        ]),
+        tx,
+      );
+
       const { insuficientes } = await this.outValidator.validateOutStock(
         items,
         doc.fromWarehouseId!,
@@ -82,15 +92,11 @@ export class PostDocumentoTransfer {
       const entries: LedgerEntry[] = [];
 
       for (const item of items) {
-        const fromWarehouseId = doc.fromWarehouseId!;
-        const toWarehouseId = doc.toWarehouseId!;
-
-        // OUT
         entries.push(
           new LedgerEntry(
             undefined,
             doc.id!,
-            fromWarehouseId,
+            doc.fromWarehouseId!,
             item.stockItemId,
             Direction.OUT,
             item.quantity,
@@ -101,12 +107,12 @@ export class PostDocumentoTransfer {
             now,
           ),
         );
-        // IN
+
         entries.push(
           new LedgerEntry(
             undefined,
             doc.id!,
-            toWarehouseId,
+            doc.toWarehouseId!,
             item.stockItemId,
             Direction.IN,
             item.quantity,
@@ -117,11 +123,12 @@ export class PostDocumentoTransfer {
             now,
           ),
         );
+
         await this.inventoryRepo.incrementOnHand(
           {
-            warehouseId: fromWarehouseId,
+            warehouseId: doc.fromWarehouseId!,
             stockItemId: item.stockItemId,
-            locationId:item.fromLocationId,
+            locationId: item.fromLocationId,
             delta: -item.quantity,
           },
           tx,
@@ -129,7 +136,7 @@ export class PostDocumentoTransfer {
 
         await this.inventoryRepo.incrementOnHand(
           {
-            warehouseId: toWarehouseId,
+            warehouseId: doc.toWarehouseId!,
             stockItemId: item.stockItemId,
             locationId: item.toLocationId,
             delta: item.quantity,
@@ -137,15 +144,17 @@ export class PostDocumentoTransfer {
           tx,
         );
       }
+
       if (entries.length > 0) {
         await this.ledgerRepo.append(entries, tx);
       }
+
       await this.documentRepo.markPosted(
-        { docId: doc.id!, postedBy: input.postedBy, note: input.note , postedAt: now },
+        { docId: doc.id!, postedBy: input.postedBy, note: input.note, postedAt: now },
         tx,
       );
-      return { status: '¡Postedo con exito!' };
+
+      return { status: "Documento posteado con exito" };
     });
   }
 }
-

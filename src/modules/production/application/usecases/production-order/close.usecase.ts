@@ -1,14 +1,14 @@
 import { BadRequestException, Inject, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common";
-import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
-import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
-import { DomainError } from "src/modules/production/domain/errors/domain.error";
-import { UNIT_OF_WORK, UnitOfWork, TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
-import { ConsumeReservedMaterialsUseCase } from "./consume-reserved-materials.usecase";
-import { PostProductionDocumentsUseCase } from "./post-production-documents.usecase";
-import { errorResponse, successResponse } from "src/shared/response-standard/response";
-import { RecipeConsumptionLine } from "./build-consumption-from-recipes.usecase";
 import { PRODUCT_RECIPE_REPOSITORY, ProductRecipeRepository } from "src/modules/catalog/application/ports/product-recipe.repository";
 import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
+import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
+import { DomainError } from "src/modules/production/domain/errors/domain.error";
+import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
+import { TransactionContext, UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
+import { RecipeConsumptionLine } from "./build-consumption-from-recipes.usecase";
+import { ConsumeReservedMaterialsUseCase } from "./consume-reserved-materials.usecase";
+import { PostProductionDocumentsUseCase } from "./post-production-documents.usecase";
+import { ProductionOrderNotFoundApplicationError } from "../../errors/production-order-not-found.error";
 
 @Injectable()
 export class CloseProductionOrder {
@@ -24,52 +24,55 @@ export class CloseProductionOrder {
     private readonly postDocs: PostProductionDocumentsUseCase,
   ) {}
 
-  async execute(params: {
-    productionId: string;
-    postedBy?: string;
-  }, tx?: TransactionContext): Promise<{ type: string; message: string }> {
+  async execute(
+    params: { productionId: string; postedBy?: string },
+    tx?: TransactionContext,
+  ): Promise<{ message: string }> {
     const run = async (ctx?: TransactionContext) => {
       const result = await this.orderRepo.getByIdWithItems(params.productionId, ctx);
       if (!result) {
-        throw new NotFoundException(errorResponse('Orden de produccion no encontrada'));
+        throw new NotFoundException(new ProductionOrderNotFoundApplicationError().message);
       }
 
       const { items, order } = result;
-
       try {
         order.assertCanClose();
       } catch (err) {
         if (err instanceof DomainError) {
-          throw new BadRequestException(errorResponse(err.message));
+          throw new BadRequestException(err.message);
         }
         throw err;
       }
 
       for (const item of items ?? []) {
-        const recipes = await this.recipeRepo.listByItemId(item.finishedItemId, tx);
-        if (!recipes || recipes.length === 0) {
-          throw new BadRequestException({ type: "error", message: "Receta no encontrada" });
+        const recipes = await this.recipeRepo.listByItemId(item.finishedItemId, ctx);
+        if (!recipes?.length) {
+          throw new BadRequestException("Receta no encontrada");
         }
 
         const stockItemCache = new Map<string, string>();
         const consumption: RecipeConsumptionLine[] = [];
-        for (const r of recipes) {
-          const cached = stockItemCache.get(r.primaVariantId);
+
+        for (const recipe of recipes) {
+          const cached = stockItemCache.get(recipe.primaVariantId);
           let stockItemId = cached;
+
           if (!stockItemId) {
-            const stockItem = await this.stockItemRepo.findByProductIdOrVariantId(r.primaVariantId, tx);
+            const stockItem = await this.stockItemRepo.findByProductIdOrVariantId(recipe.primaVariantId, ctx);
             if (!stockItem?.stockItemId) {
-              throw new NotFoundException({ type: "error", message: "Stock item de materia prima no encontrado" });
+              throw new NotFoundException("Stock item de materia prima no encontrado");
             }
             stockItemId = stockItem.stockItemId;
-            stockItemCache.set(r.primaVariantId, stockItemId);
+            stockItemCache.set(recipe.primaVariantId, stockItemId);
           }
+
           consumption.push({
             stockItemId,
             locationId: undefined,
-            qty: r.quantity * item.quantity,
+            qty: recipe.quantity * item.quantity,
           });
         }
+
         try {
           await this.consumeReserved.execute(
             {
@@ -77,15 +80,16 @@ export class CloseProductionOrder {
               consumption,
               reserveMode: false,
             },
-            tx,
+            ctx,
           );
+
           await this.postDocs.execute(
             { order, items, consumption, postedBy: params.postedBy },
             ctx,
           );
         } catch (err) {
           if (err instanceof BadRequestException) throw err;
-          throw new InternalServerErrorException(errorResponse('Error al apartar stockItem'));
+          throw new InternalServerErrorException("Error al consumir stock reservado");
         }
       }
 
@@ -97,7 +101,7 @@ export class CloseProductionOrder {
         ctx,
       );
 
-      return successResponse('¡Orden de Producción Completada!');
+      return { message: "Orden de produccion completada" };
     };
 
     if (tx) return run(tx);

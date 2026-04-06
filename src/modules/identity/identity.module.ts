@@ -1,14 +1,9 @@
 import { Module } from "@nestjs/common";
 import { IdentityController } from "./adapters/in/controllers/identity.controller";
-import { DecolectaIdentityClient } from "./adapters/out/http/identity.client";
-import { LookupIdentityUsecase } from "./application/usecases/lookup-identity.usecase";
-import { IDENTITY_LOOKUP_REPOSITORY } from "./domain/ports/identity-lookup.repository";
+import { identityModuleProviders } from "./composition/container";
 
 @Module({
   controllers: [IdentityController],
-  providers: [
-    LookupIdentityUsecase,
-    { provide: IDENTITY_LOOKUP_REPOSITORY, useClass: DecolectaIdentityClient },
-  ],
+  providers: [...identityModuleProviders],
 })
 export class IdentityModule {}

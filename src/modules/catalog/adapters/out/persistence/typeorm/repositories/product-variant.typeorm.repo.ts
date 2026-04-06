@@ -14,6 +14,7 @@ import { AttributesRecord } from 'src/modules/catalog/domain/value-object/varian
 import { RowMaterial } from 'src/modules/catalog/domain/read-models/row-materials';
 import { ProductType } from 'src/modules/catalog/domain/value-object/productType';
 import { ProductVariantRepository } from 'src/modules/catalog/application/ports/product-variant.repository';
+import { ProductVariantFactory } from 'src/modules/catalog/domain/factories/product-variant.factory';
 
 @Injectable()
 export class ProductVariantTypeormRepository implements ProductVariantRepository {
@@ -487,19 +488,18 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
   }
 
   private toDomain(row: ProductVariantEntity): ProductVariant {
-    return new ProductVariant(
-      row.id,
-      ProductId.create(row.productId),
-      row.sku,
-      row.barcode,
-      row.attributes,
-      // "numeric" from Postgres can arrive as string; normalize to number
-      Money.create(Number(row.price)),
-      Money.create(Number(row.cost ?? 0)),
-      row.isActive,
-      row.createdAt,
-      row.customSku,
-    );
+    return ProductVariantFactory.create({
+      id: row.id,
+      productId: ProductId.create(row.productId),
+      sku: row.sku,
+      barcode: row.barcode,
+      attributes: row.attributes,
+      price: Money.create(Number(row.price)),
+      cost: Money.create(Number(row.cost ?? 0)),
+      isActive: row.isActive,
+      createdAt: row.createdAt,
+      customSku: row.customSku,
+    });
   }
 }
 

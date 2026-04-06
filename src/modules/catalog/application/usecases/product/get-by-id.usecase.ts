@@ -3,6 +3,8 @@ import { ProductId } from "src/modules/catalog/domain/value-object/product-id.vo
 import { GetProductByIdInput } from "../../dto/products/input/get-product-by-id";
 import { ProductOutput } from "../../dto/products/output/product-out";
 import { PRODUCT_REPOSITORY, ProductRepository } from "../../ports/product.repository";
+import { CatalogOutputMapper } from "../../mappers/catalog-output.mapper";
+import { ProductNotFoundApplicationError } from "../../errors/product-not-found.error";
 
 export class GetProductById {
   constructor(
@@ -11,23 +13,10 @@ export class GetProductById {
 
   async execute(input: GetProductByIdInput): Promise<ProductOutput> {
     const product = await this.productRepo.findById(ProductId.create(input.id));
-    if (!product) throw new NotFoundException({ type: "error",  message: "Producto no encontrado" });
+    if (!product) {
+      throw new NotFoundException(new ProductNotFoundApplicationError().message);
+    }
 
-    return {
-      id: product.getId()?.value,
-      name: product.getName(),
-      description: product.getDescription(),
-      baseUnitId: product.getBaseUnitId(),
-      sku: product.getSku(),
-      customSku: product.getCustomSku() ?? null,
-      barcode: product.getBarcode(),
-      price: product.getPrice().getAmount(),
-      cost: product.getCost().getAmount(),
-      attributes: product.getAttributes(),
-      isActive: product.getIsActive(),
-      type: product.getType(),
-      createdAt: product.getCreatedAt(),
-      updatedAt: product.getUpdatedAt(),
-    };
+    return CatalogOutputMapper.toProductOutput(product);
   }
 }

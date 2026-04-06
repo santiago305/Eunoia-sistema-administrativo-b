@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { GetOwnUserUseCase } from './get-own-user.usecase';
 import { successResponse } from 'src/shared/response-standard/response';
 
@@ -40,6 +40,6 @@ describe('GetOwnUserUseCase', () => {
       userReadRepository: { findPublicById: jest.fn().mockResolvedValue(null) },
     });
 
-    await expect(useCase.execute('user-1')).rejects.toBeInstanceOf(UnauthorizedException);
+    await expect(useCase.execute('user-1')).rejects.toBeInstanceOf(NotFoundException);
   });
 });

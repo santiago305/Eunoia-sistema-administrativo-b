@@ -4,6 +4,7 @@ import { CreateSupplierVariantUsecase } from "src/modules/suppliers/application/
 import { UpdateSupplierVariantUsecase } from "src/modules/suppliers/application/usecases/supplier-variant/update.usecase";
 import { GetSupplierVariantUsecase } from "src/modules/suppliers/application/usecases/supplier-variant/get-by-id.usecase";
 import { ListSupplierVariantsUsecase } from "src/modules/suppliers/application/usecases/supplier-variant/list.usecase";
+import { SupplierHttpMapper } from "src/modules/suppliers/application/mappers/supplier-http.mapper";
 import { HttpCreateSupplierVariantDto } from "../dtos/supplier-variant/http-supplier-variant-create.dto";
 import { HttpUpdateSupplierVariantDto } from "../dtos/supplier-variant/http-supplier-variant-update.dto";
 import { ListSupplierVariantQueryDto } from "../dtos/supplier-variant/http-supplier-variant-list.dto";
@@ -20,18 +21,18 @@ export class SupplierVariantsController {
 
   @Post()
   create(@Body() dto: HttpCreateSupplierVariantDto) {
-    return this.createSupplierVariant.execute(dto);
+    return this.createSupplierVariant.execute(SupplierHttpMapper.toCreateSupplierVariantInput(dto));
   }
 
   @Get('all')
   list(@Query() query: ListSupplierVariantQueryDto) {
-    return this.listSupplierVariants.execute({
+    return this.listSupplierVariants.execute(SupplierHttpMapper.toListSupplierVariantsInput({
       page: query.page,
       limit: query.limit,
       supplierId: query.supplierId,
       variantId: query.variantId,
       supplierSku: query.supplierSku,
-    });
+    }));
   }
 
   @Get(":supplierId/:variantId")
@@ -48,6 +49,8 @@ export class SupplierVariantsController {
     @Param("variantId", ParseUUIDPipe) variantId: string,
     @Body() dto: HttpUpdateSupplierVariantDto,
   ) {
-    return this.updateSupplierVariant.execute({ supplierId, variantId, ...dto });
+    return this.updateSupplierVariant.execute(
+      SupplierHttpMapper.toUpdateSupplierVariantInput(supplierId, variantId, dto),
+    );
   }
 }

@@ -1,11 +1,12 @@
 import { BadRequestException, ConflictException, Inject, InternalServerErrorException, NotFoundException } from "@nestjs/common";
-import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
-import { errorResponse, successResponse } from "src/shared/response-standard/response";
 import { COMPANY_REPOSITORY, CompanyRepository } from "src/modules/companies/domain/ports/company.repository";
 import { CompanyEmail } from "src/modules/companies/domain/value-objects/company-email.vo";
-import { UpdateCompanyInput } from "../dtos/company/input/update.input";
-import { CompanyOutputMapper } from "../mappers/company-output.mapper";
 import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
+import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
+import { successResponse } from "src/shared/response-standard/response";
+import { UpdateCompanyInput } from "../dtos/company/input/update.input";
+import { CompanyNotFoundApplicationError } from "../errors/company-not-found.error";
+import { CompanyOutputMapper } from "../mappers/company-output.mapper";
 
 export class UpdateCompanyUsecase {
   constructor(
@@ -21,23 +22,22 @@ export class UpdateCompanyUsecase {
     return this.uow.runInTransaction(async (tx) => {
       const current = await this.companyRepo.findSingle(tx);
       if (!current) {
-        throw new NotFoundException(errorResponse("Empresa no encontrada"));
+        throw new NotFoundException(new CompanyNotFoundApplicationError().message);
       }
 
       let normalizedEmail: string | undefined;
       if (input.email !== undefined) {
         try {
           normalizedEmail = new CompanyEmail(input.email).value;
-        } catch (error: unknown) {
-          throw new BadRequestException(errorResponse("Email inválido"));
-
+        } catch {
+          throw new BadRequestException("Email invalido");
         }
       }
 
       if (normalizedEmail && normalizedEmail !== current.email) {
         const existsByEmail = await this.companyRepo.existsByEmail(normalizedEmail, tx);
         if (existsByEmail) {
-          throw new ConflictException(errorResponse("Este email ya está registrado"));
+          throw new ConflictException("Este email ya esta registrado");
         }
       }
 
@@ -69,9 +69,7 @@ export class UpdateCompanyUsecase {
             ...(input.department !== undefined ? { department: nextCompany.department } : {}),
             ...(input.province !== undefined ? { province: nextCompany.province } : {}),
             ...(input.district !== undefined ? { district: nextCompany.district } : {}),
-            ...(input.urbanization !== undefined
-              ? { urbanization: nextCompany.urbanization }
-              : {}),
+            ...(input.urbanization !== undefined ? { urbanization: nextCompany.urbanization } : {}),
             ...(input.address !== undefined ? { address: nextCompany.address } : {}),
             ...(input.phone !== undefined ? { phone: nextCompany.phone } : {}),
             ...(input.email !== undefined ? { email: nextCompany.email } : {}),
@@ -86,7 +84,7 @@ export class UpdateCompanyUsecase {
         );
 
         if (!updatedCompany) {
-          throw new NotFoundException(errorResponse("Empresa no encontrada"));
+          throw new NotFoundException(new CompanyNotFoundApplicationError().message);
         }
 
         return successResponse(
@@ -94,10 +92,15 @@ export class UpdateCompanyUsecase {
           CompanyOutputMapper.toOutput(updatedCompany),
         );
       } catch (error) {
-        if (error instanceof BadRequestException || error instanceof ConflictException || error instanceof NotFoundException) {
+        if (
+          error instanceof BadRequestException ||
+          error instanceof ConflictException ||
+          error instanceof NotFoundException
+        ) {
           throw error;
         }
-        throw new InternalServerErrorException(errorResponse("Error al actualizar datos de la empresa"));
+
+        throw new InternalServerErrorException("Error al actualizar datos de la empresa");
       }
     });
   }

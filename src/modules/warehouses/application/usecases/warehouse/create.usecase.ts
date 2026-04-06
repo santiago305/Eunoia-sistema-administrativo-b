@@ -2,10 +2,9 @@ import { BadRequestException, Inject, InternalServerErrorException } from "@nest
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { Warehouse } from "src/modules/warehouses/domain/entities/warehouse";
 import { CreateWarehouseInput } from "../../dtos/warehouse/input/create.input";
-
 import { CreateDocumentSerieUseCase } from "src/modules/inventory/application/use-cases/document-serie/create-document-serie.usecase";
 import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
-import { errorResponse, successResponse } from "src/shared/response-standard/response";
+import { successResponse } from "src/shared/response-standard/response";
 import { CreateLocationUsecase } from "../location/create.usecase";
 import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
 import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "../../ports/warehouse.repository.port";
@@ -26,33 +25,32 @@ export class CreateWarehouseUsecase {
     return this.uow.runInTransaction(async (tx) => {
       const existing = await this.warehouseRepo.findByName(input.name, tx);
       if (existing) {
-        throw new BadRequestException({ type: "error", message: "Ya existe un almacén con ese nombre" });
+        throw new BadRequestException("Ya existe un almacén con ese nombre");
       }
 
-      const warehouse = new Warehouse(
-        undefined,
-        input.name,
-        input.department,
-        input.province,
-        input.district,
-        input.address,
-        true,
-        this.clock.now(),
-      );
+      const warehouse = Warehouse.create({
+        name: input.name,
+        department: input.department,
+        province: input.province,
+        district: input.district,
+        address: input.address,
+        isActive: true,
+        createdAt: this.clock.now(),
+      });
 
       let created: Warehouse;
       try {
         created = await this.warehouseRepo.create(warehouse, tx);
       } catch {
-        throw new BadRequestException(errorResponse("No se pudo crear el almacen"));
+        throw new BadRequestException("No se pudo crear el almacén");
       }
 
       const defaults = [
-        { code: `IN`, name: "Ingreso", docType: DocType.IN },
-        { code: `OUT`, name: "Salida", docType: DocType.OUT },
-        { code: `TRF`, name: "Transferencia", docType: DocType.TRANSFER },
-        { code: `ADJ`, name: "Ajuste", docType: DocType.ADJUSTMENT },
-        { code: `PRO`, name: "Ajuste", docType: DocType.PRODUCTION },
+        { code: "IN", name: "Ingreso", docType: DocType.IN },
+        { code: "OUT", name: "Salida", docType: DocType.OUT },
+        { code: "TRF", name: "Transferencia", docType: DocType.TRANSFER },
+        { code: "ADJ", name: "Ajuste", docType: DocType.ADJUSTMENT },
+        { code: "PRO", name: "Ajuste", docType: DocType.PRODUCTION },
       ];
 
       try {
@@ -68,20 +66,23 @@ export class CreateWarehouseUsecase {
             isActive: true,
           });
         }
-      } catch{
-        throw new InternalServerErrorException(errorResponse('No se pudieron crear series por defecto'));
-      }
-      try {
-        const location = {
-          warehouseId: created.warehouseId,
-          code: 'ANAQUEL 01'
-        }
-        await this.createLocation.execute(location, tx);
-      } catch(err){
-        throw new InternalServerErrorException(errorResponse(err));
+      } catch {
+        throw new InternalServerErrorException("No se pudieron crear series por defecto");
       }
 
-      return successResponse("¡Almacen creado con exito!");
+      try {
+        await this.createLocation.execute(
+          {
+            warehouseId: created.warehouseId,
+            code: "ANAQUEL 01",
+          },
+          tx,
+        );
+      } catch {
+        throw new InternalServerErrorException("No se pudo crear la ubicación inicial");
+      }
+
+      return successResponse("Almacén creado con éxito");
     });
   }
 }

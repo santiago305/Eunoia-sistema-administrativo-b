@@ -16,7 +16,7 @@ import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/module
 import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/application/ports/product.repository";
 import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
 import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "src/modules/warehouses/application/ports/warehouse.repository.port";
-import { errorResponse } from "src/shared/response-standard/response";
+import { PdfGeneratedValidationError } from "../errors/pdf-generated-validation.error";
 
 const resolveLogoUrl = async (logoPath?: string) => {
   if (!logoPath) return undefined;
@@ -75,7 +75,7 @@ export class GenerateProductionOrderPdfUseCase {
   async execute(input: GenerateProductionOrderPdfInput): Promise<Buffer> {
     const result = await this.productionRepo.getByIdWithItems(input.productionId);
     if (!result) {
-      throw new BadRequestException({ type: "error", message: "Orden de produccion no encontrada" });
+      throw new BadRequestException(new PdfGeneratedValidationError("Orden de producción no encontrada").message);
     }
 
     const { order, items, serie } = result;
@@ -86,13 +86,13 @@ export class GenerateProductionOrderPdfUseCase {
       order.toWarehouseId ? this.warehouseRepo.findById(new WarehouseId(order.toWarehouseId)) : null,
     ]);
     if (!company) {
-      throw new BadRequestException(errorResponse("Compañia invalida"));
+      throw new BadRequestException(new PdfGeneratedValidationError("Compañía inválida").message);
     }
     if (!fromWarehouse) {
-      throw new BadRequestException(errorResponse("Almacén de origen invalido"));
+      throw new BadRequestException(new PdfGeneratedValidationError("Almacén de origen inválido").message);
     }
     if (!toWarehouse) {
-      throw new BadRequestException(errorResponse("Almacén de destino invalido"));
+      throw new BadRequestException(new PdfGeneratedValidationError("Almacén de destino inválido").message);
     }
 
     const productInfoCache = new Map<string, ProductWithUnitInfo | null>();

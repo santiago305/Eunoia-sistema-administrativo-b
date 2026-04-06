@@ -1,4 +1,4 @@
-import { UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException } from '@nestjs/common';
 import { ListUsersUseCase } from './list-users.usecase';
 import { RoleType } from 'src/shared/constantes/constants';
 
@@ -113,6 +113,6 @@ describe('ListUsersUseCase', () => {
 
     await expect(
       useCase.execute({ page: 1 }, RoleType.ADVISER)
-    ).rejects.toBeInstanceOf(UnauthorizedException);
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

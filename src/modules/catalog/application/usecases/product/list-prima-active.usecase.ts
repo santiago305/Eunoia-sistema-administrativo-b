@@ -1,6 +1,7 @@
 import { Inject } from "@nestjs/common";
 import { ProductOutput } from "../../dto/products/output/product-out";
 import { PRODUCT_REPOSITORY, ProductRepository } from "../../ports/product.repository";
+import { CatalogOutputMapper } from "../../mappers/catalog-output.mapper";
 
 export class ListPrimaActiveProducts {
   constructor(
@@ -9,21 +10,6 @@ export class ListPrimaActiveProducts {
 
   async execute(): Promise<ProductOutput[]> {
     const items = await this.productRepo.listPrimaActive();
-    return items.map((product) => ({
-      id: product.getId()?.value,
-      name: product.getName(),
-      description: product.getDescription(),
-      baseUnitId: product.getBaseUnitId(),
-      sku: product.getSku(),
-      customSku: product.getCustomSku() ?? null,
-      barcode: product.getBarcode(),
-      price: product.getPrice().getAmount(),
-      cost: product.getCost().getAmount(),
-      attributes: product.getAttributes(),
-      isActive: product.getIsActive(),
-      type: product.getType(),
-      createdAt: product.getCreatedAt(),
-      updatedAt: product.getUpdatedAt(),
-    }));
+    return items.map((product) => CatalogOutputMapper.toProductOutput(product));
   }
 }

@@ -2,6 +2,8 @@ import { Inject, NotFoundException } from "@nestjs/common";
 import { PAYMENT_DOCUMENT_REPOSITORY, PaymentDocumentRepository } from "src/modules/payments/domain/ports/payment-document.repository";
 import { GetPaymentInput } from "../../dtos/payment/input/get-by-id.input";
 import { PaymentOutput } from "../../dtos/payment/output/payment.output";
+import { PaymentOutputMapper } from "../../mappers/payment-output.mapper";
+import { PaymentNotFoundError } from "../../errors/payment-not-found.error";
 
 export class GetPaymentUsecase {
   constructor(
@@ -12,23 +14,9 @@ export class GetPaymentUsecase {
   async execute(input: GetPaymentInput): Promise<PaymentOutput> {
     const row = await this.paymentDocRepo.findById(input.payDocId);
     if (!row) {
-      throw new NotFoundException({
-        type: "error",
-        message: "Pago no encontrado",
-      });
+      throw new NotFoundException(new PaymentNotFoundError().message);
     }
 
-    return {
-      payDocId: row.payDocId,
-      method: row.method,
-      date: row.date,
-      operationNumber: row.operationNumber ?? null,
-      currency: row.currency,
-      amount: row.amount,
-      note: row.note ?? null,
-      fromDocumentType: row.fromDocumentType,
-      poId: row.poId ?? "",
-      quotaId: row.quotaId ?? null,
-    };
+    return PaymentOutputMapper.toOutput(row);
   }
 }

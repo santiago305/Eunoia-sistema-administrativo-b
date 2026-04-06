@@ -1,4 +1,4 @@
-import { BadRequestException, Inject } from "@nestjs/common";
+import { BadRequestException, Inject, NotFoundException } from "@nestjs/common";
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
 import { PURCHASE_ORDER_ITEM, PurchaseOrderItemRepository } from "src/modules/purchases/domain/ports/purchase-order-item.port.repository";
 import { PAYMENT_DOCUMENT_REPOSITORY, PaymentDocumentRepository } from "src/modules/payments/domain/ports/payment-document.repository";
@@ -15,6 +15,8 @@ import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/module
 import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/application/ports/product.repository";
 import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
 import { CurrencyType } from "src/modules/purchases/domain/value-objects/currency-type";
+import { PurchaseOrderOutputMapper } from "../../mappers/purchase-order-output.mapper";
+import { PurchaseOrderNotFoundApplicationError } from "../../errors/purchase-order-not-found.error";
 
 export class GetPurchaseOrderUsecase {
   constructor(
@@ -35,7 +37,7 @@ export class GetPurchaseOrderUsecase {
   async execute(input: GetPurchaseOrderInput): Promise<PurchaseOrderDetailOutput> {
     const order = await this.purchaseRepo.findById(input.poId);
     if (!order) {
-      throw new BadRequestException({ type: "error", message: "Orden de compra no encontrada" });
+      throw new NotFoundException(new PurchaseOrderNotFoundApplicationError().message);
     }
 
     const [items, payments, quotas] = await Promise.all([
@@ -51,18 +53,18 @@ export class GetPurchaseOrderUsecase {
           stockItem = await this.stockItemRepo.findByProductIdOrVariantId(row.stockItemId);
         }
         if (!stockItem) {
-          throw new BadRequestException({ type: "error", message: "Item de stock no encontrado" });
+          throw new BadRequestException("Item de stock no encontrado");
         }
 
         let stockItemOutput: PurchaseOrderItemOutput["stockItem"] = null;
 
         if (stockItem.type === StockItemType.PRODUCT) {
           if (!stockItem.productId) {
-            throw new BadRequestException({ type: "error", message: "Producto no encontrado" });
+            throw new BadRequestException("Producto no encontrado");
           }
           const productInfo = await this.productRepo.findByIdWithUnitInfo(ProductId.create(stockItem.productId));
           if (!productInfo) {
-            throw new BadRequestException({ type: "error", message: "Producto no encontrado" });
+            throw new BadRequestException("Producto no encontrado");
           }
           stockItemOutput = {
             type: StockItemType.PRODUCT,
@@ -76,11 +78,11 @@ export class GetPurchaseOrderUsecase {
         
         if (stockItem.type === StockItemType.VARIANT) {
           if (!stockItem.variantId) {
-            throw new BadRequestException({ type: "error", message: "Variante no encontrada" });
+            throw new BadRequestException("Variante no encontrada");
           }
           const variantInfo = await this.variantRepo.findByIdWithProductInfo(stockItem.variantId);
           if (!variantInfo?.variant) {
-            throw new BadRequestException({ type: "error", message: "Variante no encontrada" });
+            throw new BadRequestException("Variante no encontrada");
           }
           stockItemOutput = {
             type: StockItemType.VARIANT,
@@ -115,60 +117,19 @@ export class GetPurchaseOrderUsecase {
       }),
     );
 
-    const paymentOutputs: PaymentOutput[] = payments.map((row) => ({
-      payDocId: row.payDocId,
-      method: row.method,
-      date: row.date,
-      operationNumber: row.operationNumber ?? null,
-      currency: row.currency,
-      amount: row.amount,
-      note: row.note ?? null,
-      fromDocumentType: row.fromDocumentType,
-      poId: row.poId ?? "",
-      quotaId: row.quotaId ?? null,
-    }));
+    const paymentOutputs: PaymentOutput[] = payments.map((row) =>
+      PurchaseOrderOutputMapper.toPaymentOutput(row),
+    );
 
-    const quotaOutputs: CreditQuotaOutput[] = quotas.map((row) => ({
-      quotaId: row.quotaId,
-      number: row.number,
-      expirationDate: row.expirationDate,
-      paymentDate: row.paymentDate,
-      totalToPay: row.totalToPay,
-      totalPaid: row.totalPaid,
-      createdAt: row.createdAt,
-    }));
+    const quotaOutputs: CreditQuotaOutput[] = quotas.map((row) =>
+      PurchaseOrderOutputMapper.toQuotaOutput(row),
+    );
 
-    const totalPaid = paymentOutputs.reduce((sum, p) => sum + (p.amount ?? 0), 0);
-    const totalPurchase = order.total?.getAmount() ?? 0;
-
-    return {
-      poId: order.poId,
-      supplierId: order.supplierId,
-      warehouseId: order.warehouseId,
-      documentType: order.documentType,
-      serie: order.serie,
-      correlative: order.correlative,
-      currency: order.currency,
-      paymentForm: order.paymentForm,
-      creditDays: order.creditDays,
-      numQuotas: order.numQuotas,
-      totalTaxed: order.totalTaxed.getAmount(),
-      totalExempted: order.totalExempted.getAmount(),
-      totalIgv: order.totalIgv.getAmount(),
-      purchaseValue: order.purchaseValue.getAmount(),
-      total: totalPurchase,
-      totalPaid,
-      totalToPay: totalPurchase - totalPaid,
+    return PurchaseOrderOutputMapper.toDetailOutput({
+      order,
       items: itemOutputs,
-      quotas: quotaOutputs,
       payments: paymentOutputs,
-      note: order.note,
-      status: order.status,
-      isActive: order.isActive,
-      expectedAt: order.expectedAt,
-      dateIssue: order.dateIssue,
-      dateExpiration: order.dateExpiration,
-      createdAt: order.createdAt,
-    };
+      quotas: quotaOutputs,
+    });
   }
 }

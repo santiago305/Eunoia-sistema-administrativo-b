@@ -3,6 +3,7 @@ import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.p
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
 import { PurchaseOrderStatus } from "src/modules/purchases/domain/value-objects/po-status";
 import { PurchaseOrderExpectedScheduler } from "src/modules/purchases/application/jobs/purchase-order-expected-scheduler";
+import { PurchaseOrderNotFoundApplicationError } from "../../errors/purchase-order-not-found.error";
 
 export class CancelPurchaseOrderUsecase {
   constructor(
@@ -13,19 +14,19 @@ export class CancelPurchaseOrderUsecase {
     private readonly scheduler: PurchaseOrderExpectedScheduler,
   ) {}
 
-  async execute(poId: string): Promise<{ type: string; message: string }> {
+  async execute(poId: string): Promise<{ message: string }> {
     return this.uow.runInTransaction(async (tx) => {
       const order = await this.purchaseRepo.findById(poId, tx);
       if (!order) {
-        throw new NotFoundException({ type: "error", message: "Orden no encontrada" });
+        throw new NotFoundException(new PurchaseOrderNotFoundApplicationError().message);
       }
 
       if (order.status === PurchaseOrderStatus.RECEIVED) {
-        throw new BadRequestException({ type: "error", message: "No se puede cancelar una orden RECEIVED" });
+        throw new BadRequestException("No se puede cancelar una orden RECEIVED");
       }
 
       if (order.status === PurchaseOrderStatus.CANCELLED) {
-        throw new BadRequestException({ type: "error", message: "Ya esta cancelada la orden" });
+        throw new BadRequestException("Ya esta cancelada la orden");
       }
 
       const updated = await this.purchaseRepo.update(
@@ -34,12 +35,12 @@ export class CancelPurchaseOrderUsecase {
       );
 
       if (!updated) {
-        throw new BadRequestException({ type: "error", message: "No se pudo actualizar estado" });
+        throw new BadRequestException("No se pudo actualizar estado");
       }
 
       this.scheduler.cancel(order.poId);
 
-      return { type: "success", message: "Orden cancelada" };
+      return { message: "Orden cancelada" };
     });
   }
 }

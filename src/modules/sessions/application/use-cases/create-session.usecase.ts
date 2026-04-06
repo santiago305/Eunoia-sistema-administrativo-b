@@ -4,6 +4,7 @@ import ms, { StringValue } from 'ms';
 import { SessionFactory } from '../../domain/factories/session.factory';
 import { SESSION_REPOSITORY, SessionRepository } from '../ports/session.repository';
 import { SESSION_TOKEN_HASHER, SessionTokenHasherRepository } from '../ports/session-token-hasher.repository';
+import { SessionValidationApplicationError } from '../errors/session-validation.error';
 
 @Injectable()
 export class CreateSessionUseCase {
@@ -26,7 +27,7 @@ export class CreateSessionUseCase {
     const refreshToken = params.refreshToken?.trim();
 
     if (!userId || !refreshToken) {
-      throw new BadRequestException('Datos de sesion incompletos');
+      throw new BadRequestException(new SessionValidationApplicationError('Datos de sesion incompletos').message);
     }
 
     const hash = await this.tokenHasher.hash(refreshToken);

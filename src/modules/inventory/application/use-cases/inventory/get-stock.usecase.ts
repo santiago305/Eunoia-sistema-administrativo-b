@@ -2,9 +2,10 @@ import { Inject, Injectable, BadRequestException, NotFoundException } from '@nes
 import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
 import { GetStockInput } from '../../dto/inventory/input/get-stock';
 import { AvailabilityOutput } from '../../dto/inventory/output/availability-out';
-import { errorResponse } from 'src/shared/response-standard/response';
 import { INVENTORY_REPOSITORY, InventoryRepository } from '../../ports/inventory.repository.port';
 import { STOCK_ITEM_REPOSITORY, StockItemRepository } from '../../ports/stock-item.repository.port';
+import { StockItemNotFoundApplicationError } from '../../errors/stock-item-not-found.error';
+import { InventoryOutputMapper } from '../../mappers/inventory-output.mapper';
 
 @Injectable()
 export class GetStockUseCase {
@@ -17,7 +18,7 @@ export class GetStockUseCase {
 
   async execute(input: GetStockInput, tx?: TransactionContext): Promise<AvailabilityOutput> {
     if (!input.warehouseId || !input.itemId) {
-      throw new BadRequestException(errorResponse('warehouseId y itemId son obligatorios'));
+      throw new BadRequestException('warehouseId y itemId son obligatorios');
     }
 
     const stockItemCache = new Map<string, string>();
@@ -28,7 +29,7 @@ export class GetStockUseCase {
         (await this.stockItemRepo.findById(input.itemId, tx)) ??
         (await this.stockItemRepo.findByProductIdOrVariantId(input.itemId, tx));
       if (!stockItem?.stockItemId) {
-        throw new NotFoundException(errorResponse('Stock item no encontrado'));
+        throw new NotFoundException(new StockItemNotFoundApplicationError().message);
       }
       stockItemId = stockItem.stockItemId;
       stockItemCache.set(input.itemId, stockItemId);
@@ -44,23 +45,13 @@ export class GetStockUseCase {
     );
 
     if (!snapshot) {
-      return {
+      return InventoryOutputMapper.emptyAvailability({
         warehouseId: input.warehouseId,
         stockItemId,
         locationId: input.locationId,
-        onHand: 0,
-        reserved: 0,
-        available: 0,
-      };
+      });
     }
 
-    return {
-      warehouseId: snapshot.warehouseId,
-      stockItemId: snapshot.stockItemId,
-      locationId: snapshot.locationId,
-      onHand: snapshot.onHand,
-      reserved: snapshot.reserved,
-      available: snapshot.available,
-    };
+    return InventoryOutputMapper.toAvailabilityOutput(snapshot);
   }
 }

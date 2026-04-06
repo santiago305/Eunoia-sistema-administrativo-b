@@ -19,8 +19,8 @@ import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/module
 import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/application/ports/product.repository";
 import { UNIT_REPOSITORY, UnitRepository } from "src/modules/catalog/application/ports/unit.repository";
 import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
-import { errorResponse } from "src/shared/response-standard/response";
 import { CurrencyType } from "src/modules/purchases/domain/value-objects/currency-type";
+import { PdfGeneratedValidationError } from "../errors/pdf-generated-validation.error";
 
 const resolveLogoUrl = async (logoPath?: string) => {
   if (!logoPath) return undefined;
@@ -99,7 +99,7 @@ export class GeneratePurchaseOrderPdfUseCase {
   async execute(input: GeneratePurchaseOrderPdfInput): Promise<Buffer> {
     const order = await this.purchaseRepo.findById(input.poId);
     if (!order) {
-      throw new BadRequestException({ type: "error", message: "Orden de compra no encontrada" });
+      throw new BadRequestException(new PdfGeneratedValidationError("Orden de compra no encontrada").message);
     }
 
     const [items, supplier, company, units] = await Promise.all([
@@ -110,16 +110,16 @@ export class GeneratePurchaseOrderPdfUseCase {
     ]);
     
     if (!units) {
-      throw new BadRequestException(errorResponse("Serie invalida"));
+      throw new BadRequestException(new PdfGeneratedValidationError("Unidades inválidas").message);
     }
     if (!company) {
-      throw new BadRequestException(errorResponse("Compañia invalida"));
+      throw new BadRequestException(new PdfGeneratedValidationError("Compañía inválida").message);
     }
     if (!supplier) {
-      throw new BadRequestException(errorResponse("Almacén de origen invalido"));
+      throw new BadRequestException(new PdfGeneratedValidationError("Proveedor inválido").message);
     }
     if (!items) {
-      throw new BadRequestException(errorResponse("Almacén de destino invalido"));
+      throw new BadRequestException(new PdfGeneratedValidationError("Items de compra inválidos").message);
     }
 
     const unitById = new Map(units.map((u) => [u.unitId, u]));
@@ -264,7 +264,7 @@ export class GeneratePurchaseOrderPdfUseCase {
       [supplier?.name, supplier?.lastName].filter(Boolean).join(" ") ||
       "N/A";
 
-      let supplierTypeDoc:string
+      let supplierTypeDoc = 'DOC'
       if(supplier.documentType === SupplierDocType.RUC){
         supplierTypeDoc = 'RUC'
       }

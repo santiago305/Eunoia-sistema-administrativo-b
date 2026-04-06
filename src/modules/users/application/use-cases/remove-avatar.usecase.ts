@@ -8,6 +8,7 @@ import { FILE_STORAGE, FileStorage } from 'src/shared/application/ports/file-sto
 import { InvalidFileStoragePathError } from 'src/shared/application/errors/file-storage.errors';
 import { USER_REPOSITORY, UserRepository } from 'src/modules/users/application/ports/user.repository';
 import { successResponse } from 'src/shared/response-standard/response';
+import { UserNotFoundApplicationError } from '../errors/user-not-found.error';
 
 @Injectable()
 export class RemoveAvatarUseCase {
@@ -21,7 +22,7 @@ export class RemoveAvatarUseCase {
   async execute(id: string) {
     try {
       const domainUser = await this.userRepository.findById(id);
-      if (!domainUser) throw new NotFoundException('Usuario no encontrado');
+      if (!domainUser) throw new NotFoundException(new UserNotFoundApplicationError().message);
 
       const previousAvatarUrl = domainUser.avatarUrl;
 
@@ -31,9 +32,9 @@ export class RemoveAvatarUseCase {
       if (this.shouldDeleteLocalAvatar(previousAvatarUrl)) {
         try {
           await this.fileStorage.delete(previousAvatarUrl!);
-        } catch (error) {
-          if (!(error instanceof InvalidFileStoragePathError)) {
-            console.error('[RemoveAvatarUseCase] Error al borrar archivo de avatar:', error);
+        } catch (err) {
+          if (err instanceof InvalidFileStoragePathError) {
+            throw err;
           }
         }
       }
@@ -42,11 +43,10 @@ export class RemoveAvatarUseCase {
         id: saved.id,
         avatarUrl: saved.avatarUrl,
       });
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
+    } catch (err) {
+      if (err instanceof NotFoundException || err instanceof InvalidFileStoragePathError) {
+        throw err;
       }
-      console.error('[RemoveAvatarUseCase] Error al eliminar avatar:', error);
       throw new InternalServerErrorException('No se pudo actualizar el avatar');
     }
   }

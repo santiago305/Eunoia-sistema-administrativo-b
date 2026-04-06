@@ -17,6 +17,7 @@ import { GetRiskScoreSecurityUseCase } from 'src/modules/security/application/us
 import { GetRiskScoreByIpSecurityUseCase } from 'src/modules/security/application/use-cases/get-risk-score-by-ip-security.usecase';
 import { ExportSecurityAuditCsvUseCase } from 'src/modules/security/application/use-cases/export-security-audit-csv.usecase';
 import { GetSecurityReasonsCatalogUseCase } from 'src/modules/security/application/use-cases/get-security-reasons-catalog.usecase';
+import { SecurityValidationApplicationError } from 'src/modules/security/application/errors/security-validation.error';
 
 @Controller('security')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -133,7 +134,7 @@ export class SecurityController {
     @Query('hours') hours?: string,
   ) {
     if (!ip?.trim()) {
-      throw new BadRequestException('Query param "ip" es requerido');
+      throw new BadRequestException(new SecurityValidationApplicationError('Query param "ip" es requerido').message);
     }
 
     return this.getRiskScoreByIpSecurityUseCase.execute({

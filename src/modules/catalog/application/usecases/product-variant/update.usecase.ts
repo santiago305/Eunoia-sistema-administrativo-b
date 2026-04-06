@@ -1,11 +1,11 @@
 import { ConflictException, Inject, InternalServerErrorException, NotFoundException } from '@nestjs/common';
-import { ProductVariant } from 'src/modules/catalog/domain/entity/product-variant';
 import { Money } from 'src/shared/value-objets/money.vo';
 import { UpdateProductVariantInput } from '../../dto/product-variants/input/update-product-variant';
-import { ProductVariantOutput } from '../../dto/product-variants/output/product-variant-out';
 import { UNIT_OF_WORK, UnitOfWork } from 'src/shared/domain/ports/unit-of-work.port';
 import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from '../../ports/product-variant.repository';
 import { PRODUCT_REPOSITORY, ProductRepository } from '../../ports/product.repository';
+import { CatalogOutputMapper } from '../../mappers/catalog-output.mapper';
+import { ProductVariantNotFoundApplicationError } from '../../errors/product-variant-not-found.error';
 
 export class UpdateProductVariant {
   constructor(
@@ -17,44 +17,19 @@ export class UpdateProductVariant {
     private readonly productRepo: ProductRepository,
   ) {}
 
-  async execute(input: UpdateProductVariantInput): Promise<ProductVariantOutput> {
+  async execute(input: UpdateProductVariantInput) {
     return this.uow.runInTransaction(async (tx) => {
       const current = await this.variantRepo.findById(input.id, tx);
-      if (!current) throw new NotFoundException({type: 'error', message: 'Variante no encontrada'});
+      if (!current) {
+        throw new NotFoundException(new ProductVariantNotFoundApplicationError().message);
+      }
 
-      // Barcode uniqueness (si se está cambiando)
       if (input.barcode?.trim() && input.barcode.trim() !== (current.getBarcode() ?? '')) {
         const existsBarcode = await this.variantRepo.findByBarcode(input.barcode.trim(), tx);
         if (existsBarcode && existsBarcode.getId() !== current.getId()) {
-          throw new ConflictException({type: 'error', message: 'Barcode ya existe'});
+          throw new ConflictException('Barcode ya existe');
         }
       }
-
-      // let sku = current.getSku();
-
-      // // Si mandan sku explícito, se respeta
-      // if (input.sku?.trim()) {
-      //   sku = input.sku.trim();
-      // }
-      
-      // if (input.attributes) {
-      //   const product = await this.productRepo.findById(current.getProductId(), tx);
-      //   if (!product) throw new NotFoundException({type: 'error', message: 'Producto no encontrado'});
-
-      //   sku = buildSkuPreservingSeries(
-      //     sku,
-      //     product.getName(),
-      //     input.attributes?.color,
-      //     input.attributes?.presentation,
-      //     input.attributes?.variant,
-      //   );
-      // }
-      // if (sku !== current.getSku()) {
-      //   const existingBySku = await this.variantRepo.findBySku(sku, tx);
-      //   if (existingBySku && existingBySku.getId() !== current.getId()) {
-      //     throw new ConflictException({type: 'error', message: 'SKU ya existe'});
-      //   }
-      // }
 
       const customSku = input.customSku !== undefined ? (input.customSku?.trim() || null) : undefined;
       const updated = await this.variantRepo.update(
@@ -69,24 +44,11 @@ export class UpdateProductVariant {
         tx,
       );
 
-      if (!updated) throw new InternalServerErrorException({type: 'error', message: 'Variante no actualizada, por favor intente de nuevo'});
-      return this.toOutput(updated);
+      if (!updated) {
+        throw new InternalServerErrorException('Variante no actualizada, por favor intente de nuevo');
+      }
+
+      return CatalogOutputMapper.toProductVariantOutput(updated);
     });
   }
-
-  private toOutput(v: ProductVariant): ProductVariantOutput {
-    return {
-      id: v.getId(),
-      productId: v.getProductId().value,
-      sku: v.getSku(),
-      customSku: v.getCustomSku() ?? null,
-      barcode: v.getBarcode(),
-      attributes: v.getAttributes(),
-      price: v.getPrice().getAmount(),
-      cost: v.getCost().getAmount(),
-      isActive: v.getIsActive(),
-      createdAt: v.getCreatedAt(),
-    };
-  }
 }
-

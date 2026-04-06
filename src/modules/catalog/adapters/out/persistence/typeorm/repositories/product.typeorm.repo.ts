@@ -15,6 +15,8 @@ import { AttributesRecord } from 'src/modules/catalog/domain/value-object/varian
 import { RowMaterial } from 'src/modules/catalog/domain/read-models/row-materials';
 import { ProductWithUnitInfo } from 'src/modules/catalog/domain/read-models/product-with-unit-info.rm';
 import { ProductRepository } from 'src/modules/catalog/application/ports/product.repository';
+import { ProductFactory } from 'src/modules/catalog/domain/factories/product.factory';
+import { ProductVariantFactory } from 'src/modules/catalog/domain/factories/product-variant.factory';
 
 @Injectable()
 export class ProductTypeormRepository implements ProductRepository {
@@ -95,22 +97,22 @@ export class ProductTypeormRepository implements ProductRepository {
     if (!row) return null;
 
     const r = raw[0];
-    const product = new Product(
-      ProductId.create(row.id),
-      row.baseUnitId,
-      row.name,
-      row.description,
-      row.sku,
-      row.barcode,
-      Money.create(Number(row.price)),
-      Money.create(Number(row.cost ?? 0)),
-      row.attributes,
-      row.isActive,
-      row.type,
-      row.createdAt,
-      row.updatedAt,
-      row.customSku,
-    );
+    const product = ProductFactory.create({
+      id: ProductId.create(row.id),
+      baseUnitId: row.baseUnitId,
+      name: row.name,
+      description: row.description,
+      sku: row.sku,
+      barcode: row.barcode,
+      price: Money.create(Number(row.price)),
+      cost: Money.create(Number(row.cost ?? 0)),
+      attributes: row.attributes,
+      isActive: row.isActive,
+      type: row.type,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      customSku: row.customSku,
+    });
 
     return {
       product,
@@ -230,22 +232,22 @@ export class ProductTypeormRepository implements ProductRepository {
 
     const items = entities.map((row, idx) => {
       const r = raw[idx];
-      const product = new Product(
-        ProductId.create(row.id),
-        row.baseUnitId,
-        row.name,
-        row.description,
-        row.sku,
-        row.barcode,
-        Money.create(Number(row.price)),
-        Money.create(Number(row.cost ?? 0)),
-        row.attributes,
-        row.isActive,
-        row.type,
-        row.createdAt,
-        row.updatedAt,
-        row.customSku,
-      );
+      const product = ProductFactory.create({
+        id: ProductId.create(row.id),
+        baseUnitId: row.baseUnitId,
+        name: row.name,
+        description: row.description,
+        sku: row.sku,
+        barcode: row.barcode,
+        price: Money.create(Number(row.price)),
+        cost: Money.create(Number(row.cost ?? 0)),
+        attributes: row.attributes,
+        isActive: row.isActive,
+        type: row.type,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        customSku: row.customSku,
+      });
 
       return {
         product,
@@ -335,18 +337,18 @@ export class ProductTypeormRepository implements ProductRepository {
   async listVariants(productId: ProductId, tx?: TransactionContext): Promise<ProductVariant[]> {
     const rows = await this.getVariantRepo(tx).find({ where: { productId: productId.value } });
     return rows.map((r) =>
-      new ProductVariant(
-        r.id,
-        ProductId.create(productId.value),
-        r.sku,
-        r.barcode,
-        r.attributes,
-        Money.create(Number(r.price)),
-        Money.create(Number(r.cost ?? 0)),
-        r.isActive,
-        r.createdAt,
-        r.customSku,
-      ),
+      ProductVariantFactory.create({
+        id: r.id,
+        productId: ProductId.create(productId.value),
+        sku: r.sku,
+        barcode: r.barcode,
+        attributes: r.attributes,
+        price: Money.create(Number(r.price)),
+        cost: Money.create(Number(r.cost ?? 0)),
+        isActive: r.isActive,
+        createdAt: r.createdAt,
+        customSku: r.customSku,
+      }),
     );
   }
 
@@ -548,22 +550,22 @@ export class ProductTypeormRepository implements ProductRepository {
 
 
   private toDomain(row: ProductEntity): Product {
-    return new Product(
-      ProductId.create(row.id),
-      row.baseUnitId,
-      row.name,
-      row.description,
-      row.sku,
-      row.barcode,
-      Money.create(Number(row.price)),
-      Money.create(Number(row.cost ?? 0)),
-      row.attributes,
-      row.isActive,
-      row.type,
-      row.createdAt,
-      row.updatedAt,
-      row.customSku,
-    );
+    return ProductFactory.create({
+      id: ProductId.create(row.id),
+      baseUnitId: row.baseUnitId,
+      name: row.name,
+      description: row.description,
+      sku: row.sku,
+      barcode: row.barcode,
+      price: Money.create(Number(row.price)),
+      cost: Money.create(Number(row.cost ?? 0)),
+      attributes: row.attributes,
+      isActive: row.isActive,
+      type: row.type,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      customSku: row.customSku,
+    });
   }
 
 }

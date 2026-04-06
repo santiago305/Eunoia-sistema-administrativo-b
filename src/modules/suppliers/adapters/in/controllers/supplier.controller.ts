@@ -6,6 +6,7 @@ import { SetSupplierActiveUsecase } from "src/modules/suppliers/application/usec
 import { ListSuppliersUsecase } from "src/modules/suppliers/application/usecases/supplier/list.usecase";
 import { GetSupplierUsecase } from "src/modules/suppliers/application/usecases/supplier/get-by-id.usecase";
 import { ListAllActiveSuppliersUsecase } from "src/modules/suppliers/application/usecases/supplier/list-all-active.usecase";
+import { SupplierHttpMapper } from "src/modules/suppliers/application/mappers/supplier-http.mapper";
 import { HttpCreateSupplierDto } from "../dtos/supplier/http-supplier-create.dto";
 import { HttpUpdateSupplierDto } from "../dtos/supplier/http-supplier-update.dto";
 import { HttpSetSupplierActiveDto } from "../dtos/supplier/http-supplier-set-active.dto";
@@ -25,13 +26,13 @@ export class SuppliersController {
 
   @Post()
   create(@Body() dto: HttpCreateSupplierDto) {
-    return this.createSupplier.execute(dto);
+    return this.createSupplier.execute(SupplierHttpMapper.toCreateSupplierInput(dto));
   }
 
   @Get()
   list(@Query() query: ListSupplierQueryDto) {
     const isActive = query.isActive === undefined ? undefined : query.isActive === "true";
-    return this.listSuppliers.execute({
+    return this.listSuppliers.execute(SupplierHttpMapper.toListSuppliersInput({
       page: query.page,
       limit: query.limit,
       isActive,
@@ -43,7 +44,7 @@ export class SuppliersController {
       phone: query.phone,
       email: query.email,
       q: query.q,
-    });
+    }));
   }
 
   @Get("active")
@@ -58,11 +59,11 @@ export class SuppliersController {
 
   @Patch(":id")
   update(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpUpdateSupplierDto) {
-    return this.updateSupplier.execute({ supplierId: id, ...dto });
+    return this.updateSupplier.execute(SupplierHttpMapper.toUpdateSupplierInput(id, dto));
   }
 
   @Patch(":id/active")
   setActive(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpSetSupplierActiveDto) {
-    return this.setSupplierActive.execute({ supplierId: id, isActive: dto.isActive });
+    return this.setSupplierActive.execute(SupplierHttpMapper.toSetActiveInput(id, dto.isActive));
   }
 }

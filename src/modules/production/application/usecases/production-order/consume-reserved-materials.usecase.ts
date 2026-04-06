@@ -65,10 +65,7 @@ export class ConsumeReservedMaterialsUseCase {
             tx,
           );
           console.log('[reserveMaterials] snapshots for stockItem', snapshots);
-          throw new BadRequestException({
-            type: "error",
-            message: "No hay ningun stock del producto",
-          });
+          throw new BadRequestException("No hay ningún stock del producto");
         }
         if (available < c.qty) {
           const snapshots = await this.inventoryRepo.listSnapshots(
@@ -79,10 +76,7 @@ export class ConsumeReservedMaterialsUseCase {
             tx,
           );
           console.log('[reserveMaterials] snapshots for stockItem', snapshots);
-          throw new BadRequestException({
-            type: "error",
-            message: "No hay stock suficiente",
-          });
+          throw new BadRequestException("No hay stock suficiente");
         }
       } else {
         if (reserved < c.qty) {
@@ -94,10 +88,7 @@ export class ConsumeReservedMaterialsUseCase {
             tx,
           );
           console.log('[reserveMaterials] snapshots for stockItem', snapshots);
-          throw new BadRequestException({
-            type: "error",
-            message: "Reserva insuficiente",
-          });
+          throw new BadRequestException("Reserva insuficiente");
         }
       }
     }

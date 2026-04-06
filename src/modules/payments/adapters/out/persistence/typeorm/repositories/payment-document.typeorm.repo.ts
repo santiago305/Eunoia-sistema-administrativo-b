@@ -26,18 +26,18 @@ export class PaymentDocumentTypeormRepository implements PaymentDocumentReposito
   }
 
   private toDomain(row: PaymentDocumentEntity): PaymentDocument {
-    return new PaymentDocument(
-      row.id,
-      row.method,
-      row.date,
-      row.currency,
-      Number(row.amount),
-      row.fromDocumentType,
-      row.operationNumber ?? undefined,
-      row.note ?? undefined,
-      row.poId ?? undefined,
-      row.quotaId ?? undefined,
-    );
+    return PaymentDocument.create({
+      payDocId: row.id,
+      method: row.method,
+      date: row.date,
+      currency: row.currency,
+      amount: Number(row.amount),
+      fromDocumentType: row.fromDocumentType,
+      operationNumber: row.operationNumber ?? undefined,
+      note: row.note ?? undefined,
+      poId: row.poId ?? undefined,
+      quotaId: row.quotaId ?? undefined,
+    });
   }
 
   async findById(payDocId: string, tx?: TransactionContext): Promise<PaymentDocument | null> {

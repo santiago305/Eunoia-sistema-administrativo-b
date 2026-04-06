@@ -1,8 +1,15 @@
-import { BadRequestException, ConflictException, Inject, InternalServerErrorException, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  InternalServerErrorException,
+  NotFoundException,
+} from "@nestjs/common";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { SUPPLIER_REPOSITORY, SupplierRepository } from "src/modules/suppliers/domain/ports/supplier.repository";
 import { UpdateSupplierInput } from "../../dtos/supplier/input/update.input";
 import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
+import { SupplierNotFoundError } from "../../errors/supplier-not-found.error";
 
 export class UpdateSupplierUsecase {
   constructor(
@@ -14,56 +21,68 @@ export class UpdateSupplierUsecase {
     private readonly clock: ClockPort,
   ) {}
 
-  async execute(input: UpdateSupplierInput): Promise<{ type: string; message: string }> {
+  async execute(input: UpdateSupplierInput): Promise<{ message: string }> {
     return this.uow.runInTransaction(async (tx) => {
       const current = await this.supplierRepo.findById(input.supplierId, tx);
       if (!current) {
-        throw new NotFoundException({
-          type: "error",
-          message: "Proveedor no encontrado"
-        });
+        throw new NotFoundException(new SupplierNotFoundError().message);
       }
+
       if (!current.isActive) {
-        throw new BadRequestException({
-          type: "error",
-          message: "No puedes actualizar un proveedor deshabilitado"
-        });
+        throw new BadRequestException("No puedes actualizar un proveedor deshabilitado");
       }
 
       try {
+        const next = current.update({
+          documentType: input.documentType,
+          documentNumber: input.documentNumber,
+          name: input.name,
+          lastName: input.lastName,
+          tradeName: input.tradeName,
+          address: input.address,
+          phone: input.phone,
+          email: input.email,
+          note: input.note,
+          leadTimeDays: input.leadTimeDays,
+          isActive: input.isActive,
+          updatedAt: this.clock.now(),
+        });
+
         const updated = await this.supplierRepo.update(
           {
             supplierId: input.supplierId,
-            documentType: input.documentType,
-            documentNumber: input.documentNumber,
-            name: input.name,
-            lastName: input.lastName,
-            tradeName: input.tradeName,
-            address: input.address,
-            phone: input.phone,
-            email: input.email,
-            note: input.note,
-            leadTimeDays: input.leadTimeDays,
-            isActive: input.isActive,
-            updatedAt: this.clock.now(),
+            documentType: next.documentType,
+            documentNumber: next.documentNumber,
+            name: next.name,
+            lastName: next.lastName,
+            tradeName: next.tradeName,
+            address: next.address,
+            phone: next.phone,
+            email: next.email,
+            note: next.note,
+            leadTimeDays: next.leadTimeDays,
+            isActive: next.isActive,
+            updatedAt: next.updatedAt,
           },
           tx,
         );
-  
+
         if (!updated) {
-          throw new InternalServerErrorException({
-            type: "error",
-            message: "¡No se logro actualizar el proveedor, intenta nuevamente!"
-          });
+          throw new InternalServerErrorException(
+            "No se logro actualizar el proveedor, intenta nuevamente",
+          );
         }
-      } catch {
-        throw new ConflictException({
-          type: "error",
-          message: "Documento ya registrado",
-        });
+      } catch (error) {
+        if (error instanceof NotFoundException || error instanceof BadRequestException) {
+          throw error;
+        }
+        if (error instanceof InternalServerErrorException) {
+          throw error;
+        }
+        throw new ConflictException("Documento ya registrado");
       }
 
-      return { type: "success", message: "Proveedor actualizado con exito" };
+      return { message: "Proveedor actualizado con exito" };
     });
   }
 }

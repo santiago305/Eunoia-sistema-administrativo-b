@@ -38,10 +38,7 @@ export async function createDraftDocument(
   );
 
   if (!series || series.length === 0) {
-    throw new NotFoundException({
-      type: "error",
-      message: "Serie activa no encontrada",
-    });
+    throw new NotFoundException("Serie activa no encontrada");
   }
 
   const serie = series[0];

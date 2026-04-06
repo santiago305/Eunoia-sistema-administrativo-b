@@ -5,14 +5,11 @@ import { UpdatePurchaseOrderInput } from "../../dtos/purchase-order/input/update
 import { Money } from "src/shared/value-objets/money.vo";
 import { PURCHASE_ORDER_ITEM, PurchaseOrderItemRepository } from "src/modules/purchases/domain/ports/purchase-order-item.port.repository";
 import { PaymentFormType } from "src/modules/purchases/domain/value-objects/payment-form-type";
-import { PaymentDocument } from "src/modules/payments/domain/entity/payment-document";
-import { CreditQuota } from "src/modules/payments/domain/entity/credit-quota";
 import { CreateCreditQuotaInput } from "src/modules/payments/application/dtos/credit-quota/input/create.input";
 import { DeletePaymentUsecase } from "src/modules/payments/application/usecases/payment/delete.usecase";
 import { PAYMENT_DOCUMENT_REPOSITORY, PaymentDocumentRepository } from "src/modules/payments/domain/ports/payment-document.repository";
 import { CREDIT_QUOTA_REPOSITORY, CreditQuotaRepository } from "src/modules/payments/domain/ports/credit-quota.repository";
 import { PayDocType } from "src/modules/payments/domain/value-objects/pay-doc-type";
-import { errorResponse } from "src/shared/response-standard/response";
 import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
 import { PurchaseOrderItemFactory } from "src/modules/purchases/domain/factories/purchase-order-item.factory";
 import { PurchaseOrderId } from "src/modules/purchases/domain/value-objects/purchase-order-id.vo";
@@ -26,6 +23,9 @@ import { PurchaseIssueDate } from "src/modules/purchases/domain/value-objects/is
 import { PurchaseExpirationDate } from "src/modules/purchases/domain/value-objects/expiration-date.vo";
 import { DomainError } from "src/modules/purchases/domain/errors/domain.error";
 import { CurrencyType } from "src/modules/purchases/domain/value-objects/currency-type";
+import { PaymentsFactory } from "src/modules/payments/domain/factories/payments.factory";
+import { CreditQuota } from "src/modules/payments/domain/entity/credit-quota";
+import { PurchaseOrderNotFoundApplicationError } from "../../errors/purchase-order-not-found.error";
 
 export class UpdatePurchaseOrderUsecase {
   constructor(
@@ -44,7 +44,7 @@ export class UpdatePurchaseOrderUsecase {
     private readonly clock: ClockPort,
   ) {}
 
-  async execute(input: UpdatePurchaseOrderInput): Promise<{ type: string; message: string }> {
+  async execute(input: UpdatePurchaseOrderInput): Promise<{ message: string }> {
     return this.uow.runInTransaction(async (tx) => {
       let poId: string;
       let supplierId: string | undefined;
@@ -78,13 +78,13 @@ export class UpdatePurchaseOrderUsecase {
         dateExpiration = input.dateExpiration ? PurchaseExpirationDate.create(input.dateExpiration) : undefined;
       } catch (err) {
         if (err instanceof DomainError || (err as any)?.name === "InvalidMoneyError") {
-          throw new BadRequestException({ type: "error", message: (err as Error).message });
+          throw new BadRequestException((err as Error).message);
         }
         throw err;
       }
       const current = await this.purchaseRepo.findById(poId, tx);
       if (!current) {
-        throw new NotFoundException({ type: "error", message: "Orden de compra no encontrada" });
+        throw new NotFoundException(new PurchaseOrderNotFoundApplicationError().message);
       }
 
       const currency = input.currency ?? current.currency ?? CurrencyType.PEN;
@@ -102,7 +102,7 @@ export class UpdatePurchaseOrderUsecase {
         total = input.total !== undefined ? Money.create(input.total, currency) : undefined;
       } catch (err) {
         if (err instanceof DomainError || (err as any)?.name === "InvalidMoneyError") {
-          throw new BadRequestException({ type: "error", message: (err as Error).message });
+          throw new BadRequestException((err as Error).message);
         }
         throw err;
       }
@@ -134,10 +134,7 @@ export class UpdatePurchaseOrderUsecase {
       );
 
       if (!updated) {
-        throw new NotFoundException({
-          type: "error",
-          message: "Orden de compra no encontrada",
-        });
+        throw new NotFoundException(new PurchaseOrderNotFoundApplicationError().message);
       }
 
       const isCredit = updated.paymentForm === PaymentFormType.CREDITO;
@@ -154,7 +151,7 @@ export class UpdatePurchaseOrderUsecase {
         try {
           await this.itemRepo.removeByPurchaseId(poId, tx);
         } catch {
-          throw new BadRequestException(errorResponse("No se pudo eliminar items de la orden de compra"));
+          throw new BadRequestException("No se pudo eliminar items de la orden de compra");
         }
 
         if (input.items.length > 0) {
@@ -179,7 +176,7 @@ export class UpdatePurchaseOrderUsecase {
               });
             } catch (err) {
               if (err instanceof DomainError || (err as any)?.name === "InvalidMoneyError") {
-                throw new BadRequestException({ type: "error", message: (err as Error).message });
+                throw new BadRequestException((err as Error).message);
               }
               throw err;
             }
@@ -187,10 +184,7 @@ export class UpdatePurchaseOrderUsecase {
             try {
               await this.itemRepo.add(orderItem, tx);
             } catch {
-              throw new BadRequestException({
-                type: "error",
-                message: "No se pudo agregar items a la orden de compra",
-              });
+              throw new BadRequestException("No se pudo agregar items a la orden de compra");
             }
           }
         }
@@ -206,7 +200,7 @@ export class UpdatePurchaseOrderUsecase {
           try {
             await this.deletePayment.execute(payment.payDocId, tx);
           } catch {
-            throw new BadRequestException({ type: "error", message: "No se pudo eliminar pagos de la orden de compra" });
+            throw new BadRequestException("No se pudo eliminar pagos de la orden de compra");
           }
         }
       }
@@ -218,7 +212,7 @@ export class UpdatePurchaseOrderUsecase {
           try {
             await this.creditQuotaRepo.deleteById(quota.quotaId, tx);
           } catch {
-            throw new BadRequestException({ type: "error", message: "No se pudo eliminar cuotas de la orden de compra" });
+            throw new BadRequestException("No se pudo eliminar cuotas de la orden de compra");
           }
         }
       }
@@ -226,94 +220,89 @@ export class UpdatePurchaseOrderUsecase {
       if (updated.paymentForm === PaymentFormType.CONTADO && input.payments && input.payments.length > 0) {
         for (const payment of input.payments) {
           if (payment.amount <= 0) {
-            throw new BadRequestException({ type: "error", message: "Monto invalido" });
+            throw new BadRequestException("Monto invalido");
           }
 
           const payDate = new Date(payment.date);
           if (Number.isNaN(payDate.getTime())) {
-            throw new BadRequestException({ type: "error", message: "Fecha invalida" });
+            throw new BadRequestException("Fecha invalida");
           }
 
           if (payment.quotaId) {
             const quota = await this.creditQuotaRepo.findById(payment.quotaId, tx);
             if (!quota) {
-              throw new NotFoundException({ type: "error", message: "Cuota no encontrada" });
+              throw new NotFoundException("Cuota no encontrada");
             }
 
             if (!quota.poId) {
-              throw new BadRequestException({ type: "error", message: "La cuota no tiene orden de compra asociada" });
+              throw new BadRequestException("La cuota no tiene orden de compra asociada");
             }
 
             if (quota.poId !== updated.poId) {
-              throw new BadRequestException({
-                type: "error",
-                message: "La cuota no pertenece a la orden de compra indicada",
-              });
+              throw new BadRequestException("La cuota no pertenece a la orden de compra indicada");
             }
           }
 
-          const document = new PaymentDocument(
-            undefined,
-            payment.method,
-            payDate,
-            payment.currency,
-            payment.amount,
-            PayDocType.PURCHASE,
-            payment.operationNumber,
-            payment.note,
-            updated.poId,
-            payment.quotaId,
-          );
+          const document = PaymentsFactory.createPaymentDocument({
+            method: payment.method,
+            date: payDate,
+            currency: payment.currency,
+            amount: payment.amount,
+            fromDocumentType: PayDocType.PURCHASE,
+            operationNumber: payment.operationNumber,
+            note: payment.note,
+            poId: updated.poId,
+            quotaId: payment.quotaId,
+          });
 
           try {
             await this.paymentDocRepo.create(document, tx);
           } catch {
-            throw new BadRequestException({ type: "error", message: "No se pudo crear el documento de pago" });
+            throw new BadRequestException("No se pudo crear el documento de pago");
           }
         }
       }
 
       if (updated.paymentForm === PaymentFormType.CREDITO && input.quotas !== undefined && quotasChanged) {
         if (input.quotas.length === 0) {
-          throw new BadRequestException({ type: "error", message: "Debe registrar al menos una cuota" });
+          throw new BadRequestException("Debe registrar al menos una cuota");
         }
 
         for (const quotaInput of input.quotas) {
           if (quotaInput.totalPaid !== undefined && quotaInput.totalPaid > quotaInput.totalToPay) {
-            throw new BadRequestException({ type: "error", message: "El total pagado no puede ser mayor al total a pagar" });
+            throw new BadRequestException("El total pagado no puede ser mayor al total a pagar");
           }
 
           const expirationDate = new Date(quotaInput.expirationDate);
           if (Number.isNaN(expirationDate.getTime())) {
-            throw new BadRequestException({ type: "error", message: "Fecha de expiracion invalida" });
+            throw new BadRequestException("Fecha de expiracion invalida");
           }
 
           const paymentDate = quotaInput.paymentDate ? new Date(quotaInput.paymentDate) : undefined;
           if (paymentDate && Number.isNaN(paymentDate.getTime())) {
-            throw new BadRequestException({ type: "error", message: "Fecha de pago invalida" });
+            throw new BadRequestException("Fecha de pago invalida");
           }
 
-          const quota = new CreditQuota(
-            undefined,
-            quotaInput.number,
+          const quota = PaymentsFactory.createCreditQuota({
+            number: quotaInput.number,
             expirationDate,
-            quotaInput.totalToPay,
-            quotaInput.totalPaid ?? 0,
-            PayDocType.PURCHASE,
+            totalToPay: quotaInput.totalToPay,
+            totalPaid: quotaInput.totalPaid ?? 0,
+            fromDocumentType: PayDocType.PURCHASE,
             paymentDate,
-            this.clock.now(),
-            updated.poId,
-          );
+            createdAt: this.clock.now(),
+            poId: updated.poId,
+          });
 
           try {
             await this.creditQuotaRepo.create(quota, tx);
           } catch {
-            throw new BadRequestException({ type: "error", message: "No se pudo crear la cuota" });
+            throw new BadRequestException("No se pudo crear la cuota");
           }
         }
       }
 
-      return { type: "success", message: "Orden de compra actualizada con exito" };
+      return { message: "Orden de compra actualizada con exito" };
     });
   }
 

@@ -1,6 +1,8 @@
-import { Inject } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { ROLE_READ_REPOSITORY, RoleReadRepository } from '../ports/role-read.repository';
+import { RoleNotFoundApplicationError } from '../errors/role-not-found.error';
 
+@Injectable()
 export class GetRoleByIdUseCase {
   constructor(
     @Inject(ROLE_READ_REPOSITORY)
@@ -8,6 +10,10 @@ export class GetRoleByIdUseCase {
   ) {}
 
   async execute(id: string) {
-    return this.roleReadRepository.findById(id);
+    const role = await this.roleReadRepository.findById(id);
+    if (!role) {
+      throw new NotFoundException(new RoleNotFoundApplicationError().message);
+    }
+    return role;
   }
 }

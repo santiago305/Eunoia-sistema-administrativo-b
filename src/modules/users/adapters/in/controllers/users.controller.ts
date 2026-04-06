@@ -299,8 +299,7 @@ export class UsersController {
       if (savedRelativePath) {
         try {
           await this.fileStorage.delete(savedRelativePath);
-        } catch (cleanupError) {
-          console.error('[UsersController] No se pudo limpiar avatar temporal tras error:', cleanupError);
+        } catch {
         }
       }
 

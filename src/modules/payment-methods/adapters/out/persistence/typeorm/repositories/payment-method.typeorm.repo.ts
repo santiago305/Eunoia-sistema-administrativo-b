@@ -28,11 +28,11 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
   }
 
   private toDomain(row: PaymentMethodEntity): PaymentMethod {
-    return new PaymentMethod(
-      row.id,
-      row.name,
-      row.isActive,
-    );
+    return PaymentMethod.create({
+      methodId: row.id,
+      name: row.name,
+      isActive: row.isActive,
+    });
   }
 
   async findById(methodId: string, tx?: TransactionContext): Promise<PaymentMethod | null> {

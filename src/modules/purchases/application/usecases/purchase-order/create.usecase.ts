@@ -5,8 +5,6 @@ import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/d
 import { CreatePurchaseOrderInput } from "../../dtos/purchase-order/input/create.input";
 import { PURCHASE_ORDER_ITEM, PurchaseOrderItemRepository } from "src/modules/purchases/domain/ports/purchase-order-item.port.repository";
 import { PaymentFormType } from "src/modules/purchases/domain/value-objects/payment-form-type";
-import { PaymentDocument } from "src/modules/payments/domain/entity/payment-document";
-import { CreditQuota } from "src/modules/payments/domain/entity/credit-quota";
 import { PAYMENT_DOCUMENT_REPOSITORY, PaymentDocumentRepository } from "src/modules/payments/domain/ports/payment-document.repository";
 import { CREDIT_QUOTA_REPOSITORY, CreditQuotaRepository } from "src/modules/payments/domain/ports/credit-quota.repository";
 import { PayDocType } from "src/modules/payments/domain/value-objects/pay-doc-type";
@@ -14,6 +12,8 @@ import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.
 import { PurchaseOrderFactory } from "src/modules/purchases/domain/factories/purchase-order.factory";
 import { PurchaseOrderItemFactory } from "src/modules/purchases/domain/factories/purchase-order-item.factory";
 import { DomainError } from "src/modules/purchases/domain/errors/domain.error";
+import { PaymentsFactory } from "src/modules/payments/domain/factories/payments.factory";
+import { CreditQuotaNotFoundError } from "src/modules/payments/application/errors/credit-quota-not-found.error";
 
 export class CreatePurchaseOrderUsecase {
   constructor(
@@ -62,7 +62,7 @@ export class CreatePurchaseOrderUsecase {
         });
       } catch (err) {
         if (err instanceof DomainError || (err as any)?.name === "InvalidMoneyError") {
-          throw new BadRequestException({ type: "error", message: (err as Error).message });
+          throw new BadRequestException((err as Error).message);
         }
         throw err;
       }
@@ -71,10 +71,7 @@ export class CreatePurchaseOrderUsecase {
       try {
         po = await this.purchaseRepo.create(data, tx);
       } catch {
-        throw new BadRequestException({
-          type: "error",
-          message: "No se pudo crear la orden de compra",
-        });
+        throw new BadRequestException("No se pudo crear la orden de compra");
       }
 
       if (input.items && input.items.length > 0) {
@@ -99,7 +96,7 @@ export class CreatePurchaseOrderUsecase {
             });
           } catch (err) {
             if (err instanceof DomainError || (err as any)?.name === "InvalidMoneyError") {
-              throw new BadRequestException({ type: "error", message: (err as Error).message });
+              throw new BadRequestException((err as Error).message);
             }
             throw err;
           }
@@ -107,10 +104,7 @@ export class CreatePurchaseOrderUsecase {
           try {
             await this.itemRepo.add(orderItem, tx);
           } catch {
-            throw new BadRequestException({
-              type: "error",
-              message: "No se pudo agregar items a la orden de compra",
-            });
+            throw new BadRequestException("No se pudo agregar items a la orden de compra");
           }
         }
       }
@@ -118,86 +112,84 @@ export class CreatePurchaseOrderUsecase {
       if (po.paymentForm === PaymentFormType.CONTADO && input.payments && input.payments.length > 0) {
         for (const payment of input.payments) {
           if (payment.amount <= 0) {
-            throw new BadRequestException({ type: "error", message: "Monto invalido" });
+            throw new BadRequestException("Monto inválido");
           }
 
           const payDate = new Date(payment.date);
           if (Number.isNaN(payDate.getTime())) {
-            throw new BadRequestException({ type: "error", message: "Fecha invalida" });
+            throw new BadRequestException("Fecha inválida");
           }
 
           if (payment.quotaId) {
             const quota = await this.creditQuotaRepo.findById(payment.quotaId, tx);
             if (!quota) {
-              throw new NotFoundException({ type: "error", message: "Cuota no encontrada" });
+              throw new NotFoundException(new CreditQuotaNotFoundError().message);
             }
 
             if (!quota.poId) {
-              throw new BadRequestException({ type: "error", message: "La cuota no tiene orden de compra asociada" });
+              throw new BadRequestException("La cuota no tiene orden de compra asociada");
             }
 
             if (quota.poId !== po.poId) {
-              throw new BadRequestException({ type: "error", message: "La cuota no pertenece a la orden de compra indicada" });
+              throw new BadRequestException("La cuota no pertenece a la orden de compra indicada");
             }
           }
 
-          const document = new PaymentDocument(
-            undefined,
-            payment.method,
-            payDate,
-            payment.currency,
-            payment.amount,
-            PayDocType.PURCHASE,
-            payment.operationNumber,
-            payment.note,
-            po.poId,
-            payment.quotaId,
-          );
+          const document = PaymentsFactory.createPaymentDocument({
+            method: payment.method,
+            date: payDate,
+            currency: payment.currency,
+            amount: payment.amount,
+            fromDocumentType: PayDocType.PURCHASE,
+            operationNumber: payment.operationNumber,
+            note: payment.note,
+            poId: po.poId,
+            quotaId: payment.quotaId,
+          });
 
           try {
             await this.paymentDocRepo.create(document, tx);
           } catch {
-            throw new BadRequestException({ type: "error", message: "No se pudo crear el documento de pago" });
+            throw new BadRequestException("No se pudo crear el documento de pago");
           }
         }
       }
 
       if (po.paymentForm === PaymentFormType.CREDITO) {
         if (!input.quotas || input.quotas.length === 0) {
-          throw new BadRequestException({ type: "error", message: "Debe registrar al menos una cuota" });
+          throw new BadRequestException("Debe registrar al menos una cuota");
         }
 
         for (const quotaInput of input.quotas) {
           if (quotaInput.totalPaid !== undefined && quotaInput.totalPaid > quotaInput.totalToPay) {
-            throw new BadRequestException({ type: "error", message: "El total pagado no puede ser mayor al total a pagar" });
+            throw new BadRequestException("El total pagado no puede ser mayor al total a pagar");
           }
 
           const expirationDate = new Date(quotaInput.expirationDate);
           if (Number.isNaN(expirationDate.getTime())) {
-            throw new BadRequestException({ type: "error", message: "Fecha de expiracion invalida" });
+            throw new BadRequestException("Fecha de expiración inválida");
           }
 
           const paymentDate = quotaInput.paymentDate ? new Date(quotaInput.paymentDate) : undefined;
           if (paymentDate && Number.isNaN(paymentDate.getTime())) {
-            throw new BadRequestException({ type: "error", message: "Fecha de pago invalida" });
+            throw new BadRequestException("Fecha de pago inválida");
           }
 
-          const quota = new CreditQuota(
-            undefined,
-            quotaInput.number,
+          const quota = PaymentsFactory.createCreditQuota({
+            number: quotaInput.number,
             expirationDate,
-            quotaInput.totalToPay,
-            quotaInput.totalPaid ?? 0,
-            PayDocType.PURCHASE,
+            totalToPay: quotaInput.totalToPay,
+            totalPaid: quotaInput.totalPaid ?? 0,
+            fromDocumentType: PayDocType.PURCHASE,
             paymentDate,
-            this.clock.now(),
-            po.poId,
-          );
+            createdAt: this.clock.now(),
+            poId: po.poId,
+          });
 
           try {
             await this.creditQuotaRepo.create(quota, tx);
           } catch {
-            throw new BadRequestException({ type: "error", message: "No se pudo crear la cuota" });
+            throw new BadRequestException("No se pudo crear la cuota");
           }
         }
       }

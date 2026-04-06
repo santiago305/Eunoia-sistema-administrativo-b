@@ -1,6 +1,7 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { USER_READ_REPOSITORY, UserReadRepository } from 'src/modules/users/application/ports/user-read.repository';
 import { successResponse } from 'src/shared/response-standard/response';
+import { UserNotFoundApplicationError } from '../errors/user-not-found.error';
 
 @Injectable()
 export class GetOwnUserUseCase {
@@ -11,7 +12,7 @@ export class GetOwnUserUseCase {
 
   async execute(id: string) {
     const user = await this.userReadRepository.findPublicById(id);
-    if (!user) throw new UnauthorizedException('Usuario no encontrado');
+    if (!user) throw new NotFoundException(new UserNotFoundApplicationError().message);
 
     return successResponse('Usuario encontrado', {
       id: user.id,

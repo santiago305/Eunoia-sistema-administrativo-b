@@ -1,9 +1,12 @@
-import { Inject, Injectable, BadRequestException } from '@nestjs/common';
+import { Inject, Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { UpdateItemInput } from '../../dto/document-item/input/item-update';
 import { ItemOutput } from '../../dto/document-item/output/item-out';
 import { InventoryRulesService } from '../../../domain/services/inventory-rules.service';
 import { DocType } from '../../../domain/value-objects/doc-type';
 import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../ports/document.repository.port';
+import { DocumentOutputMapper } from '../../mappers/document-output.mapper';
+import { DocumentItemNotFoundApplicationError } from '../../errors/document-item-not-found.error';
+import { DocumentNotFoundApplicationError } from '../../errors/document-not-found.error';
 
 @Injectable()
 export class UpdateItemUseCase {
@@ -16,19 +19,17 @@ export class UpdateItemUseCase {
   async execute(input: UpdateItemInput): Promise<ItemOutput> {
     const doc = await this.documentRepo.findById(input.docId);
     if (!doc) {
-      throw new BadRequestException('Documento no encontrado');
+      throw new NotFoundException(new DocumentNotFoundApplicationError().message);
     }
     if (!doc.isDraft()) {
       throw new BadRequestException('Solo se puede editar items en DRAFT');
     }
-
-    let quantity: number | undefined;
-
     if (input.quantity === undefined || input.quantity === null) {
       throw new BadRequestException('quantity es obligatorio');
     }
 
     const allowNegative = doc.docType === DocType.ADJUSTMENT;
+    let quantity: number;
     try {
       quantity = await this.rules.normalizeQuantity({
         quantity: input.quantity,
@@ -51,19 +52,9 @@ export class UpdateItemUseCase {
     );
 
     if (!updated) {
-      throw new BadRequestException('Item no encontrado');
+      throw new NotFoundException(new DocumentItemNotFoundApplicationError().message);
     }
 
-    return {
-      id: updated.id!,
-      docId: updated.docId,
-      stockItemId: updated.stockItemId,
-      quantity: updated.quantity,
-      wasteQty: updated.wasteQty ?? 0,
-      unitCost: updated.unitCost ?? null,
-      fromLocationId: updated.fromLocationId,
-      toLocationId: updated.toLocationId,     
-    };
+    return DocumentOutputMapper.toItemOutput(updated);
   }
 }
-

@@ -1,3 +1,4 @@
+import { NotFoundException } from '@nestjs/common';
 import { GetRoleByIdUseCase } from './get-role-by-id.usecase';
 
 describe('GetRoleByIdUseCase', () => {
@@ -34,13 +35,11 @@ describe('GetRoleByIdUseCase', () => {
     expect(result).toEqual(expected);
   });
 
-  it('returns null when not found', async () => {
+  it('throws when not found', async () => {
     const useCase = makeUseCase({
       roleReadRepository: { findById: jest.fn().mockResolvedValue(null) },
     });
 
-    const result = await useCase.execute('role-1');
-
-    expect(result).toBeNull();
+    await expect(useCase.execute('role-1')).rejects.toBeInstanceOf(NotFoundException);
   });
 });

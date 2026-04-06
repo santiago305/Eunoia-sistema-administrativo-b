@@ -24,10 +24,9 @@ export class ProductionOrderExpectedBootstrap implements OnApplicationBootstrap 
       if (!order.manufactureDate) continue;
       if (order.manufactureDate.getTime() <= now.getTime()) {
         await this.runExpected.execute(order.productionId).catch((err) => {
-          throw new InternalServerErrorException({
-            type: "error",
-            message: err,
-          });
+          throw new InternalServerErrorException(
+            err instanceof Error ? err.message : "Error al ejecutar producción esperada",
+          );
         });
       } else {
         this.scheduler.schedule(order.productionId, order.manufactureDate);

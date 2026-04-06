@@ -21,7 +21,7 @@ import { SERIES_REPOSITORY, DocumentSeriesRepository } from "src/modules/invento
 import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/inventory/application/ports/document.repository.port";
 import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
 import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "src/modules/warehouses/application/ports/warehouse.repository.port";
-import { errorResponse } from "src/shared/response-standard/response";
+import { PdfGeneratedValidationError } from "../errors/pdf-generated-validation.error";
 
 const resolveLogoUrl = async (logoPath?: string) => {
   if (!logoPath) return undefined;
@@ -108,7 +108,7 @@ export class GenerateInventoryDocumentPdfUseCase {
   async execute(input: GenerateInventoryDocumentPdfInput): Promise<Buffer> {
     const result = await this.documentRepo.getByIdWithItems(input.docId);
     if (!result) {
-      throw new BadRequestException({ type: "error", message: "Documento de inventario no encontrado" });
+      throw new BadRequestException(new PdfGeneratedValidationError("Documento de inventario no encontrado").message);
     }
 
     const { doc, items } = result;
@@ -121,16 +121,16 @@ export class GenerateInventoryDocumentPdfUseCase {
     ]);
 
     if (!serie) {
-      throw new BadRequestException(errorResponse("Serie invalida"));
+      throw new BadRequestException(new PdfGeneratedValidationError("Serie inválida").message);
     }
     if (!company) {
-      throw new BadRequestException(errorResponse("Compañia invalida"));
+      throw new BadRequestException(new PdfGeneratedValidationError("Compañía inválida").message);
     }
     if (!fromWarehouse) {
-      throw new BadRequestException(errorResponse("Almacén de origen invalido"));
+      throw new BadRequestException(new PdfGeneratedValidationError("Almacén de origen inválido").message);
     }
     if (!toWarehouse) {
-      throw new BadRequestException(errorResponse("Almacén de destino invalido"));
+      throw new BadRequestException(new PdfGeneratedValidationError("Almacén de destino inválido").message);
     }
 
     const stockItemCache = new Map<string, StockItem | null>();

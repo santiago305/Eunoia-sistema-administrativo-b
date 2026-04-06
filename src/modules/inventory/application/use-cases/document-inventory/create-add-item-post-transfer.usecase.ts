@@ -1,22 +1,23 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { UNIT_OF_WORK, UnitOfWork } from 'src/shared/domain/ports/unit-of-work.port';
-import { InventoryDocument } from '../../../domain/entities/inventory-document';
-import InventoryDocumentItem from '../../../domain/entities/inventory-document-item';
-import { DocStatus } from '../../../domain/value-objects/doc-status';
-import { DocType } from '../../../domain/value-objects/doc-type';
-import { InventoryRulesService } from '../../../domain/services/inventory-rules.service';
-import { LedgerEntry } from '../../../domain/entities/ledger-entry';
-import { Direction } from '../../../domain/value-objects/direction';
-import { DocumentPostOutValidationService } from '../../../domain/services/document-post-out-validation.service';
-import { CreateAddItemPostTransferInput } from '../../dto/document/input/create-add-item-post-transfer';
-import { errorResponse } from 'src/shared/response-standard/response';
-import { CLOCK, ClockPort } from '../../ports/clock.port';
-import { SERIES_REPOSITORY, DocumentSeriesRepository } from '../../ports/document-series.repository.port';
-import { DOCUMENT_REPOSITORY, DocumentRepository } from '../../ports/document.repository.port';
-import { INVENTORY_LOCK, InventoryLock } from '../../ports/inventory-lock.port';
-import { INVENTORY_REPOSITORY, InventoryRepository } from '../../ports/inventory.repository.port';
-import { LEDGER_REPOSITORY, LedgerRepository } from '../../ports/ledger.repository.port';
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from '../../ports/stock-item.repository.port';
+import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
+import { InventoryDocument } from "../../../domain/entities/inventory-document";
+import InventoryDocumentItem from "../../../domain/entities/inventory-document-item";
+import { LedgerEntry } from "../../../domain/entities/ledger-entry";
+import { DocumentPostOutValidationService } from "../../../domain/services/document-post-out-validation.service";
+import { InventoryRulesService } from "../../../domain/services/inventory-rules.service";
+import { DocStatus } from "../../../domain/value-objects/doc-status";
+import { Direction } from "../../../domain/value-objects/direction";
+import { DocType } from "../../../domain/value-objects/doc-type";
+import { CreateAddItemPostTransferInput } from "../../dto/document/input/create-add-item-post-transfer";
+import { DocumentSerieNotFoundApplicationError } from "../../errors/document-serie-not-found.error";
+import { StockItemNotFoundApplicationError } from "../../errors/stock-item-not-found.error";
+import { CLOCK, ClockPort } from "../../ports/clock.port";
+import { DOCUMENT_REPOSITORY, DocumentRepository } from "../../ports/document.repository.port";
+import { INVENTORY_LOCK, InventoryLock } from "../../ports/inventory-lock.port";
+import { INVENTORY_REPOSITORY, InventoryRepository } from "../../ports/inventory.repository.port";
+import { LEDGER_REPOSITORY, LedgerRepository } from "../../ports/ledger.repository.port";
+import { SERIES_REPOSITORY, DocumentSeriesRepository } from "../../ports/document-series.repository.port";
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "../../ports/stock-item.repository.port";
 
 @Injectable()
 export class CreateAddItemPostTransferUseCase {
@@ -41,40 +42,39 @@ export class CreateAddItemPostTransferUseCase {
     private readonly rules: InventoryRulesService,
   ) {}
 
-  async execute(input: CreateAddItemPostTransferInput): Promise<{ type: string; message: string; docId: string }> {
+  async execute(input: CreateAddItemPostTransferInput): Promise<{ message: string; docId: string }> {
     return this.uow.runInTransaction(async (tx) => {
       if (!input.docType || !input.serieId) {
-        throw new BadRequestException(errorResponse('docType y serieId son obligatorios'));
+        throw new BadRequestException("docType y serieId son obligatorios");
       }
 
       if (input.docType !== DocType.TRANSFER) {
-        throw new BadRequestException(errorResponse('El tipo de documento no es el adecuado'));
+        throw new BadRequestException("El tipo de documento no es el adecuado");
       }
 
       if (!input.fromWarehouseId || !input.toWarehouseId) {
-        throw new BadRequestException(errorResponse('TRANSFER requiere almacén origen y destino'));
+        throw new BadRequestException("TRANSFER requiere almacen origen y destino");
       }
 
       if (input.fromWarehouseId === input.toWarehouseId) {
-        throw new BadRequestException(errorResponse('TRANSFER requiere almacenes distintos'));
+        throw new BadRequestException("TRANSFER requiere almacenes distintos");
       }
 
-      if (!input.items || input.items.length === 0) {
-        throw new BadRequestException(errorResponse('El documento no tiene items'));
+      if (!input.items?.length) {
+        throw new BadRequestException("El documento no tiene items");
       }
 
       const serie = await this.seriesRepo.findById(input.serieId, tx);
       if (!serie) {
-        throw new NotFoundException(errorResponse('Serie no encontrada'));
+        throw new NotFoundException(new DocumentSerieNotFoundApplicationError().message);
       }
 
       if (serie.docType !== input.docType) {
-        throw new BadRequestException(errorResponse('docType no coincide con la serie'));
+        throw new BadRequestException("docType no coincide con la serie");
       }
 
       const correlative = await this.seriesRepo.reserveNextNumber(input.serieId, tx);
-
-      const doc = new InventoryDocument(
+      const document = new InventoryDocument(
         undefined,
         input.docType,
         DocStatus.DRAFT,
@@ -88,19 +88,18 @@ export class CreateAddItemPostTransferUseCase {
         input.createdBy,
       );
 
-      const savedDoc = await this.documentRepo.createDraft(doc, tx);
-
+      const savedDoc = await this.documentRepo.createDraft(document, tx);
       const addedItems: InventoryDocumentItem[] = [];
       const stockItemCache = new Map<string, string>();
 
-      for (const r of input.items) {
-        if (r.quantity === undefined || r.quantity === null) {
-          throw new BadRequestException(errorResponse('quantity es obligatorio'));
+      for (const rawItem of input.items) {
+        if (rawItem.quantity === undefined || rawItem.quantity === null) {
+          throw new BadRequestException("quantity es obligatorio");
         }
 
-        const itemId = r.itemId ?? r.stockItemId;
+        const itemId = rawItem.itemId ?? rawItem.stockItemId;
         if (!itemId) {
-          throw new BadRequestException(errorResponse('itemId o stockItemId es obligatorio'));
+          throw new BadRequestException("itemId o stockItemId es obligatorio");
         }
 
         let stockItemId = stockItemCache.get(itemId);
@@ -109,7 +108,7 @@ export class CreateAddItemPostTransferUseCase {
             (await this.stockItemRepo.findById(itemId, tx)) ??
             (await this.stockItemRepo.findByProductIdOrVariantId(itemId, tx));
           if (!stockItem?.stockItemId) {
-            throw new NotFoundException(errorResponse('Stock item no encontrado'));
+            throw new NotFoundException(new StockItemNotFoundApplicationError().message);
           }
           stockItemId = stockItem.stockItemId;
           stockItemCache.set(itemId, stockItemId);
@@ -118,11 +117,11 @@ export class CreateAddItemPostTransferUseCase {
         let normalizedQty: number;
         try {
           normalizedQty = await this.rules.normalizeQuantity({
-            quantity: r.quantity,
+            quantity: rawItem.quantity,
             allowNegative: false,
           });
-        } catch (error: any) {
-          throw new BadRequestException(errorResponse('Cantidad invalida'));
+        } catch {
+          throw new BadRequestException("Cantidad invalida");
         }
 
         const item = new InventoryDocumentItem(
@@ -131,27 +130,33 @@ export class CreateAddItemPostTransferUseCase {
           stockItemId,
           normalizedQty,
           0,
-          undefined,
-          undefined,
-          r.unitCost ?? null,
+          rawItem.fromLocationId,
+          rawItem.toLocationId,
+          rawItem.unitCost ?? null,
         );
 
-        const savedItem = await this.documentRepo.addItem(item, tx);
-        addedItems.push(savedItem);
+        addedItems.push(await this.documentRepo.addItem(item, tx));
       }
 
-      const fromWarehouseId = savedDoc.fromWarehouseId!;
-      const toWarehouseId = savedDoc.toWarehouseId!;
-      const keys = addedItems.flatMap((i) => [
-        { warehouseId: fromWarehouseId, stockItemId: i.stockItemId, locationId: undefined },
-        { warehouseId: toWarehouseId, stockItemId: i.stockItemId, locationId: undefined },
-      ]);
-
-      await this.lock.lockSnapshots(keys, tx);
+      await this.lock.lockSnapshots(
+        addedItems.flatMap((item) => [
+          {
+            warehouseId: savedDoc.fromWarehouseId!,
+            stockItemId: item.stockItemId,
+            locationId: item.fromLocationId,
+          },
+          {
+            warehouseId: savedDoc.toWarehouseId!,
+            stockItemId: item.stockItemId,
+            locationId: item.toLocationId,
+          },
+        ]),
+        tx,
+      );
 
       const { insuficientes } = await this.outValidator.validateOutStock(
         addedItems,
-        fromWarehouseId,
+        savedDoc.fromWarehouseId!,
         tx,
       );
 
@@ -165,12 +170,11 @@ export class CreateAddItemPostTransferUseCase {
       const entries: LedgerEntry[] = [];
 
       for (const item of addedItems) {
-        // OUT
         entries.push(
           new LedgerEntry(
             undefined,
             savedDoc.id!,
-            fromWarehouseId,
+            savedDoc.fromWarehouseId!,
             item.stockItemId,
             Direction.OUT,
             item.quantity,
@@ -181,12 +185,12 @@ export class CreateAddItemPostTransferUseCase {
             now,
           ),
         );
-        // IN
+
         entries.push(
           new LedgerEntry(
             undefined,
             savedDoc.id!,
-            toWarehouseId,
+            savedDoc.toWarehouseId!,
             item.stockItemId,
             Direction.IN,
             item.quantity,
@@ -200,9 +204,9 @@ export class CreateAddItemPostTransferUseCase {
 
         await this.inventoryRepo.incrementOnHand(
           {
-            warehouseId: fromWarehouseId,
+            warehouseId: savedDoc.fromWarehouseId!,
             stockItemId: item.stockItemId,
-            locationId: undefined,
+            locationId: item.fromLocationId,
             delta: -item.quantity,
           },
           tx,
@@ -210,9 +214,9 @@ export class CreateAddItemPostTransferUseCase {
 
         await this.inventoryRepo.incrementOnHand(
           {
-            warehouseId: toWarehouseId,
+            warehouseId: savedDoc.toWarehouseId!,
             stockItemId: item.stockItemId,
-            locationId: undefined,
+            locationId: item.toLocationId,
             delta: item.quantity,
           },
           tx,
@@ -229,8 +233,7 @@ export class CreateAddItemPostTransferUseCase {
       );
 
       return {
-        type: 'success',
-        message: 'Postedo con exito!',
+        message: "Documento creado y posteado con exito",
         docId: savedDoc.id,
       };
     });

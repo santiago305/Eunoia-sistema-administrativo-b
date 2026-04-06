@@ -7,6 +7,8 @@ import {
 } from '@nestjs/common';
 import { ROLE_REPOSITORY, RoleRepository } from '../ports/role.repository';
 import { RoleType } from 'src/shared/constantes/constants';
+import { RoleForbiddenApplicationError } from '../errors/role-forbidden.error';
+import { RoleNotFoundApplicationError } from '../errors/role-not-found.error';
 
 const PROTECTED_SYSTEM_ROLES = new Set<string>([
   RoleType.ADMIN,
@@ -25,11 +27,13 @@ export class RestoreRoleUseCase {
     const role = await this.roleRepository.findById(id);
 
     if (!role) {
-      throw new NotFoundException('Rol no encontrado');
+      throw new NotFoundException(new RoleNotFoundApplicationError().message);
     }
     const normalizedDescription = (role.description || '').trim().toLowerCase();
     if (PROTECTED_SYSTEM_ROLES.has(normalizedDescription)) {
-      throw new ForbiddenException('No se puede restaurar un rol base del sistema');
+      throw new ForbiddenException(
+        new RoleForbiddenApplicationError('No se puede restaurar un rol base del sistema').message,
+      );
     }
     if (!role.deleted) {
       throw new BadRequestException('El rol ya se encuentra activo');

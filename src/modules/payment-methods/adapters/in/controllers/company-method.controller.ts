@@ -4,6 +4,7 @@ import { CreateCompanyMethodUsecase } from "src/modules/payment-methods/applicat
 import { DeleteCompanyMethodUsecase } from "src/modules/payment-methods/application/usecases/company-method/delete.usecase";
 import { GetCompanyMethodByIdUsecase } from "src/modules/payment-methods/application/usecases/company-method/get-by-id.usecase";
 import { HttpCompanyMethodCreateDto } from "../dtos/company-method/http-company-method-create.dto";
+import { PaymentMethodHttpMapper } from "src/modules/payment-methods/application/mappers/payment-method-http.mapper";
 
 @Controller("company-methods")
 @UseGuards(JwtAuthGuard)
@@ -16,7 +17,7 @@ export class CompanyMethodsController {
 
   @Post()
   create(@Body() dto: HttpCompanyMethodCreateDto) {
-    return this.createCompanyMethod.execute(dto);
+    return this.createCompanyMethod.execute(PaymentMethodHttpMapper.toCreateCompanyMethodInput(dto));
   }
 
   @Get(":companyId/:methodId")

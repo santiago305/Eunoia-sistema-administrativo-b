@@ -2,6 +2,7 @@ import { BadRequestException, Inject } from "@nestjs/common";
 import { GetByIdInput } from "../../dtos/location/input/get-by-id.input";
 import { LocationOutput } from "../../dtos/location/output/location.output";
 import { LOCATION_REPOSITORY, LocartionRepository } from "../../ports/location.repository.port";
+import { WarehouseOutputMapper } from "../../mappers/warehouse-output.mapper";
 
 export class GetLocationUsecase {
   constructor(
@@ -15,12 +16,6 @@ export class GetLocationUsecase {
       throw new BadRequestException("Ubicacion no encontrada");
     }
 
-    return {
-      locationId: location.locationId.value,
-      warehouseId: location.warehouseId.value,
-      code: location.code,
-      description: location.description,
-      isActive: location.isActive,
-    };
+    return WarehouseOutputMapper.toLocationOutput(location);
   }
 }

@@ -1,9 +1,10 @@
-﻿import { ConflictException, Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
-import { TransactionContext, UNIT_OF_WORK, UnitOfWork } from 'src/shared/domain/ports/unit-of-work.port';
-import { StockItemType } from 'src/modules/inventory/domain/value-objects/stock-item-type';
-import { StockItem } from 'src/modules/inventory/domain/entities/stock-item/stock-item';
-import { CLOCK, ClockPort } from '../../ports/clock.port';
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from '../../ports/stock-item.repository.port';
+import { ConflictException, Inject, Injectable, InternalServerErrorException } from "@nestjs/common";
+import { StockItemFactory } from "src/modules/inventory/domain/factories/stock-item.factory";
+import { StockItemType } from "src/modules/inventory/domain/value-objects/stock-item-type";
+import { TransactionContext, UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
+import { StockItemAlreadyExistsApplicationError } from "../../errors/stock-item-already-exists.error";
+import { CLOCK, ClockPort } from "../../ports/clock.port";
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "../../ports/stock-item.repository.port";
 
 @Injectable()
 export class CreateStockItemForProduct {
@@ -19,35 +20,27 @@ export class CreateStockItemForProduct {
   async execute(
     input: { productId: string; isActive?: boolean },
     tx?: TransactionContext,
-  ): Promise<{ type: string; message: string }> {
+  ): Promise<{ message: string }> {
     const work = async (ctx: TransactionContext) => {
       const exists = await this.stockItemRepo.findByProductId(input.productId, ctx);
       if (exists) {
-        throw new ConflictException({
-          type: 'error',
-          message: 'Stock item para este producto ya existe',
-        });
+        throw new ConflictException(new StockItemAlreadyExistsApplicationError("PRODUCT").message);
       }
 
-      const now = this.clock.now();
-      const stockItem = new StockItem(
-        undefined,
-        StockItemType.PRODUCT,
-        input.isActive ?? true,
-        input.productId,
-        undefined,
-        now,
-      );
+      const stockItem = StockItemFactory.create({
+        type: StockItemType.PRODUCT,
+        isActive: input.isActive ?? true,
+        productId: input.productId,
+        createdAt: this.clock.now(),
+      });
+
       try {
         await this.stockItemRepo.create(stockItem, ctx);
       } catch {
-        throw new InternalServerErrorException({
-          type: 'error',
-          message: 'No se pudo crear el stock item',
-        });
+        throw new InternalServerErrorException("No se pudo crear el stock item");
       }
 
-      return { type: 'success', message: '¡Operación exitosa!' };
+      return { message: "Stock item creado con exito" };
     };
 
     if (tx) {

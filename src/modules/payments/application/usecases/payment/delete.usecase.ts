@@ -2,6 +2,7 @@ import { BadRequestException, Inject, NotFoundException } from "@nestjs/common";
 import { UNIT_OF_WORK, UnitOfWork, TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { PAYMENT_DOCUMENT_REPOSITORY, PaymentDocumentRepository } from "src/modules/payments/domain/ports/payment-document.repository";
 import { CREDIT_QUOTA_REPOSITORY, CreditQuotaRepository } from "src/modules/payments/domain/ports/credit-quota.repository";
+import { PaymentNotFoundError } from "../../errors/payment-not-found.error";
 
 export class DeletePaymentUsecase {
   constructor(
@@ -13,20 +14,17 @@ export class DeletePaymentUsecase {
     private readonly creditQuotaRepo: CreditQuotaRepository,
   ) {}
 
-  async execute(payDocId: string, tx?: TransactionContext): Promise<{ type: string; message: string }> {
+  async execute(payDocId: string, tx?: TransactionContext): Promise<{ message: string }> {
     if (tx) {
       return this.deleteInTransaction(payDocId, tx);
     }
     return this.uow.runInTransaction((innerTx) => this.deleteInTransaction(payDocId, innerTx));
   }
 
-  private async deleteInTransaction(payDocId: string, tx: TransactionContext): Promise<{ type: string; message: string }> {
+  private async deleteInTransaction(payDocId: string, tx: TransactionContext): Promise<{ message: string }> {
     const existing = await this.paymentDocRepo.findById(payDocId, tx);
     if (!existing) {
-      throw new NotFoundException({
-        type: "error",
-        message: "Pago no encontrado",
-      });
+      throw new NotFoundException(new PaymentNotFoundError().message);
     }
     if (existing.quotaId) {
       const quota = await this.creditQuotaRepo.findById(existing.quotaId, tx);
@@ -43,12 +41,9 @@ export class DeletePaymentUsecase {
     try {
       await this.paymentDocRepo.deleteById(payDocId, tx);
     } catch {
-      throw new BadRequestException({
-        type: "error",
-        message: "No se pudo eliminar el pago",
-      });
+      throw new BadRequestException("No se pudo eliminar el pago");
     }
 
-    return { type: "success", message: "Pago eliminado con exito" };
+    return { message: "Pago eliminado con exito" };
   }
 }

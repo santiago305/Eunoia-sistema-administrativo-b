@@ -1,8 +1,10 @@
 import { BadRequestException, Inject, NotFoundException } from "@nestjs/common";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
-import { successResponse, errorResponse } from "src/shared/response-standard/response";
+import { successResponse } from "src/shared/response-standard/response";
 import { PAYMENT_METHOD_REPOSITORY, PaymentMethodRepository } from "src/modules/payment-methods/domain/ports/payment-method.repository";
 import { SetPaymentMethodActiveInput } from "../../dtos/payment-method/input/set-active.input";
+import { PaymentMethodDomainService } from "src/modules/payment-methods/domain/services/payment-method-domain.service";
+import { PaymentMethodNotFoundError } from "../../errors/payment-method-not-found.error";
 
 export class SetPaymentMethodActiveUsecase {
   constructor(
@@ -16,13 +18,20 @@ export class SetPaymentMethodActiveUsecase {
     return this.uow.runInTransaction(async (tx) => {
       const current = await this.paymentMethodRepo.findById(input.methodId, tx);
       if (!current) {
-        throw new NotFoundException(errorResponse("Metodo de pago no encontrado"));
+        throw new NotFoundException(new PaymentMethodNotFoundError().message);
+      }
+
+      if (!PaymentMethodDomainService.canToggleState(current, input.isActive)) {
+        return successResponse("Estado actualizado correctamente", {
+          methodId: current.methodId,
+          isActive: current.isActive,
+        });
       }
 
       try {
         const updated = await this.paymentMethodRepo.setActive(input.methodId, input.isActive, tx);
         if (!updated) {
-          throw new BadRequestException(errorResponse("No se pudo actualizar el estado"));
+          throw new BadRequestException("No se pudo actualizar el estado");
         }
 
         return successResponse("Estado actualizado correctamente", {
@@ -30,7 +39,7 @@ export class SetPaymentMethodActiveUsecase {
           isActive: updated.isActive,
         });
       } catch {
-        throw new BadRequestException(errorResponse("No se pudo actualizar el estado"));
+        throw new BadRequestException("No se pudo actualizar el estado");
       }
     });
   }

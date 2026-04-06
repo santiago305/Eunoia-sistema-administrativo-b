@@ -9,6 +9,9 @@ import { SESSION_REPOSITORY, SessionRepository } from 'src/modules/sessions/appl
 import { SESSION_TOKEN_HASHER, SessionTokenHasherRepository } from 'src/modules/sessions/application/ports/session-token-hasher.repository';
 import { envs } from 'src/infrastructure/config/envs';
 import ms, { StringValue } from 'ms';
+import { AuthInvalidTokenError } from '../errors/auth-invalid-token.error';
+import { SessionNotFoundApplicationError } from 'src/modules/sessions/application/errors/session-not-found.error';
+import { SessionValidationApplicationError } from 'src/modules/sessions/application/errors/session-validation.error';
 
 @Injectable()
 export class RefreshAuthUseCase {
@@ -28,7 +31,7 @@ export class RefreshAuthUseCase {
     refreshToken: string;
   }) {
     if (!params.user?.sub || !params.user?.sessionId) {
-      throw new UnauthorizedException('Token invalido');
+      throw new UnauthorizedException(new AuthInvalidTokenError().message);
     }
 
     const session = await this.sessionReadRepository.findByIdAndUserId(
@@ -37,7 +40,7 @@ export class RefreshAuthUseCase {
     );
 
     if (!session || session.revokedAt || session.expiresAt <= new Date()) {
-      throw new UnauthorizedException('Sesion invalida o expirada');
+      throw new UnauthorizedException(new SessionNotFoundApplicationError('Sesion invalida o expirada').message);
     }
 
     const tokenMatches = await this.tokenHasher.verify(
@@ -47,7 +50,7 @@ export class RefreshAuthUseCase {
 
     if (!tokenMatches) {
       await this.sessionRepository.revokeById(params.user.sessionId, params.user.sub);
-      throw new UnauthorizedException('Token de refresco invalido');
+      throw new UnauthorizedException(new SessionValidationApplicationError('Token de refresco invalido').message);
     }
 
     const payload = {

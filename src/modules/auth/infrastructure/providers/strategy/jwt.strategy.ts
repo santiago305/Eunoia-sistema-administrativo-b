@@ -7,6 +7,8 @@ import {
   SESSION_READ_REPOSITORY,
   SessionReadRepository,
 } from 'src/modules/sessions/application/ports/session-read.repository';
+import { SessionInvalidTokenApplicationError } from 'src/modules/sessions/application/errors/session-invalid-token.error';
+import { SessionNotFoundApplicationError } from 'src/modules/sessions/application/errors/session-not-found.error';
 
 /**
  * Estrategia para validar el access token JWT.
@@ -37,7 +39,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
    */
   async validate(req: Request, payload: any) {
     if (!payload?.sub || !payload?.sessionId) {
-      throw new UnauthorizedException('Token invalido o sin identificador');
+      throw new UnauthorizedException(new SessionInvalidTokenApplicationError().message);
     }
 
     const session = await this.sessionReadRepository.findByIdAndUserId(
@@ -46,7 +48,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     );
 
     if (!session || session.revokedAt || session.expiresAt <= new Date()) {
-      throw new UnauthorizedException('Sesion invalida o expirada');
+      throw new UnauthorizedException(new SessionNotFoundApplicationError('Sesion invalida o expirada').message);
     }
 
     return {

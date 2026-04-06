@@ -17,17 +17,16 @@ export class CreateProductRecipe {
       input.quantity,
       input.waste,
     );
+
     try {
       await this.recipeRepo.create(recipe);
     } catch {
-      throw new BadRequestException({
-        type: 'error',
-        message: '¡Error al crear receta!'
-      });
+      throw new BadRequestException('Error al crear receta');
     }
+
     return {
       type: 'success',
-      message: '¡Receta creada con exito!'
+      message: 'Receta creada con éxito'
     };
   }
 }

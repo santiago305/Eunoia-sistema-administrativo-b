@@ -1,11 +1,12 @@
 import { BadRequestException, ConflictException, Inject, NotFoundException } from "@nestjs/common";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
-import { successResponse, errorResponse } from "src/shared/response-standard/response";
+import { successResponse } from "src/shared/response-standard/response";
 import { COMPANY_REPOSITORY, CompanyRepository } from "src/modules/companies/domain/ports/company.repository";
 import { PAYMENT_METHOD_REPOSITORY, PaymentMethodRepository } from "src/modules/payment-methods/domain/ports/payment-method.repository";
 import { COMPANY_METHOD_REPOSITORY, CompanyMethodRepository } from "src/modules/payment-methods/domain/ports/company-method.repository";
-import { CompanyMethod } from "src/modules/payment-methods/domain/entity/company-method";
 import { CreateCompanyMethodInput } from "../../dtos/company-method/input/create.input";
+import { PaymentMethodFactory } from "src/modules/payment-methods/domain/factories/payment-method.factory";
+import { PaymentMethodNotFoundError } from "../../errors/payment-method-not-found.error";
 
 export class CreateCompanyMethodUsecase {
   constructor(
@@ -23,20 +24,20 @@ export class CreateCompanyMethodUsecase {
     return this.uow.runInTransaction(async (tx) => {
       const company = await this.companyRepo.findById(input.companyId, tx);
       if (!company) {
-        throw new NotFoundException(errorResponse("Empresa no encontrada"));
+        throw new NotFoundException("Empresa no encontrada");
       }
 
       const method = await this.paymentMethodRepo.findById(input.methodId, tx);
       if (!method) {
-        throw new NotFoundException(errorResponse("Metodo de pago no encontrado"));
+        throw new NotFoundException(new PaymentMethodNotFoundError().message);
       }
 
       const existing = await this.companyMethodRepo.findById(input.companyId, input.methodId, tx);
       if (existing) {
-        throw new ConflictException(errorResponse("La relacion ya existe"));
+        throw new ConflictException("La relacion ya existe");
       }
 
-      const relation = new CompanyMethod(input.companyId, input.methodId, input.number);
+      const relation = PaymentMethodFactory.createCompanyMethod(input);
       try {
         await this.companyMethodRepo.create(relation, tx);
         return successResponse("Relacion creada correctamente", {
@@ -45,7 +46,7 @@ export class CreateCompanyMethodUsecase {
           number: input.number,
         });
       } catch {
-        throw new BadRequestException(errorResponse("No se pudo crear la relacion"));
+        throw new BadRequestException("No se pudo crear la relacion");
       }
     });
   }

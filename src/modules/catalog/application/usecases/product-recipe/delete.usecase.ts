@@ -7,25 +7,21 @@ export class DeleteProductRecipe {
     private readonly recipeRepo: ProductRecipeRepository,
   ) {}
 
-  async execute(id: string): Promise<{type:string,message:string}> {
+  async execute(id: string): Promise<{ type: string; message: string }> {
     const row = await this.recipeRepo.findById(id);
-    if(!row){
-      throw new NotFoundException({
-        type:'error',
-        message: '¡Error receta no encontrada!'
-      });
+    if (!row) {
+      throw new NotFoundException('Receta no encontrada');
     }
+
     try {
       await this.recipeRepo.deleteById(id);
     } catch {
-      throw new BadRequestException({
-        type: 'error',
-        message: '¡Error al borrar receta!'
-      });
+      throw new BadRequestException('Error al borrar receta');
     }
+
     return {
-      type:'success',
-      message:'¡Receta borrada con exito!'
-    }
+      type: 'success',
+      message: 'Receta borrada con éxito',
+    };
   }
 }

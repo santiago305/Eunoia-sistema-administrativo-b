@@ -1,8 +1,10 @@
 import {
   BadRequestException,
+  ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
-  UnauthorizedException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { ROLE_REPOSITORY, RoleRepository } from '../ports/role.repository';
 import { CreateRoleDto } from '../../adapters/in/dtos/create-role.dto';
@@ -10,6 +12,8 @@ import { RoleFactory } from '../../domain/factories/role.factory';
 import { RoleType } from 'src/shared/constantes/constants';
 import { successResponse } from 'src/shared/response-standard/response';
 import { ROLE_READ_REPOSITORY, RoleReadRepository  } from '../ports/role-read.repository';
+import { RoleConflictApplicationError } from '../errors/role-conflict.error';
+import { RoleForbiddenApplicationError } from '../errors/role-forbidden.error';
 
 @Injectable()
 export class CreateRoleUseCase {
@@ -22,7 +26,9 @@ export class CreateRoleUseCase {
 
   async execute(dto: CreateRoleDto, requesterRole: RoleType) {
     if (requesterRole !== RoleType.ADMIN) {
-      throw new UnauthorizedException('No autorizado para crear roles');
+      throw new ForbiddenException(
+        new RoleForbiddenApplicationError('No autorizado para crear roles').message,
+      );
     }
 
     const normalizedDescription = dto.description.trim().toLowerCase();
@@ -32,7 +38,7 @@ export class CreateRoleUseCase {
 
     const exists = await this.roleReadRepository.existsByDescription(normalizedDescription);
     if (exists) {
-      throw new UnauthorizedException('Este rol ya existe');
+      throw new ConflictException(new RoleConflictApplicationError().message);
     }
 
     const role = RoleFactory.createNew({
@@ -42,9 +48,8 @@ export class CreateRoleUseCase {
     try {
       await this.roleRepository.save(role);
       return successResponse('Rol creado correctamente');
-    } catch (error) {
-      console.error('[CreateRoleUseCase] error:', error);
-      throw new UnauthorizedException('Error al crear el rol');
+    } catch {
+      throw new InternalServerErrorException('Error al crear el rol');
     }
   }
 }

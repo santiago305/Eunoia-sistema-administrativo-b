@@ -148,7 +148,7 @@ export class PostProductionDocumentsUseCase {
       if (cached) return cached;
       const stockItem = await this.stockItemRepo.findByProductIdOrVariantId(finishedItemId, tx);
       if (!stockItem?.stockItemId) {
-        throw new NotFoundException({ type: "error", message: "Stock item de producto terminado no encontrado" });
+        throw new NotFoundException("Stock item de producto terminado no encontrado");
       }
       finishedStockItemCache.set(finishedItemId, stockItem.stockItemId);
       return stockItem.stockItemId;
