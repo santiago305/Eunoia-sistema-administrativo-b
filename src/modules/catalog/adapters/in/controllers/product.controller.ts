@@ -4,6 +4,7 @@ import { CreateProduct } from 'src/modules/catalog/application/usecases/product/
 import { UpdateProduct } from 'src/modules/catalog/application/usecases/product/update.usecase';
 import { SetProductActive } from 'src/modules/catalog/application/usecases/product/set-active.usecase';
 import { SearchProductsPaginated } from 'src/modules/catalog/application/usecases/product/search-paginated.usecase';
+import { SearchFlatProductsPaginated } from 'src/modules/catalog/application/usecases/product/search-flat.usecase';
 import { ListProductVariants } from 'src/modules/catalog/application/usecases/product-variant/list-by-product.usecase';
 import { GetProductWithVariants } from 'src/modules/catalog/application/usecases/product/get-with-variants.usecase';
 import { GetProductById } from 'src/modules/catalog/application/usecases/product/get-by-id.usecase';
@@ -25,6 +26,7 @@ export class ProductsController {
     private readonly updateProduct: UpdateProduct,
     private readonly setActive: SetProductActive,
     private readonly search: SearchProductsPaginated,
+    private readonly searchFlat: SearchFlatProductsPaginated,
     private readonly getById: GetProductById,
     private readonly listFinishedActive: ListFinishedActiveProducts,
     private readonly listPrimaActive: ListPrimaActiveProducts,
@@ -55,6 +57,22 @@ export class ProductsController {
   list(@Query() query: ListProductQueryDto) {
     const isActived = query.isActive === undefined ? undefined : query.isActive === 'true';
     return this.search.execute(CatalogHttpMapper.toListProductsInput({
+      isActive: isActived,
+      name: query.name,
+      description: query.description,
+      sku: query.sku,
+      barcode: query.barcode,
+      type: query.type,
+      q: query.q,
+      page: query.page,
+      limit: query.limit,
+    }));
+  }
+
+  @Get('flat')
+  listFlat(@Query() query: ListProductQueryDto) {
+    const isActived = query.isActive === undefined ? undefined : query.isActive === 'true';
+    return this.searchFlat.execute(CatalogHttpMapper.toListProductsInput({
       isActive: isActived,
       name: query.name,
       description: query.description,

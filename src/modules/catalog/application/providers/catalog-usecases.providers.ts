@@ -7,6 +7,7 @@ import { GetProductWithVariants } from "../usecases/product/get-with-variants.us
 import { ListFinishedActiveProducts } from "../usecases/product/list-finished-active.usecase";
 import { ListPrimaActiveProducts } from "../usecases/product/list-prima-active.usecase";
 import { SearchProductsPaginated } from "../usecases/product/search-paginated.usecase";
+import { SearchFlatProductsPaginated } from "../usecases/product/search-flat.usecase";
 import { SetProductActive } from "../usecases/product/set-active.usecase";
 import { UpdateProduct } from "../usecases/product/update.usecase";
 import { CreateProductEquivalence } from "../usecases/product-equivalence/create.usecase";
@@ -36,6 +37,7 @@ export const catalogUsecasesProviders: Provider[] = [
   ListFinishedActiveProducts,
   ListPrimaActiveProducts,
   SearchProductsPaginated,
+  SearchFlatProductsPaginated,
   CreateProductVariant,
   UpdateProductVariant,
   SetProductVariantActive,

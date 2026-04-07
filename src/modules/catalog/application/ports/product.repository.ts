@@ -7,6 +7,7 @@ import { Money } from "../../../../shared/value-objets/money.vo";
 import { ProductId } from "../../domain/value-object/product-id.vo";
 import { ProductType } from "../../domain/value-object/productType";
 import { AttributesRecord } from "../../domain/value-object/variant-attributes.vo";
+import { FlatProductOutput } from "../dto/products/output/flat-product-out";
 
 
 export const PRODUCT_REPOSITORY = Symbol("PRODUCT_REPOSITORY");
@@ -71,6 +72,21 @@ export interface ProductRepository {
     },
     tx?: TransactionContext,
   ): Promise<{ items: Array<{ product: Product; baseUnitName?: string; baseUnitCode?: string }>; total: number }>;
+
+  searchFlatPaginated(
+    params: {
+      isActive?: boolean;
+      name?: string;
+      description?: string;
+      sku?: string;
+      barcode?: string;
+      type?: ProductType;
+      q?: string;
+      page: number;
+      limit: number;
+    },
+    tx?: TransactionContext,
+  ): Promise<{ items: FlatProductOutput[]; total: number }>;
 
   countAll(tx?: TransactionContext): Promise<number>;
   countByActive(isActive: boolean, tx?: TransactionContext): Promise<number>;

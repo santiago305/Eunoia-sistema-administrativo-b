@@ -17,6 +17,7 @@ import { ProductWithUnitInfo } from 'src/modules/catalog/domain/read-models/prod
 import { ProductRepository } from 'src/modules/catalog/application/ports/product.repository';
 import { ProductFactory } from 'src/modules/catalog/domain/factories/product.factory';
 import { ProductVariantFactory } from 'src/modules/catalog/domain/factories/product-variant.factory';
+import { FlatProductOutput } from 'src/modules/catalog/application/dto/products/output/flat-product-out';
 
 @Injectable()
 export class ProductTypeormRepository implements ProductRepository {
@@ -257,6 +258,201 @@ export class ProductTypeormRepository implements ProductRepository {
     });
 
     return { items, total };
+  }
+
+  async searchFlatPaginated(
+    params: {
+      isActive?: boolean;
+      name?: string;
+      description?: string;
+      type?: ProductType;
+      page: number;
+      q?: string;
+      limit: number;
+      sku?: string;
+      barcode?: string;
+    },
+    tx?: TransactionContext,
+  ): Promise<{ items: FlatProductOutput[]; total: number }> {
+    const manager = this.getManager(tx);
+    const page = params.page && params.page > 0 ? params.page : 1;
+    const limit = params.limit && params.limit > 0 ? params.limit : 10;
+    const offset = (page - 1) * limit;
+
+    const name = params.name?.trim();
+    const description = params.description?.trim();
+    const sku = params.sku?.trim();
+    const barcode = params.barcode?.trim();
+    const search = params.q?.trim();
+
+    const productWhere: string[] = [];
+    const variantWhere: string[] = [];
+    const values: Array<string | number | boolean> = [];
+
+    const pushParam = (value: string | number | boolean) => {
+      values.push(value);
+      return `$${values.length}`;
+    };
+
+    if (name) {
+      const param = pushParam(`%${name.toLowerCase()}%`);
+      productWhere.push(`LOWER(p.name) LIKE ${param}`);
+      variantWhere.push(`LOWER(p.name) LIKE ${param}`);
+    }
+
+    if (description) {
+      const param = pushParam(`%${description.toLowerCase()}%`);
+      productWhere.push(`LOWER(COALESCE(p.description, '')) LIKE ${param}`);
+      variantWhere.push(`LOWER(COALESCE(p.description, '')) LIKE ${param}`);
+    }
+
+    if (params.type) {
+      const param = pushParam(params.type);
+      productWhere.push(`p.type = ${param}`);
+      variantWhere.push(`p.type = ${param}`);
+    }
+
+    if (sku) {
+      const param = pushParam(`%${sku.toLowerCase()}%`);
+      productWhere.push(`LOWER(p.sku) LIKE ${param}`);
+      variantWhere.push(`LOWER(v.sku) LIKE ${param}`);
+    }
+
+    if (barcode) {
+      const param = pushParam(`%${barcode.toLowerCase()}%`);
+      productWhere.push(`LOWER(COALESCE(p.barcode, '')) LIKE ${param}`);
+      variantWhere.push(`LOWER(COALESCE(v.barcode, '')) LIKE ${param}`);
+    }
+
+    if (params.isActive !== undefined) {
+      const param = pushParam(params.isActive);
+      productWhere.push(`p.is_active = ${param}`);
+      variantWhere.push(`v.is_active = ${param}`);
+    }
+
+    if (search) {
+      const param = pushParam(`%${search.toLowerCase()}%`);
+      productWhere.push(`(
+        LOWER(p.sku) LIKE ${param}
+        OR LOWER(COALESCE(p.barcode, '')) LIKE ${param}
+        OR LOWER(p.name) LIKE ${param}
+        OR LOWER(COALESCE(p.description, '')) LIKE ${param}
+        OR LOWER(COALESCE(p.custom_sku, '')) LIKE ${param}
+        OR LOWER(COALESCE(p.attributes->>'presentation', '')) LIKE ${param}
+        OR LOWER(COALESCE(p.attributes->>'variant', '')) LIKE ${param}
+        OR LOWER(COALESCE(p.attributes->>'color', '')) LIKE ${param}
+      )`);
+      variantWhere.push(`(
+        LOWER(v.sku) LIKE ${param}
+        OR LOWER(COALESCE(v.barcode, '')) LIKE ${param}
+        OR LOWER(COALESCE(v.custom_sku, '')) LIKE ${param}
+        OR LOWER(p.name) LIKE ${param}
+        OR LOWER(COALESCE(p.description, '')) LIKE ${param}
+        OR LOWER(COALESCE(v.attributes->>'presentation', '')) LIKE ${param}
+        OR LOWER(COALESCE(v.attributes->>'variant', '')) LIKE ${param}
+        OR LOWER(COALESCE(v.attributes->>'color', '')) LIKE ${param}
+      )`);
+    }
+
+    const productWhereSql = productWhere.length ? `WHERE ${productWhere.join(' AND ')}` : '';
+    const variantWhereSql = variantWhere.length ? `WHERE ${variantWhere.join(' AND ')}` : '';
+
+    const unionSql = `
+      SELECT
+        p.product_id AS id,
+        'PRODUCT'::text AS "sourceType",
+        p.product_id AS "productId",
+        p.created_at AS "parentCreatedAt",
+        p.base_unit_id AS "baseUnitId",
+        p.name AS name,
+        p.description AS description,
+        p.sku AS sku,
+        p.custom_sku AS "customSku",
+        p.barcode AS barcode,
+        p.price::numeric AS price,
+        p.cost::numeric AS cost,
+        p.attributes AS attributes,
+        u.name AS "baseUnitName",
+        u.code AS "baseUnitCode",
+        p.is_active AS "isActive",
+        p.type AS type,
+        p.created_at AS "createdAt",
+        p.updated_at AS "updatedAt"
+      FROM products p
+      INNER JOIN units u ON u.unit_id = p.base_unit_id
+      ${productWhereSql}
+
+      UNION ALL
+
+      SELECT
+        v.variant_id AS id,
+        'VARIANT'::text AS "sourceType",
+        p.product_id AS "productId",
+        p.created_at AS "parentCreatedAt",
+        p.base_unit_id AS "baseUnitId",
+        p.name AS name,
+        p.description AS description,
+        v.sku AS sku,
+        v.custom_sku AS "customSku",
+        v.barcode AS barcode,
+        v.price::numeric AS price,
+        COALESCE(v.cost, 0)::numeric AS cost,
+        v.attributes AS attributes,
+        u.name AS "baseUnitName",
+        u.code AS "baseUnitCode",
+        v.is_active AS "isActive",
+        p.type AS type,
+        v.created_at AS "createdAt",
+        NULL::timestamp AS "updatedAt"
+      FROM product_variants v
+      INNER JOIN products p ON p.product_id = v.product_id
+      INNER JOIN units u ON u.unit_id = p.base_unit_id
+      ${variantWhereSql}
+    `;
+
+    const totalRows = await manager.query(
+      `SELECT COUNT(*)::int AS total FROM (${unionSql}) flat_catalog`,
+      values,
+    );
+
+    const paginationValues = [...values];
+    const limitParam = `$${paginationValues.push(limit)}`;
+    const offsetParam = `$${paginationValues.push(offset)}`;
+
+    const rows = await manager.query(
+      `
+        SELECT *
+        FROM (${unionSql}) flat_catalog
+        ORDER BY "parentCreatedAt" DESC, "productId" DESC, CASE WHEN "sourceType" = 'PRODUCT' THEN 0 ELSE 1 END ASC, "createdAt" ASC, id ASC
+        LIMIT ${limitParam}
+        OFFSET ${offsetParam}
+      `,
+      paginationValues,
+    );
+
+    return {
+      items: rows.map((row: Record<string, unknown>) => ({
+        id: String(row.id),
+        sourceType: row.sourceType as "PRODUCT" | "VARIANT",
+        productId: String(row.productId),
+        baseUnitId: String(row.baseUnitId),
+        name: String(row.name),
+        description: row.description ? String(row.description) : null,
+        sku: String(row.sku),
+        customSku: row.customSku ? String(row.customSku) : null,
+        barcode: row.barcode ? String(row.barcode) : null,
+        price: Number(row.price),
+        cost: Number(row.cost ?? 0),
+        attributes: (row.attributes as Record<string, unknown>) ?? {},
+        baseUnitName: String(row.baseUnitName),
+        baseUnitCode: String(row.baseUnitCode),
+        isActive: Boolean(row.isActive),
+        type: row.type as ProductType,
+        createdAt: new Date(String(row.createdAt)),
+        updatedAt: row.updatedAt ? new Date(String(row.updatedAt)) : null,
+      })),
+      total: Number(totalRows[0]?.total ?? 0),
+    };
   }
 
   async getByIdWithVariants(
