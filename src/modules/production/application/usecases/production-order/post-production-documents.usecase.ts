@@ -146,7 +146,7 @@ export class PostProductionDocumentsUseCase {
     const getFinishedStockItemId = async (finishedItemId: string) => {
       const cached = finishedStockItemCache.get(finishedItemId);
       if (cached) return cached;
-      const stockItem = await this.stockItemRepo.findByProductIdOrVariantId(finishedItemId, tx);
+      const stockItem = await this.stockItemRepo.findById(finishedItemId, tx);
       if (!stockItem?.stockItemId) {
         throw new NotFoundException("Stock item de producto terminado no encontrado");
       }

@@ -5,6 +5,7 @@ import { ProductRecipeEntity } from "../../adapters/out/persistence/typeorm/enti
 import { ProductRecipeTypeormRepository } from "../../adapters/out/persistence/typeorm/repositories/product-recipe.typeorm.repo";
 import { CreateProductRecipe } from "../../application/usecases/product-recipe/create.usecase";
 import { ProductType } from "../../domain/value-object/productType";
+import { StockItemType } from "src/modules/inventory/domain/value-objects/stock-item-type";
 
 type SeedRecipeOptions = {
   minPerFinished?: number;
@@ -48,9 +49,11 @@ export const seedProductRecipes = async (
   const finishedVariants = await variantRepo.find({
     where: { productId: In(finishedProducts.map((p) => p.id)) },
   });
+  const finishedProductIds = finishedProducts.map((p) => p.id);
   const rawVariants = await variantRepo.find({
     where: { productId: In(rawProducts.map((p) => p.id)) },
   });
+  const rawProductIds = rawProducts.map((p) => p.id);
 
   if (finishedVariants.length === 0) {
     throw new Error("No hay variantes FINISHED. Ejecuta seedProducts primero.");
@@ -59,10 +62,46 @@ export const seedProductRecipes = async (
     throw new Error("No hay variantes PRIMA. Ejecuta seedProducts primero.");
   }
 
+  for (const finishedProductId of finishedProductIds) {
+    const existingRecipes = await recipeRepo.find({
+      select: ["primaVariantId"],
+      where: { finishedType: StockItemType.PRODUCT, finishedItemId: finishedProductId },
+    });
+    const existingCount = existingRecipes.length;
+    if (existingCount >= minPerFinished) {
+      continue;
+    }
+
+    const total = Math.max(
+      minPerFinished,
+      randomBetween(minPerFinished, maxPerFinished),
+    );
+    const toCreate = Math.max(0, total - existingCount);
+    const used = new Set<string>(existingRecipes.map((r) => r.primaVariantId));
+
+    for (let i = 0; i < toCreate; i++) {
+      let rawId = pickRandom(rawProductIds);
+      let guard = 0;
+      while (used.has(rawId) && guard < 10) {
+        rawId = pickRandom(rawProductIds);
+        guard++;
+      }
+      used.add(rawId);
+
+      await createRecipe.execute({
+        finishedType: StockItemType.PRODUCT,
+        finishedItemId: finishedProductId,
+        primaVariantId: rawId,
+        quantity: Number((Math.random() * 5 + 0.5).toFixed(3)),
+        waste: null,
+      });
+    }
+  }
+
   for (const finished of finishedVariants) {
     const existingRecipes = await recipeRepo.find({
       select: ["primaVariantId"],
-      where: { finishedVariantId: finished.id },
+      where: { finishedType: StockItemType.VARIANT, finishedItemId: finished.id },
     });
     const existingCount = existingRecipes.length;
     if (existingCount >= minPerFinished) {
@@ -86,7 +125,8 @@ export const seedProductRecipes = async (
       used.add(raw.id);
 
       await createRecipe.execute({
-        finishedVariantId: finished.id,
+        finishedType: StockItemType.VARIANT,
+        finishedItemId: finished.id,
         primaVariantId: raw.id,
         quantity: Number((Math.random() * 5 + 0.5).toFixed(3)),
         waste: null,

@@ -12,7 +12,8 @@ export class CreateProductRecipe {
   async execute(input: CreateProductRecipeInput): Promise<{type:string,message:string}> {
     const recipe = new ProductRecipe(
       undefined,
-      input.finishedVariantId,
+      input.finishedType,
+      input.finishedItemId,
       input.primaVariantId,
       input.quantity,
       input.waste,

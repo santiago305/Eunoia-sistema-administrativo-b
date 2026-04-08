@@ -348,7 +348,11 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       .innerJoin(ProductEntity, 'p', 'p.product_id = v.product_id')
       .leftJoin(UnitEntity, 'u', 'u.unit_id = p.base_unit_id');
     if (params.withRecipes) {
-      qb.innerJoin('product_recipes', 'r', 'r.finished_variant_id = v.variant_id').distinct(true);
+      qb.innerJoin(
+        'product_recipes',
+        'r',
+        "r.finished_variant_id = v.variant_id AND r.finished_type = 'VARIANT'",
+      ).distinct(true);
     }
     qb.where('p.type = :type', { type: raw ? ProductType.PRIMA : ProductType.FINISHED });
     qb.andWhere(
@@ -401,7 +405,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       .getRepository(ProductVariantEntity)
       .createQueryBuilder('v')
       .innerJoin(ProductEntity, 'p', 'p.product_id = v.product_id')
-      .innerJoin('product_recipes', 'r', 'r.finished_variant_id = v.variant_id')
+      .innerJoin('product_recipes', 'r', "r.finished_variant_id = v.variant_id AND r.finished_type = 'VARIANT'")
       .leftJoin(UnitEntity, 'u', 'u.unit_id = p.base_unit_id')
       .where('p.type = :type', { type: ProductType.FINISHED })
       .distinct(true);

@@ -7,9 +7,11 @@ import { ProductVariantTypeormRepository } from "../adapters/out/persistence/typ
 import { UnitTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/unit.typeorm.repo";
 import { ProductEquivalenceTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/product-equivalence.typeorm.repo";
 import { ProductRecipeTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/product-recipe.typeorm.repo";
+import { CatalogPublicationTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/catalog-publication.typeorm.repo";
 import { SkuCounterTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/sku-counter.typeorm.repo";
 import { PRODUCT_EQUIVALENCE_REPOSITORY } from "../application/ports/product-equivalence.repository";
 import { PRODUCT_RECIPE_REPOSITORY } from "../application/ports/product-recipe.repository";
+import { CATALOG_PUBLICATION_REPOSITORY } from "../application/ports/catalog-publication.repository";
 import { PRODUCT_VARIANT_REPOSITORY } from "../application/ports/product-variant.repository";
 import { PRODUCT_REPOSITORY } from "../application/ports/product.repository";
 import { SKU_COUNTER_REPOSITORY } from "../application/ports/sku-counter.repository";
@@ -23,6 +25,7 @@ export const catalogModuleProviders: Provider[] = [
   { provide: UNIT_REPOSITORY, useClass: UnitTypeormRepository },
   { provide: PRODUCT_EQUIVALENCE_REPOSITORY, useClass: ProductEquivalenceTypeormRepository },
   { provide: PRODUCT_RECIPE_REPOSITORY, useClass: ProductRecipeTypeormRepository },
+  { provide: CATALOG_PUBLICATION_REPOSITORY, useClass: CatalogPublicationTypeormRepository },
   { provide: SKU_COUNTER_REPOSITORY, useClass: SkuCounterTypeormRepository },
   { provide: UNIT_OF_WORK, useClass: TypeormUnitOfWork },
   { provide: CLOCK, useValue: { now: () => new Date() } },

@@ -1,9 +1,13 @@
-import { IsNumber, IsOptional, IsUUID, Min } from 'class-validator';
+import { IsEnum, IsNumber, IsOptional, IsUUID, Min } from 'class-validator';
 import { Type } from 'class-transformer';
+import { StockItemType } from 'src/modules/inventory/domain/value-objects/stock-item-type';
 
 export class HttpCreateProductRecipeDto {
+  @IsEnum(StockItemType)
+  finishedType: StockItemType;
+
   @IsUUID()
-  finishedVariantId: string;
+  finishedItemId: string;
 
   @IsUUID()
   primaVariantId: string;

@@ -365,17 +365,19 @@ create index idx_product_equivalences_product on product_equivalences(product_id
 -- Para que sirve:
 -- - Recetas/BOM para fabricar una variante terminada.
 -- Que información guarda:
--- - Variante terminada, variante prima, cantidad y merma.
+-- - Item terminado (producto o variante), variante prima, cantidad y merma.
 -- Columnas (ES):
 -- - recipe_id: id receta
--- - finished_variant_id: variante final (FK product_variants)
+-- - finished_type: define si el terminado es PRODUCT o VARIANT
+-- - finished_variant_id: id del terminado (producto o variante segun finished_type)
 -- - prima_variant_id: variante prima insumo (FK product_variants)
 -- - quantity: cantidad requerida
 -- - waste: merma (opcional)
 -- ---------------------------------------------------------
 create table product_recipes (
   recipe_id uuid primary key default uuid_generate_v4(),
-  finished_variant_id uuid not null references product_variants(variant_id) on delete cascade,
+  finished_type stock_item_type not null,
+  finished_variant_id uuid not null,
   prima_variant_id uuid not null references product_variants(variant_id),
   quantity numeric(12,6) not null check (quantity > 0),
   waste numeric(12,6)
@@ -383,6 +385,35 @@ create table product_recipes (
 
 create index idx_product_recipes_finished on product_recipes(finished_variant_id);
 create index idx_product_recipes_prima on product_recipes(prima_variant_id);
+
+-- ---------------------------------------------------------
+-- TABLA: catalog_publications
+-- Que informacion guarda:
+-- - Publicacion comercial por canal para productos o variantes.
+-- Columnas (ES):
+-- - publication_id: id publicacion
+-- - channel_code: codigo del canal/tienda
+-- - source_type: PRODUCT o VARIANT
+-- - item_id: id del item publicado
+-- - is_visible: si se muestra en el canal
+-- - sort_order: orden manual del canal
+-- - price_override: precio comercial opcional por canal
+-- - display_name_override: nombre comercial opcional por canal
+-- ---------------------------------------------------------
+create table catalog_publications (
+  publication_id uuid primary key default uuid_generate_v4(),
+  channel_code varchar(80) not null,
+  source_type stock_item_type not null,
+  item_id uuid not null,
+  is_visible boolean not null default true,
+  sort_order int not null default 0,
+  price_override numeric(12,2) null,
+  display_name_override varchar(255) null,
+  created_at timestamptz not null default now(),
+  unique (channel_code, source_type, item_id)
+);
+
+create index idx_catalog_publications_channel on catalog_publications(channel_code);
 
 -- =========================
 -- 2) Almacenes

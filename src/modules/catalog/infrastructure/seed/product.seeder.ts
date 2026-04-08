@@ -19,6 +19,7 @@ import { CreateProductVariant } from "../../application/usecases/product-variant
 import { ProductRecipeEntity } from "../../adapters/out/persistence/typeorm/entities/product-recipe.entity";
 import { ProductRecipeTypeormRepository } from "../../adapters/out/persistence/typeorm/repositories/product-recipe.typeorm.repo";
 import { CreateProductRecipe } from "../../application/usecases/product-recipe/create.usecase";
+import { StockItemType } from "src/modules/inventory/domain/value-objects/stock-item-type";
 
 type ManualProductSeed = {
   product: {
@@ -49,6 +50,7 @@ type ManualProductSeed = {
 };
 
 type ManualRecipeSeed = {
+  finishedType: StockItemType;
   finishedCustomSku: string;
   primaCustomSku: string;
   quantity: number;
@@ -298,12 +300,14 @@ const PRODUCTS_MANUAL: ManualProductSeed[] = [
 ];
 const RECIPES_MANUAL: ManualRecipeSeed[] = [
   {
+    finishedType: StockItemType.PRODUCT,
     finishedCustomSku: "JABON-01",
     primaCustomSku: "EMBOL-01",
     quantity: 1,
     waste: 0,
   },
   {
+    finishedType: StockItemType.PRODUCT,
     finishedCustomSku: "JABON-01",
     primaCustomSku: "PEGAT-01",
     quantity: 1,
@@ -311,12 +315,14 @@ const RECIPES_MANUAL: ManualRecipeSeed[] = [
   },
 
   {
+    finishedType: StockItemType.VARIANT,
     finishedCustomSku: "JABON-02",
     primaCustomSku: "EMBOL-02",
     quantity: 1,
     waste: 0,
   },
   {
+    finishedType: StockItemType.VARIANT,
     finishedCustomSku: "JABON-02",
     primaCustomSku: "PEGAT-02",
     quantity: 1,
@@ -324,18 +330,21 @@ const RECIPES_MANUAL: ManualRecipeSeed[] = [
   },
   
   {
+    finishedType: StockItemType.PRODUCT,
     finishedCustomSku: "ARCILL-01",
     primaCustomSku: "ARCILL-PRE-01",
     quantity: 200,
     waste: 0,
   },
   {
+    finishedType: StockItemType.PRODUCT,
     finishedCustomSku: "ARCILL-01",
     primaCustomSku: "BOLSA-01",
     quantity: 1,
     waste: 0,
   },
   {
+    finishedType: StockItemType.PRODUCT,
     finishedCustomSku: "ARCILL-01",
     primaCustomSku: "STICKER-01",
     quantity: 1,
@@ -343,18 +352,21 @@ const RECIPES_MANUAL: ManualRecipeSeed[] = [
   },
 
   {
+    finishedType: StockItemType.VARIANT,
     finishedCustomSku: "ARCILL-02",
     primaCustomSku: "ARCILL-PRE-02",
     quantity: 200,
     waste: 0,
   },
   {
+    finishedType: StockItemType.VARIANT,
     finishedCustomSku: "ARCILL-02",
     primaCustomSku: "BOLSA-02",
     quantity: 1,
     waste: 0,
   },
   {
+    finishedType: StockItemType.VARIANT,
     finishedCustomSku: "ARCILL-02",
     primaCustomSku: "STICKER-02",
     quantity: 1,
@@ -362,18 +374,21 @@ const RECIPES_MANUAL: ManualRecipeSeed[] = [
   },
 
   {
+    finishedType: StockItemType.PRODUCT,
     finishedCustomSku: "AMPOLL-01",
     primaCustomSku: "LIQUIDO-01",
     quantity: 35,
     waste: 0,
   },
   {
+    finishedType: StockItemType.PRODUCT,
     finishedCustomSku: "AMPOLL-01",
     primaCustomSku: "EMBASE-01",
     quantity: 1,
     waste: 0,
   },
   {
+    finishedType: StockItemType.PRODUCT,
     finishedCustomSku: "AMPOLL-01",
     primaCustomSku: "PEGAT-03",
     quantity: 1,
@@ -433,7 +448,7 @@ export const seedProductsManual = async (dataSource: DataSource): Promise<void> 
   const units = await unitRepo.find();
   const unitByCode = new Map(units.map((u) => [u.code, u]));
 
-  const resolveVariantByCustomSku = async (customSku: string) => {
+  const resolveCatalogItemByCustomSku = async (customSku: string) => {
     let variant = await variantEntityRepo.findOne({ where: { customSku } });
     if (variant) return variant;
 
@@ -536,20 +551,22 @@ export const seedProductsManual = async (dataSource: DataSource): Promise<void> 
   }
 
   for (const r of RECIPES_MANUAL) {
-    const finishedVariant = await resolveVariantByCustomSku(r.finishedCustomSku);
-    const primaVariant = await resolveVariantByCustomSku(r.primaCustomSku);
+    const finishedItem = await resolveCatalogItemByCustomSku(r.finishedCustomSku);
+    const primaItem = await resolveCatalogItemByCustomSku(r.primaCustomSku);
 
     const exists = await recipeRepo.findOne({
       where: {
-        finishedVariantId: finishedVariant.id,
-        primaVariantId: primaVariant.id,
+        finishedType: r.finishedType,
+        finishedItemId: finishedItem.id,
+        primaVariantId: primaItem.id,
       },
     });
 
     if (!exists) {
       await createRecipe.execute({
-        finishedVariantId: finishedVariant.id,
-        primaVariantId: primaVariant.id,
+        finishedType: r.finishedType,
+        finishedItemId: finishedItem.id,
+        primaVariantId: primaItem.id,
         quantity: r.quantity,
         waste: r.waste ?? null,
       });

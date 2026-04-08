@@ -1,3 +1,6 @@
+import { StockItemType } from "src/modules/inventory/domain/value-objects/stock-item-type";
+
 export interface ListProductRecipeInput {
-  variantId: string;
+  finishedType: StockItemType;
+  finishedItemId: string;
 }

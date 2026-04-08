@@ -35,7 +35,7 @@ export class GetProductionOrder {
 
       const items = await Promise.all(
         result.items.map(async (item) => {
-          const stockItem = await this.stockItemRepo.findByProductIdOrVariantId(item.finishedItemId, tx);
+          const stockItem = await this.stockItemRepo.findById(item.finishedItemId, tx);
           if (!stockItem) {
             throw new NotFoundException("No se encontro el item de stock");
           }
@@ -58,6 +58,8 @@ export class GetProductionOrder {
 
             finishedItem = {
               type: StockItemType.PRODUCT,
+              productId: stockItem.productId,
+              variantId: null,
               product: toProductOutput(productInfo.product, {
                 baseUnitName: productInfo.baseUnitName,
                 baseUnitCode: productInfo.baseUnitCode,
@@ -75,6 +77,8 @@ export class GetProductionOrder {
 
             finishedItem = {
               type: StockItemType.VARIANT,
+              productId: variantInfo.variant.getProductId().value,
+              variantId: stockItem.variantId,
               variant: toVariantOutput(variantInfo.variant, {
                 productName: variantInfo.productName,
                 productDescription: variantInfo.productDescription,
@@ -86,7 +90,7 @@ export class GetProductionOrder {
           }
 
           return {
-            ...ProductionOrderOutputMapper.toItemOutput(item),
+            ...ProductionOrderOutputMapper.toItemOutput(item, { finishedItemType: stockItem.type }),
             finishedItem,
           };
         }),

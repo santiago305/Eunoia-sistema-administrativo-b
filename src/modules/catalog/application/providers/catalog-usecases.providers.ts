@@ -1,5 +1,8 @@
 import { Provider } from "@nestjs/common";
 import { GetCatalogSummary } from "../usecases/catalog/get-summary.usecase";
+import { ListChannelCatalogItems } from "../usecases/catalog-publication/list-channel-items.usecase";
+import { CreateCatalogPublication } from "../usecases/catalog-publication/create.usecase";
+import { UpdateCatalogPublication } from "../usecases/catalog-publication/update.usecase";
 import { CreateProduct } from "../usecases/product/created.usecase";
 import { GetProductById } from "../usecases/product/get-by-id.usecase";
 import { GetProductByName } from "../usecases/product/get-by-name.usecase";
@@ -55,4 +58,7 @@ export const catalogUsecasesProviders: Provider[] = [
   DeleteProductRecipe,
   ListProductRecipesByVariant,
   GetCatalogSummary,
+  ListChannelCatalogItems,
+  CreateCatalogPublication,
+  UpdateCatalogPublication,
 ];

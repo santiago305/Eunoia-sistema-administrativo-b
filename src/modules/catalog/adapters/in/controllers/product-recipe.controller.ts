@@ -22,7 +22,10 @@ export class ProductRecipesController {
 
   @Get()
   list(@Query() query: ListProductRecipesQueryDto) {
-    return this.listByVariant.execute({ variantId: query.variantId });
+    return this.listByVariant.execute({
+      finishedType: query.finishedType,
+      finishedItemId: query.finishedItemId,
+    });
   }
 
   @Delete(':id')

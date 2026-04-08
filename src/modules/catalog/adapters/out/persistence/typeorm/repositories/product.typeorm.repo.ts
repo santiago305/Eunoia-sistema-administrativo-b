@@ -430,27 +430,62 @@ export class ProductTypeormRepository implements ProductRepository {
       paginationValues,
     );
 
+    const variantsCountByProduct = new Map<string, number>();
+    for (const row of rows as Array<Record<string, unknown>>) {
+      const familyProductId = String(row.productId);
+      if (String(row.sourceType) === 'VARIANT') {
+        variantsCountByProduct.set(
+          familyProductId,
+          (variantsCountByProduct.get(familyProductId) ?? 0) + 1,
+        );
+      } else if (!variantsCountByProduct.has(familyProductId)) {
+        variantsCountByProduct.set(familyProductId, 0);
+      }
+    }
+
+    const buildDisplayName = (name: string, attributes: Record<string, unknown>) => {
+      const parts = [
+        typeof attributes.variant === 'string' ? attributes.variant.trim() : '',
+        typeof attributes.color === 'string' ? attributes.color.trim() : '',
+        typeof attributes.presentation === 'string' ? attributes.presentation.trim() : '',
+      ].filter(Boolean);
+
+      return parts.length ? `${name} - ${parts.join(' - ')}` : name;
+    };
+
     return {
-      items: rows.map((row: Record<string, unknown>) => ({
-        id: String(row.id),
-        sourceType: row.sourceType as "PRODUCT" | "VARIANT",
-        productId: String(row.productId),
-        baseUnitId: String(row.baseUnitId),
-        name: String(row.name),
-        description: row.description ? String(row.description) : null,
-        sku: String(row.sku),
-        customSku: row.customSku ? String(row.customSku) : null,
-        barcode: row.barcode ? String(row.barcode) : null,
-        price: Number(row.price),
-        cost: Number(row.cost ?? 0),
-        attributes: (row.attributes as Record<string, unknown>) ?? {},
-        baseUnitName: String(row.baseUnitName),
-        baseUnitCode: String(row.baseUnitCode),
-        isActive: Boolean(row.isActive),
-        type: row.type as ProductType,
-        createdAt: new Date(String(row.createdAt)),
-        updatedAt: row.updatedAt ? new Date(String(row.updatedAt)) : null,
-      })),
+      items: rows.map((row: Record<string, unknown>) => {
+        const attributes = (row.attributes as Record<string, unknown>) ?? {};
+        const familyProductId = String(row.productId);
+
+        return {
+          id: String(row.id),
+          sourceType: row.sourceType as "PRODUCT" | "VARIANT",
+          familyProductId,
+          productId: familyProductId,
+          parentProductId: row.sourceType === 'VARIANT' ? familyProductId : null,
+          isGroupRoot: row.sourceType === 'PRODUCT',
+          isOperationalItem: true,
+          displayName: buildDisplayName(String(row.name), attributes),
+          hasVariants: (variantsCountByProduct.get(familyProductId) ?? 0) > 0,
+          variantsCount: variantsCountByProduct.get(familyProductId) ?? 0,
+          baseUnitId: String(row.baseUnitId),
+          name: String(row.name),
+          description: row.description ? String(row.description) : null,
+          sku: String(row.sku),
+          customSku: row.customSku ? String(row.customSku) : null,
+          barcode: row.barcode ? String(row.barcode) : null,
+          price: Number(row.price),
+          cost: Number(row.cost ?? 0),
+          attributes,
+          baseUnitName: String(row.baseUnitName),
+          baseUnitCode: String(row.baseUnitCode),
+          isActive: Boolean(row.isActive),
+          type: row.type as ProductType,
+          createdAt: new Date(String(row.createdAt)),
+          updatedAt: row.updatedAt ? new Date(String(row.updatedAt)) : null,
+        };
+      }),
       total: Number(totalRows[0]?.total ?? 0),
     };
   }
@@ -642,7 +677,11 @@ export class ProductTypeormRepository implements ProductRepository {
       .leftJoin(UnitEntity, 'u', 'u.unit_id = p.base_unit_id');
 
     if (params.withRecipes) {
-      qb.innerJoin('product_recipes', 'r', 'r.finished_variant_id = p.product_id').distinct(true);
+      qb.innerJoin(
+        'product_recipes',
+        'r',
+        "r.finished_variant_id = p.product_id AND r.finished_type = 'PRODUCT'",
+      ).distinct(true);
     }
 
     qb.where('p.type = :type', { type: raw ? ProductType.PRIMA : ProductType.FINISHED });
@@ -695,7 +734,7 @@ export class ProductTypeormRepository implements ProductRepository {
     const qb = this.getManager(tx)
       .getRepository(ProductEntity)
       .createQueryBuilder('p')
-      .innerJoin('product_recipes', 'r', 'r.finished_variant_id = p.product_id')
+      .innerJoin('product_recipes', 'r', "r.finished_variant_id = p.product_id AND r.finished_type = 'PRODUCT'")
       .leftJoin(UnitEntity, 'u', 'u.unit_id = p.base_unit_id')
       .where('p.type = :type', { type: ProductType.FINISHED })
       .distinct(true);

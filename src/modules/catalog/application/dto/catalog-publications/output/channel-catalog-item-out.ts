@@ -1,9 +1,10 @@
 import { ProductType } from "src/modules/catalog/domain/value-object/productType";
+import { FlatCatalogItemSourceType } from "../../products/output/flat-product-out";
 
-export type FlatCatalogItemSourceType = "PRODUCT" | "VARIANT";
-
-export interface FlatProductOutput {
+export interface ChannelCatalogItemOutput {
   id: string;
+  publicationId: string;
+  channelCode: string;
   sourceType: FlatCatalogItemSourceType;
   familyProductId: string;
   productId: string;
@@ -13,6 +14,9 @@ export interface FlatProductOutput {
   displayName: string;
   hasVariants: boolean;
   variantsCount: number;
+  isVisible: boolean;
+  sortOrder: number;
+  priceOverride: number | null;
   baseUnitId: string;
   name: string;
   description: string | null;

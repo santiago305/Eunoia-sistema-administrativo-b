@@ -11,10 +11,11 @@ export class ListProductRecipesByVariant {
   ) {}
 
   async execute(input: ListProductRecipeInput): Promise<ProductRecipeOutput[]> {
-    const rows = await this.recipeRepo.listByVariantId(input.variantId);
+    const rows = await this.recipeRepo.listByFinishedItem(input.finishedType, input.finishedItemId);
     return rows.map((r: ProductRecipe) => ({
       id: r.recipeId,
-      finishedVariantId: r.finishedVariantId,
+      finishedType: r.finishedType,
+      finishedItemId: r.finishedItemId,
       primaVariantId: r.primaVariantId,
       quantity: r.quantity,
       waste: r.waste,

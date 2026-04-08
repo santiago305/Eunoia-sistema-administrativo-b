@@ -5,6 +5,7 @@ import { ProductVariantEntity } from '../adapters/out/persistence/typeorm/entiti
 import { UnitEntity } from '../adapters/out/persistence/typeorm/entities/unit.entity';
 import { ProductEquivalenceEntity } from '../adapters/out/persistence/typeorm/entities/product-equivalence.entity';
 import { ProductRecipeEntity } from '../adapters/out/persistence/typeorm/entities/product-recipe.entity';
+import { CatalogPublicationEntity } from '../adapters/out/persistence/typeorm/entities/catalog-publication.entity';
 import { SkuCounterEntity } from '../adapters/out/persistence/typeorm/entities/sku-counter.entity';
 import { ProductsController } from '../adapters/in/controllers/product.controller';
 import { ProductVariantsController } from '../adapters/in/controllers/product-variant.controller';
@@ -12,6 +13,7 @@ import { UnitsController } from '../adapters/in/controllers/unit.controller';
 import { ProductEquivalencesController } from '../adapters/in/controllers/product-equivalence.controller';
 import { ProductRecipesController } from '../adapters/in/controllers/product-recipe.controller';
 import { CatalogSummaryController } from '../adapters/in/controllers/catalog-summary.controller';
+import { CatalogPublicationController } from '../adapters/in/controllers/catalog-publication.controller';
 import { InventoryModule } from 'src/modules/inventory/infrastructure/inventory.module';
 import { PRODUCT_EQUIVALENCE_REPOSITORY } from '../application/ports/product-equivalence.repository';
 import { PRODUCT_RECIPE_REPOSITORY } from '../application/ports/product-recipe.repository';
@@ -30,6 +32,7 @@ import { catalogModuleProviders } from '../composition/container';
       UnitEntity,
       ProductEquivalenceEntity,
       ProductRecipeEntity,
+      CatalogPublicationEntity,
       SkuCounterEntity,
     ]),
   ],
@@ -40,6 +43,7 @@ import { catalogModuleProviders } from '../composition/container';
     ProductEquivalencesController,
     ProductRecipesController,
     CatalogSummaryController,
+    CatalogPublicationController,
   ],
   providers: [...catalogModuleProviders],
   exports: [

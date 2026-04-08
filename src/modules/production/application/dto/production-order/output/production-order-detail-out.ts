@@ -6,6 +6,8 @@ import type { ProductionOrderListSerieOutput } from "./production-order-paginate
 
 export interface ProductionOrderFinishedItemOutput {
   type: StockItemType;
+  productId?: string | null;
+  variantId?: string | null;
   product?: ProductOutput | null;
   variant?: ProductVariantOutput | null;
 }

@@ -21,11 +21,15 @@ export class ProductionOrderOutputMapper {
     };
   }
 
-  static toItemOutput(item: ProductionOrderItem): ProductionOrderItemOutput {
+  static toItemOutput(
+    item: ProductionOrderItem,
+    extra?: { finishedItemType?: ProductionOrderItemOutput["finishedItemType"] },
+  ): ProductionOrderItemOutput {
     return {
       id: item.productionItemId,
       productionId: item.productionId,
       finishedItemId: item.finishedItemId,
+      finishedItemType: extra?.finishedItemType ?? null,
       fromLocationId: item.fromLocationId,
       toLocationId: item.toLocationId,
       quantity: item.quantity,

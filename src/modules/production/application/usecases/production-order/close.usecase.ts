@@ -45,7 +45,22 @@ export class CloseProductionOrder {
       }
 
       for (const item of items ?? []) {
-        const recipes = await this.recipeRepo.listByItemId(item.finishedItemId, ctx);
+        const finishedStockItem = await this.stockItemRepo.findById(item.finishedItemId, ctx);
+        if (!finishedStockItem) {
+          throw new NotFoundException("No se encontro el item de stock terminado");
+        }
+
+        const finishedRecipeItemId =
+          finishedStockItem.type === 'PRODUCT' ? finishedStockItem.productId : finishedStockItem.variantId;
+        if (!finishedRecipeItemId) {
+          throw new NotFoundException("No se encontro la referencia del item terminado");
+        }
+
+        const recipes = await this.recipeRepo.listByFinishedItem(
+          finishedStockItem.type,
+          finishedRecipeItemId,
+          ctx,
+        );
         if (!recipes?.length) {
           throw new BadRequestException("Receta no encontrada");
         }

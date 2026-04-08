@@ -46,11 +46,17 @@ export class RemoveProductionOrderItem {
       }
 
       const finishedItem = await this.stockItemRepo.findById(item.finishedItemId, tx);
-      if (!finishedItem?.variantId) {
+      if (!finishedItem) {
         throw new NotFoundException("Stock item de producto terminado no encontrado");
       }
 
-      const recipes = await this.recipeRepo.listByVariantId(finishedItem.variantId, tx);
+      const finishedRecipeItemId =
+        finishedItem.type === 'PRODUCT' ? finishedItem.productId : finishedItem.variantId;
+      if (!finishedRecipeItemId) {
+        throw new NotFoundException("Referencia del item terminado no encontrada");
+      }
+
+      const recipes = await this.recipeRepo.listByFinishedItem(finishedItem.type, finishedRecipeItemId, tx);
       const stockItemCache = new Map<string, string>();
       const consumption: RecipeConsumptionLine[] = [];
 

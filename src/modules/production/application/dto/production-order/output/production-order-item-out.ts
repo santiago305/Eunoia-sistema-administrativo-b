@@ -1,11 +1,10 @@
-import { Product } from "src/modules/catalog/domain/entity/product";
-import { ProductVariant } from "src/modules/catalog/domain/entity/product-variant";
+import type { StockItemType } from "src/modules/inventory/domain/value-objects/stock-item-type";
 
 export interface ProductionOrderItemOutput {
   id: string;
   productionId: string;
   finishedItemId: string;
-  finishedItem?: Product | ProductVariant;
+  finishedItemType?: StockItemType | null;
   fromLocationId: string | null;
   toLocationId: string | null;
   quantity: number;

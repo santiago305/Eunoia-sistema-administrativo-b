@@ -48,17 +48,23 @@ export class BuildConsumptionFromRecipesUseCase {
       return stockItem.stockItemId;
     };
 
-    const getVariantIdForFinishedItem = async (finishedItemId: string) => {
+    const getRecipeTargetForFinishedItem = async (finishedItemId: string) => {
       const finishedItem = await this.stockItemRepo.findById(finishedItemId, tx);
-      if (!finishedItem?.variantId) {
+      if (!finishedItem) {
         throw new NotFoundException("Stock item de producto terminado no encontrado");
       }
-      return finishedItem.variantId;
+
+      const targetId = finishedItem.type === 'PRODUCT' ? finishedItem.productId : finishedItem.variantId;
+      if (!targetId) {
+        throw new NotFoundException("Referencia del item terminado no encontrada");
+      }
+
+      return { finishedType: finishedItem.type, finishedItemId: targetId };
     };
 
     for (const item of result.items) {
-      const finishedVariantId = await getVariantIdForFinishedItem(item.finishedItemId);
-      const recipes = await this.recipeRepo.listByVariantId(finishedVariantId, tx);
+      const target = await getRecipeTargetForFinishedItem(item.finishedItemId);
+      const recipes = await this.recipeRepo.listByFinishedItem(target.finishedType, target.finishedItemId, tx);
 
       for (const recipe of recipes) {
         const qty = recipe.quantity * item.quantity;
