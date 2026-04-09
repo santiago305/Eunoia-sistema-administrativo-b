@@ -3,8 +3,8 @@ import { Injectable } from "@nestjs/common";
 import { EntityManager, Repository } from "typeorm";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { TypeormTransactionContext } from "src/shared/infrastructure/typeorm/typeorm.transaction-context";
-import { LedgerRepository } from "src/modules/product-catalog/compat/ports/ledger.repository.port";
-import { LedgerEntry } from "src/modules/product-catalog/compat/entities/ledger-entry";
+import { LedgerRepository } from "src/modules/product-catalog/integration/inventory/ports/ledger.repository.port";
+import { LedgerEntry } from "src/modules/product-catalog/integration/inventory/entities/ledger-entry";
 import { ProductCatalogInventoryLedgerEntity } from "../persistence/typeorm/entities/inventory-ledger.entity";
 
 @Injectable()

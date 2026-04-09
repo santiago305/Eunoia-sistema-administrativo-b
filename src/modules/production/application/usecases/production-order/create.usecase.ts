@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, InternalServerErrorException } from "@nestjs/common";
 import { CLOCK, ClockPort } from "src/shared/application/ports/clock.port";
-import { SERIES_REPOSITORY, DocumentSeriesRepository } from "src/modules/product-catalog/compat/ports/document-series.repository.port";
+import { SERIES_REPOSITORY, DocumentSeriesRepository } from "src/modules/product-catalog/integration/inventory/ports/document-series.repository.port";
 import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
 import { DomainError } from "src/modules/production/domain/errors/domain.error";
 import { ProductionOrder } from "src/modules/production/domain/entity/production-order.entity";

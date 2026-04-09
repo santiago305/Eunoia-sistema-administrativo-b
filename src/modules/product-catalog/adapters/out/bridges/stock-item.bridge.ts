@@ -1,7 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { TransactionContext } from "src/shared/domain/ports/transaction-context.port";
-import { StockItemRepository } from "src/modules/product-catalog/compat/ports/stock-item.repository.port";
-import { StockItem } from "src/modules/product-catalog/compat/entities/stock-item";
+import { StockItemRepository } from "src/modules/product-catalog/integration/inventory/ports/stock-item.repository.port";
+import { StockItem } from "src/modules/product-catalog/integration/inventory/entities/stock-item";
 import { StockItemType } from "src/shared/domain/value-objects/stock-item-type";
 import { PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY, ProductCatalogStockItemRepository } from "src/modules/product-catalog/domain/ports/stock-item.repository";
 

@@ -9,7 +9,7 @@ import { ProductionOrderPdfData } from "../../domain/interfaces/production-data"
 import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
 import { StockItemType } from "src/shared/domain/value-objects/stock-item-type";
 import { WarehouseId } from "src/modules/warehouses/domain/value-objects/warehouse-id.vo";
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/product-catalog/compat/ports/stock-item.repository.port";
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/product-catalog/integration/inventory/ports/stock-item.repository.port";
 import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "src/modules/warehouses/application/ports/warehouse.repository.port";
 import { PdfGeneratedValidationError } from "../errors/pdf-generated-validation.error";
 import { PRODUCT_CATALOG_PRODUCT_REPOSITORY, ProductCatalogProductRepository } from "src/modules/product-catalog/domain/ports/product.repository";

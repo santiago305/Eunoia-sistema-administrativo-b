@@ -7,9 +7,9 @@ import { DocStatus } from "src/shared/domain/value-objects/doc-status";
 import { DocType } from "src/shared/domain/value-objects/doc-type";
 import { ReferenceType } from "src/shared/domain/value-objects/reference-type";
 import { ProductType } from "src/shared/domain/value-objects/product-type";
-import { DocumentRepository } from "src/modules/product-catalog/compat/ports/document.repository.port";
-import { InventoryDocument } from "src/modules/product-catalog/compat/entities/inventory-document";
-import InventoryDocumentItem from "src/modules/product-catalog/compat/entities/inventory-document-item";
+import { DocumentRepository } from "src/modules/product-catalog/integration/inventory/ports/document.repository.port";
+import { InventoryDocument } from "src/modules/product-catalog/integration/inventory/entities/inventory-document";
+import InventoryDocumentItem from "src/modules/product-catalog/integration/inventory/entities/inventory-document-item";
 import { ProductCatalogInventoryDocumentEntity } from "../persistence/typeorm/entities/inventory-document.entity";
 import { ProductCatalogInventoryDocumentItemEntity } from "../persistence/typeorm/entities/inventory-document-item.entity";
 

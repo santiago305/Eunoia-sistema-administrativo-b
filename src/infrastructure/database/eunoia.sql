@@ -3,7 +3,7 @@
 -- con USERS/ROLES y auditori­a de movimientos
 -- =========================================================
 -- Esta BD cubre:
--- - Catalogo (productos y variantes/SKU)
+-- - Catalogo (familias Product e items Sku)
 -- - Almacenes y ubicaciones internas
 -- - Inventario actual (snapshot)
 -- - Reservas (ecommerce)

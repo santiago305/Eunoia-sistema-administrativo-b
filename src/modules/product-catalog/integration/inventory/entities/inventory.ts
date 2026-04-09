@@ -4,7 +4,7 @@ export class Inventory {
     public readonly stockItemId: string,
     public onHand: number,
     public reserved: number,
-    public available: number | null,
+    public available: number,
     public readonly locationId?: string,
     public readonly updatedAt?: Date,
   ) {}

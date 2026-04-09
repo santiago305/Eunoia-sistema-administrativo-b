@@ -2,8 +2,8 @@ import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { RecipeConsumptionLine } from "./build-consumption-from-recipes.usecase";
-import { INVENTORY_LOCK, InventoryLock } from "src/modules/product-catalog/compat/ports/inventory-lock.port";
-import { INVENTORY_REPOSITORY, InventoryRepository } from "src/modules/product-catalog/compat/ports/inventory.repository.port";
+import { INVENTORY_LOCK, InventoryLock } from "src/modules/product-catalog/integration/inventory/ports/inventory-lock.port";
+import { INVENTORY_REPOSITORY, InventoryRepository } from "src/modules/product-catalog/integration/inventory/ports/inventory.repository.port";
 
 @Injectable()
 export class ConsumeReservedMaterialsUseCase {

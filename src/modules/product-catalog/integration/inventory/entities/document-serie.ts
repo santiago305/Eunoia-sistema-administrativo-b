@@ -2,7 +2,7 @@ import { DocType } from "src/shared/domain/value-objects/doc-type";
 
 export default class DocumentSerie {
   constructor(
-    public readonly id: string,
+    public readonly id: string | undefined,
     public readonly code: string,
     public readonly name: string,
     public readonly docType: DocType,

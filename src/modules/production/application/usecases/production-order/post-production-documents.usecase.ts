@@ -1,8 +1,8 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { DocType } from "src/shared/domain/value-objects/doc-type";
-import InventoryDocumentItem from "src/modules/product-catalog/compat/entities/inventory-document-item";
-import { LedgerEntry } from "src/modules/product-catalog/compat/entities/ledger-entry";
+import InventoryDocumentItem from "src/modules/product-catalog/integration/inventory/entities/inventory-document-item";
+import { LedgerEntry } from "src/modules/product-catalog/integration/inventory/entities/ledger-entry";
 import { Direction } from "src/shared/domain/value-objects/direction";
 import { ProductionOrder } from "src/modules/production/domain/entity/production-order.entity";
 import { ProductionOrderItem } from "src/modules/production/domain/entity/production-order-item";
@@ -10,12 +10,12 @@ import { RecipeConsumptionLine } from "./build-consumption-from-recipes.usecase"
 import { createDraftDocument } from "../../utils/create-draft-document";
 import { ReferenceType } from "src/shared/domain/value-objects/reference-type";
 import { CLOCK, ClockPort } from "src/shared/application/ports/clock.port";
-import { SERIES_REPOSITORY, DocumentSeriesRepository } from "src/modules/product-catalog/compat/ports/document-series.repository.port";
-import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/product-catalog/compat/ports/document.repository.port";
-import { INVENTORY_LOCK, InventoryLock } from "src/modules/product-catalog/compat/ports/inventory-lock.port";
-import { INVENTORY_REPOSITORY, InventoryRepository } from "src/modules/product-catalog/compat/ports/inventory.repository.port";
-import { LEDGER_REPOSITORY, LedgerRepository } from "src/modules/product-catalog/compat/ports/ledger.repository.port";
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/product-catalog/compat/ports/stock-item.repository.port";
+import { SERIES_REPOSITORY, DocumentSeriesRepository } from "src/modules/product-catalog/integration/inventory/ports/document-series.repository.port";
+import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/product-catalog/integration/inventory/ports/document.repository.port";
+import { INVENTORY_LOCK, InventoryLock } from "src/modules/product-catalog/integration/inventory/ports/inventory-lock.port";
+import { INVENTORY_REPOSITORY, InventoryRepository } from "src/modules/product-catalog/integration/inventory/ports/inventory.repository.port";
+import { LEDGER_REPOSITORY, LedgerRepository } from "src/modules/product-catalog/integration/inventory/ports/ledger.repository.port";
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/product-catalog/integration/inventory/ports/stock-item.repository.port";
 import { RegisterProductCatalogInventoryMovement } from "src/modules/product-catalog/application/usecases/register-inventory-movement.usecase";
 import { ProductionItemResolverService, ResolvedProductionFinishedItem } from "../../services/production-item-resolver.service";
 
@@ -115,12 +115,12 @@ export class PostProductionDocumentsUseCase {
         new LedgerEntry(
           undefined,
           outDoc.id!,
+          c.id,
           params.order.fromWarehouseId,
           c.stockItemId,
           Direction.OUT,
           c.quantity,
           null,
-          c.id,
           c.wasteQty ?? 0,
           c.fromLocationId,
           now,
@@ -229,12 +229,12 @@ export class PostProductionDocumentsUseCase {
         new LedgerEntry(
           undefined,
           inDoc.id!,
+          item.id,
           params.order.toWarehouseId,
           item.stockItemId,
           Direction.IN,
           item.quantity,
           item.unitCost ?? null,
-          item.id,
           item.wasteQty ?? 0,
           item.toLocationId ?? undefined,
           now,

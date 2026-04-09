@@ -3,7 +3,7 @@ import { DocType } from "src/shared/domain/value-objects/doc-type";
 import {
   PRODUCT_CATALOG_DOCUMENT_SERIE_REPOSITORY,
   ProductCatalogDocumentSerieRepository,
-} from "../domain/ports/document-serie.repository";
+} from "../../domain/ports/document-serie.repository";
 
 @Injectable()
 export class GetActiveProductCatalogDocumentSerieUseCase {

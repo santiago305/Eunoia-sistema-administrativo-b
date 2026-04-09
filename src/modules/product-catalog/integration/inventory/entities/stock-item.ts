@@ -5,7 +5,7 @@ export class StockItem {
     public readonly stockItemId: string | undefined,
     public readonly type: StockItemType,
     public readonly isActive: boolean = true,
-    public readonly productId?: string | undefined,
+    public readonly productId?: string,
     public readonly createdAt?: Date,
   ) {}
 

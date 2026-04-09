@@ -6,7 +6,7 @@ import { PaymentDocumentEntity } from "./adapters/out/persistence/typeorm/entiti
 import { CreditQuotaEntity } from "./adapters/out/persistence/typeorm/entities/credit-quota.entity";
 import { PAYMENT_DOCUMENT_REPOSITORY } from "./domain/ports/payment-document.repository";
 import { CREDIT_QUOTA_REPOSITORY } from "./domain/ports/credit-quota.repository";
-import { CLOCK } from "../inventory/application/ports/clock.port";
+import { CLOCK } from "src/shared/application/ports/clock.port";
 import { CreateCreditQuotaUsecase } from "./application/usecases/credit-quota/create.usecase";
 import { CreatePaymentUsecase } from "./application/usecases/payment/create.usecase";
 import { DeletePaymentUsecase } from "./application/usecases/payment/delete.usecase";

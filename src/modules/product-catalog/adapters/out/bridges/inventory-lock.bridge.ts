@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { EntityManager } from "typeorm";
-import { InventoryLock } from "src/modules/product-catalog/compat/ports/inventory-lock.port";
+import { InventoryLock } from "src/modules/product-catalog/integration/inventory/ports/inventory-lock.port";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { TypeormTransactionContext } from "src/shared/infrastructure/typeorm/typeorm.transaction-context";
 

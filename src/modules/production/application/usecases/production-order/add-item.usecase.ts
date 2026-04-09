@@ -3,7 +3,7 @@ import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modu
 import { DomainError } from "src/modules/production/domain/errors/domain.error";
 import { ProductionOrderItemFactory } from "src/modules/production/domain/factories/production-order-item.factory";
 import { TransactionContext, UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/product-catalog/compat/ports/stock-item.repository.port";
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/product-catalog/integration/inventory/ports/stock-item.repository.port";
 import { PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY, ProductCatalogStockItemRepository } from "src/modules/product-catalog/domain/ports/stock-item.repository";
 import { AddProductionOrderItemInput } from "../../dto/production-order/input/add-production-order-item";
 import { ProductionOrderItemOutput } from "../../dto/production-order/output/production-order-item-out";

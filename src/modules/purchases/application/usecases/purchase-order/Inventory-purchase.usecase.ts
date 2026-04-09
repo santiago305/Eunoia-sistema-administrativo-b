@@ -5,15 +5,15 @@ import { PURCHASE_ORDER_ITEM, PurchaseOrderItemRepository } from "src/modules/pu
 import { DocType } from "src/shared/domain/value-objects/doc-type";
 import { Direction } from "src/shared/domain/value-objects/direction";
 import { ReferenceType } from "src/shared/domain/value-objects/reference-type";
-import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/product-catalog/compat/ports/document.repository.port";
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/product-catalog/compat/ports/stock-item.repository.port";
+import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/product-catalog/integration/inventory/ports/document.repository.port";
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/product-catalog/integration/inventory/ports/stock-item.repository.port";
 import { CurrencyType } from "src/modules/purchases/domain/value-objects/currency-type";
 import { PurchaseOrderNotFoundApplicationError } from "../../errors/purchase-order-not-found.error";
 import { PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY, ProductCatalogStockItemRepository } from "src/modules/product-catalog/domain/ports/stock-item.repository";
 import { RegisterProductCatalogInventoryMovement } from "src/modules/product-catalog/application/usecases/register-inventory-movement.usecase";
-import { SERIES_REPOSITORY, DocumentSeriesRepository } from "src/modules/product-catalog/compat/ports/document-series.repository.port";
-import { InventoryDocument } from "src/modules/product-catalog/compat/entities/inventory-document";
-import InventoryDocumentItem from "src/modules/product-catalog/compat/entities/inventory-document-item";
+import { SERIES_REPOSITORY, DocumentSeriesRepository } from "src/modules/product-catalog/integration/inventory/ports/document-series.repository.port";
+import { InventoryDocument } from "src/modules/product-catalog/integration/inventory/entities/inventory-document";
+import InventoryDocumentItem from "src/modules/product-catalog/integration/inventory/entities/inventory-document-item";
 import { DocStatus } from "src/shared/domain/value-objects/doc-status";
 
 @Injectable()

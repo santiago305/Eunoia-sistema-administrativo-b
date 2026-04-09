@@ -5,9 +5,9 @@ export function buildSkuPreservingSeries(
   productName: string,
   color?: string,
   presentation?: string,
-  variant?: string,
+  descriptor?: string,
 ) {
-  const prefix = buildSkuBase(productName, color, presentation, variant);
+  const prefix = buildSkuBase(productName, color, descriptor, presentation);
 
   // Espera formato: PREFIX-00001 (serie numérica al final)
   const parts = currentSku.split('-');

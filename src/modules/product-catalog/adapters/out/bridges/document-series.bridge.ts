@@ -1,11 +1,11 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { TransactionContext } from "src/shared/domain/ports/transaction-context.port";
 import { DocType } from "src/shared/domain/value-objects/doc-type";
-import DocumentSerie from "src/modules/product-catalog/compat/entities/document-serie";
+import DocumentSerie from "src/modules/product-catalog/integration/inventory/entities/document-serie";
 import {
   DocumentSeriesRepository,
   SERIES_REPOSITORY,
-} from "src/modules/product-catalog/compat/ports/document-series.repository.port";
+} from "src/modules/product-catalog/integration/inventory/ports/document-series.repository.port";
 import {
   PRODUCT_CATALOG_DOCUMENT_SERIE_REPOSITORY,
   ProductCatalogDocumentSerieRepository,
@@ -64,18 +64,18 @@ export class DocumentSeriesBridge implements DocumentSeriesRepository {
 
   async creatDocumentSerie(documentSerie: DocumentSerie, tx?: TransactionContext): Promise<DocumentSerie> {
     const row = await this.repo.create(
-      new ProductCatalogDocumentSerie(
-        documentSerie.id,
-        documentSerie.code,
-        documentSerie.name,
-        documentSerie.docType,
-        documentSerie.warehouseId,
-        documentSerie.nextNumber,
-        documentSerie.padding,
-        documentSerie.separator,
-        documentSerie.isActive,
-        documentSerie.createdAt,
-      ),
+      ProductCatalogDocumentSerie.create({
+        id: documentSerie.id,
+        code: documentSerie.code,
+        name: documentSerie.name,
+        docType: documentSerie.docType,
+        warehouseId: documentSerie.warehouseId,
+        nextNumber: documentSerie.nextNumber,
+        padding: documentSerie.padding,
+        separator: documentSerie.separator,
+        isActive: documentSerie.isActive,
+        createdAt: documentSerie.createdAt,
+      }),
       tx,
     );
     return new DocumentSerie(

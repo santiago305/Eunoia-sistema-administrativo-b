@@ -10,9 +10,9 @@ import { PDF_RENDERER, PdfRendererPort } from "src/modules/pdf-generated/domain/
 import { GeneratePurchaseOrderPdfInput } from "../dtos/purchase-order/input/generate-purchase-order.input";
 import { PurchaseOrderPdfData } from "../../domain/interfaces/purchase-data";
 import { StockItemType } from "src/shared/domain/value-objects/stock-item-type";
-import { StockItem } from "src/modules/product-catalog/compat/entities/stock-item";
+import { StockItem } from "src/modules/product-catalog/integration/inventory/entities/stock-item";
 import { SupplierDocType } from "src/modules/suppliers/domain/object-values/supplier-doc-type";
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/product-catalog/compat/ports/stock-item.repository.port";
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/product-catalog/integration/inventory/ports/stock-item.repository.port";
 import { CurrencyType } from "src/modules/purchases/domain/value-objects/currency-type";
 import { PdfGeneratedValidationError } from "../errors/pdf-generated-validation.error";
 import { PRODUCT_CATALOG_PRODUCT_REPOSITORY, ProductCatalogProductRepository } from "src/modules/product-catalog/domain/ports/product.repository";

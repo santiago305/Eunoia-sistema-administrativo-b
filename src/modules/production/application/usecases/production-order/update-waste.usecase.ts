@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
-import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/product-catalog/compat/ports/document.repository.port";
-import { LEDGER_REPOSITORY, LedgerRepository } from "src/modules/product-catalog/compat/ports/ledger.repository.port";
+import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/product-catalog/integration/inventory/ports/document.repository.port";
+import { LEDGER_REPOSITORY, LedgerRepository } from "src/modules/product-catalog/integration/inventory/ports/ledger.repository.port";
 import { DocStatus } from "src/shared/domain/value-objects/doc-status";
 import { DocType } from "src/shared/domain/value-objects/doc-type";
 import { ReferenceType } from "src/shared/domain/value-objects/reference-type";

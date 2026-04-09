@@ -9,7 +9,7 @@ import { PaymentOutput } from "src/modules/payments/application/dtos/payment/out
 import { PurchaseOrderItemOutput } from "../../dtos/purchase-order-item/output/purchase-order-item.output";
 import { CreditQuotaOutput } from "src/modules/payments/application/dtos/credit-quota/output/credit-quota.output";
 import { StockItemType } from "src/shared/domain/value-objects/stock-item-type";
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/product-catalog/compat/ports/stock-item.repository.port";
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/product-catalog/integration/inventory/ports/stock-item.repository.port";
 import { CurrencyType } from "src/modules/purchases/domain/value-objects/currency-type";
 import { PurchaseOrderOutputMapper } from "../../mappers/purchase-order-output.mapper";
 import { PurchaseOrderNotFoundApplicationError } from "../../errors/purchase-order-not-found.error";
