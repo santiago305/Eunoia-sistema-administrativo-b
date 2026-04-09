@@ -10,7 +10,7 @@ import { ProductionOrderItemEntity } from "../entities/production_order_item.ent
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
 import { WarehouseEntity } from "src/modules/warehouses/adapters/out/persistence/typeorm/entities/warehouse";
-import { DocumentSerie } from "src/modules/inventory/adapters/out/typeorm/entities/document_serie.entity";
+import { ProductCatalogDocumentSerieEntity as DocumentSerie } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/document-serie.entity";
 import {
   ProductionOrderListItemRM,
   ProductionOrderListSerieRM,

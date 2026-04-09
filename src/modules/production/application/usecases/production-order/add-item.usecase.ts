@@ -3,7 +3,8 @@ import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modu
 import { DomainError } from "src/modules/production/domain/errors/domain.error";
 import { ProductionOrderItemFactory } from "src/modules/production/domain/factories/production-order-item.factory";
 import { TransactionContext, UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/product-catalog/compat/ports/stock-item.repository.port";
+import { PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY, ProductCatalogStockItemRepository } from "src/modules/product-catalog/domain/ports/stock-item.repository";
 import { AddProductionOrderItemInput } from "../../dto/production-order/input/add-production-order-item";
 import { ProductionOrderItemOutput } from "../../dto/production-order/output/production-order-item-out";
 import { ProductionOrderNotFoundApplicationError } from "../../errors/production-order-not-found.error";
@@ -16,6 +17,8 @@ export class AddProductionOrderItem {
     private readonly orderRepo: ProductionOrderRepository,
     @Inject(STOCK_ITEM_REPOSITORY)
     private readonly stockItemRepo: StockItemRepository,
+    @Inject(PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY)
+    private readonly productCatalogStockItemRepo: ProductCatalogStockItemRepository,
   ) {}
 
   async execute(
@@ -30,7 +33,10 @@ export class AddProductionOrderItem {
       }
 
       const finishedStockItem = await this.stockItemRepo.findById(input.finishedItemId, ctx);
-      if (!finishedStockItem?.stockItemId) {
+      const finishedSkuStockItem = finishedStockItem
+        ? null
+        : await this.productCatalogStockItemRepo.findById(input.finishedItemId);
+      if (!finishedStockItem?.stockItemId && !finishedSkuStockItem?.id) {
         throw new NotFoundException("Stock item terminado no encontrado");
       }
 
@@ -62,12 +68,13 @@ export class AddProductionOrderItem {
       }
 
       const saved = await this.orderRepo.addItem(item, ctx);
+      const finishedItemType: ProductionOrderItemOutput["finishedItemType"] = finishedStockItem?.type ?? "SKU";
 
       return {
         id: saved.productionItemId!,
         productionId: saved.productionId,
         finishedItemId: saved.finishedItemId,
-        finishedItemType: finishedStockItem.type,
+        finishedItemType,
         fromLocationId: saved.fromLocationId,
         toLocationId: saved.toLocationId,
         quantity: saved.quantity,
@@ -83,3 +90,5 @@ export class AddProductionOrderItem {
     return this.uow.runInTransaction(work);
   }
 }
+
+

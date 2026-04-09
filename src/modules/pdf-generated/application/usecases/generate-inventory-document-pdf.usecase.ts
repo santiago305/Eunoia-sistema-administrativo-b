@@ -2,26 +2,24 @@ import { BadRequestException, Inject } from "@nestjs/common";
 import { join } from "path";
 import { pathToFileURL } from "url";
 import sharp from "sharp";
-import { StockItem } from "src/modules/inventory/domain/entities/stock-item/stock-item";
-import { StockItemType } from "src/modules/inventory/domain/value-objects/stock-item-type";
-import { ProductId } from "src/modules/catalog/domain/value-object/product-id.vo";
-import { ProductWithUnitInfo } from "src/modules/catalog/domain/read-models/product-with-unit-info.rm";
-import { ProductVariantWithProductInfo } from "src/modules/catalog/domain/read-models/product-variant-with-product-info.rm";
+import { StockItem } from "src/modules/product-catalog/compat/entities/stock-item";
+import { StockItemType } from "src/shared/domain/value-objects/stock-item-type";
 import { WarehouseId } from "src/modules/warehouses/domain/value-objects/warehouse-id.vo";
 import { COMPANY_REPOSITORY, CompanyRepository } from "src/modules/companies/domain/ports/company.repository";
 import { PDF_RENDERER, PdfRendererPort } from "src/modules/pdf-generated/domain/ports/pdf-renderer.port";
 import { GenerateInventoryDocumentPdfInput } from "../dtos/inventory-document/input/generate-inventory-document.input";
 import { InventoryDocumentPdfData } from "../../domain/interfaces/inventory-document-data";
-import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
-import { DocStatus } from "src/modules/inventory/domain/value-objects/doc-status";
-import { ReferenceType } from "src/modules/inventory/domain/value-objects/reference-type";
-import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/modules/catalog/application/ports/product-variant.repository";
-import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/application/ports/product.repository";
-import { SERIES_REPOSITORY, DocumentSeriesRepository } from "src/modules/inventory/application/ports/document-series.repository.port";
-import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/inventory/application/ports/document.repository.port";
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
+import { DocType } from "src/shared/domain/value-objects/doc-type";
+import { DocStatus } from "src/shared/domain/value-objects/doc-status";
+import { ReferenceType } from "src/shared/domain/value-objects/reference-type";
+import { SERIES_REPOSITORY, DocumentSeriesRepository } from "src/modules/product-catalog/compat/ports/document-series.repository.port";
+import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/product-catalog/compat/ports/document.repository.port";
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/product-catalog/compat/ports/stock-item.repository.port";
 import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "src/modules/warehouses/application/ports/warehouse.repository.port";
 import { PdfGeneratedValidationError } from "../errors/pdf-generated-validation.error";
+import { PRODUCT_CATALOG_PRODUCT_REPOSITORY, ProductCatalogProductRepository } from "src/modules/product-catalog/domain/ports/product.repository";
+import { PRODUCT_CATALOG_SKU_REPOSITORY, ProductCatalogSkuRepository } from "src/modules/product-catalog/domain/ports/sku.repository";
+import { PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY, ProductCatalogStockItemRepository } from "src/modules/product-catalog/domain/ports/stock-item.repository";
 
 const resolveLogoUrl = async (logoPath?: string) => {
   if (!logoPath) return undefined;
@@ -93,12 +91,14 @@ export class GenerateInventoryDocumentPdfUseCase {
     private readonly seriesRepo: DocumentSeriesRepository,
     @Inject(STOCK_ITEM_REPOSITORY)
     private readonly stockItemRepo: StockItemRepository,
-    @Inject(PRODUCT_REPOSITORY)
-    private readonly productRepo: ProductRepository,
-    @Inject(PRODUCT_VARIANT_REPOSITORY)
-    private readonly variantRepo: ProductVariantRepository,
     @Inject(WAREHOUSE_REPOSITORY)
     private readonly warehouseRepo: WarehouseRepository,
+    @Inject(PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY)
+    private readonly productCatalogStockItemRepo: ProductCatalogStockItemRepository,
+    @Inject(PRODUCT_CATALOG_SKU_REPOSITORY)
+    private readonly productCatalogSkuRepo: ProductCatalogSkuRepository,
+    @Inject(PRODUCT_CATALOG_PRODUCT_REPOSITORY)
+    private readonly productCatalogProductRepo: ProductCatalogProductRepository,
     @Inject(COMPANY_REPOSITORY)
     private readonly companyRepo: CompanyRepository,
     @Inject(PDF_RENDERER)
@@ -134,30 +134,13 @@ export class GenerateInventoryDocumentPdfUseCase {
     }
 
     const stockItemCache = new Map<string, StockItem | null>();
-    const productInfoCache = new Map<string, ProductWithUnitInfo | null>();
-    const variantInfoCache = new Map<string, ProductVariantWithProductInfo | null>();
-
     const getStockItem = async (id: string) => {
       if (stockItemCache.has(id)) return stockItemCache.get(id);
       let row = await this.stockItemRepo.findById(id);
       if (!row) {
-        row = await this.stockItemRepo.findByProductIdOrVariantId(id);
+        row = await this.stockItemRepo.findByProductOrStockItemId(id);
       }
       stockItemCache.set(id, row);
-      return row;
-    };
-
-    const getProductInfo = async (id: string) => {
-      if (productInfoCache.has(id)) return productInfoCache.get(id);
-      const row = await this.productRepo.findByIdWithUnitInfo(ProductId.create(id));
-      productInfoCache.set(id, row);
-      return row;
-    };
-
-    const getVariantInfo = async (id: string) => {
-      if (variantInfoCache.has(id)) return variantInfoCache.get(id);
-      const row = await this.variantRepo.findByIdWithProductInfo(id);
-      variantInfoCache.set(id, row);
       return row;
     };
 
@@ -166,21 +149,21 @@ export class GenerateInventoryDocumentPdfUseCase {
         const stockItem = await getStockItem(item.stockItemId);
         let description = item.stockItemId;
         let unit = "N/A";
+        const skuStockItem = stockItem ? null : await this.productCatalogStockItemRepo.findById(item.stockItemId);
 
         if (stockItem?.type === StockItemType.PRODUCT && stockItem.productId) {
-          const info = await getProductInfo(stockItem.productId);
-          if (info?.product) {
-            description = formatNameWithSku(info.product.getName(), info.product.getSku());
-            unit = formatUnitLabel(info.baseUnitCode ?? null, info.baseUnitName ?? null);
-          }
+          description = formatNameWithSku(`PRODUCT ${stockItem.productId}`, null);
         }
 
-        if (stockItem?.type === StockItemType.VARIANT && stockItem.variantId) {
-          const info = await getVariantInfo(stockItem.variantId);
-          if (info?.variant) {
-            const baseName = info.productName || description;
-            description = formatNameWithSku(baseName, info.variant.getSku());
-            unit = formatUnitLabel(info.unitCode ?? null, info.unitName ?? null);
+        if (skuStockItem) {
+          const sku = await this.productCatalogSkuRepo.findById(skuStockItem.skuId);
+          const product = sku ? await this.productCatalogProductRepo.findById(sku.sku.productId) : null;
+          if (sku) {
+            description = formatNameWithSku(
+              `${product?.name ?? sku.sku.name} - ${sku.sku.name}`,
+              sku.sku.backendSku ?? sku.sku.customSku ?? null,
+            );
+            unit = product?.baseUnitId ? "SKU" : "SKU";
           }
         }
 
@@ -235,5 +218,9 @@ export class GenerateInventoryDocumentPdfUseCase {
     return this.pdfRenderer.renderInventoryDocument(data);
   }
 }
+
+
+
+
 
 

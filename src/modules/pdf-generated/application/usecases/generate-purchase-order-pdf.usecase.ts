@@ -9,18 +9,15 @@ import { COMPANY_REPOSITORY, CompanyRepository } from "src/modules/companies/dom
 import { PDF_RENDERER, PdfRendererPort } from "src/modules/pdf-generated/domain/ports/pdf-renderer.port";
 import { GeneratePurchaseOrderPdfInput } from "../dtos/purchase-order/input/generate-purchase-order.input";
 import { PurchaseOrderPdfData } from "../../domain/interfaces/purchase-data";
-import { StockItemType } from "src/modules/inventory/domain/value-objects/stock-item-type";
-import { StockItem } from "src/modules/inventory/domain/entities/stock-item/stock-item";
-import { ProductId } from "src/modules/catalog/domain/value-object/product-id.vo";
-import { Product } from "src/modules/catalog/domain/entity/product";
-import { ProductVariant } from "src/modules/catalog/domain/entity/product-variant";
+import { StockItemType } from "src/shared/domain/value-objects/stock-item-type";
+import { StockItem } from "src/modules/product-catalog/compat/entities/stock-item";
 import { SupplierDocType } from "src/modules/suppliers/domain/object-values/supplier-doc-type";
-import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/modules/catalog/application/ports/product-variant.repository";
-import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/application/ports/product.repository";
-import { UNIT_REPOSITORY, UnitRepository } from "src/modules/catalog/application/ports/unit.repository";
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/product-catalog/compat/ports/stock-item.repository.port";
 import { CurrencyType } from "src/modules/purchases/domain/value-objects/currency-type";
 import { PdfGeneratedValidationError } from "../errors/pdf-generated-validation.error";
+import { PRODUCT_CATALOG_PRODUCT_REPOSITORY, ProductCatalogProductRepository } from "src/modules/product-catalog/domain/ports/product.repository";
+import { PRODUCT_CATALOG_SKU_REPOSITORY, ProductCatalogSkuRepository } from "src/modules/product-catalog/domain/ports/sku.repository";
+import { PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY, ProductCatalogStockItemRepository } from "src/modules/product-catalog/domain/ports/stock-item.repository";
 
 const resolveLogoUrl = async (logoPath?: string) => {
   if (!logoPath) return undefined;
@@ -51,23 +48,16 @@ const resolveLogoUrl = async (logoPath?: string) => {
   return pathToFileURL(absolutePath).toString();
 };
 
-const formatAttributes = (attrs: Record<string, unknown> | null | undefined) => {
-  if (!attrs) return "";
-  const entries = Object.entries(attrs).filter(([key, value]) => key && value !== undefined && value !== null);
-  if (entries.length === 0) return "";
-  return entries.map(([key, value]) => `${key}:${String(value)}`).join(", ");
-};
-
 type StockItemSnapshot = {
   id: string;
-  type: StockItemType;
+  type: StockItemType | "SKU";
   productId: string | null;
-  variantId: string | null;
-  product: { id: string; name: string; sku: string | null; unidad: string | null } | null;
-  variant: {
+  product: { id: string; name: string | null; sku: string | null; unidad: string | null } | null;
+  sku: {
     id: string;
     productId: string;
-    name: string | null;
+    productName: string;
+    name: string;
     sku: string | null;
     unidad: string | null;
     attributes: Record<string, unknown> | null;
@@ -86,12 +76,12 @@ export class GeneratePurchaseOrderPdfUseCase {
     private readonly companyRepo: CompanyRepository,
     @Inject(STOCK_ITEM_REPOSITORY)
     private readonly stockItemRepo: StockItemRepository,
-    @Inject(PRODUCT_REPOSITORY)
-    private readonly productRepo: ProductRepository,
-    @Inject(PRODUCT_VARIANT_REPOSITORY)
-    private readonly variantRepo: ProductVariantRepository,
-    @Inject(UNIT_REPOSITORY)
-    private readonly unitRepo: UnitRepository,
+    @Inject(PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY)
+    private readonly productCatalogStockItemRepo: ProductCatalogStockItemRepository,
+    @Inject(PRODUCT_CATALOG_SKU_REPOSITORY)
+    private readonly productCatalogSkuRepo: ProductCatalogSkuRepository,
+    @Inject(PRODUCT_CATALOG_PRODUCT_REPOSITORY)
+    private readonly productCatalogProductRepo: ProductCatalogProductRepository,
     @Inject(PDF_RENDERER)
     private readonly pdfRenderer: PdfRendererPort,
   ) {}
@@ -102,125 +92,79 @@ export class GeneratePurchaseOrderPdfUseCase {
       throw new BadRequestException(new PdfGeneratedValidationError("Orden de compra no encontrada").message);
     }
 
-    const [items, supplier, company, units] = await Promise.all([
+    const [items, supplier, company] = await Promise.all([
       this.itemRepo.getByPurchaseId(order.poId, order.currency ?? CurrencyType.PEN),
       this.supplierRepo.findById(order.supplierId),
       this.companyRepo.findSingle(),
-      this.unitRepo.list(),
     ]);
-    
-    if (!units) {
-      throw new BadRequestException(new PdfGeneratedValidationError("Unidades inválidas").message);
-    }
+
     if (!company) {
-      throw new BadRequestException(new PdfGeneratedValidationError("Compañía inválida").message);
+      throw new BadRequestException(new PdfGeneratedValidationError("CompaÃ±Ã­a invÃ¡lida").message);
     }
     if (!supplier) {
-      throw new BadRequestException(new PdfGeneratedValidationError("Proveedor inválido").message);
+      throw new BadRequestException(new PdfGeneratedValidationError("Proveedor invÃ¡lido").message);
     }
     if (!items) {
-      throw new BadRequestException(new PdfGeneratedValidationError("Items de compra inválidos").message);
+      throw new BadRequestException(new PdfGeneratedValidationError("Items de compra invÃ¡lidos").message);
     }
 
-    const unitById = new Map(units.map((u) => [u.unitId, u]));
-    const unitByCode = new Map(units.map((u) => [u.code, u]));
-
     const stockItemCache = new Map<string, StockItem | null>();
-    const productCache = new Map<string, Product | null>();
-    const variantCache = new Map<string, ProductVariant | null>();
+    const skuStockItemCache = new Map<string, Awaited<ReturnType<ProductCatalogStockItemRepository["findById"]>>>();
 
     const getStockItem = async (id: string) => {
       if (stockItemCache.has(id)) return stockItemCache.get(id);
       let row = await this.stockItemRepo.findById(id);
       if (!row) {
-        row = await this.stockItemRepo.findByProductIdOrVariantId(id);
+        row = await this.stockItemRepo.findByProductOrStockItemId(id);
       }
       stockItemCache.set(id, row);
       return row;
     };
 
-    const getProduct = async (id: string) => {
-      if (productCache.has(id)) return productCache.get(id);
-      try {
-        const row = await this.productRepo.findById(ProductId.create(id));
-        productCache.set(id, row);
-        return row;
-      } catch {
-        productCache.set(id, null);
-        return null;
-      }
-    };
-
-    const getVariant = async (id: string) => {
-      if (variantCache.has(id)) return variantCache.get(id);
-      const row = await this.variantRepo.findById(id);
-      variantCache.set(id, row);
+    const getSkuStockItem = async (id: string) => {
+      if (skuStockItemCache.has(id)) return skuStockItemCache.get(id);
+      const row = await this.productCatalogStockItemRepo.findById(id);
+      skuStockItemCache.set(id, row);
       return row;
-    };
-
-    const resolveUnitName = (unitBase?: string, baseUnitId?: string) => {
-      if (unitBase) {
-        const fromCode = unitByCode.get(unitBase as string);
-        if (fromCode) return fromCode.name;
-      }
-      if (baseUnitId) {
-        const fromId = unitById.get(baseUnitId);
-        if (fromId) return fromId.name;
-      }
-      return null;
     };
 
     const buildStockItemSnapshot = async (stockItemId: string, unitBase?: string): Promise<StockItemSnapshot | undefined> => {
       const stockItem = await getStockItem(stockItemId);
-      if (!stockItem) return undefined;
-
-      if (stockItem.type === StockItemType.PRODUCT && stockItem.productId) {
-        const product = await getProduct(stockItem.productId);
-        const unitName = product ? resolveUnitName(unitBase, product.getBaseUnitId()) : null;
+      if (!stockItem) {
+        const skuStockItem = await getSkuStockItem(stockItemId);
+        if (!skuStockItem) return undefined;
+        const sku = await this.productCatalogSkuRepo.findById(skuStockItem.skuId);
+        if (!sku) return undefined;
+        const product = await this.productCatalogProductRepo.findById(sku.sku.productId);
         return {
-          id: stockItem.stockItemId ?? stockItemId,
-          type: stockItem.type,
-          productId: stockItem.productId ?? null,
-          variantId: null,
-          product: product
-            ? {
-                id: product.getId()?.value ?? stockItem.productId,
-                name: product.getName(),
-                sku: product.getSku() ?? null,
-                unidad: unitName,
-              }
-            : null,
-          variant: null,
+          id: skuStockItem.id!,
+          type: "SKU",
+          productId: sku.sku.productId,
+          product: null,
+          sku: {
+            id: sku.sku.id!,
+            productId: sku.sku.productId,
+            productName: product?.name ?? sku.sku.name,
+            name: sku.sku.name,
+            sku: sku.sku.backendSku ?? sku.sku.customSku ?? null,
+            unidad: unitBase ?? null,
+            attributes: Object.fromEntries(sku.attributes.map((attribute) => [attribute.code, attribute.value])),
+          },
         };
       }
 
-      if (stockItem.type === StockItemType.VARIANT && stockItem.variantId) {
-        const variant = await getVariant(stockItem.variantId);
-        const productFromVariant = variant ? await getProduct(variant.getProductId().value) : null;
-        const unitName = productFromVariant ? resolveUnitName(unitBase, productFromVariant.getBaseUnitId()) : null;
+      if (stockItem.type === StockItemType.PRODUCT && stockItem.productId) {
         return {
           id: stockItem.stockItemId ?? stockItemId,
           type: stockItem.type,
           productId: stockItem.productId ?? null,
-          variantId: stockItem.variantId ?? null,
-          product: productFromVariant
-            ? {
-                id: productFromVariant.getId()?.value ?? variant?.getProductId().value ?? "",
-                name: productFromVariant.getName(),
-                sku: productFromVariant.getSku() ?? null,
-                unidad: unitName,
-              }
-            : null,
-          variant: variant
-            ? {
-                id: variant.getId(),
-                productId: variant.getProductId().value,
-                name: productFromVariant?.getName() ?? null,
-                sku: variant.getSku() ?? null,
-                unidad: unitName,
-                attributes: (variant.getAttributes() as Record<string, unknown>) ?? null,
-              }
-            : null,
+          product: {
+            id: stockItem.productId,
+            name: null,
+            sku: null,
+            unidad: unitBase ?? null,
+          },
+          sku: null,
         };
       }
 
@@ -228,35 +172,20 @@ export class GeneratePurchaseOrderPdfUseCase {
         id: stockItem.stockItemId ?? stockItemId,
         type: stockItem.type,
         productId: stockItem.productId ?? null,
-        variantId: stockItem.variantId ?? null,
         product: null,
-        variant: null,
+        sku: null,
       };
     };
 
     const buildDescription = (snapshot: StockItemSnapshot | undefined, fallback: string) => {
       if (!snapshot) return fallback;
 
-      const baseName = snapshot.variant?.name ?? snapshot.product?.name ?? fallback;
-      const attrs = snapshot.variant?.attributes ?? null;
-      const attrsSku = (() => {
-        if (!attrs) return null;
-        const entries = Object.entries(attrs);
-        const preferredKeys = new Set(["sku", "variant", "variante", "codigo", "code"]);
-        for (const [key, value] of entries) {
-          if (!key) continue;
-          const normalized = key.toLowerCase();
-          if (preferredKeys.has(normalized) && value !== null && value !== undefined) {
-            return String(value);
-          }
-        }
-        return null;
-      })();
-
-      const baseSku = snapshot.variant?.sku ?? snapshot.product?.sku ?? attrsSku ?? null;
-      const baseLabel = baseSku ? `${baseName} (${baseSku})` : baseName;
-
-      return baseLabel || fallback;
+      const baseName =
+        snapshot.sku?.name ??
+        snapshot.product?.name ??
+        (snapshot.productId ? `PRODUCT ${snapshot.productId}` : fallback);
+      const baseSku = snapshot.sku?.sku ?? snapshot.product?.sku ?? null;
+      return baseSku ? `${baseName} (${baseSku})` : baseName;
     };
 
     const supplierName =
@@ -264,17 +193,10 @@ export class GeneratePurchaseOrderPdfUseCase {
       [supplier?.name, supplier?.lastName].filter(Boolean).join(" ") ||
       "N/A";
 
-      let supplierTypeDoc = 'DOC'
-      if(supplier.documentType === SupplierDocType.RUC){
-        supplierTypeDoc = 'RUC'
-      }
-      if(supplier.documentType === SupplierDocType.DNI){
-        supplierTypeDoc = 'DNI'
-      }
-      if(supplier.documentType === SupplierDocType.CE){
-        supplierTypeDoc = 'CE'
-      }
-      
+    let supplierTypeDoc = "DOC";
+    if (supplier.documentType === SupplierDocType.RUC) supplierTypeDoc = "RUC";
+    if (supplier.documentType === SupplierDocType.DNI) supplierTypeDoc = "DNI";
+    if (supplier.documentType === SupplierDocType.CE) supplierTypeDoc = "CE";
 
     const companyAddress = company?.address || [
       company?.department,

@@ -1,21 +1,23 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
-import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
-import InventoryDocumentItem from "src/modules/inventory/domain/entities/inventory-document-item";
-import { LedgerEntry } from "src/modules/inventory/domain/entities/ledger-entry";
-import { Direction } from "src/modules/inventory/domain/value-objects/direction";
+import { DocType } from "src/shared/domain/value-objects/doc-type";
+import InventoryDocumentItem from "src/modules/product-catalog/compat/entities/inventory-document-item";
+import { LedgerEntry } from "src/modules/product-catalog/compat/entities/ledger-entry";
+import { Direction } from "src/shared/domain/value-objects/direction";
 import { ProductionOrder } from "src/modules/production/domain/entity/production-order.entity";
 import { ProductionOrderItem } from "src/modules/production/domain/entity/production-order-item";
 import { RecipeConsumptionLine } from "./build-consumption-from-recipes.usecase";
 import { createDraftDocument } from "../../utils/create-draft-document";
-import { ReferenceType } from "src/modules/inventory/domain/value-objects/reference-type";
-import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
-import { SERIES_REPOSITORY, DocumentSeriesRepository } from "src/modules/inventory/application/ports/document-series.repository.port";
-import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/inventory/application/ports/document.repository.port";
-import { INVENTORY_LOCK, InventoryLock } from "src/modules/inventory/application/ports/inventory-lock.port";
-import { INVENTORY_REPOSITORY, InventoryRepository } from "src/modules/inventory/application/ports/inventory.repository.port";
-import { LEDGER_REPOSITORY, LedgerRepository } from "src/modules/inventory/application/ports/ledger.repository.port";
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
+import { ReferenceType } from "src/shared/domain/value-objects/reference-type";
+import { CLOCK, ClockPort } from "src/shared/application/ports/clock.port";
+import { SERIES_REPOSITORY, DocumentSeriesRepository } from "src/modules/product-catalog/compat/ports/document-series.repository.port";
+import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/product-catalog/compat/ports/document.repository.port";
+import { INVENTORY_LOCK, InventoryLock } from "src/modules/product-catalog/compat/ports/inventory-lock.port";
+import { INVENTORY_REPOSITORY, InventoryRepository } from "src/modules/product-catalog/compat/ports/inventory.repository.port";
+import { LEDGER_REPOSITORY, LedgerRepository } from "src/modules/product-catalog/compat/ports/ledger.repository.port";
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/product-catalog/compat/ports/stock-item.repository.port";
+import { RegisterProductCatalogInventoryMovement } from "src/modules/product-catalog/application/usecases/register-inventory-movement.usecase";
+import { ProductionItemResolverService, ResolvedProductionFinishedItem } from "../../services/production-item-resolver.service";
 
 @Injectable()
 export class PostProductionDocumentsUseCase {
@@ -34,6 +36,8 @@ export class PostProductionDocumentsUseCase {
     private readonly clock: ClockPort,
     @Inject(STOCK_ITEM_REPOSITORY)
     private readonly stockItemRepo: StockItemRepository,
+    private readonly productCatalogMovement: RegisterProductCatalogInventoryMovement,
+    private readonly itemResolver: ProductionItemResolverService,
   ) {}
 
   async execute(
@@ -65,6 +69,21 @@ export class PostProductionDocumentsUseCase {
 
     const outDocItems: InventoryDocumentItem[] = [];
     for (const c of params.consumption) {
+      if (c.mode === "sku") {
+        await this.productCatalogMovement.execute({
+          docType: DocType.OUT,
+          stockItemId: c.stockItemId,
+          warehouseId: params.order.fromWarehouseId,
+          quantity: c.qty,
+          direction: Direction.OUT,
+          locationId: c.locationId,
+          createdBy: params.postedBy ?? null,
+          note: "Consumo de materia prima",
+          referenceId: params.order.productionId,
+          referenceType: ReferenceType.PRODUCTION,
+        });
+        continue;
+      }
       const saved = await this.documentRepo.addItem(
         new InventoryDocumentItem(
           undefined,
@@ -86,7 +105,9 @@ export class PostProductionDocumentsUseCase {
       stockItemId: c.stockItemId,
       locationId: c.fromLocationId,
     }));
-    await this.lock.lockSnapshots(outKeys, tx);
+    if (outKeys.length) {
+      await this.lock.lockSnapshots(outKeys, tx);
+    }
 
     const outEntries: LedgerEntry[] = [];
     for (const c of outDocItems) {
@@ -121,10 +142,12 @@ export class PostProductionDocumentsUseCase {
       await this.ledgerRepo.append(outEntries, tx);
     }
 
-    await this.documentRepo.markPosted(
-      { docId: outDoc.id!, postedBy: params.postedBy, postedAt: now },
-      tx,
-    );
+    if (outDocItems.length) {
+      await this.documentRepo.markPosted(
+        { docId: outDoc.id!, postedBy: params.postedBy, postedAt: now },
+        tx,
+      );
+    }
 
     // IN: ingreso de producto terminado
     const inDoc = await createDraftDocument(
@@ -142,26 +165,42 @@ export class PostProductionDocumentsUseCase {
       tx,
     );
 
-    const finishedStockItemCache = new Map<string, string>();
+    const finishedStockItemCache = new Map<string, ResolvedProductionFinishedItem>();
     const getFinishedStockItemId = async (finishedItemId: string) => {
       const cached = finishedStockItemCache.get(finishedItemId);
       if (cached) return cached;
-      const stockItem = await this.stockItemRepo.findById(finishedItemId, tx);
-      if (!stockItem?.stockItemId) {
+      const resolved = await this.itemResolver.resolveFinishedItem(finishedItemId, tx);
+      if (!resolved.stockItemId) {
         throw new NotFoundException("Stock item de producto terminado no encontrado");
       }
-      finishedStockItemCache.set(finishedItemId, stockItem.stockItemId);
-      return stockItem.stockItemId;
+      finishedStockItemCache.set(finishedItemId, resolved);
+      return resolved;
     };
 
     const inDocItems: InventoryDocumentItem[] = [];
     for (const item of params.items) {
-      const finishedStockItemId = await getFinishedStockItemId(item.finishedItemId);
+      const finishedStockItem = await getFinishedStockItemId(item.finishedItemId);
+      if (finishedStockItem.mode === "sku") {
+        await this.productCatalogMovement.execute({
+          docType: DocType.IN,
+          stockItemId: finishedStockItem.stockItemId,
+          warehouseId: params.order.toWarehouseId,
+          quantity: item.quantity,
+          direction: Direction.IN,
+          locationId: item.toLocationId ?? undefined,
+          unitCost: item.unitCost ?? null,
+          createdBy: params.postedBy ?? null,
+          note: "Ingreso de producto terminado",
+          referenceId: params.order.productionId,
+          referenceType: ReferenceType.PRODUCTION,
+        });
+        continue;
+      }
       const saved = await this.documentRepo.addItem(
         new InventoryDocumentItem(
           undefined,
           inDoc.id!,
-          finishedStockItemId,
+          finishedStockItem.stockItemId,
           item.quantity,
           0,
           undefined,
@@ -180,7 +219,9 @@ export class PostProductionDocumentsUseCase {
         locationId: i.toLocationId,
       })),
     );
-    await this.lock.lockSnapshots(inKeys, tx);
+    if (inKeys.length) {
+      await this.lock.lockSnapshots(inKeys, tx);
+    }
 
     const inEntries: LedgerEntry[] = [];
     for (const item of inDocItems) {
@@ -215,11 +256,17 @@ export class PostProductionDocumentsUseCase {
       await this.ledgerRepo.append(inEntries, tx);
     }
 
-    await this.documentRepo.markPosted(
-      { docId: inDoc.id!, postedBy: params.postedBy, postedAt: now },
-      tx,
-    );
+    if (inDocItems.length) {
+      await this.documentRepo.markPosted(
+        { docId: inDoc.id!, postedBy: params.postedBy, postedAt: now },
+        tx,
+      );
+    }
   }
 
 
 }
+
+
+
+

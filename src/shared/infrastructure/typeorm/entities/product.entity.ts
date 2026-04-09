@@ -1,0 +1,48 @@
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index } from "typeorm";
+import { ProductType } from "src/shared/domain/value-objects/product-type";
+
+@Entity("products")
+@Index("idx_products_type", ["type"])
+export class ProductEntity {
+  @PrimaryGeneratedColumn("uuid", { name: "product_id" })
+  id: string;
+
+  @Column({ type: "varchar", length: 180 })
+  name: string;
+
+  @Column({ type: "text", nullable: true })
+  description?: string;
+
+  @Column({ name: "base_unit_id", type: "uuid" })
+  baseUnitId: string;
+
+  @Column({ type: "varchar", length: 80, unique: true })
+  sku: string;
+
+  @Column({ name: "custom_sku", type: "varchar", length: 80, nullable: true, unique: true })
+  customSku: string | null;
+
+  @Column({ type: "varchar", length: 80, unique: true, nullable: true })
+  barcode: string | null;
+
+  @Column({ type: "numeric", precision: 12, scale: 2 })
+  price: number;
+
+  @Column({ type: "numeric", precision: 12, scale: 2 })
+  cost: number;
+
+  @Column({ type: "jsonb", nullable: false, default: () => "'{}'::jsonb" })
+  attributes: Record<string, unknown>;
+
+  @Column({ name: "type", type: "enum", enum: ProductType, enumName: "product_type" })
+  type: ProductType;
+
+  @Column({ name: "is_active", type: "boolean", default: true })
+  isActive: boolean;
+
+  @CreateDateColumn({ name: "created_at" })
+  createdAt: Date;
+
+  @UpdateDateColumn({ name: "updated_at" })
+  updatedAt: Date;
+}

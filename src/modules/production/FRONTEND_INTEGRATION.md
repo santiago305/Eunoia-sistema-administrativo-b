@@ -4,14 +4,14 @@
 
 En produccion, `finishedItemId` debe entenderse como `stock_item_id`.
 
-No debe enviarse directamente `productId` o `variantId` a los endpoints de ordenes de produccion cuando el contrato pide `finishedItemId`.
+No debe enviarse directamente `productId` a los endpoints de ordenes de produccion cuando el contrato pide `finishedItemId`.
 
 ## Modelo operativo
 
 Un `stock_item` terminado puede ser:
 
 - `PRODUCT`
-- `VARIANT`
+- `SKU`
 
 La orden de produccion trabaja con ese `stock_item` y desde ahi el backend resuelve:
 
@@ -23,15 +23,15 @@ La orden de produccion trabaja con ese `stock_item` y desde ahi el backend resue
 
 En las respuestas de items/detalle de produccion ahora existen estos campos:
 
-- `finishedItemType`: tipo operativo del terminado (`PRODUCT` o `VARIANT`)
+- `finishedItemType`: tipo operativo del terminado (`PRODUCT` o `SKU`)
 - `finishedItem.type`: igual que arriba, en el detalle
 - `finishedItem.productId`: id del producto padre o del producto terminado
-- `finishedItem.variantId`: id de la variante si aplica
+- `finishedItem.sku`: metadata del sku cuando el terminado pertenece al modelo nuevo
 
 ## Recomendacion de UI
 
 - selectores de terminado: consumir items operativos, no solo productos padre
-- si la UI viene desde catalogo comercial, preferir `/catalog/products/flat`
+- si la UI viene desde catalogo comercial, preferir `/products`, `/products/:id/skus` o `/channels/:channelCode/skus` segun el caso
 - al guardar en produccion, persistir `finishedItemId` como `stock_item_id`
 - para mostrar nombres, usar metadata resuelta del detalle o `displayName` desde catalogo
 
@@ -41,6 +41,6 @@ No mezclar estos ids en frontend:
 
 - `stock_item_id`
 - `product_id`
-- `variant_id`
+- `sku_id`
 
 Si la pantalla trabaja con produccion, el id correcto para `finishedItemId` es el `stock_item_id`.

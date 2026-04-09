@@ -1,12 +1,12 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
-import { PRODUCT_RECIPE_REPOSITORY, ProductRecipeRepository } from "src/modules/catalog/application/ports/product-recipe.repository";
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
 import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { ProductionOrderNotFoundApplicationError } from "../../errors/production-order-not-found.error";
+import { ProductionItemResolverService } from "../../services/production-item-resolver.service";
 
 export interface RecipeConsumptionLine {
   stockItemId: string;
+  mode?: "legacy" | "sku";
   locationId?: string;
   qty: number;
   wasteQty?: number;
@@ -17,10 +17,7 @@ export class BuildConsumptionFromRecipesUseCase {
   constructor(
     @Inject(PRODUCTION_ORDER_REPOSITORY)
     private readonly orderRepo: ProductionOrderRepository,
-    @Inject(PRODUCT_RECIPE_REPOSITORY)
-    private readonly recipeRepo: ProductRecipeRepository,
-    @Inject(STOCK_ITEM_REPOSITORY)
-    private readonly stockItemRepo: StockItemRepository,
+    private readonly itemResolver: ProductionItemResolverService,
   ) {}
 
   async execute(
@@ -33,53 +30,23 @@ export class BuildConsumptionFromRecipesUseCase {
     }
 
     const map = new Map<string, RecipeConsumptionLine>();
-    const stockItemCache = new Map<string, string>();
-
-    const getStockItemIdForVariant = async (itemId: string) => {
-      const cached = stockItemCache.get(itemId);
-      if (cached) return cached;
-
-      const stockItem = await this.stockItemRepo.findByVariantId(itemId, tx);
-      if (!stockItem?.stockItemId) {
-        throw new NotFoundException("Stock item de materia prima no encontrado");
-      }
-
-      stockItemCache.set(itemId, stockItem.stockItemId);
-      return stockItem.stockItemId;
-    };
-
-    const getRecipeTargetForFinishedItem = async (finishedItemId: string) => {
-      const finishedItem = await this.stockItemRepo.findById(finishedItemId, tx);
-      if (!finishedItem) {
-        throw new NotFoundException("Stock item de producto terminado no encontrado");
-      }
-
-      const targetId = finishedItem.type === 'PRODUCT' ? finishedItem.productId : finishedItem.variantId;
-      if (!targetId) {
-        throw new NotFoundException("Referencia del item terminado no encontrada");
-      }
-
-      return { finishedType: finishedItem.type, finishedItemId: targetId };
-    };
-
     for (const item of result.items) {
-      const target = await getRecipeTargetForFinishedItem(item.finishedItemId);
-      const recipes = await this.recipeRepo.listByFinishedItem(target.finishedType, target.finishedItemId, tx);
+      const materials = await this.itemResolver.resolveRecipeConsumption(item.finishedItemId, item.quantity, tx);
 
-      for (const recipe of recipes) {
-        const qty = recipe.quantity * item.quantity;
+      for (const material of materials) {
         const locationId = item.fromLocationId ?? undefined;
-        const stockItemId = await getStockItemIdForVariant(recipe.primaVariantId);
+        const stockItemId = material.stockItemId;
         const key = `${stockItemId}::${locationId ?? "null"}`;
 
         const current = map.get(key);
         if (current) {
-          current.qty += qty;
+          current.qty += material.quantity;
         } else {
           map.set(key, {
             stockItemId,
+            mode: material.mode,
             locationId,
-            qty,
+            qty: material.quantity,
           });
         }
       }

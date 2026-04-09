@@ -1,6 +1,4 @@
 import { BadRequestException, Inject, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common";
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
-import { PRODUCT_RECIPE_REPOSITORY, ProductRecipeRepository } from "src/modules/catalog/application/ports/product-recipe.repository";
 import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
 import { DomainError } from "src/modules/production/domain/errors/domain.error";
 import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
@@ -9,6 +7,8 @@ import { RecipeConsumptionLine } from "./build-consumption-from-recipes.usecase"
 import { ConsumeReservedMaterialsUseCase } from "./consume-reserved-materials.usecase";
 import { ProductionOrderExpectedScheduler } from "../../jobs/production-order-expected-scheduler";
 import { ProductionOrderNotFoundApplicationError } from "../../errors/production-order-not-found.error";
+import { BuildConsumptionFromRecipesUseCase } from "./build-consumption-from-recipes.usecase";
+import { ReserveProductCatalogMaterials } from "src/modules/product-catalog/application/usecases/reserve-materials.usecase";
 
 @Injectable()
 export class StartProductionOrder {
@@ -16,11 +16,9 @@ export class StartProductionOrder {
     @Inject(UNIT_OF_WORK) private readonly uow: UnitOfWork,
     @Inject(PRODUCTION_ORDER_REPOSITORY)
     private readonly orderRepo: ProductionOrderRepository,
-    @Inject(PRODUCT_RECIPE_REPOSITORY)
-    private readonly recipeRepo: ProductRecipeRepository,
-    @Inject(STOCK_ITEM_REPOSITORY)
-    private readonly stockItemRepo: StockItemRepository,
     private readonly reserveMaterials: ConsumeReservedMaterialsUseCase,
+    private readonly buildConsumption: BuildConsumptionFromRecipesUseCase,
+    private readonly reserveSkuMaterials: ReserveProductCatalogMaterials,
     private readonly scheduler: ProductionOrderExpectedScheduler,
   ) {}
 
@@ -49,55 +47,19 @@ export class StartProductionOrder {
         tx,
       );
 
-      for (const item of items ?? []) {
-        const finishedStockItem = await this.stockItemRepo.findById(item.finishedItemId, tx);
-        if (!finishedStockItem) {
-          throw new NotFoundException("No se encontro el item de stock terminado");
-        }
+      const consumption = await this.buildConsumption.execute({ productionId: params.productionId }, tx);
+      const legacyConsumption: RecipeConsumptionLine[] = [];
+      const skuConsumption = consumption.filter((line) => line.mode === "sku");
+      for (const line of consumption) {
+        if (line.mode !== "sku") legacyConsumption.push(line);
+      }
 
-        const finishedRecipeItemId =
-          finishedStockItem.type === 'PRODUCT' ? finishedStockItem.productId : finishedStockItem.variantId;
-        if (!finishedRecipeItemId) {
-          throw new NotFoundException("No se encontro la referencia del item terminado");
-        }
-
-        const recipes = await this.recipeRepo.listByFinishedItem(
-          finishedStockItem.type,
-          finishedRecipeItemId,
-          tx,
-        );
-        if (!recipes?.length) {
-          throw new BadRequestException("Receta no encontrada");
-        }
-
-        const stockItemCache = new Map<string, string>();
-        const consumption: RecipeConsumptionLine[] = [];
-
-        for (const recipe of recipes) {
-          const cached = stockItemCache.get(recipe.primaVariantId);
-          let stockItemId = cached;
-
-          if (!stockItemId) {
-            const stockItem = await this.stockItemRepo.findByProductIdOrVariantId(recipe.primaVariantId, tx);
-            if (!stockItem?.stockItemId) {
-              throw new NotFoundException("Stock item de materia prima no encontrado");
-            }
-            stockItemId = stockItem.stockItemId;
-            stockItemCache.set(recipe.primaVariantId, stockItemId);
-          }
-
-          consumption.push({
-            stockItemId,
-            locationId: undefined,
-            qty: recipe.quantity * item.quantity,
-          });
-        }
-
+      if (legacyConsumption.length) {
         try {
           await this.reserveMaterials.execute(
             {
               warehouseId: order.fromWarehouseId,
-              consumption,
+              consumption: legacyConsumption,
               reserveMode: true,
             },
             tx,
@@ -105,6 +67,23 @@ export class StartProductionOrder {
         } catch (err) {
           if (err instanceof BadRequestException) throw err;
           throw new InternalServerErrorException("Error al apartar stock item");
+        }
+      }
+
+      if (skuConsumption.length) {
+        try {
+          await this.reserveSkuMaterials.execute({
+            warehouseId: order.fromWarehouseId,
+            consumption: skuConsumption.map((line) => ({
+              stockItemId: line.stockItemId,
+              locationId: line.locationId,
+              qty: line.qty,
+            })),
+            reserveMode: true,
+          });
+        } catch (err) {
+          if (err instanceof BadRequestException) throw err;
+          throw new InternalServerErrorException("Error al apartar stock item SKU");
         }
       }
 

@@ -2,7 +2,7 @@ import { ConflictException, Inject } from "@nestjs/common";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { SUPPLIER_REPOSITORY, SupplierRepository } from "src/modules/suppliers/domain/ports/supplier.repository";
 import { CreateSupplierInput } from "../../dtos/supplier/input/create.input";
-import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
+import { CLOCK, ClockPort } from "src/shared/application/ports/clock.port";
 import { SupplierFactory } from "src/modules/suppliers/domain/factories/supplier.factory";
 
 export class CreateSupplierUsecase {
@@ -48,3 +48,4 @@ export class CreateSupplierUsecase {
     });
   }
 }
+

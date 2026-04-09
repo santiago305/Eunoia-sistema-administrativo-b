@@ -2,16 +2,19 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from "@nes
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
 import { PURCHASE_ORDER_ITEM, PurchaseOrderItemRepository } from "src/modules/purchases/domain/ports/purchase-order-item.port.repository";
-import { CreateDocumentUseCase } from "src/modules/inventory/application/use-cases/document-inventory/create-document.usecase";
-import { AddItemUseCase } from "src/modules/inventory/application/use-cases/document-item-inventory/add-item.usecase";
-import { PostDocumentoIn } from "src/modules/inventory/application/use-cases/document-inventory/post-document-in.usecase";
-import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
-import { GetActiveDocumentSerieUseCase } from "src/modules/inventory/application/use-cases/document-serie/get-document-series.usecase";
-import { ReferenceType } from "src/modules/inventory/domain/value-objects/reference-type";
-import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/inventory/application/ports/document.repository.port";
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
+import { DocType } from "src/shared/domain/value-objects/doc-type";
+import { Direction } from "src/shared/domain/value-objects/direction";
+import { ReferenceType } from "src/shared/domain/value-objects/reference-type";
+import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/product-catalog/compat/ports/document.repository.port";
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/product-catalog/compat/ports/stock-item.repository.port";
 import { CurrencyType } from "src/modules/purchases/domain/value-objects/currency-type";
 import { PurchaseOrderNotFoundApplicationError } from "../../errors/purchase-order-not-found.error";
+import { PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY, ProductCatalogStockItemRepository } from "src/modules/product-catalog/domain/ports/stock-item.repository";
+import { RegisterProductCatalogInventoryMovement } from "src/modules/product-catalog/application/usecases/register-inventory-movement.usecase";
+import { SERIES_REPOSITORY, DocumentSeriesRepository } from "src/modules/product-catalog/compat/ports/document-series.repository.port";
+import { InventoryDocument } from "src/modules/product-catalog/compat/entities/inventory-document";
+import InventoryDocumentItem from "src/modules/product-catalog/compat/entities/inventory-document-item";
+import { DocStatus } from "src/shared/domain/value-objects/doc-status";
 
 @Injectable()
 export class PostInventoryFromPurchaseUsecase {
@@ -24,12 +27,13 @@ export class PostInventoryFromPurchaseUsecase {
     private readonly purchaseItemRepo: PurchaseOrderItemRepository,
     @Inject(STOCK_ITEM_REPOSITORY)
     private readonly stockItemRepo: StockItemRepository,
+    @Inject(PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY)
+    private readonly productCatalogStockItemRepo: ProductCatalogStockItemRepository,
     @Inject(DOCUMENT_REPOSITORY)
     private readonly documentRepo: DocumentRepository,
-    private readonly createDocument: CreateDocumentUseCase,
-    private readonly addItem: AddItemUseCase,
-    private readonly postIn: PostDocumentoIn,
-    private readonly getSerie: GetActiveDocumentSerieUseCase,
+    @Inject(SERIES_REPOSITORY)
+    private readonly seriesRepo: DocumentSeriesRepository,
+    private readonly registerProductCatalogMovement: RegisterProductCatalogInventoryMovement,
   ) {}
 
   async execute(params: {
@@ -40,7 +44,7 @@ export class PostInventoryFromPurchaseUsecase {
     postedBy: string;
     note?: string;
   }) {
-    return this.uow.runInTransaction(async () => {
+    return this.uow.runInTransaction(async (tx) => {
       const order = await this.purchaseRepo.findById(params.poId);
       if (!order) {
         throw new NotFoundException(new PurchaseOrderNotFoundApplicationError().message);
@@ -51,73 +55,99 @@ export class PostInventoryFromPurchaseUsecase {
         throw new BadRequestException("La orden no tiene items");
       }
 
-      let serie;
-      try {
-        serie = await this.getSerie.execute({ docType: DocType.IN, warehouseId: params.toWarehouseId });
-      } catch {
+      const series = await this.seriesRepo.findActiveFor(
+        { docType: DocType.IN, warehouseId: params.toWarehouseId, isActive: true },
+        tx,
+      );
+      if (!series.length) {
         throw new NotFoundException("No hay ninguna serie asociada");
       }
 
-      if (!serie.items || serie.items.length === 0) {
-        throw new NotFoundException("No hay ninguna serie asociada");
-      }
+      const serie = series[0];
+      const correlative = await this.seriesRepo.reserveNextNumber(serie.id, tx);
 
-      const serieId = serie.items[0].id;
-
-      const doc = await this.createDocument.execute({
-        docType: DocType.IN,
-        serieId,
-        toWarehouseId: params.toWarehouseId,
-        referenceId: order.poId,
-        referenceType: ReferenceType.PURCHASE,
-        note: params.note,
-        createdBy: params.createdBy,
-      });
+      const doc = await this.documentRepo.createDraft(
+        new InventoryDocument(
+          undefined,
+          DocType.IN,
+          DocStatus.DRAFT,
+          serie.id,
+          correlative,
+          undefined,
+          params.toWarehouseId,
+          order.poId,
+          ReferenceType.PURCHASE,
+          params.note,
+          params.createdBy,
+        ),
+        tx,
+      );
 
       for (const item of items) {
-        let stockItem = await this.stockItemRepo.findById(item.stockItemId);
-        if (!stockItem) {
-          stockItem = await this.stockItemRepo.findByProductIdOrVariantId(item.stockItemId);
-        }
+        const stockItem =
+          (await this.productCatalogStockItemRepo.findById(item.stockItemId, tx)) ??
+          (await this.stockItemRepo.findById(item.stockItemId, tx));
+
         if (!stockItem) {
           throw new NotFoundException("StockItem terminado no encontrado");
         }
 
-        await this.addItem.execute({
-          docId: doc.id,
-          stockItemId: stockItem.stockItemId,
+        await this.documentRepo.addItem(
+          new InventoryDocumentItem(
+            undefined,
+            doc.id!,
+            "stockItemId" in stockItem ? stockItem.stockItemId : stockItem.id!,
+            item.quantity * item.factor,
+            0,
+            undefined,
+            params.toLocationId,
+            item.unitPrice.getAmount(),
+          ),
+          tx,
+        );
+
+        await this.registerProductCatalogMovement.execute({
+          docType: DocType.IN,
+          stockItemId: "stockItemId" in stockItem ? stockItem.stockItemId : stockItem.id!,
+          warehouseId: params.toWarehouseId,
           quantity: item.quantity * item.factor,
-          toLocationId: params.toLocationId,
+          direction: Direction.IN,
+          locationId: params.toLocationId,
           unitCost: item.unitPrice.getAmount(),
+          createdBy: params.postedBy,
+          note: params.note,
+          referenceId: order.poId,
+          referenceType: ReferenceType.PURCHASE,
         });
       }
 
-      await this.postIn.execute({
-        docId: doc.id,
+      await this.documentRepo.markPosted({
+        docId: doc.id!,
         postedBy: params.postedBy,
-        note: params.note,
+        postedAt: new Date(),
       });
 
-      const docResult = await this.documentRepo.getByIdWithItems(doc.id);
-      const docPayload = docResult
+      const savedDoc = await this.documentRepo.findById(doc.id!, tx);
+      const savedItems = await this.documentRepo.listItems(doc.id!, tx);
+      const docPayload = savedDoc
         ? {
             doc: {
-              id: docResult.doc.id!,
-              docType: docResult.doc.docType,
-              status: docResult.doc.status,
-              serieId: docResult.doc.serieId,
-              correlative: docResult.doc.correlative,
-              fromWarehouseId: docResult.doc.fromWarehouseId,
-              toWarehouseId: docResult.doc.toWarehouseId,
-              referenceId: docResult.doc.referenceId,
-              referenceType: docResult.doc.referenceType,
-              note: docResult.doc.note,
-              createdBy: docResult.doc.createdBy,
-              postedBy: docResult.doc.postedBy,
-              postedAt: docResult.doc.postedAt,
-              createdAt: docResult.doc.createdAt,
+              id: savedDoc.id!,
+              docType: savedDoc.docType,
+              status: savedDoc.status,
+              serieId: savedDoc.serieId,
+              correlative: savedDoc.correlative,
+              fromWarehouseId: savedDoc.fromWarehouseId,
+              toWarehouseId: savedDoc.toWarehouseId,
+              referenceId: savedDoc.referenceId,
+              referenceType: savedDoc.referenceType,
+              note: savedDoc.note,
+              createdBy: savedDoc.createdBy,
+              postedBy: savedDoc.postedBy,
+              postedAt: savedDoc.postedAt,
+              createdAt: savedDoc.createdAt,
             },
-            items: docResult.items.map((i) => ({
+            items: savedItems.map((i) => ({
               id: i.id!,
               docId: i.docId,
               stockItemId: i.stockItemId,
@@ -132,9 +162,13 @@ export class PostInventoryFromPurchaseUsecase {
       return {
         type: "success",
         message: "Documento IN posteado desde compra",
-        docId: doc.id,
+        docId: doc.id!,
         document: docPayload,
       };
     });
   }
 }
+
+
+
+

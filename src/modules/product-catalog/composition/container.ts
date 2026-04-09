@@ -1,0 +1,53 @@
+import { Provider } from "@nestjs/common";
+import { PRODUCT_CATALOG_PRODUCT_REPOSITORY } from "../domain/ports/product.repository";
+import { PRODUCT_CATALOG_PUBLICATION_REPOSITORY } from "../domain/ports/publication.repository";
+import { PRODUCT_CATALOG_RECIPE_REPOSITORY } from "../domain/ports/recipe.repository";
+import { PRODUCT_CATALOG_SKU_REPOSITORY } from "../domain/ports/sku.repository";
+import { PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY } from "../domain/ports/stock-item.repository";
+import { PRODUCT_CATALOG_INVENTORY_REPOSITORY } from "../domain/ports/inventory.repository";
+import { PRODUCT_CATALOG_INVENTORY_DOCUMENT_REPOSITORY } from "../domain/ports/inventory-document.repository";
+import { PRODUCT_CATALOG_INVENTORY_LEDGER_REPOSITORY } from "../domain/ports/inventory-ledger.repository";
+import { PRODUCT_CATALOG_DOCUMENT_SERIE_REPOSITORY } from "../domain/ports/document-serie.repository";
+import { productCatalogUsecasesProviders } from "../application/providers/product-catalog-usecases.providers";
+import { ProductCatalogProductTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/product.typeorm.repo";
+import { ProductCatalogPublicationTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/publication.typeorm.repo";
+import { ProductCatalogRecipeTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/recipe.typeorm.repo";
+import { ProductCatalogSkuTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/sku.typeorm.repo";
+import { ProductCatalogStockItemTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/stock-item.typeorm.repo";
+import { ProductCatalogInventoryTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/inventory.typeorm.repo";
+import { ProductCatalogInventoryDocumentTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/inventory-document.typeorm.repo";
+import { ProductCatalogInventoryLedgerTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/inventory-ledger.typeorm.repo";
+import { ProductCatalogDocumentSerieTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/document-serie.typeorm.repo";
+import { SERIES_REPOSITORY } from "src/modules/product-catalog/compat/ports/document-series.repository.port";
+import { DOCUMENT_REPOSITORY } from "src/modules/product-catalog/compat/ports/document.repository.port";
+import { LEDGER_REPOSITORY } from "src/modules/product-catalog/compat/ports/ledger.repository.port";
+import { INVENTORY_REPOSITORY } from "src/modules/product-catalog/compat/ports/inventory.repository.port";
+import { INVENTORY_LOCK } from "src/modules/product-catalog/compat/ports/inventory-lock.port";
+import { STOCK_ITEM_REPOSITORY } from "src/modules/product-catalog/compat/ports/stock-item.repository.port";
+import { DocumentSeriesBridge } from "../adapters/out/bridges/document-series.bridge";
+import { InventoryDocumentBridge } from "../adapters/out/bridges/inventory-document.bridge";
+import { InventoryLedgerBridge } from "../adapters/out/bridges/inventory-ledger.bridge";
+import { InventorySnapshotBridge } from "../adapters/out/bridges/inventory-snapshot.bridge";
+import { InventoryLockBridge } from "../adapters/out/bridges/inventory-lock.bridge";
+import { StockItemBridge } from "../adapters/out/bridges/stock-item.bridge";
+
+export const productCatalogModuleProviders: Provider[] = [
+  ...productCatalogUsecasesProviders,
+  { provide: PRODUCT_CATALOG_PRODUCT_REPOSITORY, useClass: ProductCatalogProductTypeormRepository },
+  { provide: PRODUCT_CATALOG_SKU_REPOSITORY, useClass: ProductCatalogSkuTypeormRepository },
+  { provide: PRODUCT_CATALOG_RECIPE_REPOSITORY, useClass: ProductCatalogRecipeTypeormRepository },
+  { provide: PRODUCT_CATALOG_PUBLICATION_REPOSITORY, useClass: ProductCatalogPublicationTypeormRepository },
+  { provide: PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY, useClass: ProductCatalogStockItemTypeormRepository },
+  { provide: PRODUCT_CATALOG_INVENTORY_REPOSITORY, useClass: ProductCatalogInventoryTypeormRepository },
+  { provide: PRODUCT_CATALOG_INVENTORY_DOCUMENT_REPOSITORY, useClass: ProductCatalogInventoryDocumentTypeormRepository },
+  { provide: PRODUCT_CATALOG_INVENTORY_LEDGER_REPOSITORY, useClass: ProductCatalogInventoryLedgerTypeormRepository },
+  { provide: PRODUCT_CATALOG_DOCUMENT_SERIE_REPOSITORY, useClass: ProductCatalogDocumentSerieTypeormRepository },
+  { provide: SERIES_REPOSITORY, useClass: DocumentSeriesBridge },
+  { provide: DOCUMENT_REPOSITORY, useClass: InventoryDocumentBridge },
+  { provide: LEDGER_REPOSITORY, useClass: InventoryLedgerBridge },
+  { provide: INVENTORY_REPOSITORY, useClass: InventorySnapshotBridge },
+  { provide: INVENTORY_LOCK, useClass: InventoryLockBridge },
+  { provide: STOCK_ITEM_REPOSITORY, useClass: StockItemBridge },
+];
+
+

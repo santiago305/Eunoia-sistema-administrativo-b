@@ -1,18 +1,18 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { CatalogModule } from "src/modules/catalog/infrastructure/catalog.module";
+import { ProductCatalogModule } from "src/modules/product-catalog/product-catalog.module";
+import { SupplierSkusController } from "./adapters/in/controllers/supplier-sku.controller";
 import { SuppliersController } from "./adapters/in/controllers/supplier.controller";
-import { SupplierVariantsController } from "./adapters/in/controllers/supplier-variant.controller";
+import { SupplierSkuEntity } from "./adapters/out/persistence/typeorm/entities/supplier-sku.entity";
 import { SupplierEntity } from "./adapters/out/persistence/typeorm/entities/supplier.entity";
-import { SupplierVariantEntity } from "./adapters/out/persistence/typeorm/entities/supplier-variant.entity";
 import { SUPPLIER_REPOSITORY } from "./domain/ports/supplier.repository";
-import { SUPPLIER_VARIANT_REPOSITORY } from "./domain/ports/supplier-variant.repository";
+import { SUPPLIER_SKU_REPOSITORY } from "./domain/ports/supplier-sku.repository";
 import { suppliersModuleProviders } from "./composition/container";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([SupplierEntity, SupplierVariantEntity]), CatalogModule],
-  controllers: [SuppliersController, SupplierVariantsController],
+  imports: [TypeOrmModule.forFeature([SupplierEntity, SupplierSkuEntity]), ProductCatalogModule],
+  controllers: [SuppliersController, SupplierSkusController],
   providers: [...suppliersModuleProviders],
-  exports: [SUPPLIER_REPOSITORY, SUPPLIER_VARIANT_REPOSITORY],
+  exports: [SUPPLIER_REPOSITORY, SUPPLIER_SKU_REPOSITORY],
 })
 export class SuppliersModule {}

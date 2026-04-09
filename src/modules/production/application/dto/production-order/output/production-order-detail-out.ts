@@ -1,15 +1,33 @@
-import type { ProductOutput } from "src/modules/catalog/application/dto/products/output/product-out";
-import type { ProductVariantOutput } from "src/modules/catalog/application/dto/product-variants/output/product-variant-out";
-import type { StockItemType } from "src/modules/inventory/domain/value-objects/stock-item-type";
+import type { StockItemType } from "src/shared/domain/value-objects/stock-item-type";
+import type { SkuAttributeInput } from "src/modules/product-catalog/domain/ports/sku.repository";
 import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
 import type { ProductionOrderListSerieOutput } from "./production-order-paginated";
 
+export interface ProductionOrderLegacyProductOutput {
+  id: string;
+  name: string | null;
+  sku: string | null;
+}
+
+export interface ProductionOrderSkuOutput {
+  id: string;
+  productId: string;
+  productName: string;
+  name: string;
+  backendSku: string;
+  customSku: string | null;
+  barcode: string | null;
+  price: number;
+  cost: number;
+  isActive: boolean;
+  attributes: SkuAttributeInput[];
+}
+
 export interface ProductionOrderFinishedItemOutput {
-  type: StockItemType;
+  type: StockItemType | "SKU";
   productId?: string | null;
-  variantId?: string | null;
-  product?: ProductOutput | null;
-  variant?: ProductVariantOutput | null;
+  product?: ProductionOrderLegacyProductOutput | null;
+  sku?: ProductionOrderSkuOutput | null;
 }
 
 export interface ProductionOrderDetailItemOutput {
@@ -37,4 +55,5 @@ export interface ProductionOrderDetailOutput {
   createdAt: Date;
   items: ProductionOrderDetailItemOutput[];
 }
+
 

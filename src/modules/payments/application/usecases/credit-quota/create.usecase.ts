@@ -3,7 +3,7 @@ import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.p
 import { CREDIT_QUOTA_REPOSITORY, CreditQuotaRepository } from "src/modules/payments/domain/ports/credit-quota.repository";
 import { CreateCreditQuotaInput } from "../../dtos/credit-quota/input/create.input";
 import { PayDocType } from "src/modules/payments/domain/value-objects/pay-doc-type";
-import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
+import { CLOCK, ClockPort } from "src/shared/application/ports/clock.port";
 import { PaymentsFactory } from "src/modules/payments/domain/factories/payments.factory";
 
 export class CreateCreditQuotaUsecase {
@@ -53,3 +53,4 @@ export class CreateCreditQuotaUsecase {
     });
   }
 }
+

@@ -2,9 +2,8 @@ import { Module } from "@nestjs/common";
 import { PurchasesModule } from "src/modules/purchases/infrastructure/purchases.module";
 import { SuppliersModule } from "src/modules/suppliers/suppliers.module";
 import { CompaniesModule } from "src/modules/companies/companies.module";
-import { InventoryModule } from "src/modules/inventory/infrastructure/inventory.module";
-import { CatalogModule } from "src/modules/catalog/infrastructure/catalog.module";
 import { ProductionModule } from "src/modules/production/infrastructure/production.module";
+import { ProductCatalogModule } from "src/modules/product-catalog/product-catalog.module";
 import { WarehousesModule } from "src/modules/warehouses/warehouses.module";
 import { PdfGeneratedController } from "./adapters/in/controllers/pdf-generated.controller";
 import { GenerateInventoryDocumentPdfUseCase } from "./application/usecases/generate-inventory-document-pdf.usecase";
@@ -19,8 +18,7 @@ import { pdfGeneratedModuleProviders } from "./composition/container";
     PurchasesModule,
     SuppliersModule,
     CompaniesModule,
-    InventoryModule,
-    CatalogModule,
+    ProductCatalogModule,
     ProductionModule,
     WarehousesModule,
   ],

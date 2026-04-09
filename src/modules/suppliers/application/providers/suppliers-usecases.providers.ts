@@ -5,10 +5,10 @@ import { ListAllActiveSuppliersUsecase } from "../usecases/supplier/list-all-act
 import { ListSuppliersUsecase } from "../usecases/supplier/list.usecase";
 import { SetSupplierActiveUsecase } from "../usecases/supplier/set-active.usecase";
 import { UpdateSupplierUsecase } from "../usecases/supplier/update.usecase";
-import { CreateSupplierVariantUsecase } from "../usecases/supplier-variant/create.usecase";
-import { GetSupplierVariantUsecase } from "../usecases/supplier-variant/get-by-id.usecase";
-import { ListSupplierVariantsUsecase } from "../usecases/supplier-variant/list.usecase";
-import { UpdateSupplierVariantUsecase } from "../usecases/supplier-variant/update.usecase";
+import { CreateSupplierSkuUsecase } from "../usecases/supplier-sku/create.usecase";
+import { GetSupplierSkuUsecase } from "../usecases/supplier-sku/get-by-id.usecase";
+import { ListSupplierSkusUsecase } from "../usecases/supplier-sku/list.usecase";
+import { UpdateSupplierSkuUsecase } from "../usecases/supplier-sku/update.usecase";
 
 export const suppliersUsecasesProviders: Provider[] = [
   CreateSupplierUsecase,
@@ -17,8 +17,8 @@ export const suppliersUsecasesProviders: Provider[] = [
   ListSuppliersUsecase,
   GetSupplierUsecase,
   ListAllActiveSuppliersUsecase,
-  CreateSupplierVariantUsecase,
-  UpdateSupplierVariantUsecase,
-  GetSupplierVariantUsecase,
-  ListSupplierVariantsUsecase,
+  CreateSupplierSkuUsecase,
+  UpdateSupplierSkuUsecase,
+  GetSupplierSkuUsecase,
+  ListSupplierSkusUsecase,
 ];

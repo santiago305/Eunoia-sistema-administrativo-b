@@ -8,15 +8,14 @@ import { PurchaseOrderDetailOutput } from "../../dtos/purchase-order/output/purc
 import { PaymentOutput } from "src/modules/payments/application/dtos/payment/output/payment.output";
 import { PurchaseOrderItemOutput } from "../../dtos/purchase-order-item/output/purchase-order-item.output";
 import { CreditQuotaOutput } from "src/modules/payments/application/dtos/credit-quota/output/credit-quota.output";
-import { ProductId } from "src/modules/catalog/domain/value-object/product-id.vo";
-import { StockItemType } from "src/modules/inventory/domain/value-objects/stock-item-type";
-import { toProductOutput, toVariantOutput } from "src/modules/production/application/utils/productVariant";
-import { PRODUCT_VARIANT_REPOSITORY, ProductVariantRepository } from "src/modules/catalog/application/ports/product-variant.repository";
-import { PRODUCT_REPOSITORY, ProductRepository } from "src/modules/catalog/application/ports/product.repository";
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/inventory/application/ports/stock-item.repository.port";
+import { StockItemType } from "src/shared/domain/value-objects/stock-item-type";
+import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/product-catalog/compat/ports/stock-item.repository.port";
 import { CurrencyType } from "src/modules/purchases/domain/value-objects/currency-type";
 import { PurchaseOrderOutputMapper } from "../../mappers/purchase-order-output.mapper";
 import { PurchaseOrderNotFoundApplicationError } from "../../errors/purchase-order-not-found.error";
+import { PRODUCT_CATALOG_PRODUCT_REPOSITORY, ProductCatalogProductRepository } from "src/modules/product-catalog/domain/ports/product.repository";
+import { PRODUCT_CATALOG_SKU_REPOSITORY, ProductCatalogSkuRepository } from "src/modules/product-catalog/domain/ports/sku.repository";
+import { PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY, ProductCatalogStockItemRepository } from "src/modules/product-catalog/domain/ports/stock-item.repository";
 
 export class GetPurchaseOrderUsecase {
   constructor(
@@ -30,8 +29,12 @@ export class GetPurchaseOrderUsecase {
     private readonly creditQuotaRepo: CreditQuotaRepository,
     @Inject(STOCK_ITEM_REPOSITORY)
     private readonly stockItemRepo: StockItemRepository,
-    @Inject(PRODUCT_REPOSITORY) private readonly productRepo: ProductRepository,
-    @Inject(PRODUCT_VARIANT_REPOSITORY) private readonly variantRepo: ProductVariantRepository,
+    @Inject(PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY)
+    private readonly productCatalogStockItemRepo: ProductCatalogStockItemRepository,
+    @Inject(PRODUCT_CATALOG_SKU_REPOSITORY)
+    private readonly productCatalogSkuRepo: ProductCatalogSkuRepository,
+    @Inject(PRODUCT_CATALOG_PRODUCT_REPOSITORY)
+    private readonly productCatalogProductRepo: ProductCatalogProductRepository,
   ) {}
 
   async execute(input: GetPurchaseOrderInput): Promise<PurchaseOrderDetailOutput> {
@@ -50,50 +53,47 @@ export class GetPurchaseOrderUsecase {
       items.map(async (row) => {
         let stockItem = await this.stockItemRepo.findById(row.stockItemId);
         if (!stockItem) {
-          stockItem = await this.stockItemRepo.findByProductIdOrVariantId(row.stockItemId);
+          stockItem = await this.stockItemRepo.findByProductOrStockItemId(row.stockItemId);
         }
-        if (!stockItem) {
-          throw new BadRequestException("Item de stock no encontrado");
-        }
+        const skuStockItem = stockItem ? null : await this.productCatalogStockItemRepo.findById(row.stockItemId);
+        if (!stockItem && !skuStockItem) throw new BadRequestException("Item de stock no encontrado");
 
         let stockItemOutput: PurchaseOrderItemOutput["stockItem"] = null;
 
-        if (stockItem.type === StockItemType.PRODUCT) {
+        if (stockItem?.type === StockItemType.PRODUCT) {
           if (!stockItem.productId) {
-            throw new BadRequestException("Producto no encontrado");
-          }
-          const productInfo = await this.productRepo.findByIdWithUnitInfo(ProductId.create(stockItem.productId));
-          if (!productInfo) {
             throw new BadRequestException("Producto no encontrado");
           }
           stockItemOutput = {
             type: StockItemType.PRODUCT,
-            stockItemId:productInfo.product.getId().value,
-            product: toProductOutput(productInfo.product, {
-              baseUnitName: productInfo.baseUnitName,
-              baseUnitCode: productInfo.baseUnitCode,
-            }),
+            stockItemId: stockItem.stockItemId!,
+            product: {
+              id: stockItem.productId,
+              name: null,
+              sku: null,
+            },
           };
         }
         
-        if (stockItem.type === StockItemType.VARIANT) {
-          if (!stockItem.variantId) {
-            throw new BadRequestException("Variante no encontrada");
-          }
-          const variantInfo = await this.variantRepo.findByIdWithProductInfo(stockItem.variantId);
-          if (!variantInfo?.variant) {
-            throw new BadRequestException("Variante no encontrada");
-          }
+        if (skuStockItem) {
+          const sku = await this.productCatalogSkuRepo.findById(skuStockItem.skuId);
+          if (!sku) throw new BadRequestException("Sku no encontrado");
+          const product = await this.productCatalogProductRepo.findById(sku.sku.productId);
+          if (!product) throw new BadRequestException("Familia del sku no encontrada");
           stockItemOutput = {
-            type: StockItemType.VARIANT,
-            stockItemId: variantInfo.variant.getId(),
-            variant: toVariantOutput(variantInfo.variant, {
-              productName: variantInfo.productName,
-              productDescription: variantInfo.productDescription,
-              baseUnitId: variantInfo.baseUnitId,
-              unitCode: variantInfo.unitCode,
-              unitName: variantInfo.unitName,
-            }),
+            type: "SKU",
+            stockItemId: skuStockItem.id!,
+            sku: {
+              id: sku.sku.id!,
+              productId: sku.sku.productId,
+              productName: product.name,
+              name: sku.sku.name,
+              backendSku: sku.sku.backendSku,
+              customSku: sku.sku.customSku,
+              barcode: sku.sku.barcode,
+              attributes: sku.attributes,
+              isActive: sku.sku.isActive,
+            },
           };
         }
 
@@ -133,3 +133,6 @@ export class GetPurchaseOrderUsecase {
     });
   }
 }
+
+
+

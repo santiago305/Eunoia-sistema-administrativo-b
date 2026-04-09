@@ -1,4 +1,4 @@
-import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
+import { DocType } from "src/shared/domain/value-objects/doc-type";
 import { ProductionDocType } from "src/modules/production/domain/value-objects/doc-type.vo";
 
 export class DocTypeMapper {
@@ -40,3 +40,4 @@ export class DocTypeMapper {
     }
   }
 }
+

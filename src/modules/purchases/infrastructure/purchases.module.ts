@@ -6,17 +6,15 @@ import { PurchaseOrderItemEntity } from "../adapters/out/persistence/typeorm/ent
 import { PURCHASE_ORDER } from "../domain/ports/purchase-order.port.repository";
 import { PURCHASE_ORDER_ITEM } from "../domain/ports/purchase-order-item.port.repository";
 import { PaymentsModule } from "src/modules/payments/payments.module";
-import { InventoryModule } from "src/modules/inventory/infrastructure/inventory.module";
 import { UsersModule } from "src/modules/users/infrastructure/users.module";
-import { CatalogModule } from "src/modules/catalog/infrastructure/catalog.module";
+import { ProductCatalogModule } from "src/modules/product-catalog/product-catalog.module";
 import { purchasesModuleProviders } from "../composition/container";
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([PurchaseOrderEntity, PurchaseOrderItemEntity]),
     PaymentsModule,
-    InventoryModule,
-    CatalogModule,
+    ProductCatalogModule,
     UsersModule,
   ],
   controllers: [PurchaseOrdersController],

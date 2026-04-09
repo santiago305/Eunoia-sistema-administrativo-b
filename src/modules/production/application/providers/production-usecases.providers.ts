@@ -15,6 +15,7 @@ import { RunProductionTimeUsecase } from "../usecases/production-order/run-produ
 import { StartProductionOrder } from "../usecases/production-order/start.usecase";
 import { UpdateProductionOrder } from "../usecases/production-order/update-production-order.usecase";
 import { UpdateProductionWaste } from "../usecases/production-order/update-waste.usecase";
+import { ProductionItemResolverService } from "../services/production-item-resolver.service";
 
 export const productionUsecasesProviders: Provider[] = [
   CreateProductionOrder,
@@ -30,6 +31,7 @@ export const productionUsecasesProviders: Provider[] = [
   BuildConsumptionFromRecipesUseCase,
   ConsumeReservedMaterialsUseCase,
   PostProductionDocumentsUseCase,
+  ProductionItemResolverService,
   RunProductionTimeUsecase,
   ProductionOrderExpectedScheduler,
   ProductionOrderExpectedBootstrap,

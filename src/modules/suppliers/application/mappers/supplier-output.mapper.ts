@@ -1,7 +1,7 @@
 import { Supplier } from "../../domain/entity/supplier";
-import { SupplierVariant } from "../../domain/entity/supplierVariant";
+import { SupplierSku } from "../../domain/entity/supplierSku";
 import { SupplierOutput } from "../dtos/supplier/output/supplier.output";
-import { SupplierVariantOutput } from "../dtos/supplier-variant/output/supplier-variant.output";
+import { SupplierSkuOutput } from "../dtos/supplier-sku/output/supplier-sku.output";
 
 export class SupplierOutputMapper {
   static toSupplierOutput(supplier: Supplier): SupplierOutput {
@@ -23,10 +23,10 @@ export class SupplierOutputMapper {
     };
   }
 
-  static toSupplierVariantOutput(row: SupplierVariant): SupplierVariantOutput {
+  static toSupplierSkuOutput(row: SupplierSku): SupplierSkuOutput {
     return {
       supplierId: row.supplierId,
-      variantId: row.variantId,
+      skuId: row.skuId,
       supplierSku: row.supplierSku,
       lastCost: row.lastCost?.getAmount(),
       leadTimeDays: row.leadTimeDays,

@@ -2,11 +2,11 @@ import { BadRequestException, Inject, InternalServerErrorException } from "@nest
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { Warehouse } from "src/modules/warehouses/domain/entities/warehouse";
 import { CreateWarehouseInput } from "../../dtos/warehouse/input/create.input";
-import { CreateDocumentSerieUseCase } from "src/modules/inventory/application/use-cases/document-serie/create-document-serie.usecase";
-import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
+import { CreateProductCatalogDocumentSerieUseCase } from "src/modules/product-catalog/application/usecases/create-document-serie.usecase";
+import { DocType } from "src/shared/domain/value-objects/doc-type";
 import { successResponse } from "src/shared/response-standard/response";
 import { CreateLocationUsecase } from "../location/create.usecase";
-import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
+import { CLOCK, ClockPort } from "src/shared/application/ports/clock.port";
 import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "../../ports/warehouse.repository.port";
 
 export class CreateWarehouseUsecase {
@@ -17,7 +17,7 @@ export class CreateWarehouseUsecase {
     private readonly warehouseRepo: WarehouseRepository,
     @Inject(CLOCK)
     private readonly clock: ClockPort,
-    private readonly createSerieUseCase: CreateDocumentSerieUseCase,
+    private readonly createSerieUseCase: CreateProductCatalogDocumentSerieUseCase,
     private readonly createLocation: CreateLocationUsecase,
   ) {}
 
@@ -86,3 +86,4 @@ export class CreateWarehouseUsecase {
     });
   }
 }
+

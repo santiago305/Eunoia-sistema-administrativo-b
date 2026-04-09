@@ -233,38 +233,6 @@ create table products (
   updated_at timestamptz not null default now()
 );
 
--- ---------------------------------------------------------
--- TABLA: product_variants
--- Para que sirve:
--- - Variantes/SKU del producto (lo que realmente se vende y se stockea).
--- Que información guarda:
--- - SKU, código de barras, atributos (tamai±o, tipo, etc.), precio y costo.
--- Columnas (ES):
--- - variant_id: id de la variante/SKU
--- - product_id: producto padre (FK products)
--- - sku: código SKU (unico)
--- - barcode: código de barras (unico opcional)
--- - attributes: atributos en JSON (ej: {"talla":"M","color":"Azul"})
--- - price: precio de venta
--- - cost: costo
--- - is_active: activo/inactivo
--- - created_at: fecha de creación
--- ---------------------------------------------------------
-create table product_variants (
-  variant_id uuid primary key default uuid_generate_v4(),
-  product_id uuid not null references products(product_id),
-  sku varchar(80) not null unique,
-  barcode varchar(80) unique,
-  attributes jsonb not null default '{}'::jsonb,
-  price numeric(12,2) not null,
-  cost numeric(12,2) not null,
-  is_active boolean not null default true,
-  created_at timestamptz not null default now()
-);
-
--- indice para listar variantes por producto
-create index idx_variants_product on product_variants(product_id);
-
 -- =========================
 -- 1.1) Stock Items (super tipo)
 -- =========================
@@ -272,33 +240,29 @@ create index idx_variants_product on product_variants(product_id);
 -- ---------------------------------------------------------
 -- TABLA: stock_items
 -- Para que sirve:
--- - Identidad unica "stockeable" (PRODUCT o VARIANT).
+-- - Identidad unica stockeable del modelo legacy por producto.
 -- Columnas (ES):
 -- - stock_item_id: id del stock item (uuid)
--- - type: tipo de item (enum stock_item_type)
--- - product_id: FK a products (solo si type=PRODUCT)
--- - variant_id: FK a product_variants (solo si type=VARIANT)
+-- - type: tipo de item (enum stock_item_type legacy)
+-- - product_id: FK a products
 -- - is_active: activo/inactivo
 -- - created_at: fecha de creación
 -- ---------------------------------------------------------
-create type stock_item_type as enum ('PRODUCT','VARIANT');
+create type stock_item_type as enum ('PRODUCT');
 
 create table stock_items (
   stock_item_id uuid primary key default uuid_generate_v4(),
   type stock_item_type not null,
   product_id uuid references products(product_id) on delete set null,
-  variant_id uuid references product_variants(variant_id) on delete set null,
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
   constraint chk_stock_items_type_ref check (
-    (type = 'PRODUCT' and product_id is not null and variant_id is null) or
-    (type = 'VARIANT' and variant_id is not null and product_id is null)
+    (type = 'PRODUCT' and product_id is not null)
   )
 );
 
 create index idx_stock_items_type on stock_items(type);
 create unique index ux_stock_items_product on stock_items(product_id);
-create unique index ux_stock_items_variant on stock_items(variant_id);
 
 -- ---------------------------------------------------------
 -- TABLA: sku_counters
@@ -363,37 +327,37 @@ create index idx_product_equivalences_product on product_equivalences(product_id
 -- ---------------------------------------------------------
 -- TABLA: product_recipes
 -- Para que sirve:
--- - Recetas/BOM para fabricar una variante terminada.
+-- - Recetas/BOM legacy por producto terminado.
 -- Que información guarda:
--- - Item terminado (producto o variante), variante prima, cantidad y merma.
+-- - Producto terminado, producto prima, cantidad y merma.
 -- Columnas (ES):
 -- - recipe_id: id receta
--- - finished_type: define si el terminado es PRODUCT o VARIANT
--- - finished_variant_id: id del terminado (producto o variante segun finished_type)
--- - prima_variant_id: variante prima insumo (FK product_variants)
+-- - finished_type: tipo legacy del terminado (solo PRODUCT)
+-- - finished_product_id: id del producto terminado
+-- - prima_product_id: producto prima insumo (FK products)
 -- - quantity: cantidad requerida
 -- - waste: merma (opcional)
 -- ---------------------------------------------------------
 create table product_recipes (
   recipe_id uuid primary key default uuid_generate_v4(),
   finished_type stock_item_type not null,
-  finished_variant_id uuid not null,
-  prima_variant_id uuid not null references product_variants(variant_id),
+  finished_product_id uuid not null references products(product_id) on delete cascade,
+  prima_product_id uuid not null references products(product_id),
   quantity numeric(12,6) not null check (quantity > 0),
   waste numeric(12,6)
 );
 
-create index idx_product_recipes_finished on product_recipes(finished_variant_id);
-create index idx_product_recipes_prima on product_recipes(prima_variant_id);
+create index idx_product_recipes_finished on product_recipes(finished_product_id);
+create index idx_product_recipes_prima on product_recipes(prima_product_id);
 
 -- ---------------------------------------------------------
 -- TABLA: catalog_publications
 -- Que informacion guarda:
--- - Publicacion comercial por canal para productos o variantes.
+-- - Publicacion comercial legacy por canal para productos.
 -- Columnas (ES):
 -- - publication_id: id publicacion
 -- - channel_code: codigo del canal/tienda
--- - source_type: PRODUCT o VARIANT
+-- - source_type: PRODUCT
 -- - item_id: id del item publicado
 -- - is_visible: si se muestra en el canal
 -- - sort_order: orden manual del canal
@@ -819,28 +783,6 @@ create table suppliers (
   unique (document_type, document_number)
 );
 
--- ---------------------------------------------------------
--- TABLA: supplier_variants
--- Para que sirve:
--- - Relación proveedor <-> SKU (que proveedor vende que SKU).
--- Que información guarda:
--- - sku de proveedor, ultimo costo, lead time.
--- Columnas (ES):
--- - supplier_id: proveedor
--- - variant_id: SKU
--- - supplier_sku: código del proveedor
--- - last_cost: ultimo costo registrado
--- - lead_time_days: tiempo de entrega
--- ---------------------------------------------------------
-create table supplier_variants (
-  supplier_id uuid not null references suppliers(supplier_id),
-  variant_id uuid not null references product_variants(variant_id),
-  supplier_sku varchar(80),
-  last_cost numeric(12,2),
-  lead_time_days int,
-  primary key (supplier_id, variant_id)
-);
-
 -- Estados de orden de compra:
 -- DRAFT: borrador
 -- SENT: enviado al proveedor
@@ -930,7 +872,7 @@ create table purchase_orders (
 -- Columnas (ES):
 -- - po_item_id: id detalle
 -- - po_id: orden compra padre
--- - variant_id: SKU comprado
+-- - stock_item_id: item de stock comprado
 -- - quantity: cantidad
 -- - unit_cost: costo unitario
 -- ---------------------------------------------------------
@@ -1109,3 +1051,155 @@ values
   ('manual_permanent_ban', 'Manual Permanent Ban', 'Bloqueo permanente aplicado manualmente', true),
   ('manual_unban', 'Manual Unban', 'Retiro manual de blacklist permanente', true)
 on conflict (key) do nothing;
+
+-- =========================
+-- Product Catalog V2
+-- =========================
+
+create table if not exists pc_products (
+  product_id uuid primary key default uuid_generate_v4(),
+  name varchar(180) not null unique,
+  description text,
+  category varchar(120),
+  brand varchar(120),
+  base_unit_id uuid references units(unit_id),
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists pc_skus (
+  sku_id uuid primary key default uuid_generate_v4(),
+  product_id uuid not null references pc_products(product_id) on delete cascade,
+  backend_sku varchar(80) not null unique,
+  custom_sku varchar(80) unique,
+  name varchar(180) not null,
+  barcode varchar(80) unique,
+  price numeric(12,2) not null default 0,
+  cost numeric(12,2) not null default 0,
+  is_sellable boolean not null default true,
+  is_purchasable boolean not null default false,
+  is_manufacturable boolean not null default false,
+  is_stock_tracked boolean not null default true,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists idx_pc_skus_product on pc_skus(product_id);
+
+create table if not exists supplier_skus (
+  supplier_id uuid not null references suppliers(supplier_id) on delete cascade,
+  sku_id uuid not null references pc_skus(sku_id) on delete cascade,
+  supplier_sku varchar(80),
+  last_cost numeric(12,2),
+  lead_time_days int,
+  primary key (supplier_id, sku_id)
+);
+
+create table if not exists pc_attributes (
+  attribute_id uuid primary key default uuid_generate_v4(),
+  code varchar(80) not null unique,
+  name varchar(120) not null
+);
+
+create table if not exists pc_sku_attribute_values (
+  sku_attribute_value_id uuid primary key default uuid_generate_v4(),
+  sku_id uuid not null references pc_skus(sku_id) on delete cascade,
+  attribute_id uuid not null references pc_attributes(attribute_id) on delete cascade,
+  value varchar(255) not null,
+  constraint ux_pc_sku_attribute_values unique (sku_id, attribute_id)
+);
+
+create table if not exists pc_recipes (
+  recipe_id uuid primary key default uuid_generate_v4(),
+  sku_id uuid not null references pc_skus(sku_id) on delete cascade,
+  version int not null default 1,
+  yield_quantity numeric(12,3) not null,
+  notes text,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_pc_recipes_sku on pc_recipes(sku_id);
+
+create table if not exists pc_recipe_items (
+  recipe_item_id uuid primary key default uuid_generate_v4(),
+  recipe_id uuid not null references pc_recipes(recipe_id) on delete cascade,
+  material_sku_id uuid not null references pc_skus(sku_id),
+  quantity numeric(12,3) not null,
+  unit_id uuid not null references units(unit_id)
+);
+
+create table if not exists pc_catalog_publications (
+  publication_id uuid primary key default uuid_generate_v4(),
+  channel_code varchar(80) not null,
+  sku_id uuid not null references pc_skus(sku_id) on delete cascade,
+  is_visible boolean not null default true,
+  sort_order int not null default 0,
+  price_override numeric(12,2),
+  display_name_override varchar(255),
+  created_at timestamptz not null default now(),
+  constraint ux_pc_catalog_publications unique (channel_code, sku_id)
+);
+create index if not exists idx_pc_catalog_publications_channel on pc_catalog_publications(channel_code);
+
+create table if not exists pc_stock_items (
+  stock_item_id uuid primary key default uuid_generate_v4(),
+  sku_id uuid not null unique references pc_skus(sku_id) on delete cascade,
+  is_active boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists pc_inventory (
+  warehouse_id uuid not null references warehouses(warehouse_id),
+  stock_item_id uuid not null references pc_stock_items(stock_item_id) on delete cascade,
+  location_id uuid references warehouse_locations(location_id),
+  on_hand int not null default 0,
+  reserved int not null default 0,
+  available int,
+  updated_at timestamptz not null default now(),
+  primary key (warehouse_id, stock_item_id)
+);
+
+create table if not exists pc_inventory_documents (
+  doc_id uuid primary key default uuid_generate_v4(),
+  doc_type inv_doc_type not null,
+  status inv_doc_status not null default 'DRAFT',
+  serie_id uuid,
+  correlative int,
+  from_warehouse_id uuid references warehouses(warehouse_id),
+  to_warehouse_id uuid references warehouses(warehouse_id),
+  reference_id uuid,
+  reference_type varchar,
+  note text,
+  created_by uuid,
+  posted_by uuid,
+  posted_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists pc_inventory_document_items (
+  item_id uuid primary key default uuid_generate_v4(),
+  doc_id uuid not null references pc_inventory_documents(doc_id) on delete cascade,
+  stock_item_id uuid not null references pc_stock_items(stock_item_id) on delete cascade,
+  from_location_id uuid references warehouse_locations(location_id),
+  to_location_id uuid references warehouse_locations(location_id),
+  quantity int not null,
+  waste_qty numeric(12,6) not null default 0,
+  unit_cost numeric(12,2)
+);
+create index if not exists idx_pc_inv_doc_items_doc on pc_inventory_document_items(doc_id);
+create index if not exists idx_pc_inv_doc_items_stock_item on pc_inventory_document_items(stock_item_id);
+
+create table if not exists pc_inventory_ledger (
+  ledger_id uuid primary key default uuid_generate_v4(),
+  doc_id uuid not null references pc_inventory_documents(doc_id),
+  doc_item_id uuid references pc_inventory_document_items(item_id),
+  warehouse_id uuid not null references warehouses(warehouse_id),
+  location_id uuid references warehouse_locations(location_id),
+  stock_item_id uuid not null references pc_stock_items(stock_item_id) on delete cascade,
+  direction inv_direction not null,
+  quantity int not null,
+  waste_qty numeric(12,6) not null default 0,
+  unit_cost numeric(12,2),
+  created_at timestamptz not null default now()
+);

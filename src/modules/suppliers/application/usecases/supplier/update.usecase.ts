@@ -8,7 +8,7 @@ import {
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { SUPPLIER_REPOSITORY, SupplierRepository } from "src/modules/suppliers/domain/ports/supplier.repository";
 import { UpdateSupplierInput } from "../../dtos/supplier/input/update.input";
-import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
+import { CLOCK, ClockPort } from "src/shared/application/ports/clock.port";
 import { SupplierNotFoundError } from "../../errors/supplier-not-found.error";
 
 export class UpdateSupplierUsecase {
@@ -86,3 +86,4 @@ export class UpdateSupplierUsecase {
     });
   }
 }
+

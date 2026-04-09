@@ -1,0 +1,25 @@
+import { Column, Entity, PrimaryColumn, UpdateDateColumn } from "typeorm";
+
+@Entity("pc_inventory")
+export class ProductCatalogInventoryEntity {
+  @PrimaryColumn({ name: "warehouse_id", type: "uuid" })
+  warehouseId: string;
+
+  @PrimaryColumn({ name: "stock_item_id", type: "uuid" })
+  stockItemId: string;
+
+  @Column({ name: "location_id", type: "uuid", nullable: true })
+  locationId: string | null;
+
+  @Column({ name: "on_hand", type: "int", default: 0 })
+  onHand: number;
+
+  @Column({ name: "reserved", type: "int", default: 0 })
+  reserved: number;
+
+  @Column({ name: "available", type: "int", nullable: true })
+  available: number | null;
+
+  @UpdateDateColumn({ name: "updated_at", type: "timestamptz" })
+  updatedAt: Date;
+}

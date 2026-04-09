@@ -10,7 +10,7 @@ import { DeletePaymentUsecase } from "src/modules/payments/application/usecases/
 import { PAYMENT_DOCUMENT_REPOSITORY, PaymentDocumentRepository } from "src/modules/payments/domain/ports/payment-document.repository";
 import { CREDIT_QUOTA_REPOSITORY, CreditQuotaRepository } from "src/modules/payments/domain/ports/credit-quota.repository";
 import { PayDocType } from "src/modules/payments/domain/value-objects/pay-doc-type";
-import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
+import { CLOCK, ClockPort } from "src/shared/application/ports/clock.port";
 import { PurchaseOrderItemFactory } from "src/modules/purchases/domain/factories/purchase-order-item.factory";
 import { PurchaseOrderId } from "src/modules/purchases/domain/value-objects/purchase-order-id.vo";
 import { PurchaseSupplierId } from "src/modules/purchases/domain/value-objects/purchase-supplier-id.vo";
@@ -329,3 +329,4 @@ export class UpdatePurchaseOrderUsecase {
     return false;
   }
 }
+

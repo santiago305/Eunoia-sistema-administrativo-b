@@ -3,7 +3,7 @@ import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.p
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
 import { PurchaseOrderStatus } from "src/modules/purchases/domain/value-objects/po-status";
 import { PostInventoryFromPurchaseUsecase } from "./Inventory-purchase.usecase";
-import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
+import { CLOCK, ClockPort } from "src/shared/application/ports/clock.port";
 import { PurchaseOrderId } from "src/modules/purchases/domain/value-objects/purchase-order-id.vo";
 import { DomainError } from "src/modules/purchases/domain/errors/domain.error";
 import { PurchaseOrderNotFoundApplicationError } from "../../errors/purchase-order-not-found.error";
@@ -69,3 +69,4 @@ export class RunExpectedAtUsecase {
     }
   }
 }
+

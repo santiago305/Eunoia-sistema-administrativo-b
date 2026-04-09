@@ -1,9 +1,9 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
-import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/inventory/application/ports/document.repository.port";
-import { LEDGER_REPOSITORY, LedgerRepository } from "src/modules/inventory/application/ports/ledger.repository.port";
-import { DocStatus } from "src/modules/inventory/domain/value-objects/doc-status";
-import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
-import { ReferenceType } from "src/modules/inventory/domain/value-objects/reference-type";
+import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/product-catalog/compat/ports/document.repository.port";
+import { LEDGER_REPOSITORY, LedgerRepository } from "src/modules/product-catalog/compat/ports/ledger.repository.port";
+import { DocStatus } from "src/shared/domain/value-objects/doc-status";
+import { DocType } from "src/shared/domain/value-objects/doc-type";
+import { ReferenceType } from "src/shared/domain/value-objects/reference-type";
 import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
 import { DomainError } from "src/modules/production/domain/errors/domain.error";
 import { WastedQuantityError } from "src/modules/production/domain/value-objects/wate-quantity.error.vo";
@@ -122,3 +122,6 @@ export class UpdateProductionWaste {
     });
   }
 }
+
+
+

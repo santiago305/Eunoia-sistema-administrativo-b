@@ -1,11 +1,11 @@
 import { NotFoundException } from "@nestjs/common";
-import { InventoryDocument } from "src/modules/inventory/domain/entities/inventory-document";
-import { ReferenceType } from "src/modules/inventory/domain/value-objects/reference-type";
-import { DocStatus } from "src/modules/inventory/domain/value-objects/doc-status";
-import { DocType } from "src/modules/inventory/domain/value-objects/doc-type";
+import { InventoryDocument } from "src/modules/product-catalog/compat/entities/inventory-document";
+import { ReferenceType } from "src/shared/domain/value-objects/reference-type";
+import { DocStatus } from "src/shared/domain/value-objects/doc-status";
+import { DocType } from "src/shared/domain/value-objects/doc-type";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
-import { DocumentSeriesRepository } from "src/modules/inventory/application/ports/document-series.repository.port";
-import { DocumentRepository } from "src/modules/inventory/application/ports/document.repository.port";
+import { DocumentSeriesRepository } from "src/modules/product-catalog/compat/ports/document-series.repository.port";
+import { DocumentRepository } from "src/modules/product-catalog/compat/ports/document.repository.port";
 
 export type CreateDraftDocumentParams = {
   docType: DocType;
@@ -60,3 +60,6 @@ export async function createDraftDocument(
 
   return deps.documentRepo.createDraft(doc, tx);
 }
+
+
+

@@ -1,13 +1,30 @@
-import { ProductOutput } from "src/modules/catalog/application/dto/products/output/product-out";
-import { ProductVariantOutput } from "src/modules/catalog/application/dto/product-variants/output/product-variant-out";
-import { StockItemType } from "src/modules/inventory/domain/value-objects/stock-item-type";
+import { StockItemType } from "src/shared/domain/value-objects/stock-item-type";
+import { SkuAttributeInput } from "src/modules/product-catalog/domain/ports/sku.repository";
 import { AfectIgvType } from "src/modules/purchases/domain/value-objects/afect-igv-type";
 
+export interface PurchaseOrderLegacyProductOutput {
+  id: string;
+  name: string | null;
+  sku: string | null;
+}
+
+export interface PurchaseOrderSkuOutput {
+  id: string;
+  productId: string;
+  productName: string;
+  name: string;
+  backendSku: string;
+  customSku: string | null;
+  barcode: string | null;
+  attributes: SkuAttributeInput[];
+  isActive: boolean;
+}
+
 export interface PurchaseOrderStockItemOutput {
-  type: StockItemType;
+  type: StockItemType | "SKU";
   stockItemId: string;
-  product?: ProductOutput | null;
-  variant?: ProductVariantOutput | null;
+  product?: PurchaseOrderLegacyProductOutput | null;
+  sku?: PurchaseOrderSkuOutput | null;
 }
 
 export interface PurchaseOrderItemOutput {
@@ -27,3 +44,4 @@ export interface PurchaseOrderItemOutput {
   unitPrice: number;
   purchaseValue?: number;
 }
+

@@ -12,34 +12,28 @@ import { CurrencyType as PurchaseCurrency } from "src/modules/purchases/domain/v
 import { CurrencyType as PaymentCurrency } from "src/modules/payments/domain/value-objects/currency-type";
 import { PayDocType } from "src/modules/payments/domain/value-objects/pay-doc-type";
 import { AfectIgvType } from "src/modules/purchases/domain/value-objects/afect-igv-type";
-import { StockItemEntity } from "src/modules/inventory/adapters/out/typeorm/entities/stock-item.entity";
-import { ProductVariantEntity } from "src/modules/catalog/adapters/out/persistence/typeorm/entities/product-variant.entity";
-import { StockItemType } from "src/modules/inventory/domain/value-objects/stock-item-type";
 import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
+import { ProductCatalogStockItemEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/stock-item.entity";
 
 const IGV_RATE = 0.18;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const round2 = (value: number) => Number(value.toFixed(2));
 
-const ensureStockItemsForVariants = async (dataSource: DataSource): Promise<void> => {
-  const variantRepo = dataSource.getRepository(ProductVariantEntity);
-  const stockItemRepo = dataSource.getRepository(StockItemEntity);
+type PurchaseSeedStockItem = {
+  id: string;
+  source: "sku";
+};
 
-  const variants = await variantRepo.find({ select: ["id"] });
-  if (variants.length === 0) {
-    throw new Error("No hay variantes. Ejecuta seedProducts primero.");
+const getPurchaseSeedStockItems = async (dataSource: DataSource): Promise<PurchaseSeedStockItem[]> => {
+  const productCatalogStockItemRepo = dataSource.getRepository(ProductCatalogStockItemEntity);
+
+  const skuStockItems = await productCatalogStockItemRepo.find({ select: ["id"] });
+  if (skuStockItems.length > 0) {
+    return skuStockItems.map((item) => ({ id: item.id, source: "sku" as const }));
   }
 
-  const existingLinks = await stockItemRepo.find({ select: ["variantId"] });
-  const linkedVariantIds = new Set(existingLinks.map((l) => l.variantId).filter(Boolean));
-
-  for (const variant of variants) {
-    if (linkedVariantIds.has(variant.id)) continue;
-    await stockItemRepo.save(
-      stockItemRepo.create({ type: StockItemType.VARIANT, isActive: true, variantId: variant.id }),
-    );
-  }
+  throw new Error("No hay stock items SKU. Ejecuta seedProductCatalog primero.");
 };
 
 export const seedPurchaseOrders = async (dataSource: DataSource, total: number = 2000): Promise<void> => {
@@ -49,7 +43,6 @@ export const seedPurchaseOrders = async (dataSource: DataSource, total: number =
   const itemRepo = dataSource.getRepository(PurchaseOrderItemEntity);
   const paymentDocRepo = dataSource.getRepository(PaymentDocumentEntity);
   const creditQuotaRepo = dataSource.getRepository(CreditQuotaEntity);
-  const stockItemRepo = dataSource.getRepository(StockItemEntity);
   const userRepo = dataSource.getRepository(User);
 
   const suppliers = await supplierRepo.find();
@@ -59,9 +52,7 @@ export const seedPurchaseOrders = async (dataSource: DataSource, total: number =
   if (warehouses.length === 0) throw new Error("No hay almacenes. Ejecuta seedWarehouses primero.");
   if (users.length === 0) throw new Error("No hay usuarios. Ejecuta seedUsers primero.");
 
-  await ensureStockItemsForVariants(dataSource);
-  const stockItems = await stockItemRepo.find();
-  if (stockItems.length === 0) throw new Error("No hay stock items.");
+  const stockItems = await getPurchaseSeedStockItems(dataSource);
 
   const docType = VoucherDocType.FACTURA;
   const serie = "F001";

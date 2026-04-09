@@ -6,8 +6,6 @@ import { AuthModule } from './modules/auth/infrastructure/auth.module';
 import { RolesModule } from './modules/roles/infrastructure/roles.module';
 import { UsersModule } from './modules/users/infrastructure/users.module';
 import { SessionsModule } from './modules/sessions/infrastructure/sessions.module';
-import { InventoryModule } from './modules/inventory/infrastructure/inventory.module';
-import { CatalogModule } from './modules/catalog/infrastructure/catalog.module';
 import { AppConfigModule } from './infrastructure/config/config.module';
 import { CommonModule } from './shared/common.module';
 import { DatabaseModule } from './infrastructure/database/database.module';
@@ -29,6 +27,7 @@ import { RedisThrottlerStorage } from './modules/security/infrastructure/provide
 import { CompaniesModule } from './modules/companies/companies.module';
 import { PaymentMethodsModule } from './modules/payment-methods/payment-methods.module';
 import { PdfGeneratedModule } from './modules/pdf-generated/pdf-generated.module';
+import { ProductCatalogModule } from './modules/product-catalog/product-catalog.module';
 
 const redisAuth = envs.redis.password ? `:${encodeURIComponent(envs.redis.password)}@` : '';
 const redisUrl = `redis://${redisAuth}${envs.redis.host}:${envs.redis.port}/${envs.redis.db}`;
@@ -54,8 +53,6 @@ const redisUrl = `redis://${redisAuth}${envs.redis.host}:${envs.redis.port}/${en
     RolesModule, 
     UsersModule,
     SessionsModule,
-    InventoryModule,
-    CatalogModule,
     WarehousesModule,
     ProductionModule,
     SuppliersModule,
@@ -64,6 +61,7 @@ const redisUrl = `redis://${redisAuth}${envs.redis.host}:${envs.redis.port}/${en
     PaymentMethodsModule,
     PurchasesModule,
     CompaniesModule,
+    ProductCatalogModule,
     PdfGeneratedModule,
     SecurityModule,
   ],

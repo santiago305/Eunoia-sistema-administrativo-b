@@ -3,7 +3,7 @@ import { companyUsecasesProviders } from "../application/providers/company-useca
 import { CompanyTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/company.typeorm.repo";
 import { UNIT_OF_WORK } from "src/shared/domain/ports/unit-of-work.port";
 import { TypeormUnitOfWork } from "src/shared/infrastructure/typeorm/typeorm.unit-of-work";
-import { CLOCK } from "src/modules/inventory/application/ports/clock.port";
+import { CLOCK } from "src/shared/application/ports/clock.port";
 import { IMAGE_PROCESSOR } from "src/shared/application/ports/image-processor.port";
 import { FILE_STORAGE } from "src/shared/application/ports/file-storage.port";
 import { SharpImageProcessorService } from "src/shared/utilidades/services/sharp-image-processor.service";
@@ -17,3 +17,4 @@ export const companiesModuleProviders = [
   { provide: IMAGE_PROCESSOR, useClass: SharpImageProcessorService },
   { provide: FILE_STORAGE, useClass: LocalFileStorageService },
 ];
+

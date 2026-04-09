@@ -1,0 +1,7 @@
+export interface UpdateSupplierSkuInput {
+  supplierId: string;
+  skuId: string;
+  supplierSku?: string;
+  lastCost?: number;
+  leadTimeDays?: number;
+}

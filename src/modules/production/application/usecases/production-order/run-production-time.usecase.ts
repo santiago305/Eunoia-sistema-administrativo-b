@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable, InternalServerErrorException, NotFoundException } from "@nestjs/common";
-import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
+import { CLOCK, ClockPort } from "src/shared/application/ports/clock.port";
 import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
 import { DomainError } from "src/modules/production/domain/errors/domain.error";
 import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
@@ -62,3 +62,4 @@ export class RunProductionTimeUsecase {
     return this.uow.runInTransaction((newTx) => run(newTx));
   }
 }
+

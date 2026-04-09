@@ -8,7 +8,7 @@ import { PaymentFormType } from "src/modules/purchases/domain/value-objects/paym
 import { PAYMENT_DOCUMENT_REPOSITORY, PaymentDocumentRepository } from "src/modules/payments/domain/ports/payment-document.repository";
 import { CREDIT_QUOTA_REPOSITORY, CreditQuotaRepository } from "src/modules/payments/domain/ports/credit-quota.repository";
 import { PayDocType } from "src/modules/payments/domain/value-objects/pay-doc-type";
-import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
+import { CLOCK, ClockPort } from "src/shared/application/ports/clock.port";
 import { PurchaseOrderFactory } from "src/modules/purchases/domain/factories/purchase-order.factory";
 import { PurchaseOrderItemFactory } from "src/modules/purchases/domain/factories/purchase-order-item.factory";
 import { DomainError } from "src/modules/purchases/domain/errors/domain.error";
@@ -198,3 +198,4 @@ export class CreatePurchaseOrderUsecase {
     });
   }
 }
+

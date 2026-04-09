@@ -2,9 +2,9 @@ import { CreateSupplierInput } from "../dtos/supplier/input/create.input";
 import { ListSuppliersInput } from "../dtos/supplier/input/list.input";
 import { SetSupplierActiveInput } from "../dtos/supplier/input/set-active.input";
 import { UpdateSupplierInput } from "../dtos/supplier/input/update.input";
-import { CreateSupplierVariantInput } from "../dtos/supplier-variant/input/create.input";
-import { ListSupplierVariantsInput } from "../dtos/supplier-variant/input/list.input";
-import { UpdateSupplierVariantInput } from "../dtos/supplier-variant/input/update.input";
+import { CreateSupplierSkuInput } from "../dtos/supplier-sku/input/create.input";
+import { ListSupplierSkusInput } from "../dtos/supplier-sku/input/list.input";
+import { UpdateSupplierSkuInput } from "../dtos/supplier-sku/input/update.input";
 
 export class SupplierHttpMapper {
   static toCreateSupplierInput(dto: CreateSupplierInput): CreateSupplierInput {
@@ -56,27 +56,27 @@ export class SupplierHttpMapper {
     return { supplierId, isActive };
   }
 
-  static toCreateSupplierVariantInput(dto: CreateSupplierVariantInput): CreateSupplierVariantInput {
+  static toCreateSupplierSkuInput(dto: CreateSupplierSkuInput): CreateSupplierSkuInput {
     return {
       ...dto,
       supplierSku: dto.supplierSku?.trim() || undefined,
     };
   }
 
-  static toUpdateSupplierVariantInput(
+  static toUpdateSupplierSkuInput(
     supplierId: string,
-    variantId: string,
-    dto: Omit<UpdateSupplierVariantInput, "supplierId" | "variantId">,
-  ): UpdateSupplierVariantInput {
+    skuId: string,
+    dto: Omit<UpdateSupplierSkuInput, "supplierId" | "skuId">,
+  ): UpdateSupplierSkuInput {
     return {
       ...dto,
       supplierId,
-      variantId,
+      skuId,
       supplierSku: dto.supplierSku?.trim() || undefined,
     };
   }
 
-  static toListSupplierVariantsInput(input: ListSupplierVariantsInput): ListSupplierVariantsInput {
+  static toListSupplierSkusInput(input: ListSupplierSkusInput): ListSupplierSkusInput {
     return {
       ...input,
       supplierSku: input.supplierSku?.trim() || undefined,

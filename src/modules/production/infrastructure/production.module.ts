@@ -4,16 +4,14 @@ import { ProductionOrderEntity } from "../adapters/out/persistence/typeorm/entit
 import { ProductionOrderItemEntity } from "../adapters/out/persistence/typeorm/entities/production_order_item.entity";
 import { ProductionOrdersController } from "../adapters/in/controllers/production-order.controller";
 import { PRODUCTION_ORDER_REPOSITORY } from "../application/ports/production-order.repository";
-import { InventoryModule } from "src/modules/inventory/infrastructure/inventory.module";
-import { CatalogModule } from "src/modules/catalog/infrastructure/catalog.module";
+import { ProductCatalogModule } from "src/modules/product-catalog/product-catalog.module";
 import { UsersModule } from "src/modules/users/infrastructure/users.module";
 import { productionModuleProviders } from "../composition/container";
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([ProductionOrderEntity, ProductionOrderItemEntity]),
-    InventoryModule,
-    CatalogModule,
+    ProductCatalogModule,
     UsersModule,
   ],
   controllers: [ProductionOrdersController],

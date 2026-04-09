@@ -1,6 +1,6 @@
 import { Inject, InternalServerErrorException, NotFoundException } from "@nestjs/common";
 import { COMPANY_REPOSITORY, CompanyRepository } from "src/modules/companies/domain/ports/company.repository";
-import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
+import { CLOCK, ClockPort } from "src/shared/application/ports/clock.port";
 import { successResponse } from "src/shared/response-standard/response";
 import { CompanyNotFoundApplicationError } from "../errors/company-not-found.error";
 
@@ -34,3 +34,4 @@ export class UpdateCompanyCertUsecase {
     });
   }
 }
+

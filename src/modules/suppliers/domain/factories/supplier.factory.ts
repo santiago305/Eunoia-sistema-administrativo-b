@@ -1,6 +1,6 @@
 import { Money } from "src/shared/value-objets/money.vo";
 import { Supplier } from "../entity/supplier";
-import { SupplierVariant } from "../entity/supplierVariant";
+import { SupplierSku } from "../entity/supplierSku";
 import { SupplierDocType } from "../object-values/supplier-doc-type";
 
 export class SupplierFactory {
@@ -23,13 +23,13 @@ export class SupplierFactory {
     return Supplier.create(params);
   }
 
-  static createSupplierVariant(params: {
+  static createSupplierSku(params: {
     supplierId: string;
-    variantId: string;
+    skuId: string;
     supplierSku?: string;
     lastCost?: Money;
     leadTimeDays?: number;
   }) {
-    return SupplierVariant.create(params);
+    return SupplierSku.create(params);
   }
 }

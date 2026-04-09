@@ -64,7 +64,7 @@ const VIOLATIONS: SeedViolationInput[] = [
     2,
     {
       reason: 'high_frequency_same_route',
-      path: '/api/catalog/products/search',
+      path: '/api/products',
       method: 'GET',
       userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
     },

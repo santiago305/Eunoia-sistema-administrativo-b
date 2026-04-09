@@ -3,7 +3,7 @@ import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/d
 import { PurchaseOrderStatus } from "src/modules/purchases/domain/value-objects/po-status";
 import { PurchaseOrderExpectedScheduler } from "./purchase-order-expected-scheduler";
 import { RunExpectedAtUsecase } from "../usecases/purchase-order/run-expected-at.usecase";
-import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
+import { CLOCK, ClockPort } from "src/shared/application/ports/clock.port";
 
 @Injectable()
 export class PurchaseOrderExpectedBootstrap implements OnApplicationBootstrap {
@@ -35,3 +35,4 @@ export class PurchaseOrderExpectedBootstrap implements OnApplicationBootstrap {
     }
   }
 }
+

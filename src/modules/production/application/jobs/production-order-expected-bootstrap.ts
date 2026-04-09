@@ -3,7 +3,7 @@ import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "src/modu
 import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
 import { ProductionOrderExpectedScheduler } from "./production-order-expected-scheduler";
 import { RunProductionTimeUsecase } from "../usecases/production-order/run-production-time.usecase";
-import { CLOCK, ClockPort } from "src/modules/inventory/application/ports/clock.port";
+import { CLOCK, ClockPort } from "src/shared/application/ports/clock.port";
 
 @Injectable()
 export class ProductionOrderExpectedBootstrap implements OnApplicationBootstrap {
@@ -34,3 +34,4 @@ export class ProductionOrderExpectedBootstrap implements OnApplicationBootstrap 
     }
   }
 }
+
