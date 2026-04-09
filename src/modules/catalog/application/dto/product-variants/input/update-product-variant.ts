@@ -8,4 +8,5 @@ export interface UpdateProductVariantInput {
   attributes?: ProductVariantAttributes;
   price?: number;
   cost?: number;
+  minStock?: number | null;
 }

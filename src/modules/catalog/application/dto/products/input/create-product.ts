@@ -10,6 +10,7 @@ export interface CreateProductInput {
   barcode?: string | null;
   price: number;
   cost: number;
+  minStock?: number | null;
   attributes?: ProductVariantAttributes;
   isActive?: boolean;
   type: ProductType;

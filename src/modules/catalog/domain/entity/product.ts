@@ -15,6 +15,7 @@ export class Product {
     private barcode: string | null,
     private price: Money,
     private cost: Money,
+    private minStock: number | null,
     private attributes: AttributesRecord,
     private isActive: boolean = true,
     private type: ProductType,
@@ -34,6 +35,7 @@ export class Product {
     barcode?: string | null;
     price: Money;
     cost: Money;
+    minStock?: number | null;
     attributes?: AttributesRecord;
     isActive?: boolean;
     type: ProductType;
@@ -58,6 +60,7 @@ export class Product {
       params.barcode?.trim() || null,
       params.price,
       params.cost,
+      params.minStock ?? null,
       params.attributes ?? {},
       params.isActive ?? true,
       params.type,
@@ -75,6 +78,7 @@ export class Product {
   getBarcode() { return this.barcode; }
   getPrice() { return this.price; }
   getCost() { return this.cost; }
+  getMinStock() { return this.minStock; }
   getAttributes() { return this.attributes; }
   getIsActive() { return this.isActive; }
   getType() { return this.type; }

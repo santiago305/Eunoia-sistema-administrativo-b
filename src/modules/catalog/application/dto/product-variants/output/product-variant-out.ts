@@ -14,6 +14,7 @@ export interface ProductVariantOutput {
   attributes: ProductVariantAttributes | null;
   price: number | null;
   cost: number | null;
+  minStock: number | null;
   isActive: boolean | null;
   createdAt?: Date | null;
 }

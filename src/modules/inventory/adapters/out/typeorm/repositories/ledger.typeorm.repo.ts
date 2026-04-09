@@ -8,9 +8,13 @@ import {
   LedgerStockItemSnapshot
 } from '../../../../domain/entities/ledger-entry';
 import { InventoryLedgerEntity } from '../entities/inventory_ledger.entity';
+import { InventoryDocumentEntity } from '../entities/inventory_document.entity';
 import { TransactionContext } from 'src/shared/domain/ports/transaction-context.port';
 import { TypeormTransactionContext } from 'src/shared/domain/ports/typeorm-transaction-context';
 import { ReferenceType } from 'src/modules/inventory/domain/value-objects/reference-type';
+import { DocType } from 'src/modules/inventory/domain/value-objects/doc-type';
+import { DocStatus } from 'src/modules/inventory/domain/value-objects/doc-status';
+import { Direction } from 'src/modules/inventory/domain/value-objects/direction';
 import { PurchaseOrderEntity } from 'src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-order.entity';
 import { ProductionOrderEntity } from 'src/modules/production/adapters/out/persistence/typeorm/entities/production_order.entity';
 import { WarehouseEntity } from 'src/modules/warehouses/adapters/out/persistence/typeorm/entities/warehouse';
@@ -63,6 +67,57 @@ private getRepo(tx?: TransactionContext) {
     return { from, to };
   }
 
+  private resolveMonthRange(params: { month?: string; from?: Date; to?: Date }) {
+    if (!params.month) return null;
+    const raw = params.month.trim().toLowerCase();
+    if (!raw) return null;
+
+    const monthByName: Record<string, number> = {
+      enero: 0,
+      febrero: 1,
+      marzo: 2,
+      abril: 3,
+      mayo: 4,
+      junio: 5,
+      julio: 6,
+      agosto: 7,
+      septiembre: 8,
+      setiembre: 8,
+      octubre: 9,
+      noviembre: 10,
+      diciembre: 11,
+    };
+
+    let year: number | undefined;
+    let monthIndex: number | undefined;
+
+    const match = raw.match(/^(\d{4})[-/](0[1-9]|1[0-2])$/);
+    if (match) {
+      year = Number(match[1]);
+      monthIndex = Number(match[2]) - 1;
+    } else if (raw in monthByName) {
+      monthIndex = monthByName[raw];
+      const ref = params.to ?? params.from ?? new Date();
+      year = ref.getFullYear();
+    } else if (/^\d{1,2}$/.test(raw)) {
+      const m = Number(raw);
+      if (m >= 1 && m <= 12) {
+        monthIndex = m - 1;
+        const ref = params.to ?? params.from ?? new Date();
+        year = ref.getFullYear();
+      }
+    }
+
+    if (year === undefined || monthIndex === undefined) return null;
+
+    const from = new Date(year, monthIndex, 1);
+    from.setHours(0, 0, 0, 0);
+    const to = new Date(year, monthIndex + 1, 0);
+    to.setHours(23, 59, 59, 999);
+
+    return { from, to };
+  }
+
   private applyFilters(
     qb: ReturnType<Repository<InventoryLedgerEntity>["createQueryBuilder"]>,
     params: {
@@ -82,6 +137,16 @@ private getRepo(tx?: TransactionContext) {
         qb.andWhere('l.locationId = :locationId', { locationId: params.locationId });
       }
     }
+  }
+
+  private applySalesFilters(
+    qb: ReturnType<Repository<InventoryLedgerEntity>["createQueryBuilder"]>,
+  ) {
+    qb
+      .innerJoin(InventoryDocumentEntity, 'd', 'd.doc_id = l.doc_id')
+      .andWhere('d.docType = :docType', { docType: DocType.OUT })
+      .andWhere('d.status = :status', { status: DocStatus.POSTED })
+      .andWhere('l.direction = :dirOut', { dirOut: Direction.OUT });
   }
 
   private async sumInOut(
@@ -229,6 +294,199 @@ private getRepo(tx?: TransactionContext) {
     });
   }
 
+  async getSalesDailyTotals(
+    params: {
+      warehouseId?: string;
+      stockItemId?: string;
+      locationId?: string;
+      from?: Date;
+      to?: Date;
+      docId?: string;
+      month?: string;
+    },
+    tx?: TransactionContext,
+  ): Promise<
+    {
+      day: string;
+      salida: number;
+    }[]
+  > {
+    const repo = this.getRepo(tx);
+    const monthRange = this.resolveMonthRange(params);
+    const { from, to } = monthRange ?? this.normalizeRange(params);
+
+    const qb = repo.createQueryBuilder('l');
+    qb
+      .select('DATE(l.createdAt)', 'day')
+      .addSelect('COALESCE(SUM(l.quantity), 0)', 'outQty');
+
+    this.applyFilters(qb, params);
+    this.applySalesFilters(qb);
+
+    if (from && to) {
+      qb.andWhere('l.createdAt BETWEEN :from AND :to', { from, to });
+    } else if (from) {
+      qb.andWhere('l.createdAt >= :from', { from });
+    } else if (to) {
+      qb.andWhere('l.createdAt <= :to', { to });
+    }
+
+    qb.groupBy('DATE(l.createdAt)').orderBy('DATE(l.createdAt)', 'ASC');
+
+    const rows = await qb.getRawMany<{ day: string | Date; outQty: string | number }>();
+
+    return rows.map((r) => {
+      const outQty = Number(r.outQty ?? 0);
+      const day =
+        r.day instanceof Date
+          ? r.day.toISOString().slice(0, 10)
+          : String(r.day);
+      return {
+        day,
+        salida: outQty,
+      };
+    });
+  }
+
+  async getSalesMonthlyTotals(
+    params: {
+      warehouseId?: string;
+      stockItemId?: string;
+      locationId?: string;
+      from?: Date;
+      to?: Date;
+      docId?: string;
+    },
+    tx?: TransactionContext,
+  ): Promise<
+    {
+      month: string;
+      salida: number;
+    }[]
+  > {
+    const repo = this.getRepo(tx);
+    const { from, to } = this.normalizeRange(params);
+
+    const qb = repo.createQueryBuilder('l');
+    qb
+      .select(`to_char(date_trunc('month', l.createdAt), 'YYYY-MM')`, 'month')
+      .addSelect('COALESCE(SUM(l.quantity), 0)', 'outQty');
+
+    this.applyFilters(qb, params);
+    this.applySalesFilters(qb);
+
+    if (from && to) {
+      qb.andWhere('l.createdAt BETWEEN :from AND :to', { from, to });
+    } else if (from) {
+      qb.andWhere('l.createdAt >= :from', { from });
+    } else if (to) {
+      qb.andWhere('l.createdAt <= :to', { to });
+    }
+
+    qb.groupBy(`date_trunc('month', l.createdAt)`).orderBy(`date_trunc('month', l.createdAt)`, 'ASC');
+
+    const rows = await qb.getRawMany<{ month: string; outQty: string | number }>();
+
+    return rows.map((r) => ({
+      month: String(r.month),
+      salida: Number(r.outQty ?? 0),
+    }));
+  }
+
+  async getSalesWeekdayTotals(
+    params: {
+      warehouseId?: string;
+      stockItemId?: string;
+      locationId?: string;
+      from?: Date;
+      to?: Date;
+      docId?: string;
+    },
+    tx?: TransactionContext,
+  ): Promise<
+    {
+      weekday: number;
+      salida: number;
+    }[]
+  > {
+    const repo = this.getRepo(tx);
+    const { from, to } = this.normalizeRange(params);
+
+    const qb = repo.createQueryBuilder('l');
+    qb
+      .select('EXTRACT(DOW FROM l.createdAt)', 'weekday')
+      .addSelect('COALESCE(SUM(l.quantity), 0)', 'outQty');
+
+    this.applyFilters(qb, params);
+    this.applySalesFilters(qb);
+
+    if (from && to) {
+      qb.andWhere('l.createdAt BETWEEN :from AND :to', { from, to });
+    } else if (from) {
+      qb.andWhere('l.createdAt >= :from', { from });
+    } else if (to) {
+      qb.andWhere('l.createdAt <= :to', { to });
+    }
+
+    qb.groupBy('EXTRACT(DOW FROM l.createdAt)').orderBy('EXTRACT(DOW FROM l.createdAt)', 'ASC');
+
+    const rows = await qb.getRawMany<{ weekday: string | number; outQty: string | number }>();
+
+    return rows.map((r) => ({
+      weekday: Number(r.weekday ?? 0),
+      salida: Number(r.outQty ?? 0),
+    }));
+  }
+
+  async getSalesWarehouseTotals(
+    params: {
+      warehouseId?: string;
+      stockItemId?: string;
+      locationId?: string;
+      from?: Date;
+      to?: Date;
+      docId?: string;
+    },
+    tx?: TransactionContext,
+  ): Promise<
+    {
+      warehouseId: string;
+      warehouseName?: string | null;
+      salida: number;
+    }[]
+  > {
+    const repo = this.getRepo(tx);
+    const { from, to } = this.normalizeRange(params);
+
+    const qb = repo.createQueryBuilder('l');
+    qb
+      .leftJoin(WarehouseEntity, 'w', 'w.warehouse_id = l.warehouse_id')
+      .select('l.warehouseId', 'warehouseId')
+      .addSelect('w.name', 'warehouseName')
+      .addSelect('COALESCE(SUM(l.quantity), 0)', 'outQty');
+
+    this.applyFilters(qb, params);
+    this.applySalesFilters(qb);
+
+    if (from && to) {
+      qb.andWhere('l.createdAt BETWEEN :from AND :to', { from, to });
+    } else if (from) {
+      qb.andWhere('l.createdAt >= :from', { from });
+    } else if (to) {
+      qb.andWhere('l.createdAt <= :to', { to });
+    }
+
+    qb.groupBy('l.warehouseId').addGroupBy('w.name').orderBy('w.name', 'ASC');
+
+    const rows = await qb.getRawMany<{ warehouseId: string; warehouseName?: string | null; outQty: string | number }>();
+
+    return rows.map((r) => ({
+      warehouseId: String(r.warehouseId),
+      warehouseName: r.warehouseName ?? null,
+      salida: Number(r.outQty ?? 0),
+    }));
+  }
+
   async list(
     params: {
       warehouseId?: string;
@@ -283,11 +541,11 @@ private getRepo(tx?: TransactionContext) {
     balanceQb
       .select('l.id', 'id')
       .addSelect(
-        "SUM(CASE WHEN l.direction = 'IN' THEN l.quantity ELSE -l.quantity END) OVER (ORDER BY l.createdAt ASC, l.id ASC)",
+        "SUM(CASE WHEN l.direction = 'IN' THEN l.quantity ELSE -l.quantity END) OVER (ORDER BY l.createdAt DESC, l.id DESC)",
         'running_balance',
       )
-      .orderBy('l.createdAt', 'ASC')
-      .addOrderBy('l.id', 'ASC')
+      .orderBy('l.createdAt', 'DESC')
+      .addOrderBy('l.id', 'DESC')
       .skip(skip)
       .take(limit);
 

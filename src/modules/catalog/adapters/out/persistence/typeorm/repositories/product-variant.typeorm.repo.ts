@@ -44,6 +44,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       attributes: variant.getAttributes(),
       price: variant.getPrice().getAmount(),
       cost: variant.getCost().getAmount(),
+      minStock: variant.getMinStock() ?? null,
       isActive: variant.getIsActive() ?? true,
     });
     return this.toDomain(saved);
@@ -133,6 +134,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
         'v.attributes',
         'v.price',
         'v.cost',
+        'v.minStock',
         'v.isActive',
         'v.createdAt',
         'p.name',
@@ -190,6 +192,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       attributes?: AttributesRecord;
       price?: Money;
       cost?: Money;
+      minStock?: number | null;
     },
     tx?: TransactionContext,
   ): Promise<ProductVariant | null> {
@@ -201,6 +204,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
     if (params.attributes !== undefined) patch.attributes = params.attributes;
     if (params.price !== undefined) patch.price = params.price.getAmount();
     if (params.cost !== undefined) patch.cost = params.cost.getAmount();
+    if (params.minStock !== undefined) patch.minStock = params.minStock;
 
     await repo.update({ id: params.id }, patch);
     const updated = await repo.findOne({ where: { id: params.id } });
@@ -239,6 +243,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
         'v.attributes',
         'v.price',
         'v.cost',
+        'v.minStock',
         'v.isActive',
         'v.createdAt',
         'p.name',
@@ -502,6 +507,7 @@ export class ProductVariantTypeormRepository implements ProductVariantRepository
       attributes: row.attributes,
       price: Money.create(Number(row.price)),
       cost: Money.create(Number(row.cost ?? 0)),
+      minStock: row.minStock ?? null,
       isActive: row.isActive,
       createdAt: row.createdAt,
       customSku: row.customSku,

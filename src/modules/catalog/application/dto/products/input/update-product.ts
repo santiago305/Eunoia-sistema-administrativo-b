@@ -13,4 +13,5 @@ export interface UpdateProductInput {
   attributes?: ProductVariantAttributes;
   price?: number;
   cost?: number;
+  minStock?: number | null;
 }

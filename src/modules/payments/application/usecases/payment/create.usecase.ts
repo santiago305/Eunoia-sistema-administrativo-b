@@ -78,7 +78,7 @@ export class CreatePaymentUsecase {
         throw new BadRequestException("No se pudo vincular el pago a la orden de compra");
       }
 
-      return { message: "Pago registrado con exito" };
+      return { type: "success", message: "Pago registrado con exito" };
     });
   }
 }

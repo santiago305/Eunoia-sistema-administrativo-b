@@ -8,6 +8,10 @@ export class AvailabilityQueryDto {
   @IsUUID()
   @IsNotEmpty()
   stockItemId: string;
+  
+  @IsUUID()
+  @IsNotEmpty()
+  itemId: string;
 
   @IsOptional()
   @IsUUID()

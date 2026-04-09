@@ -16,6 +16,10 @@ export class HttpAddPurchaseOrderItemDto {
   @IsOptional()
   @IsString()
   unitBase?: string;
+  
+  @IsOptional()
+  @IsString()
+  name?: string;
 
   @IsOptional()
   @IsString()

@@ -1,4 +1,4 @@
-import { IsOptional, IsUUID, IsDateString } from 'class-validator';
+import { IsOptional, IsUUID, IsDateString, IsString } from 'class-validator';
 
 export class GetLedgerDailyTotalsQueryDto {
   @IsOptional()
@@ -16,6 +16,10 @@ export class GetLedgerDailyTotalsQueryDto {
   @IsOptional()
   @IsUUID()
   docId?: string;
+
+  @IsOptional()
+  @IsString()
+  month?: string;
 
   @IsOptional()
   @IsDateString()

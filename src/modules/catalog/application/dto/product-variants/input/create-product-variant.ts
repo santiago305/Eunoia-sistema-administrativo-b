@@ -8,5 +8,6 @@ export interface CreateProductVariantInput {
   attributes?: ProductVariantAttributes;
   price: number;
   cost: number;
+  minStock?: number | null;
   isActive?: boolean;
 }

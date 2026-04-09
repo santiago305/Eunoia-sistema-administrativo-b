@@ -21,7 +21,7 @@ export class DeletePaymentUsecase {
     return this.uow.runInTransaction((innerTx) => this.deleteInTransaction(payDocId, innerTx));
   }
 
-  private async deleteInTransaction(payDocId: string, tx: TransactionContext): Promise<{ message: string }> {
+  private async deleteInTransaction(payDocId: string, tx: TransactionContext): Promise<{ type: string; message: string }> {
     const existing = await this.paymentDocRepo.findById(payDocId, tx);
     if (!existing) {
       throw new NotFoundException(new PaymentNotFoundError().message);
@@ -44,6 +44,6 @@ export class DeletePaymentUsecase {
       throw new BadRequestException("No se pudo eliminar el pago");
     }
 
-    return { message: "Pago eliminado con exito" };
+    return { type: "success", message: "Pago eliminado con exito" };
   }
 }

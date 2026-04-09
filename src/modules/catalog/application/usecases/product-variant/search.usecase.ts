@@ -42,6 +42,7 @@ export class SearchProductVariants {
         attributes: x.variant.getAttributes(),
         price: x.variant.getPrice().getAmount(),
         cost: x.variant.getCost().getAmount(),
+        minStock: x.variant.getMinStock(),
         isActive: x.variant.getIsActive(),
         createdAt: x.variant.getCreatedAt(),
       })),

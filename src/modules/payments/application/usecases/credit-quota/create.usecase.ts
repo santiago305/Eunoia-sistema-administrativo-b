@@ -49,7 +49,7 @@ export class CreateCreditQuotaUsecase {
         throw new BadRequestException("No se pudo crear la cuota");
       }
 
-      return { message: "Cuota creada con exito" };
+      return { type: "success", message: "Cuota creada con exito" };
     });
   }
 }

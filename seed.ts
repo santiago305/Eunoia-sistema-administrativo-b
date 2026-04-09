@@ -45,6 +45,7 @@ import { seedProductsManual } from './src/modules/catalog/infrastructure/seed/pr
 import { seedProductEquivalences } from './src/modules/catalog/infrastructure/seed/product-equivalence.seeder';
 import { seedProductRecipes } from './src/modules/catalog/infrastructure/seed/product-recipe.seeder';
 import { seedPurchaseOrders } from './src/modules/purchases/infrastructure/seed/purchase-order.seeder';
+import { seedDocumentOuts } from './src/modules/inventory/infrastructure/seed/document-out.seeder';
 
 const entities = [
   Role,
@@ -111,6 +112,7 @@ dataSource
     }
 
     await seedPaymentMethods(dataSource);
+    await seedDocumentOuts(dataSource, { count: 20000, days: 365 });
     // await seedSuppliers(dataSource, 10000);
     // await seedProducts(dataSource, { finishedCount: 4500, rawCount: 5500, variantsPerProduct: 2 });
     // await seedProductEquivalences(dataSource, { minPerProduct: 1, maxPerProduct: 4 });

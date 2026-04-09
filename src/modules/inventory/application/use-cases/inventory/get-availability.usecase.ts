@@ -17,9 +17,17 @@ export class GetAvailabilityUseCase {
       throw new BadRequestException('warehouseId y stockItemId son obligatorios');
     }
 
-    const snapshot = await this.inventoryRepo.getSnapshot(input, tx);
+    const snapshot = await this.inventoryRepo.getSnapshot({
+      warehouseId: input.warehouseId,
+      stockItemId: input.stockItemId ?? input.itemId,
+      locationId: input.locationId,
+    }, tx);
     if (!snapshot) {
-      return InventoryOutputMapper.emptyAvailability(input);
+      return InventoryOutputMapper.emptyAvailability({
+        warehouseId: input.warehouseId,
+        stockItemId: input.stockItemId ?? input.itemId,
+        locationId: input.locationId,
+      });
     }
 
     return InventoryOutputMapper.toAvailabilityOutput(snapshot);

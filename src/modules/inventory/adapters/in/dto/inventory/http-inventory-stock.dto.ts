@@ -1,13 +1,21 @@
-import { IsNotEmpty, IsOptional, IsUUID } from 'class-validator';
+import { IsOptional, IsUUID } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class GetStockQueryDto {
+  @IsOptional()
+  @Transform(({ value }) => (value === '' ? undefined : value))
   @IsUUID()
-  @IsNotEmpty()
-  warehouseId: string;
+  warehouseId?: string;
 
+  @IsOptional()
+  @Transform(({ value }) => (value === '' ? undefined : value))
   @IsUUID()
-  @IsNotEmpty()
-  itemId: string;
+  itemId?: string;
+  
+  @IsOptional()
+  @Transform(({ value }) => (value === '' ? undefined : value))
+  @IsUUID()
+  stockItemId?: string;
 
   @IsOptional()
   @IsUUID()

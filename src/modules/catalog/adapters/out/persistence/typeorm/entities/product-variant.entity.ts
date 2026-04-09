@@ -27,6 +27,9 @@ export class ProductVariantEntity {
   @Column({ type: 'numeric', precision: 12, scale: 2, nullable: true })
   cost: number | null;
 
+  @Column({ name: 'min_stock', type: 'int', nullable: true })
+  minStock?: number | null;
+
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;
 

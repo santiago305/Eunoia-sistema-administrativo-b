@@ -14,6 +14,7 @@ export class CatalogHttpMapper {
       description: input.description?.trim() || undefined,
       barcode: input.barcode?.trim() || undefined,
       customSku: input.customSku?.trim() || undefined,
+      minStock: input.minStock === undefined ? undefined : input.minStock,
     };
   }
 
@@ -25,6 +26,7 @@ export class CatalogHttpMapper {
       description: input.description?.trim() || undefined,
       barcode: input.barcode === null ? null : input.barcode?.trim() || undefined,
       customSku: input.customSku === null ? null : input.customSku?.trim() || undefined,
+      minStock: input.minStock === undefined ? undefined : input.minStock,
     };
   }
 
@@ -48,6 +50,7 @@ export class CatalogHttpMapper {
       ...input,
       barcode: input.barcode?.trim() || undefined,
       customSku: input.customSku?.trim() || undefined,
+      minStock: input.minStock ?? null,
     };
   }
 
@@ -57,6 +60,7 @@ export class CatalogHttpMapper {
       id,
       barcode: input.barcode === null ? null : input.barcode?.trim() || undefined,
       customSku: input.customSku === null ? null : input.customSku?.trim() || undefined,
+      minStock: input.minStock ?? null,
     };
   }
 

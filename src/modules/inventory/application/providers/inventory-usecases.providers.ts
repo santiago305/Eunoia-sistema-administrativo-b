@@ -23,6 +23,12 @@ import { GetStockUseCase } from "../use-cases/inventory/get-stock.usecase";
 import { ListInventoryUseCase } from "../use-cases/inventory/list-inventory.usecase";
 import { GetLedgerUseCase } from "../use-cases/ledger/get-ledger.usecase";
 import { GetLedgerDailyTotalsUseCase } from "../use-cases/ledger/get-ledger-daily-totals.usecase";
+import { GetSalesMonthlyTotalsUseCase } from "../use-cases/analytics/get-sales-monthly-totals.usecase";
+import { GetSalesWeekdayTotalsUseCase } from "../use-cases/analytics/get-sales-weekday-totals.usecase";
+import { GetSalesWarehouseTotalsUseCase } from "../use-cases/analytics/get-sales-warehouse-totals.usecase";
+import { GetDemandSummaryUseCase } from "../use-cases/analytics/get-demand-summary.usecase";
+import { GetSalesDailyTotalsUseCase } from "../use-cases/analytics/get-sales-daily-totals.usecase";
+import { GetMonthlyProjectionUseCase } from "../use-cases/analytics/get-monthly-projection.usecase";
 import { CreateStockItemForProduct } from "../use-cases/stock-item/create-for-product.usecase";
 import { CreateStockItemForVariant } from "../use-cases/stock-item/create-for-variant.usecase";
 
@@ -51,6 +57,12 @@ export const inventoryUsecasesProviders: Provider[] = [
   ListInventoryUseCase,
   GetLedgerUseCase,
   GetLedgerDailyTotalsUseCase,
+  GetSalesMonthlyTotalsUseCase,
+  GetSalesWeekdayTotalsUseCase,
+  GetSalesWarehouseTotalsUseCase,
+  GetSalesDailyTotalsUseCase,
+  GetDemandSummaryUseCase,
+  GetMonthlyProjectionUseCase,
   CreateStockItemForProduct,
   CreateStockItemForVariant,
 ];

@@ -12,6 +12,7 @@ import { DocumentSerie } from '../adapters/out/typeorm/entities/document_serie.e
 import { StockItemEntity } from '../adapters/out/typeorm/entities/stock-item.entity';
 import { UsersModule } from 'src/modules/users/infrastructure/users.module';
 import { WarehousesModule } from 'src/modules/warehouses/warehouses.module';
+import { CatalogModule } from 'src/modules/catalog/infrastructure/catalog.module';
 import { INVENTORY_REPOSITORY } from '../application/ports/inventory.repository.port';
 import { DOCUMENT_REPOSITORY } from '../application/ports/document.repository.port';
 import { LEDGER_REPOSITORY } from '../application/ports/ledger.repository.port';
@@ -40,6 +41,7 @@ import { inventoryModuleProviders } from '../composition/container';
     ]),
     UsersModule,
     forwardRef(() => WarehousesModule),
+    forwardRef(() => CatalogModule),
   ],
   controllers: [InventoryController, DocumentsController, LedgerController, DocumentSeriesController],
   providers: [...inventoryModuleProviders],

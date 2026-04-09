@@ -120,18 +120,18 @@ export class GenerateInventoryDocumentPdfUseCase {
       doc.toWarehouseId ? this.warehouseRepo.findById(new WarehouseId(doc.toWarehouseId)) : null,
     ]);
 
-    if (!serie) {
-      throw new BadRequestException(new PdfGeneratedValidationError("Serie inválida").message);
-    }
-    if (!company) {
-      throw new BadRequestException(new PdfGeneratedValidationError("Compañía inválida").message);
-    }
-    if (!fromWarehouse) {
-      throw new BadRequestException(new PdfGeneratedValidationError("Almacén de origen inválido").message);
-    }
-    if (!toWarehouse) {
-      throw new BadRequestException(new PdfGeneratedValidationError("Almacén de destino inválido").message);
-    }
+    // if (!serie) {
+    //   throw new BadRequestException(new PdfGeneratedValidationError("Serie inválida").message);
+    // }
+    // if (!company) {
+    //   throw new BadRequestException(new PdfGeneratedValidationError("Compañía inválida").message);
+    // }
+    // if (!fromWarehouse) {
+    //   throw new BadRequestException(new PdfGeneratedValidationError("Almacén de origen inválido").message);
+    // }
+    // if (!toWarehouse) {
+    //   throw new BadRequestException(new PdfGeneratedValidationError("Almacén de destino inválido").message);
+    // }
 
     const stockItemCache = new Map<string, StockItem | null>();
     const productInfoCache = new Map<string, ProductWithUnitInfo | null>();

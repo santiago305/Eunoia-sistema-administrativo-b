@@ -40,6 +40,7 @@ export class UpdateProductVariant {
           attributes: input.attributes,
           price: input.price !== undefined ? Money.create(input.price) : undefined,
           cost: input.cost !== undefined ? Money.create(input.cost) : undefined,
+          minStock: input.minStock === undefined ? undefined : input.minStock,
         },
         tx,
       );

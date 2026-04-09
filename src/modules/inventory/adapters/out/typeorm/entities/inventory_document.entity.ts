@@ -1,10 +1,11 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { DocType } from 'src/modules/inventory/domain/value-objects/doc-type';
 import { DocStatus } from 'src/modules/inventory/domain/value-objects/doc-status';
 import { ReferenceType } from 'src/modules/inventory/domain/value-objects/reference-type';
 
 
 @Entity('inventory_documents')
+@Index('idx_inv_docs_type_status', ['docType', 'status'])
 export class InventoryDocumentEntity {
   @PrimaryGeneratedColumn('uuid', { name: 'doc_id' })
   id: string;

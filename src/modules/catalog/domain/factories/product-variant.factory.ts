@@ -12,6 +12,7 @@ export class ProductVariantFactory {
     attributes?: AttributesRecord;
     price: Money;
     cost: Money;
+    minStock?: number | null;
     isActive?: boolean;
     createdAt?: Date;
     customSku?: string | null;

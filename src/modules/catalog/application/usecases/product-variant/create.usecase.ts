@@ -77,6 +77,7 @@ export class CreateProductVariant {
         attributes: input.attributes,
         price: Money.create(input.price),
         cost: Money.create(input.cost),
+        minStock: input.minStock ?? null,
         isActive: input.isActive ?? true,
         createdAt: this.clock.now(),
         customSku: normalizedCustomSku,

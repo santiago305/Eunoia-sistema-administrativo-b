@@ -15,6 +15,7 @@ export class CatalogOutputMapper {
       barcode: product.getBarcode(),
       price: product.getPrice().getAmount(),
       cost: product.getCost().getAmount(),
+      minStock: product.getMinStock(),
       attributes: product.getAttributes(),
       isActive: product.getIsActive(),
       type: product.getType(),
@@ -33,6 +34,7 @@ export class CatalogOutputMapper {
       attributes: variant.getAttributes(),
       price: variant.getPrice().getAmount(),
       cost: variant.getCost().getAmount(),
+      minStock: variant.getMinStock(),
       isActive: variant.getIsActive(),
       createdAt: variant.getCreatedAt(),
     };

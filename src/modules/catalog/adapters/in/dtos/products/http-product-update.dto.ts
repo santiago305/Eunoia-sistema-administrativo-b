@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { IsOptional, IsString, IsEnum, IsUUID, IsNumber, Min, ValidateNested } from "class-validator";
+import { IsOptional, IsString, IsEnum, IsUUID, IsNumber, Min, ValidateNested, IsInt } from "class-validator";
 import { ProductType } from "src/modules/catalog/domain/value-object/productType";
 import { ProductVariantAttributesDto } from "../product-variants/product-variant-attributes.dto";
 
@@ -38,6 +38,11 @@ export class HttpUpdateProductDto {
   @IsNumber()
   @Min(0)
   cost: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  minStock?: number | null;
 
   @IsOptional()
   @IsEnum(ProductType)

@@ -10,6 +10,7 @@ export interface ProductOutput {
   barcode: string | null;
   price: number;
   cost: number;
+  minStock: number | null;
   attributes: Record<string, any>;
   baseUnitName?: string;
   baseUnitCode?: string;

@@ -3,7 +3,7 @@ import { Column, Entity, PrimaryColumn, UpdateDateColumn } from 'typeorm';
 @Entity('inventory')
 export class InventoryEntity {
   @PrimaryColumn({ name: 'warehouse_id', type: 'uuid' })
-    warehouseId: string;
+  warehouseId: string;
 
   @PrimaryColumn({ name: 'stock_item_id', type: 'uuid' })
   stockItemId: string;

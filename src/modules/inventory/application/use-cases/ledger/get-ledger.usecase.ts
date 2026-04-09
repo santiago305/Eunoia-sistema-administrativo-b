@@ -17,12 +17,12 @@ export class GetLedgerUseCase {
 
   async execute(input: GetLedgerInput): Promise<PaginatedLedgerResult> {
 
-    if(!input.warehouseId){
-      throw new BadRequestException('Debes elegir un almacen');
-    }
-    if(!input.stockItemId){
-      throw new BadRequestException('Debes elegir un producto');
-    }
+    // if(!input.warehouseId){
+    //   throw new BadRequestException('Debes elegir un almacen');
+    // }
+    // if(!input.stockItemId){
+    //   throw new BadRequestException('Debes elegir un producto');
+    // }
     const page = input.page && input.page > 0 ? input.page : 1;
     const limit = input.limit && input.limit > 0 ? input.limit : 20;
     let stockItemId = input.stockItemId;
@@ -44,12 +44,7 @@ export class GetLedgerUseCase {
       stockItemId,
     });
 
-    const ordered = [...items].sort((a, b) => {
-      const at = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const bt = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      if (at !== bt) return at - bt;
-      return (a.id ?? "").localeCompare(b.id ?? "");
-    });
+    const ordered = items
 
     const balanceById = new Map<string, number>();
     const usesDbBalance =

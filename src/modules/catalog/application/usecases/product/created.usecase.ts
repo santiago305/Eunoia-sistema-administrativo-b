@@ -62,6 +62,7 @@ export class CreateProduct {
         barcode: normalizedBarcode,
         price: Money.create(input.price),
         cost: Money.create(input.cost),
+        minStock: input.minStock ?? null,
         attributes,
         isActive: input.isActive ?? true,
         type: input.type,

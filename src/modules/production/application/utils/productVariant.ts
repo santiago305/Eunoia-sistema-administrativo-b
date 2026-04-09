@@ -17,6 +17,7 @@ export function toProductOutput(
     barcode: product.getBarcode(),
     price: product.getPrice().getAmount(),
     cost: product.getCost().getAmount(),
+    minStock: product.getMinStock() ?? null,
     attributes: product.getAttributes(),
     isActive: product.getIsActive(),
     type: product.getType(),
@@ -51,6 +52,7 @@ export function toVariantOutput(
     attributes: variant.getAttributes(),
     price: variant.getPrice().getAmount(),
     cost: variant.getCost().getAmount(),
+    minStock: variant.getMinStock() ?? null,
     isActive: variant.getIsActive(),
     createdAt: variant.getCreatedAt(),
   };

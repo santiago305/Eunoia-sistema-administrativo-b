@@ -11,6 +11,7 @@ export class ProductVariant {
     private readonly attributes: AttributesRecord,
     private readonly price: Money,
     private readonly cost: Money,
+    private readonly minStock: number | null,
     private readonly isActive: boolean,
     private readonly createdAt: Date,
     private readonly customSku?: string | null,
@@ -26,6 +27,7 @@ export class ProductVariant {
     attributes?: AttributesRecord;
     price: Money;
     cost: Money;
+    minStock?: number | null;
     isActive?: boolean;
     createdAt?: Date;
     customSku?: string | null;
@@ -41,6 +43,7 @@ export class ProductVariant {
       params.attributes ?? {},
       params.price,
       params.cost,
+      params.minStock ?? null,
       params.isActive ?? true,
       params.createdAt ?? new Date(),
       params.customSku?.trim() || null,
@@ -60,6 +63,7 @@ export class ProductVariant {
   getAttributes(): AttributesRecord { return this.attributes; }
   getPrice(): Money { return this.price; }
   getCost(): Money { return this.cost; }
+  getMinStock(): number | null { return this.minStock; }
   getIsActive(): boolean { return this.isActive; }
   getCreatedAt(): Date { return this.createdAt; }
 }

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ProductEntity } from '../adapters/out/persistence/typeorm/entities/product.entity';
 import { ProductVariantEntity } from '../adapters/out/persistence/typeorm/entities/product-variant.entity';
@@ -25,7 +25,7 @@ import { catalogModuleProviders } from '../composition/container';
 
 @Module({
   imports: [
-    InventoryModule,
+    forwardRef(() => InventoryModule),
     TypeOrmModule.forFeature([
       ProductEntity,
       ProductVariantEntity,

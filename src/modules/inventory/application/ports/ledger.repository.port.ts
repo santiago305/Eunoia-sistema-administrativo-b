@@ -41,6 +41,72 @@ export interface LedgerRepository {
       balance: number;
     }[]
   >;
+  getSalesDailyTotals(
+    params: {
+      warehouseId?: string;
+      stockItemId?: string;
+      locationId?: string;
+      from?: Date;
+      to?: Date;
+      docId?: string;
+      month?: string;
+    },
+    tx?: TransactionContext,
+  ): Promise<
+    {
+      day: string;
+      salida: number;
+    }[]
+  >;
+  getSalesMonthlyTotals(
+    params: {
+      warehouseId?: string;
+      stockItemId?: string;
+      locationId?: string;
+      from?: Date;
+      to?: Date;
+      docId?: string;
+    },
+    tx?: TransactionContext,
+  ): Promise<
+    {
+      month: string;
+      salida: number;
+    }[]
+  >;
+  getSalesWeekdayTotals(
+    params: {
+      warehouseId?: string;
+      stockItemId?: string;
+      locationId?: string;
+      from?: Date;
+      to?: Date;
+      docId?: string;
+    },
+    tx?: TransactionContext,
+  ): Promise<
+    {
+      weekday: number;
+      salida: number;
+    }[]
+  >;
+  getSalesWarehouseTotals(
+    params: {
+      warehouseId?: string;
+      stockItemId?: string;
+      locationId?: string;
+      from?: Date;
+      to?: Date;
+      docId?: string;
+    },
+    tx?: TransactionContext,
+  ): Promise<
+    {
+      warehouseId: string;
+      warehouseName?: string | null;
+      salida: number;
+    }[]
+  >;
   list(
     params: {
       warehouseId?: string;

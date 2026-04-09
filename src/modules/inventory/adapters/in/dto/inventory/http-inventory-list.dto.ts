@@ -1,4 +1,5 @@
-import { IsOptional, IsUUID } from 'class-validator';
+import { IsOptional, IsUUID, IsInt, Min, Max, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class ListInventoryQueryDto {
   @IsOptional()
@@ -11,6 +12,30 @@ export class ListInventoryQueryDto {
   
   @IsOptional()
   @IsUUID()
-  locationId?: string;
-}
+  itemId?: string;
 
+  @IsOptional()
+  @IsUUID()
+  locationId?: string;
+
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @IsOptional()
+  @IsString()
+  type?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number;
+}

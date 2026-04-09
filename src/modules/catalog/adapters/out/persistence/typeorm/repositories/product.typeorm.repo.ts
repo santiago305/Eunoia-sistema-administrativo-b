@@ -52,6 +52,7 @@ export class ProductTypeormRepository implements ProductRepository {
       barcode: prod.getBarcode(),
       price: prod.getPrice().getAmount(),
       cost: prod.getCost().getAmount(),
+      minStock: prod.getMinStock() ?? null,
       attributes: prod.getAttributes(), 
       type: prod.getType(),
       isActive: prod.getIsActive() ?? true,
@@ -84,6 +85,7 @@ export class ProductTypeormRepository implements ProductRepository {
         'p.barcode',
         'p.price',
         'p.cost',
+        'p.minStock',
         'p.attributes',
         'p.isActive',
         'p.type',
@@ -107,6 +109,7 @@ export class ProductTypeormRepository implements ProductRepository {
       barcode: row.barcode,
       price: Money.create(Number(row.price)),
       cost: Money.create(Number(row.cost ?? 0)),
+      minStock: row.minStock ?? null,
       attributes: row.attributes,
       isActive: row.isActive,
       type: row.type,
@@ -218,6 +221,7 @@ export class ProductTypeormRepository implements ProductRepository {
         'p.barcode',
         'p.price',
         'p.cost',
+        'p.minStock',
         'p.attributes',
         'p.isActive',
         'p.type',
@@ -242,6 +246,7 @@ export class ProductTypeormRepository implements ProductRepository {
         barcode: row.barcode,
         price: Money.create(Number(row.price)),
         cost: Money.create(Number(row.cost ?? 0)),
+        minStock: row.minStock ?? null,
         attributes: row.attributes,
         isActive: row.isActive,
         type: row.type,
@@ -371,6 +376,7 @@ export class ProductTypeormRepository implements ProductRepository {
         p.barcode AS barcode,
         p.price::numeric AS price,
         p.cost::numeric AS cost,
+        p.min_stock AS "minStock",
         p.attributes AS attributes,
         u.name AS "baseUnitName",
         u.code AS "baseUnitCode",
@@ -397,6 +403,7 @@ export class ProductTypeormRepository implements ProductRepository {
         v.barcode AS barcode,
         v.price::numeric AS price,
         COALESCE(v.cost, 0)::numeric AS cost,
+        v.min_stock AS "minStock",
         v.attributes AS attributes,
         u.name AS "baseUnitName",
         u.code AS "baseUnitCode",
@@ -466,6 +473,7 @@ export class ProductTypeormRepository implements ProductRepository {
           parentProductId: row.sourceType === 'VARIANT' ? familyProductId : null,
           isGroupRoot: row.sourceType === 'PRODUCT',
           isOperationalItem: true,
+          minStock: row.minStock === null || row.minStock === undefined ? null : Number(row.minStock),
           displayName: buildDisplayName(String(row.name), attributes),
           hasVariants: (variantsCountByProduct.get(familyProductId) ?? 0) > 0,
           variantsCount: variantsCountByProduct.get(familyProductId) ?? 0,
@@ -511,6 +519,7 @@ export class ProductTypeormRepository implements ProductRepository {
       customSku?: string | null;
       price?: Money;
       cost?: Money;
+      minStock?: number | null;
       attributes?: AttributesRecord;
       type?: ProductType;
     },
@@ -527,6 +536,7 @@ export class ProductTypeormRepository implements ProductRepository {
     if (params.customSku !== undefined) patch.customSku = params.customSku;
     if (params.price !== undefined) patch.price = params.price.getAmount();
     if (params.cost !== undefined) patch.cost = params.cost.getAmount();
+    if (params.minStock !== undefined) patch.minStock = params.minStock;
     if (params.attributes !== undefined) patch.attributes = params.attributes;
     if (params.type !== undefined) patch.type = params.type;
 
@@ -790,13 +800,14 @@ export class ProductTypeormRepository implements ProductRepository {
       baseUnitId: row.baseUnitId,
       name: row.name,
       description: row.description,
-      sku: row.sku,
-      barcode: row.barcode,
-      price: Money.create(Number(row.price)),
-      cost: Money.create(Number(row.cost ?? 0)),
-      attributes: row.attributes,
-      isActive: row.isActive,
-      type: row.type,
+        sku: row.sku,
+        barcode: row.barcode,
+        price: Money.create(Number(row.price)),
+        cost: Money.create(Number(row.cost ?? 0)),
+        minStock: row.minStock ?? null,
+        attributes: row.attributes,
+        isActive: row.isActive,
+        type: row.type,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
       customSku: row.customSku,

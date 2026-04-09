@@ -23,9 +23,18 @@ export interface InventoryRepository {
       warehouseId?: string;
       stockItemId?: string;
       locationId?: string;
+      search?: string;
+      type?: string;
+      page?: number;
+      limit?: number;
     },
     tx?: TransactionContext,
-  ): Promise<Inventory[]>;
+  ): Promise<{
+    items: Inventory[];
+    total: number;
+    page: number;
+    limit: number;
+  }>;
 
   upsertSnapshot(snapshot: Inventory, tx?: TransactionContext): Promise<void>;
 

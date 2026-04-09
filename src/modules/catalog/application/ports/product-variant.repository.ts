@@ -20,6 +20,7 @@ export interface ProductVariantRepository {
       attributes?: AttributesRecord;
       price?: Money;
       cost?: Money;
+      minStock?: number | null;
     },
     tx?: TransactionContext,
   ): Promise<ProductVariant | null>;

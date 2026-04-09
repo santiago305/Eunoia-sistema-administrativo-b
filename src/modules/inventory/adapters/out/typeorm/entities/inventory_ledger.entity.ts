@@ -1,10 +1,13 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { Direction } from 'src/modules/inventory/domain/value-objects/direction';
 import { WarehouseEntity } from 'src/modules/warehouses/adapters/out/persistence/typeorm/entities/warehouse';
 import { StockItemEntity } from 'src/modules/inventory/adapters/out/typeorm/entities/stock-item.entity';
 import { InventoryDocumentEntity } from 'src/modules/inventory/adapters/out/typeorm/entities/inventory_document.entity';
 
 @Entity('inventory_ledger')
+@Index('idx_inv_ledger_created_at', ['createdAt'])
+@Index('idx_inv_ledger_stock_item', ['stockItemId'])
+@Index('idx_inv_ledger_doc', ['docId'])
 export class InventoryLedgerEntity {
   @PrimaryGeneratedColumn('uuid', { name: 'ledger_id' })
   id: string;

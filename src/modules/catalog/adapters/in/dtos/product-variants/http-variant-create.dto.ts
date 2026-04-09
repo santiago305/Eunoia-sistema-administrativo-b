@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { IsBoolean, IsNumber, IsOptional, IsString, IsUUID, Min, ValidateNested } from "class-validator";
+import { IsBoolean, IsNumber, IsOptional, IsString, IsUUID, Min, ValidateNested, IsInt } from "class-validator";
 import { ProductVariantAttributesDto } from "./product-variant-attributes.dto";
 
 export class HttpCreateProductVariantDto {
@@ -26,6 +26,11 @@ export class HttpCreateProductVariantDto {
   @IsNumber()
   @Min(0)
   cost: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  minStock?: number | null;
 
   @IsOptional()
   @IsBoolean()

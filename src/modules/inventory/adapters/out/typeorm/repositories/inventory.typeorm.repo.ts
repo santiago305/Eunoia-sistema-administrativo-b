@@ -3,6 +3,9 @@ import { Repository } from 'typeorm';
 import { Injectable } from '@nestjs/common';
 import { Inventory } from '../../../../domain/entities/inventory';
 import { InventoryEntity } from '../entities/inventory.entity';
+import { StockItemEntity } from '../entities/stock-item.entity';
+import { ProductEntity } from 'src/modules/catalog/adapters/out/persistence/typeorm/entities/product.entity';
+import { ProductVariantEntity } from 'src/modules/catalog/adapters/out/persistence/typeorm/entities/product-variant.entity';
 import { TransactionContext } from 'src/shared/domain/ports/transaction-context.port';
 import { TypeormTransactionContext } from 'src/shared/domain/ports/typeorm-transaction-context';
 import { InventoryRepository } from 'src/modules/inventory/application/ports/inventory.repository.port';
@@ -70,9 +73,18 @@ export class InventoryTypeormRepository implements InventoryRepository {
       warehouseId?: string;
       stockItemId?: string;
       locationId?: string;
+      search?: string;
+      type?: string;
+      page?: number;
+      limit?: number;
     },
     tx?: TransactionContext,
-  ): Promise<Inventory[]> {
+  ): Promise<{
+    items: Inventory[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
     const repo = this.getRepo(tx);
     const qb = repo.createQueryBuilder('i');
 
@@ -85,20 +97,64 @@ export class InventoryTypeormRepository implements InventoryRepository {
     if (params.locationId !== undefined) {
       qb.andWhere('i.locationId = :locationId', { locationId: params.locationId });
     }
+    const needsCatalogJoin = !!params.search || !!params.type;
+    if (needsCatalogJoin) {
+      qb
+        .leftJoin(StockItemEntity, 'si', 'si.stock_item_id = i.stock_item_id')
+        .leftJoin(ProductEntity, 'p', 'p.product_id = si.product_id')
+        .leftJoin(ProductVariantEntity, 'v', 'v.variant_id = si.variant_id')
+        .leftJoin(ProductEntity, 'vp', 'vp.product_id = v.product_id');
+    }
 
-    const rows = await qb.orderBy('i.updatedAt', 'DESC').getMany();
-    return rows.map(
-      (row) =>
-        new Inventory(
-          row.warehouseId,
-          row.stockItemId,
-          row.onHand,
-          row.reserved,
-          row.available,
-          row.locationId,
-          row.updatedAt,
-        ),
-    );
+    if (params.search) {
+      const s = `%${params.search}%`;
+      qb.andWhere(
+        `(
+          p.name ILIKE :s OR
+          p.sku ILIKE :s OR
+          p.custom_sku ILIKE :s OR
+          vp.name ILIKE :s OR
+          v.sku ILIKE :s OR
+          v.custom_sku ILIKE :s OR
+          v.attributes->>'presentation' ILIKE :s OR
+          v.attributes->>'variant' ILIKE :s OR
+          v.attributes->>'color' ILIKE :s
+        )`,
+        { s },
+      );
+    }
+
+    if (params.type) {
+      qb.andWhere('(p.type = :type OR vp.type = :type)', { type: params.type });
+    }
+
+    const page = params.page && params.page > 0 ? params.page : 1;
+    const limit = params.limit && params.limit > 0 ? params.limit : 20;
+    const skip = (page - 1) * limit;
+
+    const [rows, total] = await qb
+      .orderBy('i.updatedAt', 'DESC')
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      items: rows.map(
+        (row) =>
+          new Inventory(
+            row.warehouseId,
+            row.stockItemId,
+            row.onHand,
+            row.reserved,
+            row.available,
+            row.locationId,
+            row.updatedAt,
+          ),
+      ),
+      total,
+      page,
+      limit,
+    };
   }
 
   async upsertSnapshot(snapshot: Inventory, tx?: TransactionContext): Promise<void> {

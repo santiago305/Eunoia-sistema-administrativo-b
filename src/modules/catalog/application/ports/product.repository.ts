@@ -38,6 +38,7 @@ export interface ProductRepository {
       customSku?: string | null;
       price?: Money;
       cost?: Money;
+      minStock?: number | null;
       attributes?: AttributesRecord;
       type?: ProductType;
     },

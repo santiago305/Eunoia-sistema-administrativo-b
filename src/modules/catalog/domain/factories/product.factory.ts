@@ -14,6 +14,7 @@ export class ProductFactory {
     barcode?: string | null;
     price: Money;
     cost: Money;
+    minStock?: number | null;
     attributes?: AttributesRecord;
     isActive?: boolean;
     type: ProductType;

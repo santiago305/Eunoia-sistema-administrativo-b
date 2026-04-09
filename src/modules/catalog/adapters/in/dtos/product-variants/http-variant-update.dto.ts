@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { IsOptional, IsString, IsNumber, Min, ValidateNested } from "class-validator";
+import { IsOptional, IsString, IsNumber, Min, ValidateNested, IsInt } from "class-validator";
 import { ProductVariantAttributesDto } from "./product-variant-attributes.dto";
 
 export class HttpUpdateProductVariantDto {
@@ -25,4 +25,9 @@ export class HttpUpdateProductVariantDto {
   @IsNumber()
   @Min(0)
   cost?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  minStock?: number | null;
 }

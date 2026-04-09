@@ -17,6 +17,9 @@ import { GetStockInput } from "../dto/inventory/input/get-stock";
 import { ListInventoryInput } from "../dto/inventory/input/list-inventory";
 import { GetLedgerDailyTotalsInput } from "../dto/ledger/input/get-ledger-daily-totals";
 import { GetLedgerInput } from "../dto/ledger/input/get-ledger";
+import { GetSalesTotalsInput } from "../dto/analytics/input/get-sales-totals";
+import { GetDemandSummaryInput } from "../dto/analytics/input/get-demand-summary";
+import { GetMonthlyProjectionInput } from "../dto/analytics/input/get-monthly-projection";
 
 export class InventoryHttpMapper {
   static toListInventoryInput(input: ListInventoryInput): ListInventoryInput {
@@ -24,6 +27,10 @@ export class InventoryHttpMapper {
       warehouseId: input.warehouseId,
       stockItemId: input.stockItemId,
       locationId: input.locationId,
+      search: input.search?.trim() || undefined,
+      type: input.type,
+      page: input.page,
+      limit: input.limit,
     };
   }
 
@@ -37,8 +44,9 @@ export class InventoryHttpMapper {
 
   static toGetStockInput(input: GetStockInput): GetStockInput {
     return {
-      warehouseId: input.warehouseId,
-      itemId: input.itemId,
+      warehouseId: input.warehouseId || undefined,
+      itemId: input.itemId || undefined,
+      stockItemId: input.stockItemId || undefined,
       locationId: input.locationId,
     };
   }
@@ -64,6 +72,40 @@ export class InventoryHttpMapper {
       from: input.from,
       to: input.to,
       docId: input.docId,
+    };
+  }
+
+  static toGetSalesTotalsInput(input: GetSalesTotalsInput): GetSalesTotalsInput {
+    return {
+      warehouseId: input.warehouseId,
+      stockItemId: input.stockItemId,
+      locationId: input.locationId,
+      from: input.from,
+      to: input.to,
+      docId: input.docId,
+      month: input.month,
+    };
+  }
+
+  static toGetDemandSummaryInput(input: GetDemandSummaryInput): GetDemandSummaryInput {
+    return {
+      warehouseId: input.warehouseId,
+      stockItemId: input.stockItemId,
+      locationId: input.locationId,
+      from: input.from,
+      to: input.to,
+      windowDays: input.windowDays,
+      horizonDays: input.horizonDays,
+    };
+  }
+
+  static toGetMonthlyProjectionInput(input: GetMonthlyProjectionInput): GetMonthlyProjectionInput {
+    return {
+      warehouseId: input.warehouseId,
+      stockItemId: input.stockItemId,
+      locationId: input.locationId,
+      to: input.to,
+      months: input.months,
     };
   }
 

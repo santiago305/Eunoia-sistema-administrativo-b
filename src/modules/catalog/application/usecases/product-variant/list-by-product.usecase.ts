@@ -25,6 +25,7 @@ export class ListProductVariants {
       attributes: v.getAttributes(),
       price: v.getPrice().getAmount(),
       cost: v.getCost().getAmount(),
+      minStock: v.getMinStock(),
       isActive: v.getIsActive(),
       createdAt: v.getCreatedAt(),
     }));

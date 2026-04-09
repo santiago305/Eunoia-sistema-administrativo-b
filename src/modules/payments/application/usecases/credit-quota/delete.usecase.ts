@@ -8,7 +8,7 @@ export class DeleteCreditQuotaUsecase {
     private readonly creditQuotaRepo: CreditQuotaRepository,
   ) {}
 
-  async execute(quotaId: string): Promise<{ message: string }> {
+  async execute(quotaId: string): Promise<{ type: string; message: string }> {
     const existing = await this.creditQuotaRepo.findById(quotaId);
     if (!existing) {
       throw new NotFoundException(new CreditQuotaNotFoundError().message);
@@ -20,6 +20,6 @@ export class DeleteCreditQuotaUsecase {
       throw new BadRequestException("No se pudo eliminar la cuota");
     }
 
-    return { message: "Cuota eliminada con exito" };
+    return { type: "success", message: "Cuota eliminada con exito" };
   }
 }

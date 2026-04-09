@@ -25,9 +25,7 @@ export class GetStockUseCase {
 
     let stockItemId = stockItemCache.get(input.itemId);
     if (!stockItemId) {
-      const stockItem =
-        (await this.stockItemRepo.findById(input.itemId, tx)) ??
-        (await this.stockItemRepo.findByProductIdOrVariantId(input.itemId, tx));
+      const stockItem =await this.stockItemRepo.findByProductIdOrVariantId(input.itemId ?? input.stockItemId, tx);
       if (!stockItem?.stockItemId) {
         throw new NotFoundException(new StockItemNotFoundApplicationError().message);
       }

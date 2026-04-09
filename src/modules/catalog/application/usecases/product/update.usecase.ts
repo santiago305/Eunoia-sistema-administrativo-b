@@ -43,6 +43,7 @@ export class UpdateProduct {
           customSku,
           price: input.price !== undefined ? Money.create(input.price) : undefined,
           cost: input.cost !== undefined ? Money.create(input.cost) : undefined,
+          minStock: input.minStock === undefined ? undefined : input.minStock,
           attributes: input.attributes,
           type: input.type,
         },
