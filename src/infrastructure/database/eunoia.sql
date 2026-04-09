@@ -215,7 +215,7 @@ create table supplier_methods (
 -- - created_at: fecha de creación
 -- - updated_at: fecha de actualización
 -- ---------------------------------------------------------
-create type product_type as enum ('PRIMA', 'FINISHED');
+create type product_type as enum ('MATERIAL', 'PRODUCT');
 
 create table products (
   product_id uuid primary key default uuid_generate_v4(),
@@ -1056,17 +1056,20 @@ on conflict (key) do nothing;
 -- Product Catalog V2
 -- =========================
 
+create type pc_product_type as enum ('MATERIAL', 'PRODUCT');
+
 create table if not exists pc_products (
   product_id uuid primary key default uuid_generate_v4(),
   name varchar(180) not null unique,
   description text,
-  category varchar(120),
+  type pc_product_type not null,
   brand varchar(120),
   base_unit_id uuid references units(unit_id),
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+create index if not exists idx_pc_products_type on pc_products(type);
 
 create table if not exists pc_skus (
   sku_id uuid primary key default uuid_generate_v4(),

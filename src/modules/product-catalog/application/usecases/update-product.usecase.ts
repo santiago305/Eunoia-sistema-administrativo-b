@@ -1,4 +1,5 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { ProductCatalogProductType } from "../../domain/value-objects/product-type";
 import {
   PRODUCT_CATALOG_PRODUCT_REPOSITORY,
   ProductCatalogProductRepository,
@@ -16,7 +17,7 @@ export class UpdateProductCatalogProduct {
     patch: {
       name?: string;
       description?: string | null;
-      category?: string | null;
+      type?: ProductCatalogProductType;
       brand?: string | null;
       baseUnitId?: string | null;
       isActive?: boolean;

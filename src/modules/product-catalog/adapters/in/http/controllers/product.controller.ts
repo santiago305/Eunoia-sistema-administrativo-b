@@ -27,6 +27,7 @@ export class ProductCatalogProductController {
   list(@Query() query: ListProductCatalogProductsDto) {
     return this.listProducts.execute({
       q: query.q,
+      type: query.type,
       isActive: query.isActive === undefined ? undefined : query.isActive === "true",
       page: query.page ? Number(query.page) : 1,
       limit: query.limit ? Number(query.limit) : 10,

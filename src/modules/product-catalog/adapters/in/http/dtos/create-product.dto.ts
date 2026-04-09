@@ -1,4 +1,5 @@
-import { IsBoolean, IsOptional, IsString, IsUUID, MaxLength } from "class-validator";
+import { IsBoolean, IsEnum, IsOptional, IsString, IsUUID, MaxLength } from "class-validator";
+import { ProductCatalogProductType } from "src/modules/product-catalog/domain/value-objects/product-type";
 
 export class CreateProductCatalogProductDto {
   @IsString()
@@ -9,10 +10,8 @@ export class CreateProductCatalogProductDto {
   @IsString()
   description?: string | null;
 
-  @IsOptional()
-  @IsString()
-  @MaxLength(120)
-  category?: string | null;
+  @IsEnum(ProductCatalogProductType)
+  type: ProductCatalogProductType;
 
   @IsOptional()
   @IsString()

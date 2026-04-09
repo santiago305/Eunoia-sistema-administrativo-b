@@ -5,6 +5,7 @@ import { ProductCatalogSkuAttributeValueEntity } from "../../adapters/out/persis
 import { ProductCatalogSkuEntity } from "../../adapters/out/persistence/typeorm/entities/sku.entity";
 import { ProductCatalogStockItemEntity } from "../../adapters/out/persistence/typeorm/entities/stock-item.entity";
 import { UnitEntity } from "src/shared/infrastructure/typeorm/entities/unit.entity";
+import { ProductCatalogProductType } from "../../domain/value-objects/product-type";
 
 type SeedSku = {
   backendSku: string;
@@ -24,7 +25,7 @@ type SeedSku = {
 type SeedFamily = {
   name: string;
   description?: string | null;
-  category?: string | null;
+  type: ProductCatalogProductType;
   brand?: string | null;
   baseUnitCode: string;
   isActive?: boolean;
@@ -34,7 +35,7 @@ type SeedFamily = {
 const PRODUCT_CATALOG_SEED: SeedFamily[] = [
   {
     name: "Jabon",
-    category: "FINISHED",
+    type: ProductCatalogProductType.PRODUCT,
     baseUnitCode: "NIU",
     skus: [
       {
@@ -57,7 +58,7 @@ const PRODUCT_CATALOG_SEED: SeedFamily[] = [
   },
   {
     name: "Arcilla para piel",
-    category: "FINISHED",
+    type: ProductCatalogProductType.PRODUCT,
     baseUnitCode: "NIU",
     skus: [
       {
@@ -80,7 +81,7 @@ const PRODUCT_CATALOG_SEED: SeedFamily[] = [
   },
   {
     name: "Ampolla antiacne",
-    category: "FINISHED",
+    type: ProductCatalogProductType.PRODUCT,
     baseUnitCode: "NIU",
     skus: [
       {
@@ -95,7 +96,7 @@ const PRODUCT_CATALOG_SEED: SeedFamily[] = [
   },
   {
     name: "Emboltorio",
-    category: "PRIMA",
+    type: ProductCatalogProductType.MATERIAL,
     baseUnitCode: "NIU",
     skus: [
       {
@@ -118,7 +119,7 @@ const PRODUCT_CATALOG_SEED: SeedFamily[] = [
   },
   {
     name: "Pegatina",
-    category: "PRIMA",
+    type: ProductCatalogProductType.MATERIAL,
     baseUnitCode: "NIU",
     skus: [
       {
@@ -149,7 +150,7 @@ const PRODUCT_CATALOG_SEED: SeedFamily[] = [
   },
   {
     name: "Arcilla preparada",
-    category: "PRIMA",
+    type: ProductCatalogProductType.MATERIAL,
     baseUnitCode: "GRM",
     skus: [
       {
@@ -172,7 +173,7 @@ const PRODUCT_CATALOG_SEED: SeedFamily[] = [
   },
   {
     name: "Bolsa",
-    category: "PRIMA",
+    type: ProductCatalogProductType.MATERIAL,
     baseUnitCode: "NIU",
     skus: [
       {
@@ -195,7 +196,7 @@ const PRODUCT_CATALOG_SEED: SeedFamily[] = [
   },
   {
     name: "Sticker",
-    category: "PRIMA",
+    type: ProductCatalogProductType.MATERIAL,
     baseUnitCode: "NIU",
     skus: [
       {
@@ -218,7 +219,7 @@ const PRODUCT_CATALOG_SEED: SeedFamily[] = [
   },
   {
     name: "Liquido",
-    category: "PRIMA",
+    type: ProductCatalogProductType.MATERIAL,
     baseUnitCode: "GRM",
     skus: [
       {
@@ -233,7 +234,7 @@ const PRODUCT_CATALOG_SEED: SeedFamily[] = [
   },
   {
     name: "Envase",
-    category: "PRIMA",
+    type: ProductCatalogProductType.MATERIAL,
     baseUnitCode: "NIU",
     skus: [
       {
@@ -267,7 +268,7 @@ export const seedProductCatalog = async (dataSource: DataSource): Promise<void> 
       product = await productRepo.save({
         name: family.name,
         description: family.description ?? null,
-        category: family.category ?? null,
+        type: family.type,
         brand: family.brand ?? null,
         baseUnitId: unit.id,
         isActive: family.isActive ?? true,

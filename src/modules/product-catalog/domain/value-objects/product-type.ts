@@ -1,4 +1,4 @@
-export enum ProductCatalogType {
-  PRIMA = "PRIMA",
-  FINISHED = "FINISHED",
+export enum ProductCatalogProductType {
+  MATERIAL = "MATERIAL",
+  PRODUCT = "PRODUCT",
 }

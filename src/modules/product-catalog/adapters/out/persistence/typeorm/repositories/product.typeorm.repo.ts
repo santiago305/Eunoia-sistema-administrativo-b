@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { ProductCatalogProduct } from "src/modules/product-catalog/domain/entities/product";
 import { ProductCatalogProductRepository } from "src/modules/product-catalog/domain/ports/product.repository";
+import { ProductCatalogProductType } from "src/modules/product-catalog/domain/value-objects/product-type";
 import { ProductCatalogProductEntity } from "../entities/product.entity";
 
 @Injectable()
@@ -17,7 +18,7 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
       row.id,
       row.name,
       row.description ?? null,
-      row.category ?? null,
+      row.type,
       row.brand ?? null,
       row.baseUnitId ?? null,
       row.isActive,
@@ -30,7 +31,7 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
     const saved = await this.repo.save({
       name: product.name,
       description: product.description,
-      category: product.category,
+      type: product.type,
       brand: product.brand,
       baseUnitId: product.baseUnitId,
       isActive: product.isActive,
@@ -40,7 +41,7 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
 
   async update(
     id: string,
-    patch: Partial<Pick<ProductCatalogProduct, "name" | "description" | "category" | "brand" | "baseUnitId" | "isActive">>,
+    patch: Partial<Pick<ProductCatalogProduct, "name" | "description" | "type" | "brand" | "baseUnitId" | "isActive">>,
   ): Promise<ProductCatalogProduct | null> {
     await this.repo.update({ id }, patch);
     const updated = await this.repo.findOne({ where: { id } });
@@ -57,8 +58,12 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
     limit: number;
     q?: string;
     isActive?: boolean;
+    type?: ProductCatalogProductType;
   }): Promise<{ items: ProductCatalogProduct[]; total: number }> {
     const qb = this.repo.createQueryBuilder("p");
+    if (params.type) {
+      qb.andWhere("p.type = :type", { type: params.type });
+    }
     if (params.isActive !== undefined) {
       qb.andWhere("p.is_active = :isActive", { isActive: params.isActive });
     }

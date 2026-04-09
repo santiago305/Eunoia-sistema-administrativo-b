@@ -1,5 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { ProductCatalogProduct } from "../../domain/entities/product";
+import { ProductCatalogProductType } from "../../domain/value-objects/product-type";
 import {
   PRODUCT_CATALOG_PRODUCT_REPOSITORY,
   ProductCatalogProductRepository,
@@ -8,7 +9,7 @@ import {
 export interface CreateProductCatalogProductInput {
   name: string;
   description?: string | null;
-  category?: string | null;
+  type: ProductCatalogProductType;
   brand?: string | null;
   baseUnitId?: string | null;
   isActive?: boolean;
@@ -27,7 +28,7 @@ export class CreateProductCatalogProduct {
         undefined,
         input.name.trim(),
         input.description ?? null,
-        input.category ?? null,
+        input.type,
         input.brand ?? null,
         input.baseUnitId ?? null,
         input.isActive ?? true,
