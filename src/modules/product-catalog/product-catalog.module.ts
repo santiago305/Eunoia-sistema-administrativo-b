@@ -32,6 +32,12 @@ import { PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY } from "./domain/ports/stock-item
 import { PRODUCT_CATALOG_DOCUMENT_SERIE_REPOSITORY } from "./domain/ports/document-serie.repository";
 import { CreateProductCatalogDocumentSerieUseCase } from "./application/usecases/create-document-serie.usecase";
 import { GetActiveProductCatalogDocumentSerieUseCase } from "./application/usecases/get-active-document-series.usecase";
+import { SERIES_REPOSITORY } from "./integration/inventory/ports/document-series.repository.port";
+import { DOCUMENT_REPOSITORY } from "./integration/inventory/ports/document.repository.port";
+import { LEDGER_REPOSITORY } from "./integration/inventory/ports/ledger.repository.port";
+import { INVENTORY_REPOSITORY } from "./integration/inventory/ports/inventory.repository.port";
+import { INVENTORY_LOCK } from "./integration/inventory/ports/inventory-lock.port";
+import { STOCK_ITEM_REPOSITORY } from "./integration/inventory/ports/stock-item.repository.port";
 
 @Module({
   imports: [
@@ -73,6 +79,12 @@ import { GetActiveProductCatalogDocumentSerieUseCase } from "./application/useca
     PRODUCT_CATALOG_INVENTORY_DOCUMENT_REPOSITORY,
     PRODUCT_CATALOG_INVENTORY_LEDGER_REPOSITORY,
     PRODUCT_CATALOG_DOCUMENT_SERIE_REPOSITORY,
+    SERIES_REPOSITORY,
+    DOCUMENT_REPOSITORY,
+    LEDGER_REPOSITORY,
+    INVENTORY_REPOSITORY,
+    INVENTORY_LOCK,
+    STOCK_ITEM_REPOSITORY,
     RegisterProductCatalogInventoryMovement,
     ReserveProductCatalogMaterials,
     CreateProductCatalogDocumentSerieUseCase,

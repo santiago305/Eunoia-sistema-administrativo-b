@@ -2,9 +2,15 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { ProductCatalogProduct } from "src/modules/product-catalog/domain/entities/product";
-import { ProductCatalogProductRepository } from "src/modules/product-catalog/domain/ports/product.repository";
+import {
+  ProductCatalogProductListItem,
+  ProductCatalogProductRepository,
+} from "src/modules/product-catalog/domain/ports/product.repository";
 import { ProductCatalogProductType } from "src/modules/product-catalog/domain/value-objects/product-type";
+import { ProductCatalogInventoryEntity } from "../entities/inventory.entity";
 import { ProductCatalogProductEntity } from "../entities/product.entity";
+import { ProductCatalogSkuEntity } from "../entities/sku.entity";
+import { ProductCatalogStockItemEntity } from "../entities/stock-item.entity";
 
 @Injectable()
 export class ProductCatalogProductTypeormRepository implements ProductCatalogProductRepository {
@@ -59,7 +65,7 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
     q?: string;
     isActive?: boolean;
     type?: ProductCatalogProductType;
-  }): Promise<{ items: ProductCatalogProduct[]; total: number }> {
+  }): Promise<{ items: ProductCatalogProductListItem[]; total: number; page: number; limit: number }> {
     const qb = this.repo.createQueryBuilder("p");
     if (params.type) {
       qb.andWhere("p.type = :type", { type: params.type });
@@ -81,6 +87,56 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
       .take(limit)
       .getManyAndCount();
 
-    return { items: rows.map((row) => this.toDomain(row)), total };
+    const productIds = rows.map((row) => row.id);
+    const metricsRows = productIds.length
+      ? await this.repo.manager
+          .getRepository(ProductCatalogSkuEntity)
+          .createQueryBuilder("s")
+          .leftJoin(ProductCatalogStockItemEntity, "si", "si.sku_id = s.sku_id")
+          .leftJoin(ProductCatalogInventoryEntity, "i", "i.stock_item_id = si.stock_item_id")
+          .where("s.product_id IN (:...productIds)", { productIds })
+          .select([
+            "s.product_id AS product_id",
+            "COUNT(DISTINCT s.sku_id) AS sku_count",
+            "COALESCE(SUM(i.on_hand), 0) AS inventory_total",
+          ])
+          .groupBy("s.product_id")
+          .getRawMany<{
+            product_id: string;
+            sku_count: string;
+            inventory_total: string;
+          }>()
+      : [];
+
+    const metricsMap = new Map<string, { skuCount: number; inventoryTotal: number }>();
+    for (const row of metricsRows) {
+      metricsMap.set(row.product_id, {
+        skuCount: Number(row.sku_count),
+        inventoryTotal: Number(row.inventory_total),
+      });
+    }
+
+    return {
+      items: rows.map((row) => {
+        const metrics = metricsMap.get(row.id) ?? { skuCount: 0, inventoryTotal: 0 };
+        const product = this.toDomain(row);
+        return {
+          id: product.id!,
+          name: product.name,
+          description: product.description,
+          type: product.type,
+          skuCount: metrics.skuCount,
+          inventoryTotal: metrics.inventoryTotal,
+          brand: product.brand,
+          baseUnitId: product.baseUnitId,
+          isActive: product.isActive,
+          createdAt: product.createdAt,
+          updatedAt: product.updatedAt,
+        };
+      }),
+      total,
+      page,
+      limit,
+    };
   }
 }

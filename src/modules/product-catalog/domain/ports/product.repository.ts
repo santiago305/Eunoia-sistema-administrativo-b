@@ -3,6 +3,20 @@ import { ProductCatalogProductType } from "../value-objects/product-type";
 
 export const PRODUCT_CATALOG_PRODUCT_REPOSITORY = Symbol("PRODUCT_CATALOG_PRODUCT_REPOSITORY");
 
+export interface ProductCatalogProductListItem {
+  id: string;
+  name: string;
+  description: string | null;
+  type: ProductCatalogProductType;
+  brand: string | null;
+  baseUnitId: string | null;
+  isActive: boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
+  skuCount: number;
+  inventoryTotal: number;
+}
+
 export interface ProductCatalogProductRepository {
   create(product: ProductCatalogProduct): Promise<ProductCatalogProduct>;
   update(
@@ -16,5 +30,5 @@ export interface ProductCatalogProductRepository {
     q?: string;
     isActive?: boolean;
     type?: ProductCatalogProductType;
-  }): Promise<{ items: ProductCatalogProduct[]; total: number }>;
+  }): Promise<{ items: ProductCatalogProductListItem[]; total: number; page: number; limit: number }>;
 }
