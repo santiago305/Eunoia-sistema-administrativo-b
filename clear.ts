@@ -3,7 +3,6 @@ import { envs } from './src/infrastructure/config/envs';
 import { Role } from './src/modules/roles/adapters/out/persistence/typeorm/entities/role.entity';
 import { User } from './src/modules/users/adapters/out/persistence/typeorm/entities/user.entity';
 import { Session } from './src/modules/sessions/adapters/out/persistence/typeorm/entities/session.entity';
-import { UnitEntity } from './src/shared/infrastructure/typeorm/entities/unit.entity';
 import { ProductEntity } from './src/shared/infrastructure/typeorm/entities/product.entity';
 import { WarehouseEntity } from './src/modules/warehouses/adapters/out/persistence/typeorm/entities/warehouse';
 import { WarehouseLocationEntity } from './src/modules/warehouses/adapters/out/persistence/typeorm/entities/warehouse-location';
@@ -35,12 +34,12 @@ import { ProductCatalogSkuAttributeValueEntity } from './src/modules/product-cat
 import { ProductCatalogSkuEntity } from './src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku.entity';
 import { ProductCatalogStockItemEntity } from './src/modules/product-catalog/adapters/out/persistence/typeorm/entities/stock-item.entity';
 import { ProductCatalogDocumentSerieEntity } from './src/modules/product-catalog/adapters/out/persistence/typeorm/entities/document-serie.entity';
+import { ProductCatalogUnitEntity } from './src/modules/product-catalog/adapters/out/persistence/typeorm/entities/unit.entity';
 
 const entities = [
   Role,
   User,
   Session,
-  UnitEntity,
   ProductEntity,
   WarehouseEntity,
   WarehouseLocationEntity,
@@ -72,6 +71,7 @@ const entities = [
   ProductCatalogInventoryDocumentEntity,
   ProductCatalogInventoryDocumentItemEntity,
   ProductCatalogInventoryLedgerEntity,
+  ProductCatalogUnitEntity,
 ];
 
 const dataSource = new DataSource({

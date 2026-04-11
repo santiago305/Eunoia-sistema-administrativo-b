@@ -48,6 +48,12 @@ Modulo nuevo de catalogo operativo basado en `Product + Sku`.
 - `POST /stock-items/:id/movements`
 - `GET /stock-items/:id/ledger`
 
+### Units
+
+- `GET /units`
+- `GET /units/:id`
+- `GET /units/code/:code`
+
 ## Seeders
 
 - `product-catalog.seeder.ts`

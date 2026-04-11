@@ -2,7 +2,7 @@ import { DataSource } from "typeorm";
 import { ProductCatalogRecipeItemEntity } from "../../adapters/out/persistence/typeorm/entities/recipe-item.entity";
 import { ProductCatalogRecipeEntity } from "../../adapters/out/persistence/typeorm/entities/recipe.entity";
 import { ProductCatalogSkuEntity } from "../../adapters/out/persistence/typeorm/entities/sku.entity";
-import { UnitEntity } from "src/shared/infrastructure/typeorm/entities/unit.entity";
+import { ProductCatalogUnitEntity } from "../../adapters/out/persistence/typeorm/entities/unit.entity";
 
 type RecipeSeed = {
   skuCustomSku: string;
@@ -65,7 +65,7 @@ export const seedProductCatalogRecipes = async (dataSource: DataSource): Promise
   const skuRepo = dataSource.getRepository(ProductCatalogSkuEntity);
   const recipeRepo = dataSource.getRepository(ProductCatalogRecipeEntity);
   const recipeItemRepo = dataSource.getRepository(ProductCatalogRecipeItemEntity);
-  const unitRepo = dataSource.getRepository(UnitEntity);
+  const unitRepo = dataSource.getRepository(ProductCatalogUnitEntity);
 
   for (const seed of PRODUCT_CATALOG_RECIPES) {
     const sku = await skuRepo.findOne({ where: { customSku: seed.skuCustomSku } });

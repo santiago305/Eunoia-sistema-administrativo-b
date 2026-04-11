@@ -4,7 +4,7 @@ import { ProductCatalogProductEntity } from "../../adapters/out/persistence/type
 import { ProductCatalogSkuAttributeValueEntity } from "../../adapters/out/persistence/typeorm/entities/sku-attribute-value.entity";
 import { ProductCatalogSkuEntity } from "../../adapters/out/persistence/typeorm/entities/sku.entity";
 import { ProductCatalogStockItemEntity } from "../../adapters/out/persistence/typeorm/entities/stock-item.entity";
-import { UnitEntity } from "src/shared/infrastructure/typeorm/entities/unit.entity";
+import { ProductCatalogUnitEntity } from "../../adapters/out/persistence/typeorm/entities/unit.entity";
 import { ProductCatalogProductType } from "../../domain/value-objects/product-type";
 
 type SeedSku = {
@@ -250,7 +250,7 @@ const PRODUCT_CATALOG_SEED: SeedFamily[] = [
 ];
 
 export const seedProductCatalog = async (dataSource: DataSource): Promise<void> => {
-  const unitRepo = dataSource.getRepository(UnitEntity);
+  const unitRepo = dataSource.getRepository(ProductCatalogUnitEntity);
   const productRepo = dataSource.getRepository(ProductCatalogProductEntity);
   const skuRepo = dataSource.getRepository(ProductCatalogSkuEntity);
   const attributeRepo = dataSource.getRepository(ProductCatalogAttributeEntity);

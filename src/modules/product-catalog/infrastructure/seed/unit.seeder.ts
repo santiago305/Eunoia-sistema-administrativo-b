@@ -1,8 +1,8 @@
 import { DataSource } from "typeorm";
-import { UnitEntity } from "src/shared/infrastructure/typeorm/entities/unit.entity";
+import { ProductCatalogUnitEntity } from "../../adapters/out/persistence/typeorm/entities/unit.entity";
 
 export const seedUnits = async (dataSource: DataSource): Promise<void> => {
-  const repo = dataSource.getRepository(UnitEntity);
+  const repo = dataSource.getRepository(ProductCatalogUnitEntity);
 
   const unitsToSeed = [
     { code: "BJ", name: "BALDE" },
