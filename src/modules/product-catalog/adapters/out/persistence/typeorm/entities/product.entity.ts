@@ -1,5 +1,6 @@
-import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { ProductCatalogProductType } from "src/modules/product-catalog/domain/value-objects/product-type";
+import { ProductCatalogUnitEntity } from "./unit.entity";
 
 @Entity("pc_products")
 @Index("ux_pc_products_name", ["name"], { unique: true })
@@ -22,6 +23,10 @@ export class ProductCatalogProductEntity {
 
   @Column({ name: "base_unit_id", type: "uuid", nullable: true })
   baseUnitId: string | null;
+
+  @ManyToOne(() => ProductCatalogUnitEntity, { nullable: true })
+  @JoinColumn({ name: "base_unit_id" })
+  baseUnit?: ProductCatalogUnitEntity | null;
 
   @Column({ name: "is_active", type: "boolean", default: true })
   isActive: boolean;

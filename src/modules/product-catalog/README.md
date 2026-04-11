@@ -53,6 +53,14 @@ Modulo nuevo de catalogo operativo basado en `Product + Sku`.
 - `GET /units`
 - `GET /units/:id`
 - `GET /units/code/:code`
+- `POST /units`
+
+### Equivalencias
+
+- `POST /products/:id/equivalences`
+- `GET /products/:id/equivalences`
+- `GET /equivalences/:id`
+- `DELETE /equivalences/:id`
 
 ## Seeders
 
