@@ -8,6 +8,7 @@ import { PRODUCT_CATALOG_INVENTORY_REPOSITORY } from "../domain/ports/inventory.
 import { PRODUCT_CATALOG_INVENTORY_DOCUMENT_REPOSITORY } from "../domain/ports/inventory-document.repository";
 import { PRODUCT_CATALOG_INVENTORY_LEDGER_REPOSITORY } from "../domain/ports/inventory-ledger.repository";
 import { PRODUCT_CATALOG_DOCUMENT_SERIE_REPOSITORY } from "../domain/ports/document-serie.repository";
+import { PRODUCT_CATALOG_UNIT_REPOSITORY } from "../domain/ports/unit.repository";
 import { productCatalogUsecasesProviders } from "../application/providers/product-catalog-usecases.providers";
 import { ProductCatalogProductTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/product.typeorm.repo";
 import { ProductCatalogPublicationTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/publication.typeorm.repo";
@@ -18,6 +19,7 @@ import { ProductCatalogInventoryTypeormRepository } from "../adapters/out/persis
 import { ProductCatalogInventoryDocumentTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/inventory-document.typeorm.repo";
 import { ProductCatalogInventoryLedgerTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/inventory-ledger.typeorm.repo";
 import { ProductCatalogDocumentSerieTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/document-serie.typeorm.repo";
+import { ProductCatalogUnitTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/unit.typeorm.repo";
 import { SERIES_REPOSITORY } from "src/modules/product-catalog/integration/inventory/ports/document-series.repository.port";
 import { DOCUMENT_REPOSITORY } from "src/modules/product-catalog/integration/inventory/ports/document.repository.port";
 import { LEDGER_REPOSITORY } from "src/modules/product-catalog/integration/inventory/ports/ledger.repository.port";
@@ -42,6 +44,7 @@ export const productCatalogModuleProviders: Provider[] = [
   { provide: PRODUCT_CATALOG_INVENTORY_DOCUMENT_REPOSITORY, useClass: ProductCatalogInventoryDocumentTypeormRepository },
   { provide: PRODUCT_CATALOG_INVENTORY_LEDGER_REPOSITORY, useClass: ProductCatalogInventoryLedgerTypeormRepository },
   { provide: PRODUCT_CATALOG_DOCUMENT_SERIE_REPOSITORY, useClass: ProductCatalogDocumentSerieTypeormRepository },
+  { provide: PRODUCT_CATALOG_UNIT_REPOSITORY, useClass: ProductCatalogUnitTypeormRepository },
   { provide: SERIES_REPOSITORY, useClass: DocumentSeriesBridge },
   { provide: DOCUMENT_REPOSITORY, useClass: InventoryDocumentBridge },
   { provide: LEDGER_REPOSITORY, useClass: InventoryLedgerBridge },

@@ -20,6 +20,9 @@ import { ListProductCatalogInventoryBySku } from "../usecases/list-inventory-by-
 import { RegisterProductCatalogInventoryMovement } from "../usecases/register-inventory-movement.usecase";
 import { ListProductCatalogInventoryLedger } from "../usecases/list-inventory-ledger.usecase";
 import { ReserveProductCatalogMaterials } from "../usecases/reserve-materials.usecase";
+import { GetProductCatalogUnit } from "../usecases/get-unit.usecase";
+import { GetProductCatalogUnitByCode } from "../usecases/get-unit-by-code.usecase";
+import { ListProductCatalogUnits } from "../usecases/list-units.usecase";
 
 export const productCatalogUsecasesProviders: Provider[] = [
   CreateProductCatalogProduct,
@@ -43,4 +46,7 @@ export const productCatalogUsecasesProviders: Provider[] = [
   RegisterProductCatalogInventoryMovement,
   ListProductCatalogInventoryLedger,
   ReserveProductCatalogMaterials,
+  GetProductCatalogUnit,
+  GetProductCatalogUnitByCode,
+  ListProductCatalogUnits,
 ];
