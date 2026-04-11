@@ -6,6 +6,7 @@ import { ProductCatalogRecipeController } from "./adapters/in/http/controllers/r
 import { ProductCatalogSkuController } from "./adapters/in/http/controllers/sku.controller";
 import { ProductCatalogStockController } from "./adapters/in/http/controllers/stock.controller";
 import { ProductCatalogUnitController } from "./adapters/in/http/controllers/unit.controller";
+import { ProductCatalogEquivalenceController } from "./adapters/in/http/controllers/equivalence.controller";
 import { ProductCatalogAttributeEntity } from "./adapters/out/persistence/typeorm/entities/attribute.entity";
 import { ProductCatalogPublicationEntity } from "./adapters/out/persistence/typeorm/entities/catalog-publication.entity";
 import { ProductCatalogInventoryEntity } from "./adapters/out/persistence/typeorm/entities/inventory.entity";
@@ -19,6 +20,7 @@ import { ProductCatalogSkuAttributeValueEntity } from "./adapters/out/persistenc
 import { ProductCatalogSkuEntity } from "./adapters/out/persistence/typeorm/entities/sku.entity";
 import { ProductCatalogStockItemEntity } from "./adapters/out/persistence/typeorm/entities/stock-item.entity";
 import { ProductCatalogUnitEntity } from "./adapters/out/persistence/typeorm/entities/unit.entity";
+import { ProductCatalogEquivalencesEntity } from "./adapters/out/persistence/typeorm/entities/equivalences.entity";
 import { ProductCatalogDocumentSerieEntity } from "./adapters/out/persistence/typeorm/entities/document-serie.entity";
 import { RegisterProductCatalogInventoryMovement } from "./application/usecases/register-inventory-movement.usecase";
 import { ReserveProductCatalogMaterials } from "./application/usecases/reserve-materials.usecase";
@@ -33,6 +35,7 @@ import { PRODUCT_CATALOG_SKU_REPOSITORY } from "./domain/ports/sku.repository";
 import { PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY } from "./domain/ports/stock-item.repository";
 import { PRODUCT_CATALOG_DOCUMENT_SERIE_REPOSITORY } from "./domain/ports/document-serie.repository";
 import { PRODUCT_CATALOG_UNIT_REPOSITORY } from "./domain/ports/unit.repository";
+import { PRODUCT_CATALOG_EQUIVALENCE_REPOSITORY } from "./domain/ports/equivalence.repository";
 import { CreateProductCatalogDocumentSerieUseCase } from "./application/usecases/create-document-serie.usecase";
 import { GetActiveProductCatalogDocumentSerieUseCase } from "./application/usecases/get-active-document-series.usecase";
 import { SERIES_REPOSITORY } from "./integration/inventory/ports/document-series.repository.port";
@@ -59,6 +62,7 @@ import { STOCK_ITEM_REPOSITORY } from "./integration/inventory/ports/stock-item.
       ProductCatalogInventoryLedgerEntity,
       ProductCatalogDocumentSerieEntity,
       ProductCatalogUnitEntity,
+      ProductCatalogEquivalencesEntity,
     ]),
   ],
   controllers: [
@@ -68,6 +72,7 @@ import { STOCK_ITEM_REPOSITORY } from "./integration/inventory/ports/stock-item.
     ProductCatalogPublicationController,
     ProductCatalogStockController,
     ProductCatalogUnitController,
+    ProductCatalogEquivalenceController,
   ],
   providers: [
     ...productCatalogModuleProviders,
@@ -85,6 +90,7 @@ import { STOCK_ITEM_REPOSITORY } from "./integration/inventory/ports/stock-item.
     PRODUCT_CATALOG_INVENTORY_LEDGER_REPOSITORY,
     PRODUCT_CATALOG_DOCUMENT_SERIE_REPOSITORY,
     PRODUCT_CATALOG_UNIT_REPOSITORY,
+    PRODUCT_CATALOG_EQUIVALENCE_REPOSITORY,
     SERIES_REPOSITORY,
     DOCUMENT_REPOSITORY,
     LEDGER_REPOSITORY,

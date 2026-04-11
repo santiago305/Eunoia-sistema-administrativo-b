@@ -10,6 +10,7 @@ export interface ProductCatalogProductListItem {
   type: ProductCatalogProductType;
   brand: string | null;
   baseUnitId: string | null;
+  baseUnit?: { id: string; code: string; name: string } | null;
   isActive: boolean;
   createdAt?: Date;
   updatedAt?: Date;
