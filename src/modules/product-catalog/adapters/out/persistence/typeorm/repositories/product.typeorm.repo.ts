@@ -66,7 +66,7 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
     isActive?: boolean;
     type?: ProductCatalogProductType;
   }): Promise<{ items: ProductCatalogProductListItem[]; total: number; page: number; limit: number }> {
-    const qb = this.repo.createQueryBuilder("p");
+    const qb = this.repo.createQueryBuilder("p").leftJoinAndSelect("p.baseUnit", "bu");
     if (params.type) {
       qb.andWhere("p.type = :type", { type: params.type });
     }
@@ -82,7 +82,7 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
     const page = params.page > 0 ? params.page : 1;
     const limit = params.limit > 0 ? params.limit : 10;
     const [rows, total] = await qb
-      .orderBy("p.created_at", "DESC")
+      .orderBy("p.createdAt", "DESC")
       .skip((page - 1) * limit)
       .take(limit)
       .getManyAndCount();
@@ -129,6 +129,9 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
           inventoryTotal: metrics.inventoryTotal,
           brand: product.brand,
           baseUnitId: product.baseUnitId,
+          baseUnit: row.baseUnit
+            ? { id: row.baseUnit.id, code: row.baseUnit.code, name: row.baseUnit.name }
+            : null,
           isActive: product.isActive,
           createdAt: product.createdAt,
           updatedAt: product.updatedAt,
