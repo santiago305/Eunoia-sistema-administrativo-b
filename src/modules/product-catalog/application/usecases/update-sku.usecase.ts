@@ -1,4 +1,5 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { ProductCatalogSkuNotFoundError } from "../errors/product-catalog-sku-not-found.error";
 import { PRODUCT_CATALOG_SKU_REPOSITORY, ProductCatalogSkuRepository, SkuAttributeInput } from "../../domain/ports/sku.repository";
 
 @Injectable()
@@ -25,7 +26,7 @@ export class UpdateProductCatalogSku {
     },
   ) {
     const updated = await this.repo.update(id, patch);
-    if (!updated) throw new NotFoundException("Sku not found");
+    if (!updated) throw new NotFoundException(new ProductCatalogSkuNotFoundError().message);
     return updated;
   }
 }

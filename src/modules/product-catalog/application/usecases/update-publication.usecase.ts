@@ -1,4 +1,5 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { ProductCatalogPublicationNotFoundError } from "../errors/product-catalog-publication-not-found.error";
 import {
   PRODUCT_CATALOG_PUBLICATION_REPOSITORY,
   ProductCatalogPublicationRepository,
@@ -21,7 +22,7 @@ export class UpdateProductCatalogPublication {
     },
   ) {
     const updated = await this.repo.update(id, patch);
-    if (!updated) throw new NotFoundException("Publication not found");
+    if (!updated) throw new NotFoundException(new ProductCatalogPublicationNotFoundError().message);
     return updated;
   }
 }

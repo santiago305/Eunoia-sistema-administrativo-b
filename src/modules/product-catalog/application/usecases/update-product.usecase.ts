@@ -1,4 +1,5 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { ProductCatalogProductNotFoundError } from "../errors/product-catalog-product-not-found.error";
 import { ProductCatalogProductType } from "../../domain/value-objects/product-type";
 import {
   PRODUCT_CATALOG_PRODUCT_REPOSITORY,
@@ -24,7 +25,7 @@ export class UpdateProductCatalogProduct {
     },
   ) {
     const updated = await this.repo.update(id, patch);
-    if (!updated) throw new NotFoundException("Product not found");
+    if (!updated) throw new NotFoundException(new ProductCatalogProductNotFoundError().message);
     return updated;
   }
 }

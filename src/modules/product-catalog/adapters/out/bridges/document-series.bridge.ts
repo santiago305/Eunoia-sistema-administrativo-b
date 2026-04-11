@@ -4,7 +4,6 @@ import { DocType } from "src/shared/domain/value-objects/doc-type";
 import DocumentSerie from "src/modules/product-catalog/integration/inventory/entities/document-serie";
 import {
   DocumentSeriesRepository,
-  SERIES_REPOSITORY,
 } from "src/modules/product-catalog/integration/inventory/ports/document-series.repository.port";
 import {
   PRODUCT_CATALOG_DOCUMENT_SERIE_REPOSITORY,

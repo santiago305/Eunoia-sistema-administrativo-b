@@ -1,4 +1,5 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { ProductCatalogProductNotFoundError } from "../errors/product-catalog-product-not-found.error";
 import { ProductCatalogSku } from "../../domain/entities/sku";
 import {
   PRODUCT_CATALOG_PRODUCT_REPOSITORY,
@@ -30,7 +31,7 @@ export class CreateProductCatalogSku {
     attributes?: SkuAttributeInput[];
   }) {
     const product = await this.productRepo.findById(input.productId);
-    if (!product) throw new NotFoundException("Product not found");
+    if (!product) throw new NotFoundException(new ProductCatalogProductNotFoundError().message);
     const backendSku = await this.skuRepo.reserveNextBackendSku();
     return this.skuRepo.create({
       sku: new ProductCatalogSku(

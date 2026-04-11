@@ -1,4 +1,6 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
+import { ProductCatalogInsufficientReservationError } from "../errors/product-catalog-insufficient-reservation.error";
+import { ProductCatalogInsufficientStockError } from "../errors/product-catalog-insufficient-stock.error";
 import {
   PRODUCT_CATALOG_INVENTORY_REPOSITORY,
   ProductCatalogInventoryRepository,
@@ -28,11 +30,11 @@ export class ReserveProductCatalogMaterials {
 
       if (params.reserveMode) {
         if (!snapshot || available < line.qty) {
-          throw new BadRequestException("No hay stock suficiente en inventario SKU");
+          throw new BadRequestException(new ProductCatalogInsufficientStockError().message);
         }
       } else {
         if (reserved < line.qty) {
-          throw new BadRequestException("Reserva SKU insuficiente");
+          throw new BadRequestException(new ProductCatalogInsufficientReservationError().message);
         }
       }
     }

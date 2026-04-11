@@ -1,4 +1,5 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { ProductCatalogStockItemNotFoundError } from "../errors/product-catalog-stock-item-not-found.error";
 import { ProductCatalogInventoryBalance } from "../../domain/entities/inventory-balance";
 import {
   PRODUCT_CATALOG_INVENTORY_REPOSITORY,
@@ -26,7 +27,7 @@ export class UpsertProductCatalogInventoryBalance {
     reserved?: number;
   }) {
     const stockItem = await this.stockItemRepo.findById(input.stockItemId);
-    if (!stockItem) throw new NotFoundException("Stock item not found");
+    if (!stockItem) throw new NotFoundException(new ProductCatalogStockItemNotFoundError().message);
     const reserved = input.reserved ?? 0;
     return this.inventoryRepo.upsert(
       new ProductCatalogInventoryBalance(

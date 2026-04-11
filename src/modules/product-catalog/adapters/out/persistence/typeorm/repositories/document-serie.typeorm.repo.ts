@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { DocumentSerieUnavailableError } from "src/modules/product-catalog/domain/errors/document-serie-unavailable.error";
 import { EntityManager, Repository } from "typeorm";
 import { DocType } from "src/shared/domain/value-objects/doc-type";
 import { TransactionContext } from "src/shared/domain/ports/transaction-context.port";
@@ -73,7 +74,7 @@ export class ProductCatalogDocumentSerieTypeormRepository implements ProductCata
       where: { id: serieId },
       lock: { mode: "pessimistic_write" },
     });
-    if (!row || !row.isActive) throw new Error("Serie no encontrada o inactiva");
+    if (!row || !row.isActive) throw new DocumentSerieUnavailableError();
     const reserved = row.nextNumber;
     row.nextNumber += 1;
     await manager.getRepository(ProductCatalogDocumentSerieEntity).save(row);

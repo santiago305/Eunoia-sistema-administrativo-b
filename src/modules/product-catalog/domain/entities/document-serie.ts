@@ -1,4 +1,8 @@
 import { DocType } from "src/shared/domain/value-objects/doc-type";
+import { DocumentSerieCodeRequiredError } from "../errors/document-serie-code-required.error";
+import { DocumentSerieDocTypeRequiredError } from "../errors/document-serie-doc-type-required.error";
+import { DocumentSerieNameRequiredError } from "../errors/document-serie-name-required.error";
+import { DocumentSerieWarehouseRequiredError } from "../errors/document-serie-warehouse-required.error";
 
 export class ProductCatalogDocumentSerie {
   private constructor(
@@ -31,10 +35,10 @@ export class ProductCatalogDocumentSerie {
     const warehouseId = params.warehouseId?.trim();
     const separator = params.separator?.trim() || "-";
 
-    if (!code) throw new Error("El codigo de serie es obligatorio");
-    if (!name) throw new Error("El nombre de serie es obligatorio");
-    if (!params.docType) throw new Error("El tipo de documento es obligatorio");
-    if (!warehouseId) throw new Error("El almacen es obligatorio");
+    if (!code) throw new DocumentSerieCodeRequiredError();
+    if (!name) throw new DocumentSerieNameRequiredError();
+    if (!params.docType) throw new DocumentSerieDocTypeRequiredError();
+    if (!warehouseId) throw new DocumentSerieWarehouseRequiredError();
 
     return new ProductCatalogDocumentSerie(
       params.id,

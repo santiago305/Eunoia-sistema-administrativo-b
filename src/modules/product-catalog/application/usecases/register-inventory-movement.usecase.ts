@@ -1,4 +1,5 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { ProductCatalogStockItemNotFoundError } from "../errors/product-catalog-stock-item-not-found.error";
 import { DocStatus } from "src/shared/domain/value-objects/doc-status";
 import { Direction } from "src/shared/domain/value-objects/direction";
 import { DocType } from "src/shared/domain/value-objects/doc-type";
@@ -51,7 +52,7 @@ export class RegisterProductCatalogInventoryMovement {
     referenceType?: ReferenceType | null;
   }) {
     const stockItem = await this.stockItemRepo.findById(input.stockItemId);
-    if (!stockItem) throw new NotFoundException("Stock item not found");
+    if (!stockItem) throw new NotFoundException(new ProductCatalogStockItemNotFoundError().message);
 
     const document = await this.documentRepo.create(
       new ProductCatalogInventoryDocument(

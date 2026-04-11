@@ -1,6 +1,7 @@
 import { InjectRepository } from "@nestjs/typeorm";
 import { Injectable } from "@nestjs/common";
-import { EntityManager, Repository } from "typeorm";
+import { ProductCatalogUnsupportedBridgeOperationError } from "src/modules/product-catalog/infrastructure/errors/product-catalog-unsupported-bridge-operation.error";
+import { Repository } from "typeorm";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { TypeormTransactionContext } from "src/shared/infrastructure/typeorm/typeorm.transaction-context";
 import { LedgerRepository } from "src/modules/product-catalog/integration/inventory/ports/ledger.repository.port";
@@ -39,13 +40,13 @@ export class InventoryLedgerBridge implements LedgerRepository {
   }
 
   async getBalances(): Promise<{ entradaRango: number; salidaRango: number; balanceRango: number; balanceInicial: number; balanceFinal: number; balanceTotal: number; }> {
-    throw new Error("Legacy ledger balances no soportado en ProductCatalog bridge");
+    throw new ProductCatalogUnsupportedBridgeOperationError("Legacy ledger balances no soportado en ProductCatalog bridge");
   }
   async getDailyTotals(): Promise<{ day: string; entrada: number; salida: number; balance: number; }[]> {
-    throw new Error("Legacy ledger daily totals no soportado en ProductCatalog bridge");
+    throw new ProductCatalogUnsupportedBridgeOperationError("Legacy ledger daily totals no soportado en ProductCatalog bridge");
   }
   async list(): Promise<{ items: LedgerEntry[]; total: number; page: number; limit: number; }> {
-    throw new Error("Legacy ledger list no soportado en ProductCatalog bridge");
+    throw new ProductCatalogUnsupportedBridgeOperationError("Legacy ledger list no soportado en ProductCatalog bridge");
   }
 }
 

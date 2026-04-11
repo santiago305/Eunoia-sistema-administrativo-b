@@ -1,4 +1,5 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { ProductCatalogStockItemNotFoundError } from "../errors/product-catalog-stock-item-not-found.error";
 import {
   PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY,
   ProductCatalogStockItemRepository,
@@ -13,7 +14,7 @@ export class GetProductCatalogStockItem {
 
   async execute(id: string) {
     const item = await this.repo.findById(id);
-    if (!item) throw new NotFoundException("Stock item not found");
+    if (!item) throw new NotFoundException(new ProductCatalogStockItemNotFoundError().message);
     return item;
   }
 }

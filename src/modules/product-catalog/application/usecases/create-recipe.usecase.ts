@@ -1,4 +1,5 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { ProductCatalogSkuNotFoundError } from "../errors/product-catalog-sku-not-found.error";
 import { ProductCatalogRecipeItem } from "../../domain/entities/recipe-item";
 import { ProductCatalogRecipe } from "../../domain/entities/recipe";
 import { PRODUCT_CATALOG_RECIPE_REPOSITORY, ProductCatalogRecipeRepository } from "../../domain/ports/recipe.repository";
@@ -20,7 +21,7 @@ export class CreateProductCatalogRecipe {
     items: Array<{ materialSkuId: string; quantity: number; unitId: string }>;
   }) {
     const sku = await this.skuRepo.findById(input.skuId);
-    if (!sku) throw new NotFoundException("Sku not found");
+    if (!sku) throw new NotFoundException(new ProductCatalogSkuNotFoundError().message);
     const current = await this.recipeRepo.findActiveBySkuId(input.skuId);
     const version = (current?.recipe.version ?? 0) + 1;
     return this.recipeRepo.create({

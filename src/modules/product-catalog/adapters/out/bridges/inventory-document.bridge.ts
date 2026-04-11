@@ -1,5 +1,6 @@
 import { InjectRepository } from "@nestjs/typeorm";
 import { Injectable } from "@nestjs/common";
+import { ProductCatalogUnsupportedBridgeOperationError } from "src/modules/product-catalog/infrastructure/errors/product-catalog-unsupported-bridge-operation.error";
 import { EntityManager, Repository } from "typeorm";
 import { TypeormTransactionContext } from "src/shared/infrastructure/typeorm/typeorm.transaction-context";
 import { TransactionContext } from "src/shared/domain/ports/transaction-context.port";
@@ -93,7 +94,7 @@ export class InventoryDocumentBridge implements DocumentRepository {
   }
 
   async list(): Promise<{ items: InventoryDocument[]; total: number; page: number; limit: number }> {
-    throw new Error("Legacy inventory list no soportado en ProductCatalog bridge");
+    throw new ProductCatalogUnsupportedBridgeOperationError("Legacy inventory list no soportado en ProductCatalog bridge");
   }
 
   async findByReference(
