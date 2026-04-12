@@ -1,7 +1,6 @@
 import { Provider } from "@nestjs/common";
 import { CreateSupplierUsecase } from "../usecases/supplier/create.usecase";
 import { GetSupplierUsecase } from "../usecases/supplier/get-by-id.usecase";
-import { ListAllActiveSuppliersUsecase } from "../usecases/supplier/list-all-active.usecase";
 import { ListSuppliersUsecase } from "../usecases/supplier/list.usecase";
 import { SetSupplierActiveUsecase } from "../usecases/supplier/set-active.usecase";
 import { UpdateSupplierUsecase } from "../usecases/supplier/update.usecase";
@@ -16,7 +15,6 @@ export const suppliersUsecasesProviders: Provider[] = [
   SetSupplierActiveUsecase,
   ListSuppliersUsecase,
   GetSupplierUsecase,
-  ListAllActiveSuppliersUsecase,
   CreateSupplierSkuUsecase,
   UpdateSupplierSkuUsecase,
   GetSupplierSkuUsecase,

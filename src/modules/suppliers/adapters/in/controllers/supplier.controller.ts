@@ -5,7 +5,6 @@ import { UpdateSupplierUsecase } from "src/modules/suppliers/application/usecase
 import { SetSupplierActiveUsecase } from "src/modules/suppliers/application/usecases/supplier/set-active.usecase";
 import { ListSuppliersUsecase } from "src/modules/suppliers/application/usecases/supplier/list.usecase";
 import { GetSupplierUsecase } from "src/modules/suppliers/application/usecases/supplier/get-by-id.usecase";
-import { ListAllActiveSuppliersUsecase } from "src/modules/suppliers/application/usecases/supplier/list-all-active.usecase";
 import { SupplierHttpMapper } from "src/modules/suppliers/application/mappers/supplier-http.mapper";
 import { HttpCreateSupplierDto } from "../dtos/supplier/http-supplier-create.dto";
 import { HttpUpdateSupplierDto } from "../dtos/supplier/http-supplier-update.dto";
@@ -21,7 +20,6 @@ export class SuppliersController {
     private readonly setSupplierActive: SetSupplierActiveUsecase,
     private readonly listSuppliers: ListSuppliersUsecase,
     private readonly getSupplier: GetSupplierUsecase,
-    private readonly listAllActiveSuppliers: ListAllActiveSuppliersUsecase,
   ) {}
 
   @Post()
@@ -45,11 +43,6 @@ export class SuppliersController {
       email: query.email,
       q: query.q,
     }));
-  }
-
-  @Get("active")
-  listAllActive() {
-    return this.listAllActiveSuppliers.execute();
   }
 
   @Get(":id")

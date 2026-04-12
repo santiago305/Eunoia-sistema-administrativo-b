@@ -106,14 +106,6 @@ export class WarehouseTypeormRepo implements WarehouseRepository {
     return this.toDomain(saved);
   }
 
-  async listActive(tx?: TransactionContext): Promise<Warehouse[]> {
-    const rows = await this.getRepo(tx).find({
-      where: { isActive: true },
-      order: { createdAt: "DESC" },
-    });
-    return rows.map((r) => this.toDomain(r));
-  }
-
   async update(
     params: {
       warehouseId: WarehouseId;
@@ -189,7 +181,7 @@ export class WarehouseTypeormRepo implements WarehouseRepository {
     }
 
     const page = params.page ?? 1;
-    const limit = params.limit ?? 20;
+    const limit = params.limit ?? 10;
 
     const [rows, total] = await qb
       .orderBy("w.createdAt", "DESC")

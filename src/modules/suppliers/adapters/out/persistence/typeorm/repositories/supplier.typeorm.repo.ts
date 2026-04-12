@@ -146,21 +146,21 @@ export class SupplierTypeormRepository implements SupplierRepository {
     if (params.isActive !== undefined) qb.andWhere("s.isActive = :isActive", { isActive: params.isActive });
     if (params.documentType) qb.andWhere("s.documentType = :documentType", { documentType: params.documentType });
     if (params.documentNumber) qb.andWhere("s.documentNumber ILIKE :documentNumber", { documentNumber: `%${params.documentNumber}%` });
-    if (params.name) qb.andWhere("s.name ILIKE :name", { name: `%${params.name}%` });
-    if (params.lastName) qb.andWhere("s.lastName ILIKE :lastName", { lastName: `%${params.lastName}%` });
-    if (params.tradeName) qb.andWhere("s.tradeName ILIKE :tradeName", { tradeName: `%${params.tradeName}%` });
+    if (params.name) qb.andWhere("unaccent(s.name) ILIKE unaccent(:name)", { name: `%${params.name}%` });
+    if (params.lastName) qb.andWhere("unaccent(s.lastName) ILIKE unaccent(:lastName)", { lastName: `%${params.lastName}%` });
+    if (params.tradeName) qb.andWhere("unaccent(s.tradeName) ILIKE unaccent(:tradeName)", { tradeName: `%${params.tradeName}%` });
     if (params.phone) qb.andWhere("s.phone ILIKE :phone", { phone: `%${params.phone}%` });
     if (params.email) qb.andWhere("s.email ILIKE :email", { email: `%${params.email}%` });
 
     if (params.q) {
       qb.andWhere(
-        "(s.name ILIKE :q OR s.lastName ILIKE :q OR s.tradeName ILIKE :q OR s.documentNumber ILIKE :q OR s.phone ILIKE :q OR s.email ILIKE :q)",
+        "(unaccent(s.name) ILIKE unaccent(:q) OR unaccent(s.lastName) ILIKE unaccent(:q) OR unaccent(s.tradeName) ILIKE unaccent(:q) OR s.documentNumber ILIKE :q OR s.phone ILIKE :q OR s.email ILIKE :q)",
         { q: `%${params.q}%` },
       );
     }
 
     const page = params.page ?? 1;
-    const limit = params.limit ?? 20;
+    const limit = params.limit ?? 10;
 
     const [rows, total] = await qb
       .orderBy("s.createdAt", "DESC")
@@ -169,15 +169,6 @@ export class SupplierTypeormRepository implements SupplierRepository {
       .getManyAndCount();
 
     return { items: rows.map((r) => this.toDomain(r)), total };
-  }
-
-  async listAllActive(tx?: TransactionContext): Promise<{ items: Supplier[] }> {
-    const rows = await this.getRepo(tx)
-      .createQueryBuilder("s")
-      .where("s.isActive = :isActive", { isActive: true })
-      .orderBy("s.createdAt", "DESC")
-      .getMany();
-    return { items: rows.map((r) => this.toDomain(r)) };
   }
 
   async setActive(supplierId: string, isActive: boolean, tx?: TransactionContext): Promise<void> {

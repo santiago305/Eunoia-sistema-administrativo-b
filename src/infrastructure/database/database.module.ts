@@ -1,6 +1,6 @@
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Module } from '@nestjs/common';
-import { envs } from '../config/envs';
+import { getTypeOrmModuleOptions } from './typeorm.config';
 
 /**
  * MAdulo de base de datos que configura la conexiAn a cualquier base de datos usando TypeORM.
@@ -26,17 +26,7 @@ import { envs } from '../config/envs';
 @Module({
   imports: [
     TypeOrmModule.forRootAsync({
-      useFactory: async () => ({
-        type: 'postgres',
-        host: envs.db.host,
-        port: envs.db.port,
-        username: envs.db.username,
-        password: envs.db.password,
-        database: envs.db.name,
-        synchronize: true, //  SOLO EN DESARROLLO
-        autoLoadEntities: true,
-        logging: true,
-      }),
+      useFactory: async () => getTypeOrmModuleOptions(),
     }),
   ],
 })
