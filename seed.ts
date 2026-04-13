@@ -47,6 +47,7 @@ import { seedSuppliers } from './src/modules/suppliers/infrastructure/seed/suppl
 import { seedSupplierSkus } from './src/modules/suppliers/infrastructure/seed/supplier-sku.seeder';
 import { seedProductCatalog } from './src/modules/product-catalog/infrastructure/seed/product-catalog.seeder';
 import { seedProductCatalogRecipes } from './src/modules/product-catalog/infrastructure/seed/product-catalog-recipe.seeder';
+import { seedProductCatalogInventory } from './src/modules/product-catalog/infrastructure/seed/inventory.seeder';
 
 const entities = [
   Role,
@@ -112,6 +113,7 @@ dataSource
     await seedProductCatalogRecipes(dataSource);
 
     const warehouses = await seedWarehouses(dataSource);
+    await seedProductCatalogInventory(dataSource);
     for (const wh of warehouses) {
       await seedDocumentSeries(dataSource, wh.id);
     }

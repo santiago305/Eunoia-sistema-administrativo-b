@@ -6,6 +6,7 @@ import { SetLocationActiveUsecase } from "../usecases/location/set-active.usecas
 import { UpdateLocationUsecase } from "../usecases/location/update.usecase";
 import { CreateWarehouseUsecase } from "../usecases/warehouse/create.usecase";
 import { GetWarehouseUsecase } from "../usecases/warehouse/get-by-id.usecase";
+import { GetWarehouseStockUsecase } from "../usecases/warehouse/get-stock.usecase";
 import { GetWarehouseWithLocationsUsecase } from "../usecases/warehouse/get-with-locations.usecase";
 import { ListWarehousesUsecase } from "../usecases/warehouse/list.usecase";
 import { SetWarehouseActiveUsecase } from "../usecases/warehouse/set-active.usecase";
@@ -17,6 +18,7 @@ export const warehousesUsecasesProviders: Provider[] = [
   SetWarehouseActiveUsecase,
   ListWarehousesUsecase,
   GetWarehouseUsecase,
+  GetWarehouseStockUsecase,
   GetWarehouseWithLocationsUsecase,
   CreateLocationUsecase,
   UpdateLocationUsecase,

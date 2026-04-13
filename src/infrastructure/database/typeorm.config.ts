@@ -2,6 +2,7 @@ import { TypeOrmModuleOptions } from "@nestjs/typeorm";
 import { DataSource, DataSourceOptions } from "typeorm";
 import { envs } from "../config/envs";
 import { EnableUnaccentExtension20260411000000 } from "./migrations/20260411000000-enable-unaccent-extension";
+import { AddListingIndexes20260412000000 } from "./migrations/20260412000000-add-listing-indexes";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -23,7 +24,7 @@ export const getMigrationDataSourceOptions = (): DataSourceOptions => ({
   ...getBaseTypeOrmOptions(),
   entities: [],
   migrationsTableName: "typeorm_migrations",
-  migrations: [EnableUnaccentExtension20260411000000],
+  migrations: [EnableUnaccentExtension20260411000000, AddListingIndexes20260412000000],
 });
 
 export const migrationDataSource = new DataSource(getMigrationDataSourceOptions());

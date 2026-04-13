@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGua
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
 import { CreateWarehouseUsecase } from "src/modules/warehouses/application/usecases/warehouse/create.usecase";
 import { GetWarehouseUsecase } from "src/modules/warehouses/application/usecases/warehouse/get-by-id.usecase";
+import { GetWarehouseStockUsecase } from "src/modules/warehouses/application/usecases/warehouse/get-stock.usecase";
 import { ListWarehousesUsecase } from "src/modules/warehouses/application/usecases/warehouse/list.usecase";
 import { SetWarehouseActiveUsecase } from "src/modules/warehouses/application/usecases/warehouse/set-active.usecase";
 import { UpdateWarehouseUsecase } from "src/modules/warehouses/application/usecases/warehouse/update.usecase";
@@ -22,6 +23,7 @@ export class WarehousesController {
     private readonly setWarehouseActive: SetWarehouseActiveUsecase,
     private readonly listWarehouses: ListWarehousesUsecase,
     private readonly getWarehouse: GetWarehouseUsecase,
+    private readonly getWarehouseStock: GetWarehouseStockUsecase,
     private readonly getWarehouseWithLocations: GetWarehouseWithLocationsUsecase,
   ) {}
 
@@ -44,6 +46,11 @@ export class WarehousesController {
       district: query.district,
       address: query.address,
     }));
+  }
+
+  @Get(":id/stock")
+  getStock(@Param("id", ParseUUIDPipe) id: string) {
+    return this.getWarehouseStock.execute({ warehouseId: new WarehouseId(id) });
   }
 
   @Get(":id")

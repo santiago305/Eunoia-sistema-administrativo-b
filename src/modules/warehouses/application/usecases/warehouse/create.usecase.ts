@@ -23,11 +23,6 @@ export class CreateWarehouseUsecase {
 
   async execute(input: CreateWarehouseInput): Promise<{ message: string; type: string }> {
     return this.uow.runInTransaction(async (tx) => {
-      const existing = await this.warehouseRepo.findByName(input.name, tx);
-      if (existing) {
-        throw new BadRequestException("Ya existe un almacén con ese nombre");
-      }
-
       const warehouse = Warehouse.create({
         name: input.name,
         department: input.department,
@@ -42,7 +37,7 @@ export class CreateWarehouseUsecase {
       try {
         created = await this.warehouseRepo.create(warehouse, tx);
       } catch {
-        throw new BadRequestException("No se pudo crear el almacén");
+        throw new BadRequestException("No se pudo crear el almacen");
       }
 
       const defaults = [
@@ -79,11 +74,10 @@ export class CreateWarehouseUsecase {
           tx,
         );
       } catch {
-        throw new InternalServerErrorException("No se pudo crear la ubicación inicial");
+        throw new InternalServerErrorException("No se pudo crear la ubicacion inicial");
       }
 
-      return successResponse("Almacén creado con éxito");
+      return successResponse("Almacen creado con exito");
     });
   }
 }
-
