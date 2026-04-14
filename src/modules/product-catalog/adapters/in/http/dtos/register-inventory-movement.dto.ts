@@ -1,7 +1,24 @@
-import { IsEnum, IsNumber, IsOptional, IsString, IsUUID } from "class-validator";
+import { Type } from "class-transformer";
+import { IsArray, IsEnum, IsNumber, IsOptional, IsString, IsUUID, ValidateNested } from "class-validator";
 import { Direction } from "src/shared/domain/value-objects/direction";
 import { DocType } from "src/shared/domain/value-objects/doc-type";
 import { ReferenceType } from "src/shared/domain/value-objects/reference-type";
+
+class RegisterInventoryMovementItemDto {
+  @IsUUID()
+  skuId: string;
+
+  @IsNumber()
+  quantity: number;
+
+  @IsOptional()
+  @IsNumber()
+  unitCost?: number | null;
+
+  @IsOptional()
+  @IsUUID()
+  locationId?: string | null;
+}
 
 export class RegisterProductCatalogInventoryMovementDto {
   @IsEnum(DocType)
@@ -10,27 +27,16 @@ export class RegisterProductCatalogInventoryMovementDto {
   @IsUUID()
   warehouseId: string;
 
-  @IsNumber()
-  quantity: number;
-
-  @IsEnum(Direction)
-  direction: Direction;
-
   @IsOptional()
   @IsUUID()
   locationId?: string | null;
 
   @IsOptional()
-  @IsNumber()
-  unitCost?: number | null;
-
-  @IsOptional()
   @IsString()
   note?: string | null;
 
-  @IsOptional()
-  @IsUUID()
-  createdBy?: string | null;
+  @IsEnum(Direction)
+  direction: Direction;
 
   @IsOptional()
   @IsUUID()
@@ -39,6 +45,11 @@ export class RegisterProductCatalogInventoryMovementDto {
   @IsOptional()
   @IsEnum(ReferenceType)
   referenceType?: ReferenceType | null;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => RegisterInventoryMovementItemDto)
+  items: RegisterInventoryMovementItemDto[];
 }
 
 

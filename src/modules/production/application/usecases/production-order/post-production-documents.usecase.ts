@@ -15,7 +15,6 @@ import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/product-cat
 import { INVENTORY_LOCK, InventoryLock } from "src/modules/product-catalog/integration/inventory/ports/inventory-lock.port";
 import { INVENTORY_REPOSITORY, InventoryRepository } from "src/modules/product-catalog/integration/inventory/ports/inventory.repository.port";
 import { LEDGER_REPOSITORY, LedgerRepository } from "src/modules/product-catalog/integration/inventory/ports/ledger.repository.port";
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/product-catalog/integration/inventory/ports/stock-item.repository.port";
 import { RegisterProductCatalogInventoryMovement } from "src/modules/product-catalog/application/usecases/register-inventory-movement.usecase";
 import { ProductionItemResolverService, ResolvedProductionFinishedItem } from "../../services/production-item-resolver.service";
 
@@ -34,8 +33,6 @@ export class PostProductionDocumentsUseCase {
     private readonly lock: InventoryLock,
     @Inject(CLOCK)
     private readonly clock: ClockPort,
-    @Inject(STOCK_ITEM_REPOSITORY)
-    private readonly stockItemRepo: StockItemRepository,
     private readonly productCatalogMovement: RegisterProductCatalogInventoryMovement,
     private readonly itemResolver: ProductionItemResolverService,
   ) {}
@@ -50,44 +47,59 @@ export class PostProductionDocumentsUseCase {
     tx: TransactionContext,
   ): Promise<void> {
     const now = this.clock.now();
+    const skuConsumptionItems = params.consumption
+      .filter((c) => c.mode === "sku")
+      .map((c) => {
+        if (!c.skuId) {
+          throw new NotFoundException("Sku de materia prima no encontrado");
+        }
+
+        return {
+          skuId: c.skuId,
+          quantity: c.qty,
+          unitCost: null,
+          locationId: c.locationId ?? null,
+        };
+      });
+    const legacyConsumption = params.consumption.filter((c) => c.mode !== "sku");
 
     // OUT: consumo de materia prima
-    const outDoc = await createDraftDocument(
-      {
+    const outDoc = legacyConsumption.length
+      ? await createDraftDocument(
+          {
+            docType: DocType.OUT,
+            serieWarehouseId: params.order.fromWarehouseId,
+            fromWarehouseId: params.order.fromWarehouseId,
+            toWarehouseId: undefined,
+            referenceId: params.order.productionId,
+            referenceType: ReferenceType.PRODUCTION,
+            note: "Consumo de materia prima",
+            createdBy: params.postedBy,
+          },
+          { seriesRepo: this.seriesRepo, documentRepo: this.documentRepo },
+          tx,
+        )
+      : null;
+
+    if (skuConsumptionItems.length) {
+      await this.productCatalogMovement.execute({
         docType: DocType.OUT,
-        serieWarehouseId: params.order.fromWarehouseId,
-        fromWarehouseId: params.order.fromWarehouseId,
-        toWarehouseId: undefined,
+        warehouseId: params.order.fromWarehouseId,
+        direction: Direction.OUT,
+        createdBy: params.postedBy ?? null,
+        note: "Consumo de materia prima",
         referenceId: params.order.productionId,
         referenceType: ReferenceType.PRODUCTION,
-        note: "Consumo de materia prima",
-        createdBy: params.postedBy,
-      },
-      { seriesRepo: this.seriesRepo, documentRepo: this.documentRepo },
-      tx,
-    );
+        items: skuConsumptionItems,
+      });
+    }
 
     const outDocItems: InventoryDocumentItem[] = [];
-    for (const c of params.consumption) {
-      if (c.mode === "sku") {
-        await this.productCatalogMovement.execute({
-          docType: DocType.OUT,
-          stockItemId: c.stockItemId,
-          warehouseId: params.order.fromWarehouseId,
-          quantity: c.qty,
-          direction: Direction.OUT,
-          locationId: c.locationId,
-          createdBy: params.postedBy ?? null,
-          note: "Consumo de materia prima",
-          referenceId: params.order.productionId,
-          referenceType: ReferenceType.PRODUCTION,
-        });
-        continue;
-      }
+    for (const c of legacyConsumption) {
       const saved = await this.documentRepo.addItem(
         new InventoryDocumentItem(
           undefined,
-          outDoc.id!,
+          outDoc!.id!,
           c.stockItemId,
           c.qty,
           c.wasteQty ?? 0,
@@ -114,7 +126,7 @@ export class PostProductionDocumentsUseCase {
       outEntries.push(
         new LedgerEntry(
           undefined,
-          outDoc.id!,
+          outDoc!.id!,
           c.id,
           params.order.fromWarehouseId,
           c.stockItemId,
@@ -144,62 +156,73 @@ export class PostProductionDocumentsUseCase {
 
     if (outDocItems.length) {
       await this.documentRepo.markPosted(
-        { docId: outDoc.id!, postedBy: params.postedBy, postedAt: now },
+        { docId: outDoc!.id!, postedBy: params.postedBy, postedAt: now },
         tx,
       );
     }
-
-    // IN: ingreso de producto terminado
-    const inDoc = await createDraftDocument(
-      {
-        docType: DocType.IN,
-        serieWarehouseId: params.order.toWarehouseId,
-        fromWarehouseId: undefined,
-        toWarehouseId: params.order.toWarehouseId,
-        referenceId: params.order.productionId,
-        referenceType: ReferenceType.PRODUCTION,
-        note: "Ingreso de producto terminado",
-        createdBy: params.postedBy,
-      },
-      { seriesRepo: this.seriesRepo, documentRepo: this.documentRepo },
-      tx,
-    );
 
     const finishedStockItemCache = new Map<string, ResolvedProductionFinishedItem>();
     const getFinishedStockItemId = async (finishedItemId: string) => {
       const cached = finishedStockItemCache.get(finishedItemId);
       if (cached) return cached;
       const resolved = await this.itemResolver.resolveFinishedItem(finishedItemId, tx);
-      if (!resolved.stockItemId) {
-        throw new NotFoundException("Stock item de producto terminado no encontrado");
+      if (!resolved.skuId) {
+        throw new NotFoundException("Sku de producto terminado no encontrado");
       }
       finishedStockItemCache.set(finishedItemId, resolved);
       return resolved;
     };
+    const legacyFinishedItems: Array<{
+      finishedStockItem: ResolvedProductionFinishedItem;
+      item: ProductionOrderItem;
+    }> = [];
 
-    const inDocItems: InventoryDocumentItem[] = [];
+    const skuFinishedItems: Array<{
+      skuId: string;
+      quantity: number;
+      unitCost?: number | null;
+      locationId?: string | null;
+    }> = [];
     for (const item of params.items) {
       const finishedStockItem = await getFinishedStockItemId(item.finishedItemId);
       if (finishedStockItem.mode === "sku") {
-        await this.productCatalogMovement.execute({
-          docType: DocType.IN,
-          stockItemId: finishedStockItem.stockItemId,
-          warehouseId: params.order.toWarehouseId,
+        if (!finishedStockItem.skuId) {
+          throw new NotFoundException("Sku de producto terminado no encontrado");
+        }
+        skuFinishedItems.push({
+          skuId: finishedStockItem.skuId,
           quantity: item.quantity,
-          direction: Direction.IN,
-          locationId: item.toLocationId ?? undefined,
           unitCost: item.unitCost ?? null,
-          createdBy: params.postedBy ?? null,
-          note: "Ingreso de producto terminado",
-          referenceId: params.order.productionId,
-          referenceType: ReferenceType.PRODUCTION,
+          locationId: item.toLocationId ?? null,
         });
         continue;
       }
+      legacyFinishedItems.push({ finishedStockItem, item });
+    }
+
+    const inDoc = legacyFinishedItems.length
+      ? await createDraftDocument(
+          {
+            docType: DocType.IN,
+            serieWarehouseId: params.order.toWarehouseId,
+            fromWarehouseId: undefined,
+            toWarehouseId: params.order.toWarehouseId,
+            referenceId: params.order.productionId,
+            referenceType: ReferenceType.PRODUCTION,
+            note: "Ingreso de producto terminado",
+            createdBy: params.postedBy,
+          },
+          { seriesRepo: this.seriesRepo, documentRepo: this.documentRepo },
+          tx,
+        )
+      : null;
+
+    const inDocItems: InventoryDocumentItem[] = [];
+    for (const { finishedStockItem, item } of legacyFinishedItems) {
       const saved = await this.documentRepo.addItem(
         new InventoryDocumentItem(
           undefined,
-          inDoc.id!,
+          inDoc!.id!,
           finishedStockItem.stockItemId,
           item.quantity,
           0,
@@ -210,6 +233,19 @@ export class PostProductionDocumentsUseCase {
         tx,
       );
       inDocItems.push(saved);
+    }
+
+    if (skuFinishedItems.length) {
+      await this.productCatalogMovement.execute({
+        docType: DocType.IN,
+        warehouseId: params.order.toWarehouseId,
+        direction: Direction.IN,
+        createdBy: params.postedBy ?? null,
+        note: "Ingreso de producto terminado",
+        referenceId: params.order.productionId,
+        referenceType: ReferenceType.PRODUCTION,
+        items: skuFinishedItems,
+      });
     }
 
     const inKeys = await Promise.all(
@@ -228,7 +264,7 @@ export class PostProductionDocumentsUseCase {
       inEntries.push(
         new LedgerEntry(
           undefined,
-          inDoc.id!,
+          inDoc!.id!,
           item.id,
           params.order.toWarehouseId,
           item.stockItemId,
@@ -258,7 +294,7 @@ export class PostProductionDocumentsUseCase {
 
     if (inDocItems.length) {
       await this.documentRepo.markPosted(
-        { docId: inDoc.id!, postedBy: params.postedBy, postedAt: now },
+        { docId: inDoc!.id!, postedBy: params.postedBy, postedAt: now },
         tx,
       );
     }

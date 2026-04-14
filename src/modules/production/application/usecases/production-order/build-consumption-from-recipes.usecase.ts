@@ -6,6 +6,7 @@ import { ProductionItemResolverService } from "../../services/production-item-re
 
 export interface RecipeConsumptionLine {
   stockItemId: string;
+  skuId?: string;
   mode?: "legacy" | "sku";
   locationId?: string;
   qty: number;
@@ -44,6 +45,7 @@ export class BuildConsumptionFromRecipesUseCase {
         } else {
           map.set(key, {
             stockItemId,
+            skuId: material.skuId,
             mode: material.mode,
             locationId,
             qty: material.quantity,
