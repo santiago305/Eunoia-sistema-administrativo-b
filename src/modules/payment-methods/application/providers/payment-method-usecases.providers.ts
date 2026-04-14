@@ -2,6 +2,8 @@ import { Provider } from "@nestjs/common";
 import { CreateCompanyMethodUsecase } from "../usecases/company-method/create.usecase";
 import { DeleteCompanyMethodUsecase } from "../usecases/company-method/delete.usecase";
 import { GetCompanyMethodByIdUsecase } from "../usecases/company-method/get-by-id.usecase";
+import { ListCompanyMethodsUsecase } from "../usecases/company-method/list.usecase";
+import { UpdateCompanyMethodUsecase } from "../usecases/company-method/update.usecase";
 import { CreatePaymentMethodUsecase } from "../usecases/payment-method/create.usecase";
 import { GetPaymentMethodsByCompanyUsecase } from "../usecases/payment-method/get-by-company.usecase";
 import { GetPaymentMethodByIdUsecase } from "../usecases/payment-method/get-by-id.usecase";
@@ -13,6 +15,8 @@ import { UpdatePaymentMethodUsecase } from "../usecases/payment-method/update.us
 import { CreateSupplierMethodUsecase } from "../usecases/supplier-method/create.usecase";
 import { DeleteSupplierMethodUsecase } from "../usecases/supplier-method/delete.usecase";
 import { GetSupplierMethodByIdUsecase } from "../usecases/supplier-method/get-by-id.usecase";
+import { ListSupplierMethodsUsecase } from "../usecases/supplier-method/list.usecase";
+import { UpdateSupplierMethodUsecase } from "../usecases/supplier-method/update.usecase";
 
 export const paymentMethodUsecasesProviders: Provider[] = [
   CreatePaymentMethodUsecase,
@@ -24,9 +28,13 @@ export const paymentMethodUsecasesProviders: Provider[] = [
   ListPaymentMethodsUsecase,
   GetPaymentMethodsRecordsUsecase,
   CreateCompanyMethodUsecase,
+  ListCompanyMethodsUsecase,
+  UpdateCompanyMethodUsecase,
   DeleteCompanyMethodUsecase,
   GetCompanyMethodByIdUsecase,
   CreateSupplierMethodUsecase,
+  ListSupplierMethodsUsecase,
+  UpdateSupplierMethodUsecase,
   DeleteSupplierMethodUsecase,
   GetSupplierMethodByIdUsecase,
 ];

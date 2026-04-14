@@ -161,15 +161,20 @@ create table payment_methods (
 -- - company_id: empresa (FK a companies)
 -- ---------------------------------------------------------
 create table company_methods (
+    company_method_id uuid not null default uuid_generate_v4(),
     method_id uuid not null,
     company_id uuid not null,
     number varchar(30),
-    primary key (company_id, method_id),
+    primary key (company_method_id),
   constraint fk_company_methods_method
     foreign key (method_id) references payment_methods(method_id),
   constraint fk_company_methods_company
     foreign key (company_id) references companies(company_id)
 );
+create unique index ux_company_methods_owner_method_number
+  on company_methods (company_id, method_id, coalesce(btrim(number), ''));
+create index idx_company_methods_company_id on company_methods (company_id);
+create index idx_company_methods_method_id on company_methods (method_id);
 
 -- ---------------------------------------------------------
 -- TABLA: supplier_methods
@@ -180,15 +185,20 @@ create table company_methods (
 -- - supplier_id: proveedor (FK a suppliers)
 -- ---------------------------------------------------------
 create table supplier_methods (
+    supplier_method_id uuid not null default uuid_generate_v4(),
     method_id uuid not null,
     supplier_id uuid,
     number varchar(30),
-    primary key (supplier_id, method_id),
+    primary key (supplier_method_id),
   constraint fk_supplier_methods_method
     foreign key (method_id) references payment_methods(method_id),
   constraint fk_supplier_methods_supplier
     foreign key (supplier_id) references suppliers(supplier_id)
 );
+create unique index ux_supplier_methods_owner_method_number
+  on supplier_methods (supplier_id, method_id, coalesce(btrim(number), ''));
+create index idx_supplier_methods_supplier_id on supplier_methods (supplier_id);
+create index idx_supplier_methods_method_id on supplier_methods (method_id);
 
 -- =========================
 -- 1) Catalogo

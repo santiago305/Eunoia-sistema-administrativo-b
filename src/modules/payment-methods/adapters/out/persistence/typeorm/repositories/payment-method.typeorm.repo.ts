@@ -41,32 +41,70 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
   }
 
   async getByCompany(companyId: string, tx?: TransactionContext): Promise<PaymentMethodWithNumber[]> {
-    const qb = this.getRepo(tx)
+    const rows = await this.getRepo(tx)
       .createQueryBuilder("pm")
       .innerJoin(CompanyMethodEntity, "cm", "cm.methodId = pm.id")
       .where("cm.companyId = :companyId", { companyId })
+      .select([
+        "cm.id AS relation_id",
+        "cm.number AS relation_number",
+        "pm.id AS method_id",
+        "pm.name AS method_name",
+        "pm.isActive AS method_is_active",
+      ])
       .orderBy("pm.name", "ASC")
-      .addSelect("cm.number", "cm_number");
+      .addOrderBy("cm.number", "ASC", "NULLS FIRST")
+      .addOrderBy("cm.id", "ASC")
+      .getRawMany<{
+        relation_id: string;
+        relation_number?: string | null;
+        method_id: string;
+        method_name: string;
+        method_is_active: boolean;
+      }>();
 
-    const result = await qb.getRawAndEntities();
-    return result.entities.map((row, idx) => ({
-      method: this.toDomain(row),
-      number: result.raw[idx]?.cm_number ?? undefined,
+    return rows.map((row) => ({
+      relationId: row.relation_id,
+      method: PaymentMethod.create({
+        methodId: row.method_id,
+        name: row.method_name,
+        isActive: row.method_is_active,
+      }),
+      number: row.relation_number ?? undefined,
     }));
   }
 
   async getBySupplier(supplierId: string, tx?: TransactionContext): Promise<PaymentMethodWithNumber[]> {
-    const qb = this.getRepo(tx)
+    const rows = await this.getRepo(tx)
       .createQueryBuilder("pm")
       .innerJoin(SupplierMethodEntity, "sm", "sm.methodId = pm.id")
       .where("sm.supplierId = :supplierId", { supplierId })
+      .select([
+        "sm.id AS relation_id",
+        "sm.number AS relation_number",
+        "pm.id AS method_id",
+        "pm.name AS method_name",
+        "pm.isActive AS method_is_active",
+      ])
       .orderBy("pm.name", "ASC")
-      .addSelect("sm.number", "sm_number");
+      .addOrderBy("sm.number", "ASC", "NULLS FIRST")
+      .addOrderBy("sm.id", "ASC")
+      .getRawMany<{
+        relation_id: string;
+        relation_number?: string | null;
+        method_id: string;
+        method_name: string;
+        method_is_active: boolean;
+      }>();
 
-    const result = await qb.getRawAndEntities();
-    return result.entities.map((row, idx) => ({
-      method: this.toDomain(row),
-      number: result.raw[idx]?.sm_number ?? undefined,
+    return rows.map((row) => ({
+      relationId: row.relation_id,
+      method: PaymentMethod.create({
+        methodId: row.method_id,
+        name: row.method_name,
+        isActive: row.method_is_active,
+      }),
+      number: row.relation_number ?? undefined,
     }));
   }
 

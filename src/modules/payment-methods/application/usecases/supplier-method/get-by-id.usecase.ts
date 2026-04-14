@@ -3,6 +3,7 @@ import { successResponse } from "src/shared/response-standard/response";
 import { SUPPLIER_METHOD_REPOSITORY, SupplierMethodRepository } from "src/modules/payment-methods/domain/ports/supplier-method.repository";
 import { GetSupplierMethodByIdInput } from "../../dtos/supplier-method/input/get-by-id.input";
 import { PaymentMethodRelationNotFoundError } from "../../errors/payment-method-relation-not-found.error";
+import { PaymentMethodOutputMapper } from "../../mappers/payment-method-output.mapper";
 
 export class GetSupplierMethodByIdUsecase {
   constructor(
@@ -11,15 +12,11 @@ export class GetSupplierMethodByIdUsecase {
   ) {}
 
   async execute(input: GetSupplierMethodByIdInput) {
-    const existing = await this.supplierMethodRepo.findById(input.supplierId, input.methodId);
+    const existing = await this.supplierMethodRepo.findDetailById(input.supplierMethodId);
     if (!existing) {
       throw new NotFoundException(new PaymentMethodRelationNotFoundError().message);
     }
 
-    return successResponse("Relacion encontrada", {
-      supplierId: existing.supplierId,
-      methodId: existing.methodId,
-      number: existing.number,
-    });
+    return successResponse("Relacion encontrada", PaymentMethodOutputMapper.toSupplierMethodOutput(existing));
   }
 }

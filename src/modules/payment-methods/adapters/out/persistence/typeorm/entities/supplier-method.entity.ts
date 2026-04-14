@@ -1,13 +1,16 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import { SupplierEntity } from "src/modules/suppliers/adapters/out/persistence/typeorm/entities/supplier.entity";
 import { PaymentMethodEntity } from "./payment-method.entity";
 
 @Entity("supplier_methods")
 export class SupplierMethodEntity {
-  @PrimaryColumn({ name: "supplier_id", type: "uuid" })
+  @PrimaryGeneratedColumn("uuid", { name: "supplier_method_id" })
+  id: string;
+
+  @Column({ name: "supplier_id", type: "uuid" })
   supplierId: string;
 
-  @PrimaryColumn({ name: "method_id", type: "uuid" })
+  @Column({ name: "method_id", type: "uuid" })
   methodId: string;
 
   @Column({ type: "varchar", length: 30, nullable: true })

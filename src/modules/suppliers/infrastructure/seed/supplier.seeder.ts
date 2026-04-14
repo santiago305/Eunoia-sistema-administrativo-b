@@ -72,9 +72,14 @@ export const seedSuppliers = async (dataSource: DataSource, count: number = 10):
     for (const idx of methodIndexes) {
       const method = methods[idx];
       const methodNumber = buildMethodNumber(method.name, i);
-      const existingLink = await supplierMethodRepo.findOne({
-        where: { supplierId: supplier.id, methodId: method.id },
-      });
+      const existingLink = await supplierMethodRepo
+        .createQueryBuilder("sm")
+        .where("sm.supplierId = :supplierId", { supplierId: supplier.id })
+        .andWhere("sm.methodId = :methodId", { methodId: method.id })
+        .andWhere("COALESCE(BTRIM(sm.number), '') = :normalizedNumber", {
+          normalizedNumber: methodNumber?.trim() ?? "",
+        })
+        .getOne();
       if (existingLink) continue;
 
       await supplierMethodRepo.save(
@@ -84,6 +89,31 @@ export const seedSuppliers = async (dataSource: DataSource, count: number = 10):
           number: methodNumber ?? null,
         }),
       );
+    }
+
+    if (i === 1) {
+      const bcpMethod = methods.find((method) => method.name === "BCP");
+      if (bcpMethod) {
+        const extraBcpNumber = `99${String(i).padStart(6, "0")}654321`;
+        const existingExtraBcp = await supplierMethodRepo
+          .createQueryBuilder("sm")
+          .where("sm.supplierId = :supplierId", { supplierId: supplier.id })
+          .andWhere("sm.methodId = :methodId", { methodId: bcpMethod.id })
+          .andWhere("COALESCE(BTRIM(sm.number), '') = :normalizedNumber", {
+            normalizedNumber: extraBcpNumber,
+          })
+          .getOne();
+
+        if (!existingExtraBcp) {
+          await supplierMethodRepo.save(
+            supplierMethodRepo.create({
+              supplierId: supplier.id,
+              methodId: bcpMethod.id,
+              number: extraBcpNumber,
+            }),
+          );
+        }
+      }
     }
   }
 };

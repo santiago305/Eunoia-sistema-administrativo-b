@@ -15,19 +15,18 @@ export class DeleteSupplierMethodUsecase {
 
   async execute(input: GetSupplierMethodByIdInput) {
     return this.uow.runInTransaction(async (tx) => {
-      const existing = await this.supplierMethodRepo.findById(input.supplierId, input.methodId, tx);
+      const existing = await this.supplierMethodRepo.findById(input.supplierMethodId, tx);
       if (!existing) {
         throw new NotFoundException(new PaymentMethodRelationNotFoundError().message);
       }
 
       try {
-        const deleted = await this.supplierMethodRepo.delete(input.supplierId, input.methodId, tx);
+        const deleted = await this.supplierMethodRepo.delete(input.supplierMethodId, tx);
         if (!deleted) {
           throw new BadRequestException("No se pudo eliminar la relacion");
         }
         return successResponse("Relacion eliminada correctamente", {
-          supplierId: input.supplierId,
-          methodId: input.methodId,
+          supplierMethodId: input.supplierMethodId,
         });
       } catch {
         throw new BadRequestException("No se pudo eliminar la relacion");

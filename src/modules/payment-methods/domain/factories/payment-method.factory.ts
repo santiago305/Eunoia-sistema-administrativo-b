@@ -10,7 +10,7 @@ export class PaymentMethodFactory {
   static createCompanyMethod(params: {
     companyId: string;
     methodId: string;
-    number?: string;
+    number?: string | null;
   }) {
     return CompanyMethod.create(params);
   }
@@ -18,7 +18,7 @@ export class PaymentMethodFactory {
   static createSupplierMethod(params: {
     supplierId: string;
     methodId: string;
-    number?: string;
+    number?: string | null;
   }) {
     return SupplierMethod.create(params);
   }

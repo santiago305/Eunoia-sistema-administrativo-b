@@ -3,6 +3,7 @@ import { successResponse } from "src/shared/response-standard/response";
 import { COMPANY_METHOD_REPOSITORY, CompanyMethodRepository } from "src/modules/payment-methods/domain/ports/company-method.repository";
 import { GetCompanyMethodByIdInput } from "../../dtos/company-method/input/get-by-id.input";
 import { PaymentMethodRelationNotFoundError } from "../../errors/payment-method-relation-not-found.error";
+import { PaymentMethodOutputMapper } from "../../mappers/payment-method-output.mapper";
 
 export class GetCompanyMethodByIdUsecase {
   constructor(
@@ -11,15 +12,11 @@ export class GetCompanyMethodByIdUsecase {
   ) {}
 
   async execute(input: GetCompanyMethodByIdInput) {
-    const existing = await this.companyMethodRepo.findById(input.companyId, input.methodId);
+    const existing = await this.companyMethodRepo.findDetailById(input.companyMethodId);
     if (!existing) {
       throw new NotFoundException(new PaymentMethodRelationNotFoundError().message);
     }
 
-    return successResponse("Relacion encontrada", {
-      companyId: existing.companyId,
-      methodId: existing.methodId,
-      number: existing.number,
-    });
+    return successResponse("Relacion encontrada", PaymentMethodOutputMapper.toCompanyMethodOutput(existing));
   }
 }

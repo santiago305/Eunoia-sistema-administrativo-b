@@ -4,6 +4,7 @@ import { PaymentMethod } from "../entity/payment-method";
 export const PAYMENT_METHOD_REPOSITORY = Symbol("PAYMENT_METHOD_REPOSITORY");
 
 export type PaymentMethodWithNumber = {
+  relationId?: string;
   method: PaymentMethod;
   number?: string | null;
 };

@@ -1,5 +1,5 @@
 export interface CreateSupplierMethodInput {
   supplierId: string;
   methodId: string;
-  number?: string;
+  number?: string | null;
 }
