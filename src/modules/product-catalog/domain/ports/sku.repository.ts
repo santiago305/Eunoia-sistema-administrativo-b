@@ -1,4 +1,6 @@
 import { ProductCatalogSku } from "../entities/sku";
+import { ProductCatalogUnit } from "../entities/unit";
+import { ProductCatalogProductType } from "../value-objects/product-type";
 
 export interface SkuAttributeInput {
   code: string;
@@ -8,6 +10,7 @@ export interface SkuAttributeInput {
 
 export interface ProductCatalogSkuWithAttributes {
   sku: ProductCatalogSku;
+  unit?: ProductCatalogUnit;
   attributes: SkuAttributeInput[];
 }
 
@@ -20,7 +23,14 @@ export interface ProductCatalogSkuRepository {
     patch: Partial<Pick<ProductCatalogSku, "name" | "barcode" | "price" | "cost" | "customSku" | "isSellable" | "isPurchasable" | "isManufacturable" | "isStockTracked" | "isActive">> & { attributes?: SkuAttributeInput[] },
   ): Promise<ProductCatalogSkuWithAttributes | null>;
   findById(id: string): Promise<ProductCatalogSkuWithAttributes | null>;
-  list(params: { page: number; limit: number; q?: string; isActive?: boolean; productId?: string }): Promise<{ items: ProductCatalogSkuWithAttributes[]; total: number }>;
+  list(params: {
+    page: number;
+    limit: number;
+    q?: string;
+    isActive?: boolean;
+    productId?: string;
+    productType?: ProductCatalogProductType;
+  }): Promise<{ items: ProductCatalogSkuWithAttributes[]; total: number }>;
   findByProductId(productId: string): Promise<ProductCatalogSkuWithAttributes[]>;
   reserveNextBackendSku(): Promise<string>;
 }

@@ -3,6 +3,7 @@ import {
   PRODUCT_CATALOG_EQUIVALENCE_REPOSITORY,
   ProductCatalogEquivalenceRepository,
 } from "../../domain/ports/equivalence.repository";
+import { successResponse } from "src/shared/response-standard/response";
 
 @Injectable()
 export class DeleteProductCatalogEquivalence {
@@ -15,6 +16,6 @@ export class DeleteProductCatalogEquivalence {
     const row = await this.repo.findById(id);
     if (!row) throw new NotFoundException("Equivalence not found");
     await this.repo.delete(id);
-    return { message: "Equivalence deleted" };
+    return successResponse( "Equivalence deleted" );
   }
 }

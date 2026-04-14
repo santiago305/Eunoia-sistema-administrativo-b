@@ -29,6 +29,7 @@ export class ProductCatalogSkuController {
       q: query.q,
       isActive: query.isActive === undefined ? undefined : query.isActive === "true",
       productId: query.productId,
+      productType: query.productType,
       page: query.page ? Number(query.page) : 1,
       limit: query.limit ? Number(query.limit) : 10,
     });
@@ -40,6 +41,7 @@ export class ProductCatalogSkuController {
       q: query.q,
       isActive: query.isActive === undefined ? undefined : query.isActive === "true",
       productId,
+      productType: query.productType,
       page: query.page ? Number(query.page) : 1,
       limit: query.limit ? Number(query.limit) : 10,
     });

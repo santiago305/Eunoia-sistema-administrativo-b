@@ -44,6 +44,7 @@ import { LEDGER_REPOSITORY } from "./integration/inventory/ports/ledger.reposito
 import { INVENTORY_REPOSITORY } from "./integration/inventory/ports/inventory.repository.port";
 import { INVENTORY_LOCK } from "./integration/inventory/ports/inventory-lock.port";
 import { STOCK_ITEM_REPOSITORY } from "./integration/inventory/ports/stock-item.repository.port";
+import { ProductCatalogDocumentSerieController } from "./adapters/in/http/controllers/document-serie.controller";
 
 @Module({
   imports: [
@@ -73,6 +74,7 @@ import { STOCK_ITEM_REPOSITORY } from "./integration/inventory/ports/stock-item.
     ProductCatalogStockController,
     ProductCatalogUnitController,
     ProductCatalogEquivalenceController,
+    ProductCatalogDocumentSerieController
   ],
   providers: [
     ...productCatalogModuleProviders,

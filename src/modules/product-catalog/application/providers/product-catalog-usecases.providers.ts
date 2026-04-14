@@ -8,7 +8,9 @@ import { UpdateProductCatalogSku } from "../usecases/update-sku.usecase";
 import { GetProductCatalogSku } from "../usecases/get-sku.usecase";
 import { ListProductCatalogSkus } from "../usecases/list-skus.usecase";
 import { CreateProductCatalogRecipe } from "../usecases/create-recipe.usecase";
+import { DeleteProductCatalogRecipeItem } from "../usecases/delete-recipe-item.usecase";
 import { GetProductCatalogRecipe } from "../usecases/get-recipe.usecase";
+import { UpdateProductCatalogRecipe } from "../usecases/update-recipe.usecase";
 import { CreateProductCatalogPublication } from "../usecases/create-publication.usecase";
 import { UpdateProductCatalogPublication } from "../usecases/update-publication.usecase";
 import { ListProductCatalogChannelSkus } from "../usecases/list-channel-skus.usecase";
@@ -40,6 +42,8 @@ export const productCatalogUsecasesProviders: Provider[] = [
   ListProductCatalogSkus,
   CreateProductCatalogRecipe,
   GetProductCatalogRecipe,
+  UpdateProductCatalogRecipe,
+  DeleteProductCatalogRecipeItem,
   CreateProductCatalogPublication,
   UpdateProductCatalogPublication,
   ListProductCatalogChannelSkus,

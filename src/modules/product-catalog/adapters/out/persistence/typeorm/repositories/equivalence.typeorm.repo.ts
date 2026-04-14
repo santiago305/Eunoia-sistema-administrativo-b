@@ -26,7 +26,16 @@ export class ProductCatalogEquivalenceTypeormRepository implements ProductCatalo
   }
 
   private toDomain(row: ProductCatalogEquivalencesEntity): ProductCatalogEquivalence {
-    return new ProductCatalogEquivalence(row.id, row.productId, row.fromUnitId, row.toUnitId, Number(row.factor));
+    return new ProductCatalogEquivalence(
+      row.id,
+      row.productId,
+      row.fromUnitId,
+      row.toUnitId,
+      Number(row.factor),
+      row.product ? { id: row.product.id, name: row.product.name } : null,
+      row.fromUnit ? { id: row.fromUnit.id, code: row.fromUnit.code, name: row.fromUnit.name } : null,
+      row.toUnit ? { id: row.toUnit.id, code: row.toUnit.code, name: row.toUnit.name } : null,
+    );
   }
 
   async create(input: ProductCatalogEquivalence, tx?: TransactionContext): Promise<ProductCatalogEquivalence> {
@@ -36,7 +45,8 @@ export class ProductCatalogEquivalenceTypeormRepository implements ProductCatalo
       toUnitId: input.toUnitId,
       factor: input.factor,
     });
-    return this.toDomain(saved);
+    const withRelations = await this.findById(saved.id, tx);
+    return withRelations ?? this.toDomain(saved);
   }
 
   async delete(id: string, tx?: TransactionContext): Promise<void> {
@@ -44,12 +54,18 @@ export class ProductCatalogEquivalenceTypeormRepository implements ProductCatalo
   }
 
   async findById(id: string, tx?: TransactionContext): Promise<ProductCatalogEquivalence | null> {
-    const row = await this.getRepo(tx).findOne({ where: { id } });
+    const row = await this.getRepo(tx).findOne({
+      where: { id },
+      relations: { product: true, fromUnit: true, toUnit: true },
+    });
     return row ? this.toDomain(row) : null;
   }
 
   async listByProductId(productId: string, tx?: TransactionContext): Promise<ProductCatalogEquivalence[]> {
-    const rows = await this.getRepo(tx).find({ where: { productId } });
+    const rows = await this.getRepo(tx).find({
+      where: { productId },
+      relations: { product: true, fromUnit: true, toUnit: true },
+    });
     return rows.map((row) => this.toDomain(row));
   }
 }
