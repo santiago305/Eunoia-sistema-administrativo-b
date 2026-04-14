@@ -1,4 +1,5 @@
-import { IsOptional, IsString, IsUUID } from "class-validator";
+import { IsEnum, IsOptional, IsString, IsUUID } from "class-validator";
+import { ProductCatalogProductType } from "src/modules/product-catalog/domain/value-objects/product-type";
 
 export class ListProductCatalogSkusDto {
   @IsOptional()
@@ -12,6 +13,10 @@ export class ListProductCatalogSkusDto {
   @IsOptional()
   @IsUUID()
   productId?: string;
+
+  @IsOptional()
+  @IsEnum(ProductCatalogProductType)
+  productType?: ProductCatalogProductType;
 
   @IsOptional()
   @IsString()

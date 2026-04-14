@@ -7,6 +7,7 @@ import {
   ProductCatalogSkuWithAttributes,
   SkuAttributeInput,
 } from "src/modules/product-catalog/domain/ports/sku.repository";
+import { ProductCatalogProductType } from "src/modules/product-catalog/domain/value-objects/product-type";
 import { ProductCatalogAttributeEntity } from "../entities/attribute.entity";
 import { ProductCatalogSkuAttributeValueEntity } from "../entities/sku-attribute-value.entity";
 import { ProductCatalogSkuEntity } from "../entities/sku.entity";
@@ -194,44 +195,72 @@ export class ProductCatalogSkuTypeormRepository implements ProductCatalogSkuRepo
   }
 
   async list(params: {
-    page: number;
-    limit: number;
-    q?: string;
-    isActive?: boolean;
-    productId?: string;
-  }): Promise<{ items: ProductCatalogSkuWithAttributes[]; total: number }> {
-    const qb = this.repo.createQueryBuilder("s");
-    if (params.productId) {
-      qb.andWhere("s.product_id = :productId", { productId: params.productId });
-    }
-    if (params.isActive !== undefined) {
-      qb.andWhere("s.is_active = :isActive", { isActive: params.isActive });
-    }
-    if (params.q?.trim()) {
-      const q = `%${params.q.trim().toLowerCase()}%`;
-      qb.andWhere(
-        "(LOWER(s.name) LIKE :q OR LOWER(s.backend_sku) LIKE :q OR LOWER(COALESCE(s.custom_sku, '')) LIKE :q OR LOWER(COALESCE(s.barcode, '')) LIKE :q)",
-        { q },
-      );
-    }
+  page: number;
+  limit: number;
+  q?: string;
+  isActive?: boolean;
+  productId?: string;
+  productType?: ProductCatalogProductType;
+}): Promise<{ items: ProductCatalogSkuWithAttributes[]; total: number }> {
+  const qb = this.repo
+    .createQueryBuilder("s")
+    .leftJoinAndSelect("s.product", "p")
+    .leftJoinAndSelect("p.baseUnit", "bu");
 
-    const page = params.page > 0 ? params.page : 1;
-    const limit = params.limit > 0 ? params.limit : 10;
-    const [rows, total] = await qb
-      .orderBy("s.created_at", "DESC")
-      .skip((page - 1) * limit)
-      .take(limit)
-      .getManyAndCount();
-
-    const attributes = await this.loadAttributes(rows.map((row) => row.id));
-    return {
-      items: rows.map((row) => ({
-        sku: this.toDomain(row),
-        attributes: attributes.get(row.id) ?? [],
-      })),
-      total,
-    };
+  if (params.productType) {
+    qb.andWhere("p.type = :productType", {
+      productType: params.productType,
+    });
   }
+
+  if (params.productId) {
+    qb.andWhere("s.product_id = :productId", {
+      productId: params.productId,
+    });
+  }
+
+  if (params.isActive !== undefined) {
+    qb.andWhere("s.is_active = :isActive", {
+      isActive: params.isActive,
+    });
+  }
+
+  if (params.q?.trim()) {
+    const q = `%${params.q.trim().toLowerCase()}%`;
+
+    qb.andWhere(
+      `
+      (
+        LOWER(s.name) LIKE :q
+        OR LOWER(s.backend_sku) LIKE :q
+        OR LOWER(COALESCE(s.custom_sku, '')) LIKE :q
+        OR LOWER(COALESCE(s.barcode, '')) LIKE :q
+      )
+      `,
+      { q },
+    );
+  }
+
+  const page = params.page > 0 ? params.page : 1;
+  const limit = params.limit > 0 ? params.limit : 10;
+
+  const [rows, total] = await qb
+    .orderBy("s.createdAt", "DESC")
+    .skip((page - 1) * limit)
+    .take(limit)
+    .getManyAndCount();
+
+  const attributes = await this.loadAttributes(rows.map((row) => row.id));
+
+  return {
+    items: rows.map((row) => ({
+      sku: this.toDomain(row),
+      unit: row.product.baseUnit,
+      attributes: attributes.get(row.id) ?? [],
+    })),
+    total,
+  };
+}
 
   async findByProductId(productId: string): Promise<ProductCatalogSkuWithAttributes[]> {
     const rows = await this.repo.find({
