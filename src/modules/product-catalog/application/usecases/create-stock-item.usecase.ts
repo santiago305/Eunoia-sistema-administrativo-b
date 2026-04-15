@@ -3,6 +3,7 @@ import { ProductCatalogSkuNotFoundError } from "../errors/product-catalog-sku-no
 import { ProductCatalogStockItemConflictError } from "../errors/product-catalog-stock-item-conflict.error";
 import { ProductCatalogStockItem } from "../../domain/entities/stock-item";
 import { PRODUCT_CATALOG_SKU_REPOSITORY, ProductCatalogSkuRepository } from "../../domain/ports/sku.repository";
+import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import {
   PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY,
   ProductCatalogStockItemRepository,
@@ -17,11 +18,11 @@ export class CreateProductCatalogStockItem {
     private readonly stockItemRepo: ProductCatalogStockItemRepository,
   ) {}
 
-  async execute(input: { skuId: string; isActive?: boolean }) {
+  async execute(input: { skuId: string; isActive?: boolean }, tx?: TransactionContext) {
     const sku = await this.skuRepo.findById(input.skuId);
     if (!sku) throw new NotFoundException(new ProductCatalogSkuNotFoundError().message);
-    const exists = await this.stockItemRepo.findBySkuId(input.skuId);
+    const exists = await this.stockItemRepo.findBySkuId(input.skuId, tx);
     if (exists) throw new ConflictException(new ProductCatalogStockItemConflictError().message);
-    return this.stockItemRepo.create(new ProductCatalogStockItem(undefined, input.skuId, input.isActive ?? true));
+    return this.stockItemRepo.create(new ProductCatalogStockItem(undefined, input.skuId, input.isActive ?? true), tx);
   }
 }

@@ -5,6 +5,7 @@ import { DocStatus } from "src/shared/domain/value-objects/doc-status";
 import { Direction } from "src/shared/domain/value-objects/direction";
 import { DocType } from "src/shared/domain/value-objects/doc-type";
 import { ReferenceType } from "src/shared/domain/value-objects/reference-type";
+import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { ProductCatalogInventoryDocumentItem } from "../../domain/entities/inventory-document-item";
 import { ProductCatalogInventoryDocument } from "../../domain/entities/inventory-document";
 import { ProductCatalogInventoryLedgerEntry } from "../../domain/entities/inventory-ledger-entry";
@@ -39,6 +40,8 @@ import { CreateProductCatalogStockItem } from "./create-stock-item.usecase";
 @Injectable()
 export class RegisterProductCatalogInventoryMovement {
   constructor(
+    @Inject(UNIT_OF_WORK)
+    private readonly uow: UnitOfWork,
     @Inject(PRODUCT_CATALOG_SKU_REPOSITORY)
     private readonly skuRepo: ProductCatalogSkuRepository,
     @Inject(PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY)
@@ -70,147 +73,163 @@ export class RegisterProductCatalogInventoryMovement {
     referenceId?: string | null;
     referenceType?: ReferenceType | null;
   }) {
-    if (!input.items.length) {
-      throw new BadRequestException(errorResponse("Necesita al menos 1 item"));
-    }
-
-    const series = await this.serieRepo.findActiveFor({
-      docType: input.docType,
-      isActive: true,
-      warehouseId: input.warehouseId,
-    });
-
-    let activeSerie = series[0];
-    if (!activeSerie) {
-      throw new NotFoundException(errorResponse("Serie no definida"));
-    }
-
-    const document = await this.documentRepo.create(
-      new ProductCatalogInventoryDocument(
-        undefined,
-        input.docType,
-        DocStatus.DRAFT,
-        activeSerie.id ?? null,
-        activeSerie.nextNumber,
-        input.direction === Direction.OUT ? input.warehouseId : null,
-        input.direction === Direction.IN ? input.warehouseId : null,
-        input.referenceId ?? null,
-        input.referenceType ?? null,
-        input.note ?? null,
-        input.createdBy ?? null,
-        null,
-        null,
-      ),
-    );
-
-    const ledgerEntries: ProductCatalogInventoryLedgerEntry[] = [];
-    const results: Array<{
-      skuId: string;
-      stockItemId: string;
-      documentItemId: string;
-      quantity: number;
-      unitCost?: number | null;
-      locationId: string | null;
-      balance: ProductCatalogInventoryBalance;
-    }> = [];
-
-    for (const row of input.items) {
-      const effectiveLocationId = row.locationId ?? input.locationId ?? null;
-      const sku = await this.skuRepo.findById(row.skuId);
-      if (!sku) {
-        throw new NotFoundException(errorResponse("Sku no encontrado"));
+    return this.uow.runInTransaction(async (tx) => {
+      if (!input.items.length) {
+        throw new BadRequestException(errorResponse("Necesita al menos 1 item"));
       }
 
-      let stockItem = await this.stockItemRepo.findBySkuId(row.skuId);
-      if (!stockItem) {
-        stockItem = await this.createStockItem.execute({
-          skuId: row.skuId,
+      const series = await this.serieRepo.findActiveFor(
+        {
+          docType: input.docType,
           isActive: true,
+          warehouseId: input.warehouseId,
+        },
+        tx,
+      );
+
+      const activeSerie = series[0];
+      if (!activeSerie?.id) {
+        throw new NotFoundException(errorResponse("Serie no definida"));
+      }
+
+      const correlative = await this.serieRepo.reserveNextNumber(activeSerie.id, tx);
+
+      const document = await this.documentRepo.create(
+        new ProductCatalogInventoryDocument(
+          undefined,
+          input.docType,
+          DocStatus.DRAFT,
+          activeSerie.id ?? null,
+          correlative,
+          input.direction === Direction.OUT ? input.warehouseId : null,
+          input.direction === Direction.IN ? input.warehouseId : null,
+          input.referenceId ?? null,
+          input.referenceType ?? null,
+          input.note ?? null,
+          input.createdBy ?? null,
+          null,
+          null,
+        ),
+        tx,
+      );
+
+      const ledgerEntries: ProductCatalogInventoryLedgerEntry[] = [];
+      const results: Array<{
+        skuId: string;
+        stockItemId: string;
+        documentItemId: string;
+        quantity: number;
+        unitCost?: number | null;
+        locationId: string | null;
+        balance: ProductCatalogInventoryBalance;
+      }> = [];
+
+      for (const row of input.items) {
+        const effectiveLocationId = row.locationId ?? input.locationId ?? null;
+        const sku = await this.skuRepo.findById(row.skuId);
+        if (!sku) {
+          throw new NotFoundException(errorResponse("Sku no encontrado"));
+        }
+
+        let stockItem = await this.stockItemRepo.findBySkuId(row.skuId, tx);
+        if (!stockItem) {
+          stockItem = await this.createStockItem.execute(
+            {
+              skuId: row.skuId,
+              isActive: true,
+            },
+            tx,
+          );
+        }
+
+        const savedItem = await this.documentRepo.addItem(
+          new ProductCatalogInventoryDocumentItem(
+            undefined,
+            document.id!,
+            stockItem.id!,
+            row.quantity,
+            0,
+            input.direction === Direction.OUT ? effectiveLocationId : null,
+            input.direction === Direction.IN ? effectiveLocationId : null,
+            row.unitCost ?? null,
+          ),
+          tx,
+        );
+
+        const currentBalances = await this.inventoryRepo.listByStockItemId(stockItem.id!, tx);
+        const current =
+          currentBalances.find(
+            (balance) =>
+              balance.warehouseId === input.warehouseId &&
+              balance.locationId === effectiveLocationId,
+          ) ??
+          new ProductCatalogInventoryBalance(
+            input.warehouseId,
+            stockItem.id!,
+            effectiveLocationId,
+            0,
+            0,
+            0,
+          );
+
+        const nextOnHand =
+          input.direction === Direction.IN
+            ? current.onHand + row.quantity
+            : current.onHand - row.quantity;
+
+        const balance = await this.inventoryRepo.upsert(
+          new ProductCatalogInventoryBalance(
+            input.warehouseId,
+            stockItem.id!,
+            effectiveLocationId,
+            nextOnHand,
+            current.reserved,
+            nextOnHand - current.reserved,
+          ),
+          tx,
+        );
+
+        ledgerEntries.push(
+          new ProductCatalogInventoryLedgerEntry(
+            undefined,
+            document.id!,
+            savedItem.id!,
+            input.warehouseId,
+            stockItem.id!,
+            input.direction,
+            row.quantity,
+            effectiveLocationId,
+            0,
+            row.unitCost ?? null,
+          ),
+        );
+
+        results.push({
+          skuId: row.skuId,
+          stockItemId: stockItem.id!,
+          documentItemId: savedItem.id!,
+          quantity: row.quantity,
+          unitCost: row.unitCost,
+          locationId: effectiveLocationId,
+          balance,
         });
       }
 
-      const savedItem = await this.documentRepo.addItem(
-        new ProductCatalogInventoryDocumentItem(
-          undefined,
-          document.id!,
-          stockItem.id!,
-          row.quantity,
-          0,
-          input.direction === Direction.OUT ? effectiveLocationId : null,
-          input.direction === Direction.IN ? effectiveLocationId : null,
-          row.unitCost ?? null,
-        ),
+      await this.ledgerRepo.append(ledgerEntries, tx);
+
+      await this.documentRepo.markPosted(
+        {
+          docId: document.id!,
+          postedBy: input.createdBy ?? null,
+          postedAt: new Date(),
+        },
+        tx,
       );
 
-      const currentBalances = await this.inventoryRepo.listByStockItemId(stockItem.id!);
-      const current =
-        currentBalances.find(
-          (balance) =>
-            balance.warehouseId === input.warehouseId &&
-            balance.locationId === effectiveLocationId,
-        ) ??
-        new ProductCatalogInventoryBalance(
-          input.warehouseId,
-          stockItem.id!,
-          effectiveLocationId,
-          0,
-          0,
-          0,
-        );
-
-      const nextOnHand =
-        input.direction === Direction.IN
-          ? current.onHand + row.quantity
-          : current.onHand - row.quantity;
-
-      const balance = await this.inventoryRepo.upsert(
-        new ProductCatalogInventoryBalance(
-          input.warehouseId,
-          stockItem.id!,
-          effectiveLocationId,
-          nextOnHand,
-          current.reserved,
-          nextOnHand - current.reserved,
-        ),
-      );
-
-      ledgerEntries.push(
-        new ProductCatalogInventoryLedgerEntry(
-          undefined,
-          document.id!,
-          savedItem.id!,
-          input.warehouseId,
-          stockItem.id!,
-          input.direction,
-          row.quantity,
-          effectiveLocationId,
-          0,
-          row.unitCost ?? null,
-        ),
-      );
-
-      results.push({
-        skuId: row.skuId,
-        stockItemId: stockItem.id!,
-        documentItemId: savedItem.id!,
-        quantity: row.quantity,
-        unitCost: row.unitCost,
-        locationId: effectiveLocationId,
-        balance,
-      });
-    }
-
-    await this.ledgerRepo.append(ledgerEntries);
-
-    await this.documentRepo.markPosted({
-      docId: document.id!,
-      postedBy: input.createdBy ?? null,
-      postedAt: new Date(),
+      return {
+        documentId: document.id!,
+        items: results,
+      };
     });
-
-    return {
-      documentId: document.id!,
-      items: results,
-    };
   }
 }
