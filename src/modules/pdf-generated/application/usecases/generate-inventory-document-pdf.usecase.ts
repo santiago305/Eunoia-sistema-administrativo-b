@@ -2,8 +2,6 @@ import { BadRequestException, Inject } from "@nestjs/common";
 import { join } from "path";
 import { pathToFileURL } from "url";
 import sharp from "sharp";
-import { StockItem } from "src/modules/product-catalog/integration/inventory/entities/stock-item";
-import { StockItemType } from "src/shared/domain/value-objects/stock-item-type";
 import { WarehouseId } from "src/modules/warehouses/domain/value-objects/warehouse-id.vo";
 import { COMPANY_REPOSITORY, CompanyRepository } from "src/modules/companies/domain/ports/company.repository";
 import { PDF_RENDERER, PdfRendererPort } from "src/modules/pdf-generated/domain/ports/pdf-renderer.port";
@@ -12,14 +10,16 @@ import { InventoryDocumentPdfData } from "../../domain/interfaces/inventory-docu
 import { DocType } from "src/shared/domain/value-objects/doc-type";
 import { DocStatus } from "src/shared/domain/value-objects/doc-status";
 import { ReferenceType } from "src/shared/domain/value-objects/reference-type";
-import { SERIES_REPOSITORY, DocumentSeriesRepository } from "src/modules/product-catalog/integration/inventory/ports/document-series.repository.port";
-import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/product-catalog/integration/inventory/ports/document.repository.port";
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/product-catalog/integration/inventory/ports/stock-item.repository.port";
 import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "src/modules/warehouses/application/ports/warehouse.repository.port";
 import { PdfGeneratedValidationError } from "../errors/pdf-generated-validation.error";
 import { PRODUCT_CATALOG_PRODUCT_REPOSITORY, ProductCatalogProductRepository } from "src/modules/product-catalog/domain/ports/product.repository";
 import { PRODUCT_CATALOG_SKU_REPOSITORY, ProductCatalogSkuRepository } from "src/modules/product-catalog/domain/ports/sku.repository";
 import { PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY, ProductCatalogStockItemRepository } from "src/modules/product-catalog/domain/ports/stock-item.repository";
+import { PRODUCT_CATALOG_DOCUMENT_SERIE_REPOSITORY, ProductCatalogDocumentSerieRepository } from "src/modules/product-catalog/domain/ports/document-serie.repository";
+import { PRODUCT_CATALOG_INVENTORY_DOCUMENT_REPOSITORY, ProductCatalogInventoryDocumentRepository } from "src/modules/product-catalog/domain/ports/inventory-document.repository";
+import { ProductCatalogStockItem } from "src/modules/product-catalog/domain/entities/stock-item";
+import { ProductCatalogSkuWithAttributes } from "src/modules/product-catalog/domain/ports/sku.repository";
+import { ProductCatalogProduct } from "src/modules/product-catalog/domain/entities/product";
 
 const resolveLogoUrl = async (logoPath?: string) => {
   if (!logoPath) return undefined;
@@ -85,12 +85,10 @@ const resolveReference = (referenceType?: ReferenceType, referenceId?: string) =
 
 export class GenerateInventoryDocumentPdfUseCase {
   constructor(
-    @Inject(DOCUMENT_REPOSITORY)
-    private readonly documentRepo: DocumentRepository,
-    @Inject(SERIES_REPOSITORY)
-    private readonly seriesRepo: DocumentSeriesRepository,
-    @Inject(STOCK_ITEM_REPOSITORY)
-    private readonly stockItemRepo: StockItemRepository,
+    @Inject(PRODUCT_CATALOG_INVENTORY_DOCUMENT_REPOSITORY)
+    private readonly documentRepo: ProductCatalogInventoryDocumentRepository,
+    @Inject(PRODUCT_CATALOG_DOCUMENT_SERIE_REPOSITORY)
+    private readonly seriesRepo: ProductCatalogDocumentSerieRepository,
     @Inject(WAREHOUSE_REPOSITORY)
     private readonly warehouseRepo: WarehouseRepository,
     @Inject(PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY)
@@ -106,41 +104,73 @@ export class GenerateInventoryDocumentPdfUseCase {
   ) {}
 
   async execute(input: GenerateInventoryDocumentPdfInput): Promise<Buffer> {
-    const result = await this.documentRepo.getByIdWithItems(input.docId);
-    if (!result) {
+    const [doc, items] = await Promise.all([
+      this.documentRepo.findById(input.docId),
+      this.documentRepo.listItems(input.docId),
+    ]);
+
+    if (!doc) {
       throw new BadRequestException(new PdfGeneratedValidationError("Documento de inventario no encontrado").message);
     }
 
-    const { doc, items } = result;
+    const serieId = doc.serieId ?? undefined;
+    const fromWarehouseId = doc.fromWarehouseId ?? undefined;
+    const toWarehouseId = doc.toWarehouseId ?? undefined;
 
     const [serie, company, fromWarehouse, toWarehouse] = await Promise.all([
-      this.seriesRepo.findById(doc.serieId),
+      serieId ? this.seriesRepo.findById(serieId) : Promise.resolve(null),
       this.companyRepo.findSingle(),
-      doc.fromWarehouseId ? this.warehouseRepo.findById(new WarehouseId(doc.fromWarehouseId)) : null,
-      doc.toWarehouseId ? this.warehouseRepo.findById(new WarehouseId(doc.toWarehouseId)) : null,
+      fromWarehouseId ? this.warehouseRepo.findById(new WarehouseId(fromWarehouseId)) : null,
+      toWarehouseId ? this.warehouseRepo.findById(new WarehouseId(toWarehouseId)) : null,
     ]);
 
-    if (!serie) {
+    if (serieId && !serie) {
       throw new BadRequestException(new PdfGeneratedValidationError("Serie inválida").message);
     }
     if (!company) {
       throw new BadRequestException(new PdfGeneratedValidationError("Compañía inválida").message);
     }
-    if (!fromWarehouse) {
+    if (fromWarehouseId && !fromWarehouse) {
       throw new BadRequestException(new PdfGeneratedValidationError("Almacén de origen inválido").message);
     }
-    if (!toWarehouse) {
+    if (toWarehouseId && !toWarehouse) {
       throw new BadRequestException(new PdfGeneratedValidationError("Almacén de destino inválido").message);
     }
 
-    const stockItemCache = new Map<string, StockItem | null>();
-    const getStockItem = async (id: string) => {
-      if (stockItemCache.has(id)) return stockItemCache.get(id);
-      let row = await this.stockItemRepo.findById(id);
-      if (!row) {
-        row = await this.stockItemRepo.findByProductOrStockItemId(id);
+    if (!fromWarehouseId && !toWarehouseId) {
+      throw new BadRequestException(new PdfGeneratedValidationError("Documento de inventario sin almacén asociado").message);
+    }
+
+    if (doc.docType === DocType.TRANSFER) {
+      if (!fromWarehouseId) {
+        throw new BadRequestException(new PdfGeneratedValidationError("Almacén de origen requerido para transferencia").message);
       }
+      if (!toWarehouseId) {
+        throw new BadRequestException(new PdfGeneratedValidationError("Almacén de destino requerido para transferencia").message);
+      }
+    }
+
+    const stockItemCache = new Map<string, ProductCatalogStockItem | null>();
+    const getStockItem = async (id: string): Promise<ProductCatalogStockItem | null> => {
+      if (stockItemCache.has(id)) return stockItemCache.get(id);
+      const row = await this.productCatalogStockItemRepo.findById(id);
       stockItemCache.set(id, row);
+      return row;
+    };
+
+    const skuCache = new Map<string, ProductCatalogSkuWithAttributes | null>();
+    const getSku = async (id: string): Promise<ProductCatalogSkuWithAttributes | null> => {
+      if (skuCache.has(id)) return skuCache.get(id);
+      const row = await this.productCatalogSkuRepo.findById(id);
+      skuCache.set(id, row);
+      return row;
+    };
+
+    const productCache = new Map<string, ProductCatalogProduct | null>();
+    const getProduct = async (id: string): Promise<ProductCatalogProduct | null> => {
+      if (productCache.has(id)) return productCache.get(id);
+      const row = await this.productCatalogProductRepo.findById(id);
+      productCache.set(id, row);
       return row;
     };
 
@@ -149,21 +179,15 @@ export class GenerateInventoryDocumentPdfUseCase {
         const stockItem = await getStockItem(item.stockItemId);
         let description = item.stockItemId;
         let unit = "N/A";
-        const skuStockItem = stockItem ? null : await this.productCatalogStockItemRepo.findById(item.stockItemId);
 
-        if (stockItem?.type === StockItemType.PRODUCT && stockItem.productId) {
-          description = formatNameWithSku(`PRODUCT ${stockItem.productId}`, null);
-        }
-
-        if (skuStockItem) {
-          const sku = await this.productCatalogSkuRepo.findById(skuStockItem.skuId);
-          const product = sku ? await this.productCatalogProductRepo.findById(sku.sku.productId) : null;
+        const skuId = stockItem?.skuId;
+        if (skuId) {
+          const sku = await getSku(skuId);
+          const product = sku ? await getProduct(sku.sku.productId) : null;
           if (sku) {
-            description = formatNameWithSku(
-              `${product?.name ?? sku.sku.name} - ${sku.sku.name}`,
-              sku.sku.backendSku ?? sku.sku.customSku ?? null,
-            );
-            unit = product?.baseUnitId ? "SKU" : "SKU";
+            const skuCode = sku.sku.backendSku || sku.sku.customSku || null;
+            description = formatNameWithSku(`${product?.name ?? sku.sku.name} - ${sku.sku.name}`, skuCode);
+            unit = sku.unit ? formatUnitLabel(sku.unit.code, sku.unit.name) : "SKU";
           }
         }
 
@@ -186,8 +210,8 @@ export class GenerateInventoryDocumentPdfUseCase {
     const companyAddress =
       company?.address || [company?.department, company?.province, company?.district].filter(Boolean).join(" - ");
 
-    const numberRaw = doc.correlative !== undefined ? String(doc.correlative) : undefined;
-    const paddedNumber = numberRaw && serie.padding ? numberRaw.padStart(serie.padding, "0") : numberRaw;
+    const numberRaw = doc.correlative !== null && doc.correlative !== undefined ? String(doc.correlative) : undefined;
+    const paddedNumber = numberRaw && serie?.padding ? numberRaw.padStart(serie.padding, "0") : numberRaw;
 
     const data: InventoryDocumentPdfData = {
       company: {
@@ -198,9 +222,9 @@ export class GenerateInventoryDocumentPdfUseCase {
       },
       document: {
         documentType: DOC_TYPE_LABEL[doc.docType] ?? doc.docType,
-        serie: serie.code ?? undefined,
+        serie: serie?.code ?? undefined,
         number: paddedNumber ?? undefined,
-        separator: serie.separator ?? undefined,
+        separator: serie?.separator ?? undefined,
         issuedAt: doc.createdAt ?? undefined,
         postedAt: doc.postedAt ?? undefined,
         status: doc.status ? STATUS_LABEL[doc.status] ?? doc.status : undefined,

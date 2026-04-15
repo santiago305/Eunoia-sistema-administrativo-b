@@ -6,7 +6,6 @@ import { DocType } from "src/shared/domain/value-objects/doc-type";
 import { Direction } from "src/shared/domain/value-objects/direction";
 import { ReferenceType } from "src/shared/domain/value-objects/reference-type";
 import { DOCUMENT_REPOSITORY, DocumentRepository } from "src/modules/product-catalog/integration/inventory/ports/document.repository.port";
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/product-catalog/integration/inventory/ports/stock-item.repository.port";
 import { CurrencyType } from "src/modules/purchases/domain/value-objects/currency-type";
 import { PurchaseOrderNotFoundApplicationError } from "../../errors/purchase-order-not-found.error";
 import { PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY, ProductCatalogStockItemRepository } from "src/modules/product-catalog/domain/ports/stock-item.repository";
@@ -25,8 +24,6 @@ export class PostInventoryFromPurchaseUsecase {
     private readonly purchaseRepo: PurchaseOrderRepository,
     @Inject(PURCHASE_ORDER_ITEM)
     private readonly purchaseItemRepo: PurchaseOrderItemRepository,
-    @Inject(STOCK_ITEM_REPOSITORY)
-    private readonly stockItemRepo: StockItemRepository,
     @Inject(PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY)
     private readonly productCatalogStockItemRepo: ProductCatalogStockItemRepository,
     @Inject(DOCUMENT_REPOSITORY)
@@ -84,19 +81,16 @@ export class PostInventoryFromPurchaseUsecase {
       );
 
       for (const item of items) {
-        const stockItem =
-          (await this.productCatalogStockItemRepo.findById(item.stockItemId, tx)) ??
-          (await this.stockItemRepo.findById(item.stockItemId, tx));
-
-        if (!stockItem) {
-          throw new NotFoundException("StockItem terminado no encontrado");
+        const skuStockItem = await this.productCatalogStockItemRepo.findById(item.stockItemId, tx);
+        if (!skuStockItem) {
+          throw new NotFoundException("Stock item de catalogo no encontrado");
         }
 
         await this.documentRepo.addItem(
           new InventoryDocumentItem(
             undefined,
             doc.id!,
-            "stockItemId" in stockItem ? stockItem.stockItemId : stockItem.id!,
+            skuStockItem.id!,
             item.quantity * item.factor,
             0,
             undefined,
@@ -108,16 +102,20 @@ export class PostInventoryFromPurchaseUsecase {
 
         await this.registerProductCatalogMovement.execute({
           docType: DocType.IN,
-          stockItemId: "stockItemId" in stockItem ? stockItem.stockItemId : stockItem.id!,
           warehouseId: params.toWarehouseId,
-          quantity: item.quantity * item.factor,
           direction: Direction.IN,
-          locationId: params.toLocationId,
-          unitCost: item.unitPrice.getAmount(),
           createdBy: params.postedBy,
           note: params.note,
           referenceId: order.poId,
           referenceType: ReferenceType.PURCHASE,
+          items: [
+            {
+              skuId: skuStockItem.skuId,
+              quantity: item.quantity * item.factor,
+              unitCost: item.unitPrice.getAmount(),
+              locationId: params.toLocationId ?? null,
+            },
+          ],
         });
       }
 

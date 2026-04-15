@@ -10,6 +10,7 @@ import { RegisterProductCatalogInventoryMovementDto } from "../dtos/register-inv
 import { UpsertProductCatalogInventoryBalanceDto } from "../dtos/upsert-inventory-balance.dto";
 import { RegisterProductCatalogInventoryMovement } from "src/modules/product-catalog/application/usecases/register-inventory-movement.usecase";
 import { ListProductCatalogInventoryLedger } from "src/modules/product-catalog/application/usecases/list-inventory-ledger.usecase";
+import { User as CurrentUser } from "src/shared/utilidades/decorators/user.decorator";
 
 @Controller()
 @UseGuards(JwtAuthGuard)
@@ -49,12 +50,12 @@ export class ProductCatalogStockController {
     return this.upsertInventoryBalance.execute({ stockItemId, ...dto });
   }
 
-  @Post("stock-items/:id/movements")
+  @Post("stock-items/movements/create")
   registerInventoryMovement(
-    @Param("id", ParseUUIDPipe) stockItemId: string,
+    @CurrentUser() user: { id: string },
     @Body() dto: RegisterProductCatalogInventoryMovementDto,
   ) {
-    return this.registerMovement.execute({ stockItemId, ...dto });
+    return this.registerMovement.execute({ ...dto, createdBy:user.id });
   }
 
   @Get("stock-items/:id/ledger")
@@ -62,3 +63,4 @@ export class ProductCatalogStockController {
     return this.listLedger.execute(stockItemId);
   }
 }
+

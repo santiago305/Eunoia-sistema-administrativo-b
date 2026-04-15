@@ -17,6 +17,7 @@ export interface ResolvedProductionFinishedItem {
 export interface ResolvedConsumptionMaterial {
   mode: "legacy" | "sku";
   stockItemId: string;
+  skuId?: string;
   quantity: number;
 }
 
@@ -79,6 +80,7 @@ export class ProductionItemResolverService {
         return {
           mode: "sku" as const,
           stockItemId: stockItem.id,
+          skuId: recipeItem.materialSkuId,
           quantity: recipeItem.quantity * quantity,
         };
       }),

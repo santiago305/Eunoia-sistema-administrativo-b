@@ -1,4 +1,6 @@
 import { Provider } from "@nestjs/common";
+import { UNIT_OF_WORK } from "src/shared/domain/ports/unit-of-work.port";
+import { TypeormUnitOfWork } from "src/shared/infrastructure/typeorm/typeorm.unit-of-work";
 import { PRODUCT_CATALOG_PRODUCT_REPOSITORY } from "../domain/ports/product.repository";
 import { PRODUCT_CATALOG_PUBLICATION_REPOSITORY } from "../domain/ports/publication.repository";
 import { PRODUCT_CATALOG_RECIPE_REPOSITORY } from "../domain/ports/recipe.repository";
@@ -37,6 +39,7 @@ import { StockItemBridge } from "../adapters/out/bridges/stock-item.bridge";
 
 export const productCatalogModuleProviders: Provider[] = [
   ...productCatalogUsecasesProviders,
+  { provide: UNIT_OF_WORK, useClass: TypeormUnitOfWork },
   { provide: PRODUCT_CATALOG_PRODUCT_REPOSITORY, useClass: ProductCatalogProductTypeormRepository },
   { provide: PRODUCT_CATALOG_SKU_REPOSITORY, useClass: ProductCatalogSkuTypeormRepository },
   { provide: PRODUCT_CATALOG_RECIPE_REPOSITORY, useClass: ProductCatalogRecipeTypeormRepository },
