@@ -41,7 +41,7 @@ export class AddPurchaseOrderItemUsecase {
         try {
           data = PurchaseOrderItemFactory.createNew({
             poId,
-            stockItemId: item.stockItemId as any,
+            stockItemId: item.skuId,
             unitBase: item.unitBase as any,
             equivalence: item.equivalence as any,
             factor: item.factor as any,

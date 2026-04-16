@@ -11,7 +11,7 @@ import { AfectIgvType } from "src/modules/purchases/domain/value-objects/afect-i
 
 export class HttpAddPurchaseOrderItemDto {
   @IsUUID()
-  stockItemId: string;
+  skuId: string;
 
   @IsOptional()
   @IsString()

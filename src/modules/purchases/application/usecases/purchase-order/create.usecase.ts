@@ -14,6 +14,8 @@ import { PurchaseOrderItemFactory } from "src/modules/purchases/domain/factories
 import { DomainError } from "src/modules/purchases/domain/errors/domain.error";
 import { PaymentsFactory } from "src/modules/payments/domain/factories/payments.factory";
 import { CreditQuotaNotFoundError } from "src/modules/payments/application/errors/credit-quota-not-found.error";
+import { CreateProductCatalogStockItem } from "src/modules/product-catalog/application/usecases/create-stock-item.usecase";
+import { PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY, ProductCatalogStockItemRepository } from "src/modules/product-catalog/domain/ports/stock-item.repository";
 
 export class CreatePurchaseOrderUsecase {
   constructor(
@@ -29,6 +31,10 @@ export class CreatePurchaseOrderUsecase {
     private readonly creditQuotaRepo: CreditQuotaRepository,
     @Inject(CLOCK)
     private readonly clock: ClockPort,
+    @Inject(PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY)
+    private readonly stockItemRepo: ProductCatalogStockItemRepository,
+    private readonly createStockItem: CreateProductCatalogStockItem,
+
   ) {}
 
   async execute(input: CreatePurchaseOrderInput, createdBy: string): Promise<{ order: PurchaseOrder }> {
@@ -77,15 +83,25 @@ export class CreatePurchaseOrderUsecase {
       if (input.items && input.items.length > 0) {
         for (const item of input.items) {
           let orderItem;
+          let stockItem = await this.stockItemRepo.findBySkuId(item.skuId, tx);
+          if(!stockItem){
+            stockItem = await this.createStockItem.execute(
+            {
+              skuId: item.skuId,
+              isActive: true,
+            },
+            tx,
+          );
+          }
           try {
             orderItem = PurchaseOrderItemFactory.createNew({
               poId: po.poId,
-              stockItemId: item.stockItemId as any,
-              unitBase: item.unitBase as any,
-              equivalence: item.equivalence as any,
-              factor: item.factor as any,
-              afectType: item.afectType as any,
-              quantity: item.quantity as any,
+              stockItemId: stockItem.id,
+              unitBase: item.unitBase,
+              equivalence: item.equivalence,
+              factor: item.factor,
+              afectType: item.afectType,
+              quantity: item.quantity,
               porcentageIgv: item.porcentageIgv ?? 0,
               baseWithoutIgv: item.baseWithoutIgv ?? 0,
               amountIgv: item.amountIgv ?? 0,

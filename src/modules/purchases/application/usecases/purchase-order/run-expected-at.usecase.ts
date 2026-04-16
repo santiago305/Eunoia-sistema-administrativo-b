@@ -7,6 +7,7 @@ import { CLOCK, ClockPort } from "src/shared/application/ports/clock.port";
 import { PurchaseOrderId } from "src/modules/purchases/domain/value-objects/purchase-order-id.vo";
 import { DomainError } from "src/modules/purchases/domain/errors/domain.error";
 import { PurchaseOrderNotFoundApplicationError } from "../../errors/purchase-order-not-found.error";
+import { errorResponse } from "src/shared/response-standard/response";
 
 export class RunExpectedAtUsecase {
   constructor(
@@ -30,43 +31,37 @@ export class RunExpectedAtUsecase {
       throw err;
     }
 
-    try {
-      return await this.uow.runInTransaction(async (tx) => {
-        const order = await this.purchaseRepo.findById(validatedPoId, tx);
-        if (!order) {
-          throw new NotFoundException(new PurchaseOrderNotFoundApplicationError().message);
-        }
+    return this.uow.runInTransaction(async (tx) => {
+      const order = await this.purchaseRepo.findById(validatedPoId, tx);
+      if (!order) {
+        throw new NotFoundException(errorResponse("Orden no encontrada"));
+      }
 
-        if (![PurchaseOrderStatus.SENT, PurchaseOrderStatus.PARTIAL].includes(order.status)) {
-          throw new BadRequestException("La orden no esta en estado SENT o PARTIAL");
-        }
+      if (![PurchaseOrderStatus.SENT, PurchaseOrderStatus.PARTIAL].includes(order.status)) {
+        throw new BadRequestException(errorResponse("La orden no esta en estado SENT o PARTIAL"));
+      }
 
-        if (!order.expectedAt) {
-          throw new BadRequestException("La orden no tiene expectedAt");
-        }
+      if (!order.expectedAt) {
+        throw new BadRequestException(errorResponse("La orden no tiene expectedAt"));
+      }
 
+      try {
         await this.inventoryPurchase.execute({
           poId: order.poId,
           toWarehouseId: order.warehouseId,
           postedBy: order.createdBy,
           createdBy: order.createdBy,
           note: "Ingreso por compra",
-        });
-
-        await this.purchaseRepo.update(
-          { poId: order.poId, status: PurchaseOrderStatus.RECEIVED },
           tx,
-        );
-
-        return { message: "Orden ejecutada y marcada como RECEIVED" };
-      });
-    } catch {
-      await this.purchaseRepo.update({
-        poId: validatedPoId,
-        status: PurchaseOrderStatus.PARTIAL,
-      });
-      throw new BadRequestException("Error al ejecutar la orden");
-    }
+        });
+  
+        await this.purchaseRepo.update({ poId: order.poId, status: PurchaseOrderStatus.RECEIVED }, tx);
+  
+        return { type:"success", message: "Orden ejecutada y marcada como RECEIVED" };
+      } catch {
+        throw new BadRequestException(errorResponse("Error al crear documento"))
+      }
+    });
   }
 }
 

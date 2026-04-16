@@ -14,6 +14,7 @@ import { SERIES_REPOSITORY, DocumentSeriesRepository } from "src/modules/product
 import { InventoryDocument } from "src/modules/product-catalog/integration/inventory/entities/inventory-document";
 import InventoryDocumentItem from "src/modules/product-catalog/integration/inventory/entities/inventory-document-item";
 import { DocStatus } from "src/shared/domain/value-objects/doc-status";
+import { TransactionContext } from "src/shared/domain/ports/transaction-context.port";
 
 @Injectable()
 export class PostInventoryFromPurchaseUsecase {
@@ -40,67 +41,91 @@ export class PostInventoryFromPurchaseUsecase {
     createdBy?: string;
     postedBy: string;
     note?: string;
+    tx?: TransactionContext;
   }) {
-    return this.uow.runInTransaction(async (tx) => {
-      const order = await this.purchaseRepo.findById(params.poId);
-      if (!order) {
-        throw new NotFoundException(new PurchaseOrderNotFoundApplicationError().message);
+    const { tx } = params;
+    if (tx) {
+      return this.executeInTx(params, tx);
+    }
+    return this.uow.runInTransaction(async (nextTx) => this.executeInTx(params, nextTx));
+  }
+
+  private async executeInTx(
+    params: {
+      poId: string;
+      toWarehouseId: string;
+      toLocationId?: string;
+      createdBy?: string;
+      postedBy: string;
+      note?: string;
+      tx?: TransactionContext;
+    },
+    tx: TransactionContext,
+  ) {
+    const order = await this.purchaseRepo.findById(params.poId, tx);
+    if (!order) {
+      throw new NotFoundException(new PurchaseOrderNotFoundApplicationError().message);
+    }
+
+    const items = await this.purchaseItemRepo.getByPurchaseId(
+      order.poId,
+      order.currency ?? CurrencyType.PEN,
+      tx,
+    );
+    if (items.length === 0) {
+      throw new BadRequestException("La orden no tiene items");
+    }
+
+    const series = await this.seriesRepo.findActiveFor(
+      { docType: DocType.IN, warehouseId: params.toWarehouseId, isActive: true },
+      tx,
+    );
+    if (!series.length) {
+      throw new NotFoundException("No hay ninguna serie asociada");
+    }
+
+    const serie = series[0];
+    const correlative = await this.seriesRepo.reserveNextNumber(serie.id, tx);
+
+    const doc = await this.documentRepo.createDraft(
+      new InventoryDocument(
+        undefined,
+        DocType.IN,
+        DocStatus.DRAFT,
+        serie.id,
+        correlative,
+        undefined,
+        params.toWarehouseId,
+        order.poId,
+        ReferenceType.PURCHASE,
+        params.note,
+        params.createdBy,
+      ),
+      tx,
+    );
+
+    for (const item of items) {
+      const skuStockItem = await this.productCatalogStockItemRepo.findById(item.stockItemId, tx);
+      if (!skuStockItem) {
+        throw new NotFoundException("Stock item de catalogo no encontrado");
       }
 
-      const items = await this.purchaseItemRepo.getByPurchaseId(order.poId, order.currency ?? CurrencyType.PEN);
-      if (items.length === 0) {
-        throw new BadRequestException("La orden no tiene items");
-      }
-
-      const series = await this.seriesRepo.findActiveFor(
-        { docType: DocType.IN, warehouseId: params.toWarehouseId, isActive: true },
-        tx,
-      );
-      if (!series.length) {
-        throw new NotFoundException("No hay ninguna serie asociada");
-      }
-
-      const serie = series[0];
-      const correlative = await this.seriesRepo.reserveNextNumber(serie.id, tx);
-
-      const doc = await this.documentRepo.createDraft(
-        new InventoryDocument(
+      await this.documentRepo.addItem(
+        new InventoryDocumentItem(
           undefined,
-          DocType.IN,
-          DocStatus.DRAFT,
-          serie.id,
-          correlative,
+          doc.id!,
+          skuStockItem.id!,
+          item.quantity * item.factor,
+          0,
           undefined,
-          params.toWarehouseId,
-          order.poId,
-          ReferenceType.PURCHASE,
-          params.note,
-          params.createdBy,
+          params.toLocationId,
+          item.unitPrice.getAmount(),
         ),
         tx,
       );
 
-      for (const item of items) {
-        const skuStockItem = await this.productCatalogStockItemRepo.findById(item.stockItemId, tx);
-        if (!skuStockItem) {
-          throw new NotFoundException("Stock item de catalogo no encontrado");
-        }
-
-        await this.documentRepo.addItem(
-          new InventoryDocumentItem(
-            undefined,
-            doc.id!,
-            skuStockItem.id!,
-            item.quantity * item.factor,
-            0,
-            undefined,
-            params.toLocationId,
-            item.unitPrice.getAmount(),
-          ),
-          tx,
-        );
-
-        await this.registerProductCatalogMovement.execute({
+      await this.registerProductCatalogMovement.execute(
+        {
           docType: DocType.IN,
           warehouseId: params.toWarehouseId,
           direction: Direction.IN,
@@ -116,54 +141,58 @@ export class PostInventoryFromPurchaseUsecase {
               locationId: params.toLocationId ?? null,
             },
           ],
-        });
-      }
+        },
+        tx,
+      );
+    }
 
-      await this.documentRepo.markPosted({
+    await this.documentRepo.markPosted(
+      {
         docId: doc.id!,
         postedBy: params.postedBy,
         postedAt: new Date(),
-      });
+      },
+      tx,
+    );
 
-      const savedDoc = await this.documentRepo.findById(doc.id!, tx);
-      const savedItems = await this.documentRepo.listItems(doc.id!, tx);
-      const docPayload = savedDoc
-        ? {
-            doc: {
-              id: savedDoc.id!,
-              docType: savedDoc.docType,
-              status: savedDoc.status,
-              serieId: savedDoc.serieId,
-              correlative: savedDoc.correlative,
-              fromWarehouseId: savedDoc.fromWarehouseId,
-              toWarehouseId: savedDoc.toWarehouseId,
-              referenceId: savedDoc.referenceId,
-              referenceType: savedDoc.referenceType,
-              note: savedDoc.note,
-              createdBy: savedDoc.createdBy,
-              postedBy: savedDoc.postedBy,
-              postedAt: savedDoc.postedAt,
-              createdAt: savedDoc.createdAt,
-            },
-            items: savedItems.map((i) => ({
-              id: i.id!,
-              docId: i.docId,
-              stockItemId: i.stockItemId,
-              quantity: i.quantity,
-              fromLocationId: i.fromLocationId,
-              toLocationId: i.toLocationId,
-              unitCost: i.unitCost ?? null,
-            })),
-          }
-        : undefined;
+    const savedDoc = await this.documentRepo.findById(doc.id!, tx);
+    const savedItems = await this.documentRepo.listItems(doc.id!, tx);
+    const docPayload = savedDoc
+      ? {
+          doc: {
+            id: savedDoc.id!,
+            docType: savedDoc.docType,
+            status: savedDoc.status,
+            serieId: savedDoc.serieId,
+            correlative: savedDoc.correlative,
+            fromWarehouseId: savedDoc.fromWarehouseId,
+            toWarehouseId: savedDoc.toWarehouseId,
+            referenceId: savedDoc.referenceId,
+            referenceType: savedDoc.referenceType,
+            note: savedDoc.note,
+            createdBy: savedDoc.createdBy,
+            postedBy: savedDoc.postedBy,
+            postedAt: savedDoc.postedAt,
+            createdAt: savedDoc.createdAt,
+          },
+          items: savedItems.map((i) => ({
+            id: i.id!,
+            docId: i.docId,
+            stockItemId: i.stockItemId,
+            quantity: i.quantity,
+            fromLocationId: i.fromLocationId,
+            toLocationId: i.toLocationId,
+            unitCost: i.unitCost ?? null,
+          })),
+        }
+      : undefined;
 
-      return {
-        type: "success",
-        message: "Documento IN posteado desde compra",
-        docId: doc.id!,
-        document: docPayload,
-      };
-    });
+    return {
+      type: "success",
+      message: "Documento IN posteado desde compra",
+      docId: doc.id!,
+      document: docPayload,
+    };
   }
 }
 

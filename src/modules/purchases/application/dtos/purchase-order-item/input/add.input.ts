@@ -2,6 +2,7 @@ import { AfectIgvType } from "src/modules/purchases/domain/value-objects/afect-i
 
 export interface AddPurchaseOrderItemInput {
   poId?: string;
+  skuId?: string;
   stockItemId?: string;
   unitBase?: string,
   equivalence?: string,

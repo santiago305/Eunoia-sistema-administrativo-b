@@ -9,15 +9,15 @@ import { COMPANY_REPOSITORY, CompanyRepository } from "src/modules/companies/dom
 import { PDF_RENDERER, PdfRendererPort } from "src/modules/pdf-generated/domain/ports/pdf-renderer.port";
 import { GeneratePurchaseOrderPdfInput } from "../dtos/purchase-order/input/generate-purchase-order.input";
 import { PurchaseOrderPdfData } from "../../domain/interfaces/purchase-data";
-import { StockItemType } from "src/shared/domain/value-objects/stock-item-type";
-import { StockItem } from "src/modules/product-catalog/integration/inventory/entities/stock-item";
 import { SupplierDocType } from "src/modules/suppliers/domain/object-values/supplier-doc-type";
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/product-catalog/integration/inventory/ports/stock-item.repository.port";
 import { CurrencyType } from "src/modules/purchases/domain/value-objects/currency-type";
 import { PdfGeneratedValidationError } from "../errors/pdf-generated-validation.error";
 import { PRODUCT_CATALOG_PRODUCT_REPOSITORY, ProductCatalogProductRepository } from "src/modules/product-catalog/domain/ports/product.repository";
-import { PRODUCT_CATALOG_SKU_REPOSITORY, ProductCatalogSkuRepository } from "src/modules/product-catalog/domain/ports/sku.repository";
+import { PRODUCT_CATALOG_SKU_REPOSITORY, ProductCatalogSkuRepository, SkuAttributeInput } from "src/modules/product-catalog/domain/ports/sku.repository";
 import { PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY, ProductCatalogStockItemRepository } from "src/modules/product-catalog/domain/ports/stock-item.repository";
+import { ProductCatalogStockItem } from "src/modules/product-catalog/domain/entities/stock-item";
+import { ProductCatalogSkuWithAttributes } from "src/modules/product-catalog/domain/ports/sku.repository";
+import { ProductCatalogProduct } from "src/modules/product-catalog/domain/entities/product";
 
 const resolveLogoUrl = async (logoPath?: string) => {
   if (!logoPath) return undefined;
@@ -48,21 +48,7 @@ const resolveLogoUrl = async (logoPath?: string) => {
   return pathToFileURL(absolutePath).toString();
 };
 
-type StockItemSnapshot = {
-  id: string;
-  type: StockItemType | "SKU";
-  productId: string | null;
-  product: { id: string; name: string | null; sku: string | null; unidad: string | null } | null;
-  sku: {
-    id: string;
-    productId: string;
-    productName: string;
-    name: string;
-    sku: string | null;
-    unidad: string | null;
-    attributes: Record<string, unknown> | null;
-  } | null;
-};
+const formatNameWithSku = (name: string, sku?: string | null) => (sku ? `${name} (${sku})` : name);
 
 export class GeneratePurchaseOrderPdfUseCase {
   constructor(
@@ -74,8 +60,6 @@ export class GeneratePurchaseOrderPdfUseCase {
     private readonly supplierRepo: SupplierRepository,
     @Inject(COMPANY_REPOSITORY)
     private readonly companyRepo: CompanyRepository,
-    @Inject(STOCK_ITEM_REPOSITORY)
-    private readonly stockItemRepo: StockItemRepository,
     @Inject(PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY)
     private readonly productCatalogStockItemRepo: ProductCatalogStockItemRepository,
     @Inject(PRODUCT_CATALOG_SKU_REPOSITORY)
@@ -99,93 +83,50 @@ export class GeneratePurchaseOrderPdfUseCase {
     ]);
 
     if (!company) {
-      throw new BadRequestException(new PdfGeneratedValidationError("CompaÃ±Ã­a invÃ¡lida").message);
+      throw new BadRequestException(new PdfGeneratedValidationError("Compañía inválida").message);
     }
     if (!supplier) {
-      throw new BadRequestException(new PdfGeneratedValidationError("Proveedor invÃ¡lido").message);
+      throw new BadRequestException(new PdfGeneratedValidationError("Proveedor inválido").message);
     }
     if (!items) {
-      throw new BadRequestException(new PdfGeneratedValidationError("Items de compra invÃ¡lidos").message);
+      throw new BadRequestException(new PdfGeneratedValidationError("Items de compra inválidos").message);
     }
 
-    const stockItemCache = new Map<string, StockItem | null>();
-    const skuStockItemCache = new Map<string, Awaited<ReturnType<ProductCatalogStockItemRepository["findById"]>>>();
-
-    const getStockItem = async (id: string) => {
+    const stockItemCache = new Map<string, ProductCatalogStockItem | null>();
+    const getStockItem = async (id: string): Promise<ProductCatalogStockItem | null> => {
       if (stockItemCache.has(id)) return stockItemCache.get(id);
-      let row = await this.stockItemRepo.findById(id);
-      if (!row) {
-        row = await this.stockItemRepo.findByProductOrStockItemId(id);
-      }
+      const row = await this.productCatalogStockItemRepo.findById(id);
       stockItemCache.set(id, row);
       return row;
     };
 
-    const getSkuStockItem = async (id: string) => {
-      if (skuStockItemCache.has(id)) return skuStockItemCache.get(id);
-      const row = await this.productCatalogStockItemRepo.findById(id);
-      skuStockItemCache.set(id, row);
+    const skuCache = new Map<string, ProductCatalogSkuWithAttributes | null>();
+    const getSku = async (id: string): Promise<ProductCatalogSkuWithAttributes | null> => {
+      if (skuCache.has(id)) return skuCache.get(id);
+      const row = await this.productCatalogSkuRepo.findById(id);
+      skuCache.set(id, row);
       return row;
     };
 
-    const buildStockItemSnapshot = async (stockItemId: string, unitBase?: string): Promise<StockItemSnapshot | undefined> => {
-      const stockItem = await getStockItem(stockItemId);
-      if (!stockItem) {
-        const skuStockItem = await getSkuStockItem(stockItemId);
-        if (!skuStockItem) return undefined;
-        const sku = await this.productCatalogSkuRepo.findById(skuStockItem.skuId);
-        if (!sku) return undefined;
-        const product = await this.productCatalogProductRepo.findById(sku.sku.productId);
-        return {
-          id: skuStockItem.id!,
-          type: "SKU",
-          productId: sku.sku.productId,
-          product: null,
-          sku: {
-            id: sku.sku.id!,
-            productId: sku.sku.productId,
-            productName: product?.name ?? sku.sku.name,
-            name: sku.sku.name,
-            sku: sku.sku.backendSku ?? sku.sku.customSku ?? null,
-            unidad: unitBase ?? null,
-            attributes: Object.fromEntries(sku.attributes.map((attribute) => [attribute.code, attribute.value])),
-          },
-        };
-      }
-
-      if (stockItem.type === StockItemType.PRODUCT && stockItem.productId) {
-        return {
-          id: stockItem.stockItemId ?? stockItemId,
-          type: stockItem.type,
-          productId: stockItem.productId ?? null,
-          product: {
-            id: stockItem.productId,
-            name: null,
-            sku: null,
-            unidad: unitBase ?? null,
-          },
-          sku: null,
-        };
-      }
-
-      return {
-        id: stockItem.stockItemId ?? stockItemId,
-        type: stockItem.type,
-        productId: stockItem.productId ?? null,
-        product: null,
-        sku: null,
-      };
+    const productCache = new Map<string, ProductCatalogProduct | null>();
+    const getProduct = async (id: string): Promise<ProductCatalogProduct | null> => {
+      if (productCache.has(id)) return productCache.get(id);
+      const row = await this.productCatalogProductRepo.findById(id);
+      productCache.set(id, row);
+      return row;
     };
+    const formatSkuAttrs = (attrs?: SkuAttributeInput[]) =>
+      (attrs ?? [])
+        .map((attr) => (attr.value ?? "").trim())
+        .filter(Boolean)
+        .join(" ");
 
-    const buildDescription = (snapshot: StockItemSnapshot | undefined, fallback: string) => {
-      if (!snapshot) return fallback;
-
-      const baseName =
-        snapshot.sku?.name ??
-        snapshot.product?.name ??
-        (snapshot.productId ? `PRODUCT ${snapshot.productId}` : fallback);
-      const baseSku = snapshot.sku?.sku ?? snapshot.product?.sku ?? null;
-      return baseSku ? `${baseName} (${baseSku})` : baseName;
+    const buildPurchaseSkuLabel = (sku: ProductCatalogSkuWithAttributes) => {
+      const attrsText = formatSkuAttrs(sku.attributes);
+      const skuPart = sku.sku.backendSku ? ` - ${sku.sku.backendSku}` : "";
+      const customPart = sku.sku.customSku ? ` (${sku.sku.customSku})` : "";
+      const attrsPart = attrsText ? ` ${attrsText}` : "";
+      return `${sku.sku.name}${attrsPart}${skuPart}${customPart}`.trim();
     };
 
     const supplierName =
@@ -213,9 +154,18 @@ export class GeneratePurchaseOrderPdfUseCase {
 
     const mappedItems = await Promise.all(
       items.map(async (item) => {
-        const snapshot = await buildStockItemSnapshot(item.stockItemId, item.unitBase ?? undefined);
+        const stockItem = await getStockItem(item.stockItemId);
+        let description = item.stockItemId;
+
+        const skuId = stockItem?.skuId;
+        if (skuId) {
+          const sku = await getSku(skuId);
+          if (sku) {
+            description = buildPurchaseSkuLabel(sku); 
+          }
+        }
         return {
-          description: buildDescription(snapshot, item.stockItemId),
+          description,
           unit: `${item.equivalence}`,
           quantity: item.quantity,
           unitPrice: item.unitPrice.getAmount(),
@@ -262,6 +212,3 @@ export class GeneratePurchaseOrderPdfUseCase {
     return this.pdfRenderer.renderPurchaseOrder(data);
   }
 }
-
-
-
