@@ -6,6 +6,7 @@ import { PayDocType } from "src/modules/payments/domain/value-objects/pay-doc-ty
 import { CreatePaymentInput } from "../../dtos/payment/input/create.input";
 import { PaymentsFactory } from "src/modules/payments/domain/factories/payments.factory";
 import { CreditQuotaNotFoundError } from "../../errors/credit-quota-not-found.error";
+import { successResponse } from "src/shared/response-standard/response";
 
 export class CreatePaymentUsecase {
   constructor(
@@ -78,7 +79,7 @@ export class CreatePaymentUsecase {
         throw new BadRequestException("No se pudo vincular el pago a la orden de compra");
       }
 
-      return { message: "Pago registrado con exito" };
+      return successResponse("Pago registrado con exito");
     });
   }
 }

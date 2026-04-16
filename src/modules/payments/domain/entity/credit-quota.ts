@@ -25,20 +25,15 @@ export class CreditQuota {
     createdAt?: Date;
     poId?: string;
   }) {
+    
     if (params.number <= 0) {
       throw new InvalidCreditQuotaError("El numero de cuota es invalido");
-    }
-    if (Number.isNaN(params.expirationDate.getTime())) {
-      throw new InvalidCreditQuotaError("La fecha de expiracion es invalida");
     }
     if (params.totalToPay <= 0) {
       throw new InvalidCreditQuotaError("El total a pagar es invalido");
     }
     if ((params.totalPaid ?? 0) < 0 || (params.totalPaid ?? 0) > params.totalToPay) {
       throw new InvalidCreditQuotaError("El total pagado es invalido");
-    }
-    if (params.paymentDate && Number.isNaN(params.paymentDate.getTime())) {
-      throw new InvalidCreditQuotaError("La fecha de pago es invalida");
     }
 
     return new CreditQuota(
