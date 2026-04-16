@@ -26,6 +26,9 @@ import { CurrencyType } from "src/modules/purchases/domain/value-objects/currenc
 import { PaymentsFactory } from "src/modules/payments/domain/factories/payments.factory";
 import { CreditQuota } from "src/modules/payments/domain/entity/credit-quota";
 import { PurchaseOrderNotFoundApplicationError } from "../../errors/purchase-order-not-found.error";
+import { PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY, ProductCatalogStockItemRepository } from "src/modules/product-catalog/domain/ports/stock-item.repository";
+import { CreateProductCatalogStockItem } from "src/modules/product-catalog/application/usecases/create-stock-item.usecase";
+import { errorResponse } from "src/shared/response-standard/response";
 
 export class UpdatePurchaseOrderUsecase {
   constructor(
@@ -42,6 +45,9 @@ export class UpdatePurchaseOrderUsecase {
     private readonly creditQuotaRepo: CreditQuotaRepository,
     @Inject(CLOCK)
     private readonly clock: ClockPort,
+    @Inject(PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY)
+    private readonly stockItemRepo: ProductCatalogStockItemRepository,
+    private readonly createStockItem: CreateProductCatalogStockItem,
   ) {}
 
   async execute(input: UpdatePurchaseOrderInput): Promise<{ message: string }> {
@@ -151,21 +157,42 @@ export class UpdatePurchaseOrderUsecase {
         try {
           await this.itemRepo.removeByPurchaseId(poId, tx);
         } catch {
-          throw new BadRequestException("No se pudo eliminar items de la orden de compra");
+          throw new BadRequestException(errorResponse("No se pudo eliminar items de la orden de compra"));
         }
 
         if (input.items.length > 0) {
           for (const item of input.items) {
+            if (!item.skuId && !item.stockItemId) {
+              throw new BadRequestException(errorResponse("Debe enviar skuId o stockItemId en el item"));
+            }
+
+            let stockItemId: string;
+            if (item.stockItemId) {
+              stockItemId = item.stockItemId;
+            } else {
+              let stockItem = await this.stockItemRepo.findBySkuId(item.skuId!, tx);
+              if (!stockItem) {
+                stockItem = await this.createStockItem.execute(
+                  { skuId: item.skuId!, isActive: true },
+                  tx,
+                );
+              }
+              if (!stockItem.id) {
+                throw new BadRequestException(errorResponse("No se pudo resolver el stockItemId para el skuId indicado"));
+              }
+              stockItemId = stockItem.id;
+            }
+
             let orderItem;
             try {
               orderItem = PurchaseOrderItemFactory.createNew({
                 poId: updated.poId,
-                stockItemId: item.stockItemId as any,
-                unitBase: item.unitBase as any,
-                equivalence: item.equivalence as any,
-                factor: item.factor as any,
-                afectType: item.afectType as any,
-                quantity: item.quantity as any,
+                stockItemId,
+                unitBase: item.unitBase,
+                equivalence: item.equivalence,
+                factor: item.factor,
+                afectType: item.afectType     ,
+                quantity: item.quantity,
                 porcentageIgv: item.porcentageIgv ?? 0,
                 baseWithoutIgv: item.baseWithoutIgv ?? 0,
                 amountIgv: item.amountIgv ?? 0,
@@ -174,17 +201,10 @@ export class UpdatePurchaseOrderUsecase {
                 purchaseValue: item.purchaseValue ?? 0,
                 currency: itemCurrency as any,
               });
-            } catch (err) {
-              if (err instanceof DomainError || (err as any)?.name === "InvalidMoneyError") {
-                throw new BadRequestException((err as Error).message);
-              }
-              throw err;
-            }
 
-            try {
               await this.itemRepo.add(orderItem, tx);
-            } catch {
-              throw new BadRequestException("No se pudo agregar items a la orden de compra");
+            } catch (err) {
+              throw new BadRequestException(errorResponse("Error al crear items"));
             }
           }
         }
@@ -302,7 +322,7 @@ export class UpdatePurchaseOrderUsecase {
         }
       }
 
-      return { message: "Orden de compra actualizada con exito" };
+      return {type:"success", message: "Orden de compra actualizada con exito" };
     });
   }
 

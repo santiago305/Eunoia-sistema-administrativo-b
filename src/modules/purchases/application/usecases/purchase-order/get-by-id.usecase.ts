@@ -8,8 +8,6 @@ import { PurchaseOrderDetailOutput } from "../../dtos/purchase-order/output/purc
 import { PaymentOutput } from "src/modules/payments/application/dtos/payment/output/payment.output";
 import { PurchaseOrderItemOutput } from "../../dtos/purchase-order-item/output/purchase-order-item.output";
 import { CreditQuotaOutput } from "src/modules/payments/application/dtos/credit-quota/output/credit-quota.output";
-import { StockItemType } from "src/shared/domain/value-objects/stock-item-type";
-import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/product-catalog/integration/inventory/ports/stock-item.repository.port";
 import { CurrencyType } from "src/modules/purchases/domain/value-objects/currency-type";
 import { PurchaseOrderOutputMapper } from "../../mappers/purchase-order-output.mapper";
 import { PurchaseOrderNotFoundApplicationError } from "../../errors/purchase-order-not-found.error";
@@ -27,8 +25,6 @@ export class GetPurchaseOrderUsecase {
     private readonly paymentDocRepo: PaymentDocumentRepository,
     @Inject(CREDIT_QUOTA_REPOSITORY)
     private readonly creditQuotaRepo: CreditQuotaRepository,
-    @Inject(STOCK_ITEM_REPOSITORY)
-    private readonly stockItemRepo: StockItemRepository,
     @Inject(PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY)
     private readonly productCatalogStockItemRepo: ProductCatalogStockItemRepository,
     @Inject(PRODUCT_CATALOG_SKU_REPOSITORY)
@@ -51,57 +47,16 @@ export class GetPurchaseOrderUsecase {
 
     const itemOutputs: PurchaseOrderItemOutput[] = await Promise.all(
       items.map(async (row) => {
-        let stockItem = await this.stockItemRepo.findById(row.stockItemId);
-        if (!stockItem) {
-          stockItem = await this.stockItemRepo.findByProductOrStockItemId(row.stockItemId);
-        }
-        const skuStockItem = stockItem ? null : await this.productCatalogStockItemRepo.findById(row.stockItemId);
-        if (!stockItem && !skuStockItem) throw new BadRequestException("Item de stock no encontrado");
+        const skuStockItem = await this.productCatalogStockItemRepo.findById(row.stockItemId);
+        if (!skuStockItem) throw new BadRequestException("Item no es SKU o no existe en catálogo");
 
-        let stockItemOutput: PurchaseOrderItemOutput["stockItem"] = null;
-
-        if (stockItem?.type === StockItemType.PRODUCT) {
-          if (!stockItem.productId) {
-            throw new BadRequestException("Producto no encontrado");
-          }
-          stockItemOutput = {
-            type: StockItemType.PRODUCT,
-            stockItemId: stockItem.stockItemId!,
-            product: {
-              id: stockItem.productId,
-              name: null,
-              sku: null,
-            },
-          };
-        }
-        
-        if (skuStockItem) {
-          const sku = await this.productCatalogSkuRepo.findById(skuStockItem.skuId);
-          if (!sku) throw new BadRequestException("Sku no encontrado");
-          const product = await this.productCatalogProductRepo.findById(sku.sku.productId);
-          if (!product) throw new BadRequestException("Familia del sku no encontrada");
-          stockItemOutput = {
-            type: "SKU",
-            stockItemId: skuStockItem.id!,
-            sku: {
-              id: sku.sku.id!,
-              productId: sku.sku.productId,
-              productName: product.name,
-              name: sku.sku.name,
-              backendSku: sku.sku.backendSku,
-              customSku: sku.sku.customSku,
-              barcode: sku.sku.barcode,
-              attributes: sku.attributes,
-              isActive: sku.sku.isActive,
-            },
-          };
-        }
+        let sku = await this.productCatalogSkuRepo.findById(skuStockItem.skuId);
+        if (!sku) throw new BadRequestException("Sku no encontrado");
 
         return {
           poItemId: row.poItemId,
           poId: row.poId,
-          stockItemId: row.stockItemId,
-          stockItem: stockItemOutput,
+          sku,
           unitBase: row.unitBase,
           equivalence: row.equivalence,
           factor: row.factor,
@@ -133,6 +88,3 @@ export class GetPurchaseOrderUsecase {
     });
   }
 }
-
-
-

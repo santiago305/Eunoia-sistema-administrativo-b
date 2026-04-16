@@ -1,5 +1,5 @@
 import { StockItemType } from "src/shared/domain/value-objects/stock-item-type";
-import { SkuAttributeInput } from "src/modules/product-catalog/domain/ports/sku.repository";
+import { ProductCatalogSkuWithAttributes, SkuAttributeInput } from "src/modules/product-catalog/domain/ports/sku.repository";
 import { AfectIgvType } from "src/modules/purchases/domain/value-objects/afect-igv-type";
 
 export interface PurchaseOrderLegacyProductOutput {
@@ -30,8 +30,9 @@ export interface PurchaseOrderStockItemOutput {
 export interface PurchaseOrderItemOutput {
   poItemId: string;
   poId: string;
-  stockItemId: string;
+  stockItemId?: string;
   stockItem?: PurchaseOrderStockItemOutput | null;
+  sku?:ProductCatalogSkuWithAttributes;
   unitBase?: string | null;
   equivalence?: string | null;
   factor?: number | null;
