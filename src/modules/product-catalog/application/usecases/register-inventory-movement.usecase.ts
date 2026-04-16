@@ -36,6 +36,7 @@ import {
 } from "../../domain/ports/document-serie.repository";
 import { errorResponse } from "src/shared/response-standard/response";
 import { CreateProductCatalogStockItem } from "./create-stock-item.usecase";
+import { TransactionContext } from "src/shared/domain/ports/transaction-context.port";
 
 @Injectable()
 export class RegisterProductCatalogInventoryMovement {
@@ -57,7 +58,8 @@ export class RegisterProductCatalogInventoryMovement {
     private readonly createStockItem: CreateProductCatalogStockItem,
   ) {}
 
-  async execute(input: {
+  async execute(
+    input: {
     docType: DocType;
     items: {
       skuId: string;
@@ -72,8 +74,34 @@ export class RegisterProductCatalogInventoryMovement {
     createdBy?: string | null;
     referenceId?: string | null;
     referenceType?: ReferenceType | null;
-  }) {
-    return this.uow.runInTransaction(async (tx) => {
+    },
+    tx?: TransactionContext,
+  ) {
+    if (tx) {
+      return this.executeInTx(input, tx);
+    }
+    return this.uow.runInTransaction(async (nextTx) => this.executeInTx(input, nextTx));
+  }
+
+  private async executeInTx(
+    input: {
+      docType: DocType;
+      items: {
+        skuId: string;
+        quantity: number;
+        unitCost?: number | null;
+        locationId?: string | null;
+      }[];
+      warehouseId: string;
+      direction: Direction;
+      locationId?: string | null;
+      note?: string | null;
+      createdBy?: string | null;
+      referenceId?: string | null;
+      referenceType?: ReferenceType | null;
+    },
+    tx: TransactionContext,
+  ) {
       if (!input.items.length) {
         throw new BadRequestException(errorResponse("Necesita al menos 1 item"));
       }
@@ -230,6 +258,5 @@ export class RegisterProductCatalogInventoryMovement {
         documentId: document.id!,
         items: results,
       };
-    });
   }
 }

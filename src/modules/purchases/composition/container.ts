@@ -6,10 +6,13 @@ import { PurchaseOrderTypeormRepository } from "../adapters/out/persistence/type
 import { purchasesUsecasesProviders } from "../application/providers/purchases-usecases.providers";
 import { PURCHASE_ORDER_ITEM } from "../domain/ports/purchase-order-item.port.repository";
 import { PURCHASE_ORDER } from "../domain/ports/purchase-order.port.repository";
+import { CreateProductCatalogStockItem } from "src/modules/product-catalog/application/usecases/create-stock-item.usecase";
 
 export const purchasesModuleProviders: Provider[] = [
   ...purchasesUsecasesProviders,
   { provide: PURCHASE_ORDER, useClass: PurchaseOrderTypeormRepository },
   { provide: PURCHASE_ORDER_ITEM, useClass: PurchaseOrderItemTypeormRepository },
   { provide: UNIT_OF_WORK, useClass: TypeormUnitOfWork },
+  CreateProductCatalogStockItem, 
+
 ];
