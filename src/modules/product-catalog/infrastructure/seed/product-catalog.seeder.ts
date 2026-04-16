@@ -41,7 +41,7 @@ const PRODUCT_CATALOG_SEED: SeedFamily[] = [
       {
         backendSku: "00001",
         customSku: "JABON-01",
-        name: "Jabon de Azufre",
+        name: "Jabon",
         isSellable: true,
         isManufacturable: true,
         attributes: { variant: "Azufre", presentation: "", color: "" },
@@ -49,7 +49,7 @@ const PRODUCT_CATALOG_SEED: SeedFamily[] = [
       {
         backendSku: "00002",
         customSku: "JABON-02",
-        name: "Jabon de Curcuma",
+        name: "Jabon",
         isSellable: true,
         isManufacturable: true,
         attributes: { variant: "Curcuma", presentation: "", color: "" },
@@ -64,7 +64,7 @@ const PRODUCT_CATALOG_SEED: SeedFamily[] = [
       {
         backendSku: "00003",
         customSku: "ARCILL-01",
-        name: "Arcilla para piel Verde",
+        name: "Arcilla para piel",
         isSellable: true,
         isManufacturable: true,
         attributes: { variant: "", presentation: "200gr", color: "Verde" },
@@ -72,7 +72,7 @@ const PRODUCT_CATALOG_SEED: SeedFamily[] = [
       {
         backendSku: "00004",
         customSku: "ARCILL-02",
-        name: "Arcilla para piel Rosa",
+        name: "Arcilla para piel",
         isSellable: true,
         isManufacturable: true,
         attributes: { variant: "", presentation: "200gr", color: "Rosa" },
@@ -87,7 +87,7 @@ const PRODUCT_CATALOG_SEED: SeedFamily[] = [
       {
         backendSku: "00005",
         customSku: "AMPOLL-01",
-        name: "Ampolla antiacne 35gr",
+        name: "Ampolla antiacne",
         isSellable: true,
         isManufacturable: true,
         attributes: { variant: "", presentation: "35gr", color: "" },

@@ -3,6 +3,7 @@ import { UNIT_OF_WORK, UnitOfWork, TransactionContext } from "src/shared/domain/
 import { PAYMENT_DOCUMENT_REPOSITORY, PaymentDocumentRepository } from "src/modules/payments/domain/ports/payment-document.repository";
 import { CREDIT_QUOTA_REPOSITORY, CreditQuotaRepository } from "src/modules/payments/domain/ports/credit-quota.repository";
 import { PaymentNotFoundError } from "../../errors/payment-not-found.error";
+import { successResponse } from "src/shared/response-standard/response";
 
 export class DeletePaymentUsecase {
   constructor(
@@ -44,6 +45,6 @@ export class DeletePaymentUsecase {
       throw new BadRequestException("No se pudo eliminar el pago");
     }
 
-    return { message: "Pago eliminado con exito" };
+    return successResponse("Pago eliminado con exito");
   }
 }
