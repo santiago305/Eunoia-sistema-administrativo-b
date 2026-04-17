@@ -7,6 +7,8 @@ import { UpdateProductCatalogSku } from "src/modules/product-catalog/application
 import { CreateProductCatalogSkuDto } from "../dtos/create-sku.dto";
 import { ListProductCatalogSkusDto } from "../dtos/list-skus.dto";
 import { UpdateProductCatalogSkuDto } from "../dtos/update-sku.dto";
+import { GetSnapshotInventory } from "src/modules/product-catalog/application/usecases/get-snapshot.usecase";
+import { getStockDto } from "../dtos/get-stock.dto";
 
 @Controller()
 @UseGuards(JwtAuthGuard)
@@ -16,6 +18,7 @@ export class ProductCatalogSkuController {
     private readonly updateSku: UpdateProductCatalogSku,
     private readonly listSkus: ListProductCatalogSkus,
     private readonly getSku: GetProductCatalogSku,
+    private readonly getStock: GetSnapshotInventory,
   ) {}
 
   @Post("products/:id/skus")
@@ -47,10 +50,15 @@ export class ProductCatalogSkuController {
     });
   }
 
+  @Get("skus/get-stock")
+  getSkuStock(@Query() query:getStockDto ) {
+    return this.getStock.execute(query);
+  }
   @Get("skus/:id")
   getById(@Param("id", ParseUUIDPipe) id: string) {
     return this.getSku.execute(id);
   }
+  
 
   @Patch("skus/:id")
   update(@Param("id", ParseUUIDPipe) id: string, @Body() dto: UpdateProductCatalogSkuDto) {

@@ -17,10 +17,12 @@ import { ListProductCatalogChannelSkus } from "../usecases/list-channel-skus.use
 import { CreateProductCatalogStockItem } from "../usecases/create-stock-item.usecase";
 import { GetProductCatalogStockItem } from "../usecases/get-stock-item.usecase";
 import { GetProductCatalogSkuStockItem } from "../usecases/get-sku-stock-item.usecase";
+import { GetSnapshotInventory } from "../usecases/get-snapshot.usecase";
 import { UpsertProductCatalogInventoryBalance } from "../usecases/upsert-inventory-balance.usecase";
 import { ListProductCatalogInventoryBySku } from "../usecases/list-inventory-by-sku.usecase";
 import { RegisterProductCatalogInventoryMovement } from "../usecases/register-inventory-movement.usecase";
 import { ListProductCatalogInventoryLedger } from "../usecases/list-inventory-ledger.usecase";
+import { ListProductCatalogInventoryDocuments } from "../usecases/list-inventory-documents.usecase";
 import { ReserveProductCatalogMaterials } from "../usecases/reserve-materials.usecase";
 import { CreateProductCatalogUnit } from "../usecases/create-unit.usecase";
 import { GetProductCatalogUnit } from "../usecases/get-unit.usecase";
@@ -52,8 +54,10 @@ export const productCatalogUsecasesProviders: Provider[] = [
   GetProductCatalogSkuStockItem,
   UpsertProductCatalogInventoryBalance,
   ListProductCatalogInventoryBySku,
+  GetSnapshotInventory,
   RegisterProductCatalogInventoryMovement,
   ListProductCatalogInventoryLedger,
+  ListProductCatalogInventoryDocuments,
   ReserveProductCatalogMaterials,
   CreateProductCatalogUnit,
   GetProductCatalogUnit,

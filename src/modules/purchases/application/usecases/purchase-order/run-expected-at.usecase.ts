@@ -6,7 +6,6 @@ import { PostInventoryFromPurchaseUsecase } from "./Inventory-purchase.usecase";
 import { CLOCK, ClockPort } from "src/shared/application/ports/clock.port";
 import { PurchaseOrderId } from "src/modules/purchases/domain/value-objects/purchase-order-id.vo";
 import { DomainError } from "src/modules/purchases/domain/errors/domain.error";
-import { PurchaseOrderNotFoundApplicationError } from "../../errors/purchase-order-not-found.error";
 import { errorResponse } from "src/shared/response-standard/response";
 
 export class RunExpectedAtUsecase {
@@ -45,23 +44,18 @@ export class RunExpectedAtUsecase {
         throw new BadRequestException(errorResponse("La orden no tiene expectedAt"));
       }
 
-      try {
-        await this.inventoryPurchase.execute({
-          poId: order.poId,
-          toWarehouseId: order.warehouseId,
-          postedBy: order.createdBy,
-          createdBy: order.createdBy,
-          note: "Ingreso por compra",
-          tx,
-        });
-  
-        await this.purchaseRepo.update({ poId: order.poId, status: PurchaseOrderStatus.RECEIVED }, tx);
-  
-        return { type:"success", message: "Orden ejecutada y marcada como RECEIVED" };
-      } catch {
-        throw new BadRequestException(errorResponse("Error al crear documento"))
-      }
+      await this.inventoryPurchase.execute({
+        poId: order.poId,
+        toWarehouseId: order.warehouseId,
+        postedBy: order.createdBy,
+        createdBy: order.createdBy,
+        note: "Ingreso por compra",
+        tx,
+      });
+
+      await this.purchaseRepo.update({ poId: order.poId, status: PurchaseOrderStatus.RECEIVED }, tx);
+
+      return { type:"success", message: "Orden ejecutada y marcada como RECEIVED" };
     });
   }
 }
-

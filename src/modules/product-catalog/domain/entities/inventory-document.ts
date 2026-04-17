@@ -1,11 +1,13 @@
 import { DocStatus } from "src/shared/domain/value-objects/doc-status";
 import { DocType } from "src/shared/domain/value-objects/doc-type";
 import { ReferenceType } from "src/shared/domain/value-objects/reference-type";
+import { ProductCatalogProductType } from "../value-objects/product-type";
 
 export class ProductCatalogInventoryDocument {
   constructor(
     public readonly id: string | undefined,
     public readonly docType: DocType,
+    public readonly productType: ProductCatalogProductType | null,
     public readonly status: DocStatus,
     public readonly serieId: string | null,
     public readonly correlative: number | null,

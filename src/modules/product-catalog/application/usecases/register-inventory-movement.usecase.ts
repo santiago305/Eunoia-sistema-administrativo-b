@@ -31,18 +31,25 @@ import {
   ProductCatalogSkuRepository,
 } from "../../domain/ports/sku.repository";
 import {
+  PRODUCT_CATALOG_PRODUCT_REPOSITORY,
+  ProductCatalogProductRepository,
+} from "../../domain/ports/product.repository";
+import {
   PRODUCT_CATALOG_DOCUMENT_SERIE_REPOSITORY,
   ProductCatalogDocumentSerieRepository,
 } from "../../domain/ports/document-serie.repository";
 import { errorResponse } from "src/shared/response-standard/response";
 import { CreateProductCatalogStockItem } from "./create-stock-item.usecase";
 import { TransactionContext } from "src/shared/domain/ports/transaction-context.port";
+import { ProductCatalogProductType } from "../../domain/value-objects/product-type";
 
 @Injectable()
 export class RegisterProductCatalogInventoryMovement {
   constructor(
     @Inject(UNIT_OF_WORK)
     private readonly uow: UnitOfWork,
+    @Inject(PRODUCT_CATALOG_PRODUCT_REPOSITORY)
+    private readonly productRepo: ProductCatalogProductRepository,
     @Inject(PRODUCT_CATALOG_SKU_REPOSITORY)
     private readonly skuRepo: ProductCatalogSkuRepository,
     @Inject(PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY)
@@ -106,6 +113,24 @@ export class RegisterProductCatalogInventoryMovement {
         throw new BadRequestException(errorResponse("Necesita al menos 1 item"));
       }
 
+      const productTypeCache = new Map<string, ProductCatalogProductType>();
+      const resolveProductType = async (productId: string): Promise<ProductCatalogProductType> => {
+        const cached = productTypeCache.get(productId);
+        if (cached) return cached;
+        const product = await this.productRepo.findById(productId);
+        if (!product) {
+          throw new NotFoundException(errorResponse("Producto no encontrado"));
+        }
+        productTypeCache.set(productId, product.type);
+        return product.type;
+      };
+
+      const firstSku = await this.skuRepo.findById(input.items[0].skuId);
+      if (!firstSku) {
+        throw new NotFoundException(errorResponse("Sku no encontrado"));
+      }
+      const documentProductType = await resolveProductType(firstSku.sku.productId);
+
       const series = await this.serieRepo.findActiveFor(
         {
           docType: input.docType,
@@ -126,6 +151,7 @@ export class RegisterProductCatalogInventoryMovement {
         new ProductCatalogInventoryDocument(
           undefined,
           input.docType,
+          documentProductType,
           DocStatus.DRAFT,
           activeSerie.id ?? null,
           correlative,
@@ -157,6 +183,11 @@ export class RegisterProductCatalogInventoryMovement {
         const sku = await this.skuRepo.findById(row.skuId);
         if (!sku) {
           throw new NotFoundException(errorResponse("Sku no encontrado"));
+        }
+
+        const itemProductType = await resolveProductType(sku.sku.productId);
+        if (itemProductType !== documentProductType) {
+          throw new BadRequestException(errorResponse("No se permiten transferencias con SKUs de distinto tipo"));
         }
 
         let stockItem = await this.stockItemRepo.findBySkuId(row.skuId, tx);

@@ -1,4 +1,4 @@
-import { Inject, Injectable, InternalServerErrorException, OnApplicationBootstrap } from "@nestjs/common";
+import { Inject, Injectable, OnApplicationBootstrap } from "@nestjs/common";
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
 import { PurchaseOrderStatus } from "src/modules/purchases/domain/value-objects/po-status";
 import { PurchaseOrderExpectedScheduler } from "./purchase-order-expected-scheduler";
@@ -24,11 +24,8 @@ export class PurchaseOrderExpectedBootstrap implements OnApplicationBootstrap {
       if (!order.expectedAt) continue;
       if (order.expectedAt.getTime() <= now.getTime()) {
         await this.runExpected.execute(order.poId).catch((err) => {
-        throw new InternalServerErrorException({
-          type:'error',
-          message:err
+          console.error("PurchaseOrderExpectedBootstrap error:", err);
         });
-      });
       } else {
         this.scheduler.schedule(order.poId, order.expectedAt);
       }
