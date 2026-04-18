@@ -11,6 +11,7 @@ import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
 import { WarehouseEntity } from "src/modules/warehouses/adapters/out/persistence/typeorm/entities/warehouse";
 import { ProductCatalogDocumentSerieEntity as DocumentSerie } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/document-serie.entity";
+import { ProductCatalogStockItemEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/stock-item.entity";
 import {
   ProductionOrderListItemRM,
   ProductionOrderListSerieRM,
@@ -141,6 +142,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
     params: {
       status?: ProductionStatus;
       warehouseId?: string;
+      skuId?: string;
       from?: Date;
       to?: Date;
       page?: number;
@@ -158,13 +160,20 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
       .createQueryBuilder("p")
       .innerJoin(WarehouseEntity, "wf", "wf.id = p.from_warehouse_id")
       .innerJoin(WarehouseEntity, "wt", "wt.id = p.to_warehouse_id")
-      .innerJoin(DocumentSerie, "s", "s.serie_id = p.serie_id");
+      .innerJoin(DocumentSerie, "s", "s.serie_id = p.serie_id")
+      .distinct(true);
 
     if (params.status) {
       qb.andWhere("p.status = :status", { status: params.status });
     }
     if (params.warehouseId) {
       qb.andWhere("(p.fromWarehouseId = :wid OR p.toWarehouseId = :wid)", { wid: params.warehouseId });
+    }
+    if (params.skuId) {
+      qb
+        .innerJoin(ProductionOrderItemEntity, "pi", "pi.production_id = p.production_id")
+        .innerJoin(ProductCatalogStockItemEntity, "si", "si.stock_item_id = pi.finished_item_id")
+        .andWhere("si.sku_id = :skuId", { skuId: params.skuId });
     }
     if (params.from) {
       qb.andWhere("p.createdAt >= :from", { from: params.from });

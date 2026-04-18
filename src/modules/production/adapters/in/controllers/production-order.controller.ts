@@ -3,6 +3,7 @@ import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard
 import { CreateProductionOrder } from "src/modules/production/application/usecases/production-order/create.usecase";
 import { ListProductionOrders } from "src/modules/production/application/usecases/production-order/list-orders.usecase";
 import { GetProductionOrder } from "src/modules/production/application/usecases/production-order/get-record.usecase";
+import { GetProductionOrderFilterOptions } from "src/modules/production/application/usecases/production-order/get-filter-options.usecase";
 import { UpdateProductionOrder } from "src/modules/production/application/usecases/production-order/update-production-order.usecase";
 import { StartProductionOrder } from "src/modules/production/application/usecases/production-order/start.usecase";
 import { CloseProductionOrder } from "src/modules/production/application/usecases/production-order/close.usecase";
@@ -25,6 +26,7 @@ export class ProductionOrdersController {
   constructor(
     private readonly createOrder: CreateProductionOrder,
     private readonly listOrders: ListProductionOrders,
+    private readonly getFilterOptions: GetProductionOrderFilterOptions,
     private readonly getOrder: GetProductionOrder,
     private readonly updateOrder: UpdateProductionOrder,
     private readonly startOrder: StartProductionOrder,
@@ -45,11 +47,17 @@ export class ProductionOrdersController {
     return this.listOrders.execute(ProductionOrderHttpMapper.toListInput({
       status: query.status,
       warehouseId: query.warehouseId,
+      skuId: query.skuId,
       from: query.from ? ParseDateLocal(query.from, "start") : undefined,
       to: query.to ? ParseDateLocal(query.to, "end") : undefined,
       page: query.page,
       limit: query.limit,
     }));
+  }
+
+  @Get("filter-options")
+  filterOptions() {
+    return this.getFilterOptions.execute();
   }
 
   @Get(":id")

@@ -16,6 +16,7 @@ export class ProductionOrderHttpMapper {
     return {
       ...input,
       warehouseId: input.warehouseId?.trim() || undefined,
+      skuId: input.skuId?.trim() || undefined,
     };
   }
 

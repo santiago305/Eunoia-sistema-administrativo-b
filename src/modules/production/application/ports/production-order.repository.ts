@@ -14,6 +14,7 @@ export interface ProductionOrderRepository {
     params: {
       status?: ProductionStatus;
       warehouseId?: string;
+      skuId?: string;
       from?: Date;
       to?: Date;
       page?: number;

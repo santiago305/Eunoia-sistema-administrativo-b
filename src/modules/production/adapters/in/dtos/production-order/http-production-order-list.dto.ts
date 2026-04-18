@@ -12,6 +12,10 @@ export class HttpListProductionOrdersQueryDto {
   warehouseId?: string;
 
   @IsOptional()
+  @IsUUID()
+  skuId?: string;
+
+  @IsOptional()
   @IsDateString()
   from?: string;
 
