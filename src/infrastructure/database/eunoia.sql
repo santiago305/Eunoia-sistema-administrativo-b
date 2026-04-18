@@ -958,7 +958,7 @@ create index idx_credit_quotas_po on public.credit_quotas(po_id);
 -- IN_PROGRESS: en producción
 -- COMPLETED: finalizada
 -- CANCELLED: cancelada
-create type production_status as enum ('DRAFT','IN_PROGRESS','COMPLETED','CANCELLED');
+create type production_status as enum ('DRAFT','IN_PROGRESS','PARTIAL','COMPLETED','CANCELLED');
 
 -- Tipo de documento para producción
 create type doc_type as enum ('IN','OUT','TRANSFER','ADJUSTMENT','PRODUCTION');
