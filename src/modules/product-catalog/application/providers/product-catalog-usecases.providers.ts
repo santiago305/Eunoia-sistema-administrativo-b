@@ -24,6 +24,7 @@ import { RegisterProductCatalogInventoryMovement } from "../usecases/register-in
 import { ListProductCatalogInventoryLedger } from "../usecases/list-inventory-ledger.usecase";
 import { ListProductCatalogInventoryDocuments } from "../usecases/list-inventory-documents.usecase";
 import { ReserveProductCatalogMaterials } from "../usecases/reserve-materials.usecase";
+import { TransferProductCatalogInventoryBetweenWarehouses } from "../usecases/transfer-between-warehouses.usecase";
 import { CreateProductCatalogUnit } from "../usecases/create-unit.usecase";
 import { GetProductCatalogUnit } from "../usecases/get-unit.usecase";
 import { GetProductCatalogUnitByCode } from "../usecases/get-unit-by-code.usecase";
@@ -59,6 +60,7 @@ export const productCatalogUsecasesProviders: Provider[] = [
   ListProductCatalogInventoryLedger,
   ListProductCatalogInventoryDocuments,
   ReserveProductCatalogMaterials,
+  TransferProductCatalogInventoryBetweenWarehouses,
   CreateProductCatalogUnit,
   GetProductCatalogUnit,
   GetProductCatalogUnitByCode,

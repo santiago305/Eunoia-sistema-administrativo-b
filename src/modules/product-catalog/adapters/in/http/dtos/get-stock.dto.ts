@@ -1,6 +1,6 @@
-import {  IsOptional, IsUUID } from "class-validator";
+import { IsOptional, IsUUID } from "class-validator";
 
-export class getStockDto{
+export class GetStockDto {
   @IsUUID()
   warehouseId: string;
   
@@ -11,3 +11,15 @@ export class getStockDto{
   @IsUUID()
   locationId?: string;
 }
+
+export class GetSkuStockSnapshotDto {
+  @IsUUID()
+  warehouseId: string;
+
+  @IsOptional()
+  @IsUUID()
+  locationId?: string;
+}
+
+// Backward-compatible export name used in controllers
+export { GetStockDto as getStockDto };

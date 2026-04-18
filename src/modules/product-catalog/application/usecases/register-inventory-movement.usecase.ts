@@ -68,6 +68,7 @@ export class RegisterProductCatalogInventoryMovement {
   async execute(
     input: {
     docType: DocType;
+    serieId?: string | null;
     items: {
       skuId: string;
       quantity: number;
@@ -93,6 +94,7 @@ export class RegisterProductCatalogInventoryMovement {
   private async executeInTx(
     input: {
       docType: DocType;
+      serieId?: string | null;
       items: {
         skuId: string;
         quantity: number;
@@ -131,21 +133,35 @@ export class RegisterProductCatalogInventoryMovement {
       }
       const documentProductType = await resolveProductType(firstSku.sku.productId);
 
-      const series = await this.serieRepo.findActiveFor(
-        {
-          docType: input.docType,
-          isActive: true,
-          warehouseId: input.warehouseId,
-        },
-        tx,
-      );
+      let serieId: string | null = null;
+      if (input.serieId) {
+        const serie = await this.serieRepo.findById(input.serieId, tx);
+        if (!serie?.id || !serie.isActive) {
+          throw new NotFoundException(errorResponse("Serie no definida"));
+        }
+        if (serie.docType !== input.docType) {
+          throw new BadRequestException(errorResponse("Serie no definida"));
+        }
+        serieId = serie.id;
+      } else {
+        const series = await this.serieRepo.findActiveFor(
+          {
+            docType: input.docType,
+            isActive: true,
+            warehouseId: input.warehouseId,
+          },
+          tx,
+        );
 
-      const activeSerie = series[0];
-      if (!activeSerie?.id) {
-        throw new NotFoundException(errorResponse("Serie no definida"));
+        const activeSerie = series[0];
+        if (!activeSerie?.id) {
+          throw new NotFoundException(errorResponse("Serie no definida"));
+        }
+
+        serieId = activeSerie.id;
       }
 
-      const correlative = await this.serieRepo.reserveNextNumber(activeSerie.id, tx);
+      const correlative = await this.serieRepo.reserveNextNumber(serieId, tx);
 
       const document = await this.documentRepo.create(
         new ProductCatalogInventoryDocument(
@@ -153,7 +169,7 @@ export class RegisterProductCatalogInventoryMovement {
           input.docType,
           documentProductType,
           DocStatus.DRAFT,
-          activeSerie.id ?? null,
+          serieId,
           correlative,
           input.direction === Direction.OUT ? input.warehouseId : null,
           input.direction === Direction.IN ? input.warehouseId : null,
@@ -286,7 +302,7 @@ export class RegisterProductCatalogInventoryMovement {
       );
 
       return {
-        documentId: document.id!,
+        tranId: document.id!,
         items: results,
       };
   }

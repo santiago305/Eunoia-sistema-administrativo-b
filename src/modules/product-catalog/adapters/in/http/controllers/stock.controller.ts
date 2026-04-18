@@ -13,6 +13,8 @@ import { ListProductCatalogInventoryLedger } from "src/modules/product-catalog/a
 import { User as CurrentUser } from "src/shared/utilidades/decorators/user.decorator";
 import { ListProductCatalogInventoryDocuments } from "src/modules/product-catalog/application/usecases/list-inventory-documents.usecase";
 import { ListProductCatalogInventoryDocumentsDto } from "../dtos/list-inventory-documents.dto";
+import { TransferProductCatalogInventoryBetweenWarehouses } from "src/modules/product-catalog/application/usecases/transfer-between-warehouses.usecase";
+import { TransferBetweenWarehousesDto } from "../dtos/transfer-between-warehouses.dto";
 
 @Controller()
 @UseGuards(JwtAuthGuard)
@@ -24,6 +26,7 @@ export class ProductCatalogStockController {
     private readonly upsertInventoryBalance: UpsertProductCatalogInventoryBalance,
     private readonly listInventoryBySku: ListProductCatalogInventoryBySku,
     private readonly registerMovement: RegisterProductCatalogInventoryMovement,
+    private readonly transferBetweenWarehouses: TransferProductCatalogInventoryBetweenWarehouses,
     private readonly listLedger: ListProductCatalogInventoryLedger,
     private readonly listDocuments: ListProductCatalogInventoryDocuments,
   ) {}
@@ -59,6 +62,14 @@ export class ProductCatalogStockController {
     @Body() dto: RegisterProductCatalogInventoryMovementDto,
   ) {
     return this.registerMovement.execute({ ...dto, createdBy:user.id });
+  }
+
+  @Post("stock-items/movements/transfer")
+  transferInventoryBetweenWarehouses(
+    @CurrentUser() user: { id: string },
+    @Body() dto: TransferBetweenWarehousesDto,
+  ) {
+    return this.transferBetweenWarehouses.execute({ ...dto, createdBy: user.id });
   }
 
   @Get("stock-items/:id/ledger")

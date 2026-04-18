@@ -8,7 +8,7 @@ import { CreateProductCatalogSkuDto } from "../dtos/create-sku.dto";
 import { ListProductCatalogSkusDto } from "../dtos/list-skus.dto";
 import { UpdateProductCatalogSkuDto } from "../dtos/update-sku.dto";
 import { GetSnapshotInventory } from "src/modules/product-catalog/application/usecases/get-snapshot.usecase";
-import { getStockDto } from "../dtos/get-stock.dto";
+import { GetSkuStockSnapshotDto, getStockDto } from "../dtos/get-stock.dto";
 
 @Controller()
 @UseGuards(JwtAuthGuard)
@@ -51,8 +51,20 @@ export class ProductCatalogSkuController {
   }
 
   @Get("skus/get-stock")
-  getSkuStock(@Query() query:getStockDto ) {
+  getSkuStock(@Query() query: getStockDto) {
     return this.getStock.execute(query);
+  }
+
+  @Get("skus/:id/stock/snapshot")
+  getSkuStockSnapshot(
+    @Param("id", ParseUUIDPipe) skuId: string,
+    @Query() query: GetSkuStockSnapshotDto,
+  ) {
+    return this.getStock.execute({
+      skuId,
+      warehouseId: query.warehouseId,
+      locationId: query.locationId,
+    });
   }
   @Get("skus/:id")
   getById(@Param("id", ParseUUIDPipe) id: string) {
