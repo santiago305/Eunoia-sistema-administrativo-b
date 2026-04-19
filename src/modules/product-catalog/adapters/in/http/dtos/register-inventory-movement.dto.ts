@@ -12,6 +12,10 @@ class RegisterInventoryMovementItemDto {
   quantity: number;
 
   @IsOptional()
+  @IsEnum(Direction)
+  direction?: Direction;
+
+  @IsOptional()
   @IsNumber()
   unitCost?: number | null;
 
@@ -30,13 +34,18 @@ export class RegisterProductCatalogInventoryMovementDto {
   @IsOptional()
   @IsUUID()
   locationId?: string | null;
+  
+  @IsOptional()
+  @IsUUID()
+  serieId?: string | null;
 
   @IsOptional()
   @IsString()
   note?: string | null;
 
+  @IsOptional()
   @IsEnum(Direction)
-  direction: Direction;
+  direction?: Direction;
 
   @IsOptional()
   @IsUUID()
