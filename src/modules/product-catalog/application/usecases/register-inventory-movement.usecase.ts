@@ -72,11 +72,12 @@ export class RegisterProductCatalogInventoryMovement {
     items: {
       skuId: string;
       quantity: number;
+      direction?: Direction;
       unitCost?: number | null;
       locationId?: string | null;
     }[];
     warehouseId: string;
-    direction: Direction;
+    direction?: Direction;
     locationId?: string | null;
     note?: string | null;
     createdBy?: string | null;
@@ -98,11 +99,12 @@ export class RegisterProductCatalogInventoryMovement {
       items: {
         skuId: string;
         quantity: number;
+        direction?: Direction;
         unitCost?: number | null;
         locationId?: string | null;
       }[];
       warehouseId: string;
-      direction: Direction;
+      direction?: Direction;
       locationId?: string | null;
       note?: string | null;
       createdBy?: string | null;
@@ -140,7 +142,7 @@ export class RegisterProductCatalogInventoryMovement {
           throw new NotFoundException(errorResponse("Serie no definida"));
         }
         if (serie.docType !== input.docType) {
-          throw new BadRequestException(errorResponse("Serie no definida"));
+          throw new BadRequestException(errorResponse("Serie no coincide con el tipo de doc"));
         }
         serieId = serie.id;
       } else {
@@ -152,16 +154,19 @@ export class RegisterProductCatalogInventoryMovement {
           },
           tx,
         );
-
         const activeSerie = series[0];
         if (!activeSerie?.id) {
           throw new NotFoundException(errorResponse("Serie no definida"));
         }
-
         serieId = activeSerie.id;
       }
 
       const correlative = await this.serieRepo.reserveNextNumber(serieId, tx);
+
+      const fromWarehouseId =
+        input.docType === DocType.OUT || input.docType === DocType.ADJUSTMENT ? input.warehouseId : null;
+      const toWarehouseId =
+        input.docType === DocType.IN ? input.warehouseId : null;
 
       const document = await this.documentRepo.create(
         new ProductCatalogInventoryDocument(
@@ -171,8 +176,8 @@ export class RegisterProductCatalogInventoryMovement {
           DocStatus.DRAFT,
           serieId,
           correlative,
-          input.direction === Direction.OUT ? input.warehouseId : null,
-          input.direction === Direction.IN ? input.warehouseId : null,
+          fromWarehouseId,
+          toWarehouseId,
           input.referenceId ?? null,
           input.referenceType ?? null,
           input.note ?? null,
@@ -190,20 +195,20 @@ export class RegisterProductCatalogInventoryMovement {
         documentItemId: string;
         quantity: number;
         unitCost?: number | null;
-        locationId: string | null;
+        locationId?: string | null;
         balance: ProductCatalogInventoryBalance;
       }> = [];
 
       for (const row of input.items) {
+        const direction = row.direction ?? input.direction;
+        if (!direction) {
+          throw new BadRequestException(errorResponse("Direccion requerida"));
+        }
+
         const effectiveLocationId = row.locationId ?? input.locationId ?? null;
         const sku = await this.skuRepo.findById(row.skuId);
         if (!sku) {
           throw new NotFoundException(errorResponse("Sku no encontrado"));
-        }
-
-        const itemProductType = await resolveProductType(sku.sku.productId);
-        if (itemProductType !== documentProductType) {
-          throw new BadRequestException(errorResponse("No se permiten transferencias con SKUs de distinto tipo"));
         }
 
         let stockItem = await this.stockItemRepo.findBySkuId(row.skuId, tx);
@@ -224,8 +229,8 @@ export class RegisterProductCatalogInventoryMovement {
             stockItem.id!,
             row.quantity,
             0,
-            input.direction === Direction.OUT ? effectiveLocationId : null,
-            input.direction === Direction.IN ? effectiveLocationId : null,
+            direction === Direction.OUT ? effectiveLocationId : null,
+            direction === Direction.IN ? effectiveLocationId : null,
             row.unitCost ?? null,
           ),
           tx,
@@ -248,7 +253,7 @@ export class RegisterProductCatalogInventoryMovement {
           );
 
         const nextOnHand =
-          input.direction === Direction.IN
+          direction === Direction.IN
             ? current.onHand + row.quantity
             : current.onHand - row.quantity;
 
@@ -271,7 +276,7 @@ export class RegisterProductCatalogInventoryMovement {
             savedItem.id!,
             input.warehouseId,
             stockItem.id!,
-            input.direction,
+            direction,
             row.quantity,
             effectiveLocationId,
             0,
@@ -302,8 +307,8 @@ export class RegisterProductCatalogInventoryMovement {
       );
 
       return {
-        tranId: document.id!,
+        documentId: document.id!,
         items: results,
       };
-  }
+  }pnp
 }
