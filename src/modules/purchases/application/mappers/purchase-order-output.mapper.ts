@@ -9,11 +9,20 @@ import { PurchaseOrderOutput } from "../dtos/purchase-order/output/purchase-orde
 import { PurchaseOrderItemOutput } from "../dtos/purchase-order-item/output/purchase-order-item.output";
 
 export class PurchaseOrderOutputMapper {
-  static toOrderOutput(order: PurchaseOrder): PurchaseOrderOutput {
+  static toOrderOutput(
+    order: PurchaseOrder,
+    extras?: Pick<
+      PurchaseOrderOutput,
+      "supplierName" | "supplierDocumentNumber" | "warehouseName"
+    >,
+  ): PurchaseOrderOutput {
     return {
       poId: order.poId,
       supplierId: order.supplierId,
+      supplierName: extras?.supplierName,
+      supplierDocumentNumber: extras?.supplierDocumentNumber,
       warehouseId: order.warehouseId,
+      warehouseName: extras?.warehouseName,
       documentType: order.documentType,
       serie: order.serie,
       correlative: order.correlative,

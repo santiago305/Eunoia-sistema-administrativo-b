@@ -7,6 +7,14 @@ import { VoucherDocType } from "../value-objects/voucher-doc-type";
 import { Money } from "src/shared/value-objets/money.vo";
 
 export const PURCHASE_ORDER = Symbol('PURCHASE_ORDER');
+
+export interface PurchaseOrderListRecord {
+    order: PurchaseOrder;
+    supplierName?: string;
+    supplierDocumentNumber?: string;
+    warehouseName?: string;
+}
+
 export interface PurchaseOrderRepository{
     create(purchase: PurchaseOrder, tx?: TransactionContext):Promise<PurchaseOrder>;
 
@@ -42,18 +50,20 @@ export interface PurchaseOrderRepository{
 
     list(
         params: {
-            status?: PurchaseOrderStatus;
-            supplierId?: string;
-            warehouseId?: string;
-            documentType?: VoucherDocType;
+            statuses?: PurchaseOrderStatus[];
+            supplierIds?: string[];
+            warehouseIds?: string[];
+            documentTypes?: VoucherDocType[];
+            paymentForms?: PaymentFormType[];
             number?: string;
+            q?: string;
             from?: Date;
             to?: Date;
             page?: number;
             limit?: number;
         },
         tx?: TransactionContext,
-    ): Promise<{ items: PurchaseOrder[]; total: number; page: number; limit: number }>;
+    ): Promise<{ items: PurchaseOrderListRecord[]; total: number; page: number; limit: number }>;
 
     setActive(poId: string, isActive: boolean, tx?: TransactionContext): Promise<void>;
 }

@@ -7,7 +7,10 @@ import { PaymentOutput } from "src/modules/payments/application/dtos/payment/out
 export interface PurchaseOrderOutput {
   poId: string;
   supplierId: string;
+  supplierName?: string;
+  supplierDocumentNumber?: string;
   warehouseId: string;
+  warehouseName?: string;
   documentType?: VoucherDocType;
   serie?: string;
   correlative?: number;

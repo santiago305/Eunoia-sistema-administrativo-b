@@ -1,7 +1,15 @@
-import { IsDateString, IsEnum, IsInt, IsOptional, IsString, IsUUID, Max, Min } from "class-validator";
-import { Type } from "class-transformer";
+import { IsArray, IsDateString, IsEnum, IsInt, IsOptional, IsString, IsUUID, Max, Min } from "class-validator";
+import { Transform, Type } from "class-transformer";
+import { PaymentFormType } from "src/modules/purchases/domain/value-objects/payment-form-type";
 import { PurchaseOrderStatus } from "src/modules/purchases/domain/value-objects/po-status";
 import { VoucherDocType } from "src/modules/purchases/domain/value-objects/voucher-doc-type";
+
+const toStringArray = (value: unknown): string[] | undefined => {
+  if (value === undefined || value === null || value === "") return undefined;
+  const raw = Array.isArray(value) ? value : String(value).split(",");
+  const normalized = raw.map((item) => String(item).trim()).filter(Boolean);
+  return normalized.length ? normalized : undefined;
+};
 
 export class HttpListPurchaseOrdersQueryDto {
   @IsOptional()
@@ -13,16 +21,50 @@ export class HttpListPurchaseOrdersQueryDto {
   supplierId?: string;
 
   @IsOptional()
+  @Transform(({ value }) => toStringArray(value))
+  @IsArray()
+  @IsUUID("4", { each: true })
+  supplierIds?: string[];
+
+  @IsOptional()
   @IsUUID()
   warehouseId?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => toStringArray(value))
+  @IsArray()
+  @IsUUID("4", { each: true })
+  warehouseIds?: string[];
 
   @IsOptional()
   @IsEnum(VoucherDocType)
   documentType?: VoucherDocType;
 
   @IsOptional()
+  @Transform(({ value }) => toStringArray(value))
+  @IsArray()
+  @IsEnum(VoucherDocType, { each: true })
+  documentTypes?: VoucherDocType[];
+
+  @IsOptional()
+  @Transform(({ value }) => toStringArray(value))
+  @IsArray()
+  @IsEnum(PurchaseOrderStatus, { each: true })
+  statuses?: PurchaseOrderStatus[];
+
+  @IsOptional()
+  @Transform(({ value }) => toStringArray(value))
+  @IsArray()
+  @IsEnum(PaymentFormType, { each: true })
+  paymentForms?: PaymentFormType[];
+
+  @IsOptional()
   @IsString()
   number?: string;
+
+  @IsOptional()
+  @IsString()
+  q?: string;
 
   @IsOptional()
   @IsDateString()

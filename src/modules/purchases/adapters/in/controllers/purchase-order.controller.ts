@@ -11,12 +11,17 @@ import { HttpCreatePurchaseOrderDto } from "../dtos/purchase-order/http-purchase
 import { HttpUpdatePurchaseOrderDto } from "../dtos/purchase-order/http-purchase-order-update.dto";
 import { HttpListPurchaseOrdersQueryDto } from "../dtos/purchase-order/http-purchase-order-list.dto";
 import { HttpSetPurchaseOrderActiveDto } from "../dtos/purchase-order/http-purchase-order-set-active.dto";
+import { HttpCreatePurchaseSearchMetricDto } from "../dtos/purchase-order/http-purchase-search-metric-create.dto";
 import { RunExpectedAtUsecase } from "src/modules/purchases/application/usecases/purchase-order/run-expected-at.usecase";
 import { SetSentPurchaseOrderUsecase } from "src/modules/purchases/application/usecases/purchase-order/set-sent.usecase";
 import { CancelPurchaseOrderUsecase } from "src/modules/purchases/application/usecases/purchase-order/cancel.usecase";
 import { User as CurrentUser } from "src/shared/utilidades/decorators/user.decorator";
 import { PurchaseOrderHttpMapper } from "src/modules/purchases/application/mappers/purchase-order-http.mapper";
 import { PurchaseOrderOutputMapper } from "src/modules/purchases/application/mappers/purchase-order-output.mapper";
+import { GetPurchaseOrderSearchStateUsecase } from "src/modules/purchases/application/usecases/purchase-search/get-state.usecase";
+import { SavePurchaseOrderSearchMetricUsecase } from "src/modules/purchases/application/usecases/purchase-search/save-metric.usecase";
+import { DeletePurchaseOrderSearchMetricUsecase } from "src/modules/purchases/application/usecases/purchase-search/delete-metric.usecase";
+import { sanitizePurchaseSearchSnapshot } from "src/modules/purchases/application/support/purchase-search.utils";
 
 @Controller("purchases/orders")
 @UseGuards(JwtAuthGuard)
@@ -32,6 +37,9 @@ export class PurchaseOrdersController {
     private readonly runExpected: RunExpectedAtUsecase,
     private readonly setSent: SetSentPurchaseOrderUsecase,
     private readonly cancelOrder: CancelPurchaseOrderUsecase,
+    private readonly getSearchState: GetPurchaseOrderSearchStateUsecase,
+    private readonly saveSearchMetric: SavePurchaseOrderSearchMetricUsecase,
+    private readonly deleteSearchMetric: DeletePurchaseOrderSearchMetricUsecase,
   ) {}
 
   @Post()
@@ -70,18 +78,59 @@ export class PurchaseOrdersController {
   }
 
   @Get()
-  list(@Query() query: HttpListPurchaseOrdersQueryDto) {
+  list(@Query() query: HttpListPurchaseOrdersQueryDto, @CurrentUser() user: { id: string }) {
     return this.listOrders.execute(PurchaseOrderHttpMapper.toListInput({
       status: query.status,
+      statuses: query.statuses,
       supplierId: query.supplierId,
+      supplierIds: query.supplierIds,
       warehouseId: query.warehouseId,
+      warehouseIds: query.warehouseIds,
       documentType: query.documentType,
+      documentTypes: query.documentTypes,
+      paymentForms: query.paymentForms,
       number: query.number,
+      q: query.q,
       from: query.from,
       to: query.to,
       page: query.page,
       limit: query.limit,
+      requestedBy: user?.id,
     }));
+  }
+
+  @Get("search-state")
+  getSearchStateForUser(@CurrentUser() user: { id: string }) {
+    return this.getSearchState.execute(user.id);
+  }
+
+  @Post("search-metrics")
+  saveMetric(
+    @Body() dto: HttpCreatePurchaseSearchMetricDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.saveSearchMetric.execute({
+      userId: user.id,
+      name: dto.name,
+      snapshot: sanitizePurchaseSearchSnapshot({
+        q: dto.snapshot?.q,
+        filters: {
+          supplierIds: dto.snapshot?.filters?.supplierIds,
+          warehouseIds: dto.snapshot?.filters?.warehouseIds,
+          statuses: dto.snapshot?.filters?.statuses,
+          documentTypes: dto.snapshot?.filters?.documentTypes,
+          paymentForms: dto.snapshot?.filters?.paymentForms,
+        },
+      }),
+    });
+  }
+
+  @Delete("search-metrics/:metricId")
+  deleteMetric(
+    @Param("metricId", ParseUUIDPipe) metricId: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.deleteSearchMetric.execute(user.id, metricId);
   }
 
   @Get(":id")

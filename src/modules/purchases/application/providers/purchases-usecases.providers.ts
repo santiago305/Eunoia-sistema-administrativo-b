@@ -13,6 +13,9 @@ import { SetSentPurchaseOrderUsecase } from "../usecases/purchase-order/set-sent
 import { UpdatePurchaseOrderUsecase } from "../usecases/purchase-order/update.usecase";
 import { PurchaseOrderExpectedBootstrap } from "../jobs/purchase-order-expected-bootstrap";
 import { PurchaseOrderExpectedScheduler } from "../jobs/purchase-order-expected-scheduler";
+import { GetPurchaseOrderSearchStateUsecase } from "../usecases/purchase-search/get-state.usecase";
+import { SavePurchaseOrderSearchMetricUsecase } from "../usecases/purchase-search/save-metric.usecase";
+import { DeletePurchaseOrderSearchMetricUsecase } from "../usecases/purchase-search/delete-metric.usecase";
 
 export const purchasesUsecasesProviders: Provider[] = [
   CreatePurchaseOrderUsecase,
@@ -29,4 +32,7 @@ export const purchasesUsecasesProviders: Provider[] = [
   SetSentPurchaseOrderUsecase,
   CancelPurchaseOrderUsecase,
   PostInventoryFromPurchaseUsecase,
+  GetPurchaseOrderSearchStateUsecase,
+  SavePurchaseOrderSearchMetricUsecase,
+  DeletePurchaseOrderSearchMetricUsecase,
 ];

@@ -9,7 +9,10 @@ import { PurchaseOrderItemOutput } from "../../purchase-order-item/output/purcha
 export interface PurchaseOrderDetailOutput {
   poId: string;
   supplierId: string;
+  supplierName?: string;
+  supplierDocumentNumber?: string;
   warehouseId: string;
+  warehouseName?: string;
   documentType?: VoucherDocType;
   serie?: string;
   correlative?: number;
