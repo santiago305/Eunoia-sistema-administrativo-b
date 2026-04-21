@@ -3,47 +3,8 @@ import {
   PRODUCTION_FILTER_OPTIONS_REPOSITORY,
   ProductionFilterOptionsOutput,
   ProductionFilterOptionsRepository,
-  ProductionStatusFilterOption,
 } from "../../ports/production-filter-options.repository";
-import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
-
-const STATUS_OPTIONS: ProductionStatusFilterOption[] = [
-  {
-    value: ProductionStatus.DRAFT,
-    label: "Borrador",
-    order: 1,
-    active: true,
-    color: "slate",
-  },
-  {
-    value: ProductionStatus.IN_PROGRESS,
-    label: "En proceso",
-    order: 2,
-    active: true,
-    color: "blue",
-  },
-  {
-    value: ProductionStatus.PARTIAL,
-    label: "Parcial",
-    order: 3,
-    active: true,
-    color: "amber",
-  },
-  {
-    value: ProductionStatus.COMPLETED,
-    label: "Completado",
-    order: 4,
-    active: true,
-    color: "green",
-  },
-  {
-    value: ProductionStatus.CANCELLED,
-    label: "Cancelado",
-    order: 5,
-    active: true,
-    color: "red",
-  },
-];
+import { PRODUCTION_STATUS_OPTIONS } from "../../support/production-search.utils";
 
 @Injectable()
 export class GetProductionOrderFilterOptions {
@@ -56,7 +17,7 @@ export class GetProductionOrderFilterOptions {
     const options = await this.repository.getOptions();
 
     return {
-      statuses: STATUS_OPTIONS,
+      statuses: PRODUCTION_STATUS_OPTIONS,
       warehouses: options.warehouses,
       products: options.products,
     };

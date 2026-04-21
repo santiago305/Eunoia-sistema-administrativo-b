@@ -12,14 +12,19 @@ import { CancelProductionOrder } from "src/modules/production/application/usecas
 import { AddProductionOrderItem } from "src/modules/production/application/usecases/production-order/add-item.usecase";
 import { RemoveProductionOrderItem } from "src/modules/production/application/usecases/production-order/remove-production-order-item.usecase";
 import { UpdateProductionWaste } from "src/modules/production/application/usecases/production-order/update-waste.usecase";
+import { DeleteProductionOrderSearchMetricUsecase } from "src/modules/production/application/usecases/production-search/delete-metric.usecase";
+import { GetProductionOrderSearchStateUsecase } from "src/modules/production/application/usecases/production-search/get-state.usecase";
+import { SaveProductionOrderSearchMetricUsecase } from "src/modules/production/application/usecases/production-search/save-metric.usecase";
 import { HttpCreateProductionOrderDto } from "../dtos/production-order/http-production-order-create.dto";
 import { HttpUpdateProductionOrderDto } from "../dtos/production-order/http-production-order-update.dto";
 import { HttpListProductionOrdersQueryDto } from "../dtos/production-order/http-production-order-list.dto";
 import { HttpAddProductionOrderItemDto } from "../dtos/production-order/http-production-order-item-create.dto";
 import { HttpUpdateProductionWasteDto } from "../dtos/production-order/http-production-order-waste.dto";
+import { HttpCreateProductionSearchMetricDto } from "../dtos/production-order/http-production-search-metric-create.dto";
 import { ParseDateLocal } from "src/shared/utilidades/utils/ParseDates";
 import { User as CurrentUser } from 'src/shared/utilidades/decorators/user.decorator';
 import { ProductionOrderHttpMapper } from "src/modules/production/application/mappers/production-order-http.mapper";
+import { sanitizeProductionSearchSnapshot } from "src/modules/production/application/support/production-search.utils";
 
 @Controller("production-orders")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
@@ -36,6 +41,9 @@ export class ProductionOrdersController {
     private readonly addItem: AddProductionOrderItem,
     private readonly removeItem: RemoveProductionOrderItem,
     private readonly updateWaste: UpdateProductionWaste,
+    private readonly getSearchState: GetProductionOrderSearchStateUsecase,
+    private readonly saveSearchMetric: SaveProductionOrderSearchMetricUsecase,
+    private readonly deleteSearchMetric: DeleteProductionOrderSearchMetricUsecase,
   ) {}
 
   @Post()
@@ -44,8 +52,10 @@ export class ProductionOrdersController {
   }
 
   @Get()
-  list(@Query() query: HttpListProductionOrdersQueryDto) {
+  list(@Query() query: HttpListProductionOrdersQueryDto, @CurrentUser() user: { id: string }) {
     return this.listOrders.execute(ProductionOrderHttpMapper.toListInput({
+      q: query.q,
+      filters: query.filters,
       status: query.status,
       warehouseId: query.warehouseId,
       skuId: query.skuId,
@@ -53,12 +63,41 @@ export class ProductionOrdersController {
       to: query.to ? ParseDateLocal(query.to, "end") : undefined,
       page: query.page,
       limit: query.limit,
+      requestedBy: user?.id,
     }));
   }
 
   @Get("filter-options")
   filterOptions() {
     return this.getFilterOptions.execute();
+  }
+
+  @Get("search-state")
+  getSearchStateForUser(@CurrentUser() user: { id: string }) {
+    return this.getSearchState.execute(user.id);
+  }
+
+  @Post("search-metrics")
+  saveMetric(
+    @Body() dto: HttpCreateProductionSearchMetricDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.saveSearchMetric.execute({
+      userId: user.id,
+      name: dto.name,
+      snapshot: sanitizeProductionSearchSnapshot({
+        q: dto.snapshot?.q,
+        filters: dto.snapshot?.filters,
+      }),
+    });
+  }
+
+  @Delete("search-metrics/:metricId")
+  deleteMetric(
+    @Param("metricId", ParseUUIDPipe) metricId: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.deleteSearchMetric.execute(user.id, metricId);
   }
 
   @Get(":id")

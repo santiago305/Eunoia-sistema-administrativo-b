@@ -15,6 +15,7 @@ export class ProductionOrderHttpMapper {
   static toListInput(input: ListProductionOrdersInput): ListProductionOrdersInput {
     return {
       ...input,
+      q: input.q?.trim() || undefined,
       warehouseId: input.warehouseId?.trim() || undefined,
       skuId: input.skuId?.trim() || undefined,
     };

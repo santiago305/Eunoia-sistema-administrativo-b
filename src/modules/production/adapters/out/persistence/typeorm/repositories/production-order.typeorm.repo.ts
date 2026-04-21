@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
+import { Brackets, In, Repository } from "typeorm";
 import { ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
 import { ProductionOrder } from "src/modules/production/domain/entity/production-order.entity";
 import { ProductionOrderItem } from "src/modules/production/domain/entity/production-order-item";
@@ -12,12 +12,24 @@ import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-trans
 import { WarehouseEntity } from "src/modules/warehouses/adapters/out/persistence/typeorm/entities/warehouse";
 import { ProductCatalogDocumentSerieEntity as DocumentSerie } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/document-serie.entity";
 import { ProductCatalogStockItemEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/stock-item.entity";
+import { ProductCatalogSkuEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku.entity";
+import { ProductCatalogProductEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/product.entity";
 import {
   ProductionOrderListItemRM,
   ProductionOrderListSerieRM,
   ProductionOrderListWarehouseRM,
 } from "src/modules/production/domain/read-models/production-order-list-item.rm";
 import { DocTypeMapper } from "../mappers/doc-type.mapper";
+import {
+  matchSearchOptionIds,
+  PRODUCTION_STATUS_SEARCH_OPTIONS,
+  sanitizeProductionSearchFilters,
+} from "src/modules/production/application/support/production-search.utils";
+import {
+  ProductionSearchFields,
+  ProductionSearchOperators,
+  ProductionSearchRule,
+} from "src/modules/production/application/dto/production-search/production-search-snapshot";
 
 @Injectable()
 export class ProductionOrderTypeormRepository implements ProductionOrderRepository {
@@ -140,6 +152,8 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
 
   async list(
     params: {
+      filters?: ProductionSearchRule[];
+      q?: string;
       status?: ProductionStatus;
       warehouseId?: string;
       skuId?: string;
@@ -155,6 +169,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
     page: number;
     limit: number;
   }> {
+    const numberExpression = `concat(coalesce("s"."code", ''), coalesce("s"."separator", '-'), coalesce("p"."correlative"::text, ''))`;
     const repo = this.getOrderRepo(tx);
     const qb = repo
       .createQueryBuilder("p")
@@ -163,6 +178,21 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
       .innerJoin(DocumentSerie, "s", "s.serie_id = p.serie_id")
       .distinct(true);
 
+    const filters = sanitizeProductionSearchFilters(params.filters);
+    const needsSkuJoin = Boolean(
+      params.q ||
+      params.skuId ||
+      filters.some((filter) => filter.field === ProductionSearchFields.SKU_ID),
+    );
+
+    if (needsSkuJoin) {
+      qb
+        .leftJoin(ProductionOrderItemEntity, "pi", "pi.production_id = p.production_id")
+        .leftJoin(ProductCatalogStockItemEntity, "si", "si.stock_item_id = pi.finished_item_id")
+        .leftJoin(ProductCatalogSkuEntity, "sku", "sku.sku_id = si.sku_id")
+        .leftJoin(ProductCatalogProductEntity, "product", "product.product_id = sku.product_id");
+    }
+
     if (params.status) {
       qb.andWhere("p.status = :status", { status: params.status });
     }
@@ -170,10 +200,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
       qb.andWhere("(p.fromWarehouseId = :wid OR p.toWarehouseId = :wid)", { wid: params.warehouseId });
     }
     if (params.skuId) {
-      qb
-        .innerJoin(ProductionOrderItemEntity, "pi", "pi.production_id = p.production_id")
-        .innerJoin(ProductCatalogStockItemEntity, "si", "si.stock_item_id = pi.finished_item_id")
-        .andWhere("si.sku_id = :skuId", { skuId: params.skuId });
+      qb.andWhere("si.sku_id = :skuId", { skuId: params.skuId });
     }
     if (params.from) {
       qb.andWhere("p.createdAt >= :from", { from: params.from });
@@ -182,15 +209,162 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
       qb.andWhere("p.createdAt <= :to", { to: params.to });
     }
 
+    filters.forEach((filter, index) => {
+      const fieldParam = `filter_${index}`;
+      const valuesParam = `${fieldParam}_values`;
+      const valueParam = `${fieldParam}_value`;
+      const startParam = `${fieldParam}_start`;
+      const endParam = `${fieldParam}_end`;
+      const catalogOperator = filter.mode === "exclude" ? "NOT IN" : "IN";
+
+      switch (filter.field) {
+        case ProductionSearchFields.WAREHOUSE_ID:
+          if (!filter.values?.length) break;
+          if (filter.mode === "exclude") {
+            qb.andWhere(
+              `("p"."from_warehouse_id" NOT IN (:...${valuesParam}) AND "p"."to_warehouse_id" NOT IN (:...${valuesParam}))`,
+              { [valuesParam]: filter.values },
+            );
+            break;
+          }
+
+          qb.andWhere(
+            new Brackets((warehouseQb) => {
+              warehouseQb
+                .where(`"p"."from_warehouse_id" IN (:...${valuesParam})`, { [valuesParam]: filter.values })
+                .orWhere(`"p"."to_warehouse_id" IN (:...${valuesParam})`, { [valuesParam]: filter.values });
+            }),
+          );
+          break;
+        case ProductionSearchFields.FROM_WAREHOUSE_ID:
+          if (filter.values?.length) {
+            qb.andWhere(`"p"."from_warehouse_id" ${catalogOperator} (:...${valuesParam})`, {
+              [valuesParam]: filter.values,
+            });
+          }
+          break;
+        case ProductionSearchFields.TO_WAREHOUSE_ID:
+          if (filter.values?.length) {
+            qb.andWhere(`"p"."to_warehouse_id" ${catalogOperator} (:...${valuesParam})`, {
+              [valuesParam]: filter.values,
+            });
+          }
+          break;
+        case ProductionSearchFields.STATUS:
+          if (filter.values?.length) {
+            qb.andWhere(`"p"."status" ${catalogOperator} (:...${valuesParam})`, {
+              [valuesParam]: filter.values,
+            });
+          }
+          break;
+        case ProductionSearchFields.SKU_ID:
+          if (filter.values?.length) {
+            qb.andWhere(`"si"."sku_id" ${catalogOperator} (:...${valuesParam})`, {
+              [valuesParam]: filter.values,
+            });
+          }
+          break;
+        case ProductionSearchFields.NUMBER:
+          if (!filter.value) break;
+          if (filter.operator === ProductionSearchOperators.EQ) {
+            qb.andWhere(`lower(${numberExpression}) = lower(:${valueParam})`, {
+              [valueParam]: filter.value,
+            });
+            break;
+          }
+
+          qb.andWhere(`${numberExpression} ILIKE :${valueParam}`, {
+            [valueParam]: `%${filter.value}%`,
+          });
+          break;
+        case ProductionSearchFields.REFERENCE:
+          if (!filter.value) break;
+          if (filter.operator === ProductionSearchOperators.EQ) {
+            qb.andWhere(`lower(coalesce("p"."reference", '')) = lower(:${valueParam})`, {
+              [valueParam]: filter.value,
+            });
+            break;
+          }
+
+          qb.andWhere(`unaccent(coalesce("p"."reference", '')) ILIKE unaccent(:${valueParam})`, {
+            [valueParam]: `%${filter.value}%`,
+          });
+          break;
+        case ProductionSearchFields.MANUFACTURE_DATE:
+        case ProductionSearchFields.CREATED_AT: {
+          const dateExpression =
+            filter.field === ProductionSearchFields.MANUFACTURE_DATE
+              ? `DATE("p"."manufacture_date")`
+              : `DATE("p"."created_at")`;
+
+          if (filter.operator === ProductionSearchOperators.BETWEEN) {
+            if (!filter.range?.start || !filter.range?.end) break;
+            qb.andWhere(`${dateExpression} BETWEEN :${startParam} AND :${endParam}`, {
+              [startParam]: filter.range.start,
+              [endParam]: filter.range.end,
+            });
+            break;
+          }
+
+          if (!filter.value) break;
+          const sqlOperator =
+            filter.operator === ProductionSearchOperators.BEFORE ? "<" :
+            filter.operator === ProductionSearchOperators.AFTER ? ">" :
+            filter.operator === ProductionSearchOperators.ON_OR_BEFORE ? "<=" :
+            filter.operator === ProductionSearchOperators.ON_OR_AFTER ? ">=" :
+            "=";
+
+          qb.andWhere(`${dateExpression} ${sqlOperator} :${valueParam}`, {
+            [valueParam]: filter.value,
+          });
+          break;
+        }
+        default:
+          break;
+      }
+    });
+
+    if (params.q) {
+      const q = params.q.trim();
+      const matchedStatuses = matchSearchOptionIds(q, PRODUCTION_STATUS_SEARCH_OPTIONS);
+
+      qb.andWhere(
+        new Brackets((searchQb) => {
+          searchQb
+            .where(`${numberExpression} ILIKE :q`, { q: `%${q}%` })
+            .orWhere(`unaccent(coalesce("p"."reference", '')) ILIKE unaccent(:q)`, { q: `%${q}%` })
+            .orWhere(`unaccent(coalesce("wf"."name", '')) ILIKE unaccent(:q)`, { q: `%${q}%` })
+            .orWhere(`unaccent(coalesce("wt"."name", '')) ILIKE unaccent(:q)`, { q: `%${q}%` })
+            .orWhere(`unaccent(coalesce("s"."code", '')) ILIKE unaccent(:q)`, { q: `%${q}%` })
+            .orWhere(`unaccent(coalesce("s"."name", '')) ILIKE unaccent(:q)`, { q: `%${q}%` })
+            .orWhere(`"p"."status"::text ILIKE :q`, { q: `%${q}%` });
+
+          if (needsSkuJoin) {
+            searchQb
+              .orWhere(`unaccent(coalesce("sku"."backend_sku", '')) ILIKE unaccent(:q)`, { q: `%${q}%` })
+              .orWhere(`unaccent(coalesce("sku"."custom_sku", '')) ILIKE unaccent(:q)`, { q: `%${q}%` })
+              .orWhere(`unaccent(coalesce("sku"."name", '')) ILIKE unaccent(:q)`, { q: `%${q}%` })
+              .orWhere(`unaccent(coalesce("product"."name", '')) ILIKE unaccent(:q)`, { q: `%${q}%` });
+          }
+
+          if (matchedStatuses.length) {
+            searchQb.orWhere(`"p"."status" IN (:...matchedStatuses)`, { matchedStatuses });
+          }
+        }),
+      );
+    }
+
     const page = params.page && params.page > 0 ? params.page : 1;
     const limit = params.limit && params.limit > 0 ? params.limit : 20;
     const skip = (page - 1) * limit;
 
-    const [rows, total] = await qb
+    const total = await qb.clone().getCount();
+
+    const rows = await qb
       .orderBy("p.createdAt", "DESC")
       .skip(skip)
       .take(limit)
-      .getManyAndCount();
+      .getMany();
 
     const warehouseIds = Array.from(
       new Set(rows.flatMap((r) => [r.fromWarehouseId, r.toWarehouseId]).filter(Boolean)),

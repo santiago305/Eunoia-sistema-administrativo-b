@@ -3,6 +3,7 @@ import { ProductionOrder } from "../../domain/entity/production-order.entity";
 import { ProductionOrderItem } from "../../domain/entity/production-order-item";
 import { ProductionOrderListItemRM, ProductionOrderListSerieRM } from "../../domain/read-models/production-order-list-item.rm";
 import { ProductionStatus } from "../../domain/value-objects/production-status.vo";
+import { ProductionSearchRule } from "../dto/production-search/production-search-snapshot";
 
 export const PRODUCTION_ORDER_REPOSITORY = Symbol('PRODUCTION_ORDER_REPOSITORY');
 
@@ -12,6 +13,8 @@ export interface ProductionOrderRepository {
   listAllByStatus(status: ProductionStatus, tx?: TransactionContext): Promise<ProductionOrder[]>;
   list(
     params: {
+      filters?: ProductionSearchRule[];
+      q?: string;
       status?: ProductionStatus;
       warehouseId?: string;
       skuId?: string;

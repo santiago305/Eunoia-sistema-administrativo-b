@@ -1,0 +1,30 @@
+import "reflect-metadata";
+import { plainToInstance } from "class-transformer";
+import { validateSync } from "class-validator";
+import { HttpListProductionOrdersQueryDto } from "./http-production-order-list.dto";
+
+describe("HttpListProductionOrdersQueryDto", () => {
+  it("parses filters from json query string", () => {
+    const dto = plainToInstance(HttpListProductionOrdersQueryDto, {
+      q: "orden",
+      filters: JSON.stringify([
+        {
+          field: "status",
+          operator: "in",
+          values: ["DRAFT"],
+        },
+      ]),
+    });
+
+    const errors = validateSync(dto);
+
+    expect(errors).toHaveLength(0);
+    expect(dto.filters).toEqual([
+      {
+        field: "status",
+        operator: "in",
+        values: ["DRAFT"],
+      },
+    ]);
+  });
+});
