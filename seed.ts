@@ -49,6 +49,10 @@ import { seedProductCatalog } from './src/modules/product-catalog/infrastructure
 import { seedProductCatalogRecipes } from './src/modules/product-catalog/infrastructure/seed/product-catalog-recipe.seeder';
 import { seedProductCatalogInventory } from './src/modules/product-catalog/infrastructure/seed/inventory.seeder';
 import { seedCompany } from './src/modules/companies/infrastructure/seed/company.seeder';
+import { UbigeoDepartmentEntity } from './src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-department.entity';
+import { UbigeoProvinceEntity } from './src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-province.entity';
+import { UbigeoDistrictEntity } from './src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-district.entity';
+import { seedUbigeo } from './src/modules/ubigeo/infrastructure/seed/ubigeo.seeder';
 
 const entities = [
   Role,
@@ -86,6 +90,9 @@ const entities = [
   ProductCatalogInventoryDocumentItemEntity,
   ProductCatalogInventoryLedgerEntity,
   ProductCatalogUnitEntity,
+  UbigeoDepartmentEntity,
+  UbigeoProvinceEntity,
+  UbigeoDistrictEntity,
 ];
 
 const dataSource = new DataSource({
@@ -108,6 +115,7 @@ dataSource
     await seedRoles(dataSource);
     await seedUser(dataSource);
     await seedCompany(dataSource);
+    await seedUbigeo(dataSource);
     await seedSecurityReasonCatalog(dataSource);
     await seedSecurityIpActivity(dataSource);
     await seedUnits(dataSource);

@@ -35,6 +35,9 @@ import { ProductCatalogSkuEntity } from './src/modules/product-catalog/adapters/
 import { ProductCatalogStockItemEntity } from './src/modules/product-catalog/adapters/out/persistence/typeorm/entities/stock-item.entity';
 import { ProductCatalogDocumentSerieEntity } from './src/modules/product-catalog/adapters/out/persistence/typeorm/entities/document-serie.entity';
 import { ProductCatalogUnitEntity } from './src/modules/product-catalog/adapters/out/persistence/typeorm/entities/unit.entity';
+import { UbigeoDepartmentEntity } from './src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-department.entity';
+import { UbigeoProvinceEntity } from './src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-province.entity';
+import { UbigeoDistrictEntity } from './src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-district.entity';
 
 const entities = [
   Role,
@@ -72,6 +75,9 @@ const entities = [
   ProductCatalogInventoryDocumentItemEntity,
   ProductCatalogInventoryLedgerEntity,
   ProductCatalogUnitEntity,
+  UbigeoDepartmentEntity,
+  UbigeoProvinceEntity,
+  UbigeoDistrictEntity,
 ];
 
 const dataSource = new DataSource({
