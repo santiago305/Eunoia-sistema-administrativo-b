@@ -48,6 +48,7 @@ import { seedSupplierSkus } from './src/modules/suppliers/infrastructure/seed/su
 import { seedProductCatalog } from './src/modules/product-catalog/infrastructure/seed/product-catalog.seeder';
 import { seedProductCatalogRecipes } from './src/modules/product-catalog/infrastructure/seed/product-catalog-recipe.seeder';
 import { seedProductCatalogInventory } from './src/modules/product-catalog/infrastructure/seed/inventory.seeder';
+import { seedCompany } from './src/modules/companies/infrastructure/seed/company.seeder';
 
 const entities = [
   Role,
@@ -106,6 +107,7 @@ dataSource
 
     await seedRoles(dataSource);
     await seedUser(dataSource);
+    await seedCompany(dataSource);
     await seedSecurityReasonCatalog(dataSource);
     await seedSecurityIpActivity(dataSource);
     await seedUnits(dataSource);
