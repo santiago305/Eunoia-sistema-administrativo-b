@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreateProductCatalogPublication } from "src/modules/product-catalog/application/usecases/create-publication.usecase";
 import { ListProductCatalogChannelSkus } from "src/modules/product-catalog/application/usecases/list-channel-skus.usecase";
 import { UpdateProductCatalogPublication } from "src/modules/product-catalog/application/usecases/update-publication.usecase";
@@ -8,7 +9,7 @@ import { ListProductCatalogProductsDto } from "../dtos/list-products.dto";
 import { UpdateProductCatalogPublicationDto } from "../dtos/update-publication.dto";
 
 @Controller("channels")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
 export class ProductCatalogPublicationController {
   constructor(
     private readonly createPublication: CreateProductCatalogPublication,

@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreateLocationUsecase } from "src/modules/warehouses/application/usecases/location/create.usecase";
 import { GetLocationUsecase } from "src/modules/warehouses/application/usecases/location/get-by-id.usecase";
 import { ListLocationsUsecase } from "src/modules/warehouses/application/usecases/location/list.usecase";
@@ -16,7 +17,7 @@ import { UpdateLocationInput } from "src/modules/warehouses/application/dtos/loc
 import { WarehouseHttpMapper } from "src/modules/warehouses/application/mappers/warehouse-http.mapper";
 
 @Controller("warehouses/locations")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
 export class LocationsController {
   constructor(
     private readonly createLocation: CreateLocationUsecase,

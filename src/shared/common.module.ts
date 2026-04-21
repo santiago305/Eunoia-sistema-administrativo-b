@@ -1,7 +1,9 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
+import { CompaniesModule } from 'src/modules/companies/companies.module';
 import { HttpErrorFilter } from './errores/http-exception.filter';
 import { LoggingInterceptor } from './utilidades/interceptors/logging.interceptor';
+import { CompanyConfiguredGuard } from './utilidades/guards/company-configured.guard';
 
 
 /**
@@ -22,7 +24,9 @@ import { LoggingInterceptor } from './utilidades/interceptors/logging.intercepto
  * export class AppModule {}
  * ```
  */
+@Global()
 @Module({
+  imports: [CompaniesModule],
   providers: [
     {
       provide: APP_FILTER,
@@ -32,8 +36,9 @@ import { LoggingInterceptor } from './utilidades/interceptors/logging.intercepto
       provide: APP_INTERCEPTOR,
       useClass: LoggingInterceptor,
     },
+    CompanyConfiguredGuard,
   ],
-  exports: [],
+  exports: [CompanyConfiguredGuard, CompaniesModule],
 })
 export class CommonModule {}
 

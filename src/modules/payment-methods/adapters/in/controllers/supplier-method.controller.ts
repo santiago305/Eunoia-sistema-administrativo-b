@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreateSupplierMethodUsecase } from "src/modules/payment-methods/application/usecases/supplier-method/create.usecase";
 import { DeleteSupplierMethodUsecase } from "src/modules/payment-methods/application/usecases/supplier-method/delete.usecase";
 import { GetSupplierMethodByIdUsecase } from "src/modules/payment-methods/application/usecases/supplier-method/get-by-id.usecase";
@@ -10,7 +11,7 @@ import { HttpSupplierMethodUpdateDto } from "../dtos/supplier-method/http-suppli
 import { PaymentMethodHttpMapper } from "src/modules/payment-methods/application/mappers/payment-method-http.mapper";
 
 @Controller("supplier-methods")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
 export class SupplierMethodsController {
   constructor(
     private readonly createSupplierMethod: CreateSupplierMethodUsecase,

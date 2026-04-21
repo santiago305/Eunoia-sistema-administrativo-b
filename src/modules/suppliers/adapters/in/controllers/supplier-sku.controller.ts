@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { SupplierHttpMapper } from "src/modules/suppliers/application/mappers/supplier-http.mapper";
 import { CreateSupplierSkuUsecase } from "src/modules/suppliers/application/usecases/supplier-sku/create.usecase";
 import { GetSupplierSkuUsecase } from "src/modules/suppliers/application/usecases/supplier-sku/get-by-id.usecase";
@@ -10,7 +11,7 @@ import { ListSupplierSkuQueryDto } from "../dtos/supplier-sku/http-supplier-sku-
 import { HttpUpdateSupplierSkuDto } from "../dtos/supplier-sku/http-supplier-sku-update.dto";
 
 @Controller("suppliers/skus")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
 export class SupplierSkusController {
   constructor(
     private readonly createSupplierSku: CreateSupplierSkuUsecase,

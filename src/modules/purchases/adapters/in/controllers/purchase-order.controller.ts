@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreatePurchaseOrderUsecase } from "src/modules/purchases/application/usecases/purchase-order/create.usecase";
 import { UpdatePurchaseOrderUsecase } from "src/modules/purchases/application/usecases/purchase-order/update.usecase";
 import { ListPurchaseOrdersUsecase } from "src/modules/purchases/application/usecases/purchase-order/list.usecase";
@@ -24,7 +25,7 @@ import { DeletePurchaseOrderSearchMetricUsecase } from "src/modules/purchases/ap
 import { sanitizePurchaseSearchSnapshot } from "src/modules/purchases/application/support/purchase-search.utils";
 
 @Controller("purchases/orders")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
 export class PurchaseOrdersController {
   constructor(
     private readonly createOrder: CreatePurchaseOrderUsecase,

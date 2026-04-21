@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreateSupplierUsecase } from "src/modules/suppliers/application/usecases/supplier/create.usecase";
 import { UpdateSupplierUsecase } from "src/modules/suppliers/application/usecases/supplier/update.usecase";
 import { SetSupplierActiveUsecase } from "src/modules/suppliers/application/usecases/supplier/set-active.usecase";
@@ -12,7 +13,7 @@ import { HttpSetSupplierActiveDto } from "../dtos/supplier/http-supplier-set-act
 import { ListSupplierQueryDto } from "../dtos/supplier/http-supplier-list.dto";
 
 @Controller("suppliers")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
 export class SuppliersController {
   constructor(
     private readonly createSupplier: CreateSupplierUsecase,

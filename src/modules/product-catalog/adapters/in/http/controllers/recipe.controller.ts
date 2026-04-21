@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreateProductCatalogRecipe } from "src/modules/product-catalog/application/usecases/create-recipe.usecase";
 import { DeleteProductCatalogRecipeItem } from "src/modules/product-catalog/application/usecases/delete-recipe-item.usecase";
 import { GetProductCatalogRecipe } from "src/modules/product-catalog/application/usecases/get-recipe.usecase";
@@ -8,7 +9,7 @@ import { CreateProductCatalogRecipeDto } from "../dtos/create-recipe.dto";
 import { UpdateProductCatalogRecipeDto } from "../dtos/update-recipe.dto";
 
 @Controller("skus/:id/recipe")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
 export class ProductCatalogRecipeController {
   constructor(
     private readonly createRecipe: CreateProductCatalogRecipe,

@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreateProductCatalogSku } from "src/modules/product-catalog/application/usecases/create-sku.usecase";
 import { GetProductCatalogSku } from "src/modules/product-catalog/application/usecases/get-sku.usecase";
 import { ListProductCatalogSkus } from "src/modules/product-catalog/application/usecases/list-skus.usecase";
@@ -11,7 +12,7 @@ import { GetSnapshotInventory } from "src/modules/product-catalog/application/us
 import { GetSkuStockSnapshotDto, getStockDto } from "../dtos/get-stock.dto";
 
 @Controller()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
 export class ProductCatalogSkuController {
   constructor(
     private readonly createSku: CreateProductCatalogSku,

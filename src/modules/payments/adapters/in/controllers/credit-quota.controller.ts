@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Query, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreateCreditQuotaUsecase } from "src/modules/payments/application/usecases/credit-quota/create.usecase";
 import { DeleteCreditQuotaUsecase } from "src/modules/payments/application/usecases/credit-quota/delete.usecase";
 import { GetCreditQuotaUsecase } from "src/modules/payments/application/usecases/credit-quota/get-by-id.usecase";
@@ -10,7 +11,7 @@ import { HttpCreateCreditQuotaDto } from "../dtos/credit-quota/http-credit-quota
 import { HttpListCreditQuotasQueryDto } from "../dtos/credit-quota/http-credit-quota-list.dto";
 
 @Controller("payments/credit-quotas")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
 export class CreditQuotasController {
   constructor(
     private readonly createQuota: CreateCreditQuotaUsecase,

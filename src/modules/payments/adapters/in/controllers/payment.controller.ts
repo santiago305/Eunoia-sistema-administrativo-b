@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Query, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreatePaymentUsecase } from "src/modules/payments/application/usecases/payment/create.usecase";
 import { DeletePaymentUsecase } from "src/modules/payments/application/usecases/payment/delete.usecase";
 import { GetPaymentUsecase } from "src/modules/payments/application/usecases/payment/get-by-id.usecase";
@@ -10,7 +11,7 @@ import { HttpCreatePaymentDto } from "../dtos/payment/http-payment-create.dto";
 import { HttpListPaymentsQueryDto } from "../dtos/payment/http-payment-list.dto";
 
 @Controller("payments")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
 export class PaymentsController {
   constructor(
     private readonly createPayment: CreatePaymentUsecase,

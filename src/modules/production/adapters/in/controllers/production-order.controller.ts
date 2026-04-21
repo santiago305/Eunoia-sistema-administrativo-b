@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreateProductionOrder } from "src/modules/production/application/usecases/production-order/create.usecase";
 import { ListProductionOrders } from "src/modules/production/application/usecases/production-order/list-orders.usecase";
 import { GetProductionOrder } from "src/modules/production/application/usecases/production-order/get-record.usecase";
@@ -21,7 +22,7 @@ import { User as CurrentUser } from 'src/shared/utilidades/decorators/user.decor
 import { ProductionOrderHttpMapper } from "src/modules/production/application/mappers/production-order-http.mapper";
 
 @Controller("production-orders")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
 export class ProductionOrdersController {
   constructor(
     private readonly createOrder: CreateProductionOrder,

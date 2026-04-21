@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreatePaymentMethodUsecase } from "src/modules/payment-methods/application/usecases/payment-method/create.usecase";
 import { UpdatePaymentMethodUsecase } from "src/modules/payment-methods/application/usecases/payment-method/update.usecase";
 import { SetPaymentMethodActiveUsecase } from "src/modules/payment-methods/application/usecases/payment-method/set-active.usecase";
@@ -15,7 +16,7 @@ import { HttpPaymentMethodListQueryDto } from "../dtos/payment-method/http-payme
 import { PaymentMethodHttpMapper } from "src/modules/payment-methods/application/mappers/payment-method-http.mapper";
 
 @Controller("payment-methods")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
 export class PaymentMethodsController {
   constructor(
     private readonly createPaymentMethod: CreatePaymentMethodUsecase,

@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreateProductCatalogEquivalence } from "src/modules/product-catalog/application/usecases/create-equivalence.usecase";
 import { DeleteProductCatalogEquivalence } from "src/modules/product-catalog/application/usecases/delete-equivalence.usecase";
 import { GetProductCatalogEquivalence } from "src/modules/product-catalog/application/usecases/get-equivalence.usecase";
@@ -7,7 +8,7 @@ import { ListProductCatalogEquivalencesByProduct } from "src/modules/product-cat
 import { CreateProductCatalogEquivalenceDto } from "../dtos/create-equivalence.dto";
 
 @Controller()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
 export class ProductCatalogEquivalenceController {
   constructor(
     private readonly createEquivalence: CreateProductCatalogEquivalence,

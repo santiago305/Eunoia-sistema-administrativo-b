@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreateProductCatalogStockItem } from "src/modules/product-catalog/application/usecases/create-stock-item.usecase";
 import { GetProductCatalogStockItem } from "src/modules/product-catalog/application/usecases/get-stock-item.usecase";
 import { GetProductCatalogSkuStockItem } from "src/modules/product-catalog/application/usecases/get-sku-stock-item.usecase";
@@ -17,7 +18,7 @@ import { TransferProductCatalogInventoryBetweenWarehouses } from "src/modules/pr
 import { TransferBetweenWarehousesDto } from "../dtos/transfer-between-warehouses.dto";
 
 @Controller()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
 export class ProductCatalogStockController {
   constructor(
     private readonly createStockItem: CreateProductCatalogStockItem,

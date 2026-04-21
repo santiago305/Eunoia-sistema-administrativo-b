@@ -1,5 +1,6 @@
   import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
   import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+  import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
   import { CreateProductCatalogProduct } from "src/modules/product-catalog/application/usecases/create-product.usecase";
   import { GetProductCatalogProduct } from "src/modules/product-catalog/application/usecases/get-product.usecase";
   import { ListProductCatalogProducts } from "src/modules/product-catalog/application/usecases/list-products.usecase";
@@ -9,7 +10,7 @@
   import { UpdateProductCatalogProductDto } from "../dtos/update-product.dto";
 
   @Controller("products")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
   export class ProductCatalogProductController {
     constructor(
       private readonly createProduct: CreateProductCatalogProduct,

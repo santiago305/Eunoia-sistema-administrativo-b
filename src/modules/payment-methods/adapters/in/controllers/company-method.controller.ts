@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreateCompanyMethodUsecase } from "src/modules/payment-methods/application/usecases/company-method/create.usecase";
 import { DeleteCompanyMethodUsecase } from "src/modules/payment-methods/application/usecases/company-method/delete.usecase";
 import { GetCompanyMethodByIdUsecase } from "src/modules/payment-methods/application/usecases/company-method/get-by-id.usecase";
@@ -10,7 +11,7 @@ import { HttpCompanyMethodUpdateDto } from "../dtos/company-method/http-company-
 import { PaymentMethodHttpMapper } from "src/modules/payment-methods/application/mappers/payment-method-http.mapper";
 
 @Controller("company-methods")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
 export class CompanyMethodsController {
   constructor(
     private readonly createCompanyMethod: CreateCompanyMethodUsecase,
