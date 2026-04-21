@@ -8,6 +8,7 @@ import { SetActiveWarehouse } from "../dtos/warehouse/input/set-active.input";
 import { UpdateWarehouseInput } from "../dtos/warehouse/input/update.input";
 import { LocationId } from "../../domain/value-objects/location-id.vo";
 import { WarehouseId } from "../../domain/value-objects/warehouse-id.vo";
+import { sanitizeWarehouseSearchFilters } from "../support/warehouse-search.utils";
 
 export class WarehouseHttpMapper {
   static toCreateWarehouseInput(dto: CreateWarehouseInput): CreateWarehouseInput {
@@ -25,11 +26,21 @@ export class WarehouseHttpMapper {
     return {
       ...input,
       q: input.q?.trim() || undefined,
-      name: input.name?.trim() || undefined,
-      department: input.department?.trim() || undefined,
-      province: input.province?.trim() || undefined,
-      district: input.district?.trim() || undefined,
-      address: input.address?.trim() || undefined,
+      filters: sanitizeWarehouseSearchFilters({
+        isActiveValues:
+          input.isActive === undefined ? [] : [input.isActive ? "true" : "false"],
+        departments: input.department?.trim() ? [input.department.trim()] : [],
+        provinces: input.province?.trim() ? [input.province.trim()] : [],
+        districts: input.district?.trim() ? [input.district.trim()] : [],
+        name: input.name?.trim(),
+        address: input.address?.trim(),
+      }).concat(sanitizeWarehouseSearchFilters(input.filters)),
+      name: undefined,
+      department: undefined,
+      province: undefined,
+      district: undefined,
+      address: undefined,
+      isActive: undefined,
     };
   }
 

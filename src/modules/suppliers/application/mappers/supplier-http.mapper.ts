@@ -5,6 +5,7 @@ import { UpdateSupplierInput } from "../dtos/supplier/input/update.input";
 import { CreateSupplierSkuInput } from "../dtos/supplier-sku/input/create.input";
 import { ListSupplierSkusInput } from "../dtos/supplier-sku/input/list.input";
 import { UpdateSupplierSkuInput } from "../dtos/supplier-sku/input/update.input";
+import { sanitizeSupplierSearchFilters } from "../support/supplier-search.utils";
 
 export class SupplierHttpMapper {
   static toCreateSupplierInput(dto: CreateSupplierInput): CreateSupplierInput {
@@ -42,13 +43,26 @@ export class SupplierHttpMapper {
   static toListSuppliersInput(input: ListSuppliersInput): ListSuppliersInput {
     return {
       ...input,
-      documentNumber: input.documentNumber?.trim() || undefined,
-      name: input.name?.trim() || undefined,
-      lastName: input.lastName?.trim() || undefined,
-      tradeName: input.tradeName?.trim() || undefined,
-      phone: input.phone?.trim() || undefined,
-      email: input.email?.trim() || undefined,
       q: input.q?.trim() || undefined,
+      filters: sanitizeSupplierSearchFilters({
+        documentTypes: input.documentType ? [input.documentType] : [],
+        isActiveValues:
+          input.isActive === undefined ? [] : [input.isActive ? "true" : "false"],
+        documentNumber: input.documentNumber?.trim(),
+        name: input.name?.trim(),
+        lastName: input.lastName?.trim(),
+        tradeName: input.tradeName?.trim(),
+        phone: input.phone?.trim(),
+        email: input.email?.trim(),
+      }).concat(sanitizeSupplierSearchFilters(input.filters)),
+      documentType: undefined,
+      isActive: undefined,
+      documentNumber: undefined,
+      name: undefined,
+      lastName: undefined,
+      tradeName: undefined,
+      phone: undefined,
+      email: undefined,
     };
   }
 

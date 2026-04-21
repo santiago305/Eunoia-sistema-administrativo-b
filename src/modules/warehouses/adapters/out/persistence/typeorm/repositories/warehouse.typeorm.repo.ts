@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, Repository } from "typeorm";
 import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
+import { ListingSearchOptionOutput } from "src/shared/listing-search/application/dtos/listing-search-state.output";
 import { Warehouse } from "src/modules/warehouses/domain/entities/warehouse";
 import { WarehouseId } from "src/modules/warehouses/domain/value-objects/warehouse-id.vo";
 import { WarehouseEntity } from "../entities/warehouse";
@@ -11,6 +12,12 @@ import { WarehouseLocation } from "src/modules/warehouses/domain/entities/wareho
 import { LocationId } from "src/modules/warehouses/domain/value-objects/location-id.vo";
 import { WarehouseRepository } from "src/modules/warehouses/application/ports/warehouse.repository.port";
 import { WarehouseFactory } from "src/modules/warehouses/domain/factories/warehouse.factory";
+import {
+  matchSearchOptionIds,
+  sanitizeWarehouseSearchFilters,
+  WAREHOUSE_ACTIVE_STATE_SEARCH_OPTIONS,
+} from "src/modules/warehouses/application/support/warehouse-search.utils";
+import { WarehouseSearchFields, WarehouseSearchOperators, WarehouseSearchRule } from "src/modules/warehouses/application/dtos/warehouse-search/warehouse-search-snapshot";
 
 @Injectable()
 export class WarehouseTypeormRepo implements WarehouseRepository {
@@ -131,12 +138,7 @@ export class WarehouseTypeormRepo implements WarehouseRepository {
 
   async list(
     params: {
-      isActive?: boolean;
-      name?: string;
-      department?: string;
-      province?: string;
-      district?: string;
-      address?: string;
+      filters?: WarehouseSearchRule[];
       q?: string;
       page?: number;
       limit?: number;
@@ -146,28 +148,76 @@ export class WarehouseTypeormRepo implements WarehouseRepository {
     const repo = this.getRepo(tx);
     const qb = repo.createQueryBuilder("w");
 
-    if (params.isActive !== undefined) {
-      qb.andWhere("w.isActive = :isActive", { isActive: params.isActive });
-    }
-    if (params.name) {
-      qb.andWhere("unaccent(w.name) ILIKE unaccent(:name)", { name: `%${params.name}%` });
-    }
-    if (params.department) {
-      qb.andWhere("unaccent(w.department) ILIKE unaccent(:department)", { department: `%${params.department}%` });
-    }
-    if (params.province) {
-      qb.andWhere("unaccent(w.province) ILIKE unaccent(:province)", { province: `%${params.province}%` });
-    }
-    if (params.district) {
-      qb.andWhere("unaccent(w.district) ILIKE unaccent(:district)", { district: `%${params.district}%` });
-    }
-    if (params.address) {
-      qb.andWhere("unaccent(w.address) ILIKE unaccent(:address)", { address: `%${params.address}%` });
-    }
+    const filters = sanitizeWarehouseSearchFilters(params.filters);
+    filters.forEach((filter, index) => {
+      const fieldParam = `filter_${index}`;
+      const valuesParam = `${fieldParam}_values`;
+      const valueParam = `${fieldParam}_value`;
+      const catalogOperator = filter.mode === "exclude" ? "NOT IN" : "IN";
+
+      switch (filter.field) {
+        case WarehouseSearchFields.IS_ACTIVE:
+          if (filter.values?.length) {
+            qb.andWhere(`w.isActive ${catalogOperator} (:...${valuesParam})`, {
+              [valuesParam]: filter.values.map((value) => value === "true"),
+            });
+          }
+          break;
+        case WarehouseSearchFields.DEPARTMENT:
+        case WarehouseSearchFields.PROVINCE:
+        case WarehouseSearchFields.DISTRICT: {
+          if (!filter.values?.length) break;
+          const column =
+            filter.field === WarehouseSearchFields.DEPARTMENT ? "w.department" :
+            filter.field === WarehouseSearchFields.PROVINCE ? "w.province" :
+            "w.district";
+
+          qb.andWhere(`unaccent(${column}) ${catalogOperator} (:...${valuesParam})`, {
+            [valuesParam]: filter.values,
+          });
+          break;
+        }
+        case WarehouseSearchFields.NAME:
+        case WarehouseSearchFields.ADDRESS: {
+          if (!filter.value) break;
+          const column = filter.field === WarehouseSearchFields.NAME ? "w.name" : "w.address";
+
+          if (filter.operator === WarehouseSearchOperators.EQ) {
+            qb.andWhere(`unaccent(coalesce(${column}, '')) = unaccent(:${valueParam})`, {
+              [valueParam]: filter.value,
+            });
+          } else {
+            qb.andWhere(`unaccent(coalesce(${column}, '')) ILIKE unaccent(:${valueParam})`, {
+              [valueParam]: `%${filter.value}%`,
+            });
+          }
+          break;
+        }
+        default:
+          break;
+      }
+    });
+
     if (params.q) {
+      const q = params.q.trim();
+      const matchedActiveStates = matchSearchOptionIds(q, WAREHOUSE_ACTIVE_STATE_SEARCH_OPTIONS);
+
       qb.andWhere(
-        "(unaccent(w.name) ILIKE unaccent(:q) OR unaccent(w.department) ILIKE unaccent(:q) OR unaccent(w.province) ILIKE unaccent(:q) OR unaccent(w.district) ILIKE unaccent(:q) OR unaccent(w.address) ILIKE unaccent(:q))",
-        { q: `%${params.q}%` }
+        [
+          "(unaccent(coalesce(w.name, '')) ILIKE unaccent(:q)",
+          "OR unaccent(coalesce(w.department, '')) ILIKE unaccent(:q)",
+          "OR unaccent(coalesce(w.province, '')) ILIKE unaccent(:q)",
+          "OR unaccent(coalesce(w.district, '')) ILIKE unaccent(:q)",
+          "OR unaccent(coalesce(w.address, '')) ILIKE unaccent(:q)",
+          matchedActiveStates.length ? "OR w.isActive IN (:...matchedActiveStates)" : "",
+          ")",
+        ].join(" "),
+        {
+          q: `%${q}%`,
+          ...(matchedActiveStates.length
+            ? { matchedActiveStates: matchedActiveStates.map((value) => value === "true") }
+            : {}),
+        }
       );
     }
 
@@ -181,5 +231,45 @@ export class WarehouseTypeormRepo implements WarehouseRepository {
       .getManyAndCount();
 
     return { items: rows.map((r) => this.toDomain(r)), total };
+  }
+
+  async listSearchCatalogs(tx?: TransactionContext): Promise<{
+    departments: ListingSearchOptionOutput[];
+    provinces: ListingSearchOptionOutput[];
+    districts: ListingSearchOptionOutput[];
+  }> {
+    const repo = this.getRepo(tx);
+    const [departments, provinces, districts] = await Promise.all([
+      repo
+        .createQueryBuilder("w")
+        .select("DISTINCT w.department", "value")
+        .where("w.department IS NOT NULL")
+        .orderBy("value", "ASC")
+        .getRawMany<{ value: string }>(),
+      repo
+        .createQueryBuilder("w")
+        .select("DISTINCT w.province", "value")
+        .where("w.province IS NOT NULL")
+        .orderBy("value", "ASC")
+        .getRawMany<{ value: string }>(),
+      repo
+        .createQueryBuilder("w")
+        .select("DISTINCT w.district", "value")
+        .where("w.district IS NOT NULL")
+        .orderBy("value", "ASC")
+        .getRawMany<{ value: string }>(),
+    ]);
+
+    const toOptions = (items: Array<{ value: string }>) =>
+      items
+        .map((item) => item.value?.trim())
+        .filter(Boolean)
+        .map((value) => ({ id: value, label: value }));
+
+    return {
+      departments: toOptions(departments),
+      provinces: toOptions(provinces),
+      districts: toOptions(districts),
+    };
   }
 }

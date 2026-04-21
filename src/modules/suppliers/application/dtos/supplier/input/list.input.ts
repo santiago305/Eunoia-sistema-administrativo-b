@@ -1,4 +1,5 @@
 import { SupplierDocType } from "src/modules/suppliers/domain/object-values/supplier-doc-type";
+import { SupplierSearchRule } from "../../supplier-search/supplier-search-snapshot";
 
 export interface ListSuppliersInput {
   documentType?: SupplierDocType;
@@ -9,6 +10,8 @@ export interface ListSuppliersInput {
   phone?: string;
   email?: string;
   q?: string;
+  filters?: SupplierSearchRule[];
+  requestedBy?: string;
   isActive?: boolean;
   page?: number;
   limit?: number;

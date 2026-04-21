@@ -1,5 +1,59 @@
-import { Transform, Type } from "class-transformer";
-import { IsBooleanString, IsInt, IsOptional, IsString, Max, Min } from "class-validator";
+import { plainToInstance, Transform, Type } from "class-transformer";
+import { IsArray, IsBooleanString, IsEnum, IsInt, IsOptional, IsString, Max, Min, ValidateNested } from "class-validator";
+import {
+  WarehouseSearchField,
+  WarehouseSearchFields,
+  WarehouseSearchOperator,
+  WarehouseSearchOperators,
+  WarehouseSearchRuleMode,
+} from "src/modules/warehouses/application/dtos/warehouse-search/warehouse-search-snapshot";
+
+const WarehouseSearchRuleModes = {
+  INCLUDE: "include",
+  EXCLUDE: "exclude",
+} as const;
+
+const toFiltersArray = (value: unknown) => {
+  if (value === undefined || value === null || value === "") return undefined;
+  if (Array.isArray(value)) {
+    return value.map((item) => plainToInstance(HttpWarehouseSearchRuleDto, item));
+  }
+  if (typeof value !== "string") return undefined;
+
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.map((item) => plainToInstance(HttpWarehouseSearchRuleDto, item))
+      : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+class HttpWarehouseSearchRuleDto {
+  @IsString()
+  @IsOptional()
+  @IsEnum(WarehouseSearchFields)
+  field: WarehouseSearchField;
+
+  @IsString()
+  @IsOptional()
+  @IsEnum(WarehouseSearchOperators)
+  operator: WarehouseSearchOperator;
+
+  @IsOptional()
+  @IsEnum(WarehouseSearchRuleModes)
+  mode?: WarehouseSearchRuleMode;
+
+  @IsOptional()
+  @IsString()
+  value?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  values?: string[];
+}
 
 export class ListWarehouseQueryDto {
   @IsOptional()
@@ -43,4 +97,11 @@ export class ListWarehouseQueryDto {
   @IsOptional()
   @IsString()
   address?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => toFiltersArray(value))
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => HttpWarehouseSearchRuleDto)
+  filters?: HttpWarehouseSearchRuleDto[];
 }

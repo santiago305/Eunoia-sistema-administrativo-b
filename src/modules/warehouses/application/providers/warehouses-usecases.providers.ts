@@ -4,6 +4,9 @@ import { GetLocationUsecase } from "../usecases/location/get-by-id.usecase";
 import { ListLocationsUsecase } from "../usecases/location/list.usecase";
 import { SetLocationActiveUsecase } from "../usecases/location/set-active.usecase";
 import { UpdateLocationUsecase } from "../usecases/location/update.usecase";
+import { DeleteWarehouseSearchMetricUsecase } from "../usecases/warehouse-search/delete-metric.usecase";
+import { GetWarehouseSearchStateUsecase } from "../usecases/warehouse-search/get-state.usecase";
+import { SaveWarehouseSearchMetricUsecase } from "../usecases/warehouse-search/save-metric.usecase";
 import { CreateWarehouseUsecase } from "../usecases/warehouse/create.usecase";
 import { GetWarehouseUsecase } from "../usecases/warehouse/get-by-id.usecase";
 import { GetWarehouseStockUsecase } from "../usecases/warehouse/get-stock.usecase";
@@ -25,4 +28,7 @@ export const warehousesUsecasesProviders: Provider[] = [
   SetLocationActiveUsecase,
   ListLocationsUsecase,
   GetLocationUsecase,
+  GetWarehouseSearchStateUsecase,
+  SaveWarehouseSearchMetricUsecase,
+  DeleteWarehouseSearchMetricUsecase,
 ];

@@ -1,83 +1,33 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { PurchaseSearchRepository, PurchaseSearchStateRecord } from "src/modules/purchases/domain/ports/purchase-search.repository";
-import { PurchaseSearchRecentEntity } from "../entities/purchase-search-recent.entity";
-import { PurchaseSearchMetricEntity } from "../entities/purchase-search-metric.entity";
 import { PurchaseSearchSnapshot } from "src/modules/purchases/application/dtos/purchase-search/purchase-search-snapshot";
-import { createPurchaseSearchSnapshotHash } from "src/modules/purchases/application/support/purchase-search.utils";
 import { SupplierEntity } from "src/modules/suppliers/adapters/out/persistence/typeorm/entities/supplier.entity";
 import { WarehouseEntity } from "src/modules/warehouses/adapters/out/persistence/typeorm/entities/warehouse";
+import {
+  LISTING_SEARCH_STORAGE,
+  ListingSearchStorageRepository,
+} from "src/shared/listing-search/domain/listing-search.repository";
 
 @Injectable()
 export class PurchaseSearchTypeormRepository implements PurchaseSearchRepository {
   constructor(
-    @InjectRepository(PurchaseSearchRecentEntity)
-    private readonly recentRepo: Repository<PurchaseSearchRecentEntity>,
-    @InjectRepository(PurchaseSearchMetricEntity)
-    private readonly metricRepo: Repository<PurchaseSearchMetricEntity>,
+    @Inject(LISTING_SEARCH_STORAGE)
+    private readonly storage: ListingSearchStorageRepository,
     @InjectRepository(SupplierEntity)
     private readonly supplierRepo: Repository<SupplierEntity>,
     @InjectRepository(WarehouseEntity)
     private readonly warehouseRepo: Repository<WarehouseEntity>,
   ) {}
 
-  async touchRecentSearch(params: {
-    userId: string;
-    tableKey: string;
-    snapshot: PurchaseSearchSnapshot;
-  }): Promise<void> {
-    const snapshotHash = createPurchaseSearchSnapshotHash(params.snapshot);
-    const now = new Date();
-    const existing = await this.recentRepo.findOne({
-      where: {
-        userId: params.userId,
-        tableKey: params.tableKey,
-        snapshotHash,
-      },
-    });
-
-    if (existing) {
-      existing.snapshot = params.snapshot;
-      existing.lastUsedAt = now;
-      await this.recentRepo.save(existing);
-    } else {
-      await this.recentRepo.save(
-        this.recentRepo.create({
-          userId: params.userId,
-          tableKey: params.tableKey,
-          snapshotHash,
-          snapshot: params.snapshot,
-          lastUsedAt: now,
-        }),
-      );
-    }
-
-    const staleRows = await this.recentRepo
-      .createQueryBuilder("recent")
-      .where("recent.userId = :userId", { userId: params.userId })
-      .andWhere("recent.tableKey = :tableKey", { tableKey: params.tableKey })
-      .orderBy("recent.lastUsedAt", "DESC")
-      .addOrderBy("recent.createdAt", "DESC")
-      .skip(3)
-      .getMany();
-
-    if (staleRows.length) {
-      await this.recentRepo.remove(staleRows);
-    }
+  async touchRecentSearch(params: Parameters<PurchaseSearchRepository["touchRecentSearch"]>[0]): Promise<void> {
+    await this.storage.touchRecentSearch(params);
   }
 
   async listState(params: { userId: string; tableKey: string }): Promise<PurchaseSearchStateRecord> {
-    const [recent, metrics, suppliers, warehouses] = await Promise.all([
-      this.recentRepo.find({
-        where: { userId: params.userId, tableKey: params.tableKey },
-        order: { lastUsedAt: "DESC", createdAt: "DESC" },
-        take: 3,
-      }),
-      this.metricRepo.find({
-        where: { userId: params.userId, tableKey: params.tableKey },
-        order: { updatedAt: "DESC", createdAt: "DESC" },
-      }),
+    const [state, suppliers, warehouses] = await Promise.all([
+      this.storage.listState(params),
       this.supplierRepo.find({
         where: { isActive: true },
       }),
@@ -97,16 +47,16 @@ export class PurchaseSearchTypeormRepository implements PurchaseSearchRepository
     );
 
     return {
-      recent: recent.map((row) => ({
-        recentId: row.id,
-        snapshot: row.snapshot,
-        lastUsedAt: row.lastUsedAt,
+      recent: state.recent.map((item) => ({
+        recentId: item.recentId,
+        snapshot: item.snapshot as PurchaseSearchSnapshot,
+        lastUsedAt: item.lastUsedAt,
       })),
-      metrics: metrics.map((row) => ({
-        metricId: row.id,
-        name: row.name,
-        snapshot: row.snapshot,
-        updatedAt: row.updatedAt,
+      metrics: state.metrics.map((item) => ({
+        metricId: item.metricId,
+        name: item.name,
+        snapshot: item.snapshot as PurchaseSearchSnapshot,
+        updatedAt: item.updatedAt,
       })),
       suppliers: orderedSuppliers.map((row) => {
         const fullName = [row.name, row.lastName].filter(Boolean).join(" ").trim();
@@ -128,32 +78,18 @@ export class PurchaseSearchTypeormRepository implements PurchaseSearchRepository
     userId: string;
     tableKey: string;
     name: string;
-    snapshot: PurchaseSearchSnapshot;
+    snapshot: Parameters<PurchaseSearchRepository["createMetric"]>[0]["snapshot"];
   }) {
-    const saved = await this.metricRepo.save(
-      this.metricRepo.create({
-        userId: params.userId,
-        tableKey: params.tableKey,
-        name: params.name,
-        snapshot: params.snapshot,
-      }),
-    );
-
+    const metric = await this.storage.createMetric(params);
     return {
-      metricId: saved.id,
-      name: saved.name,
-      snapshot: saved.snapshot,
-      updatedAt: saved.updatedAt,
+      metricId: metric.metricId,
+      name: metric.name,
+      snapshot: metric.snapshot as PurchaseSearchSnapshot,
+      updatedAt: metric.updatedAt,
     };
   }
 
   async deleteMetric(params: { userId: string; tableKey: string; metricId: string }) {
-    const result = await this.metricRepo.delete({
-      id: params.metricId,
-      userId: params.userId,
-      tableKey: params.tableKey,
-    });
-
-    return Boolean(result.affected);
+    return this.storage.deleteMetric(params);
   }
 }

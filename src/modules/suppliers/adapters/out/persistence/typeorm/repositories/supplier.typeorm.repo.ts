@@ -7,6 +7,13 @@ import { Supplier } from "src/modules/suppliers/domain/entity/supplier";
 import { SupplierRepository } from "src/modules/suppliers/domain/ports/supplier.repository";
 import { SupplierDocType } from "src/modules/suppliers/domain/object-values/supplier-doc-type";
 import { SupplierEntity } from "../entities/supplier.entity";
+import {
+  matchSearchOptionIds,
+  sanitizeSupplierSearchFilters,
+  SUPPLIER_ACTIVE_STATE_SEARCH_OPTIONS,
+  SUPPLIER_DOCUMENT_TYPE_SEARCH_OPTIONS,
+} from "src/modules/suppliers/application/support/supplier-search.utils";
+import { SupplierSearchFields, SupplierSearchOperators, SupplierSearchRule } from "src/modules/suppliers/application/dtos/supplier-search/supplier-search-snapshot";
 
 @Injectable()
 export class SupplierTypeormRepository implements SupplierRepository {
@@ -126,15 +133,8 @@ export class SupplierTypeormRepository implements SupplierRepository {
 
   async list(
     params: {
-      documentType?: SupplierDocType;
-      documentNumber?: string;
-      name?: string;
-      lastName?: string;
-      tradeName?: string;
-      phone?: string;
-      email?: string;
+      filters?: SupplierSearchRule[];
       q?: string;
-      isActive?: boolean;
       page?: number;
       limit?: number;
     },
@@ -143,19 +143,94 @@ export class SupplierTypeormRepository implements SupplierRepository {
     const repo = this.getRepo(tx);
     const qb = repo.createQueryBuilder("s");
 
-    if (params.isActive !== undefined) qb.andWhere("s.isActive = :isActive", { isActive: params.isActive });
-    if (params.documentType) qb.andWhere("s.documentType = :documentType", { documentType: params.documentType });
-    if (params.documentNumber) qb.andWhere("s.documentNumber ILIKE :documentNumber", { documentNumber: `%${params.documentNumber}%` });
-    if (params.name) qb.andWhere("unaccent(s.name) ILIKE unaccent(:name)", { name: `%${params.name}%` });
-    if (params.lastName) qb.andWhere("unaccent(s.lastName) ILIKE unaccent(:lastName)", { lastName: `%${params.lastName}%` });
-    if (params.tradeName) qb.andWhere("unaccent(s.tradeName) ILIKE unaccent(:tradeName)", { tradeName: `%${params.tradeName}%` });
-    if (params.phone) qb.andWhere("s.phone ILIKE :phone", { phone: `%${params.phone}%` });
-    if (params.email) qb.andWhere("s.email ILIKE :email", { email: `%${params.email}%` });
+    const filters = sanitizeSupplierSearchFilters(params.filters);
+    filters.forEach((filter, index) => {
+      const fieldParam = `filter_${index}`;
+      const valuesParam = `${fieldParam}_values`;
+      const valueParam = `${fieldParam}_value`;
+      const catalogOperator = filter.mode === "exclude" ? "NOT IN" : "IN";
+
+      switch (filter.field) {
+        case SupplierSearchFields.DOCUMENT_TYPE:
+          if (filter.values?.length) {
+            qb.andWhere(`s.documentType ${catalogOperator} (:...${valuesParam})`, {
+              [valuesParam]: filter.values,
+            });
+          }
+          break;
+        case SupplierSearchFields.IS_ACTIVE:
+          if (filter.values?.length) {
+            qb.andWhere(`s.isActive ${catalogOperator} (:...${valuesParam})`, {
+              [valuesParam]: filter.values.map((value) => value === "true"),
+            });
+          }
+          break;
+        case SupplierSearchFields.DOCUMENT_NUMBER:
+          if (!filter.value) break;
+          if (filter.operator === SupplierSearchOperators.EQ) {
+            qb.andWhere("lower(s.documentNumber) = lower(:value)", {
+              value: filter.value,
+            });
+          } else {
+            qb.andWhere("s.documentNumber ILIKE :documentNumber", {
+              documentNumber: `%${filter.value}%`,
+            });
+          }
+          break;
+        case SupplierSearchFields.NAME:
+        case SupplierSearchFields.LAST_NAME:
+        case SupplierSearchFields.TRADE_NAME:
+        case SupplierSearchFields.PHONE:
+        case SupplierSearchFields.EMAIL: {
+          if (!filter.value) break;
+
+          const column =
+            filter.field === SupplierSearchFields.NAME ? "s.name" :
+            filter.field === SupplierSearchFields.LAST_NAME ? "s.lastName" :
+            filter.field === SupplierSearchFields.TRADE_NAME ? "s.tradeName" :
+            filter.field === SupplierSearchFields.PHONE ? "s.phone" :
+            "s.email";
+
+          if (filter.operator === SupplierSearchOperators.EQ) {
+            qb.andWhere(`unaccent(coalesce(${column}, '')) = unaccent(:${valueParam})`, {
+              [valueParam]: filter.value,
+            });
+          } else {
+            qb.andWhere(`unaccent(coalesce(${column}, '')) ILIKE unaccent(:${valueParam})`, {
+              [valueParam]: `%${filter.value}%`,
+            });
+          }
+          break;
+        }
+        default:
+          break;
+      }
+    });
 
     if (params.q) {
+      const q = params.q.trim();
+      const matchedDocumentTypes = matchSearchOptionIds(q, SUPPLIER_DOCUMENT_TYPE_SEARCH_OPTIONS);
+      const matchedActiveStates = matchSearchOptionIds(q, SUPPLIER_ACTIVE_STATE_SEARCH_OPTIONS);
+
       qb.andWhere(
-        "(unaccent(s.name) ILIKE unaccent(:q) OR unaccent(s.lastName) ILIKE unaccent(:q) OR unaccent(s.tradeName) ILIKE unaccent(:q) OR s.documentNumber ILIKE :q OR s.phone ILIKE :q OR s.email ILIKE :q)",
-        { q: `%${params.q}%` },
+        [
+          "(unaccent(coalesce(s.name, '')) ILIKE unaccent(:q)",
+          "OR unaccent(coalesce(s.lastName, '')) ILIKE unaccent(:q)",
+          "OR unaccent(coalesce(s.tradeName, '')) ILIKE unaccent(:q)",
+          "OR s.documentNumber ILIKE :q",
+          "OR s.phone ILIKE :q",
+          "OR s.email ILIKE :q",
+          matchedDocumentTypes.length ? "OR s.documentType IN (:...matchedDocumentTypes)" : "",
+          matchedActiveStates.length ? "OR s.isActive IN (:...matchedActiveStates)" : "",
+          ")",
+        ].join(" "),
+        {
+          q: `%${q}%`,
+          ...(matchedDocumentTypes.length ? { matchedDocumentTypes } : {}),
+          ...(matchedActiveStates.length
+            ? { matchedActiveStates: matchedActiveStates.map((value) => value === "true") }
+            : {}),
+        },
       );
     }
 

@@ -1,6 +1,7 @@
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { Supplier } from "../entity/supplier";
 import { SupplierDocType } from "../object-values/supplier-doc-type";
+import { SupplierSearchRule } from "../../application/dtos/supplier-search/supplier-search-snapshot";
 
 export const SUPPLIER_REPOSITORY = Symbol('SUPPLIER_REPOSITORY');
 
@@ -36,15 +37,8 @@ export interface SupplierRepository {
 
     list(
         params: {
-            documentType?: SupplierDocType;
-            documentNumber?: string;
-            name?: string;
-            lastName?: string;
-            tradeName?: string;
-            phone?: string;
-            email?: string;
+            filters?: SupplierSearchRule[];
             q?: string;
-            isActive?: boolean;
             page?: number;
             limit?: number;
         },
