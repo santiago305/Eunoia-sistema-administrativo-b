@@ -3,7 +3,6 @@ import { PaginatedResult } from "src/shared/utilidades/dto/paginateResult";
 import { ParseDateLocal } from "src/shared/utilidades/utils/ParseDates";
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
 import { PURCHASE_SEARCH, PurchaseSearchRepository } from "src/modules/purchases/domain/ports/purchase-search.repository";
-import { PAYMENT_DOCUMENT_REPOSITORY, PaymentDocumentRepository } from "src/modules/payments/domain/ports/payment-document.repository";
 import { ListPurchaseOrdersInput } from "../../dtos/purchase-order/input/list.input";
 import { PurchaseOrderOutput } from "../../dtos/purchase-order/output/purchase-order.output";
 import { PurchaseOrderOutputMapper } from "../../mappers/purchase-order-output.mapper";
@@ -18,8 +17,6 @@ export class ListPurchaseOrdersUsecase {
   constructor(
     @Inject(PURCHASE_ORDER)
     private readonly purchaseRepo: PurchaseOrderRepository,
-    @Inject(PAYMENT_DOCUMENT_REPOSITORY)
-    private readonly paymentDocRepo: PaymentDocumentRepository,
     @Inject(PURCHASE_SEARCH)
     private readonly purchaseSearchRepo: PurchaseSearchRepository,
   ) {}
@@ -30,22 +27,11 @@ export class ListPurchaseOrdersUsecase {
 
     const snapshot = sanitizePurchaseSearchSnapshot({
       q: input.q,
-      filters: {
-        supplierIds: input.supplierIds ?? [],
-        warehouseIds: input.warehouseIds ?? [],
-        statuses: input.statuses ?? [],
-        documentTypes: input.documentTypes ?? [],
-        paymentForms: input.paymentForms ?? [],
-      },
+      filters: input.filters ?? [],
     });
 
     const { items, total } = await this.purchaseRepo.list({
-      statuses: input.statuses,
-      supplierIds: input.supplierIds,
-      warehouseIds: input.warehouseIds,
-      documentTypes: input.documentTypes,
-      paymentForms: input.paymentForms,
-      number: input.number,
+      filters: input.filters,
       q: input.q,
       from: input.from ? ParseDateLocal(input.from, "start") : undefined,
       to: input.to ? ParseDateLocal(input.to, "end") : undefined,
@@ -61,14 +47,7 @@ export class ListPurchaseOrdersUsecase {
       });
     }
 
-    const itemsWithPayments = await Promise.all(
-      items.map(async (row) => {
-        const payments = await this.paymentDocRepo.findByPoId(row.order.poId);
-        const paymentOutputs = payments.map((payment) =>
-          PurchaseOrderOutputMapper.toPaymentOutput(payment),
-        );
-
-        const totalPaid = paymentOutputs.reduce((sum, p) => sum + (p.amount ?? 0), 0);
+    const itemsWithPayments = items.map((row) => {
         const mappedOrder = PurchaseOrderOutputMapper.toOrderOutput(row.order, {
           supplierName: row.supplierName,
           supplierDocumentNumber: row.supplierDocumentNumber,
@@ -77,11 +56,10 @@ export class ListPurchaseOrdersUsecase {
 
         return {
           ...mappedOrder,
-          totalPaid,
-          totalToPay: (mappedOrder.total ?? 0) - totalPaid,
+          totalPaid: row.totalPaid,
+          totalToPay: (mappedOrder.total ?? 0) - row.totalPaid,
         };
-      }),
-    );
+      });
 
     return {
       items: itemsWithPayments,

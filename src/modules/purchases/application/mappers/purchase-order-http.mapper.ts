@@ -3,6 +3,10 @@ import { ListPurchaseOrdersInput } from "../dtos/purchase-order/input/list.input
 import { SetPurchaseOrderActiveInput } from "../dtos/purchase-order/input/set-active.input";
 import { UpdatePurchaseOrderInput } from "../dtos/purchase-order/input/update.input";
 import {
+  PurchaseSearchFields,
+  PurchaseSearchOperators,
+} from "../dtos/purchase-search/purchase-search-snapshot";
+import {
   sanitizePurchaseSearchFilters,
 } from "../support/purchase-search.utils";
 
@@ -28,7 +32,7 @@ export class PurchaseOrderHttpMapper {
   }
 
   static toListInput(input: ListPurchaseOrdersInput): ListPurchaseOrdersInput {
-    const mergedFilters = sanitizePurchaseSearchFilters({
+    const legacyFilters = sanitizePurchaseSearchFilters({
       supplierIds: [
         ...(input.supplierIds ?? []),
         ...(input.supplierId ? [input.supplierId] : []),
@@ -48,15 +52,25 @@ export class PurchaseOrderHttpMapper {
       paymentForms: input.paymentForms ?? [],
     });
 
+    const mergedFilters = sanitizePurchaseSearchFilters([
+      ...(input.filters ?? []),
+      ...legacyFilters,
+      ...(input.number
+        ? [
+            {
+              field: PurchaseSearchFields.NUMBER,
+              operator: PurchaseSearchOperators.CONTAINS,
+              value: input.number,
+            },
+          ]
+        : []),
+    ]);
+
     return {
       ...input,
-      number: input.number?.trim() || undefined,
       q: input.q?.trim() || undefined,
-      supplierIds: mergedFilters.supplierIds,
-      warehouseIds: mergedFilters.warehouseIds,
-      statuses: mergedFilters.statuses,
-      documentTypes: mergedFilters.documentTypes,
-      paymentForms: mergedFilters.paymentForms,
+      number: input.number?.trim() || undefined,
+      filters: mergedFilters,
     };
   }
 

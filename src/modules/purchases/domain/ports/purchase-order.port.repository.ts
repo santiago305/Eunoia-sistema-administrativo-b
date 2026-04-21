@@ -5,6 +5,7 @@ import { PaymentFormType } from "../value-objects/payment-form-type";
 import { PurchaseOrderStatus } from "../value-objects/po-status";
 import { VoucherDocType } from "../value-objects/voucher-doc-type";
 import { Money } from "src/shared/value-objets/money.vo";
+import { PurchaseSearchRule } from "../../application/dtos/purchase-search/purchase-search-snapshot";
 
 export const PURCHASE_ORDER = Symbol('PURCHASE_ORDER');
 
@@ -13,6 +14,7 @@ export interface PurchaseOrderListRecord {
     supplierName?: string;
     supplierDocumentNumber?: string;
     warehouseName?: string;
+    totalPaid: number;
 }
 
 export interface PurchaseOrderRepository{
@@ -50,12 +52,7 @@ export interface PurchaseOrderRepository{
 
     list(
         params: {
-            statuses?: PurchaseOrderStatus[];
-            supplierIds?: string[];
-            warehouseIds?: string[];
-            documentTypes?: VoucherDocType[];
-            paymentForms?: PaymentFormType[];
-            number?: string;
+            filters?: PurchaseSearchRule[];
             q?: string;
             from?: Date;
             to?: Date;

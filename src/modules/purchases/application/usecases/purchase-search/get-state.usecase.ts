@@ -3,10 +3,14 @@ import { PurchaseSearchStateOutput } from "../../dtos/purchase-search/output/pur
 import { PURCHASE_SEARCH, PurchaseSearchRepository } from "src/modules/purchases/domain/ports/purchase-search.repository";
 import {
   buildPurchaseSearchLabel,
+  getPurchaseSearchRuleValues,
   PURCHASE_DOCUMENT_TYPE_SEARCH_OPTIONS,
   PURCHASE_PAYMENT_FORM_SEARCH_OPTIONS,
   PURCHASE_STATUS_SEARCH_OPTIONS,
+  PURCHASE_WAIT_TIME_SEARCH_OPTIONS,
+  sanitizePurchaseSearchSnapshot,
 } from "../../support/purchase-search.utils";
+import { PurchaseSearchFields } from "../../dtos/purchase-search/purchase-search-snapshot";
 
 const PURCHASE_SEARCH_TABLE_KEY = "purchase-orders";
 
@@ -24,7 +28,7 @@ export class GetPurchaseOrderSearchStateUsecase {
 
     const supplierUsageOrder = new Map<string, number>();
     state.recent.forEach((recent) => {
-      recent.snapshot.filters.supplierIds.forEach((supplierId, index) => {
+      getPurchaseSearchRuleValues(recent.snapshot, PurchaseSearchFields.SUPPLIER_ID).forEach((supplierId, index) => {
         if (!supplierUsageOrder.has(supplierId)) {
           supplierUsageOrder.set(supplierId, supplierUsageOrder.size + index);
         }
@@ -50,20 +54,21 @@ export class GetPurchaseOrderSearchStateUsecase {
       statuses: new Map(PURCHASE_STATUS_SEARCH_OPTIONS.map((item) => [item.id, item.label])),
       documentTypes: new Map(PURCHASE_DOCUMENT_TYPE_SEARCH_OPTIONS.map((item) => [item.id, item.label])),
       paymentForms: new Map(PURCHASE_PAYMENT_FORM_SEARCH_OPTIONS.map((item) => [item.id, item.label])),
+      waitTimes: new Map(PURCHASE_WAIT_TIME_SEARCH_OPTIONS.map((item) => [item.id, item.label])),
     };
 
     return {
       recent: state.recent.map((item) => ({
         recentId: item.recentId,
         label: buildPurchaseSearchLabel(item.snapshot, maps),
-        snapshot: item.snapshot,
+        snapshot: sanitizePurchaseSearchSnapshot(item.snapshot),
         lastUsedAt: item.lastUsedAt,
       })),
       saved: state.metrics.map((item) => ({
         metricId: item.metricId,
         name: item.name,
         label: buildPurchaseSearchLabel(item.snapshot, maps),
-        snapshot: item.snapshot,
+        snapshot: sanitizePurchaseSearchSnapshot(item.snapshot),
         updatedAt: item.updatedAt,
       })),
       catalogs: {

@@ -91,6 +91,7 @@ export class PurchaseOrdersController {
       paymentForms: query.paymentForms,
       number: query.number,
       q: query.q,
+      filters: query.filters,
       from: query.from,
       to: query.to,
       page: query.page,
@@ -114,13 +115,7 @@ export class PurchaseOrdersController {
       name: dto.name,
       snapshot: sanitizePurchaseSearchSnapshot({
         q: dto.snapshot?.q,
-        filters: {
-          supplierIds: dto.snapshot?.filters?.supplierIds,
-          warehouseIds: dto.snapshot?.filters?.warehouseIds,
-          statuses: dto.snapshot?.filters?.statuses,
-          documentTypes: dto.snapshot?.filters?.documentTypes,
-          paymentForms: dto.snapshot?.filters?.paymentForms,
-        },
+        filters: dto.snapshot?.filters,
       }),
     });
   }

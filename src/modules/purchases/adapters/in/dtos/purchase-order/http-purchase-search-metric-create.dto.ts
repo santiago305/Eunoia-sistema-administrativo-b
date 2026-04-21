@@ -1,31 +1,52 @@
 import { Type } from "class-transformer";
-import { IsArray, IsObject, IsOptional, IsString, IsUUID, MaxLength, ValidateNested } from "class-validator";
-import { PaymentFormType } from "src/modules/purchases/domain/value-objects/payment-form-type";
-import { PurchaseOrderStatus } from "src/modules/purchases/domain/value-objects/po-status";
-import { VoucherDocType } from "src/modules/purchases/domain/value-objects/voucher-doc-type";
+import { IsArray, IsEnum, IsObject, IsOptional, IsString, MaxLength, ValidateNested } from "class-validator";
+import {
+  PurchaseSearchField,
+  PurchaseSearchFields,
+  PurchaseSearchOperator,
+  PurchaseSearchOperators,
+  PurchaseSearchRuleMode,
+} from "src/modules/purchases/application/dtos/purchase-search/purchase-search-snapshot";
 
-class HttpPurchaseSearchFiltersDto {
-  @IsOptional()
-  @IsArray()
-  @IsUUID("4", { each: true })
-  supplierIds?: string[];
+const PurchaseSearchRuleModes = {
+  INCLUDE: "include",
+  EXCLUDE: "exclude",
+} as const;
 
+class HttpPurchaseSearchRangeDto {
   @IsOptional()
-  @IsArray()
-  @IsUUID("4", { each: true })
-  warehouseIds?: string[];
-
-  @IsOptional()
-  @IsArray()
-  statuses?: PurchaseOrderStatus[];
-
-  @IsOptional()
-  @IsArray()
-  documentTypes?: VoucherDocType[];
+  @IsString()
+  start?: string;
 
   @IsOptional()
+  @IsString()
+  end?: string;
+}
+
+class HttpPurchaseSearchRuleDto {
+  @IsEnum(PurchaseSearchFields)
+  field: PurchaseSearchField;
+
+  @IsEnum(PurchaseSearchOperators)
+  operator: PurchaseSearchOperator;
+
+  @IsOptional()
+  @IsEnum(PurchaseSearchRuleModes)
+  mode?: PurchaseSearchRuleMode;
+
+  @IsOptional()
+  @IsString()
+  value?: string;
+
+  @IsOptional()
   @IsArray()
-  paymentForms?: PaymentFormType[];
+  @IsString({ each: true })
+  values?: string[];
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => HttpPurchaseSearchRangeDto)
+  range?: HttpPurchaseSearchRangeDto;
 }
 
 class HttpPurchaseSearchSnapshotDto {
@@ -33,10 +54,10 @@ class HttpPurchaseSearchSnapshotDto {
   @IsString()
   q?: string;
 
-  @IsObject()
-  @ValidateNested()
-  @Type(() => HttpPurchaseSearchFiltersDto)
-  filters: HttpPurchaseSearchFiltersDto;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => HttpPurchaseSearchRuleDto)
+  filters: HttpPurchaseSearchRuleDto[];
 }
 
 export class HttpCreatePurchaseSearchMetricDto {
