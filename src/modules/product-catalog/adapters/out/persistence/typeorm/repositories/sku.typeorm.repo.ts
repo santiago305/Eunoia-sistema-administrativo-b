@@ -231,7 +231,10 @@ export class ProductCatalogSkuTypeormRepository implements ProductCatalogSkuRepo
     qb.andWhere(
       `
       (
-        LOWER(s.name) LIKE :q
+        LOWER(p.name) LIKE :q
+        OR LOWER(COALESCE(p.description, '')) LIKE :q
+        OR LOWER(COALESCE(p.brand, '')) LIKE :q
+        OR LOWER(s.name) LIKE :q
         OR LOWER(s.backend_sku) LIKE :q
         OR LOWER(COALESCE(s.custom_sku, '')) LIKE :q
         OR LOWER(COALESCE(s.barcode, '')) LIKE :q
