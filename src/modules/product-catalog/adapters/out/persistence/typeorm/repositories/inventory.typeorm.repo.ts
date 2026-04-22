@@ -146,9 +146,13 @@ export class ProductCatalogInventoryTypeormRepository implements ProductCatalogI
   async searchSnapshots(
     input: {
       warehouseId?: string;
+      warehouseIdsIn?: string[];
+      warehouseIdsNotIn?: string[];
       q?: string;
       isActive?: boolean;
       skuId?: string;
+      skuIdsIn?: string[];
+      skuIdsNotIn?: string[];
       productType?: ProductCatalogProductType;
       page?: number;
       limit?: number;
@@ -166,8 +170,21 @@ export class ProductCatalogInventoryTypeormRepository implements ProductCatalogI
       .innerJoin(ProductCatalogProductEntity, "p", "p.product_id = s.product_id")
       .innerJoin("warehouses", "w", "w.id = i.warehouse_id");
 
-    if (input.skuId) {
-      baseQb.andWhere("s.sku_id = :skuId", { skuId: input.skuId });
+    const skuIdsIn = Array.from(new Set([...(input.skuIdsIn ?? []), ...(input.skuId ? [input.skuId] : [])]));
+    if (skuIdsIn.length) {
+      baseQb.andWhere("s.sku_id IN (:...skuIdsIn)", { skuIdsIn });
+    }
+
+    if (input.skuIdsNotIn?.length) {
+      baseQb.andWhere("s.sku_id NOT IN (:...skuIdsNotIn)", { skuIdsNotIn: input.skuIdsNotIn });
+    }
+
+    if (input.warehouseIdsIn?.length) {
+      baseQb.andWhere("i.warehouse_id IN (:...warehouseIdsIn)", { warehouseIdsIn: input.warehouseIdsIn });
+    }
+
+    if (input.warehouseIdsNotIn?.length) {
+      baseQb.andWhere("i.warehouse_id NOT IN (:...warehouseIdsNotIn)", { warehouseIdsNotIn: input.warehouseIdsNotIn });
     }
 
     if (input.productType) {

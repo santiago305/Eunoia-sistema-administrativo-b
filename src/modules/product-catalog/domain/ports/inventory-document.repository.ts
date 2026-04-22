@@ -19,6 +19,39 @@ export interface ProductCatalogInventoryDocumentUserRef {
   email: string | null;
 }
 
+export interface ProductCatalogInventoryDocumentSkuRef {
+  id: string;
+  productId: string;
+  backendSku: string;
+  customSku: string | null;
+  name: string;
+}
+
+export interface ProductCatalogInventoryDocumentUnitRef {
+  id: string;
+  code: string;
+  name: string;
+}
+
+export interface ProductCatalogInventoryDocumentSkuAttributeRef {
+  code: string;
+  name: string | null;
+  value: string;
+}
+
+export interface ProductCatalogInventoryDocumentListItemItem {
+  id: string;
+  docId: string;
+  quantity: number;
+  wasteQty: number;
+  fromLocationId: string | null;
+  toLocationId: string | null;
+  unitCost: number | null;
+  sku: ProductCatalogInventoryDocumentSkuRef | null;
+  unit: ProductCatalogInventoryDocumentUnitRef | null;
+  attributes: ProductCatalogInventoryDocumentSkuAttributeRef[];
+}
+
 export interface ProductCatalogInventoryDocumentListItem {
   id: string;
   docType: DocType;
@@ -45,6 +78,7 @@ export interface ProductCatalogInventoryDocumentListItem {
   postedBy: ProductCatalogInventoryDocumentUserRef | null;
   postedAt: Date | null;
   createdAt: Date;
+  items?: ProductCatalogInventoryDocumentListItemItem[];
 }
 
 export interface ProductCatalogInventoryDocumentRepository {
@@ -61,7 +95,12 @@ export interface ProductCatalogInventoryDocumentRepository {
       productType?: ProductCatalogProductType;
       status?: DocStatus;
       warehouseIds?: string[];
+      warehouseIdsIn?: string[];
+      warehouseIdsNotIn?: string[];
       q?: string;
+      includeItems?: boolean;
+      createdByIdsIn?: string[];
+      createdByIdsNotIn?: string[];
     },
     tx?: TransactionContext,
   ): Promise<{ items: ProductCatalogInventoryDocumentListItem[]; total: number; page: number; limit: number }>;

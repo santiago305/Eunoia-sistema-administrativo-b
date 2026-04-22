@@ -104,10 +104,16 @@ export class ProductCatalogStockController {
       from: query.from,
       to: query.to,
       warehouseIds: query.warehouseIds ?? (query.warehouseId ? [query.warehouseId] : undefined),
+      warehouseIdsIn: query.warehouseIdsIn,
+      warehouseIdsNotIn: query.warehouseIdsNotIn,
       docType: query.docType,
       productType: query.productType,
       status: query.status,
       q: query.q,
+      includeItems: query.includeItems === undefined ? undefined : query.includeItems === "true",
+      createdById: query.createdById,
+      createdByIdsIn: query.createdByIdsIn,
+      createdByIdsNotIn: query.createdByIdsNotIn,
     });
   }
 
@@ -115,9 +121,13 @@ export class ProductCatalogStockController {
   listInventoryRows(@Query() query: ListProductCatalogInventoryDto) {
     return this.listInventory.execute({
       warehouseId: query.warehouseId,
+      warehouseIdsIn: query.warehouseIdsIn,
+      warehouseIdsNotIn: query.warehouseIdsNotIn,
       q: query.q,
       isActive: query.isActive === undefined ? undefined : query.isActive === "true",
       skuId: query.skuId,
+      skuIdsIn: query.skuIdsIn,
+      skuIdsNotIn: query.skuIdsNotIn,
       productType: query.productType,
       page: query.page ? Number(query.page) : undefined,
       limit: query.limit ? Number(query.limit) : undefined,

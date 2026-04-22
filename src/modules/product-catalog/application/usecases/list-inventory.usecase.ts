@@ -45,9 +45,13 @@ export class ListProductCatalogInventory {
 
   async execute(params: {
     warehouseId?: string;
+    warehouseIdsIn?: string[];
+    warehouseIdsNotIn?: string[];
     q?: string;
     isActive?: boolean;
     skuId?: string;
+    skuIdsIn?: string[];
+    skuIdsNotIn?: string[];
     productType?: ProductCatalogProductType;
     page?: number;
     limit?: number;
@@ -58,9 +62,13 @@ export class ListProductCatalogInventory {
 
     const { items, total } = await this.inventoryRepo.searchSnapshots({
       warehouseId: params.warehouseId,
+      warehouseIdsIn: params.warehouseIdsIn,
+      warehouseIdsNotIn: params.warehouseIdsNotIn,
       q: params.q,
       isActive: params.isActive,
       skuId: params.skuId,
+      skuIdsIn: params.skuIdsIn,
+      skuIdsNotIn: params.skuIdsNotIn,
       productType: params.productType,
       page: shouldPaginate ? page : undefined,
       limit: shouldPaginate ? limit : undefined,
