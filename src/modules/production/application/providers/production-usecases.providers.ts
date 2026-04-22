@@ -10,7 +10,6 @@ import { CreateProductionOrder } from "../usecases/production-order/create.useca
 import { DeleteProductionOrderSearchMetricUsecase } from "../usecases/production-search/delete-metric.usecase";
 import { GetProductionOrderSearchStateUsecase } from "../usecases/production-search/get-state.usecase";
 import { GetProductionOrder } from "../usecases/production-order/get-record.usecase";
-import { GetProductionOrderFilterOptions } from "../usecases/production-order/get-filter-options.usecase";
 import { ListProductionOrders } from "../usecases/production-order/list-orders.usecase";
 import { PostProductionDocumentsUseCase } from "../usecases/production-order/post-production-documents.usecase";
 import { RemoveProductionOrderItem } from "../usecases/production-order/remove-production-order-item.usecase";
@@ -24,7 +23,6 @@ import { ProductionItemResolverService } from "../services/production-item-resol
 export const productionUsecasesProviders: Provider[] = [
   CreateProductionOrder,
   ListProductionOrders,
-  GetProductionOrderFilterOptions,
   GetProductionOrderSearchStateUsecase,
   SaveProductionOrderSearchMetricUsecase,
   DeleteProductionOrderSearchMetricUsecase,

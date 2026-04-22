@@ -1,6 +1,6 @@
 export interface UpdateProductionWasteItemInput {
+  stockItemId: string;
   wasteQty: number;
-  stockItemId?: string;
   locationId?: string | null;
   itemId?: string;
 }

@@ -4,7 +4,6 @@ import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-con
 import { CreateProductionOrder } from "src/modules/production/application/usecases/production-order/create.usecase";
 import { ListProductionOrders } from "src/modules/production/application/usecases/production-order/list-orders.usecase";
 import { GetProductionOrder } from "src/modules/production/application/usecases/production-order/get-record.usecase";
-import { GetProductionOrderFilterOptions } from "src/modules/production/application/usecases/production-order/get-filter-options.usecase";
 import { UpdateProductionOrder } from "src/modules/production/application/usecases/production-order/update-production-order.usecase";
 import { StartProductionOrder } from "src/modules/production/application/usecases/production-order/start.usecase";
 import { CloseProductionOrder } from "src/modules/production/application/usecases/production-order/close.usecase";
@@ -32,7 +31,6 @@ export class ProductionOrdersController {
   constructor(
     private readonly createOrder: CreateProductionOrder,
     private readonly listOrders: ListProductionOrders,
-    private readonly getFilterOptions: GetProductionOrderFilterOptions,
     private readonly getOrder: GetProductionOrder,
     private readonly updateOrder: UpdateProductionOrder,
     private readonly startOrder: StartProductionOrder,
@@ -65,11 +63,6 @@ export class ProductionOrdersController {
       limit: query.limit,
       requestedBy: user?.id,
     }));
-  }
-
-  @Get("filter-options")
-  filterOptions() {
-    return this.getFilterOptions.execute();
   }
 
   @Get("search-state")
