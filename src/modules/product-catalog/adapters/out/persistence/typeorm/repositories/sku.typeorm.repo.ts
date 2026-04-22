@@ -11,6 +11,7 @@ import { ProductCatalogProductType } from "src/modules/product-catalog/domain/va
 import { ProductCatalogAttributeEntity } from "../entities/attribute.entity";
 import { ProductCatalogSkuAttributeValueEntity } from "../entities/sku-attribute-value.entity";
 import { ProductCatalogSkuEntity } from "../entities/sku.entity";
+import { ProductCatalogStockItemEntity } from "../entities/stock-item.entity";
 
 @Injectable()
 export class ProductCatalogSkuTypeormRepository implements ProductCatalogSkuRepository {
@@ -102,12 +103,24 @@ export class ProductCatalogSkuTypeormRepository implements ProductCatalogSkuRepo
     return map;
   }
 
+  private async loadStockItemIds(skuIds: string[]): Promise<Map<string, string>> {
+    if (!skuIds.length) return new Map();
+
+    const rows = await this.repo.manager.getRepository(ProductCatalogStockItemEntity).find({
+      where: skuIds.map((skuId) => ({ skuId })),
+    });
+
+    return new Map(rows.map((row) => [row.skuId, row.id]));
+  }
+
   private async toOutput(row: ProductCatalogSkuEntity): Promise<ProductCatalogSkuWithAttributes> {
     const map = await this.loadAttributes([row.id]);
+    const stockItemBySkuId = await this.loadStockItemIds([row.id]);
     return {
       sku: this.toDomain(row),
       unit: row.product?.baseUnit,
       attributes: map.get(row.id) ?? [],
+      stockItemId: stockItemBySkuId.get(row.id) ?? null,
     };
   }
 
@@ -304,14 +317,16 @@ export class ProductCatalogSkuTypeormRepository implements ProductCatalogSkuRepo
     }
 
     const [rows, total] = await qb.orderBy("s.createdAt", "DESC").getManyAndCount();
-
-    const attributes = await this.loadAttributes(rows.map((row) => row.id));
+    const skuIds = rows.map((row) => row.id);
+    const attributes = await this.loadAttributes(skuIds);
+    const stockItemBySkuId = await this.loadStockItemIds(skuIds);
 
     return {
       items: rows.map((row) => ({
         sku: this.toDomain(row),
         unit: row.product?.baseUnit,
         attributes: attributes.get(row.id) ?? [],
+        stockItemId: stockItemBySkuId.get(row.id) ?? null,
       })),
       total,
     };
@@ -322,10 +337,13 @@ export class ProductCatalogSkuTypeormRepository implements ProductCatalogSkuRepo
       where: { productId },
       order: { createdAt: "DESC" },
     });
-    const attributes = await this.loadAttributes(rows.map((row) => row.id));
+    const skuIds = rows.map((row) => row.id);
+    const attributes = await this.loadAttributes(skuIds);
+    const stockItemBySkuId = await this.loadStockItemIds(skuIds);
     return rows.map((row) => ({
       sku: this.toDomain(row),
       attributes: attributes.get(row.id) ?? [],
+      stockItemId: stockItemBySkuId.get(row.id) ?? null,
     }));
   }
 

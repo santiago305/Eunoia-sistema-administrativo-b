@@ -12,6 +12,7 @@ export interface ProductCatalogSkuWithAttributes {
   sku: ProductCatalogSku;
   unit?: ProductCatalogUnit;
   attributes: SkuAttributeInput[];
+  stockItemId?: string | null;
 }
 
 export const PRODUCT_CATALOG_SKU_REPOSITORY = Symbol("PRODUCT_CATALOG_SKU_REPOSITORY");
