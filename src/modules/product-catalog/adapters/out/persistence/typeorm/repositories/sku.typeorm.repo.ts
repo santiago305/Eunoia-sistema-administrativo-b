@@ -317,61 +317,6 @@ export class ProductCatalogSkuTypeormRepository implements ProductCatalogSkuRepo
     };
   }
 
-<<<<<<< Updated upstream
-  if (params.productId) {
-    qb.andWhere("s.product_id = :productId", {
-      productId: params.productId,
-    });
-  }
-
-  if (params.isActive !== undefined) {
-    qb.andWhere("s.is_active = :isActive", {
-      isActive: params.isActive,
-    });
-  }
-
-  if (params.q?.trim()) {
-    const q = `%${params.q.trim().toLowerCase()}%`;
-
-    qb.andWhere(
-      `
-      (
-        LOWER(p.name) LIKE :q
-        OR LOWER(COALESCE(p.description, '')) LIKE :q
-        OR LOWER(COALESCE(p.brand, '')) LIKE :q
-        OR LOWER(s.name) LIKE :q
-        OR LOWER(s.backend_sku) LIKE :q
-        OR LOWER(COALESCE(s.custom_sku, '')) LIKE :q
-        OR LOWER(COALESCE(s.barcode, '')) LIKE :q
-      )
-      `,
-      { q },
-    );
-  }
-
-  const page = params.page > 0 ? params.page : 1;
-  const limit = params.limit > 0 ? params.limit : 10;
-
-  const [rows, total] = await qb
-    .orderBy("s.createdAt", "DESC")
-    .skip((page - 1) * limit)
-    .take(limit)
-    .getManyAndCount();
-
-  const attributes = await this.loadAttributes(rows.map((row) => row.id));
-
-  return {
-    items: rows.map((row) => ({
-      sku: this.toDomain(row),
-      unit: row.product.baseUnit,
-      attributes: attributes.get(row.id) ?? [],
-    })),
-    total,
-  };
-}
-
-=======
->>>>>>> Stashed changes
   async findByProductId(productId: string): Promise<ProductCatalogSkuWithAttributes[]> {
     const rows = await this.repo.find({
       where: { productId },
