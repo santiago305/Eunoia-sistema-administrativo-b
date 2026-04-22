@@ -19,17 +19,36 @@ export class ListProductCatalogInventoryDocuments {
     from?: string;
     to?: string;
     warehouseIds?: string[];
+    warehouseIdsIn?: string[];
+    warehouseIdsNotIn?: string[];
     docType?: DocType;
     productType?: ProductCatalogProductType;
     status?: DocStatus;
     q?: string;
+    includeItems?: boolean;
+    createdById?: string;
+    createdByIdsIn?: string[];
+    createdByIdsNotIn?: string[];
   }) {
-    const from = new Date(params.from);
-    const toExclusive = new Date(params.to);
+    const from = params.from ? new Date(params.from) : undefined;
+    const toExclusive = params.to ? new Date(params.to) : undefined;
+
+    if (from && Number.isNaN(from.getTime())) {
+      throw new BadRequestException("Fecha 'from' inválida");
+    }
+    if (toExclusive && Number.isNaN(toExclusive.getTime())) {
+      throw new BadRequestException("Fecha 'to' inválida");
+    }
 
     if (from && toExclusive && from.getTime() >= toExclusive.getTime()) {
       throw new BadRequestException("Rango de fechas invalido");
     }
+
+    const includeItems = params.includeItems ?? false;
+    const warehouseIdsIn = Array.from(new Set([...(params.warehouseIdsIn ?? []), ...(params.warehouseIds ?? [])]));
+    const createdByIdsIn = Array.from(
+      new Set([...(params.createdByIdsIn ?? []), ...(params.createdById ? [params.createdById] : [])]),
+    );
 
     return this.repo.list({
       page: params.page ?? 1,
@@ -39,8 +58,12 @@ export class ListProductCatalogInventoryDocuments {
       docType: params.docType,
       productType: params.productType,
       status: params.status,
-      warehouseIds: params.warehouseIds?.length ? params.warehouseIds : undefined,
+      warehouseIdsIn: warehouseIdsIn.length ? warehouseIdsIn : undefined,
+      warehouseIdsNotIn: params.warehouseIdsNotIn?.length ? params.warehouseIdsNotIn : undefined,
       q: params.q,
+      includeItems,
+      createdByIdsIn: createdByIdsIn.length ? createdByIdsIn : undefined,
+      createdByIdsNotIn: params.createdByIdsNotIn?.length ? params.createdByIdsNotIn : undefined,
     });
   }
 }

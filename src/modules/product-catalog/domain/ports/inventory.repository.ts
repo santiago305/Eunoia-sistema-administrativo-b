@@ -31,9 +31,13 @@ export interface ProductCatalogInventoryRepository {
   }, tx?: TransactionContext): Promise<ProductCatalogInventoryBalance[]>;
   searchSnapshots(input: {
     warehouseId?: string;
+    warehouseIdsIn?: string[];
+    warehouseIdsNotIn?: string[];
     q?: string;
     isActive?: boolean;
     skuId?: string;
+    skuIdsIn?: string[];
+    skuIdsNotIn?: string[];
     productType?: ProductCatalogProductType;
     page?: number;
     limit?: number;

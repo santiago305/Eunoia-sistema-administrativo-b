@@ -1,5 +1,5 @@
 import { Transform, Type } from "class-transformer";
-import { IsArray, IsDateString, IsEnum, IsInt, IsOptional, IsString, IsUUID, Max, Min } from "class-validator";
+import { IsArray, IsBooleanString, IsDateString, IsEnum, IsInt, IsOptional, IsString, IsUUID, Max, Min } from "class-validator";
 import { DocStatus } from "src/shared/domain/value-objects/doc-status";
 import { DocType } from "src/shared/domain/value-objects/doc-type";
 import { ProductCatalogProductType } from "src/modules/product-catalog/domain/value-objects/product-type";
@@ -31,6 +31,18 @@ export class ListProductCatalogInventoryDocumentsDto {
   warehouseId?: string;
 
   @IsOptional()
+  @Transform(({ value }) => toStringArray(value))
+  @IsArray()
+  @IsUUID("4", { each: true })
+  warehouseIdsIn?: string[];
+
+  @IsOptional()
+  @Transform(({ value }) => toStringArray(value))
+  @IsArray()
+  @IsUUID("4", { each: true })
+  warehouseIdsNotIn?: string[];
+
+  @IsOptional()
   @IsEnum(DocType)
   docType?: DocType;
 
@@ -45,6 +57,26 @@ export class ListProductCatalogInventoryDocumentsDto {
   @IsOptional()
   @IsString()
   q?: string;
+
+  @IsOptional()
+  @IsBooleanString()
+  includeItems?: string;
+
+  @IsOptional()
+  @IsUUID("4")
+  createdById?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => toStringArray(value))
+  @IsArray()
+  @IsUUID("4", { each: true })
+  createdByIdsIn?: string[];
+
+  @IsOptional()
+  @Transform(({ value }) => toStringArray(value))
+  @IsArray()
+  @IsUUID("4", { each: true })
+  createdByIdsNotIn?: string[];
 
   @IsOptional()
   @Type(() => Number)

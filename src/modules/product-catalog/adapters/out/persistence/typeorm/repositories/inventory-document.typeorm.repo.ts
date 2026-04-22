@@ -6,7 +6,11 @@ import { DocType } from "src/shared/domain/value-objects/doc-type";
 import { ReferenceType } from "src/shared/domain/value-objects/reference-type";
 import { ProductCatalogInventoryDocumentItem } from "src/modules/product-catalog/domain/entities/inventory-document-item";
 import { ProductCatalogInventoryDocument } from "src/modules/product-catalog/domain/entities/inventory-document";
-import { ProductCatalogInventoryDocumentListItem, ProductCatalogInventoryDocumentRepository } from "src/modules/product-catalog/domain/ports/inventory-document.repository";
+import {
+  ProductCatalogInventoryDocumentListItem,
+  ProductCatalogInventoryDocumentListItemItem,
+  ProductCatalogInventoryDocumentRepository,
+} from "src/modules/product-catalog/domain/ports/inventory-document.repository";
 import { ProductCatalogInventoryDocumentItemEntity } from "../entities/inventory-document-item.entity";
 import { ProductCatalogInventoryDocumentEntity } from "../entities/inventory-document.entity";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
@@ -15,6 +19,12 @@ import { ProductCatalogDocumentSerieEntity } from "../entities/document-serie.en
 import { WarehouseEntity } from "src/modules/warehouses/adapters/out/persistence/typeorm/entities/warehouse";
 import { User as UserEntity } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
 import { ProductCatalogProductType } from "src/modules/product-catalog/domain/value-objects/product-type";
+import { ProductCatalogStockItemEntity } from "../entities/stock-item.entity";
+import { ProductCatalogSkuEntity } from "../entities/sku.entity";
+import { ProductCatalogProductEntity } from "../entities/product.entity";
+import { ProductCatalogUnitEntity } from "../entities/unit.entity";
+import { ProductCatalogSkuAttributeValueEntity } from "../entities/sku-attribute-value.entity";
+import { ProductCatalogAttributeEntity } from "../entities/attribute.entity";
 
 @Injectable()
 export class ProductCatalogInventoryDocumentTypeormRepository implements ProductCatalogInventoryDocumentRepository {
@@ -73,6 +83,35 @@ export class ProductCatalogInventoryDocumentTypeormRepository implements Product
     );
   }
 
+  private async loadSkuAttributes(
+    skuIds: string[],
+    tx?: TransactionContext,
+  ): Promise<Map<string, Array<{ code: string; name: string | null; value: string }>>> {
+    if (!skuIds.length) return new Map();
+
+    const rows = await this.getManager(tx)
+      .getRepository(ProductCatalogSkuAttributeValueEntity)
+      .createQueryBuilder("sav")
+      .innerJoin(ProductCatalogAttributeEntity, "a", "a.attribute_id = sav.attribute_id")
+      .where("sav.sku_id IN (:...skuIds)", { skuIds })
+      .select([
+        "sav.sku_id AS sku_id",
+        "sav.value AS value",
+        "a.code AS code",
+        "a.name AS name",
+      ])
+      .orderBy("a.code", "ASC")
+      .getRawMany<{ sku_id: string; code: string; name: string | null; value: string }>();
+
+    const map = new Map<string, Array<{ code: string; name: string | null; value: string }>>();
+    for (const row of rows) {
+      const list = map.get(row.sku_id) ?? [];
+      list.push({ code: row.code, name: row.name ?? null, value: row.value });
+      map.set(row.sku_id, list);
+    }
+    return map;
+  }
+
   async create(document: ProductCatalogInventoryDocument, tx?: TransactionContext): Promise<ProductCatalogInventoryDocument> {
     const saved = await this.getDocRepo(tx).save({
       docType: document.docType,
@@ -118,7 +157,12 @@ export class ProductCatalogInventoryDocumentTypeormRepository implements Product
       productType?: ProductCatalogProductType;
       status?: DocStatus;
       warehouseIds?: string[];
+      warehouseIdsIn?: string[];
+      warehouseIdsNotIn?: string[];
       q?: string;
+      includeItems?: boolean;
+      createdByIdsIn?: string[];
+      createdByIdsNotIn?: string[];
     },
     tx?: TransactionContext,
   ): Promise<{ items: ProductCatalogInventoryDocumentListItem[]; total: number; page: number; limit: number }> {
@@ -137,9 +181,30 @@ export class ProductCatalogInventoryDocumentTypeormRepository implements Product
     if (params.from) qb.andWhere("d.createdAt >= :from", { from: params.from });
     if (params.toExclusive) qb.andWhere("d.createdAt < :toExclusive", { toExclusive: params.toExclusive });
 
-    if (params.warehouseIds?.length) {
-      qb.andWhere("(d.fromWarehouseId IN (:...warehouseIds) OR d.toWarehouseId IN (:...warehouseIds))", {
-        warehouseIds: params.warehouseIds,
+    const warehouseIdsIn = Array.from(new Set([...(params.warehouseIdsIn ?? []), ...(params.warehouseIds ?? [])]));
+    if (warehouseIdsIn.length) {
+      qb.andWhere("(d.fromWarehouseId IN (:...warehouseIdsIn) OR d.toWarehouseId IN (:...warehouseIdsIn))", {
+        warehouseIdsIn,
+      });
+    }
+
+    if (params.warehouseIdsNotIn?.length) {
+      qb.andWhere(
+        "(" +
+          "(d.fromWarehouseId IS NULL OR d.fromWarehouseId NOT IN (:...warehouseIdsNotIn)) " +
+          "AND (d.toWarehouseId IS NULL OR d.toWarehouseId NOT IN (:...warehouseIdsNotIn))" +
+        ")",
+        { warehouseIdsNotIn: params.warehouseIdsNotIn },
+      );
+    }
+
+    if (params.createdByIdsIn?.length) {
+      qb.andWhere("d.createdBy IN (:...createdByIdsIn)", { createdByIdsIn: params.createdByIdsIn });
+    }
+
+    if (params.createdByIdsNotIn?.length) {
+      qb.andWhere("(d.createdBy IS NULL OR d.createdBy NOT IN (:...createdByIdsNotIn))", {
+        createdByIdsNotIn: params.createdByIdsNotIn,
       });
     }
 
@@ -164,7 +229,9 @@ export class ProductCatalogInventoryDocumentTypeormRepository implements Product
             "OR LOWER(" +
               "COALESCE(s.code, '') || COALESCE(s.separator, '-') || " +
               "LPAD(COALESCE(d.correlative, 0)::text, COALESCE(s.padding, 1), '0')" +
-            ") LIKE :qLike" +
+            ") LIKE :qLike " +
+            "OR LOWER(COALESCE(cu.name, '')) LIKE :qLike " +
+            "OR LOWER(COALESCE(cu.email, '')) LIKE :qLike" +
           ")",
           { qLike },
         );
@@ -232,8 +299,7 @@ export class ProductCatalogInventoryDocumentTypeormRepository implements Product
         createdAt: Date;
       }>();
 
-    return {
-      items: rows.map((row) => ({
+    const documents: ProductCatalogInventoryDocumentListItem[] = rows.map((row) => ({
         id: row.id,
         docType: row.docType,
         productType: row.productType ?? null,
@@ -267,7 +333,99 @@ export class ProductCatalogInventoryDocumentTypeormRepository implements Product
           : null,
         postedAt: row.postedAt ?? null,
         createdAt: row.createdAt,
-      })),
+      }));
+
+    if (params.includeItems) {
+      const docIds = documents.map((d) => d.id);
+      if (docIds.length) {
+        const itemRows = await this.getItemRepo(tx)
+          .createQueryBuilder("i")
+          .leftJoin(ProductCatalogStockItemEntity, "si", "si.id = i.stockItemId")
+          .leftJoin(ProductCatalogSkuEntity, "s", "s.id = si.skuId")
+          .leftJoin(ProductCatalogProductEntity, "p", "p.id = s.productId")
+          .leftJoin(ProductCatalogUnitEntity, "u", "u.id = p.baseUnitId")
+          .where("i.docId IN (:...docIds)", { docIds })
+          .select("i.id", "id")
+          .addSelect("i.docId", "docId")
+          .addSelect("i.quantity", "quantity")
+          .addSelect("i.wasteQty", "wasteQty")
+          .addSelect("i.fromLocationId", "fromLocationId")
+          .addSelect("i.toLocationId", "toLocationId")
+          .addSelect("i.unitCost", "unitCost")
+          .addSelect("s.id", "skuId")
+          .addSelect("s.productId", "productId")
+          .addSelect("s.backendSku", "backendSku")
+          .addSelect("s.customSku", "customSku")
+          .addSelect("s.name", "skuName")
+          .addSelect("u.id", "unitId")
+          .addSelect("u.code", "unitCode")
+          .addSelect("u.name", "unitName")
+          .getRawMany<{
+            id: string;
+            docId: string;
+            quantity: number;
+            wasteQty: number | string | null;
+            fromLocationId: string | null;
+            toLocationId: string | null;
+            unitCost: number | string | null;
+            skuId: string | null;
+            productId: string | null;
+            backendSku: string | null;
+            customSku: string | null;
+            skuName: string | null;
+            unitId: string | null;
+            unitCode: string | null;
+            unitName: string | null;
+          }>();
+
+        const skuIds = Array.from(new Set(itemRows.map((r) => r.skuId).filter((id): id is string => !!id)));
+        const attributesBySkuId = await this.loadSkuAttributes(skuIds, tx);
+
+        const grouped = new Map<string, ProductCatalogInventoryDocumentListItemItem[]>();
+        for (const row of itemRows) {
+          const item: ProductCatalogInventoryDocumentListItemItem = {
+            id: row.id,
+            docId: row.docId,
+            quantity: Number(row.quantity ?? 0),
+            wasteQty: Number(row.wasteQty ?? 0),
+            fromLocationId: row.fromLocationId ?? null,
+            toLocationId: row.toLocationId ?? null,
+            unitCost: row.unitCost !== null && row.unitCost !== undefined ? Number(row.unitCost) : null,
+            sku: row.skuId && row.productId && row.backendSku && row.skuName
+              ? {
+                  id: row.skuId,
+                  productId: row.productId,
+                  backendSku: row.backendSku,
+                  customSku: row.customSku ?? null,
+                  name: row.skuName,
+                }
+              : null,
+            unit: row.unitId && row.unitCode && row.unitName
+              ? {
+                  id: row.unitId,
+                  code: row.unitCode,
+                  name: row.unitName,
+                }
+              : null,
+            attributes: row.skuId ? (attributesBySkuId.get(row.skuId) ?? []) : [],
+          };
+
+          const existing = grouped.get(item.docId);
+          if (existing) existing.push(item);
+          else grouped.set(item.docId, [item]);
+        }
+        for (const doc of documents) {
+          doc.items = grouped.get(doc.id) ?? [];
+        }
+      } else {
+        for (const doc of documents) {
+          doc.items = [];
+        }
+      }
+    }
+
+    return {
+      items: documents,
       total,
       page,
       limit,
