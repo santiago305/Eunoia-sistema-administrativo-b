@@ -85,45 +85,5 @@ export const seedUser = async (dataSource: DataSource) => {
     await userRepo.save(user);
     console.log(`A Usuario ${name} creado exitosamente`);
   }
-
-
-    // Generacion masiva desactivada temporalmente:
-    // este bloque crea usuarios aleatorios hasta completar 10,000.
-
-  const TARGET_TOTAL_USERS = 10000;
-  const existingCount = await userRepo.count();
-  const usersToGenerate = Math.max(0, TARGET_TOTAL_USERS - existingCount);
-
-  if (usersToGenerate === 0) {
-    console.log(`A Ya existen ${existingCount} usuarios. No se generan usuarios aleatorios.`);
-    return;
-  }
-
-  const randomPasswordHash = await argon2.hash('123123123', { type: argon2.argon2id });
-  const firstNames = ['Luis', 'Ana', 'Carlos', 'Maria', 'Jose', 'Lucia', 'Pedro', 'Sofia', 'Diego', 'Camila'];
-  const lastNames = ['Garcia', 'Perez', 'Ramirez', 'Torres', 'Flores', 'Vega', 'Lopez', 'Diaz', 'Ruiz', 'Castro'];
-  const now = Date.now();
-  const generated: User[] = [];
-
-  for (let i = 0; i < usersToGenerate; i++) {
-    const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
-    const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
-    const randomNumber = Math.floor(Math.random() * 9000) + 1000;
-    const role = Math.random() < 0.85 ? adviserRole : moderatorRole;
-
-    generated.push(
-      userRepo.create({
-        name: `${firstName} ${lastName} ${randomNumber}`,
-        email: `seed.user.${now}.${i}@example.com`,
-        password: randomPasswordHash,
-        role,
-        avatarUrl: '',
-        telefono: `9${Math.floor(10000000 + Math.random() * 90000000)}`,
-      }),
-    );
-  }
-
-  await userRepo.save(generated, { chunk: 500 });
-  console.log(`A Se crearon ${generated.length} usuarios aleatorios.`);
 };
 
