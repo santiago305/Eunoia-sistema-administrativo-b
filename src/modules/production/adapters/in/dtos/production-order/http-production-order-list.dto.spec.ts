@@ -27,4 +27,20 @@ describe("HttpListProductionOrdersQueryDto", () => {
       },
     ]);
   });
+
+  it("rejects legacy smart-search fields that are no longer part of backend contract", () => {
+    const dto = plainToInstance(HttpListProductionOrdersQueryDto, {
+      filters: JSON.stringify([
+        {
+          field: "productId",
+          operator: "in",
+          values: ["product-1"],
+        },
+      ]),
+    });
+
+    const errors = validateSync(dto);
+
+    expect(errors).not.toHaveLength(0);
+  });
 });

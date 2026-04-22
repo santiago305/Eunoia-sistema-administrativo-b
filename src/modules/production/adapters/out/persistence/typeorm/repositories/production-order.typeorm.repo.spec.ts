@@ -145,4 +145,60 @@ describe("ProductionOrderTypeormRepository", () => {
     expect(qb.getCount).toHaveBeenCalled();
     expect(qb.getMany).toHaveBeenCalled();
   });
+
+  it("applies explicit smart-search filters for from/to warehouse, status, number and sku", async () => {
+    const qb = createQueryBuilder([makeRow()]);
+    const { repo } = makeRepository(qb);
+
+    await repo.list({
+      filters: [
+        { field: "fromWarehouseId", operator: "in", values: ["wh-1"] },
+        { field: "toWarehouseId", operator: "in", values: ["wh-2"] },
+        { field: "status", operator: "in", values: ["DRAFT"] },
+        { field: "number", operator: "contains", value: "OP-12" },
+        { field: "skuId", operator: "in", values: ["sku-1"] },
+      ],
+      page: 1,
+      limit: 10,
+    });
+
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      '"p"."from_warehouse_id" IN (:...filter_0_values)',
+      { filter_0_values: ["wh-1"] },
+    );
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      '"p"."to_warehouse_id" IN (:...filter_1_values)',
+      { filter_1_values: ["wh-2"] },
+    );
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      '"p"."status" IN (:...filter_2_values)',
+      { filter_2_values: ["DRAFT"] },
+    );
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      `concat(coalesce("s"."code", ''), coalesce("s"."separator", '-'), coalesce("p"."correlative"::text, '')) ILIKE :filter_4_value`,
+      { filter_4_value: "%OP-12%" },
+    );
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      '"si"."sku_id" IN (:...filter_3_values)',
+      { filter_3_values: ["sku-1"] },
+    );
+  });
+
+  it("applies manufactureDate filters using DATE() semantics", async () => {
+    const qb = createQueryBuilder([makeRow()]);
+    const { repo } = makeRepository(qb);
+
+    await repo.list({
+      filters: [
+        { field: "manufactureDate", operator: "on", value: "2026-04-10" },
+      ],
+      page: 1,
+      limit: 10,
+    });
+
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      'DATE("p"."manufacture_date") = :filter_0_value',
+      { filter_0_value: "2026-04-10" },
+    );
+  });
 });
