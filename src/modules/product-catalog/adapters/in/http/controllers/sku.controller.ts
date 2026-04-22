@@ -10,6 +10,10 @@ import { ListProductCatalogSkusDto } from "../dtos/list-skus.dto";
 import { UpdateProductCatalogSkuDto } from "../dtos/update-sku.dto";
 import { GetSnapshotInventory } from "src/modules/product-catalog/application/usecases/get-snapshot.usecase";
 import { GetSkuStockSnapshotDto, getStockDto } from "../dtos/get-stock.dto";
+import { ListProductCatalogInventorySnapshotsBySku } from "src/modules/product-catalog/application/usecases/list-snapshots.usecase";
+import { ListSkuStockSnapshotsDto } from "../dtos/list-sku-stock-snapshots.dto";
+import { ListSkuStockSnapshotsSearchDto } from "../dtos/list-sku-stock-snapshots-search.dto";
+import { ListAvailableStockUsecase } from "src/modules/product-catalog/application/usecases/list-available-stock";
 
 @Controller()
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
@@ -20,6 +24,8 @@ export class ProductCatalogSkuController {
     private readonly listSkus: ListProductCatalogSkus,
     private readonly getSku: GetProductCatalogSku,
     private readonly getStock: GetSnapshotInventory,
+    private readonly listSnapshots: ListProductCatalogInventorySnapshotsBySku,
+    private readonly listAvailable: ListAvailableStockUsecase,
   ) {}
 
   @Post("products/:id/skus")
@@ -65,6 +71,25 @@ export class ProductCatalogSkuController {
       skuId,
       warehouseId: query.warehouseId,
       locationId: query.locationId,
+    });
+  }
+
+  @Get("skus/:id/stock/snapshots")
+  listSkuStockSnapshots(@Param("id", ParseUUIDPipe) skuId: string, @Query() query: ListSkuStockSnapshotsDto) {
+    return this.listSnapshots.execute({
+      skuId,
+      warehouseId: query.warehouseId,
+    });
+  }
+
+  @Get("available-stock/skus")
+  listSkuStockSnapshotsSearch(@Query() query: ListSkuStockSnapshotsSearchDto) {
+    return this.listAvailable.execute({
+      warehouseId: query.warehouseId,
+      q: query.q,
+      isActive: query.isActive === undefined ? undefined : query.isActive === "true",
+      skuId: query.skuId,
+      productType: query.productType,
     });
   }
   @Get("skus/:id")

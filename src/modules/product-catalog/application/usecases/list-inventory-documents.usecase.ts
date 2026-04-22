@@ -6,31 +6,6 @@ import {
   PRODUCT_CATALOG_INVENTORY_DOCUMENT_REPOSITORY,
   ProductCatalogInventoryDocumentRepository,
 } from "../../domain/ports/inventory-document.repository";
-
-const isDateOnly = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
-
-const parseFrom = (value?: string): Date | undefined => {
-  if (!value) return undefined;
-  const date = isDateOnly(value) ? new Date(`${value}T00:00:00`) : new Date(value);
-  return Number.isNaN(date.getTime()) ? undefined : date;
-};
-
-const parseToExclusive = (value?: string): Date | undefined => {
-  if (!value) return undefined;
-
-  if (isDateOnly(value)) {
-    const start = new Date(`${value}T00:00:00`);
-    if (Number.isNaN(start.getTime())) return undefined;
-    const next = new Date(start);
-    next.setDate(next.getDate() + 1);
-    return next;
-  }
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return undefined;
-  return new Date(date.getTime() + 1);
-};
-
 @Injectable()
 export class ListProductCatalogInventoryDocuments {
   constructor(
@@ -49,8 +24,8 @@ export class ListProductCatalogInventoryDocuments {
     status?: DocStatus;
     q?: string;
   }) {
-    const from = parseFrom(params.from);
-    const toExclusive = parseToExclusive(params.to);
+    const from = new Date(params.from);
+    const toExclusive = new Date(params.to);
 
     if (from && toExclusive && from.getTime() >= toExclusive.getTime()) {
       throw new BadRequestException("Rango de fechas invalido");

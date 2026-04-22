@@ -81,6 +81,8 @@ export class RegisterProductCatalogInventoryMovement {
     locationId?: string | null;
     note?: string | null;
     createdBy?: string | null;
+    createdAt?: string | null;
+    postedAt?: Date | null;
     referenceId?: string | null;
     referenceType?: ReferenceType | null;
     },
@@ -108,6 +110,8 @@ export class RegisterProductCatalogInventoryMovement {
       locationId?: string | null;
       note?: string | null;
       createdBy?: string | null;
+      createdAt?: string | null;
+      postedAt?: Date | null;
       referenceId?: string | null;
       referenceType?: ReferenceType | null;
     },
@@ -182,8 +186,8 @@ export class RegisterProductCatalogInventoryMovement {
           input.referenceType ?? null,
           input.note ?? null,
           input.createdBy ?? null,
-          null,
-          null,
+          input.createdAt ?? null,
+          input.postedAt ?? null,
         ),
         tx,
       );

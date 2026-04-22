@@ -53,6 +53,7 @@ import { UbigeoDepartmentEntity } from './src/modules/ubigeo/adapters/out/persis
 import { UbigeoProvinceEntity } from './src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-province.entity';
 import { UbigeoDistrictEntity } from './src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-district.entity';
 import { seedUbigeo } from './src/modules/ubigeo/infrastructure/seed/ubigeo.seeder';
+import { seedInventoryDocuments } from 'src/modules/product-catalog/infrastructure/seed/document-inventory.seeder';
 
 const entities = [
   Role,
@@ -127,6 +128,16 @@ dataSource
     for (const wh of warehouses) {
       await seedDocumentSeries(dataSource, wh.id);
     }
+
+
+    await seedInventoryDocuments(dataSource, warehouses, {
+    totalDocs: 3000,
+    minItemsPerDoc: 5,
+    maxItemsPerDoc: 8,
+    monthsBack: 4,
+    createdBy: null,
+    allowNegativeStock: true,
+  });
 
     await seedPaymentMethods(dataSource);
     await seedSuppliers(dataSource, 10);

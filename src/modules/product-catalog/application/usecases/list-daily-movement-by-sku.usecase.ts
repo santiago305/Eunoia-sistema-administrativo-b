@@ -9,9 +9,12 @@ import {
   ProductCatalogStockItemRepository,
 } from "../../domain/ports/stock-item.repository";
 import { TransactionContext } from "src/shared/domain/ports/transaction-context.port";
+import { Direction } from "src/shared/domain/value-objects/direction";
+
+type DailyMovementTotal = { day: string; entrada: number; salida: number; balance: number };
 
 @Injectable()
-export class ListProductCatalogInventoryLedger {
+export class ListDailyMovementBySku {
   constructor(
     @Inject(UNIT_OF_WORK)
     private readonly uow: UnitOfWork,
@@ -47,6 +50,10 @@ export class ListProductCatalogInventoryLedger {
     const from = new Date(input.from);
     const toExclusive = new Date(input.to);
 
+    if (!from || !toExclusive) {
+      throw new BadRequestException("from y to requeridos");
+    }
+
     let stockItemId = input.stockItemId;
     if (!stockItemId) {
       if (!input.skuId) throw new BadRequestException("skuId requerido");
@@ -56,7 +63,8 @@ export class ListProductCatalogInventoryLedger {
       }
       stockItemId = stockItem.id;
     }
-    return this.repo.list(
+
+    const rows = await this.repo.list(
       {
         stockItemId,
         warehouseId: input.warehouseId,
@@ -65,5 +73,19 @@ export class ListProductCatalogInventoryLedger {
       },
       tx,
     );
+
+    const totalsByDay = new Map<string, DailyMovementTotal>();
+    for (const row of rows) {
+      const dayKey = new Date(row.createdAt).toISOString();
+      const current = totalsByDay.get(dayKey) ?? { day: dayKey, entrada: 0, salida: 0, balance: 0 };
+
+      if (row.direction === Direction.IN) current.entrada += row.quantity ?? 0;
+      if (row.direction === Direction.OUT) current.salida += row.quantity ?? 0;
+      current.balance = current.entrada - current.salida;
+
+      totalsByDay.set(dayKey, current);
+    }
+
+    return Array.from(totalsByDay.values()).sort((a, b) => a.day.localeCompare(b.day));
   }
 }
