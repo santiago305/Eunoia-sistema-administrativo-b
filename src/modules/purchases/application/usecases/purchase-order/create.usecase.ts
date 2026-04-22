@@ -37,7 +37,7 @@ export class CreatePurchaseOrderUsecase {
 
   ) {}
 
-  async execute(input: CreatePurchaseOrderInput, createdBy: string): Promise<{ order: PurchaseOrder, type:string }> {
+  async execute(input: CreatePurchaseOrderInput, createdBy: string): Promise<{ order: PurchaseOrder }> {
     return this.uow.runInTransaction(async (tx) => {
       const currency = input.currency ?? "PEN";
 
@@ -210,7 +210,7 @@ export class CreatePurchaseOrderUsecase {
         }
       }
 
-      return { order: po, type:"success" };
+      return { order: po };
     });
   }
 }

@@ -31,15 +31,7 @@ export class ListPurchaseOrdersUsecase {
     });
 
     const { items, total } = await this.purchaseRepo.list({
-<<<<<<< Updated upstream
       filters: input.filters,
-=======
-      statuses: input.statuses,
-      supplierIds: input.supplierIds,
-      warehouseIds: input.warehouseIds,
-      documentTypes: input.documentTypes,
-      number: input.number,
->>>>>>> Stashed changes
       q: input.q,
       from: input.from ? ParseDateLocal(input.from, "start") : undefined,
       to: input.to ? ParseDateLocal(input.to, "end") : undefined,
