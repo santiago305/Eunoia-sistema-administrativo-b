@@ -24,12 +24,14 @@ export interface ProductCatalogSkuRepository {
   ): Promise<ProductCatalogSkuWithAttributes | null>;
   findById(id: string): Promise<ProductCatalogSkuWithAttributes | null>;
   list(params: {
-    page: number;
-    limit: number;
+    page?: number;
+    limit?: number;
     q?: string;
     isActive?: boolean;
+    skuId?: string;
     productId?: string;
     productType?: ProductCatalogProductType;
+    warehouseId?: string;
   }): Promise<{ items: ProductCatalogSkuWithAttributes[]; total: number }>;
   findByProductId(productId: string): Promise<ProductCatalogSkuWithAttributes[]>;
   reserveNextBackendSku(): Promise<string>;

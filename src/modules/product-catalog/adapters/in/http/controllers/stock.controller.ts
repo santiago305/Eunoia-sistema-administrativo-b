@@ -11,11 +11,16 @@ import { RegisterProductCatalogInventoryMovementDto } from "../dtos/register-inv
 import { UpsertProductCatalogInventoryBalanceDto } from "../dtos/upsert-inventory-balance.dto";
 import { RegisterProductCatalogInventoryMovement } from "src/modules/product-catalog/application/usecases/register-inventory-movement.usecase";
 import { ListProductCatalogInventoryLedger } from "src/modules/product-catalog/application/usecases/list-inventory-ledger.usecase";
+import { ListDailyMovementBySku } from "src/modules/product-catalog/application/usecases/list-daily-movement-by-sku.usecase";
 import { User as CurrentUser } from "src/shared/utilidades/decorators/user.decorator";
 import { ListProductCatalogInventoryDocuments } from "src/modules/product-catalog/application/usecases/list-inventory-documents.usecase";
 import { ListProductCatalogInventoryDocumentsDto } from "../dtos/list-inventory-documents.dto";
 import { TransferProductCatalogInventoryBetweenWarehouses } from "src/modules/product-catalog/application/usecases/transfer-between-warehouses.usecase";
 import { TransferBetweenWarehousesDto } from "../dtos/transfer-between-warehouses.dto";
+import { ListProductCatalogInventoryLedgerDto } from "../dtos/list-inventory-ledger.dto";
+import { ListDailyMovementBySkuDto } from "../dtos/list-daily-movement-by-sku.dto";
+import { ListProductCatalogInventory } from "src/modules/product-catalog/application/usecases/list-inventory.usecase";
+import { ListProductCatalogInventoryDto } from "../dtos/list-inventory.dto";
 
 @Controller()
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
@@ -29,7 +34,9 @@ export class ProductCatalogStockController {
     private readonly registerMovement: RegisterProductCatalogInventoryMovement,
     private readonly transferBetweenWarehouses: TransferProductCatalogInventoryBetweenWarehouses,
     private readonly listLedger: ListProductCatalogInventoryLedger,
+    private readonly listDailyMovementBySku: ListDailyMovementBySku,
     private readonly listDocuments: ListProductCatalogInventoryDocuments,
+    private readonly listInventory: ListProductCatalogInventory,
   ) {}
 
   @Post("skus/:id/stock-item")
@@ -72,11 +79,22 @@ export class ProductCatalogStockController {
   ) {
     return this.transferBetweenWarehouses.execute({ ...dto, createdBy: user.id });
   }
+  
+  @Get("stock-items/ledger/by-sku")
+  ledgerBySku(@Query() query: ListProductCatalogInventoryLedgerDto) {
+    return this.listLedger.execute(query);
+  }
+
+  @Get("stock-items/ledger/daily-totals/by-sku")
+  dailyTotalsBySku(@Query() query: ListDailyMovementBySkuDto) {
+    return this.listDailyMovementBySku.execute(query);
+  }
 
   @Get("stock-items/:id/ledger")
-  ledger(@Param("id", ParseUUIDPipe) stockItemId: string) {
-    return this.listLedger.execute(stockItemId);
+  ledger(@Param("id", ParseUUIDPipe) stockItemId: string, @Query() query: ListProductCatalogInventoryLedgerDto) {
+    return this.listLedger.execute({ stockItemId, ...query });
   }
+
 
   @Get("inventory-documents")
   listInventoryDocuments(@Query() query: ListProductCatalogInventoryDocumentsDto) {
@@ -92,5 +110,17 @@ export class ProductCatalogStockController {
       q: query.q,
     });
   }
-}
 
+  @Get("inventory")
+  listInventoryRows(@Query() query: ListProductCatalogInventoryDto) {
+    return this.listInventory.execute({
+      warehouseId: query.warehouseId,
+      q: query.q,
+      isActive: query.isActive === undefined ? undefined : query.isActive === "true",
+      skuId: query.skuId,
+      productType: query.productType,
+      page: query.page ? Number(query.page) : undefined,
+      limit: query.limit ? Number(query.limit) : undefined,
+    });
+  }
+}

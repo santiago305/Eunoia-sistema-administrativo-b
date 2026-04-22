@@ -2,11 +2,14 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, Repository } from "typeorm";
 import { ProductCatalogInventoryBalance } from "src/modules/product-catalog/domain/entities/inventory-balance";
-import { ProductCatalogInventoryRepository } from "src/modules/product-catalog/domain/ports/inventory.repository";
+import { ProductCatalogInventoryRepository, ProductCatalogInventorySnapshotSearchRow } from "src/modules/product-catalog/domain/ports/inventory.repository";
 import { ProductCatalogInventoryEntity } from "../entities/inventory.entity";
 import { ProductCatalogStockItemEntity } from "../entities/stock-item.entity";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { TypeormTransactionContext } from "src/shared/infrastructure/typeorm/typeorm.transaction-context";
+import { ProductCatalogSkuEntity } from "../entities/sku.entity";
+import { ProductCatalogProductEntity } from "../entities/product.entity";
+import { ProductCatalogProductType } from "src/modules/product-catalog/domain/value-objects/product-type";
 
 @Injectable()
 export class ProductCatalogInventoryTypeormRepository implements ProductCatalogInventoryRepository {
@@ -101,6 +104,167 @@ export class ProductCatalogInventoryTypeormRepository implements ProductCatalogI
           row.updated_at,
         ),
     );
+  }
+  async list(input?: {
+    warehouseId?: string;
+    stockItemId?: string;
+    locationId?: string | null;
+  }, tx?: TransactionContext): Promise<ProductCatalogInventoryBalance[]> {
+    const qb = this.getRepo(tx).createQueryBuilder("i");
+
+    if (input?.warehouseId) {
+      const warehouseQuery = input.warehouseId.trim();
+      const isUuid =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(warehouseQuery);
+
+      qb.innerJoin("warehouses", "w", "w.id = i.warehouse_id");
+      if (isUuid) {
+        qb.andWhere("w.id = :warehouseId", { warehouseId: warehouseQuery });
+      } else {
+        qb.andWhere("LOWER(w.name) LIKE :warehouseName", {
+          warehouseName: `%${warehouseQuery.toLowerCase()}%`,
+        });
+      }
+    }
+
+    if (input?.stockItemId) {
+      qb.andWhere("i.stock_item_id = :stockItemId", { stockItemId: input.stockItemId });
+    }
+
+    if (input?.locationId !== undefined) {
+      if (input.locationId === null) {
+        qb.andWhere("i.location_id IS NULL");
+      } else {
+        qb.andWhere("i.location_id = :locationId", { locationId: input.locationId });
+      }
+    }
+
+    const rows = await qb.orderBy("i.updated_at", "DESC").getMany();
+    return rows.map((row) => this.toDomain(row));
+  }
+
+  async searchSnapshots(
+    input: {
+      warehouseId?: string;
+      q?: string;
+      isActive?: boolean;
+      skuId?: string;
+      productType?: ProductCatalogProductType;
+      page?: number;
+      limit?: number;
+    },
+    tx?: TransactionContext,
+  ): Promise<{ items: ProductCatalogInventorySnapshotSearchRow[]; total: number }> {
+    const shouldPaginate = input.page !== undefined || input.limit !== undefined;
+    const page = input.page && input.page > 0 ? input.page : 1;
+    const limit = input.limit && input.limit > 0 ? input.limit : 10;
+
+    const baseQb = this.getRepo(tx)
+      .createQueryBuilder("i")
+      .innerJoin(ProductCatalogStockItemEntity, "si", "si.stock_item_id = i.stock_item_id")
+      .innerJoin(ProductCatalogSkuEntity, "s", "s.sku_id = si.sku_id")
+      .innerJoin(ProductCatalogProductEntity, "p", "p.product_id = s.product_id")
+      .innerJoin("warehouses", "w", "w.id = i.warehouse_id");
+
+    if (input.skuId) {
+      baseQb.andWhere("s.sku_id = :skuId", { skuId: input.skuId });
+    }
+
+    if (input.productType) {
+      baseQb.andWhere("p.type = :productType", { productType: input.productType });
+    }
+
+    if (input.isActive !== undefined) {
+      baseQb.andWhere("s.is_active = :isActive", { isActive: input.isActive });
+    }
+
+    if (input.warehouseId?.trim()) {
+      const warehouseQuery = input.warehouseId.trim();
+      const isUuid =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(warehouseQuery);
+
+      if (isUuid) {
+        baseQb.andWhere("w.id = :warehouseId", { warehouseId: warehouseQuery });
+      } else {
+        baseQb.andWhere("LOWER(w.name) LIKE :warehouseName", {
+          warehouseName: `%${warehouseQuery.toLowerCase()}%`,
+        });
+      }
+    }
+
+    if (input.q?.trim()) {
+      const q = `%${input.q.trim().toLowerCase()}%`;
+      baseQb.andWhere(
+        `(
+          LOWER(s.name) LIKE :q
+          OR LOWER(s.backend_sku) LIKE :q
+          OR LOWER(COALESCE(s.custom_sku, '')) LIKE :q
+          OR LOWER(COALESCE(s.barcode, '')) LIKE :q
+          OR LOWER(w.name) LIKE :q
+          OR EXISTS (
+            SELECT 1
+            FROM pc_sku_attribute_values sav
+            INNER JOIN pc_attributes a ON a.attribute_id = sav.attribute_id
+            WHERE sav.sku_id = s.sku_id
+              AND (
+                LOWER(a.code) LIKE :q
+                OR LOWER(COALESCE(a.name, '')) LIKE :q
+                OR LOWER(sav.value) LIKE :q
+              )
+          )
+        )`,
+        { q },
+      );
+    }
+
+    const countQb = baseQb.clone();
+    const total = await countQb.getCount();
+
+    const dataQb = baseQb
+      .select("i.warehouse_id", "warehouseId")
+      .addSelect("w.name", "warehouseName")
+      .addSelect("i.stock_item_id", "stockItemId")
+      .addSelect("si.sku_id", "skuId")
+      .addSelect("i.location_id", "locationId")
+      .addSelect("i.on_hand", "onHand")
+      .addSelect("i.reserved", "reserved")
+      .addSelect("i.available", "available")
+      .addSelect("i.updated_at", "updatedAt")
+      .orderBy("i.updated_at", "DESC");
+
+    if (shouldPaginate) {
+      dataQb.skip((page - 1) * limit).take(limit);
+    }
+
+    const rows = await dataQb.getRawMany<{
+      warehouseId: string;
+      warehouseName: string;
+      stockItemId: string;
+      skuId: string;
+      locationId: string | null;
+      onHand: number | string;
+      reserved: number | string;
+      available: number | string | null;
+      updatedAt: Date;
+    }>();
+
+    return {
+      items: rows.map((row) => ({
+        warehouseId: row.warehouseId,
+        warehouseName: row.warehouseName,
+        stockItemId: row.stockItemId,
+        skuId: row.skuId,
+        locationId: row.locationId ?? null,
+        onHand: Number(row.onHand ?? 0),
+        reserved: Number(row.reserved ?? 0),
+        available:
+          row.available !== null && row.available !== undefined
+            ? Number(row.available)
+            : Number(row.onHand ?? 0) - Number(row.reserved ?? 0),
+        updatedAt: row.updatedAt,
+      })),
+      total,
+    };
   }
 
   async upsert(input: ProductCatalogInventoryBalance, tx?: TransactionContext): Promise<ProductCatalogInventoryBalance> {

@@ -22,13 +22,17 @@ import { UpsertProductCatalogInventoryBalance } from "../usecases/upsert-invento
 import { ListProductCatalogInventoryBySku } from "../usecases/list-inventory-by-sku.usecase";
 import { RegisterProductCatalogInventoryMovement } from "../usecases/register-inventory-movement.usecase";
 import { ListProductCatalogInventoryLedger } from "../usecases/list-inventory-ledger.usecase";
+import { ListDailyMovementBySku } from "../usecases/list-daily-movement-by-sku.usecase";
 import { ListProductCatalogInventoryDocuments } from "../usecases/list-inventory-documents.usecase";
+import { ListProductCatalogInventorySnapshotsBySku } from "../usecases/list-snapshots.usecase";
+import { ListAvailableStockUsecase } from "../usecases/list-available-stock";
 import { ReserveProductCatalogMaterials } from "../usecases/reserve-materials.usecase";
 import { TransferProductCatalogInventoryBetweenWarehouses } from "../usecases/transfer-between-warehouses.usecase";
 import { CreateProductCatalogUnit } from "../usecases/create-unit.usecase";
 import { GetProductCatalogUnit } from "../usecases/get-unit.usecase";
 import { GetProductCatalogUnitByCode } from "../usecases/get-unit-by-code.usecase";
 import { ListProductCatalogUnits } from "../usecases/list-units.usecase";
+import { ListProductCatalogInventory } from "../usecases/list-inventory.usecase";
 import { CreateProductCatalogEquivalence } from "../usecases/create-equivalence.usecase";
 import { DeleteProductCatalogEquivalence } from "../usecases/delete-equivalence.usecase";
 import { GetProductCatalogEquivalence } from "../usecases/get-equivalence.usecase";
@@ -58,7 +62,11 @@ export const productCatalogUsecasesProviders: Provider[] = [
   GetSnapshotInventory,
   RegisterProductCatalogInventoryMovement,
   ListProductCatalogInventoryLedger,
+  ListDailyMovementBySku,
   ListProductCatalogInventoryDocuments,
+  ListProductCatalogInventory,
+  ListProductCatalogInventorySnapshotsBySku,
+  ListAvailableStockUsecase,
   ReserveProductCatalogMaterials,
   TransferProductCatalogInventoryBetweenWarehouses,
   CreateProductCatalogUnit,

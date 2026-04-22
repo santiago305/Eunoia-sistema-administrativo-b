@@ -106,6 +106,7 @@ export class ProductCatalogSkuTypeormRepository implements ProductCatalogSkuRepo
     const map = await this.loadAttributes([row.id]);
     return {
       sku: this.toDomain(row),
+      unit: row.product?.baseUnit,
       attributes: map.get(row.id) ?? [],
     };
   }
@@ -190,80 +191,131 @@ export class ProductCatalogSkuTypeormRepository implements ProductCatalogSkuRepo
   }
 
   async findById(id: string): Promise<ProductCatalogSkuWithAttributes | null> {
-    const row = await this.repo.findOne({ where: { id } });
+    const row = await this.repo
+      .createQueryBuilder("s")
+      .leftJoinAndSelect("s.product", "p")
+      .leftJoinAndSelect("p.baseUnit", "bu")
+      .where("s.id = :id", { id })
+      .getOne();
     return row ? this.toOutput(row) : null;
   }
 
   async list(params: {
-  page: number;
-  limit: number;
-  q?: string;
-  isActive?: boolean;
-  productId?: string;
-  productType?: ProductCatalogProductType;
-}): Promise<{ items: ProductCatalogSkuWithAttributes[]; total: number }> {
-  const qb = this.repo
-    .createQueryBuilder("s")
-    .leftJoinAndSelect("s.product", "p")
-    .leftJoinAndSelect("p.baseUnit", "bu");
+    page?: number;
+    limit?: number;
+    q?: string;
+    isActive?: boolean;
+    skuId?: string;
+    productId?: string;
+    productType?: ProductCatalogProductType;
+    warehouseId?: string;
+  }): Promise<{ items: ProductCatalogSkuWithAttributes[]; total: number }> {
+    const qb = this.repo
+      .createQueryBuilder("s")
+      .leftJoinAndSelect("s.product", "p")
+      .leftJoinAndSelect("p.baseUnit", "bu");
 
-  if (params.productType) {
-    qb.andWhere("p.type = :productType", {
-      productType: params.productType,
-    });
+    if (params.productType) {
+      qb.andWhere("p.type = :productType", {
+        productType: params.productType,
+      });
+    }
+
+    if (params.skuId) {
+      qb.andWhere("s.sku_id = :skuId", { skuId: params.skuId });
+    }
+
+    if (params.productId) {
+      qb.andWhere("s.product_id = :productId", {
+        productId: params.productId,
+      });
+    }
+
+    if (params.isActive !== undefined) {
+      qb.andWhere("s.is_active = :isActive", {
+        isActive: params.isActive,
+      });
+    }
+
+    if (params.warehouseId) {
+      const warehouseQuery = params.warehouseId.trim();
+      const isUuid =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(warehouseQuery);
+
+      if (isUuid) {
+        qb.andWhere(
+          `EXISTS (
+            SELECT 1
+            FROM pc_stock_items si
+            INNER JOIN pc_inventory i ON i.stock_item_id = si.stock_item_id
+            INNER JOIN warehouses w ON w.id = i.warehouse_id
+            WHERE si.sku_id = s.sku_id
+              AND w.id = :warehouseId
+          )`,
+          { warehouseId: warehouseQuery },
+        );
+      } else {
+        const warehouseName = warehouseQuery.toLowerCase();
+        qb.andWhere(
+          `EXISTS (
+            SELECT 1
+            FROM pc_stock_items si
+            INNER JOIN pc_inventory i ON i.stock_item_id = si.stock_item_id
+            INNER JOIN warehouses w ON w.id = i.warehouse_id
+            WHERE si.sku_id = s.sku_id
+              AND LOWER(w.name) LIKE :warehouseName
+          )`,
+          { warehouseName: `%${warehouseName}%` },
+        );
+      }
+    }
+
+    if (params.q?.trim()) {
+      const q = `%${params.q.trim().toLowerCase()}%`;
+
+      qb.andWhere(
+        `(
+          LOWER(s.name) LIKE :q
+          OR LOWER(s.backend_sku) LIKE :q
+          OR LOWER(COALESCE(s.custom_sku, '')) LIKE :q
+          OR LOWER(COALESCE(s.barcode, '')) LIKE :q
+          OR EXISTS (
+            SELECT 1
+            FROM pc_sku_attribute_values sav
+            INNER JOIN pc_attributes a ON a.attribute_id = sav.attribute_id
+            WHERE sav.sku_id = s.sku_id
+              AND (
+                LOWER(a.code) LIKE :q
+                OR LOWER(COALESCE(a.name, '')) LIKE :q
+                OR LOWER(sav.value) LIKE :q
+              )
+          )
+        )`,
+        { q },
+      );
+    }
+
+    const shouldPaginate = params.page !== undefined || params.limit !== undefined;
+    const page = params.page && params.page > 0 ? params.page : 1;
+    const limit = params.limit && params.limit > 0 ? params.limit : 10;
+
+    if (shouldPaginate) {
+      qb.skip((page - 1) * limit).take(limit);
+    }
+
+    const [rows, total] = await qb.orderBy("s.createdAt", "DESC").getManyAndCount();
+
+    const attributes = await this.loadAttributes(rows.map((row) => row.id));
+
+    return {
+      items: rows.map((row) => ({
+        sku: this.toDomain(row),
+        unit: row.product?.baseUnit,
+        attributes: attributes.get(row.id) ?? [],
+      })),
+      total,
+    };
   }
-
-  if (params.productId) {
-    qb.andWhere("s.product_id = :productId", {
-      productId: params.productId,
-    });
-  }
-
-  if (params.isActive !== undefined) {
-    qb.andWhere("s.is_active = :isActive", {
-      isActive: params.isActive,
-    });
-  }
-
-  if (params.q?.trim()) {
-    const q = `%${params.q.trim().toLowerCase()}%`;
-
-    qb.andWhere(
-      `
-      (
-        LOWER(p.name) LIKE :q
-        OR LOWER(COALESCE(p.description, '')) LIKE :q
-        OR LOWER(COALESCE(p.brand, '')) LIKE :q
-        OR LOWER(s.name) LIKE :q
-        OR LOWER(s.backend_sku) LIKE :q
-        OR LOWER(COALESCE(s.custom_sku, '')) LIKE :q
-        OR LOWER(COALESCE(s.barcode, '')) LIKE :q
-      )
-      `,
-      { q },
-    );
-  }
-
-  const page = params.page > 0 ? params.page : 1;
-  const limit = params.limit > 0 ? params.limit : 10;
-
-  const [rows, total] = await qb
-    .orderBy("s.createdAt", "DESC")
-    .skip((page - 1) * limit)
-    .take(limit)
-    .getManyAndCount();
-
-  const attributes = await this.loadAttributes(rows.map((row) => row.id));
-
-  return {
-    items: rows.map((row) => ({
-      sku: this.toDomain(row),
-      unit: row.product.baseUnit,
-      attributes: attributes.get(row.id) ?? [],
-    })),
-    total,
-  };
-}
 
   async findByProductId(productId: string): Promise<ProductCatalogSkuWithAttributes[]> {
     const rows = await this.repo.find({
