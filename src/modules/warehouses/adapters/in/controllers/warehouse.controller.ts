@@ -7,7 +7,6 @@ import { GetWarehouseStockUsecase } from "src/modules/warehouses/application/use
 import { ListWarehousesUsecase } from "src/modules/warehouses/application/usecases/warehouse/list.usecase";
 import { SetWarehouseActiveUsecase } from "src/modules/warehouses/application/usecases/warehouse/set-active.usecase";
 import { UpdateWarehouseUsecase } from "src/modules/warehouses/application/usecases/warehouse/update.usecase";
-import { GetWarehouseWithLocationsUsecase } from "src/modules/warehouses/application/usecases/warehouse/get-with-locations.usecase";
 import { DeleteWarehouseSearchMetricUsecase } from "src/modules/warehouses/application/usecases/warehouse-search/delete-metric.usecase";
 import { GetWarehouseSearchStateUsecase } from "src/modules/warehouses/application/usecases/warehouse-search/get-state.usecase";
 import { SaveWarehouseSearchMetricUsecase } from "src/modules/warehouses/application/usecases/warehouse-search/save-metric.usecase";
@@ -31,7 +30,6 @@ export class WarehousesController {
     private readonly listWarehouses: ListWarehousesUsecase,
     private readonly getWarehouse: GetWarehouseUsecase,
     private readonly getWarehouseStock: GetWarehouseStockUsecase,
-    private readonly getWarehouseWithLocations: GetWarehouseWithLocationsUsecase,
     private readonly getSearchState: GetWarehouseSearchStateUsecase,
     private readonly saveSearchMetric: SaveWarehouseSearchMetricUsecase,
     private readonly deleteSearchMetric: DeleteWarehouseSearchMetricUsecase,
@@ -96,11 +94,6 @@ export class WarehousesController {
   @Get(":id")
   getById(@Param("id", ParseUUIDPipe) id: string) {
     return this.getWarehouse.execute({ warehouseId: new WarehouseId(id) });
-  }
-
-  @Get(":id/locations")
-  getWithLocations(@Param("id", ParseUUIDPipe) id: string) {
-    return this.getWarehouseWithLocations.execute({ warehouseId: new WarehouseId(id) });
   }
 
   @Patch(":id")

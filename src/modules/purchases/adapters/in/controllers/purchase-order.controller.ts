@@ -5,13 +5,9 @@ import { CreatePurchaseOrderUsecase } from "src/modules/purchases/application/us
 import { UpdatePurchaseOrderUsecase } from "src/modules/purchases/application/usecases/purchase-order/update.usecase";
 import { ListPurchaseOrdersUsecase } from "src/modules/purchases/application/usecases/purchase-order/list.usecase";
 import { GetPurchaseOrderUsecase } from "src/modules/purchases/application/usecases/purchase-order/get-by-id.usecase";
-import { SetPurchaseOrderActiveUsecase } from "src/modules/purchases/application/usecases/purchase-order/set-active.usecase";
-import { ListPurchaseOrderItemsUsecase } from "src/modules/purchases/application/usecases/purchase-order-item/list.usecase";
-import { RemovePurchaseOrderItemUsecase } from "src/modules/purchases/application/usecases/purchase-order-item/remove.usecase";
 import { HttpCreatePurchaseOrderDto } from "../dtos/purchase-order/http-purchase-order-create.dto";
 import { HttpUpdatePurchaseOrderDto } from "../dtos/purchase-order/http-purchase-order-update.dto";
 import { HttpListPurchaseOrdersQueryDto } from "../dtos/purchase-order/http-purchase-order-list.dto";
-import { HttpSetPurchaseOrderActiveDto } from "../dtos/purchase-order/http-purchase-order-set-active.dto";
 import { HttpCreatePurchaseSearchMetricDto } from "../dtos/purchase-order/http-purchase-search-metric-create.dto";
 import { RunExpectedAtUsecase } from "src/modules/purchases/application/usecases/purchase-order/run-expected-at.usecase";
 import { SetSentPurchaseOrderUsecase } from "src/modules/purchases/application/usecases/purchase-order/set-sent.usecase";
@@ -32,9 +28,6 @@ export class PurchaseOrdersController {
     private readonly updateOrder: UpdatePurchaseOrderUsecase,
     private readonly listOrders: ListPurchaseOrdersUsecase,
     private readonly getOrder: GetPurchaseOrderUsecase,
-    private readonly setActiveOrder: SetPurchaseOrderActiveUsecase,
-    private readonly listItems: ListPurchaseOrderItemsUsecase,
-    private readonly removeItem: RemovePurchaseOrderItemUsecase,
     private readonly runExpected: RunExpectedAtUsecase,
     private readonly setSent: SetSentPurchaseOrderUsecase,
     private readonly cancelOrder: CancelPurchaseOrderUsecase,
@@ -137,23 +130,5 @@ export class PurchaseOrdersController {
   @Patch(":id")
   update(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpUpdatePurchaseOrderDto) {
     return this.updateOrder.execute(PurchaseOrderHttpMapper.toUpdateInput(id, dto));
-  }
-
-  @Patch(":id/active")
-  setActive(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpSetPurchaseOrderActiveDto) {
-    return this.setActiveOrder.execute(PurchaseOrderHttpMapper.toSetActiveInput(id, dto.isActive));
-  }
-
-  @Get(":id/items")
-  listItemsByOrder(@Param("id", ParseUUIDPipe) id: string) {
-    return this.listItems.execute({ poId: id });
-  }
-
-  @Delete(":id/items/:itemId")
-  removeItemFromOrder(
-    @Param("id", ParseUUIDPipe) id: string,
-    @Param("itemId", ParseUUIDPipe) itemId: string,
-  ) {
-    return this.removeItem.execute({ poItemId: itemId });
   }
 }

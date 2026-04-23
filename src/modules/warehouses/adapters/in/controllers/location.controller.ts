@@ -11,9 +11,6 @@ import { ListLocationQueryDto } from "../dtos/location/http-location-list.dto";
 import { HttpSetLocationActiveDto } from "../dtos/location/http-location-set-active.dto";
 import { HttpUpdateLocationDto } from "../dtos/location/http-location-update.dto";
 import { LocationId } from "src/modules/warehouses/domain/value-objects/location-id.vo";
-import { CreateLocationInput } from "src/modules/warehouses/application/dtos/location/input/create.input";
-import { WarehouseId } from "src/modules/warehouses/domain/value-objects/warehouse-id.vo";
-import { UpdateLocationInput } from "src/modules/warehouses/application/dtos/location/input/update.input";
 import { WarehouseHttpMapper } from "src/modules/warehouses/application/mappers/warehouse-http.mapper";
 
 @Controller("warehouses/locations")

@@ -8,17 +8,12 @@ import { UpdateProductionOrder } from "src/modules/production/application/usecas
 import { StartProductionOrder } from "src/modules/production/application/usecases/production-order/start.usecase";
 import { CloseProductionOrder } from "src/modules/production/application/usecases/production-order/close.usecase";
 import { CancelProductionOrder } from "src/modules/production/application/usecases/production-order/cancel.usecase";
-import { AddProductionOrderItem } from "src/modules/production/application/usecases/production-order/add-item.usecase";
-import { RemoveProductionOrderItem } from "src/modules/production/application/usecases/production-order/remove-production-order-item.usecase";
-import { UpdateProductionWaste } from "src/modules/production/application/usecases/production-order/update-waste.usecase";
 import { DeleteProductionOrderSearchMetricUsecase } from "src/modules/production/application/usecases/production-search/delete-metric.usecase";
 import { GetProductionOrderSearchStateUsecase } from "src/modules/production/application/usecases/production-search/get-state.usecase";
 import { SaveProductionOrderSearchMetricUsecase } from "src/modules/production/application/usecases/production-search/save-metric.usecase";
 import { HttpCreateProductionOrderDto } from "../dtos/production-order/http-production-order-create.dto";
 import { HttpUpdateProductionOrderDto } from "../dtos/production-order/http-production-order-update.dto";
 import { HttpListProductionOrdersQueryDto } from "../dtos/production-order/http-production-order-list.dto";
-import { HttpAddProductionOrderItemDto } from "../dtos/production-order/http-production-order-item-create.dto";
-import { HttpUpdateProductionWasteDto } from "../dtos/production-order/http-production-order-waste.dto";
 import { HttpCreateProductionSearchMetricDto } from "../dtos/production-order/http-production-search-metric-create.dto";
 import { ParseDateLocal } from "src/shared/utilidades/utils/ParseDates";
 import { User as CurrentUser } from 'src/shared/utilidades/decorators/user.decorator';
@@ -36,9 +31,6 @@ export class ProductionOrdersController {
     private readonly startOrder: StartProductionOrder,
     private readonly closeOrder: CloseProductionOrder,
     private readonly cancelOrder: CancelProductionOrder,
-    private readonly addItem: AddProductionOrderItem,
-    private readonly removeItem: RemoveProductionOrderItem,
-    private readonly updateWaste: UpdateProductionWaste,
     private readonly getSearchState: GetProductionOrderSearchStateUsecase,
     private readonly saveSearchMetric: SaveProductionOrderSearchMetricUsecase,
     private readonly deleteSearchMetric: DeleteProductionOrderSearchMetricUsecase,
@@ -115,27 +107,9 @@ export class ProductionOrdersController {
     return this.closeOrder.execute({ productionId: id, postedBy: user.id });
   }
 
-  @Patch(":id/waste")
-  updateProductionWaste(
-    @Param("id", ParseUUIDPipe) id: string,
-    @Body() dto: HttpUpdateProductionWasteDto,
-  ) {
-    return this.updateWaste.execute(ProductionOrderHttpMapper.toWasteInput(id, { items: dto.items }));
-  }
-
   @Post(":id/cancel")
   cancel(@Param("id", ParseUUIDPipe) id: string, @CurrentUser() user: { id: string }) {
     return this.cancelOrder.execute({ productionId: id }, user.id);
-  }
-
-  @Post(":id/items")
-  addOrderItem(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpAddProductionOrderItemDto) {
-    return this.addItem.execute(ProductionOrderHttpMapper.toAddItemInput(id, dto));
-  }
-
-  @Delete(":id/items/:itemId")
-  removeOrderItem(@Param("id", ParseUUIDPipe) id: string, @Param("itemId", ParseUUIDPipe) itemId: string) {
-    return this.removeItem.execute({ productionId: id, itemId });
   }
 }
 
