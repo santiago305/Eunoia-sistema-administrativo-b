@@ -15,12 +15,10 @@ import { LoginAuthUseCase } from 'src/modules/auth/application/use-cases/login-a
 import { RefreshAuthUseCase } from 'src/modules/auth/application/use-cases/refresh.auth.usecase';
 import { GetAuthUserUseCase } from 'src/modules/auth/application/use-cases/get-auth-user.usecase';
 import { LoginAuthDto } from '../dtos/login-auth.dto';
-import { VerifyPasswordDto } from '../dtos/verify-password.dto';
 import { Request, Response } from 'express';
 import { ErrorResponse, isTypeResponse } from 'src/shared/response-standard/guard';
 import { successResponse } from 'src/shared/response-standard/response';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
-import { VerifyUserPasswordBySessionUseCase } from 'src/modules/auth/application/use-cases/verify-user-password-by-session.usecase';
 import { CsrfGuard } from 'src/shared/utilidades/guards/csrf.guard';
 import { randomBytes } from 'crypto';
 import { RevokeSessionUseCase } from 'src/modules/sessions/application/use-cases/revoke-session.usecase';
@@ -32,7 +30,6 @@ export class AuthController {
     private readonly loginAuthUseCase: LoginAuthUseCase,
     private readonly refreshAuthUseCase: RefreshAuthUseCase,
     private readonly getAuthUserUseCase: GetAuthUserUseCase,
-    private readonly verifyUserPasswordBySessionUseCase: VerifyUserPasswordBySessionUseCase,
     private readonly revokeSessionUseCase: RevokeSessionUseCase,
   ) {}
 
@@ -145,24 +142,6 @@ export class AuthController {
     });
 
     return { message: 'OK' };
-  }
-
-  @Post('verify-password')
-  @UseGuards(JwtAuthGuard, CsrfGuard)
-  async verifyPassword(
-    @UserDecorator() user: { id: string },
-    @Body() body: VerifyPasswordDto,
-  ) {
-    return this.verifyUserPasswordBySessionUseCase.execute({
-      userId: user.id,
-      password: body.currentPassword,
-    });
-  }
-
-  @Get('validate-token')
-  @UseGuards(JwtAuthGuard)
-  async validateToken(@Res() res: Response) {
-    return res.status(200).json({ message: 'Token es valido' });
   }
 
   @Get('me')

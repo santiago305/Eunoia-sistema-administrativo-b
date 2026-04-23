@@ -10,7 +10,6 @@ import {
   Query,
   UploadedFile,
   UseInterceptors,
-  ForbiddenException,
   BadRequestException,
   ConflictException,
   Inject,
@@ -21,8 +20,6 @@ import { ChangePasswordUseCase } from 'src/modules/users/application/use-cases/c
 import { CreateUserUseCase } from 'src/modules/users/application/use-cases/create-user.usecase';
 import { DeleteUserUseCase } from 'src/modules/users/application/use-cases/delete-user.usecase';
 import { GetOwnUserUseCase } from 'src/modules/users/application/use-cases/get-own-user.usecase';
-import { GetUserByEmailUseCase } from 'src/modules/users/application/use-cases/get-user-by-email.usecase';
-import { GetUserUseCase } from 'src/modules/users/application/use-cases/get-user.usecase';
 import { ListUsersUseCase } from 'src/modules/users/application/use-cases/list-users.usecase';
 import { CountUsersByRoleUseCase } from 'src/modules/users/application/use-cases/count-users-by-role.usecase';
 import { RestoreUserUseCase } from 'src/modules/users/application/use-cases/restore-user.usecase';
@@ -64,8 +61,6 @@ export class UsersController {
     private readonly changePasswordUseCase: ChangePasswordUseCase,
     private readonly listUsersUseCase: ListUsersUseCase,
     private readonly countUsersByRoleUseCase: CountUsersByRoleUseCase,
-    private readonly getUserUseCase: GetUserUseCase,
-    private readonly getUserByEmailUseCase: GetUserByEmailUseCase,
     private readonly getOwnUserUseCase: GetOwnUserUseCase,
     private readonly deleteUserUseCase: DeleteUserUseCase,
     private readonly restoreUserUseCase: RestoreUserUseCase,
@@ -138,20 +133,6 @@ export class UsersController {
     }, user.role);
   }
 
-  @Get('search/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleType.ADMIN, RoleType.MODERATOR)
-  findOne(@Param('id') id: string, @CurrentUser() user: { role: RoleType }) {
-    return this.getUserUseCase.execute(id, user.role);
-  }
-
-  @Get('email/:email')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(RoleType.ADMIN, RoleType.MODERATOR)
-  findByEmail(@Param('email') email: string, @CurrentUser() user: { role: RoleType }) {
-    return this.getUserByEmailUseCase.execute(email, user.role);
-  }
-
   @Patch('me/update')
   @UseGuards(JwtAuthGuard, CsrfGuard)
   update(
@@ -192,19 +173,6 @@ export class UsersController {
   @Roles(RoleType.ADMIN, RoleType.MODERATOR)
   restore(@Param('id') id: string, @CurrentUser() user: { role: RoleType }) {
     return this.restoreUserUseCase.execute(id, user.role);
-  }
-
-  @Patch('change-password/:id')
-  @UseGuards(JwtAuthGuard, CsrfGuard)
-  async changePassword(
-    @Param('id') id: string,
-    @Body() body: ChangePasswordDto,
-    @CurrentUser() user: { id: string }
-  ) {
-    if (id !== user.id) {
-      throw new ForbiddenException('No puedes cambiar la contrasena de otro usuario');
-    }
-    return this.changePasswordUseCase.execute(id, body.currentPassword, body.newPassword, user.id);
   }
 
   @Patch('me/change-password')

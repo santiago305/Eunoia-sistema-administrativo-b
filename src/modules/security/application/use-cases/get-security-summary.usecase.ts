@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { IpViolation } from '../../adapters/out/persistence/typeorm/entities/ip-violation.entity';
 import { IpBan } from '../../adapters/out/persistence/typeorm/entities/ip-ban.entity';
-import { resolveWindow, SECURITY_TIMEZONE } from './security-insights.utils';
+import { buildReasonFilter, resolveWindow, SECURITY_TIMEZONE } from './security-insights.utils';
 
 const SECURITY_SUMMARY_TOP_IPS_LIMIT = 5;
 
@@ -16,9 +16,10 @@ export class GetSecuritySummaryUseCase {
     private readonly banRepository: Repository<IpBan>,
   ) {}
 
-  async execute(params: { hours?: number }) {
+  async execute(params: { hours?: number; reason?: string }) {
     const { from, to } = resolveWindow(params.hours);
     const now = new Date();
+    const reasonFilter = buildReasonFilter('v.reason', params.reason);
 
     const [topViolationsRow, activeBans, temporaryBans, permanentBans] = await Promise.all([
       this.violationRepository
@@ -30,6 +31,7 @@ export class GetSecuritySummaryUseCase {
             .addSelect('COUNT(*)', 'total')
             .from(IpViolation, 'v')
             .where('v.created_at >= :from AND v.created_at <= :to', { from, to })
+            .andWhere(reasonFilter.clause, reasonFilter.bind)
             .groupBy('v.ip')
             .orderBy('COUNT(*)', 'DESC')
             .limit(SECURITY_SUMMARY_TOP_IPS_LIMIT);

@@ -11,21 +11,33 @@ export class GetActiveBansSecurityUseCase {
     private readonly banRepository: Repository<IpBan>,
   ) {}
 
-  async execute() {
-    const rows = await this.banRepository
+  async execute(params?: { page?: number; limit?: number }) {
+    const requestedPage = Number.isFinite(params?.page) ? Number(params?.page) : 1;
+    const requestedLimit = Number.isFinite(params?.limit) ? Number(params?.limit) : 10;
+    const page = Math.max(1, requestedPage);
+    const limit = Math.min(100, Math.max(1, requestedLimit));
+
+    const [rows, total] = await this.banRepository
       .createQueryBuilder('b')
       .where('b.manual_permanent_ban = :permanent', { permanent: true })
       .orWhere('b.banned_until IS NOT NULL AND b.banned_until > :now', { now: new Date() })
       .orderBy('b.updated_at', 'DESC')
-      .getMany();
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
 
-    return rows.map((ban) => ({
-      ...ban,
-      createdAtLocal: formatLocalDateTime(ban.createdAt),
-      updatedAtLocal: formatLocalDateTime(ban.updatedAt),
-      bannedUntilLocal: formatLocalDateTime(ban.bannedUntil),
-      timeZone: SECURITY_TIMEZONE,
-    }));
+    return {
+      data: rows.map((ban) => ({
+        ...ban,
+        createdAtLocal: formatLocalDateTime(ban.createdAt),
+        updatedAtLocal: formatLocalDateTime(ban.updatedAt),
+        bannedUntilLocal: formatLocalDateTime(ban.bannedUntil),
+        timeZone: SECURITY_TIMEZONE,
+      })),
+      total,
+      page,
+      limit,
+    };
   }
 }
 

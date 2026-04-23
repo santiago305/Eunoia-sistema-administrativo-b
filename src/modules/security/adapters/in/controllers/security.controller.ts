@@ -41,9 +41,13 @@ export class SecurityController {
   ) {}
 
   @Get('summary')
-  getSummary(@Query('hours') hours?: string) {
+  getSummary(
+    @Query('hours') hours?: string,
+    @Query('reason') reason?: string,
+  ) {
     return this.getSecuritySummaryUseCase.execute({
       hours: hours ? Number(hours) : undefined,
+      reason,
     });
   }
 
@@ -67,8 +71,14 @@ export class SecurityController {
   }
 
   @Get('active-bans')
-  getActiveBans() {
-    return this.getActiveBansSecurityUseCase.execute();
+  getActiveBans(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.getActiveBansSecurityUseCase.execute({
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+    });
   }
 
   @Get('history/:ip')
