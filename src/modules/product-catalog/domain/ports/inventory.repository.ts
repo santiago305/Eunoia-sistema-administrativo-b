@@ -16,6 +16,28 @@ export interface ProductCatalogInventorySnapshotSearchRow {
   updatedAt: Date;
 }
 
+export type ProductCatalogInventorySearchField =
+  | "warehouse"
+  | "onHand"
+  | "reserved"
+  | "available";
+
+export type ProductCatalogInventorySearchOperator =
+  | "IN"
+  | "EQ"
+  | "GT"
+  | "GTE"
+  | "LT"
+  | "LTE";
+
+export interface ProductCatalogInventorySearchRule {
+  field: ProductCatalogInventorySearchField;
+  operator: ProductCatalogInventorySearchOperator;
+  mode?: "include" | "exclude";
+  value?: string;
+  values?: string[];
+}
+
 export interface ProductCatalogInventoryRepository {
   getSnapshot(input: {
     warehouseId: string;
@@ -39,6 +61,7 @@ export interface ProductCatalogInventoryRepository {
     skuIdsIn?: string[];
     skuIdsNotIn?: string[];
     productType?: ProductCatalogProductType;
+    filters?: ProductCatalogInventorySearchRule[];
     page?: number;
     limit?: number;
   }, tx?: TransactionContext): Promise<{ items: ProductCatalogInventorySnapshotSearchRow[]; total: number }>;

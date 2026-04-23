@@ -8,6 +8,7 @@
   import { CreateProductCatalogProductDto } from "../dtos/create-product.dto";
   import { ListProductCatalogProductsDto } from "../dtos/list-products.dto";
   import { UpdateProductCatalogProductDto } from "../dtos/update-product.dto";
+  import type { ProductCatalogProductSearchRule } from "src/modules/product-catalog/domain/ports/product.repository";
 
   @Controller("products")
   @UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
@@ -32,6 +33,7 @@
         isActive: query.isActive === undefined ? undefined : query.isActive === "true",
         page: query.page ? Number(query.page) : 1,
         limit: query.limit ? Number(query.limit) : 10,
+        filters: this.parseFilters(query.filters),
       });
     }
 
@@ -45,5 +47,13 @@
       return this.updateProduct.execute(id, dto);
     }
 
-    
+    private parseFilters(raw?: string): ProductCatalogProductSearchRule[] | undefined {
+      if (!raw?.trim()) return undefined;
+      try {
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? (parsed as ProductCatalogProductSearchRule[]) : undefined;
+      } catch {
+        return undefined;
+      }
+    }
   }

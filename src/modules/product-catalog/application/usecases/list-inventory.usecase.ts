@@ -1,6 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import {
   PRODUCT_CATALOG_INVENTORY_REPOSITORY,
+  ProductCatalogInventorySearchRule,
   ProductCatalogInventoryRepository,
 } from "../../domain/ports/inventory.repository";
 import {
@@ -53,6 +54,7 @@ export class ListProductCatalogInventory {
     skuIdsIn?: string[];
     skuIdsNotIn?: string[];
     productType?: ProductCatalogProductType;
+    filters?: ProductCatalogInventorySearchRule[];
     page?: number;
     limit?: number;
   }) {
@@ -70,6 +72,7 @@ export class ListProductCatalogInventory {
       skuIdsIn: params.skuIdsIn,
       skuIdsNotIn: params.skuIdsNotIn,
       productType: params.productType,
+      filters: params.filters,
       page: shouldPaginate ? page : undefined,
       limit: shouldPaginate ? limit : undefined,
     });

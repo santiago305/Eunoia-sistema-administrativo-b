@@ -21,6 +21,7 @@ import { ListProductCatalogInventoryLedgerDto } from "../dtos/list-inventory-led
 import { ListDailyMovementBySkuDto } from "../dtos/list-daily-movement-by-sku.dto";
 import { ListProductCatalogInventory } from "src/modules/product-catalog/application/usecases/list-inventory.usecase";
 import { ListProductCatalogInventoryDto } from "../dtos/list-inventory.dto";
+import type { ProductCatalogInventorySearchRule } from "src/modules/product-catalog/domain/ports/inventory.repository";
 
 @Controller()
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
@@ -129,8 +130,19 @@ export class ProductCatalogStockController {
       skuIdsIn: query.skuIdsIn,
       skuIdsNotIn: query.skuIdsNotIn,
       productType: query.productType,
+      filters: this.parseInventoryFilters(query.filters),
       page: query.page ? Number(query.page) : undefined,
       limit: query.limit ? Number(query.limit) : undefined,
     });
+  }
+
+  private parseInventoryFilters(raw?: string): ProductCatalogInventorySearchRule[] | undefined {
+    if (!raw?.trim()) return undefined;
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? (parsed as ProductCatalogInventorySearchRule[]) : undefined;
+    } catch {
+      return undefined;
+    }
   }
 }

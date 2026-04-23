@@ -18,6 +18,31 @@ export interface ProductCatalogProductListItem {
   inventoryTotal: number;
 }
 
+export type ProductCatalogProductSearchField =
+  | "name"
+  | "description"
+  | "brand"
+  | "status"
+  | "skuCount"
+  | "inventoryTotal";
+
+export type ProductCatalogProductSearchOperator =
+  | "CONTAINS"
+  | "EQ"
+  | "GT"
+  | "GTE"
+  | "LT"
+  | "LTE"
+  | "IN";
+
+export interface ProductCatalogProductSearchRule {
+  field: ProductCatalogProductSearchField;
+  operator: ProductCatalogProductSearchOperator;
+  mode?: "include" | "exclude";
+  value?: string;
+  values?: string[];
+}
+
 export interface ProductCatalogProductRepository {
   create(product: ProductCatalogProduct): Promise<ProductCatalogProduct>;
   update(
@@ -31,5 +56,6 @@ export interface ProductCatalogProductRepository {
     q?: string;
     isActive?: boolean;
     type?: ProductCatalogProductType;
+    filters?: ProductCatalogProductSearchRule[];
   }): Promise<{ items: ProductCatalogProductListItem[]; total: number; page: number; limit: number }>;
 }

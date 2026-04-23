@@ -2,7 +2,11 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, Repository } from "typeorm";
 import { ProductCatalogInventoryBalance } from "src/modules/product-catalog/domain/entities/inventory-balance";
-import { ProductCatalogInventoryRepository, ProductCatalogInventorySnapshotSearchRow } from "src/modules/product-catalog/domain/ports/inventory.repository";
+import {
+  ProductCatalogInventoryRepository,
+  ProductCatalogInventorySearchRule,
+  ProductCatalogInventorySnapshotSearchRow,
+} from "src/modules/product-catalog/domain/ports/inventory.repository";
 import { ProductCatalogInventoryEntity } from "../entities/inventory.entity";
 import { ProductCatalogStockItemEntity } from "../entities/stock-item.entity";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
@@ -39,6 +43,61 @@ export class ProductCatalogInventoryTypeormRepository implements ProductCatalogI
       row.available ?? row.onHand - row.reserved,
       row.updatedAt,
     );
+  }
+
+  private applyNumericFilter(
+    qb: ReturnType<Repository<ProductCatalogInventoryEntity>["createQueryBuilder"]>,
+    column: string,
+    rule: ProductCatalogInventorySearchRule,
+    key: string,
+  ) {
+    const value = Number(rule.value);
+    if (Number.isNaN(value)) return;
+
+    const operator =
+      rule.operator === "EQ" ? "=" :
+      rule.operator === "GT" ? ">" :
+      rule.operator === "GTE" ? ">=" :
+      rule.operator === "LT" ? "<" :
+      rule.operator === "LTE" ? "<=" :
+      null;
+
+    if (!operator) return;
+    qb.andWhere(`${column} ${operator} :${key}`, { [key]: value });
+  }
+
+  private applySearchFilters(
+    qb: ReturnType<Repository<ProductCatalogInventoryEntity>["createQueryBuilder"]>,
+    filters?: ProductCatalogInventorySearchRule[],
+  ) {
+    (filters ?? []).forEach((rule, index) => {
+      const key = `inventory_filter_${rule.field}_${index}`;
+
+      if (rule.field === "warehouse" && rule.operator === "IN") {
+        const values = Array.from(new Set((rule.values ?? []).map((value) => value?.trim()).filter(Boolean)));
+        if (!values.length) return;
+        const condition =
+          rule.mode === "exclude"
+            ? "i.warehouse_id NOT IN (:...warehouseFilterIds)"
+            : "i.warehouse_id IN (:...warehouseFilterIds)";
+        qb.andWhere(condition, { warehouseFilterIds: values });
+        return;
+      }
+
+      if (rule.field === "onHand") {
+        this.applyNumericFilter(qb, "i.on_hand", rule, key);
+        return;
+      }
+
+      if (rule.field === "reserved") {
+        this.applyNumericFilter(qb, "i.reserved", rule, key);
+        return;
+      }
+
+      if (rule.field === "available") {
+        this.applyNumericFilter(qb, "COALESCE(i.available, i.on_hand - i.reserved)", rule, key);
+      }
+    });
   }
 
   async getSnapshot(input: {
@@ -154,6 +213,7 @@ export class ProductCatalogInventoryTypeormRepository implements ProductCatalogI
       skuIdsIn?: string[];
       skuIdsNotIn?: string[];
       productType?: ProductCatalogProductType;
+      filters?: ProductCatalogInventorySearchRule[];
       page?: number;
       limit?: number;
     },
@@ -233,6 +293,8 @@ export class ProductCatalogInventoryTypeormRepository implements ProductCatalogI
         { q },
       );
     }
+
+    this.applySearchFilters(baseQb, input.filters);
 
     const countQb = baseQb.clone();
     const total = await countQb.getCount();

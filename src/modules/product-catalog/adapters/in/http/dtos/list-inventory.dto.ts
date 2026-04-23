@@ -15,6 +15,10 @@ export class ListProductCatalogInventoryDto {
   warehouseId?: string;
 
   @IsOptional()
+  @IsString()
+  filters?: string;
+
+  @IsOptional()
   @Transform(({ value }) => toStringArray(value))
   @IsArray()
   @IsUUID("4", { each: true })

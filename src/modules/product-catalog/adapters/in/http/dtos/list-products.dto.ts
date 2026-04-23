@@ -7,6 +7,10 @@ export class ListProductCatalogProductsDto {
   q?: string;
 
   @IsOptional()
+  @IsString()
+  filters?: string;
+
+  @IsOptional()
   @IsEnum(ProductCatalogProductType)
   type?: ProductCatalogProductType;
 

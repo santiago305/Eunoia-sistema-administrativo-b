@@ -5,6 +5,7 @@ import { ProductCatalogProduct } from "src/modules/product-catalog/domain/entiti
 import {
   ProductCatalogProductListItem,
   ProductCatalogProductRepository,
+  ProductCatalogProductSearchRule,
 } from "src/modules/product-catalog/domain/ports/product.repository";
 import { ProductCatalogProductType } from "src/modules/product-catalog/domain/value-objects/product-type";
 import { ProductCatalogInventoryEntity } from "../entities/inventory.entity";
@@ -18,6 +19,118 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
     @InjectRepository(ProductCatalogProductEntity)
     private readonly repo: Repository<ProductCatalogProductEntity>,
   ) {}
+
+  private escapeLike(value: string) {
+    return value.replace(/[%_\\]/g, "\\$&");
+  }
+
+  private normalizeTextValue(value?: string) {
+    const trimmed = value?.trim();
+    return trimmed ? trimmed.toLowerCase() : undefined;
+  }
+
+  private applyTextRule(
+    qb: ReturnType<Repository<ProductCatalogProductEntity>["createQueryBuilder"]>,
+    column: string,
+    rule: ProductCatalogProductSearchRule,
+    key: string,
+  ) {
+    const value = this.normalizeTextValue(rule.value);
+    if (!value) return;
+
+    if (rule.operator === "EQ") {
+      qb.andWhere(`LOWER(COALESCE(${column}, '')) = :${key}`, { [key]: value });
+      return;
+    }
+
+    if (rule.operator === "CONTAINS") {
+      qb.andWhere(`LOWER(COALESCE(${column}, '')) LIKE :${key} ESCAPE '\\'`, {
+        [key]: `%${this.escapeLike(value)}%`,
+      });
+    }
+  }
+
+  private applyNumericRule(
+    qb: ReturnType<Repository<ProductCatalogProductEntity>["createQueryBuilder"]>,
+    expression: string,
+    rule: ProductCatalogProductSearchRule,
+    key: string,
+  ) {
+    const value = Number(rule.value);
+    if (Number.isNaN(value)) return;
+
+    const operator =
+      rule.operator === "EQ" ? "=" :
+      rule.operator === "GT" ? ">" :
+      rule.operator === "GTE" ? ">=" :
+      rule.operator === "LT" ? "<" :
+      rule.operator === "LTE" ? "<=" :
+      null;
+
+    if (!operator) return;
+    qb.andWhere(`${expression} ${operator} :${key}`, { [key]: value });
+  }
+
+  private applyFilters(
+    qb: ReturnType<Repository<ProductCatalogProductEntity>["createQueryBuilder"]>,
+    filters?: ProductCatalogProductSearchRule[],
+  ) {
+    (filters ?? []).forEach((rule, index) => {
+      const key = `filter_${rule.field}_${index}`;
+
+      if (rule.field === "status" && rule.operator === "IN") {
+        const values = Array.from(new Set((rule.values ?? []).map((value) => value?.trim()).filter(Boolean)));
+        if (!values.length) return;
+        const normalized = values.map((value) => value === "true");
+        const condition =
+          rule.mode === "exclude"
+            ? "p.is_active NOT IN (:...statuses)"
+            : "p.is_active IN (:...statuses)";
+        qb.andWhere(condition, { statuses: normalized });
+        return;
+      }
+
+      if (rule.field === "name") {
+        this.applyTextRule(qb, "p.name", rule, key);
+        return;
+      }
+
+      if (rule.field === "description") {
+        this.applyTextRule(qb, "p.description", rule, key);
+        return;
+      }
+
+      if (rule.field === "brand") {
+        this.applyTextRule(qb, "p.brand", rule, key);
+        return;
+      }
+
+      if (rule.field === "skuCount") {
+        this.applyNumericRule(
+          qb,
+          `(SELECT COUNT(DISTINCT s2.sku_id) FROM pc_skus s2 WHERE s2.product_id = p.product_id)`,
+          rule,
+          key,
+        );
+        return;
+      }
+
+      if (rule.field === "inventoryTotal") {
+        this.applyNumericRule(
+          qb,
+          `(
+            SELECT COALESCE(SUM(i2.on_hand), 0)
+            FROM pc_skus s2
+            LEFT JOIN pc_stock_items si2 ON si2.sku_id = s2.sku_id
+            LEFT JOIN pc_inventory i2 ON i2.stock_item_id = si2.stock_item_id
+            WHERE s2.product_id = p.product_id
+          )`,
+          rule,
+          key,
+        );
+      }
+    });
+  }
 
   private toDomain(row: ProductCatalogProductEntity): ProductCatalogProduct {
     return new ProductCatalogProduct(
@@ -65,6 +178,7 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
     q?: string;
     isActive?: boolean;
     type?: ProductCatalogProductType;
+    filters?: ProductCatalogProductSearchRule[];
   }): Promise<{ items: ProductCatalogProductListItem[]; total: number; page: number; limit: number }> {
     const qb = this.repo.createQueryBuilder("p").leftJoinAndSelect("p.baseUnit", "bu");
     if (params.type) {
@@ -74,10 +188,11 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
       qb.andWhere("p.is_active = :isActive", { isActive: params.isActive });
     }
     if (params.q?.trim()) {
-      qb.andWhere("(LOWER(p.name) LIKE :q OR LOWER(COALESCE(p.description, '')) LIKE :q)", {
+      qb.andWhere("(LOWER(p.name) LIKE :q OR LOWER(COALESCE(p.description, '')) LIKE :q OR LOWER(COALESCE(p.brand, '')) LIKE :q)", {
         q: `%${params.q.trim().toLowerCase()}%`,
       });
     }
+    this.applyFilters(qb, params.filters);
 
     const page = params.page > 0 ? params.page : 1;
     const limit = params.limit > 0 ? params.limit : 10;
