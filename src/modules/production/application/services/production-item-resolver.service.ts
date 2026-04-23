@@ -35,6 +35,15 @@ export class ProductionItemResolverService {
   ) {}
 
   async resolveFinishedItem(finishedItemId: string, tx?: TransactionContext): Promise<ResolvedProductionFinishedItem> {
+    const sku = await this.skuStockItemRepo.findById(finishedItemId);
+    if (sku) {
+      return {
+        mode: "sku",
+        stockItemId: sku.id!,
+        skuId: sku.skuId,
+      };
+    }
+
     const legacy = await this.legacyStockItemRepo.findById(finishedItemId, tx);
     if (legacy) {
       return {
@@ -42,15 +51,6 @@ export class ProductionItemResolverService {
         stockItemId: legacy.stockItemId!,
         legacyType: legacy.type,
         legacyProductId: legacy.productId ?? null,
-      };
-    }
-
-    const sku = await this.skuStockItemRepo.findById(finishedItemId);
-    if (sku) {
-      return {
-        mode: "sku",
-        stockItemId: sku.id!,
-        skuId: sku.skuId,
       };
     }
 

@@ -32,10 +32,10 @@ export class AddProductionOrderItem {
         throw new NotFoundException(new ProductionOrderNotFoundApplicationError().message);
       }
 
-      const finishedStockItem = await this.stockItemRepo.findById(input.finishedItemId, ctx);
-      const finishedSkuStockItem = finishedStockItem
+      const finishedSkuStockItem = await this.productCatalogStockItemRepo.findById(input.finishedItemId);
+      const finishedStockItem = finishedSkuStockItem
         ? null
-        : await this.productCatalogStockItemRepo.findById(input.finishedItemId);
+        : await this.stockItemRepo.findById(input.finishedItemId, ctx);
       if (!finishedStockItem?.stockItemId && !finishedSkuStockItem?.id) {
         throw new NotFoundException("Stock item terminado no encontrado");
       }

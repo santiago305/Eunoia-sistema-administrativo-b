@@ -38,8 +38,8 @@ export class GetProductionOrder {
 
       const items = await Promise.all(
         result.items.map(async (item) => {
-          const stockItem = await this.stockItemRepo.findById(item.finishedItemId, tx);
-          const skuStockItem = stockItem ? null : await this.productCatalogStockItemRepo.findById(item.finishedItemId);
+          const skuStockItem = await this.productCatalogStockItemRepo.findById(item.finishedItemId);
+          const stockItem = skuStockItem ? null : await this.stockItemRepo.findById(item.finishedItemId, tx);
           if (!stockItem && !skuStockItem) throw new NotFoundException("No se encontro el item de stock");
 
           let finishedItem: ProductionOrderFinishedItemOutput | null = null;
@@ -83,7 +83,7 @@ export class GetProductionOrder {
           }
 
           return {
-            ...ProductionOrderOutputMapper.toItemOutput(item, { finishedItemType: stockItem?.type ?? "SKU" }),
+            ...ProductionOrderOutputMapper.toItemOutput(item, { finishedItemType: skuStockItem ? "SKU" : stockItem?.type ?? null }),
             finishedItem,
           };
         }),
