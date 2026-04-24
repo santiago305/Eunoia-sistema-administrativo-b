@@ -45,6 +45,13 @@ import { INVENTORY_REPOSITORY } from "./integration/inventory/ports/inventory.re
 import { INVENTORY_LOCK } from "./integration/inventory/ports/inventory-lock.port";
 import { STOCK_ITEM_REPOSITORY } from "./integration/inventory/ports/stock-item.repository.port";
 import { ProductCatalogDocumentSerieController } from "./adapters/in/http/controllers/document-serie.controller";
+import { ListingSearchMetricEntity } from "src/shared/listing-search/adapters/out/persistence/typeorm/entities/listing-search-metric.entity";
+import { ListingSearchRecentEntity } from "src/shared/listing-search/adapters/out/persistence/typeorm/entities/listing-search-recent.entity";
+import { ListingSearchTypeormRepository } from "src/shared/listing-search/adapters/out/persistence/typeorm/repositories/listing-search.typeorm.repo";
+import { LISTING_SEARCH_STORAGE } from "src/shared/listing-search/domain/listing-search.repository";
+import { GetProductCatalogProductSearchStateUsecase } from "./application/usecases/product-search/get-state.usecase";
+import { SaveProductCatalogProductSearchMetricUsecase } from "./application/usecases/product-search/save-metric.usecase";
+import { DeleteProductCatalogProductSearchMetricUsecase } from "./application/usecases/product-search/delete-metric.usecase";
 
 @Module({
   imports: [
@@ -64,6 +71,8 @@ import { ProductCatalogDocumentSerieController } from "./adapters/in/http/contro
       ProductCatalogDocumentSerieEntity,
       ProductCatalogUnitEntity,
       ProductCatalogEquivalencesEntity,
+      ListingSearchRecentEntity,
+      ListingSearchMetricEntity,
     ]),
   ],
   controllers: [
@@ -78,6 +87,10 @@ import { ProductCatalogDocumentSerieController } from "./adapters/in/http/contro
   ],
   providers: [
     ...productCatalogModuleProviders,
+    { provide: LISTING_SEARCH_STORAGE, useClass: ListingSearchTypeormRepository },
+    GetProductCatalogProductSearchStateUsecase,
+    SaveProductCatalogProductSearchMetricUsecase,
+    DeleteProductCatalogProductSearchMetricUsecase,
     CreateProductCatalogDocumentSerieUseCase,
     GetActiveProductCatalogDocumentSerieUseCase,
   ],
