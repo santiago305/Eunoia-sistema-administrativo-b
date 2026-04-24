@@ -55,8 +55,18 @@ export class ListProductCatalogInventoryDocumentsDto {
   status?: DocStatus;
 
   @IsOptional()
+  @Transform(({ value }) => toStringArray(value))
+  @IsArray()
+  @IsEnum(DocStatus, { each: true })
+  statuses?: DocStatus[];
+
+  @IsOptional()
   @IsString()
   q?: string;
+
+  @IsOptional()
+  @IsString()
+  filters?: string;
 
   @IsOptional()
   @IsBooleanString()

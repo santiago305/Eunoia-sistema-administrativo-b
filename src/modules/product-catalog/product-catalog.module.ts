@@ -52,6 +52,15 @@ import { LISTING_SEARCH_STORAGE } from "src/shared/listing-search/domain/listing
 import { GetProductCatalogProductSearchStateUsecase } from "./application/usecases/product-search/get-state.usecase";
 import { SaveProductCatalogProductSearchMetricUsecase } from "./application/usecases/product-search/save-metric.usecase";
 import { DeleteProductCatalogProductSearchMetricUsecase } from "./application/usecases/product-search/delete-metric.usecase";
+import { GetInventoryDocumentsSearchStateUsecase } from "./application/usecases/inventory-documents-search/get-state.usecase";
+import { SaveInventoryDocumentsSearchMetricUsecase } from "./application/usecases/inventory-documents-search/save-metric.usecase";
+import { DeleteInventoryDocumentsSearchMetricUsecase } from "./application/usecases/inventory-documents-search/delete-metric.usecase";
+import { GetInventoryLedgerSearchStateUsecase } from "./application/usecases/inventory-ledger-search/get-state.usecase";
+import { SaveInventoryLedgerSearchMetricUsecase } from "./application/usecases/inventory-ledger-search/save-metric.usecase";
+import { DeleteInventoryLedgerSearchMetricUsecase } from "./application/usecases/inventory-ledger-search/delete-metric.usecase";
+import { ListProductCatalogInventoryLedgerMovements } from "./application/usecases/list-inventory-ledger-movements.usecase";
+import { WarehouseEntity } from "../warehouses/adapters/out/persistence/typeorm/entities/warehouse";
+import { User as UserEntity } from "../users/adapters/out/persistence/typeorm/entities/user.entity";
 
 @Module({
   imports: [
@@ -73,6 +82,8 @@ import { DeleteProductCatalogProductSearchMetricUsecase } from "./application/us
       ProductCatalogEquivalencesEntity,
       ListingSearchRecentEntity,
       ListingSearchMetricEntity,
+      WarehouseEntity,
+      UserEntity,
     ]),
   ],
   controllers: [
@@ -91,6 +102,13 @@ import { DeleteProductCatalogProductSearchMetricUsecase } from "./application/us
     GetProductCatalogProductSearchStateUsecase,
     SaveProductCatalogProductSearchMetricUsecase,
     DeleteProductCatalogProductSearchMetricUsecase,
+    GetInventoryDocumentsSearchStateUsecase,
+    SaveInventoryDocumentsSearchMetricUsecase,
+    DeleteInventoryDocumentsSearchMetricUsecase,
+    GetInventoryLedgerSearchStateUsecase,
+    SaveInventoryLedgerSearchMetricUsecase,
+    DeleteInventoryLedgerSearchMetricUsecase,
+    ListProductCatalogInventoryLedgerMovements,
     CreateProductCatalogDocumentSerieUseCase,
     GetActiveProductCatalogDocumentSerieUseCase,
   ],

@@ -94,6 +94,9 @@ export interface ProductCatalogInventoryDocumentRepository {
       docType?: DocType;
       productType?: ProductCatalogProductType;
       status?: DocStatus;
+      statuses?: DocStatus[];
+      fromWarehouseIdsIn?: string[];
+      toWarehouseIdsIn?: string[];
       warehouseIds?: string[];
       warehouseIdsIn?: string[];
       warehouseIdsNotIn?: string[];

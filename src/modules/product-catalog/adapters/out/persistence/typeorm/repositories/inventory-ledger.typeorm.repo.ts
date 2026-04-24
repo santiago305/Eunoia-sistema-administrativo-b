@@ -2,7 +2,11 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, Repository } from "typeorm";
 import { ProductCatalogInventoryLedgerEntry } from "src/modules/product-catalog/domain/entities/inventory-ledger-entry";
-import { ProductCatalogInventoryLedgerListItem, ProductCatalogInventoryLedgerRepository } from "src/modules/product-catalog/domain/ports/inventory-ledger.repository";
+import {
+  ProductCatalogInventoryLedgerListItem,
+  ProductCatalogInventoryLedgerMovementListResult,
+  ProductCatalogInventoryLedgerRepository,
+} from "src/modules/product-catalog/domain/ports/inventory-ledger.repository";
 import { ProductCatalogInventoryLedgerEntity } from "../entities/inventory-ledger.entity";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { TypeormTransactionContext } from "src/shared/infrastructure/typeorm/typeorm.transaction-context";
@@ -13,6 +17,8 @@ import { ProductCatalogUnitEntity } from "../entities/unit.entity";
 import { ProductCatalogInventoryDocumentEntity } from "../entities/inventory-document.entity";
 import { ReferenceType } from "src/shared/domain/value-objects/reference-type";
 import { DocType } from "src/shared/domain/value-objects/doc-type";
+import { Direction } from "src/shared/domain/value-objects/direction";
+import { ProductCatalogProductType } from "src/modules/product-catalog/domain/value-objects/product-type";
 
 @Injectable()
 export class ProductCatalogInventoryLedgerTypeormRepository implements ProductCatalogInventoryLedgerRepository {
@@ -338,5 +344,168 @@ export class ProductCatalogInventoryLedgerTypeormRepository implements ProductCa
   async updateWasteByDocItem(input: { docItemId: string; wasteQty: number }, tx?: TransactionContext): Promise<boolean> {
     const result = await this.getRepo(tx).update({ docItemId: input.docItemId }, { wasteQty: input.wasteQty });
     return (result.affected ?? 0) > 0;
+  }
+
+  async listMovementsPaged(
+    params: {
+      page: number;
+      limit: number;
+      productType?: ProductCatalogProductType;
+      from?: Date;
+      toExclusive?: Date;
+      warehouseIdsIn?: string[];
+      directionIn?: Direction[];
+      userIdsIn?: string[];
+      skuQuery?: string;
+      q?: string;
+    },
+    tx?: TransactionContext,
+  ): Promise<ProductCatalogInventoryLedgerMovementListResult> {
+    const page = Number.isFinite(params.page) ? Math.max(1, Math.trunc(params.page)) : 1;
+    const limit = Number.isFinite(params.limit) ? Math.max(1, Math.min(100, Math.trunc(params.limit))) : 10;
+    const qb = this.getRepo(tx)
+      .createQueryBuilder("l")
+      .innerJoin(ProductCatalogStockItemEntity, "si", "si.stock_item_id = l.stock_item_id")
+      .innerJoin(ProductCatalogSkuEntity, "sku", "sku.sku_id = si.sku_id")
+      .innerJoin(ProductCatalogProductEntity, "p", "p.product_id = sku.product_id")
+      .innerJoin(ProductCatalogInventoryDocumentEntity, "d", "d.doc_id = l.doc_id")
+      .leftJoin("warehouses", "w", "w.id = l.warehouse_id")
+      .leftJoin("users", "u_created", "u_created.user_id = d.created_by")
+      .leftJoin("users", "u_posted", "u_posted.user_id = d.posted_by");
+
+    if (params.productType) {
+      qb.andWhere("p.type = :productType", { productType: params.productType });
+    }
+
+    if (params.warehouseIdsIn?.length) {
+      qb.andWhere("l.warehouse_id IN (:...warehouseIdsIn)", { warehouseIdsIn: params.warehouseIdsIn });
+    }
+
+    if (params.directionIn?.length) {
+      qb.andWhere("l.direction IN (:...directionIn)", { directionIn: params.directionIn });
+    }
+
+    if (params.userIdsIn?.length) {
+      qb.andWhere("(d.created_by IN (:...userIdsIn) OR d.posted_by IN (:...userIdsIn))", { userIdsIn: params.userIdsIn });
+    }
+
+    if (params.from) {
+      qb.andWhere("l.created_at >= :from", { from: params.from });
+    }
+
+    if (params.toExclusive) {
+      qb.andWhere("l.created_at < :toExclusive", { toExclusive: params.toExclusive });
+    }
+
+    const applySearch = (alias: string, value: string) => {
+      qb.andWhere(
+        `(
+          sku.backend_sku ILIKE :${alias}
+          OR sku.custom_sku ILIKE :${alias}
+          OR sku.name ILIKE :${alias}
+          OR p.name ILIKE :${alias}
+          OR u_created.email ILIKE :${alias}
+          OR u_created.name ILIKE :${alias}
+          OR u_posted.email ILIKE :${alias}
+          OR u_posted.name ILIKE :${alias}
+        )`,
+        { [alias]: `%${value}%` },
+      );
+    };
+
+    if (params.skuQuery?.trim()) {
+      applySearch("skuQuery", params.skuQuery.trim());
+    }
+
+    if (params.q?.trim()) {
+      applySearch("q", params.q.trim());
+    }
+
+    const total = await qb.clone().getCount();
+
+    const skip = (page - 1) * limit;
+    const rows = await qb
+      .select("l.ledger_id", "id")
+      .addSelect("l.created_at", "createdAt")
+      .addSelect("l.quantity", "quantity")
+      .addSelect("l.direction", "direction")
+      .addSelect("l.warehouse_id", "warehouseId")
+      .addSelect("w.name", "warehouseName")
+      .addSelect("sku.sku_id", "skuId")
+      .addSelect("sku.backend_sku", "backendSku")
+      .addSelect("sku.custom_sku", "customSku")
+      .addSelect("sku.name", "skuName")
+      .addSelect("p.product_id", "productId")
+      .addSelect("p.name", "productName")
+      .addSelect("p.type", "productType")
+      .addSelect("p.base_unit_id", "baseUnitId")
+      .addSelect("u_created.user_id", "createdById")
+      .addSelect("u_created.name", "createdByName")
+      .addSelect("u_created.email", "createdByEmail")
+      .addSelect("u_posted.user_id", "postedById")
+      .addSelect("u_posted.name", "postedByName")
+      .addSelect("u_posted.email", "postedByEmail")
+      .orderBy("l.created_at", "DESC")
+      .limit(limit)
+      .offset(skip)
+      .getRawMany<{
+        id: string;
+        createdAt: Date;
+        quantity: number | string;
+        direction: Direction;
+        warehouseId: string;
+        warehouseName: string | null;
+        skuId: string;
+        backendSku: string;
+        customSku: string | null;
+        skuName: string;
+        productId: string;
+        productName: string;
+        productType: ProductCatalogProductType;
+        baseUnitId: string | null;
+        createdById: string | null;
+        createdByName: string | null;
+        createdByEmail: string | null;
+        postedById: string | null;
+        postedByName: string | null;
+        postedByEmail: string | null;
+      }>();
+
+    const items = rows.map((row) => {
+      const userId = row.createdById ?? row.postedById ?? null;
+      const userName = row.createdByName ?? row.postedByName ?? null;
+      const userEmail = row.createdByEmail ?? row.postedByEmail ?? null;
+
+      return {
+        id: row.id,
+        createdAt: row.createdAt,
+        quantity: Number(row.quantity ?? 0),
+        direction: row.direction,
+        warehouseId: row.warehouseId,
+        warehouseName: row.warehouseName ?? null,
+        sku: {
+          id: row.skuId,
+          productId: row.productId,
+          backendSku: row.backendSku,
+          customSku: row.customSku ?? null,
+          name: row.skuName,
+        },
+        product: {
+          id: row.productId,
+          name: row.productName,
+          type: row.productType,
+          baseUnitId: row.baseUnitId ?? null,
+        },
+        user: userId
+          ? {
+              id: userId,
+              name: userName,
+              email: userEmail,
+            }
+          : null,
+      };
+    });
+
+    return { items, total };
   }
 }

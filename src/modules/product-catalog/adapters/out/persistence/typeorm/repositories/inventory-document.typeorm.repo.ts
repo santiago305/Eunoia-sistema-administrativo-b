@@ -156,6 +156,9 @@ export class ProductCatalogInventoryDocumentTypeormRepository implements Product
       docType?: DocType;
       productType?: ProductCatalogProductType;
       status?: DocStatus;
+      statuses?: DocStatus[];
+      fromWarehouseIdsIn?: string[];
+      toWarehouseIdsIn?: string[];
       warehouseIds?: string[];
       warehouseIdsIn?: string[];
       warehouseIdsNotIn?: string[];
@@ -176,7 +179,11 @@ export class ProductCatalogInventoryDocumentTypeormRepository implements Product
 
     if (params.docType) qb.andWhere("d.docType = :docType", { docType: params.docType });
     if (params.productType) qb.andWhere("d.productType = :productType", { productType: params.productType });
-    if (params.status) qb.andWhere("d.status = :status", { status: params.status });
+
+    const statuses = Array.from(new Set([...(params.statuses ?? []), ...(params.status ? [params.status] : [])]));
+    if (statuses.length) {
+      qb.andWhere("d.status IN (:...statuses)", { statuses });
+    }
 
     if (params.from) qb.andWhere("d.createdAt >= :from", { from: params.from });
     if (params.toExclusive) qb.andWhere("d.createdAt < :toExclusive", { toExclusive: params.toExclusive });
@@ -186,6 +193,14 @@ export class ProductCatalogInventoryDocumentTypeormRepository implements Product
       qb.andWhere("(d.fromWarehouseId IN (:...warehouseIdsIn) OR d.toWarehouseId IN (:...warehouseIdsIn))", {
         warehouseIdsIn,
       });
+    }
+
+    if (params.fromWarehouseIdsIn?.length) {
+      qb.andWhere("d.fromWarehouseId IN (:...fromWarehouseIdsIn)", { fromWarehouseIdsIn: params.fromWarehouseIdsIn });
+    }
+
+    if (params.toWarehouseIdsIn?.length) {
+      qb.andWhere("d.toWarehouseId IN (:...toWarehouseIdsIn)", { toWarehouseIdsIn: params.toWarehouseIdsIn });
     }
 
     if (params.warehouseIdsNotIn?.length) {

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Query, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
 import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreateProductCatalogStockItem } from "src/modules/product-catalog/application/usecases/create-stock-item.usecase";
@@ -20,8 +20,26 @@ import { TransferBetweenWarehousesDto } from "../dtos/transfer-between-warehouse
 import { ListProductCatalogInventoryLedgerDto } from "../dtos/list-inventory-ledger.dto";
 import { ListDailyMovementBySkuDto } from "../dtos/list-daily-movement-by-sku.dto";
 import { ListProductCatalogInventory } from "src/modules/product-catalog/application/usecases/list-inventory.usecase";
+import { ListProductCatalogInventoryLedgerMovements } from "src/modules/product-catalog/application/usecases/list-inventory-ledger-movements.usecase";
 import { ListProductCatalogInventoryDto } from "../dtos/list-inventory.dto";
 import type { ProductCatalogInventorySearchRule } from "src/modules/product-catalog/domain/ports/inventory.repository";
+import { GetInventoryDocumentsSearchStateUsecase } from "src/modules/product-catalog/application/usecases/inventory-documents-search/get-state.usecase";
+import { SaveInventoryDocumentsSearchMetricUsecase } from "src/modules/product-catalog/application/usecases/inventory-documents-search/save-metric.usecase";
+import { DeleteInventoryDocumentsSearchMetricUsecase } from "src/modules/product-catalog/application/usecases/inventory-documents-search/delete-metric.usecase";
+import { HttpCreateInventoryDocumentsSearchMetricDto } from "../dtos/http-inventory-documents-search-metric-create.dto";
+import type { InventoryDocumentsSearchRule } from "src/modules/product-catalog/application/dtos/inventory-documents-search/inventory-documents-search-snapshot";
+import {
+  sanitizeInventoryDocumentsSearchSnapshot,
+} from "src/modules/product-catalog/application/support/inventory-documents-search.utils";
+import { GetInventoryLedgerSearchStateUsecase } from "src/modules/product-catalog/application/usecases/inventory-ledger-search/get-state.usecase";
+import { SaveInventoryLedgerSearchMetricUsecase } from "src/modules/product-catalog/application/usecases/inventory-ledger-search/save-metric.usecase";
+import { DeleteInventoryLedgerSearchMetricUsecase } from "src/modules/product-catalog/application/usecases/inventory-ledger-search/delete-metric.usecase";
+import { HttpCreateInventoryLedgerSearchMetricDto } from "../dtos/http-inventory-ledger-search-metric-create.dto";
+import { ListProductCatalogInventoryLedgerMovementsDto } from "../dtos/list-inventory-ledger-movements.dto";
+import type { InventoryLedgerSearchRule } from "src/modules/product-catalog/application/dtos/inventory-ledger-search/inventory-ledger-search-snapshot";
+import { sanitizeInventoryLedgerSearchSnapshot } from "src/modules/product-catalog/application/support/inventory-ledger-search.utils";
+import { DocType } from "src/shared/domain/value-objects/doc-type";
+import { ProductCatalogProductType } from "src/modules/product-catalog/domain/value-objects/product-type";
 
 @Controller()
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
@@ -38,6 +56,13 @@ export class ProductCatalogStockController {
     private readonly listDailyMovementBySku: ListDailyMovementBySku,
     private readonly listDocuments: ListProductCatalogInventoryDocuments,
     private readonly listInventory: ListProductCatalogInventory,
+    private readonly getInventoryDocsSearchState: GetInventoryDocumentsSearchStateUsecase,
+    private readonly saveInventoryDocsSearchMetric: SaveInventoryDocumentsSearchMetricUsecase,
+    private readonly deleteInventoryDocsSearchMetric: DeleteInventoryDocumentsSearchMetricUsecase,
+    private readonly listLedgerMovements: ListProductCatalogInventoryLedgerMovements,
+    private readonly getInventoryLedgerSearchStateUc: GetInventoryLedgerSearchStateUsecase,
+    private readonly saveInventoryLedgerSearchMetricUc: SaveInventoryLedgerSearchMetricUsecase,
+    private readonly deleteInventoryLedgerSearchMetricUc: DeleteInventoryLedgerSearchMetricUsecase,
   ) {}
 
   @Post("skus/:id/stock-item")
@@ -97,24 +122,166 @@ export class ProductCatalogStockController {
   }
 
 
+  @Get("inventory-documents/search-state")
+  getInventoryDocumentsSearchState(
+    @CurrentUser() user: { id: string },
+    @Query("docType") docType: DocType,
+    @Query("productType") productType?: ProductCatalogProductType,
+  ) {
+    return this.getInventoryDocsSearchState.execute({ userId: user.id, docType, productType });
+  }
+
+  @Post("inventory-documents/search-metrics")
+  saveInventoryDocumentsSearchMetric(
+    @Body() dto: HttpCreateInventoryDocumentsSearchMetricDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.saveInventoryDocsSearchMetric.execute({
+      userId: user.id,
+      name: dto.name,
+      docType: dto.docType,
+      productType: dto.productType,
+      snapshot: sanitizeInventoryDocumentsSearchSnapshot({
+        q: dto.snapshot?.q,
+        filters: dto.snapshot?.filters,
+      }),
+    });
+  }
+
+  @Delete("inventory-documents/search-metrics/:metricId")
+  deleteInventoryDocumentsSearchMetric(
+    @Param("metricId", ParseUUIDPipe) metricId: string,
+    @CurrentUser() user: { id: string },
+    @Query("docType") docType: DocType,
+    @Query("productType") productType?: ProductCatalogProductType,
+  ) {
+    return this.deleteInventoryDocsSearchMetric.execute({
+      userId: user.id,
+      metricId,
+      docType,
+      productType,
+    });
+  }
+
+  @Get("inventory-ledger/search-state")
+  getInventoryLedgerSearchState(
+    @CurrentUser() user: { id: string },
+    @Query("productType") productType?: ProductCatalogProductType,
+  ) {
+    return this.getInventoryLedgerSearchStateUc.execute({ userId: user.id, productType });
+  }
+
+  @Post("inventory-ledger/search-metrics")
+  saveInventoryLedgerSearchMetric(
+    @Body() dto: HttpCreateInventoryLedgerSearchMetricDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.saveInventoryLedgerSearchMetricUc.execute({
+      userId: user.id,
+      name: dto.name,
+      productType: dto.productType,
+      snapshot: sanitizeInventoryLedgerSearchSnapshot({
+        q: dto.snapshot?.q,
+        filters: dto.snapshot?.filters,
+      }),
+    });
+  }
+
+  @Delete("inventory-ledger/search-metrics/:metricId")
+  deleteInventoryLedgerSearchMetric(
+    @Param("metricId", ParseUUIDPipe) metricId: string,
+    @CurrentUser() user: { id: string },
+    @Query("productType") productType?: ProductCatalogProductType,
+  ) {
+    return this.deleteInventoryLedgerSearchMetricUc.execute({
+      userId: user.id,
+      metricId,
+      productType,
+    });
+  }
+
+  @Get("inventory-ledger")
+  listInventoryLedgerMovements(
+    @Query() query: ListProductCatalogInventoryLedgerMovementsDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    const filters = this.parseInventoryLedgerFilters(query.filters);
+    const snapshot = sanitizeInventoryLedgerSearchSnapshot({
+      q: query.q,
+      filters: filters ?? [],
+    });
+
+    return this.listLedgerMovements.execute({
+      page: query.page,
+      limit: query.limit,
+      from: query.from,
+      to: query.to,
+      productType: query.productType,
+      q: snapshot.q,
+      filters: snapshot.filters,
+      requestedBy: user?.id,
+    });
+  }
+
   @Get("inventory-documents")
-  listInventoryDocuments(@Query() query: ListProductCatalogInventoryDocumentsDto) {
+  listInventoryDocuments(@Query() query: ListProductCatalogInventoryDocumentsDto, @CurrentUser() user: { id: string }) {
+    const filters = this.parseInventoryDocumentFilters(query.filters);
+    const snapshot = sanitizeInventoryDocumentsSearchSnapshot({
+      q: query.q,
+      filters: filters ?? [],
+    });
+
+    const mergeStrings = (...values: Array<string[] | undefined>) =>
+      Array.from(new Set(values.flatMap((items) => items ?? []).map((item) => item?.trim()).filter(Boolean)));
+
+    const warehouseIdsIn = mergeStrings(
+      query.warehouseIdsIn,
+      query.warehouseIds,
+      query.warehouseId ? [query.warehouseId] : undefined,
+      snapshot.filters.find((rule) => rule.field === "warehouseId")?.values,
+    );
+
+    const fromWarehouseIdsIn = mergeStrings(
+      snapshot.filters.find((rule) => rule.field === "fromWarehouseId")?.values,
+    );
+
+    const toWarehouseIdsIn = mergeStrings(
+      snapshot.filters.find((rule) => rule.field === "toWarehouseId")?.values,
+    );
+
+    const createdByIdsIn = mergeStrings(
+      query.createdByIdsIn,
+      query.createdById ? [query.createdById] : undefined,
+      snapshot.filters.find((rule) => rule.field === "createdById")?.values,
+    );
+
+    const statuses = mergeStrings(
+      query.statuses,
+      query.status ? [query.status] : undefined,
+      snapshot.filters.find((rule) => rule.field === "status")?.values,
+    ) as any;
+
     return this.listDocuments.execute({
       page: query.page,
       limit: query.limit,
       from: query.from,
       to: query.to,
-      warehouseIds: query.warehouseIds ?? (query.warehouseId ? [query.warehouseId] : undefined),
-      warehouseIdsIn: query.warehouseIdsIn,
+      warehouseIds: undefined,
+      warehouseIdsIn: warehouseIdsIn.length ? warehouseIdsIn : undefined,
+      fromWarehouseIdsIn: fromWarehouseIdsIn.length ? fromWarehouseIdsIn : undefined,
+      toWarehouseIdsIn: toWarehouseIdsIn.length ? toWarehouseIdsIn : undefined,
       warehouseIdsNotIn: query.warehouseIdsNotIn,
       docType: query.docType,
       productType: query.productType,
-      status: query.status,
+      status: undefined,
+      statuses: statuses.length ? statuses : undefined,
       q: query.q,
       includeItems: query.includeItems === undefined ? undefined : query.includeItems === "true",
       createdById: query.createdById,
-      createdByIdsIn: query.createdByIdsIn,
+      createdByIdsIn: createdByIdsIn.length ? createdByIdsIn : undefined,
       createdByIdsNotIn: query.createdByIdsNotIn,
+      filters: snapshot.filters,
+      requestedBy: user?.id,
     });
   }
 
@@ -141,6 +308,26 @@ export class ProductCatalogStockController {
     try {
       const parsed = JSON.parse(raw);
       return Array.isArray(parsed) ? (parsed as ProductCatalogInventorySearchRule[]) : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private parseInventoryDocumentFilters(raw?: string): InventoryDocumentsSearchRule[] | undefined {
+    if (!raw?.trim()) return undefined;
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? (parsed as InventoryDocumentsSearchRule[]) : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private parseInventoryLedgerFilters(raw?: string): InventoryLedgerSearchRule[] | undefined {
+    if (!raw?.trim()) return undefined;
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? (parsed as InventoryLedgerSearchRule[]) : undefined;
     } catch {
       return undefined;
     }

@@ -76,6 +76,29 @@ export interface ProductCatalogInventoryLedgerListItem {
   baseUnit: ProductCatalogInventoryLedgerUnitRef | null;
 }
 
+export interface ProductCatalogInventoryLedgerMovementUserRef {
+  id: string;
+  name: string | null;
+  email: string | null;
+}
+
+export interface ProductCatalogInventoryLedgerMovementListItem {
+  id: string;
+  createdAt: Date;
+  quantity: number;
+  direction: Direction;
+  warehouseId: string;
+  warehouseName: string | null;
+  sku: ProductCatalogInventoryLedgerSkuRef;
+  product: ProductCatalogInventoryLedgerProductRef;
+  user: ProductCatalogInventoryLedgerMovementUserRef | null;
+}
+
+export interface ProductCatalogInventoryLedgerMovementListResult {
+  items: ProductCatalogInventoryLedgerMovementListItem[];
+  total: number;
+}
+
 export interface ProductCatalogInventoryLedgerRepository {
   append(entries: ProductCatalogInventoryLedgerEntry[], tx?: TransactionContext): Promise<void>;
   listByStockItemId(stockItemId: string, tx?: TransactionContext): Promise<ProductCatalogInventoryLedgerEntry[]>;
@@ -83,5 +106,20 @@ export interface ProductCatalogInventoryLedgerRepository {
     params: { stockItemId: string; warehouseId?: string; from?: Date; toExclusive?: Date },
     tx?: TransactionContext,
   ): Promise<ProductCatalogInventoryLedgerListItem[]>;
+  listMovementsPaged(
+    params: {
+      page: number;
+      limit: number;
+      productType?: ProductCatalogProductType;
+      from?: Date;
+      toExclusive?: Date;
+      warehouseIdsIn?: string[];
+      directionIn?: Direction[];
+      userIdsIn?: string[];
+      skuQuery?: string;
+      q?: string;
+    },
+    tx?: TransactionContext,
+  ): Promise<ProductCatalogInventoryLedgerMovementListResult>;
   updateWasteByDocItem(input: { docItemId: string; wasteQty: number }, tx?: TransactionContext): Promise<boolean>;
 }
