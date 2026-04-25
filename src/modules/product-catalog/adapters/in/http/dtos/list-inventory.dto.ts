@@ -1,5 +1,5 @@
-import { Transform } from "class-transformer";
-import { IsArray, IsEnum, IsOptional, IsString, IsUUID } from "class-validator";
+import { Transform, Type } from "class-transformer";
+import { IsArray, IsEnum, IsInt, IsOptional, IsString, IsUUID, Max, Min } from "class-validator";
 import { ProductCatalogProductType } from "src/modules/product-catalog/domain/value-objects/product-type";
 
 const toStringArray = (value: unknown): string[] | undefined => {
@@ -59,11 +59,16 @@ export class ListProductCatalogInventoryDto {
   productType?: ProductCatalogProductType;
 
   @IsOptional()
-  @IsString()
-  page?: string;
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
 
   @IsOptional()
-  @IsString()
-  limit?: string;
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number;
 }
 

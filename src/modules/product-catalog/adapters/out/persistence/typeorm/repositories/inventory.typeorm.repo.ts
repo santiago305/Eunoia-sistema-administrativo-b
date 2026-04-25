@@ -341,7 +341,8 @@ export class ProductCatalogInventoryTypeormRepository implements ProductCatalogI
       .orderBy("i.updated_at", "DESC");
 
     if (shouldPaginate) {
-      dataQb.skip((page - 1) * limit).take(limit);
+      const skip = (page - 1) * limit;
+      dataQb.offset(skip).limit(limit);
     }
 
     const rows = await dataQb.getRawMany<{

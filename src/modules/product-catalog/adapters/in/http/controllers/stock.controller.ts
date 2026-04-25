@@ -346,8 +346,8 @@ export class ProductCatalogStockController {
       skuIdsNotIn: query.skuIdsNotIn,
       productType: query.productType,
       filters: this.parseInventoryFilters(query.filters),
-      page: query.page ? Number(query.page) : undefined,
-      limit: query.limit ? Number(query.limit) : undefined,
+      page: query.page,
+      limit: query.limit,
       requestedBy: user?.id,
     });
   }
