@@ -10,6 +10,15 @@ import {
   ProductCatalogSkuWithAttributes,
 } from "../../domain/ports/sku.repository";
 import { ProductCatalogProductType } from "../../domain/value-objects/product-type";
+import {
+  LISTING_SEARCH_STORAGE,
+  ListingSearchStorageRepository,
+} from "src/shared/listing-search/domain/listing-search.repository";
+import {
+  hasInventorySearchCriteria,
+  resolveInventoryTableKey,
+  sanitizeInventorySearchSnapshot,
+} from "../support/inventory-search.utils";
 
 @Injectable()
 export class ListProductCatalogInventory {
@@ -18,6 +27,8 @@ export class ListProductCatalogInventory {
     private readonly inventoryRepo: ProductCatalogInventoryRepository,
     @Inject(PRODUCT_CATALOG_SKU_REPOSITORY)
     private readonly skuRepo: ProductCatalogSkuRepository,
+    @Inject(LISTING_SEARCH_STORAGE)
+    private readonly searchStorage: ListingSearchStorageRepository,
   ) {}
 
   private toInventorySkuDto(sku: ProductCatalogSkuWithAttributes) {
@@ -57,22 +68,27 @@ export class ListProductCatalogInventory {
     filters?: ProductCatalogInventorySearchRule[];
     page?: number;
     limit?: number;
+    requestedBy?: string;
   }) {
     const shouldPaginate = params.page !== undefined || params.limit !== undefined;
     const page = params.page && params.page > 0 ? params.page : 1;
-    const limit = params.limit && params.limit > 0 ? params.limit : 10;
+    const limit = params.limit && params.limit > 0 ? params.limit : 25;
+    const snapshot = sanitizeInventorySearchSnapshot({
+      q: params.q,
+      filters: (params.filters ?? []) as any,
+    });
 
     const { items, total } = await this.inventoryRepo.searchSnapshots({
       warehouseId: params.warehouseId,
       warehouseIdsIn: params.warehouseIdsIn,
       warehouseIdsNotIn: params.warehouseIdsNotIn,
-      q: params.q,
+      q: snapshot.q,
       isActive: params.isActive,
       skuId: params.skuId,
       skuIdsIn: params.skuIdsIn,
       skuIdsNotIn: params.skuIdsNotIn,
       productType: params.productType,
-      filters: params.filters,
+      filters: snapshot.filters as ProductCatalogInventorySearchRule[],
       page: shouldPaginate ? page : undefined,
       limit: shouldPaginate ? limit : undefined,
     });
@@ -85,6 +101,14 @@ export class ListProductCatalogInventory {
         return [id, sku ? this.toInventorySkuDto(sku) : null] as const;
       }),
     );
+
+    if (params.requestedBy && hasInventorySearchCriteria(snapshot)) {
+      await this.searchStorage.touchRecentSearch({
+        userId: params.requestedBy,
+        tableKey: resolveInventoryTableKey({ productType: params.productType }),
+        snapshot,
+      });
+    }
 
     return {
       items: items.map((row) => ({

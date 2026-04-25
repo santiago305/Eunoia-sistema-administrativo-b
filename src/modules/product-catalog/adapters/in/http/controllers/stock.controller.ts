@@ -23,6 +23,11 @@ import { ListProductCatalogInventory } from "src/modules/product-catalog/applica
 import { ListProductCatalogInventoryLedgerMovements } from "src/modules/product-catalog/application/usecases/list-inventory-ledger-movements.usecase";
 import { ListProductCatalogInventoryDto } from "../dtos/list-inventory.dto";
 import type { ProductCatalogInventorySearchRule } from "src/modules/product-catalog/domain/ports/inventory.repository";
+import { GetInventorySearchStateUsecase } from "src/modules/product-catalog/application/usecases/inventory-search/get-state.usecase";
+import { SaveInventorySearchMetricUsecase } from "src/modules/product-catalog/application/usecases/inventory-search/save-metric.usecase";
+import { DeleteInventorySearchMetricUsecase } from "src/modules/product-catalog/application/usecases/inventory-search/delete-metric.usecase";
+import { HttpCreateInventorySearchMetricDto } from "../dtos/http-inventory-search-metric-create.dto";
+import { sanitizeInventorySearchSnapshot } from "src/modules/product-catalog/application/support/inventory-search.utils";
 import { GetInventoryDocumentsSearchStateUsecase } from "src/modules/product-catalog/application/usecases/inventory-documents-search/get-state.usecase";
 import { SaveInventoryDocumentsSearchMetricUsecase } from "src/modules/product-catalog/application/usecases/inventory-documents-search/save-metric.usecase";
 import { DeleteInventoryDocumentsSearchMetricUsecase } from "src/modules/product-catalog/application/usecases/inventory-documents-search/delete-metric.usecase";
@@ -56,6 +61,9 @@ export class ProductCatalogStockController {
     private readonly listDailyMovementBySku: ListDailyMovementBySku,
     private readonly listDocuments: ListProductCatalogInventoryDocuments,
     private readonly listInventory: ListProductCatalogInventory,
+    private readonly getInventorySearchStateUc: GetInventorySearchStateUsecase,
+    private readonly saveInventorySearchMetricUc: SaveInventorySearchMetricUsecase,
+    private readonly deleteInventorySearchMetricUc: DeleteInventorySearchMetricUsecase,
     private readonly getInventoryDocsSearchState: GetInventoryDocumentsSearchStateUsecase,
     private readonly saveInventoryDocsSearchMetric: SaveInventoryDocumentsSearchMetricUsecase,
     private readonly deleteInventoryDocsSearchMetric: DeleteInventoryDocumentsSearchMetricUsecase,
@@ -129,6 +137,43 @@ export class ProductCatalogStockController {
     @Query("productType") productType?: ProductCatalogProductType,
   ) {
     return this.getInventoryDocsSearchState.execute({ userId: user.id, docType, productType });
+  }
+
+  @Get("inventory/search-state")
+  getInventorySearchState(
+    @CurrentUser() user: { id: string },
+    @Query("productType") productType?: ProductCatalogProductType,
+  ) {
+    return this.getInventorySearchStateUc.execute({ userId: user.id, productType });
+  }
+
+  @Post("inventory/search-metrics")
+  saveInventorySearchMetric(
+    @Body() dto: HttpCreateInventorySearchMetricDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.saveInventorySearchMetricUc.execute({
+      userId: user.id,
+      name: dto.name,
+      productType: dto.productType,
+      snapshot: sanitizeInventorySearchSnapshot({
+        q: dto.snapshot?.q,
+        filters: dto.snapshot?.filters,
+      }),
+    });
+  }
+
+  @Delete("inventory/search-metrics/:metricId")
+  deleteInventorySearchMetric(
+    @Param("metricId", ParseUUIDPipe) metricId: string,
+    @CurrentUser() user: { id: string },
+    @Query("productType") productType?: ProductCatalogProductType,
+  ) {
+    return this.deleteInventorySearchMetricUc.execute({
+      userId: user.id,
+      metricId,
+      productType,
+    });
   }
 
   @Post("inventory-documents/search-metrics")
@@ -286,7 +331,10 @@ export class ProductCatalogStockController {
   }
 
   @Get("inventory")
-  listInventoryRows(@Query() query: ListProductCatalogInventoryDto) {
+  listInventoryRows(
+    @Query() query: ListProductCatalogInventoryDto,
+    @CurrentUser() user: { id: string },
+  ) {
     return this.listInventory.execute({
       warehouseId: query.warehouseId,
       warehouseIdsIn: query.warehouseIdsIn,
@@ -300,6 +348,7 @@ export class ProductCatalogStockController {
       filters: this.parseInventoryFilters(query.filters),
       page: query.page ? Number(query.page) : undefined,
       limit: query.limit ? Number(query.limit) : undefined,
+      requestedBy: user?.id,
     });
   }
 

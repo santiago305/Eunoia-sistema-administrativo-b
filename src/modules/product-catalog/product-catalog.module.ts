@@ -55,6 +55,9 @@ import { DeleteProductCatalogProductSearchMetricUsecase } from "./application/us
 import { GetInventoryDocumentsSearchStateUsecase } from "./application/usecases/inventory-documents-search/get-state.usecase";
 import { SaveInventoryDocumentsSearchMetricUsecase } from "./application/usecases/inventory-documents-search/save-metric.usecase";
 import { DeleteInventoryDocumentsSearchMetricUsecase } from "./application/usecases/inventory-documents-search/delete-metric.usecase";
+import { GetInventorySearchStateUsecase } from "./application/usecases/inventory-search/get-state.usecase";
+import { SaveInventorySearchMetricUsecase } from "./application/usecases/inventory-search/save-metric.usecase";
+import { DeleteInventorySearchMetricUsecase } from "./application/usecases/inventory-search/delete-metric.usecase";
 import { GetInventoryLedgerSearchStateUsecase } from "./application/usecases/inventory-ledger-search/get-state.usecase";
 import { SaveInventoryLedgerSearchMetricUsecase } from "./application/usecases/inventory-ledger-search/save-metric.usecase";
 import { DeleteInventoryLedgerSearchMetricUsecase } from "./application/usecases/inventory-ledger-search/delete-metric.usecase";
@@ -102,6 +105,9 @@ import { User as UserEntity } from "../users/adapters/out/persistence/typeorm/en
     GetProductCatalogProductSearchStateUsecase,
     SaveProductCatalogProductSearchMetricUsecase,
     DeleteProductCatalogProductSearchMetricUsecase,
+    GetInventorySearchStateUsecase,
+    SaveInventorySearchMetricUsecase,
+    DeleteInventorySearchMetricUsecase,
     GetInventoryDocumentsSearchStateUsecase,
     SaveInventoryDocumentsSearchMetricUsecase,
     DeleteInventoryDocumentsSearchMetricUsecase,

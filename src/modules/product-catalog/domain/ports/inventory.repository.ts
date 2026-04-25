@@ -17,6 +17,7 @@ export interface ProductCatalogInventorySnapshotSearchRow {
 }
 
 export type ProductCatalogInventorySearchField =
+  | "sku"
   | "warehouse"
   | "onHand"
   | "reserved"
@@ -24,6 +25,7 @@ export type ProductCatalogInventorySearchField =
 
 export type ProductCatalogInventorySearchOperator =
   | "IN"
+  | "CONTAINS"
   | "EQ"
   | "GT"
   | "GTE"

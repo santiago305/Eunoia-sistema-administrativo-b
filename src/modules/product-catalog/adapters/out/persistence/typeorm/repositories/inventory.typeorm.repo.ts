@@ -73,14 +73,43 @@ export class ProductCatalogInventoryTypeormRepository implements ProductCatalogI
     (filters ?? []).forEach((rule, index) => {
       const key = `inventory_filter_${rule.field}_${index}`;
 
+      if (rule.field === "sku") {
+        const value = rule.value?.trim().toLowerCase();
+        if (!value) return;
+
+        if (rule.operator === "EQ") {
+          qb.andWhere(
+            `(
+              LOWER(s.name) = :${key}
+              OR LOWER(s.backend_sku) = :${key}
+              OR LOWER(COALESCE(s.custom_sku, '')) = :${key}
+            )`,
+            { [key]: value },
+          );
+        }
+
+        if (rule.operator === "CONTAINS") {
+          qb.andWhere(
+            `(
+              LOWER(s.name) LIKE :${key}
+              OR LOWER(s.backend_sku) LIKE :${key}
+              OR LOWER(COALESCE(s.custom_sku, '')) LIKE :${key}
+            )`,
+            { [key]: `%${value}%` },
+          );
+        }
+
+        return;
+      }
+
       if (rule.field === "warehouse" && rule.operator === "IN") {
         const values = Array.from(new Set((rule.values ?? []).map((value) => value?.trim()).filter(Boolean)));
         if (!values.length) return;
         const condition =
           rule.mode === "exclude"
-            ? "i.warehouse_id NOT IN (:...warehouseFilterIds)"
-            : "i.warehouse_id IN (:...warehouseFilterIds)";
-        qb.andWhere(condition, { warehouseFilterIds: values });
+            ? `i.warehouse_id NOT IN (:...${key})`
+            : `i.warehouse_id IN (:...${key})`;
+        qb.andWhere(condition, { [key]: values });
         return;
       }
 
@@ -221,7 +250,7 @@ export class ProductCatalogInventoryTypeormRepository implements ProductCatalogI
   ): Promise<{ items: ProductCatalogInventorySnapshotSearchRow[]; total: number }> {
     const shouldPaginate = input.page !== undefined || input.limit !== undefined;
     const page = input.page && input.page > 0 ? input.page : 1;
-    const limit = input.limit && input.limit > 0 ? input.limit : 10;
+    const limit = input.limit && input.limit > 0 ? input.limit : 25;
 
     const baseQb = this.getRepo(tx)
       .createQueryBuilder("i")
