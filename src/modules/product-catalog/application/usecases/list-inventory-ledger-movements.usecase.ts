@@ -67,7 +67,7 @@ export class ListProductCatalogInventoryLedgerMovements {
 
     const response = await this.repo.listMovementsPaged({
       page: params.page ?? 1,
-      limit: params.limit ?? 10,
+      limit: params.limit ?? 20,
       productType: params.productType,
       from,
       toExclusive,

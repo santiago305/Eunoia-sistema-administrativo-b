@@ -54,6 +54,8 @@ import { UbigeoProvinceEntity } from './src/modules/ubigeo/adapters/out/persiste
 import { UbigeoDistrictEntity } from './src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-district.entity';
 import { seedUbigeo } from './src/modules/ubigeo/infrastructure/seed/ubigeo.seeder';
 import { seedInventoryDocuments } from 'src/modules/product-catalog/infrastructure/seed/document-inventory.seeder';
+import { seedInventoryTransfers } from 'src/modules/product-catalog/infrastructure/seed/document-transfer.seeder';
+import { seedInventoryAdjustments } from 'src/modules/product-catalog/infrastructure/seed/document-adjustment.seeder';
 
 const entities = [
   Role,
@@ -131,13 +133,31 @@ dataSource
 
 
     await seedInventoryDocuments(dataSource, warehouses, {
-    totalDocs: 3000,
-    minItemsPerDoc: 5,
-    maxItemsPerDoc: 8,
-    monthsBack: 4,
-    createdBy: null,
-    allowNegativeStock: true,
-  });
+      totalDocs: 100,
+      minItemsPerDoc: 5,
+      maxItemsPerDoc: 8,
+      monthsBack: 4,
+      createdBy: null,
+      allowNegativeStock: true,
+    });
+
+    await seedInventoryTransfers(dataSource, warehouses, {
+      totalDocs: 30,
+      minItemsPerDoc: 2,
+      maxItemsPerDoc: 5,
+      monthsBack: 4,
+      createdBy: null,
+      allowNegativeStock: true,
+    });
+
+    await seedInventoryAdjustments(dataSource, warehouses, {
+      totalDocs: 30,
+      minItemsPerDoc: 2,
+      maxItemsPerDoc: 5,
+      monthsBack: 4,
+      createdBy: null,
+      allowNegativeStock: true,
+    });
 
     await seedPaymentMethods(dataSource);
     await seedSuppliers(dataSource, 10);

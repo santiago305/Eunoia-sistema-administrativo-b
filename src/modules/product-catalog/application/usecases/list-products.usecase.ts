@@ -41,7 +41,7 @@ export class ListProductCatalogProducts {
 
     const response = await this.repo.list({
       page: params.page ?? 1,
-      limit: params.limit ?? 10,
+      limit: params.limit ?? 20,
       q: snapshot.q,
       isActive: params.isActive,
       type: params.type,
