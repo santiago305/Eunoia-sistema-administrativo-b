@@ -7,13 +7,10 @@ export interface ProductCatalogProductListItem {
   id: string;
   name: string;
   description: string | null;
-  type: ProductCatalogProductType;
   brand: string | null;
   baseUnitId: string | null;
-  baseUnit?: { id: string; code: string; name: string } | null;
+  baseUnit?: string | null;
   isActive: boolean;
-  createdAt?: Date;
-  updatedAt?: Date;
   skuCount: number;
   inventoryTotal: number;
 }
@@ -43,6 +40,25 @@ export interface ProductCatalogProductSearchRule {
   values?: string[];
 }
 
+export interface ProductCatalogProductDetail {
+  id: string;
+  name: string;
+  description: string | null;
+  type: ProductCatalogProductType;
+  brand: string | null;
+  isActive: boolean;
+  skus: Array<{
+    id: string;
+    sku: string;
+    name: string;
+    inventory: Array<{
+      warehouseId: string;
+      warehouseName: string;
+      onHand: number;
+    }>;
+  }>;
+}
+
 export interface ProductCatalogProductRepository {
   create(product: ProductCatalogProduct): Promise<ProductCatalogProduct>;
   update(
@@ -50,6 +66,7 @@ export interface ProductCatalogProductRepository {
     patch: Partial<Pick<ProductCatalogProduct, "name" | "description" | "type" | "brand" | "baseUnitId" | "isActive">>,
   ): Promise<ProductCatalogProduct | null>;
   findById(id: string): Promise<ProductCatalogProduct | null>;
+  getDetail(id: string): Promise<ProductCatalogProductDetail | null>;
   list(params: {
     page: number;
     limit: number;

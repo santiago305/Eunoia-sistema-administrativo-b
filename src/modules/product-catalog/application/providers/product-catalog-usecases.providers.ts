@@ -37,12 +37,14 @@ import { CreateProductCatalogEquivalence } from "../usecases/create-equivalence.
 import { DeleteProductCatalogEquivalence } from "../usecases/delete-equivalence.usecase";
 import { GetProductCatalogEquivalence } from "../usecases/get-equivalence.usecase";
 import { ListProductCatalogEquivalencesByProduct } from "../usecases/list-equivalences-by-product.usecase";
+import { GetProductCatalogProductDetail } from "../usecases/get-product-detail.usecase";
 
 export const productCatalogUsecasesProviders: Provider[] = [
   CreateProductCatalogProduct,
   UpdateProductCatalogProduct,
   ListProductCatalogProducts,
   GetProductCatalogProduct,
+  GetProductCatalogProductDetail,
   CreateProductCatalogSku,
   UpdateProductCatalogSku,
   GetProductCatalogSku,

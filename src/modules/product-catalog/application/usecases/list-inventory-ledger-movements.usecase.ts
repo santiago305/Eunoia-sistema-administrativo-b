@@ -14,13 +14,17 @@ import {
   resolveInventoryLedgerTableKey,
   sanitizeInventoryLedgerSearchSnapshot,
 } from "../support/inventory-ledger-search.utils";
-import { InventoryLedgerSearchFields, InventoryLedgerSearchOperators } from "../dtos/inventory-ledger-search/inventory-ledger-search-snapshot";
+import {
+  InventoryLedgerSearchFields,
+  InventoryLedgerSearchOperators,
+} from "../dtos/inventory-ledger-search/inventory-ledger-search-snapshot";
 
 @Injectable()
 export class ListProductCatalogInventoryLedgerMovements {
   constructor(
     @Inject(PRODUCT_CATALOG_INVENTORY_LEDGER_REPOSITORY)
     private readonly repo: ProductCatalogInventoryLedgerRepository,
+
     @Inject(LISTING_SEARCH_STORAGE)
     private readonly searchStorage: ListingSearchStorageRepository,
   ) {}
@@ -35,35 +39,37 @@ export class ListProductCatalogInventoryLedgerMovements {
     filters?: InventoryLedgerSearchRule[];
     requestedBy?: string;
   }) {
-    const from = params.from ? new Date(params.from) : undefined;
-    const toExclusive = params.to ? new Date(params.to) : undefined;
+    const from = this.parseDate(params.from, "from");
+    const toExclusive = this.parseDate(params.to, "to");
 
-    if (from && Number.isNaN(from.getTime())) throw new BadRequestException("Fecha 'from' inválida");
-    if (toExclusive && Number.isNaN(toExclusive.getTime())) throw new BadRequestException("Fecha 'to' inválida");
-    if (from && toExclusive && from.getTime() >= toExclusive.getTime()) throw new BadRequestException("Rango de fechas invalido");
+    if (from && toExclusive && from.getTime() >= toExclusive.getTime()) {
+      throw new BadRequestException("Rango de fechas inválido");
+    }
 
     const snapshot = sanitizeInventoryLedgerSearchSnapshot({
       q: params.q,
       filters: params.filters ?? [],
     });
 
-    const warehouseIdsIn =
-      snapshot.filters.find((rule) => rule.field === InventoryLedgerSearchFields.WAREHOUSE_ID)?.operator === InventoryLedgerSearchOperators.IN
-        ? (snapshot.filters.find((rule) => rule.field === InventoryLedgerSearchFields.WAREHOUSE_ID) as any).values
-        : [];
+    const warehouseIdsIn = this.getInValues(
+      snapshot.filters,
+      InventoryLedgerSearchFields.WAREHOUSE_ID,
+    );
 
-    const userIdsIn =
-      snapshot.filters.find((rule) => rule.field === InventoryLedgerSearchFields.USER_ID)?.operator === InventoryLedgerSearchOperators.IN
-        ? (snapshot.filters.find((rule) => rule.field === InventoryLedgerSearchFields.USER_ID) as any).values
-        : [];
+    const userIdsIn = this.getInValues(
+      snapshot.filters,
+      InventoryLedgerSearchFields.USER_ID,
+    );
 
-    const directionIn =
-      snapshot.filters.find((rule) => rule.field === InventoryLedgerSearchFields.DIRECTION)?.operator === InventoryLedgerSearchOperators.IN
-        ? (snapshot.filters.find((rule) => rule.field === InventoryLedgerSearchFields.DIRECTION) as any).values
-        : [];
+    const directionIn = this.getInValues(
+      snapshot.filters,
+      InventoryLedgerSearchFields.DIRECTION,
+    );
 
-    const skuRule = snapshot.filters.find((rule) => rule.field === InventoryLedgerSearchFields.SKU) as any;
-    const skuQuery = skuRule?.value ? String(skuRule.value) : undefined;
+    const skuQuery = this.getTextValue(
+      snapshot.filters,
+      InventoryLedgerSearchFields.SKU,
+    );
 
     const response = await this.repo.listMovementsPaged({
       page: params.page ?? 1,
@@ -73,20 +79,65 @@ export class ListProductCatalogInventoryLedgerMovements {
       toExclusive,
       warehouseIdsIn: warehouseIdsIn.length ? warehouseIdsIn : undefined,
       userIdsIn: userIdsIn.length ? userIdsIn : undefined,
-      directionIn: directionIn.length ? directionIn : undefined,
-      skuQuery: skuQuery?.trim() || undefined,
+      directionIn: directionIn.length ? (directionIn as any) : undefined,
+      skuQuery,
       q: snapshot.q,
     });
 
     if (params.requestedBy && hasInventoryLedgerSearchCriteria(snapshot)) {
       await this.searchStorage.touchRecentSearch({
         userId: params.requestedBy,
-        tableKey: resolveInventoryLedgerTableKey({ productType: params.productType }),
+        tableKey: resolveInventoryLedgerTableKey({
+          productType: params.productType,
+        }),
         snapshot,
       });
     }
 
     return response;
   }
-}
 
+  private parseDate(value: string | undefined, fieldName: string): Date | undefined {
+    if (!value) return undefined;
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+      throw new BadRequestException(`Fecha '${fieldName}' inválida`);
+    }
+
+    return date;
+  }
+
+  private getInValues(
+    filters: InventoryLedgerSearchRule[],
+    field: InventoryLedgerSearchRule["field"],
+  ): string[] {
+    const rule = filters.find(
+      (item) =>
+        item.field === field &&
+        item.operator === InventoryLedgerSearchOperators.IN,
+    );
+
+    if (!rule || !("values" in rule) || !Array.isArray(rule.values)) {
+      return [];
+    }
+
+    return rule.values.map(String).filter(Boolean);
+  }
+
+  private getTextValue(
+    filters: InventoryLedgerSearchRule[],
+    field: InventoryLedgerSearchRule["field"],
+  ): string | undefined {
+    const rule = filters.find((item) => item.field === field);
+
+    if (!rule || !("value" in rule)) {
+      return undefined;
+    }
+
+    const value = String(rule.value).trim();
+
+    return value || undefined;
+  }
+}

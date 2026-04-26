@@ -1,10 +1,11 @@
-  import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
   import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
   import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
   import { CreateProductCatalogProduct } from "src/modules/product-catalog/application/usecases/create-product.usecase";
   import { GetProductCatalogProduct } from "src/modules/product-catalog/application/usecases/get-product.usecase";
   import { ListProductCatalogProducts } from "src/modules/product-catalog/application/usecases/list-products.usecase";
   import { UpdateProductCatalogProduct } from "src/modules/product-catalog/application/usecases/update-product.usecase";
+  import { GetProductCatalogProductDetail } from "src/modules/product-catalog/application/usecases/get-product-detail.usecase";
   import { CreateProductCatalogProductDto } from "../dtos/create-product.dto";
   import { ListProductCatalogProductsDto } from "../dtos/list-products.dto";
   import { UpdateProductCatalogProductDto } from "../dtos/update-product.dto";
@@ -25,6 +26,7 @@
       private readonly updateProduct: UpdateProductCatalogProduct,
       private readonly listProducts: ListProductCatalogProducts,
       private readonly getProduct: GetProductCatalogProduct,
+      private readonly getProductDetail: GetProductCatalogProductDetail,
       private readonly getSearchState: GetProductCatalogProductSearchStateUsecase,
       private readonly saveSearchMetric: SaveProductCatalogProductSearchMetricUsecase,
       private readonly deleteSearchMetric: DeleteProductCatalogProductSearchMetricUsecase,
@@ -82,6 +84,11 @@
     @Get(":id")
     getById(@Param("id", ParseUUIDPipe) id: string) {
       return this.getProduct.execute(id);
+    }
+
+    @Get(":id/detail")
+    getDetail(@Param("id", ParseUUIDPipe) id: string) {
+      return this.getProductDetail.execute(id);
     }
 
     @Patch(":id")
