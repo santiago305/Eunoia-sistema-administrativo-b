@@ -278,15 +278,18 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
           id: row.id,
           sku: row.sku,
           name: row.name,
+          total: 0,
           inventory: [],
         });
       }
 
       if (row.warehouse_id) {
+        const onHand = Number(row.on_hand || 0);
+        skusMap.get(row.id).total += onHand;
         skusMap.get(row.id).inventory.push({
           warehouseId: row.warehouse_id,
           warehouseName: row.warehouse_name,
-          onHand: Number(row.on_hand || 0),
+          onHand: onHand,
         });
       }
     }
