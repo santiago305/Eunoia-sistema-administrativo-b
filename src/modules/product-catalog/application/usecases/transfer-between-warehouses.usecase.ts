@@ -3,7 +3,6 @@ import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.p
 import { Direction } from "src/shared/domain/value-objects/direction";
 import { DocType } from "src/shared/domain/value-objects/doc-type";
 import { DocStatus } from "src/shared/domain/value-objects/doc-status";
-import { ProductCatalogInsufficientStockError } from "../errors/product-catalog-insufficient-stock.error";
 import {
   PRODUCT_CATALOG_INVENTORY_REPOSITORY,
   ProductCatalogInventoryRepository,
@@ -142,6 +141,10 @@ export class TransferProductCatalogInventoryBetweenWarehouses {
       }> = [];
 
       for (const row of input.items) {
+        if (!Number.isFinite(row.quantity) || row.quantity <= 0) {
+          throw new BadRequestException(errorResponse("La cantidad debe ser mayor a 0"));
+        }
+
         const effectiveLocationId = row.locationId ?? input.locationId ?? null;
         const sku = await this.skuRepo.findById(row.skuId);
         if (!sku) {
@@ -174,10 +177,13 @@ export class TransferProductCatalogInventoryBetweenWarehouses {
             0,
           );
 
-        // const availableFrom = currentFrom.available ?? currentFrom.onHand - currentFrom.reserved;
-        // if (availableFrom < row.quantity) {
-        //   throw new BadRequestException(new ProductCatalogInsufficientStockError().message);
-        // }
+        const availableFrom = currentFrom.available ?? currentFrom.onHand - currentFrom.reserved;
+        if (availableFrom <= 0 || availableFrom < row.quantity) {
+          const skuLabel = sku.sku.name || sku.sku.backendSku || row.skuId;
+          throw new BadRequestException(
+            errorResponse(`Stock de ${skuLabel} no es suficiente para la transferencia`),
+          );
+        }
 
         const currentTo =
           currentBalances.find(
