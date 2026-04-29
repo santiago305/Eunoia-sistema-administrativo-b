@@ -123,7 +123,7 @@ export function getInventoryLedgerRule(snapshot: InventoryLedgerSearchSnapshot, 
 
 export function buildInventoryLedgerSearchLabel(
   snapshot: InventoryLedgerSearchSnapshot,
-  maps: { warehouses: Map<string, string>; users: Map<string, string>; directions: Map<string, string> },
+  maps: { warehouses: Map<string, string>; users: Map<string, string>; directions: Map<string, string>; skus?: Map<string, string> },
 ) {
   const parts: string[] = [];
 
@@ -131,7 +131,8 @@ export function buildInventoryLedgerSearchLabel(
 
   const skuRule = getInventoryLedgerRule(snapshot, InventoryLedgerSearchFields.SKU);
   if (skuRule?.operator === InventoryLedgerSearchOperators.IN && skuRule.values.length) {
-    parts.push(`${FIELD_LABELS[InventoryLedgerSearchFields.SKU]}: ${skuRule.values.join(" - ")}`);
+    const labels = skuRule.values.map((id) => maps.skus?.get(id) ?? id);
+    parts.push(`${FIELD_LABELS[InventoryLedgerSearchFields.SKU]}: ${labels.join(" - ")}`);
   } else if (skuRule && skuRule.operator !== InventoryLedgerSearchOperators.IN) {
     parts.push(`${FIELD_LABELS[InventoryLedgerSearchFields.SKU]}: ${skuRule.value}`);
   }
