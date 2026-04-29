@@ -60,6 +60,12 @@ function sanitizeSearchRule(rule?: Partial<InventoryLedgerSearchRule> | null): I
   }
 
   if (rule.field === InventoryLedgerSearchFields.SKU) {
+    if (rule.operator === InventoryLedgerSearchOperators.IN) {
+      const values = uniqueStrings(rule.values);
+      if (!values.length) return null;
+      return { field: rule.field, operator: rule.operator, values };
+    }
+
     if (
       rule.operator !== InventoryLedgerSearchOperators.CONTAINS &&
       rule.operator !== InventoryLedgerSearchOperators.EQ
@@ -124,7 +130,9 @@ export function buildInventoryLedgerSearchLabel(
   if (snapshot.q) parts.push(`Busqueda: ${snapshot.q}`);
 
   const skuRule = getInventoryLedgerRule(snapshot, InventoryLedgerSearchFields.SKU);
-  if (skuRule && skuRule.operator !== InventoryLedgerSearchOperators.IN) {
+  if (skuRule?.operator === InventoryLedgerSearchOperators.IN && skuRule.values.length) {
+    parts.push(`${FIELD_LABELS[InventoryLedgerSearchFields.SKU]}: ${skuRule.values.join(" - ")}`);
+  } else if (skuRule && skuRule.operator !== InventoryLedgerSearchOperators.IN) {
     parts.push(`${FIELD_LABELS[InventoryLedgerSearchFields.SKU]}: ${skuRule.value}`);
   }
 

@@ -37,6 +37,11 @@ export type InventoryLedgerSearchRule =
     }
   | {
       field: typeof InventoryLedgerSearchFields.SKU;
+      operator: typeof InventoryLedgerSearchOperators.IN;
+      values: string[];
+    }
+  | {
+      field: typeof InventoryLedgerSearchFields.SKU;
       operator: typeof InventoryLedgerSearchOperators.CONTAINS | typeof InventoryLedgerSearchOperators.EQ;
       value: string;
     };

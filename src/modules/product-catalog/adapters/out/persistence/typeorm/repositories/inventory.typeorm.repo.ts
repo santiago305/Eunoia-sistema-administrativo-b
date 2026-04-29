@@ -74,6 +74,13 @@ export class ProductCatalogInventoryTypeormRepository implements ProductCatalogI
       const key = `inventory_filter_${rule.field}_${index}`;
 
       if (rule.field === "sku") {
+        if (rule.operator === "IN") {
+          const values = Array.from(new Set((rule.values ?? []).map((value) => value?.trim()).filter(Boolean)));
+          if (!values.length) return;
+          qb.andWhere(`s.sku_id IN (:...${key})`, { [key]: values });
+          return;
+        }
+
         const value = rule.value?.trim().toLowerCase();
         if (!value) return;
 

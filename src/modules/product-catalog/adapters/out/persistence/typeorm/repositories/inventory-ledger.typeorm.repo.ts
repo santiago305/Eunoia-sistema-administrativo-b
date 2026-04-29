@@ -354,6 +354,7 @@ export class ProductCatalogInventoryLedgerTypeormRepository implements ProductCa
       from?: Date;
       toExclusive?: Date;
       warehouseIdsIn?: string[];
+      skuIdsIn?: string[];
       directionIn?: Direction[];
       userIdsIn?: string[];
       skuQuery?: string;
@@ -379,6 +380,10 @@ export class ProductCatalogInventoryLedgerTypeormRepository implements ProductCa
 
     if (params.warehouseIdsIn?.length) {
       qb.andWhere("l.warehouse_id IN (:...warehouseIdsIn)", { warehouseIdsIn: params.warehouseIdsIn });
+    }
+
+    if (params.skuIdsIn?.length) {
+      qb.andWhere("sku.sku_id IN (:...skuIdsIn)", { skuIdsIn: params.skuIdsIn });
     }
 
     if (params.directionIn?.length) {

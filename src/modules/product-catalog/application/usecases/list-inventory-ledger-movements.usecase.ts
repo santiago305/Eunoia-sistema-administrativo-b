@@ -66,6 +66,11 @@ export class ListProductCatalogInventoryLedgerMovements {
       InventoryLedgerSearchFields.DIRECTION,
     );
 
+    const skuIdsIn = this.getInValues(
+      snapshot.filters,
+      InventoryLedgerSearchFields.SKU,
+    );
+
     const skuQuery = this.getTextValue(
       snapshot.filters,
       InventoryLedgerSearchFields.SKU,
@@ -78,6 +83,7 @@ export class ListProductCatalogInventoryLedgerMovements {
       from,
       toExclusive,
       warehouseIdsIn: warehouseIdsIn.length ? warehouseIdsIn : undefined,
+      skuIdsIn: skuIdsIn.length ? skuIdsIn : undefined,
       userIdsIn: userIdsIn.length ? userIdsIn : undefined,
       directionIn: directionIn.length ? (directionIn as any) : undefined,
       skuQuery,

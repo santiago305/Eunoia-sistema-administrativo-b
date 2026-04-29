@@ -114,6 +114,7 @@ export interface ProductCatalogInventoryLedgerRepository {
       from?: Date;
       toExclusive?: Date;
       warehouseIdsIn?: string[];
+      skuIdsIn?: string[];
       directionIn?: Direction[];
       userIdsIn?: string[];
       skuQuery?: string;
