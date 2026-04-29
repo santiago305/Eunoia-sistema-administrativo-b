@@ -208,6 +208,9 @@ export class RegisterProductCatalogInventoryMovement {
         if (!direction) {
           throw new BadRequestException(errorResponse("Direccion requerida"));
         }
+        if (!Number.isFinite(row.quantity) || row.quantity <= 0) {
+          throw new BadRequestException(errorResponse("La cantidad debe ser mayor a 0"));
+        }
 
         const effectiveLocationId = row.locationId ?? input.locationId ?? null;
         const sku = await this.skuRepo.findById(row.skuId);
@@ -255,6 +258,16 @@ export class RegisterProductCatalogInventoryMovement {
             0,
             0,
           );
+
+        if (direction === Direction.OUT) {
+          const available = current.available ?? current.onHand - current.reserved;
+          if (available <= 0 || available < row.quantity) {
+            const skuLabel = sku.sku.name || sku.sku.backendSku || row.skuId;
+            throw new BadRequestException(
+              errorResponse(`Stock de ${skuLabel} no es suficiente para el ajuste`),
+            );
+          }
+        }
 
         const nextOnHand =
           direction === Direction.IN
