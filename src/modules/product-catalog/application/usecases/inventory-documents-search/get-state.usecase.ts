@@ -69,20 +69,26 @@ export class GetInventoryDocumentsSearchStateUsecase {
 
     return {
       recent: state.recent.map((item) => {
-        const snapshot = sanitizeInventoryDocumentsSearchSnapshot(item.snapshot as InventoryDocumentsSearchSnapshot);
+        const snapshot = sanitizeInventoryDocumentsSearchSnapshot(
+          item.snapshot as InventoryDocumentsSearchSnapshot,
+          params.docType,
+        );
         return {
           recentId: item.recentId,
-          label: buildInventoryDocumentsSearchLabel(snapshot, maps),
+          label: buildInventoryDocumentsSearchLabel(snapshot, params.docType, maps),
           snapshot,
           lastUsedAt: item.lastUsedAt,
         };
       }),
       saved: state.metrics.map((item) => {
-        const snapshot = sanitizeInventoryDocumentsSearchSnapshot(item.snapshot as InventoryDocumentsSearchSnapshot);
+        const snapshot = sanitizeInventoryDocumentsSearchSnapshot(
+          item.snapshot as InventoryDocumentsSearchSnapshot,
+          params.docType,
+        );
         return {
           metricId: item.metricId,
           name: item.name,
-          label: buildInventoryDocumentsSearchLabel(snapshot, maps),
+          label: buildInventoryDocumentsSearchLabel(snapshot, params.docType, maps),
           snapshot,
           updatedAt: item.updatedAt,
         };

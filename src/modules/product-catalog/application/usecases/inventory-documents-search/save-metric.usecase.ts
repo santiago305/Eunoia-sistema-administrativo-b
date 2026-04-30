@@ -19,7 +19,7 @@ export class SaveInventoryDocumentsSearchMetricUsecase {
   ) {}
 
   async execute(input: SaveInventoryDocumentsSearchMetricInput) {
-    const snapshot = sanitizeInventoryDocumentsSearchSnapshot(input.snapshot);
+    const snapshot = sanitizeInventoryDocumentsSearchSnapshot(input.snapshot, input.docType);
     if (!hasInventoryDocumentsSearchCriteria(snapshot)) {
       return {
         type: "error" as const,
@@ -54,4 +54,3 @@ export class SaveInventoryDocumentsSearchMetricUsecase {
     };
   }
 }
-

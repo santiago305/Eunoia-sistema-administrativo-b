@@ -189,7 +189,7 @@ export class ProductCatalogStockController {
       snapshot: sanitizeInventoryDocumentsSearchSnapshot({
         q: dto.snapshot?.q,
         filters: dto.snapshot?.filters,
-      }),
+      }, dto.docType),
     });
   }
 
@@ -274,7 +274,7 @@ export class ProductCatalogStockController {
     const snapshot = sanitizeInventoryDocumentsSearchSnapshot({
       q: query.q,
       filters: filters ?? [],
-    });
+    }, query.docType);
 
     const mergeStrings = (...values: Array<string[] | undefined>) =>
       Array.from(new Set(values.flatMap((items) => items ?? []).map((item) => item?.trim()).filter(Boolean)));

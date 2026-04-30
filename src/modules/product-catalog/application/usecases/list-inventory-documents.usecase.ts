@@ -70,7 +70,7 @@ export class ListProductCatalogInventoryDocuments {
     const snapshot = sanitizeInventoryDocumentsSearchSnapshot({
       q: params.q,
       filters: params.filters ?? [],
-    });
+    }, params.docType);
 
     const response = await this.repo.list({
       page: params.page ?? 1,

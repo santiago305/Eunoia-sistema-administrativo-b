@@ -25,6 +25,27 @@ const FILTER_FIELD_ORDER: InventoryDocumentsSearchField[] = [
   InventoryDocumentsSearchFields.STATUS,
 ];
 
+function resolveAllowedFilterFields(docType?: DocType | null): InventoryDocumentsSearchField[] {
+  if (docType === DocType.ADJUSTMENT) {
+    return [
+      InventoryDocumentsSearchFields.WAREHOUSE_ID,
+      InventoryDocumentsSearchFields.CREATED_BY_ID,
+      InventoryDocumentsSearchFields.STATUS,
+    ];
+  }
+
+  if (docType === DocType.TRANSFER) {
+    return [
+      InventoryDocumentsSearchFields.FROM_WAREHOUSE_ID,
+      InventoryDocumentsSearchFields.TO_WAREHOUSE_ID,
+      InventoryDocumentsSearchFields.CREATED_BY_ID,
+      InventoryDocumentsSearchFields.STATUS,
+    ];
+  }
+
+  return FILTER_FIELD_ORDER;
+}
+
 const FIELD_LABELS: Record<InventoryDocumentsSearchField, string> = {
   [InventoryDocumentsSearchFields.WAREHOUSE_ID]: "Almacén",
   [InventoryDocumentsSearchFields.FROM_WAREHOUSE_ID]: "Origen",
@@ -48,9 +69,13 @@ export function resolveInventoryDocumentsTableKey(params: {
   return `inventory-documents:${docType}:${productType}`;
 }
 
-function sanitizeSearchRule(rule?: Partial<InventoryDocumentsSearchRule> | null): InventoryDocumentsSearchRule | null {
+function sanitizeSearchRule(
+  rule: Partial<InventoryDocumentsSearchRule> | null | undefined,
+  allowedFields: Set<InventoryDocumentsSearchField>,
+): InventoryDocumentsSearchRule | null {
   if (!rule?.field || !rule.operator) return null;
   if (!Object.values(InventoryDocumentsSearchFields).includes(rule.field)) return null;
+  if (!allowedFields.has(rule.field)) return null;
   if (!Object.values(InventoryDocumentsSearchOperators).includes(rule.operator)) return null;
   if (rule.operator !== InventoryDocumentsSearchOperators.IN) return null;
 
@@ -67,12 +92,16 @@ function sanitizeSearchRule(rule?: Partial<InventoryDocumentsSearchRule> | null)
   return { field: rule.field, operator: rule.operator, values };
 }
 
-export function sanitizeInventoryDocumentsSearchFilters(filters?: InventoryDocumentsSearchRule[] | null) {
+export function sanitizeInventoryDocumentsSearchFilters(
+  filters?: InventoryDocumentsSearchRule[] | null,
+  docType?: DocType | null,
+) {
   const source = Array.isArray(filters) ? filters : [];
+  const allowedFields = new Set(resolveAllowedFilterFields(docType));
   const mergedByField = new Map<InventoryDocumentsSearchField, InventoryDocumentsSearchRule>();
 
   source.forEach((rule) => {
-    const normalized = sanitizeSearchRule(rule);
+    const normalized = sanitizeSearchRule(rule, allowedFields);
     if (!normalized) return;
 
     const existing = mergedByField.get(normalized.field);
@@ -88,16 +117,20 @@ export function sanitizeInventoryDocumentsSearchFilters(filters?: InventoryDocum
     mergedByField.set(normalized.field, normalized);
   });
 
-  return FILTER_FIELD_ORDER.map((field) => mergedByField.get(field)).filter(Boolean) as InventoryDocumentsSearchRule[];
+  return FILTER_FIELD_ORDER
+    .filter((field) => allowedFields.has(field))
+    .map((field) => mergedByField.get(field))
+    .filter(Boolean) as InventoryDocumentsSearchRule[];
 }
 
 export function sanitizeInventoryDocumentsSearchSnapshot(
   snapshot?: Partial<InventoryDocumentsSearchSnapshot> | null,
+  docType?: DocType | null,
 ): InventoryDocumentsSearchSnapshot {
   const q = snapshot?.q?.trim();
   return {
     q: q || undefined,
-    filters: sanitizeInventoryDocumentsSearchFilters(snapshot?.filters ?? []),
+    filters: sanitizeInventoryDocumentsSearchFilters(snapshot?.filters ?? [], docType),
   };
 }
 
@@ -113,43 +146,68 @@ export function getInventoryDocumentsRuleValues(snapshot: InventoryDocumentsSear
 
 export function buildInventoryDocumentsSearchLabel(
   snapshot: InventoryDocumentsSearchSnapshot,
+  docType: DocType | undefined,
   maps: { warehouses: Map<string, string>; users: Map<string, string>; statuses: Map<string, string> },
 ) {
+  const normalized = sanitizeInventoryDocumentsSearchSnapshot(snapshot, docType);
+  const allowedFields = new Set(resolveAllowedFilterFields(docType));
   const parts: string[] = [];
 
-  if (snapshot.q) parts.push(`Busqueda: ${snapshot.q}`);
+  if (normalized.q) parts.push(`Busqueda: ${normalized.q}`);
 
-  const warehouseIds = getInventoryDocumentsRuleValues(snapshot, InventoryDocumentsSearchFields.WAREHOUSE_ID);
+  const warehouseIds = getInventoryDocumentsRuleValues(normalized, InventoryDocumentsSearchFields.WAREHOUSE_ID);
   if (warehouseIds.length) {
     const labels = warehouseIds.map((id) => maps.warehouses.get(id) ?? id);
     parts.push(`${FIELD_LABELS[InventoryDocumentsSearchFields.WAREHOUSE_ID]}: ${labels.join(" - ")}`);
   }
 
-  const fromWarehouseIds = getInventoryDocumentsRuleValues(snapshot, InventoryDocumentsSearchFields.FROM_WAREHOUSE_ID);
+  const fromWarehouseIds = getInventoryDocumentsRuleValues(normalized, InventoryDocumentsSearchFields.FROM_WAREHOUSE_ID);
   if (fromWarehouseIds.length) {
     const labels = fromWarehouseIds.map((id) => maps.warehouses.get(id) ?? id);
     parts.push(`${FIELD_LABELS[InventoryDocumentsSearchFields.FROM_WAREHOUSE_ID]}: ${labels.join(" - ")}`);
   }
 
-  const toWarehouseIds = getInventoryDocumentsRuleValues(snapshot, InventoryDocumentsSearchFields.TO_WAREHOUSE_ID);
+  const toWarehouseIds = getInventoryDocumentsRuleValues(normalized, InventoryDocumentsSearchFields.TO_WAREHOUSE_ID);
   if (toWarehouseIds.length) {
     const labels = toWarehouseIds.map((id) => maps.warehouses.get(id) ?? id);
     parts.push(`${FIELD_LABELS[InventoryDocumentsSearchFields.TO_WAREHOUSE_ID]}: ${labels.join(" - ")}`);
   }
 
-  const createdByIds = getInventoryDocumentsRuleValues(snapshot, InventoryDocumentsSearchFields.CREATED_BY_ID);
+  const createdByIds = getInventoryDocumentsRuleValues(normalized, InventoryDocumentsSearchFields.CREATED_BY_ID);
   if (createdByIds.length) {
     const labels = createdByIds.map((id) => maps.users.get(id) ?? id);
     parts.push(`${FIELD_LABELS[InventoryDocumentsSearchFields.CREATED_BY_ID]}: ${labels.join(" - ")}`);
   }
 
-  const statuses = getInventoryDocumentsRuleValues(snapshot, InventoryDocumentsSearchFields.STATUS);
+  const statuses = getInventoryDocumentsRuleValues(normalized, InventoryDocumentsSearchFields.STATUS);
   if (statuses.length) {
     const labels = statuses.map((id) => maps.statuses.get(id) ?? id);
     parts.push(`${FIELD_LABELS[InventoryDocumentsSearchFields.STATUS]}: ${labels.join(" - ")}`);
   }
 
-  return parts.join(" · ") || "Búsqueda";
+  const filteredParts =
+    parts.length <= 1
+      ? parts
+      : [parts[0], ...parts.slice(1).filter((part) => {
+          if (part.startsWith(`${FIELD_LABELS[InventoryDocumentsSearchFields.WAREHOUSE_ID]}:`)) {
+            return allowedFields.has(InventoryDocumentsSearchFields.WAREHOUSE_ID);
+          }
+          if (part.startsWith(`${FIELD_LABELS[InventoryDocumentsSearchFields.FROM_WAREHOUSE_ID]}:`)) {
+            return allowedFields.has(InventoryDocumentsSearchFields.FROM_WAREHOUSE_ID);
+          }
+          if (part.startsWith(`${FIELD_LABELS[InventoryDocumentsSearchFields.TO_WAREHOUSE_ID]}:`)) {
+            return allowedFields.has(InventoryDocumentsSearchFields.TO_WAREHOUSE_ID);
+          }
+          if (part.startsWith(`${FIELD_LABELS[InventoryDocumentsSearchFields.CREATED_BY_ID]}:`)) {
+            return allowedFields.has(InventoryDocumentsSearchFields.CREATED_BY_ID);
+          }
+          if (part.startsWith(`${FIELD_LABELS[InventoryDocumentsSearchFields.STATUS]}:`)) {
+            return allowedFields.has(InventoryDocumentsSearchFields.STATUS);
+          }
+          return true;
+        })];
+
+  return filteredParts.join(" · ") || "Búsqueda";
 }
 
 export function createInventoryDocumentsSearchSnapshotHash(snapshot: InventoryDocumentsSearchSnapshot) {
