@@ -241,13 +241,13 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
    * properties such as `id`, `name`, `description`, `type`, `brand`, `isActive`, and an array of
    * `skus` which includes details about each SKU of the product, such as SKU ID, SKU
    */
-  async getDetail(id: string): Promise<ProductCatalogProductDetail | null> {
+  async getDetail(id: string, warehouseId?: string): Promise<ProductCatalogProductDetail | null> {
     const productEntity = await this.repo.findOne({ where: { id } });
     if (!productEntity) return null;
 
     const product = this.toDomain(productEntity);
 
-    const skus = await this.repo.manager
+    const skusQuery = this.repo.manager
       .getRepository(ProductCatalogSkuEntity)
       .createQueryBuilder("s")
       .leftJoin(ProductCatalogStockItemEntity, "si", "si.sku_id = s.sku_id")
@@ -261,15 +261,20 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
         "i.warehouse_id as warehouse_id",
         "w.name as warehouse_name",
         "i.on_hand as on_hand",
-      ])
-      .getRawMany<{
-        id: string;
-        sku: string;
-        name: string;
-        warehouse_id: string | null;
-        warehouse_name: string | null;
-        on_hand: number | null;
-      }>();
+      ]);
+
+    if (warehouseId?.trim()) {
+      skusQuery.andWhere("i.warehouse_id = :warehouseId", { warehouseId: warehouseId.trim() });
+    }
+
+    const skus = await skusQuery.getRawMany<{
+      id: string;
+      sku: string;
+      name: string;
+      warehouse_id: string | null;
+      warehouse_name: string | null;
+      on_hand: number | null;
+    }>();
 
     const skusMap = new Map<string, any>();
     for (const row of skus) {

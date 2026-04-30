@@ -87,8 +87,8 @@ import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query
     }
 
     @Get(":id/detail")
-    getDetail(@Param("id", ParseUUIDPipe) id: string) {
-      return this.getProductDetail.execute(id);
+    getDetail(@Param("id", ParseUUIDPipe) id: string, @Query("warehouseId") warehouseId?: string) {
+      return this.getProductDetail.execute(id, warehouseId);
     }
 
     @Patch(":id")

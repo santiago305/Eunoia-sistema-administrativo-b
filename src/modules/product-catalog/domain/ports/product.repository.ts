@@ -67,7 +67,7 @@ export interface ProductCatalogProductRepository {
     patch: Partial<Pick<ProductCatalogProduct, "name" | "description" | "type" | "brand" | "baseUnitId" | "isActive">>,
   ): Promise<ProductCatalogProduct | null>;
   findById(id: string): Promise<ProductCatalogProduct | null>;
-  getDetail(id: string): Promise<ProductCatalogProductDetail | null>;
+  getDetail(id: string, warehouseId?: string): Promise<ProductCatalogProductDetail | null>;
   list(params: {
     page: number;
     limit: number;
