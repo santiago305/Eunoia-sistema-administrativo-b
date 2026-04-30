@@ -39,6 +39,7 @@ export interface ProductionOrderRepository {
       correlative?: number;
       reference?: string;
       manufactureDate?: Date;
+      imageProdution?: string[];
       updatedBy?: string;
       updatedAt?: Date;
     },

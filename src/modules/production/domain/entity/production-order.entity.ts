@@ -19,7 +19,8 @@ export class ProductionOrder {
     public readonly createdAt: Date,
     public readonly reference?: string | null,
     public readonly updatedAt?: Date | null,
-    public readonly updatedBy?: string | null
+    public readonly updatedBy?: string | null,
+    public readonly imageProdution: string[] = [],
   ) {}
 
   assertCanAddItem(): void {

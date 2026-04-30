@@ -9,6 +9,10 @@ import { ProductionOrderTypeormRepository } from "../adapters/out/persistence/ty
 import { PRODUCTION_FILTER_OPTIONS_REPOSITORY } from "../application/ports/production-filter-options.repository";
 import { PRODUCTION_ORDER_REPOSITORY } from "../application/ports/production-order.repository";
 import { productionUsecasesProviders } from "../application/providers/production-usecases.providers";
+import { IMAGE_PROCESSOR } from "src/shared/application/ports/image-processor.port";
+import { FILE_STORAGE } from "src/shared/application/ports/file-storage.port";
+import { SharpImageProcessorService } from "src/shared/utilidades/services/sharp-image-processor.service";
+import { LocalFileStorageService } from "src/shared/utilidades/services/local-file-storage.service";
 
 export const productionModuleProviders: Provider[] = [
   ...productionUsecasesProviders,
@@ -17,4 +21,6 @@ export const productionModuleProviders: Provider[] = [
   { provide: LISTING_SEARCH_STORAGE, useClass: ListingSearchTypeormRepository },
   { provide: UNIT_OF_WORK, useClass: TypeormUnitOfWork },
   { provide: CLOCK, useValue: { now: () => new Date() } },
+  { provide: IMAGE_PROCESSOR, useClass: SharpImageProcessorService },
+  { provide: FILE_STORAGE, useClass: LocalFileStorageService },
 ];

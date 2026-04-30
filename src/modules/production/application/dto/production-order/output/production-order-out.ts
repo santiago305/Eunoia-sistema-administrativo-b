@@ -10,4 +10,5 @@ export interface ProductionOrderOutput {
   reference: string;
   manufactureDate: Date;
   createdAt: Date;
+  imageProdution?: string[];
 }

@@ -18,6 +18,7 @@ export class ProductionOrderOutputMapper {
       manufactureDate: order.manufactureDate,
       reference: order.reference ?? null,
       createdAt: order.createdAt,
+      imageProdution: order.imageProdution ?? [],
     };
   }
 
@@ -49,6 +50,7 @@ export class ProductionOrderOutputMapper {
       fromWarehouseId: item.order.fromWarehouseId,
       toWarehouseId: item.order.toWarehouseId,
       createdAt: item.order.createdAt,
+      imageProdution: item.order.imageProdution ?? [],
       fromWarehouse: item.fromWarehouse,
       toWarehouse: item.toWarehouse,
       serie: item.serie,
@@ -71,6 +73,7 @@ export class ProductionOrderOutputMapper {
       reference: params.order.reference,
       manufactureDate: params.order.manufactureDate,
       createdAt: params.order.createdAt,
+      imageProdution: params.order.imageProdution ?? [],
       items: params.items,
     };
   }

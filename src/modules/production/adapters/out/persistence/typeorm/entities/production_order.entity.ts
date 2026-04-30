@@ -44,6 +44,9 @@ export class ProductionOrderEntity {
   @UpdateDateColumn({ name: "updated_at", type: "timestamptz" })
   updatedAt: Date;
 
+  @Column({ name: "image_prodution", type: "jsonb", default: () => "'[]'" })
+  imageProdution: string[];
+
   @OneToMany(() => ProductionOrderItemEntity, (item) => item.production)
   items?: ProductionOrderItemEntity[];
 }

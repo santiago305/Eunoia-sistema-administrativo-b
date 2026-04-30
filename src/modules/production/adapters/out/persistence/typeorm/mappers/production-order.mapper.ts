@@ -19,6 +19,7 @@ export class ProductionOrderMapper {
       reference: orm.reference ?? null,
       updatedAt: orm.updatedAt ?? null,
       updatedBy: orm.updatedBy ?? null,
+      imageProdution: orm.imageProdution ?? [],
     });
   }
 
@@ -36,6 +37,7 @@ export class ProductionOrderMapper {
       reference: domain.reference ?? null,
       updatedBy: domain.updatedBy ?? null,
       updatedAt: domain.updatedAt ?? null,
+      imageProdution: domain.imageProdution ?? [],
     };
   }
 }

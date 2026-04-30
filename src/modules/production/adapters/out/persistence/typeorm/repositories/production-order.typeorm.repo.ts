@@ -86,6 +86,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
       manufactureDate: order.manufactureDate,
       createdBy: order.createdBy,
       updatedBy: order.updatedBy ?? null,
+      imageProdution: order.imageProdution ?? [],
     });
 
     return new ProductionOrder(
@@ -102,6 +103,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
       saved.reference ?? null,
       saved.updatedAt ?? null,
       saved.updatedBy ?? null,
+      saved.imageProdution ?? [],
     );
   }
 
@@ -124,6 +126,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
       row.reference?? null,
       row.updatedAt?? null,
       row.updatedBy ?? null,
+      row.imageProdution ?? [],
     );
   }
 
@@ -146,6 +149,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
           row.reference ?? null,
           row.updatedAt ?? null,
           row.updatedBy ?? null,
+          row.imageProdution ?? [],
         ),
     );
   }
@@ -429,6 +433,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
           row.reference,
           row.updatedAt,
           row.updatedBy ?? null,
+          row.imageProdution ?? [],
         );
 
         return {
@@ -453,6 +458,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
       correlative?: number;
       reference?: string;
       manufactureDate?: Date;
+      imageProdution?: string[];
       updatedBy?: string;
       updatedAt?: Date;
     },
@@ -467,6 +473,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
     if (params.correlative !== undefined) patch.correlative = params.correlative;
     if (params.reference !== undefined) patch.reference = params.reference;
     if (params.manufactureDate !== undefined) patch.manufactureDate = params.manufactureDate;
+    if (params.imageProdution !== undefined) patch.imageProdution = params.imageProdution;
     if (params.updatedAt !== undefined) patch.updatedAt = params.updatedAt;
     if (params.updatedBy !== undefined) {
       (patch as any).updatedBy = params.updatedBy;

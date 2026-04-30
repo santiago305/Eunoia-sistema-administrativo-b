@@ -9,6 +9,7 @@ import { ProductionOrderExpectedScheduler } from "../../jobs/production-order-ex
 import { ProductionOrderNotFoundApplicationError } from "../../errors/production-order-not-found.error";
 import { BuildConsumptionFromRecipesUseCase } from "./build-consumption-from-recipes.usecase";
 import { ReserveProductCatalogMaterials } from "src/modules/product-catalog/application/usecases/reserve-materials.usecase";
+import { CLOCK, ClockPort } from "src/shared/application/ports/clock.port";
 
 @Injectable()
 export class StartProductionOrder {
@@ -20,6 +21,8 @@ export class StartProductionOrder {
     private readonly buildConsumption: BuildConsumptionFromRecipesUseCase,
     private readonly reserveSkuMaterials: ReserveProductCatalogMaterials,
     private readonly scheduler: ProductionOrderExpectedScheduler,
+    @Inject(CLOCK)
+    private readonly clock: ClockPort,
   ) {}
 
   async execute(params: { productionId: string }): Promise<{ message: string }> {
@@ -39,10 +42,25 @@ export class StartProductionOrder {
         throw err;
       }
 
+      const now = this.clock.now();
+      const baseDate = order.createdAt ?? now;
+      const originalWaitMs = Math.max(0, order.manufactureDate.getTime() - baseDate.getTime());
+      const recalculatedManufactureDate = new Date(now.getTime() + originalWaitMs);
+
+      await this.orderRepo.update(
+        {
+          productionId: params.productionId,
+          manufactureDate: recalculatedManufactureDate,
+          updatedAt: now,
+        },
+        tx,
+      );
+
       await this.orderRepo.setStatus(
         {
           productionId: params.productionId,
           status: ProductionStatus.IN_PROGRESS,
+          updatedAt: now,
         },
         tx,
       );
@@ -87,7 +105,7 @@ export class StartProductionOrder {
         }
       }
 
-      this.scheduler.schedule(order.productionId, order.manufactureDate);
+      this.scheduler.schedule(order.productionId, recalculatedManufactureDate);
       return { message: "Orden iniciada con exito" };
     });
   }

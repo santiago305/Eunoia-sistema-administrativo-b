@@ -36,6 +36,7 @@ export interface ProductionOrderListItemOutput {
   fromWarehouseId: string;
   toWarehouseId: string;
   createdAt: Date;
+  imageProdution?: string[];
   fromWarehouse?: ProductionOrderListWarehouseOutput | null;
   toWarehouse?: ProductionOrderListWarehouseOutput | null;
   serie?: ProductionOrderListSerieOutput | null;
