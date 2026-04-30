@@ -96,6 +96,7 @@ export class PurchaseOrderTypeormRepository implements PurchaseOrderRepository {
       dateIssue?: Date;
       dateExpiration?: Date;
       createdAt?: Date;
+      imageProdution?: string[];
     },
     tx?: TransactionContext,
   ): Promise<PurchaseOrder | null> {
@@ -122,6 +123,7 @@ export class PurchaseOrderTypeormRepository implements PurchaseOrderRepository {
     if (params.dateIssue !== undefined) patch.dateIssue = params.dateIssue;
     if (params.dateExpiration !== undefined) patch.dateExpiration = params.dateExpiration;
     if (params.createdAt !== undefined) patch.createdAt = params.createdAt;
+    if (params.imageProdution !== undefined) patch.imageProdution = params.imageProdution;
 
     await repo.update({ id: params.poId }, patch);
     const updated = await repo.findOne({ where: { id: params.poId } });

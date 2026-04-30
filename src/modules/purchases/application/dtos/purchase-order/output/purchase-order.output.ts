@@ -33,4 +33,5 @@ export interface PurchaseOrderOutput {
   dateIssue?: Date;
   dateExpiration?: Date;
   createdAt?: Date;
+  imageProdution?: string[];
 }

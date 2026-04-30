@@ -46,6 +46,7 @@ export interface PurchaseOrderRepository{
             dateIssue?: Date;
             dateExpiration?: Date;
             createdAt?: Date;
+            imageProdution?: string[];
         },
         tx?: TransactionContext,
     ): Promise<PurchaseOrder | null>;

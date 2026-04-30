@@ -17,6 +17,7 @@ import { ProductCatalogProductType } from "../../domain/value-objects/product-ty
 type WarehouseSeedRef = { id: string };
 
 type SeedInventoryAdjustmentsOptions = {
+  totalDocs?: number;
   docsPerType?: number;
   minItemsPerDoc?: number;
   maxItemsPerDoc?: number;
@@ -38,7 +39,11 @@ export async function seedInventoryAdjustments(
   warehouses: WarehouseSeedRef[],
   options: SeedInventoryAdjustmentsOptions = {},
 ): Promise<void> {
-  const docsPerType = options.docsPerType ?? 30;
+  const totalDocs = options.totalDocs;
+  if (totalDocs !== undefined && totalDocs % 2 !== 0) {
+    throw new Error("totalDocs debe ser par para dividirlo entre PRODUCT y MATERIAL");
+  }
+  const docsPerType = options.docsPerType ?? (totalDocs !== undefined ? totalDocs / 2 : 30);
   const minItemsPerDoc = options.minItemsPerDoc ?? 2;
   const maxItemsPerDoc = options.maxItemsPerDoc ?? 5;
   const monthsBack = options.monthsBack ?? 4;

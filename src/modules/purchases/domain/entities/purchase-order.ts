@@ -29,5 +29,6 @@ export class PurchaseOrder {
     public readonly dateExpiration?: Date,
     public readonly createdAt?: Date,
     public readonly createdBy?: string,
+    public readonly imageProdution: string[] = [],
   ) {}
 }

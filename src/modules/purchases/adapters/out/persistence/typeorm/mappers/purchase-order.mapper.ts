@@ -30,6 +30,7 @@ export class PurchaseOrderMapper {
       dateExpiration: orm.dateExpiration ?? undefined,
       createdAt: orm.createdAt ?? undefined,
       createdBy: orm.createdBy ?? undefined,
+      imageProdution: Array.isArray(orm.imageProdution) ? orm.imageProdution : [],
     });
   }
 
@@ -57,6 +58,7 @@ export class PurchaseOrderMapper {
       dateIssue: domain.dateIssue ?? null,
       dateExpiration: domain.dateExpiration ?? null,
       createdBy: domain.createdBy ?? null,
+      imageProdution: domain.imageProdution ?? [],
       createdAt: domain.createdAt ?? undefined,
     };
   }

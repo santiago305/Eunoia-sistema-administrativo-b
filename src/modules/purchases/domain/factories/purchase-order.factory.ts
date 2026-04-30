@@ -40,6 +40,7 @@ export class PurchaseOrderFactory {
     dateExpiration?: DateInput;
     createdAt?: Date;
     createdBy?: string;
+    imageProdution?: string[];
   }): PurchaseOrder {
     const currency = params.currency ?? CurrencyType.PEN;
     const supplierId = new PurchaseSupplierId(params.supplierId).value;
@@ -79,6 +80,7 @@ export class PurchaseOrderFactory {
       dateExpiration,
       params.createdAt,
       params.createdBy,
+      params.imageProdution ?? [],
     );
   }
 
@@ -106,6 +108,7 @@ export class PurchaseOrderFactory {
     dateExpiration?: DateInput;
     createdAt?: Date;
     createdBy?: string;
+    imageProdution?: string[];
   }): PurchaseOrder {
     const currency = params.currency ?? CurrencyType.PEN;
     const poId = new PurchaseOrderId(params.poId).value;
@@ -146,6 +149,7 @@ export class PurchaseOrderFactory {
       dateExpiration,
       params.createdAt,
       params.createdBy,
+      params.imageProdution ?? [],
     );
   }
 

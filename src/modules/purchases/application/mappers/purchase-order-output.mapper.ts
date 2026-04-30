@@ -42,6 +42,7 @@ export class PurchaseOrderOutputMapper {
       dateIssue: order.dateIssue,
       dateExpiration: order.dateExpiration,
       createdAt: order.createdAt,
+      imageProdution: order.imageProdution ?? [],
     };
   }
 

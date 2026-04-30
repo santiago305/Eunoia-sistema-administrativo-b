@@ -74,6 +74,9 @@ export class PurchaseOrderEntity {
   @Column({ name: "created_by", type: "uuid", nullable: true })
   createdBy?: string | null;
 
+  @Column({ name: "image_prodution", type: "jsonb", default: () => "'[]'" })
+  imageProdution: string[];
+
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
 }

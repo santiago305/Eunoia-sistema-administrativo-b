@@ -1,4 +1,6 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, ConflictException, Controller, Delete, Get, Inject, Param, ParseUUIDPipe, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { memoryStorage } from "multer";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
 import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreatePurchaseOrderUsecase } from "src/modules/purchases/application/usecases/purchase-order/create.usecase";
@@ -19,6 +21,13 @@ import { GetPurchaseOrderSearchStateUsecase } from "src/modules/purchases/applic
 import { SavePurchaseOrderSearchMetricUsecase } from "src/modules/purchases/application/usecases/purchase-search/save-metric.usecase";
 import { DeletePurchaseOrderSearchMetricUsecase } from "src/modules/purchases/application/usecases/purchase-search/delete-metric.usecase";
 import { sanitizePurchaseSearchSnapshot } from "src/modules/purchases/application/support/purchase-search.utils";
+import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
+import { PurchaseOrderExpectedScheduler } from "src/modules/purchases/application/jobs/purchase-order-expected-scheduler";
+import { IMAGE_PROCESSOR, ImageProcessor } from "src/shared/application/ports/image-processor.port";
+import { FILE_STORAGE, FileStorage } from "src/shared/application/ports/file-storage.port";
+import { ImageProcessingError } from "src/shared/application/errors/image-processing.error";
+import { FileStorageConflictError, InvalidFileStoragePathError } from "src/shared/application/errors/file-storage.errors";
+import { RoleType } from "src/shared/constantes/constants";
 
 @Controller("purchases/orders")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
@@ -34,6 +43,13 @@ export class PurchaseOrdersController {
     private readonly getSearchState: GetPurchaseOrderSearchStateUsecase,
     private readonly saveSearchMetric: SavePurchaseOrderSearchMetricUsecase,
     private readonly deleteSearchMetric: DeletePurchaseOrderSearchMetricUsecase,
+    @Inject(PURCHASE_ORDER)
+    private readonly purchaseRepo: PurchaseOrderRepository,
+    private readonly scheduler: PurchaseOrderExpectedScheduler,
+    @Inject(IMAGE_PROCESSOR)
+    private readonly imageProcessor: ImageProcessor,
+    @Inject(FILE_STORAGE)
+    private readonly fileStorage: FileStorage,
   ) {}
 
   @Post()
@@ -130,5 +146,134 @@ export class PurchaseOrdersController {
   @Patch(":id")
   update(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpUpdatePurchaseOrderDto) {
     return this.updateOrder.execute(PurchaseOrderHttpMapper.toUpdateInput(id, dto));
+  }
+
+  @Patch(":id/extra-time")
+  async addExtraTime(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() body: { days?: number; hours?: number; minutes?: number },
+  ) {
+    const days = Number(body?.days ?? 0);
+    const hours = Number(body?.hours ?? 0);
+    const minutes = Number(body?.minutes ?? 0);
+
+    if ([days, hours, minutes].some((value) => Number.isNaN(value) || value < 0)) {
+      throw new BadRequestException("Valores de tiempo extra inválidos");
+    }
+
+    const extraMs = (days * 24 * 60 * 60 + hours * 60 * 60 + minutes * 60) * 1000;
+    if (extraMs <= 0) {
+      throw new BadRequestException("Debes agregar al menos 1 minuto");
+    }
+
+    const order = await this.purchaseRepo.findById(id);
+    if (!order?.expectedAt) {
+      throw new BadRequestException("La orden no tiene fecha de ingreso a almacén");
+    }
+
+    const nextExpectedAt = new Date(order.expectedAt.getTime() + extraMs);
+    const updated = await this.purchaseRepo.update({
+      poId: id,
+      expectedAt: nextExpectedAt,
+    });
+
+    if (!updated) {
+      throw new BadRequestException("No se pudo actualizar la fecha de ingreso");
+    }
+
+    this.scheduler.schedule(updated.poId, nextExpectedAt);
+
+    return {
+      type: "success",
+      message: "Tiempo extra agregado correctamente",
+      expectedAt: nextExpectedAt,
+    };
+  }
+
+  @Patch(":id/image-prodution")
+  @UseInterceptors(
+    FileInterceptor("file", {
+      storage: memoryStorage(),
+      limits: { fileSize: 10 * 1024 * 1024 },
+      fileFilter: (req, file, cb) => {
+        const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+        if (!allowed.includes(file.mimetype)) {
+          return cb(new BadRequestException("Solo se permiten imágenes JPG/PNG/WEBP/GIF"), false);
+        }
+        cb(null, true);
+      },
+    }),
+  )
+  async uploadPurchaseImage(
+    @Param("id", ParseUUIDPipe) id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() user: { role?: string },
+  ) {
+    if (!file?.buffer) {
+      throw new BadRequestException("Debes enviar una imagen");
+    }
+
+    const order = await this.purchaseRepo.findById(id);
+    if (!order) {
+      throw new BadRequestException("Orden de compra no encontrada");
+    }
+
+    const isAdmin = (user?.role ?? "").toLowerCase() === RoleType.ADMIN;
+    if ((order.imageProdution?.length ?? 0) > 0 && !isAdmin) {
+      throw new BadRequestException("Solo un administrador puede agregar más fotos en esta compra");
+    }
+
+    let savedRelativePath = "";
+    try {
+      const processed = await this.imageProcessor.toWebp({
+        buffer: file.buffer,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        quality: 80,
+        maxInputBytes: 10 * 1024 * 1024,
+        maxInputPixels: 20_000_000,
+        maxOutputBytes: 2 * 1024 * 1024,
+      });
+
+      const { relativePath } = await this.fileStorage.save({
+        directory: "purchases",
+        buffer: processed.buffer,
+        extension: processed.extension,
+        filenamePrefix: `purchase-${id}`,
+      });
+      savedRelativePath = relativePath;
+
+      const urls = [...(order.imageProdution ?? []), relativePath];
+      const updated = await this.purchaseRepo.update({
+        poId: id,
+        imageProdution: urls,
+      });
+
+      if (!updated) {
+        throw new BadRequestException("No se pudo guardar la imagen en la compra");
+      }
+
+      return {
+        type: "success",
+        message: "Imagen de compra guardada correctamente",
+        imageProdution: updated.imageProdution,
+      };
+    } catch (error) {
+      if (savedRelativePath) {
+        await this.fileStorage.delete(savedRelativePath).catch(() => undefined);
+      }
+      if (
+        error instanceof ImageProcessingError ||
+        error instanceof InvalidFileStoragePathError
+      ) {
+        throw new BadRequestException(error.message);
+      }
+
+      if (error instanceof FileStorageConflictError) {
+        throw new ConflictException(error.message);
+      }
+
+      throw error;
+    }
   }
 }
