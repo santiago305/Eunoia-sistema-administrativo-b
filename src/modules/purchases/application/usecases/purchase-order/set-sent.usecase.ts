@@ -5,6 +5,7 @@ import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.p
 import { successResponse } from "src/shared/response-standard/response";
 import { PurchaseOrderNotFoundApplicationError } from "../../errors/purchase-order-not-found.error";
 import { BadRequestException, Inject, NotFoundException } from "@nestjs/common";
+import { CLOCK, ClockPort } from "src/shared/application/ports/clock.port";
 
 export class SetSentPurchaseOrderUsecase {
   constructor(
@@ -13,6 +14,8 @@ export class SetSentPurchaseOrderUsecase {
     @Inject(PURCHASE_ORDER)
     private readonly purchaseRepo: PurchaseOrderRepository,
     private readonly scheduler: PurchaseOrderExpectedScheduler,
+    @Inject(CLOCK)
+    private readonly clock: ClockPort,
   ) {}
 
   async execute(poId: string): Promise<ReturnType<typeof successResponse>> {
@@ -30,8 +33,20 @@ export class SetSentPurchaseOrderUsecase {
         throw new BadRequestException("Estado invalido para pasar a SENT");
       }
 
+      const now = this.clock.now();
+      const baseDate = order.dateIssue ?? order.createdAt ?? now;
+      const originalWaitMs = Math.max(
+        0,
+        order.expectedAt.getTime() - baseDate.getTime(),
+      );
+      const recalculatedExpectedAt = new Date(now.getTime() + originalWaitMs);
+
       const updated = await this.purchaseRepo.update(
-        { poId: order.poId, status: PurchaseOrderStatus.SENT },
+        {
+          poId: order.poId,
+          status: PurchaseOrderStatus.SENT,
+          expectedAt: recalculatedExpectedAt,
+        },
         tx,
       );
 
@@ -39,7 +54,7 @@ export class SetSentPurchaseOrderUsecase {
         throw new BadRequestException("No se pudo actualizar estado");
       }
 
-      this.scheduler.schedule(updated.poId, updated.expectedAt!);
+      this.scheduler.schedule(updated.poId, recalculatedExpectedAt);
 
       return successResponse("Orden marcada como SENT y programada");
     });
