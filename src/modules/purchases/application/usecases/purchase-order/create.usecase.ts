@@ -16,6 +16,7 @@ import { PaymentsFactory } from "src/modules/payments/domain/factories/payments.
 import { CreditQuotaNotFoundError } from "src/modules/payments/application/errors/credit-quota-not-found.error";
 import { CreateProductCatalogStockItem } from "src/modules/product-catalog/application/usecases/create-stock-item.usecase";
 import { PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY, ProductCatalogStockItemRepository } from "src/modules/product-catalog/domain/ports/stock-item.repository";
+import { PurchaseUnitConversionService } from "../../services/purchase-unit-conversion.service";
 
 export class CreatePurchaseOrderUsecase {
   constructor(
@@ -34,6 +35,7 @@ export class CreatePurchaseOrderUsecase {
     @Inject(PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY)
     private readonly stockItemRepo: ProductCatalogStockItemRepository,
     private readonly createStockItem: CreateProductCatalogStockItem,
+    private readonly purchaseUnitConversionService: PurchaseUnitConversionService,
 
   ) {}
 
@@ -93,13 +95,19 @@ export class CreatePurchaseOrderUsecase {
             tx,
           );
           }
+          const conversion = await this.purchaseUnitConversionService.resolveFactor({
+            skuId: item.skuId,
+            unitBase: item.unitBase,
+            factor: item.factor,
+            tx,
+          });
           try {
             orderItem = PurchaseOrderItemFactory.createNew({
               poId: po.poId,
               stockItemId: stockItem.id,
-              unitBase: item.unitBase,
-              equivalence: item.equivalence,
-              factor: item.factor,
+              unitBase: conversion.unitBase ?? item.unitBase,
+              equivalence: conversion.equivalence ?? item.equivalence,
+              factor: conversion.factor,
               afectType: item.afectType,
               quantity: item.quantity,
               porcentageIgv: item.porcentageIgv ?? 0,

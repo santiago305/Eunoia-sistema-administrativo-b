@@ -29,6 +29,7 @@ import { PurchaseOrderNotFoundApplicationError } from "../../errors/purchase-ord
 import { PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY, ProductCatalogStockItemRepository } from "src/modules/product-catalog/domain/ports/stock-item.repository";
 import { CreateProductCatalogStockItem } from "src/modules/product-catalog/application/usecases/create-stock-item.usecase";
 import { errorResponse } from "src/shared/response-standard/response";
+import { PurchaseUnitConversionService } from "../../services/purchase-unit-conversion.service";
 
 export class UpdatePurchaseOrderUsecase {
   constructor(
@@ -48,6 +49,7 @@ export class UpdatePurchaseOrderUsecase {
     @Inject(PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY)
     private readonly stockItemRepo: ProductCatalogStockItemRepository,
     private readonly createStockItem: CreateProductCatalogStockItem,
+    private readonly purchaseUnitConversionService: PurchaseUnitConversionService,
   ) {}
 
   async execute(input: UpdatePurchaseOrderInput): Promise<{ message: string }> {
@@ -167,8 +169,14 @@ export class UpdatePurchaseOrderUsecase {
             }
 
             let stockItemId: string;
+            let skuIdForConversion: string;
             if (item.stockItemId) {
               stockItemId = item.stockItemId;
+              const stockItem = await this.stockItemRepo.findById(item.stockItemId, tx);
+              if (!stockItem?.skuId) {
+                throw new BadRequestException(errorResponse("No se pudo resolver sku para el stockItem indicado"));
+              }
+              skuIdForConversion = stockItem.skuId;
             } else {
               let stockItem = await this.stockItemRepo.findBySkuId(item.skuId!, tx);
               if (!stockItem) {
@@ -181,16 +189,23 @@ export class UpdatePurchaseOrderUsecase {
                 throw new BadRequestException(errorResponse("No se pudo resolver el stockItemId para el skuId indicado"));
               }
               stockItemId = stockItem.id;
+              skuIdForConversion = item.skuId!;
             }
+            const conversion = await this.purchaseUnitConversionService.resolveFactor({
+              skuId: skuIdForConversion,
+              unitBase: item.unitBase,
+              factor: item.factor,
+              tx,
+            });
 
             let orderItem;
             try {
               orderItem = PurchaseOrderItemFactory.createNew({
                 poId: updated.poId,
                 stockItemId,
-                unitBase: item.unitBase,
-                equivalence: item.equivalence,
-                factor: item.factor,
+                unitBase: conversion.unitBase ?? item.unitBase,
+                equivalence: conversion.equivalence ?? item.equivalence,
+                factor: conversion.factor,
                 afectType: item.afectType     ,
                 quantity: item.quantity,
                 porcentageIgv: item.porcentageIgv ?? 0,

@@ -8,6 +8,7 @@ import { CurrencyType } from "src/modules/purchases/domain/value-objects/currenc
 import { DomainError } from "src/modules/purchases/domain/errors/domain.error";
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
 import { PurchaseOrderNotFoundApplicationError } from "../../errors/purchase-order-not-found.error";
+import { PurchaseUnitConversionService } from "../../services/purchase-unit-conversion.service";
 
 export class AddPurchaseOrderItemUsecase {
   constructor(
@@ -17,6 +18,7 @@ export class AddPurchaseOrderItemUsecase {
     private readonly itemRepo: PurchaseOrderItemRepository,
     @Inject(PURCHASE_ORDER)
     private readonly purchaseRepo: PurchaseOrderRepository,
+    private readonly purchaseUnitConversionService: PurchaseUnitConversionService,
   ) {}
 
   async execute(items: AddPurchaseOrderItemInput[], po_id: string): Promise<{ message: string }> {
@@ -38,13 +40,19 @@ export class AddPurchaseOrderItemUsecase {
 
       for (const item of items) {
         let data: any;
+        const conversion = await this.purchaseUnitConversionService.resolveFactor({
+          skuId: item.skuId!,
+          unitBase: item.unitBase,
+          factor: item.factor,
+          tx,
+        });
         try {
           data = PurchaseOrderItemFactory.createNew({
             poId,
             stockItemId: item.skuId,
-            unitBase: item.unitBase as any,
-            equivalence: item.equivalence as any,
-            factor: item.factor as any,
+            unitBase: (conversion.unitBase ?? item.unitBase) as any,
+            equivalence: (conversion.equivalence ?? item.equivalence) as any,
+            factor: conversion.factor as any,
             afectType: item.afectType as any,
             quantity: item.quantity as any,
             porcentageIgv: item.porcentageIgv ?? 0,

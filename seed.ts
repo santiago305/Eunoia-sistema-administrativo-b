@@ -35,6 +35,7 @@ import { ProductCatalogSkuEntity } from './src/modules/product-catalog/adapters/
 import { ProductCatalogStockItemEntity } from './src/modules/product-catalog/adapters/out/persistence/typeorm/entities/stock-item.entity';
 import { ProductCatalogDocumentSerieEntity } from './src/modules/product-catalog/adapters/out/persistence/typeorm/entities/document-serie.entity';
 import { ProductCatalogUnitEntity } from './src/modules/product-catalog/adapters/out/persistence/typeorm/entities/unit.entity';
+import { ProductCatalogEquivalencesEntity } from './src/modules/product-catalog/adapters/out/persistence/typeorm/entities/equivalences.entity';
 import { seedRoles } from './src/modules/roles/infrastructure/seed/role.seeder';
 import { seedUser } from './src/modules/users/infrastructure/seed/user.seeder';
 import { seedSecurityReasonCatalog } from './src/modules/security/infrastructure/seed/security-reason-catalog.seeder';
@@ -48,6 +49,7 @@ import { seedSupplierSkus } from './src/modules/suppliers/infrastructure/seed/su
 import { seedProductCatalog } from './src/modules/product-catalog/infrastructure/seed/product-catalog.seeder';
 import { seedProductCatalogRecipes } from './src/modules/product-catalog/infrastructure/seed/product-catalog-recipe.seeder';
 import { seedProductCatalogInventory } from './src/modules/product-catalog/infrastructure/seed/inventory.seeder';
+import { seedProductCatalogEquivalences } from './src/modules/product-catalog/infrastructure/seed/equivalence.seeder';
 import { seedCompany } from './src/modules/companies/infrastructure/seed/company.seeder';
 import { UbigeoDepartmentEntity } from './src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-department.entity';
 import { UbigeoProvinceEntity } from './src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-province.entity';
@@ -93,6 +95,7 @@ const entities = [
   ProductCatalogInventoryDocumentItemEntity,
   ProductCatalogInventoryLedgerEntity,
   ProductCatalogUnitEntity,
+  ProductCatalogEquivalencesEntity,
   UbigeoDepartmentEntity,
   UbigeoProvinceEntity,
   UbigeoDistrictEntity,
@@ -123,6 +126,7 @@ dataSource
     await seedSecurityIpActivity(dataSource);
     await seedUnits(dataSource);
     await seedProductCatalog(dataSource);
+    await seedProductCatalogEquivalences(dataSource);
     await seedProductCatalogRecipes(dataSource);
 
     const warehouses = await seedWarehouses(dataSource);

@@ -16,6 +16,7 @@ import { PurchaseOrderExpectedScheduler } from "../jobs/purchase-order-expected-
 import { GetPurchaseOrderSearchStateUsecase } from "../usecases/purchase-search/get-state.usecase";
 import { SavePurchaseOrderSearchMetricUsecase } from "../usecases/purchase-search/save-metric.usecase";
 import { DeletePurchaseOrderSearchMetricUsecase } from "../usecases/purchase-search/delete-metric.usecase";
+import { PurchaseUnitConversionService } from "../services/purchase-unit-conversion.service";
 
 export const purchasesUsecasesProviders: Provider[] = [
   CreatePurchaseOrderUsecase,
@@ -35,4 +36,5 @@ export const purchasesUsecasesProviders: Provider[] = [
   GetPurchaseOrderSearchStateUsecase,
   SavePurchaseOrderSearchMetricUsecase,
   DeletePurchaseOrderSearchMetricUsecase,
+  PurchaseUnitConversionService,
 ];
