@@ -6,6 +6,7 @@ export class ProductCatalogSku {
     public readonly customSku: string | null,
     public readonly name: string,
     public readonly barcode: string | null,
+    public readonly image: string | null,
     public readonly price: number,
     public readonly cost: number,
     public readonly isSellable: boolean,

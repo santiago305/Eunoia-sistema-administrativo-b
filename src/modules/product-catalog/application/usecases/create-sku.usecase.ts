@@ -21,6 +21,7 @@ export class CreateProductCatalogSku {
     customSku?: string | null;
     name: string;
     barcode?: string | null;
+    image?: string | null;
     price?: number;
     cost?: number;
     isSellable?: boolean;
@@ -41,6 +42,7 @@ export class CreateProductCatalogSku {
         input.customSku ?? null,
         input.name.trim(),
         input.barcode ?? null,
+        input.image ?? null,
         input.price ?? 0,
         input.cost ?? 0,
         input.isSellable ?? true,

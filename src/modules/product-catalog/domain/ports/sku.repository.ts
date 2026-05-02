@@ -21,7 +21,7 @@ export interface ProductCatalogSkuRepository {
   create(input: { sku: ProductCatalogSku; attributes: SkuAttributeInput[] }): Promise<ProductCatalogSkuWithAttributes>;
   update(
     id: string,
-    patch: Partial<Pick<ProductCatalogSku, "name" | "barcode" | "price" | "cost" | "customSku" | "isSellable" | "isPurchasable" | "isManufacturable" | "isStockTracked" | "isActive">> & { attributes?: SkuAttributeInput[] },
+    patch: Partial<Pick<ProductCatalogSku, "name" | "barcode" | "image" | "price" | "cost" | "customSku" | "isSellable" | "isPurchasable" | "isManufacturable" | "isStockTracked" | "isActive">> & { attributes?: SkuAttributeInput[] },
   ): Promise<ProductCatalogSkuWithAttributes | null>;
   findById(id: string): Promise<ProductCatalogSkuWithAttributes | null>;
   list(params: {

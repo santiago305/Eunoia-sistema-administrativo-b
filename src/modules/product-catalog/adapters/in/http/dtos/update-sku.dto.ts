@@ -19,6 +19,10 @@ export class UpdateProductCatalogSkuDto {
   barcode?: string | null;
 
   @IsOptional()
+  @IsString()
+  image?: string | null;
+
+  @IsOptional()
   @IsNumber()
   price?: number;
 

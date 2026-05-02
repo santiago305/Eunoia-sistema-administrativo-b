@@ -29,6 +29,9 @@ export class ProductCatalogSkuEntity {
   @Column({ type: "varchar", length: 80, nullable: true })
   barcode: string | null;
 
+  @Column({ type: "text", nullable: true })
+  image: string | null;
+
   @Column({ type: "numeric", precision: 12, scale: 2, default: 0 })
   price: number;
 

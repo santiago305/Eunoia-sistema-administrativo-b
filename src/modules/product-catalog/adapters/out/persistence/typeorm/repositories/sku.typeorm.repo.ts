@@ -32,6 +32,7 @@ export class ProductCatalogSkuTypeormRepository implements ProductCatalogSkuRepo
       row.customSku ?? null,
       row.name,
       row.barcode ?? null,
+      row.image ?? null,
       Number(row.price ?? 0),
       Number(row.cost ?? 0),
       row.isSellable,
@@ -132,6 +133,7 @@ export class ProductCatalogSkuTypeormRepository implements ProductCatalogSkuRepo
         customSku: input.sku.customSku,
         name: input.sku.name,
         barcode: input.sku.barcode,
+        image: input.sku.image,
         price: input.sku.price,
         cost: input.sku.cost,
         isSellable: input.sku.isSellable,
@@ -168,7 +170,7 @@ export class ProductCatalogSkuTypeormRepository implements ProductCatalogSkuRepo
     patch: Partial<
       Pick<
         ProductCatalogSku,
-        "name" | "barcode" | "price" | "cost" | "customSku" | "isSellable" | "isPurchasable" | "isManufacturable" | "isStockTracked" | "isActive"
+        "name" | "barcode" | "image" | "price" | "cost" | "customSku" | "isSellable" | "isPurchasable" | "isManufacturable" | "isStockTracked" | "isActive"
       >
     > & { attributes?: SkuAttributeInput[] },
   ): Promise<ProductCatalogSkuWithAttributes | null> {
