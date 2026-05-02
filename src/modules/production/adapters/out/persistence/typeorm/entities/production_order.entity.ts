@@ -1,7 +1,9 @@
 import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { JoinColumn, ManyToOne } from "typeorm";
 import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
 import { ProductionOrderItemEntity } from "./production_order_item.entity";
 import { ProductionDocType } from "src/modules/production/domain/value-objects/doc-type.vo";
+import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
 
 @Entity("production_orders")
 export class ProductionOrderEntity {
@@ -32,8 +34,12 @@ export class ProductionOrderEntity {
   @Column({ name: "manufacture_date", type: "timestamptz" })
   manufactureDate: Date;
 
-  @Column({ name: "created_by", type: "varchar" })
+  @Column({ name: "created_by", type: "uuid" })
   createdBy: string;
+
+  @ManyToOne(() => User, { nullable: false })
+  @JoinColumn({ name: "created_by", referencedColumnName: "id" })
+  createdByUser?: User;
 
   @Column({ name: "updated_by", type: "varchar", nullable: true })
   updatedBy?: string;

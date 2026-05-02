@@ -4,6 +4,7 @@ import {
   ProductionStatusFilterOption,
   ProductionWarehouseFilterOption,
   ProductionProductFilterOption,
+  ProductionUserFilterOption,
 } from "../ports/production-filter-options.repository";
 import { ProductionStatus } from "../../domain/value-objects/production-status.vo";
 import {
@@ -21,6 +22,7 @@ type SearchCatalogMaps = {
   statuses?: Map<string, string>;
   warehouses?: Map<string, string>;
   products?: Map<string, string>;
+  users?: Map<string, string>;
 };
 
 const uniqueStrings = (values: string[] | undefined) =>
@@ -32,6 +34,7 @@ const FILTER_FIELD_ORDER: ProductionSearchField[] = [
   ProductionSearchFields.TO_WAREHOUSE_ID,
   ProductionSearchFields.STATUS,
   ProductionSearchFields.SKU_ID,
+  ProductionSearchFields.CREATED_BY,
   ProductionSearchFields.NUMBER,
   ProductionSearchFields.REFERENCE,
   ProductionSearchFields.MANUFACTURE_DATE,
@@ -44,6 +47,7 @@ const CATALOG_FIELDS = new Set<ProductionSearchField>([
   ProductionSearchFields.TO_WAREHOUSE_ID,
   ProductionSearchFields.STATUS,
   ProductionSearchFields.SKU_ID,
+  ProductionSearchFields.CREATED_BY,
 ]);
 
 const TEXT_FIELDS = new Set<ProductionSearchField>([
@@ -76,6 +80,7 @@ const SEARCH_FIELD_LABELS: Record<ProductionSearchField, string> = {
   [ProductionSearchFields.TO_WAREHOUSE_ID]: "Destino",
   [ProductionSearchFields.STATUS]: "Estado",
   [ProductionSearchFields.SKU_ID]: "Producto",
+  [ProductionSearchFields.CREATED_BY]: "Usuario",
   [ProductionSearchFields.NUMBER]: "Numero",
   [ProductionSearchFields.REFERENCE]: "Referencia",
   [ProductionSearchFields.MANUFACTURE_DATE]: "F. Produccion",
@@ -363,6 +368,8 @@ function getCatalogMap(field: ProductionSearchField, maps: SearchCatalogMaps) {
       return maps.statuses;
     case ProductionSearchFields.SKU_ID:
       return maps.products;
+    case ProductionSearchFields.CREATED_BY:
+      return maps.users;
     default:
       return undefined;
   }
@@ -409,10 +416,12 @@ export function buildProductionSearchMaps(params: {
   statuses: ProductionStatusFilterOption[];
   warehouses: ProductionWarehouseFilterOption[];
   products: ProductionProductFilterOption[];
+  users: ProductionUserFilterOption[];
 }) {
   return {
     statuses: new Map(params.statuses.map((item) => [item.value, item.label])),
     warehouses: new Map(params.warehouses.map((item) => [item.value, item.label])),
     products: new Map(params.products.map((item) => [item.value, item.label])),
+    users: new Map(params.users.map((item) => [item.value, item.label])),
   };
 }

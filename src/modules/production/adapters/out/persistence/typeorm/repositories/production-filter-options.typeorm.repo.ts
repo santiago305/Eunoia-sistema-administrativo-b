@@ -4,11 +4,13 @@ import { Repository } from "typeorm";
 import {
   ProductionFilterOptionsRepository,
   ProductionProductFilterOption,
+  ProductionUserFilterOption,
   ProductionWarehouseFilterOption,
 } from "src/modules/production/application/ports/production-filter-options.repository";
 import { WarehouseEntity } from "src/modules/warehouses/adapters/out/persistence/typeorm/entities/warehouse";
 import { ProductCatalogSkuEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku.entity";
 import { ProductCatalogStockItemEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/stock-item.entity";
+import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
 
 type ProductFilterOptionRow = {
   sku_id: string;
@@ -29,13 +31,16 @@ export class ProductionFilterOptionsTypeormRepository implements ProductionFilte
     private readonly warehouseRepo: Repository<WarehouseEntity>,
     @InjectRepository(ProductCatalogSkuEntity)
     private readonly skuRepo: Repository<ProductCatalogSkuEntity>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
   ) {}
 
   async getOptions(): Promise<{
     warehouses: ProductionWarehouseFilterOption[];
     products: ProductionProductFilterOption[];
+    users: ProductionUserFilterOption[];
   }> {
-    const [warehouses, productRows] = await Promise.all([
+    const [warehouses, productRows, users] = await Promise.all([
       this.warehouseRepo
         .createQueryBuilder("w")
         .orderBy("w.isActive", "DESC")
@@ -60,6 +65,11 @@ export class ProductionFilterOptionsTypeormRepository implements ProductionFilte
         .addOrderBy("s.customSku", "ASC")
         .addOrderBy("s.backendSku", "ASC")
         .getRawMany<ProductFilterOptionRow>(),
+      this.userRepo
+        .createQueryBuilder("u")
+        .where("u.deleted = :deleted", { deleted: false })
+        .orderBy("u.name", "ASC")
+        .getMany(),
     ]);
 
     return {
@@ -86,6 +96,11 @@ export class ProductionFilterOptionsTypeormRepository implements ProductionFilte
           hasStockItem: Boolean(row.stock_item_id),
         };
       }),
+      users: users.map((user) => ({
+        value: user.id,
+        label: user.name,
+        active: !user.deleted,
+      })),
     };
   }
 }

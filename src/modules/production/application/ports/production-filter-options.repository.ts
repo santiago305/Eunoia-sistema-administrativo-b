@@ -27,10 +27,17 @@ export interface ProductionProductFilterOption {
   hasStockItem: boolean;
 }
 
+export interface ProductionUserFilterOption {
+  value: string;
+  label: string;
+  active: boolean;
+}
+
 export interface ProductionFilterOptionsOutput {
   statuses: ProductionStatusFilterOption[];
   warehouses: ProductionWarehouseFilterOption[];
   products: ProductionProductFilterOption[];
+  users: ProductionUserFilterOption[];
 }
 
 export const PRODUCTION_FILTER_OPTIONS_REPOSITORY = Symbol("PRODUCTION_FILTER_OPTIONS_REPOSITORY");

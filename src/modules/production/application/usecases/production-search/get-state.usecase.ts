@@ -39,6 +39,7 @@ export class GetProductionOrderSearchStateUsecase {
       statuses: PRODUCTION_STATUS_OPTIONS,
       warehouses: catalogs.warehouses,
       products: catalogs.products,
+      users: catalogs.users,
     });
 
     return {
@@ -65,6 +66,7 @@ export class GetProductionOrderSearchStateUsecase {
         statuses: PRODUCTION_STATUS_OPTIONS,
         warehouses: catalogs.warehouses,
         products: catalogs.products,
+        users: catalogs.users,
       },
     };
   }

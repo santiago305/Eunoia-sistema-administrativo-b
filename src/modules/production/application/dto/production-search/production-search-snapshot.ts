@@ -6,6 +6,7 @@ export const ProductionSearchFields = {
   TO_WAREHOUSE_ID: "toWarehouseId",
   STATUS: "status",
   SKU_ID: "skuId",
+  CREATED_BY: "createdBy",
   NUMBER: "number",
   REFERENCE: "reference",
   MANUFACTURE_DATE: "manufactureDate",

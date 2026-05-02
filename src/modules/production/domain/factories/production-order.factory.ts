@@ -48,6 +48,7 @@ export class ProductionOrderFactory {
     reference?: string | null;
     updatedAt?: Date | null;
     updatedBy?: string | null;
+    imageProdution?: string[];
   }): ProductionOrder {
     return new ProductionOrder(
       params.id,
@@ -62,7 +63,8 @@ export class ProductionOrderFactory {
       params.createdAt,
       params.reference ?? null,
       params.updatedAt ?? null,
-      params.updatedBy ?? null
+      params.updatedBy ?? null,
+      params.imageProdution ?? []
     );
   }
 }

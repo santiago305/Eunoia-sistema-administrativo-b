@@ -9,6 +9,8 @@ export interface ProductionOrderOutput {
   status: ProductionStatus;
   reference: string;
   manufactureDate: Date;
+  createdBy: string;
+  createdByName?: string | null;
   createdAt: Date;
   imageProdution?: string[];
 }

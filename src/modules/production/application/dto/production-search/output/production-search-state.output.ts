@@ -6,6 +6,7 @@ import {
   ProductionFilterOptionsOutput,
   ProductionProductFilterOption,
   ProductionStatusFilterOption,
+  ProductionUserFilterOption,
   ProductionWarehouseFilterOption,
 } from "../../../ports/production-filter-options.repository";
 import { ProductionSearchSnapshot } from "../production-search-snapshot";
@@ -17,6 +18,7 @@ export interface ProductionSearchStateOutput {
     statuses: ProductionStatusFilterOption[];
     warehouses: ProductionWarehouseFilterOption[];
     products: ProductionProductFilterOption[];
+    users: ProductionUserFilterOption[];
   };
 }
 

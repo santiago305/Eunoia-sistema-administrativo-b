@@ -11,6 +11,7 @@ import { ProductCatalogStockItemEntity } from "src/modules/product-catalog/adapt
 import { ProductCatalogProductEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/product.entity";
 import { ProductCatalogModule } from "src/modules/product-catalog/product-catalog.module";
 import { UsersModule } from "src/modules/users/infrastructure/users.module";
+import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
 import { WarehouseEntity } from "src/modules/warehouses/adapters/out/persistence/typeorm/entities/warehouse";
 import { ProductCatalogDocumentSerieEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/document-serie.entity";
 import { productionModuleProviders } from "../composition/container";
@@ -25,6 +26,7 @@ import { productionModuleProviders } from "../composition/container";
       ProductCatalogProductEntity,
       ProductCatalogSkuEntity,
       ProductCatalogStockItemEntity,
+      User,
       ListingSearchRecentEntity,
       ListingSearchMetricEntity,
     ]),

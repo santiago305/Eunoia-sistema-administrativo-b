@@ -24,6 +24,7 @@ describe("GetProductionOrderSearchStateUsecase", () => {
     const filterOptionsRepo = {
       getOptions: jest.fn().mockResolvedValue({
         warehouses: [{ value: "wh-1", label: "Planta Central", active: true }],
+        users: [{ value: "user-1", label: "Ana", active: true }],
         products: [{
           value: "sku-1",
           label: "SKU-001 - Producto A",
@@ -56,5 +57,6 @@ describe("GetProductionOrderSearchStateUsecase", () => {
     expect(result.catalogs.statuses).toHaveLength(5);
     expect(result.catalogs.warehouses).toEqual(filterOptionsRepo.getOptions.mock.results[0]?.value?.warehouses ?? result.catalogs.warehouses);
     expect(result.catalogs.products).toHaveLength(1);
+    expect(result.catalogs.users).toHaveLength(1);
   });
 });

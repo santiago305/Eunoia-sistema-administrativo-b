@@ -27,6 +27,7 @@ export interface ProductionOrderListSerieRM {
 
 export interface ProductionOrderListItemRM {
   order: ProductionOrder;
+  createdByName?: string | null;
   fromWarehouse: ProductionOrderListWarehouseRM | null;
   toWarehouse: ProductionOrderListWarehouseRM | null;
   serie: ProductionOrderListSerieRM | null;

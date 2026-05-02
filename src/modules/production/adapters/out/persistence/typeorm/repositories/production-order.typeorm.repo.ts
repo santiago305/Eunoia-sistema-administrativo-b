@@ -14,6 +14,7 @@ import { ProductCatalogDocumentSerieEntity as DocumentSerie } from "src/modules/
 import { ProductCatalogStockItemEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/stock-item.entity";
 import { ProductCatalogSkuEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku.entity";
 import { ProductCatalogProductEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/product.entity";
+import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
 import {
   ProductionOrderListItemRM,
   ProductionOrderListSerieRM,
@@ -180,6 +181,8 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
       .innerJoin(WarehouseEntity, "wf", "wf.id = p.from_warehouse_id")
       .innerJoin(WarehouseEntity, "wt", "wt.id = p.to_warehouse_id")
       .innerJoin(DocumentSerie, "s", "s.serie_id = p.serie_id")
+      .leftJoin(User, "creator", "creator.user_id = p.created_by")
+      .addSelect("creator.name", "creator_name")
       .distinct(true);
 
     const filters = sanitizeProductionSearchFilters(params.filters);
@@ -268,6 +271,13 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
             });
           }
           break;
+        case ProductionSearchFields.CREATED_BY:
+          if (filter.values?.length) {
+            qb.andWhere(`"p"."created_by" ${catalogOperator} (:...${valuesParam})`, {
+              [valuesParam]: filter.values,
+            });
+          }
+          break;
         case ProductionSearchFields.NUMBER:
           if (!filter.value) break;
           if (filter.operator === ProductionSearchOperators.EQ) {
@@ -341,6 +351,8 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
             .orWhere(`unaccent(coalesce("wt"."name", '')) ILIKE unaccent(:q)`, { q: `%${q}%` })
             .orWhere(`unaccent(coalesce("s"."code", '')) ILIKE unaccent(:q)`, { q: `%${q}%` })
             .orWhere(`unaccent(coalesce("s"."name", '')) ILIKE unaccent(:q)`, { q: `%${q}%` })
+            .orWhere(`unaccent(coalesce("creator"."name", '')) ILIKE unaccent(:q)`, { q: `%${q}%` })
+            .orWhere(`unaccent(coalesce("creator"."email", '')) ILIKE unaccent(:q)`, { q: `%${q}%` })
             .orWhere(`"p"."status"::text ILIKE :q`, { q: `%${q}%` });
 
           if (needsSkuJoin) {
@@ -364,11 +376,12 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
 
     const total = await qb.clone().getCount();
 
-    const rows = await qb
+    const listResult = await qb
       .orderBy("p.createdAt", "DESC")
       .skip(skip)
       .take(limit)
-      .getMany();
+      .getRawAndEntities();
+    const rows = listResult.entities;
 
     const warehouseIds = Array.from(
       new Set(rows.flatMap((r) => [r.fromWarehouseId, r.toWarehouseId]).filter(Boolean)),
@@ -418,7 +431,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
     );
 
     return {
-      items: rows.map((row) => {
+      items: rows.map((row, index) => {
         const order = new ProductionOrder(
           row.id,
           row.fromWarehouseId,
@@ -438,6 +451,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
 
         return {
           order,
+          createdByName: listResult.raw[index]?.creator_name ?? null,
           fromWarehouse: row.fromWarehouseId ? warehouseById.get(row.fromWarehouseId) ?? null : null,
           toWarehouse: row.toWarehouseId ? warehouseById.get(row.toWarehouseId) ?? null : null,
           serie: row.serieId ? serieById.get(row.serieId) ?? null : null,

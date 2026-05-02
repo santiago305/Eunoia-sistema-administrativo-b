@@ -33,6 +33,8 @@ export interface ProductionOrderListItemOutput {
   correlative: number;
   reference: string;
   manufactureDate: Date;
+  createdBy: string;
+  createdByName?: string | null;
   fromWarehouseId: string;
   toWarehouseId: string;
   createdAt: Date;

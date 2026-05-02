@@ -17,7 +17,10 @@ describe("ProductionOrderTypeormRepository", () => {
       skip: jest.fn().mockReturnThis(),
       take: jest.fn().mockReturnThis(),
       getCount: jest.fn().mockResolvedValue(rows.length),
-      getMany: jest.fn().mockResolvedValue(rows),
+      getRawAndEntities: jest.fn().mockResolvedValue({
+        raw: rows.map(() => ({ creator_name: "Ana" })),
+        entities: rows,
+      }),
     };
 
     qb.clone.mockReturnValue({
@@ -143,7 +146,7 @@ describe("ProductionOrderTypeormRepository", () => {
       ),
     ).toBe(true);
     expect(qb.getCount).toHaveBeenCalled();
-    expect(qb.getMany).toHaveBeenCalled();
+    expect(qb.getRawAndEntities).toHaveBeenCalled();
   });
 
   it("applies explicit smart-search filters for from/to warehouse, status, number and sku", async () => {

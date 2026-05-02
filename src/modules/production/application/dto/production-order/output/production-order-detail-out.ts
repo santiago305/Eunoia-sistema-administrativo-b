@@ -52,6 +52,8 @@ export interface ProductionOrderDetailOutput {
   status: ProductionStatus;
   reference: string;
   manufactureDate: Date;
+  createdBy: string;
+  createdByName?: string | null;
   createdAt: Date;
   imageProdution?: string[];
   items: ProductionOrderDetailItemOutput[];
