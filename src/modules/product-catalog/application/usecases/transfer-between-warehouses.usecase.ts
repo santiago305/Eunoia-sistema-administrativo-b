@@ -69,6 +69,7 @@ export class TransferProductCatalogInventoryBetweenWarehouses {
       unitCost?: number | null;
       locationId?: string | null;
     }>;
+    autoPost?: boolean;
   }) {
     if (!input.items.length) {
       throw new BadRequestException("Necesita al menos 1 item");
@@ -136,9 +137,10 @@ export class TransferProductCatalogInventoryBetweenWarehouses {
         unitCost?: number | null;
         fromLocationId: string | null;
         toLocationId: string | null;
-        fromBalance: ProductCatalogInventoryBalance;
-        toBalance: ProductCatalogInventoryBalance;
+        fromBalance?: ProductCatalogInventoryBalance;
+        toBalance?: ProductCatalogInventoryBalance;
       }> = [];
+      const shouldAutoPost = input.autoPost ?? true;
 
       for (const row of input.items) {
         if (!Number.isFinite(row.quantity) || row.quantity <= 0) {
@@ -161,45 +163,6 @@ export class TransferProductCatalogInventoryBetweenWarehouses {
           stockItem = await this.createStockItem.execute({ skuId: row.skuId, isActive: true }, tx);
         }
 
-        const currentBalances = await this.inventoryRepo.listByStockItemId(stockItem.id!, tx);
-        const currentFrom =
-          currentBalances.find(
-            (balance) =>
-              balance.warehouseId === input.fromWarehouseId &&
-              balance.locationId === effectiveLocationId,
-          ) ??
-          new ProductCatalogInventoryBalance(
-            input.fromWarehouseId,
-            stockItem.id!,
-            effectiveLocationId,
-            0,
-            0,
-            0,
-          );
-
-        const availableFrom = currentFrom.available ?? currentFrom.onHand - currentFrom.reserved;
-        if (availableFrom <= 0 || availableFrom < row.quantity) {
-          const skuLabel = sku.sku.name || sku.sku.backendSku || row.skuId;
-          throw new BadRequestException(
-            errorResponse(`Stock de ${skuLabel} no es suficiente para la transferencia`),
-          );
-        }
-
-        const currentTo =
-          currentBalances.find(
-            (balance) =>
-              balance.warehouseId === input.toWarehouseId &&
-              balance.locationId === effectiveLocationId,
-          ) ??
-          new ProductCatalogInventoryBalance(
-            input.toWarehouseId,
-            stockItem.id!,
-            effectiveLocationId,
-            0,
-            0,
-            0,
-          );
-
         const savedItem = await this.documentRepo.addItem(
           new ProductCatalogInventoryDocumentItem(
             undefined,
@@ -214,61 +177,104 @@ export class TransferProductCatalogInventoryBetweenWarehouses {
           tx,
         );
 
-        const nextFromOnHand = currentFrom.onHand - row.quantity;
-        const fromBalance = await this.inventoryRepo.upsert(
-          new ProductCatalogInventoryBalance(
-            input.fromWarehouseId,
-            stockItem.id!,
-            effectiveLocationId,
-            nextFromOnHand,
-            currentFrom.reserved,
-            nextFromOnHand - currentFrom.reserved,
-          ),
-          tx,
-        );
+        let fromBalance: ProductCatalogInventoryBalance | undefined;
+        let toBalance: ProductCatalogInventoryBalance | undefined;
+        if (shouldAutoPost) {
+          const currentBalances = await this.inventoryRepo.listByStockItemId(stockItem.id!, tx);
+          const currentFrom =
+            currentBalances.find(
+              (balance) =>
+                balance.warehouseId === input.fromWarehouseId &&
+                balance.locationId === effectiveLocationId,
+            ) ??
+            new ProductCatalogInventoryBalance(
+              input.fromWarehouseId,
+              stockItem.id!,
+              effectiveLocationId,
+              0,
+              0,
+              0,
+            );
 
-        const nextToOnHand = currentTo.onHand + row.quantity;
-        const toBalance = await this.inventoryRepo.upsert(
-          new ProductCatalogInventoryBalance(
-            input.toWarehouseId,
-            stockItem.id!,
-            effectiveLocationId,
-            nextToOnHand,
-            currentTo.reserved,
-            nextToOnHand - currentTo.reserved,
-          ),
-          tx,
-        );
+          const availableFrom = currentFrom.available ?? currentFrom.onHand - currentFrom.reserved;
+          if (availableFrom <= 0 || availableFrom < row.quantity) {
+            const skuLabel = sku.sku.name || sku.sku.backendSku || row.skuId;
+            throw new BadRequestException(
+              errorResponse(`Stock de ${skuLabel} no es suficiente para la transferencia`),
+            );
+          }
 
-        ledgerEntries.push(
-          new ProductCatalogInventoryLedgerEntry(
-            undefined,
-            document.id!,
-            savedItem.id!,
-            input.fromWarehouseId,
-            stockItem.id!,
-            Direction.OUT,
-            row.quantity,
-            effectiveLocationId,
-            0,
-            row.unitCost ?? null,
-          ),
-        );
+          const currentTo =
+            currentBalances.find(
+              (balance) =>
+                balance.warehouseId === input.toWarehouseId &&
+                balance.locationId === effectiveLocationId,
+            ) ??
+            new ProductCatalogInventoryBalance(
+              input.toWarehouseId,
+              stockItem.id!,
+              effectiveLocationId,
+              0,
+              0,
+              0,
+            );
 
-        ledgerEntries.push(
-          new ProductCatalogInventoryLedgerEntry(
-            undefined,
-            document.id!,
-            savedItem.id!,
-            input.toWarehouseId,
-            stockItem.id!,
-            Direction.IN,
-            row.quantity,
-            effectiveLocationId,
-            0,
-            row.unitCost ?? null,
-          ),
-        );
+          const nextFromOnHand = currentFrom.onHand - row.quantity;
+          fromBalance = await this.inventoryRepo.upsert(
+            new ProductCatalogInventoryBalance(
+              input.fromWarehouseId,
+              stockItem.id!,
+              effectiveLocationId,
+              nextFromOnHand,
+              currentFrom.reserved,
+              nextFromOnHand - currentFrom.reserved,
+            ),
+            tx,
+          );
+
+          const nextToOnHand = currentTo.onHand + row.quantity;
+          toBalance = await this.inventoryRepo.upsert(
+            new ProductCatalogInventoryBalance(
+              input.toWarehouseId,
+              stockItem.id!,
+              effectiveLocationId,
+              nextToOnHand,
+              currentTo.reserved,
+              nextToOnHand - currentTo.reserved,
+            ),
+            tx,
+          );
+
+          ledgerEntries.push(
+            new ProductCatalogInventoryLedgerEntry(
+              undefined,
+              document.id!,
+              savedItem.id!,
+              input.fromWarehouseId,
+              stockItem.id!,
+              Direction.OUT,
+              row.quantity,
+              effectiveLocationId,
+              0,
+              row.unitCost ?? null,
+            ),
+          );
+
+          ledgerEntries.push(
+            new ProductCatalogInventoryLedgerEntry(
+              undefined,
+              document.id!,
+              savedItem.id!,
+              input.toWarehouseId,
+              stockItem.id!,
+              Direction.IN,
+              row.quantity,
+              effectiveLocationId,
+              0,
+              row.unitCost ?? null,
+            ),
+          );
+        }
 
         results.push({
           skuId: row.skuId,
@@ -283,19 +289,26 @@ export class TransferProductCatalogInventoryBetweenWarehouses {
         });
       }
 
-      await this.ledgerRepo.append(ledgerEntries, tx);
-      await this.documentRepo.markPosted(
-        {
-          docId: document.id!,
-          postedBy: input.createdBy ?? null,
-          postedAt: new Date(),
-        },
-        tx,
-      );
+      if (ledgerEntries.length > 0) {
+        await this.ledgerRepo.append(ledgerEntries, tx);
+      }
+      if (shouldAutoPost) {
+        await this.documentRepo.markPosted(
+          {
+            docId: document.id!,
+            postedBy: input.createdBy ?? null,
+            postedAt: new Date(),
+          },
+          tx,
+        );
+      }
       
 
-      return successResponse("Transferencia creada con exito", {
+      return successResponse(
+        shouldAutoPost ? "Transferencia creada con exito" : "Transferencia creada en borrador",
+        {
         documentId: document.id!,
+        status: shouldAutoPost ? DocStatus.POSTED : DocStatus.DRAFT,
       });
     });
   }

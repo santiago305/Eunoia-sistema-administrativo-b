@@ -85,6 +85,7 @@ export class RegisterProductCatalogInventoryMovement {
     postedAt?: Date | null;
     referenceId?: string | null;
     referenceType?: ReferenceType | null;
+    autoPost?: boolean;
     },
     tx?: TransactionContext,
   ) {
@@ -114,6 +115,7 @@ export class RegisterProductCatalogInventoryMovement {
       postedAt?: Date | null;
       referenceId?: string | null;
       referenceType?: ReferenceType | null;
+      autoPost?: boolean;
     },
     tx: TransactionContext,
   ) {
@@ -200,8 +202,9 @@ export class RegisterProductCatalogInventoryMovement {
         quantity: number;
         unitCost?: number | null;
         locationId?: string | null;
-        balance: ProductCatalogInventoryBalance;
+        balance?: ProductCatalogInventoryBalance;
       }> = [];
+      const shouldAutoPost = input.autoPost ?? true;
 
       for (const row of input.items) {
         const direction = row.direction ?? input.direction;
@@ -229,12 +232,17 @@ export class RegisterProductCatalogInventoryMovement {
           );
         }
 
+        const quantityForItem =
+          !shouldAutoPost && input.docType === DocType.ADJUSTMENT
+            ? (direction === Direction.OUT ? -Math.abs(row.quantity) : Math.abs(row.quantity))
+            : row.quantity;
+
         const savedItem = await this.documentRepo.addItem(
           new ProductCatalogInventoryDocumentItem(
             undefined,
             document.id!,
             stockItem.id!,
-            row.quantity,
+            quantityForItem,
             0,
             direction === Direction.OUT ? effectiveLocationId : null,
             direction === Direction.IN ? effectiveLocationId : null,
@@ -243,67 +251,70 @@ export class RegisterProductCatalogInventoryMovement {
           tx,
         );
 
-        const currentBalances = await this.inventoryRepo.listByStockItemId(stockItem.id!, tx);
-        const current =
-          currentBalances.find(
-            (balance) =>
-              balance.warehouseId === input.warehouseId &&
-              balance.locationId === effectiveLocationId,
-          ) ??
-          new ProductCatalogInventoryBalance(
-            input.warehouseId,
-            stockItem.id!,
-            effectiveLocationId,
-            0,
-            0,
-            0,
+        let balance: ProductCatalogInventoryBalance | undefined;
+        if (shouldAutoPost) {
+          const currentBalances = await this.inventoryRepo.listByStockItemId(stockItem.id!, tx);
+          const current =
+            currentBalances.find(
+              (snapshot) =>
+                snapshot.warehouseId === input.warehouseId &&
+                snapshot.locationId === effectiveLocationId,
+            ) ??
+            new ProductCatalogInventoryBalance(
+              input.warehouseId,
+              stockItem.id!,
+              effectiveLocationId,
+              0,
+              0,
+              0,
+            );
+
+          if (direction === Direction.OUT) {
+            const available = current.available ?? current.onHand - current.reserved;
+            if (available <= 0 || available < row.quantity) {
+              const skuLabel = sku.sku.name || sku.sku.backendSku || row.skuId;
+              throw new BadRequestException(
+                errorResponse(`Stock de ${skuLabel} no es suficiente para el ajuste`),
+              );
+            }
+          }
+
+          const nextOnHand =
+            direction === Direction.IN
+              ? current.onHand + row.quantity
+              : current.onHand - row.quantity;
+
+          if (nextOnHand < 0) {
+            throw new BadRequestException(errorResponse("El inventario no puede quedar en negativo"));
+          }
+
+          balance = await this.inventoryRepo.upsert(
+            new ProductCatalogInventoryBalance(
+              input.warehouseId,
+              stockItem.id!,
+              effectiveLocationId,
+              nextOnHand,
+              current.reserved,
+              nextOnHand - current.reserved,
+            ),
+            tx,
           );
 
-        if (direction === Direction.OUT) {
-          const available = current.available ?? current.onHand - current.reserved;
-          if (available <= 0 || available < row.quantity) {
-            const skuLabel = sku.sku.name || sku.sku.backendSku || row.skuId;
-            throw new BadRequestException(
-              errorResponse(`Stock de ${skuLabel} no es suficiente para el ajuste`),
-            );
-          }
+          ledgerEntries.push(
+            new ProductCatalogInventoryLedgerEntry(
+              undefined,
+              document.id!,
+              savedItem.id!,
+              input.warehouseId,
+              stockItem.id!,
+              direction,
+              row.quantity,
+              effectiveLocationId,
+              0,
+              row.unitCost ?? null,
+            ),
+          );
         }
-
-        const nextOnHand =
-          direction === Direction.IN
-            ? current.onHand + row.quantity
-            : current.onHand - row.quantity;
-
-        if (nextOnHand < 0) {
-          throw new BadRequestException(errorResponse("El inventario no puede quedar en negativo"));
-        }
-
-        const balance = await this.inventoryRepo.upsert(
-          new ProductCatalogInventoryBalance(
-            input.warehouseId,
-            stockItem.id!,
-            effectiveLocationId,
-            nextOnHand,
-            current.reserved,
-            nextOnHand - current.reserved,
-          ),
-          tx,
-        );
-
-        ledgerEntries.push(
-          new ProductCatalogInventoryLedgerEntry(
-            undefined,
-            document.id!,
-            savedItem.id!,
-            input.warehouseId,
-            stockItem.id!,
-            direction,
-            row.quantity,
-            effectiveLocationId,
-            0,
-            row.unitCost ?? null,
-          ),
-        );
 
         results.push({
           skuId: row.skuId,
@@ -316,19 +327,24 @@ export class RegisterProductCatalogInventoryMovement {
         });
       }
 
-      await this.ledgerRepo.append(ledgerEntries, tx);
+      if (ledgerEntries.length > 0) {
+        await this.ledgerRepo.append(ledgerEntries, tx);
+      }
 
-      await this.documentRepo.markPosted(
-        {
-          docId: document.id!,
-          postedBy: input.createdBy ?? null,
-          postedAt: new Date(),
-        },
-        tx,
-      );
+      if (shouldAutoPost) {
+        await this.documentRepo.markPosted(
+          {
+            docId: document.id!,
+            postedBy: input.createdBy ?? null,
+            postedAt: new Date(),
+          },
+          tx,
+        );
+      }
 
       return {
         documentId: document.id!,
+        status: shouldAutoPost ? DocStatus.POSTED : DocStatus.DRAFT,
         items: results,
       };
   }

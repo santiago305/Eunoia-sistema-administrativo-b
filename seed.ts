@@ -133,30 +133,30 @@ dataSource
 
 
     await seedInventoryDocuments(dataSource, warehouses, {
-      totalDocs: 100,
-      minItemsPerDoc: 5,
+      totalDocs: 30,
+      minItemsPerDoc: 2,
       maxItemsPerDoc: 8,
       monthsBack: 4,
       createdBy: null,
-      allowNegativeStock: true,
+      allowNegativeStock: false,
     });
 
     await seedInventoryTransfers(dataSource, warehouses, {
-      totalDocs: 30,
+      totalDocs: 2,
       minItemsPerDoc: 2,
       maxItemsPerDoc: 5,
       monthsBack: 4,
       createdBy: null,
-      allowNegativeStock: true,
+      allowNegativeStock: false,
     });
 
     await seedInventoryAdjustments(dataSource, warehouses, {
-      totalDocs: 30,
+      totalDocs: 2,
       minItemsPerDoc: 2,
       maxItemsPerDoc: 5,
       monthsBack: 4,
       createdBy: null,
-      allowNegativeStock: true,
+      allowNegativeStock: false,
     });
 
     await seedPaymentMethods(dataSource);

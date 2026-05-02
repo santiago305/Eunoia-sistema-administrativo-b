@@ -21,6 +21,7 @@ import { ListProductCatalogInventoryLedgerDto } from "../dtos/list-inventory-led
 import { ListDailyMovementBySkuDto } from "../dtos/list-daily-movement-by-sku.dto";
 import { ListProductCatalogInventory } from "src/modules/product-catalog/application/usecases/list-inventory.usecase";
 import { ListProductCatalogInventoryLedgerMovements } from "src/modules/product-catalog/application/usecases/list-inventory-ledger-movements.usecase";
+import { ProcessProductCatalogInventoryDocument } from "src/modules/product-catalog/application/usecases/process-inventory-document.usecase";
 import { ListProductCatalogInventoryDto } from "../dtos/list-inventory.dto";
 import type { ProductCatalogInventorySearchRule } from "src/modules/product-catalog/domain/ports/inventory.repository";
 import { GetInventorySearchStateUsecase } from "src/modules/product-catalog/application/usecases/inventory-search/get-state.usecase";
@@ -68,6 +69,7 @@ export class ProductCatalogStockController {
     private readonly saveInventoryDocsSearchMetric: SaveInventoryDocumentsSearchMetricUsecase,
     private readonly deleteInventoryDocsSearchMetric: DeleteInventoryDocumentsSearchMetricUsecase,
     private readonly listLedgerMovements: ListProductCatalogInventoryLedgerMovements,
+    private readonly processDocument: ProcessProductCatalogInventoryDocument,
     private readonly getInventoryLedgerSearchStateUc: GetInventoryLedgerSearchStateUsecase,
     private readonly saveInventoryLedgerSearchMetricUc: SaveInventoryLedgerSearchMetricUsecase,
     private readonly deleteInventoryLedgerSearchMetricUc: DeleteInventoryLedgerSearchMetricUsecase,
@@ -103,7 +105,11 @@ export class ProductCatalogStockController {
     @CurrentUser() user: { id: string },
     @Body() dto: RegisterProductCatalogInventoryMovementDto,
   ) {
-    return this.registerMovement.execute({ ...dto, createdBy:user.id });
+    return this.registerMovement.execute({
+      ...dto,
+      createdBy: user.id,
+      autoPost: dto.docType === DocType.ADJUSTMENT ? false : undefined,
+    });
   }
 
   @Post("stock-items/movements/transfer")
@@ -111,7 +117,15 @@ export class ProductCatalogStockController {
     @CurrentUser() user: { id: string },
     @Body() dto: TransferBetweenWarehousesDto,
   ) {
-    return this.transferBetweenWarehouses.execute({ ...dto, createdBy: user.id });
+    return this.transferBetweenWarehouses.execute({ ...dto, createdBy: user.id, autoPost: false });
+  }
+
+  @Post("inventory-documents/:id/process")
+  processInventoryDocument(
+    @Param("id", ParseUUIDPipe) docId: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.processDocument.execute({ docId, postedBy: user.id });
   }
   
   @Get("stock-items/ledger/by-sku")
