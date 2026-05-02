@@ -274,6 +274,10 @@ export class RegisterProductCatalogInventoryMovement {
             ? current.onHand + row.quantity
             : current.onHand - row.quantity;
 
+        if (nextOnHand < 0) {
+          throw new BadRequestException(errorResponse("El inventario no puede quedar en negativo"));
+        }
+
         const balance = await this.inventoryRepo.upsert(
           new ProductCatalogInventoryBalance(
             input.warehouseId,
@@ -327,5 +331,5 @@ export class RegisterProductCatalogInventoryMovement {
         documentId: document.id!,
         items: results,
       };
-  }pnp
+  }
 }

@@ -277,6 +277,11 @@ export const seedProductCatalog = async (dataSource: DataSource): Promise<void> 
 
     for (const skuSeed of family.skus) {
       let sku = await skuRepo.findOne({ where: { customSku: skuSeed.customSku } });
+      const defaultPrice = family.type === ProductCatalogProductType.PRODUCT ? 25 : 8;
+      const defaultCost = family.type === ProductCatalogProductType.PRODUCT ? 12 : 4;
+      const resolvedPrice = skuSeed.price ?? defaultPrice;
+      const resolvedCost = skuSeed.cost ?? defaultCost;
+
       if (!sku) {
         sku = await skuRepo.save({
           productId: product.id,
@@ -284,14 +289,21 @@ export const seedProductCatalog = async (dataSource: DataSource): Promise<void> 
           customSku: skuSeed.customSku,
           name: skuSeed.name,
           barcode: skuSeed.barcode ?? null,
-          price: skuSeed.price ?? 0,
-          cost: skuSeed.cost ?? 0,
+          price: resolvedPrice,
+          cost: resolvedCost,
           isSellable: skuSeed.isSellable ?? true,
           isPurchasable: skuSeed.isPurchasable ?? false,
           isManufacturable: skuSeed.isManufacturable ?? false,
           isStockTracked: skuSeed.isStockTracked ?? true,
           isActive: skuSeed.isActive ?? true,
         });
+      } else {
+        if (Number(sku.price ?? 0) <= 0 || Number(sku.cost ?? 0) <= 0) {
+          await skuRepo.update(sku.id, {
+            price: Number(sku.price ?? 0) > 0 ? sku.price : resolvedPrice,
+            cost: Number(sku.cost ?? 0) > 0 ? sku.cost : resolvedCost,
+          });
+        }
       }
 
       const attributes = skuSeed.attributes ?? {};

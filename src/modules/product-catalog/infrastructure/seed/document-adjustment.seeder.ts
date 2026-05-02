@@ -43,11 +43,11 @@ export async function seedInventoryAdjustments(
   if (totalDocs !== undefined && totalDocs % 2 !== 0) {
     throw new Error("totalDocs debe ser par para dividirlo entre PRODUCT y MATERIAL");
   }
-  const docsPerType = options.docsPerType ?? (totalDocs !== undefined ? totalDocs / 2 : 30);
+  const docsPerType = options.docsPerType ?? (totalDocs !== undefined ? totalDocs / 2 : 1);
   const minItemsPerDoc = options.minItemsPerDoc ?? 2;
   const maxItemsPerDoc = options.maxItemsPerDoc ?? 5;
   const monthsBack = options.monthsBack ?? 4;
-  const allowNegativeStock = options.allowNegativeStock ?? true;
+  const allowNegativeStock = options.allowNegativeStock ?? false;
 
   if (!warehouses.length) {
     throw new Error("No hay warehouses para generar ajustes");

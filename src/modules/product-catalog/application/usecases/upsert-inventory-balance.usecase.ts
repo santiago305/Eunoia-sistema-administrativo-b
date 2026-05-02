@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { ProductCatalogStockItemNotFoundError } from "../errors/product-catalog-stock-item-not-found.error";
 import { ProductCatalogInventoryBalance } from "../../domain/entities/inventory-balance";
 import {
@@ -29,6 +29,15 @@ export class UpsertProductCatalogInventoryBalance {
     const stockItem = await this.stockItemRepo.findById(input.stockItemId);
     if (!stockItem) throw new NotFoundException(new ProductCatalogStockItemNotFoundError().message);
     const reserved = input.reserved ?? 0;
+    if (!Number.isFinite(input.onHand) || input.onHand < 0) {
+      throw new BadRequestException("El inventario no puede ser negativo");
+    }
+    if (!Number.isFinite(reserved) || reserved < 0) {
+      throw new BadRequestException("La reserva no puede ser negativa");
+    }
+    if (reserved > input.onHand) {
+      throw new BadRequestException("La reserva no puede ser mayor al inventario");
+    }
     return this.inventoryRepo.upsert(
       new ProductCatalogInventoryBalance(
         input.warehouseId,
