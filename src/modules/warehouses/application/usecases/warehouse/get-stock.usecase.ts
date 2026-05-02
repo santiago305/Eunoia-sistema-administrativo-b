@@ -13,8 +13,9 @@ type WarehouseStockRow = {
   sku_id: string;
   sku_name: string;
   product_name: string;
+  product_type: "PRODUCT" | "MATERIAL";
   on_hand: string | number;
-  location_code: string | null;
+  location_codes: string | null;
 };
 
 @Injectable()
@@ -45,9 +46,14 @@ export class GetWarehouseStockUsecase {
         "sku.sku_id AS sku_id",
         "sku.name AS sku_name",
         "p.name AS product_name",
-        "i.on_hand AS on_hand",
-        "loc.code AS location_code",
+        "p.type AS product_type",
+        "SUM(i.on_hand) AS on_hand",
+        "STRING_AGG(DISTINCT loc.code, ',') AS location_codes",
       ])
+      .groupBy("sku.sku_id")
+      .addGroupBy("sku.name")
+      .addGroupBy("p.name")
+      .addGroupBy("p.type")
       .orderBy("sku.name", "ASC")
       .getRawMany<WarehouseStockRow>();
 
@@ -55,8 +61,11 @@ export class GetWarehouseStockUsecase {
       skuId: row.sku_id,
       skuName: row.sku_name,
       productName: row.product_name,
+      productType: row.product_type,
       onHand: Number(row.on_hand),
-      locationCodes: row.location_code ? [row.location_code] : [],
+      locationCodes: row.location_codes
+        ? row.location_codes.split(",").map((code) => code.trim()).filter(Boolean)
+        : [],
     }));
 
     return {
