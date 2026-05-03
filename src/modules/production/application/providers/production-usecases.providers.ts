@@ -18,6 +18,7 @@ import { SaveProductionOrderSearchMetricUsecase } from "../usecases/production-s
 import { StartProductionOrder } from "../usecases/production-order/start.usecase";
 import { UpdateProductionOrder } from "../usecases/production-order/update-production-order.usecase";
 import { UpdateProductionWaste } from "../usecases/production-order/update-waste.usecase";
+import { ExportProductionOrdersExcelUsecase } from "../usecases/production-order/export-excel.usecase";
 import { ProductionItemResolverService } from "../services/production-item-resolver.service";
 
 export const productionUsecasesProviders: Provider[] = [
@@ -41,4 +42,5 @@ export const productionUsecasesProviders: Provider[] = [
   RunProductionTimeUsecase,
   ProductionOrderExpectedScheduler,
   ProductionOrderExpectedBootstrap,
+  ExportProductionOrdersExcelUsecase,
 ];

@@ -1,4 +1,5 @@
-import { BadRequestException, Body, ConflictException, Controller, Delete, Get, Inject, Param, ParseUUIDPipe, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
+import { BadRequestException, Body, ConflictException, Controller, Delete, Get, Inject, Param, ParseUUIDPipe, Patch, Post, Query, Res, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
+import { Response } from "express";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { memoryStorage } from "multer";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
@@ -28,6 +29,8 @@ import { FILE_STORAGE, FileStorage } from "src/shared/application/ports/file-sto
 import { ImageProcessingError } from "src/shared/application/errors/image-processing.error";
 import { FileStorageConflictError, InvalidFileStoragePathError } from "src/shared/application/errors/file-storage.errors";
 import { RoleType } from "src/shared/constantes/constants";
+import { ExportProductionOrdersExcelUsecase } from "src/modules/production/application/usecases/production-order/export-excel.usecase";
+import { LISTING_SEARCH_STORAGE, ListingSearchStorageRepository } from "src/shared/listing-search/domain/listing-search.repository";
 
 @Controller("production-orders")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
@@ -50,6 +53,9 @@ export class ProductionOrdersController {
     private readonly imageProcessor: ImageProcessor,
     @Inject(FILE_STORAGE)
     private readonly fileStorage: FileStorage,
+    private readonly exportExcel: ExportProductionOrdersExcelUsecase,
+    @Inject(LISTING_SEARCH_STORAGE)
+    private readonly listingSearchStorage: ListingSearchStorageRepository,
   ) {}
 
   @Post()
@@ -99,6 +105,55 @@ export class ProductionOrdersController {
     @CurrentUser() user: { id: string },
   ) {
     return this.deleteSearchMetric.execute(user.id, metricId);
+  }
+
+  @Get("export-columns")
+  getExportColumns() {
+    return this.exportExcel.getAvailableColumns();
+  }
+
+  @Get("export-presets")
+  getExportPresets(@CurrentUser() user: { id: string }) {
+    return this.listingSearchStorage.listState({
+      userId: user.id,
+      tableKey: "production-orders:export",
+    }).then((state) => state.metrics);
+  }
+
+  @Post("export-presets")
+  saveExportPreset(
+    @CurrentUser() user: { id: string },
+    @Body() body: { name: string; columns: Array<{ key: string; label: string }>; useDateRange?: boolean },
+  ) {
+    return this.listingSearchStorage.createMetric({
+      userId: user.id,
+      tableKey: "production-orders:export",
+      name: body.name,
+      snapshot: { q: "", filters: [], ...(body as any) } as any,
+    });
+  }
+
+  @Delete("export-presets/:metricId")
+  deleteExportPreset(
+    @CurrentUser() user: { id: string },
+    @Param("metricId", ParseUUIDPipe) metricId: string,
+  ) {
+    return this.listingSearchStorage.deleteMetric({
+      userId: user.id,
+      tableKey: "production-orders:export",
+      metricId,
+    });
+  }
+
+  @Post("export-excel")
+  async exportOrdersExcel(
+    @Body() body: { columns: Array<{ key: string; label: string }>; q?: string; filters?: Record<string, unknown>[]; from?: string; to?: string; useDateRange?: boolean },
+    @Res() res: Response,
+  ) {
+    const file = await this.exportExcel.execute(body);
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="${file.filename}"`);
+    return res.status(200).send(file.content);
   }
 
   @Get(":id")

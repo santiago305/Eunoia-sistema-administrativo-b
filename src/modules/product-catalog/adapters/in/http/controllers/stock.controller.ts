@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Inject, Param, ParseUUIDPipe, Post, Query, Res, UseGuards } from "@nestjs/common";
+import { Response } from "express";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
 import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreateProductCatalogStockItem } from "src/modules/product-catalog/application/usecases/create-stock-item.usecase";
@@ -46,6 +47,37 @@ import type { InventoryLedgerSearchRule } from "src/modules/product-catalog/appl
 import { sanitizeInventoryLedgerSearchSnapshot } from "src/modules/product-catalog/application/support/inventory-ledger-search.utils";
 import { DocType } from "src/shared/domain/value-objects/doc-type";
 import { ProductCatalogProductType } from "src/modules/product-catalog/domain/value-objects/product-type";
+import { LISTING_SEARCH_STORAGE, ListingSearchStorageRepository } from "src/shared/listing-search/domain/listing-search.repository";
+import { XlsxBuilderService } from "src/shared/application/services/xlsx-builder.service";
+
+const INVENTORY_LEDGER_EXPORT_LABELS: Record<string, string> = {
+  createdAt: "Fecha",
+  documentNumber: "Documento",
+  direction: "Direccion",
+  skuName: "SKU",
+  quantity: "Cantidad",
+  warehouseName: "Almacen",
+  createdByName: "Usuario",
+};
+
+const INVENTORY_DOCUMENTS_EXPORT_LABELS: Record<string, string> = {
+  createdAt: "Fecha",
+  documentNumber: "Documento",
+  docType: "Tipo",
+  status: "Estado",
+  fromWarehouseName: "Almacen origen",
+  toWarehouseName: "Almacen destino",
+  createdByName: "Usuario",
+};
+
+const INVENTORY_EXPORT_LABELS: Record<string, string> = {
+  skuName: "SKU",
+  warehouseName: "Almacen",
+  onHand: "Stock",
+  reserved: "Reservado",
+  available: "Disponible",
+  updatedAt: "Actualizado",
+};
 
 @Controller()
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
@@ -73,6 +105,8 @@ export class ProductCatalogStockController {
     private readonly getInventoryLedgerSearchStateUc: GetInventoryLedgerSearchStateUsecase,
     private readonly saveInventoryLedgerSearchMetricUc: SaveInventoryLedgerSearchMetricUsecase,
     private readonly deleteInventoryLedgerSearchMetricUc: DeleteInventoryLedgerSearchMetricUsecase,
+    @Inject(LISTING_SEARCH_STORAGE)
+    private readonly listingSearchStorage: ListingSearchStorageRepository,
   ) {}
 
   @Post("skus/:id/stock-item")
@@ -282,6 +316,76 @@ export class ProductCatalogStockController {
     });
   }
 
+  @Get("inventory-ledger/export-columns")
+  async listInventoryLedgerExportColumns(
+    @Query() query: ListProductCatalogInventoryLedgerMovementsDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    const data = await this.listInventoryLedgerMovements(query, user);
+    const rows = this.toRecordRows(data?.items);
+    const first = rows[0] ?? {};
+    return this.buildExportColumnsFromFirstRow(first, INVENTORY_LEDGER_EXPORT_LABELS);
+  }
+
+  @Get("inventory-ledger/export-presets")
+  getInventoryLedgerExportPresets(
+    @CurrentUser() user: { id: string },
+    @Query("productType") productType?: ProductCatalogProductType,
+  ) {
+    return this.listingSearchStorage.listState({
+      userId: user.id,
+      tableKey: `inventory-ledger:export:${productType ?? "ALL"}`,
+    }).then((state) => state.metrics);
+  }
+
+  @Post("inventory-ledger/export-presets")
+  saveInventoryLedgerExportPreset(
+    @CurrentUser() user: { id: string },
+    @Body() body: { name: string; productType?: ProductCatalogProductType; columns: Array<{ key: string; label: string }> },
+  ) {
+    return this.listingSearchStorage.createMetric({
+      userId: user.id,
+      tableKey: `inventory-ledger:export:${body.productType ?? "ALL"}`,
+      name: body.name,
+      snapshot: { q: "", filters: [], ...(body as any) } as any,
+    });
+  }
+
+  @Delete("inventory-ledger/export-presets/:metricId")
+  deleteInventoryLedgerExportPreset(
+    @CurrentUser() user: { id: string },
+    @Param("metricId", ParseUUIDPipe) metricId: string,
+    @Query("productType") productType?: ProductCatalogProductType,
+  ) {
+    return this.listingSearchStorage.deleteMetric({
+      userId: user.id,
+      tableKey: `inventory-ledger:export:${productType ?? "ALL"}`,
+      metricId,
+    });
+  }
+
+  @Post("inventory-ledger/export-excel")
+  async exportInventoryLedgerExcel(
+    @Body() body: ListProductCatalogInventoryLedgerMovementsDto & { columns: Array<{ key: string; label: string }> },
+    @CurrentUser() user: { id: string },
+    @Res() res: Response,
+  ) {
+    const payload = await this.listInventoryLedgerMovements(body, user);
+    const rows = this.toRecordRows(payload?.items);
+    const columns = (body.columns?.length
+      ? body.columns
+      : this.buildExportColumnsFromFirstRow(rows[0] ?? {}, INVENTORY_LEDGER_EXPORT_LABELS))
+      .map((column) => ({ key: column.key, header: column.label }));
+    const buffer = await new XlsxBuilderService().build({
+      sheetName: "Movimientos",
+      columns,
+      rows,
+    });
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="movimientos-${new Date().toISOString().slice(0, 10)}.xlsx"`);
+    return res.status(200).send(buffer);
+  }
+
   @Get("inventory-documents")
   listInventoryDocuments(@Query() query: ListProductCatalogInventoryDocumentsDto, @CurrentUser() user: { id: string }) {
     const filters = this.parseInventoryDocumentFilters(query.filters);
@@ -344,6 +448,78 @@ export class ProductCatalogStockController {
     });
   }
 
+  @Get("inventory-documents/export-columns")
+  async listInventoryDocumentsExportColumns(
+    @Query() query: ListProductCatalogInventoryDocumentsDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    const data = await this.listInventoryDocuments(query, user);
+    const rows = this.toRecordRows(data?.items);
+    const first = rows[0] ?? {};
+    return this.buildExportColumnsFromFirstRow(first, INVENTORY_DOCUMENTS_EXPORT_LABELS);
+  }
+
+  @Get("inventory-documents/export-presets")
+  getInventoryDocumentsExportPresets(
+    @CurrentUser() user: { id: string },
+    @Query("docType") docType: DocType,
+    @Query("productType") productType?: ProductCatalogProductType,
+  ) {
+    return this.listingSearchStorage.listState({
+      userId: user.id,
+      tableKey: `inventory-documents:export:${docType}:${productType ?? "ALL"}`,
+    }).then((state) => state.metrics);
+  }
+
+  @Post("inventory-documents/export-presets")
+  saveInventoryDocumentsExportPreset(
+    @CurrentUser() user: { id: string },
+    @Body() body: { name: string; docType: DocType; productType?: ProductCatalogProductType; columns: Array<{ key: string; label: string }> },
+  ) {
+    return this.listingSearchStorage.createMetric({
+      userId: user.id,
+      tableKey: `inventory-documents:export:${body.docType}:${body.productType ?? "ALL"}`,
+      name: body.name,
+      snapshot: { q: "", filters: [], ...(body as any) } as any,
+    });
+  }
+
+  @Delete("inventory-documents/export-presets/:metricId")
+  deleteInventoryDocumentsExportPreset(
+    @CurrentUser() user: { id: string },
+    @Param("metricId", ParseUUIDPipe) metricId: string,
+    @Query("docType") docType: DocType,
+    @Query("productType") productType?: ProductCatalogProductType,
+  ) {
+    return this.listingSearchStorage.deleteMetric({
+      userId: user.id,
+      tableKey: `inventory-documents:export:${docType}:${productType ?? "ALL"}`,
+      metricId,
+    });
+  }
+
+  @Post("inventory-documents/export-excel")
+  async exportInventoryDocumentsExcel(
+    @Body() body: ListProductCatalogInventoryDocumentsDto & { columns: Array<{ key: string; label: string }> },
+    @CurrentUser() user: { id: string },
+    @Res() res: Response,
+  ) {
+    const payload = await this.listInventoryDocuments(body, user);
+    const rows = this.toRecordRows(payload?.items);
+    const columns = (body.columns?.length
+      ? body.columns
+      : this.buildExportColumnsFromFirstRow(rows[0] ?? {}, INVENTORY_DOCUMENTS_EXPORT_LABELS))
+      .map((column) => ({ key: column.key, header: column.label }));
+    const buffer = await new XlsxBuilderService().build({
+      sheetName: "Transferencias",
+      columns,
+      rows,
+    });
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="transferencias-${new Date().toISOString().slice(0, 10)}.xlsx"`);
+    return res.status(200).send(buffer);
+  }
+
   @Get("inventory")
   listInventoryRows(
     @Query() query: ListProductCatalogInventoryDto,
@@ -374,6 +550,96 @@ export class ProductCatalogStockController {
     } catch {
       return undefined;
     }
+  }
+
+  @Get("inventory/export-columns")
+  async listInventoryExportColumns(
+    @Query() query: ListProductCatalogInventoryDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    const data = await this.listInventoryRows(query, user);
+    const rows = this.toRecordRows((data as any)?.items);
+    const first = rows[0] ?? {};
+    return this.buildExportColumnsFromFirstRow(first, INVENTORY_EXPORT_LABELS);
+  }
+
+  @Get("inventory/export-presets")
+  getInventoryExportPresets(
+    @CurrentUser() user: { id: string },
+    @Query("productType") productType?: ProductCatalogProductType,
+  ) {
+    return this.listingSearchStorage.listState({
+      userId: user.id,
+      tableKey: `inventory:export:${productType ?? "ALL"}`,
+    }).then((state) => state.metrics);
+  }
+
+  @Post("inventory/export-presets")
+  saveInventoryExportPreset(
+    @CurrentUser() user: { id: string },
+    @Body() body: { name: string; productType?: ProductCatalogProductType; columns: Array<{ key: string; label: string }> },
+  ) {
+    return this.listingSearchStorage.createMetric({
+      userId: user.id,
+      tableKey: `inventory:export:${body.productType ?? "ALL"}`,
+      name: body.name,
+      snapshot: { q: "", filters: [], ...(body as any) } as any,
+    });
+  }
+
+  @Delete("inventory/export-presets/:metricId")
+  deleteInventoryExportPreset(
+    @CurrentUser() user: { id: string },
+    @Param("metricId", ParseUUIDPipe) metricId: string,
+    @Query("productType") productType?: ProductCatalogProductType,
+  ) {
+    return this.listingSearchStorage.deleteMetric({
+      userId: user.id,
+      tableKey: `inventory:export:${productType ?? "ALL"}`,
+      metricId,
+    });
+  }
+
+  @Post("inventory/export-excel")
+  async exportInventoryExcel(
+    @Body() body: ListProductCatalogInventoryDto & { columns: Array<{ key: string; label: string }> },
+    @CurrentUser() user: { id: string },
+    @Res() res: Response,
+  ) {
+    const payload = await this.listInventoryRows(body, user) as any;
+    const rows = this.toRecordRows(payload?.items);
+    const columns = (body.columns?.length
+      ? body.columns
+      : this.buildExportColumnsFromFirstRow(rows[0] ?? {}, INVENTORY_EXPORT_LABELS))
+      .map((column) => ({ key: column.key, header: column.label }));
+    const buffer = await new XlsxBuilderService().build({
+      sheetName: "Inventario",
+      columns,
+      rows,
+    });
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="inventario-${new Date().toISOString().slice(0, 10)}.xlsx"`);
+    return res.status(200).send(buffer);
+  }
+
+  private toRecordRows(items: unknown): Record<string, unknown>[] {
+    if (!Array.isArray(items)) return [];
+    return items.map((item) => {
+      if (item && typeof item === "object") {
+        return item as Record<string, unknown>;
+      }
+      return { value: item };
+    });
+  }
+
+  private buildExportColumnsFromFirstRow(
+    row: Record<string, unknown>,
+    labels: Record<string, string>,
+  ): Array<{ key: string; label: string }> {
+    return Object.keys(row).map((key) => ({
+      key,
+      label: labels[key] ?? key,
+    }));
   }
 
   private parseInventoryDocumentFilters(raw?: string): InventoryDocumentsSearchRule[] | undefined {

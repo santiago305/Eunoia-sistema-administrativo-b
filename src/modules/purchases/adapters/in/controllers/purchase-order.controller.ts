@@ -1,4 +1,5 @@
-import { BadRequestException, Body, ConflictException, Controller, Delete, Get, Inject, Param, ParseUUIDPipe, Patch, Post, Query, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
+import { BadRequestException, Body, ConflictException, Controller, Delete, Get, Inject, Param, ParseUUIDPipe, Patch, Post, Query, Res, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
+import { Response } from "express";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { memoryStorage } from "multer";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
@@ -11,6 +12,7 @@ import { HttpCreatePurchaseOrderDto } from "../dtos/purchase-order/http-purchase
 import { HttpUpdatePurchaseOrderDto } from "../dtos/purchase-order/http-purchase-order-update.dto";
 import { HttpListPurchaseOrdersQueryDto } from "../dtos/purchase-order/http-purchase-order-list.dto";
 import { HttpCreatePurchaseSearchMetricDto } from "../dtos/purchase-order/http-purchase-search-metric-create.dto";
+import { HttpExportPurchaseOrdersDto } from "../dtos/purchase-order/http-export-purchase-orders.dto";
 import { RunExpectedAtUsecase } from "src/modules/purchases/application/usecases/purchase-order/run-expected-at.usecase";
 import { SetSentPurchaseOrderUsecase } from "src/modules/purchases/application/usecases/purchase-order/set-sent.usecase";
 import { CancelPurchaseOrderUsecase } from "src/modules/purchases/application/usecases/purchase-order/cancel.usecase";
@@ -23,6 +25,8 @@ import { DeletePurchaseOrderSearchMetricUsecase } from "src/modules/purchases/ap
 import { sanitizePurchaseSearchSnapshot } from "src/modules/purchases/application/support/purchase-search.utils";
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
 import { PurchaseOrderExpectedScheduler } from "src/modules/purchases/application/jobs/purchase-order-expected-scheduler";
+import { ExportPurchaseOrdersExcelUsecase } from "src/modules/purchases/application/usecases/purchase-order/export-excel.usecase";
+import { LISTING_SEARCH_STORAGE, ListingSearchStorageRepository } from "src/shared/listing-search/domain/listing-search.repository";
 import { IMAGE_PROCESSOR, ImageProcessor } from "src/shared/application/ports/image-processor.port";
 import { FILE_STORAGE, FileStorage } from "src/shared/application/ports/file-storage.port";
 import { ImageProcessingError } from "src/shared/application/errors/image-processing.error";
@@ -43,8 +47,11 @@ export class PurchaseOrdersController {
     private readonly getSearchState: GetPurchaseOrderSearchStateUsecase,
     private readonly saveSearchMetric: SavePurchaseOrderSearchMetricUsecase,
     private readonly deleteSearchMetric: DeletePurchaseOrderSearchMetricUsecase,
+    private readonly exportExcel: ExportPurchaseOrdersExcelUsecase,
     @Inject(PURCHASE_ORDER)
     private readonly purchaseRepo: PurchaseOrderRepository,
+    @Inject(LISTING_SEARCH_STORAGE)
+    private readonly listingSearchStorage: ListingSearchStorageRepository,
     private readonly scheduler: PurchaseOrderExpectedScheduler,
     @Inject(IMAGE_PROCESSOR)
     private readonly imageProcessor: ImageProcessor,
@@ -136,6 +143,68 @@ export class PurchaseOrdersController {
     @CurrentUser() user: { id: string },
   ) {
     return this.deleteSearchMetric.execute(user.id, metricId);
+  }
+
+  @Get("export-columns")
+  getExportColumns() {
+    return this.exportExcel.getAvailableColumns();
+  }
+
+  @Get("export-presets")
+  async getExportPresets(@CurrentUser() user: { id: string }) {
+    const state = await this.listingSearchStorage.listState({
+      userId: user.id,
+      tableKey: "purchase-orders:export",
+    });
+    return state.metrics;
+  }
+
+  @Post("export-presets")
+  saveExportPreset(
+    @CurrentUser() user: { id: string },
+    @Body() body: { name: string; columns: Array<{ key: string; label: string }>; useDateRange?: boolean },
+  ) {
+    return this.listingSearchStorage.createMetric({
+      userId: user.id,
+      tableKey: "purchase-orders:export",
+      name: body.name,
+      snapshot: {
+        q: "",
+        filters: [],
+        ...(body as any),
+      } as any,
+    });
+  }
+
+  @Delete("export-presets/:metricId")
+  deleteExportPreset(
+    @CurrentUser() user: { id: string },
+    @Param("metricId", ParseUUIDPipe) metricId: string,
+  ) {
+    return this.listingSearchStorage.deleteMetric({
+      userId: user.id,
+      tableKey: "purchase-orders:export",
+      metricId,
+    });
+  }
+
+  @Post("export-excel")
+  async exportOrdersExcel(
+    @Body() dto: HttpExportPurchaseOrdersDto,
+    @Res() res: Response,
+  ) {
+    const file = await this.exportExcel.execute({
+      columns: dto.columns,
+      q: dto.q,
+      filters: dto.filters,
+      from: dto.from,
+      to: dto.to,
+      useDateRange: dto.useDateRange,
+    });
+
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="${file.filename}"`);
+    return res.status(200).send(file.content);
   }
 
   @Get(":id")

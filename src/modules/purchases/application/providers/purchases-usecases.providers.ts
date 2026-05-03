@@ -11,6 +11,7 @@ import { RunExpectedAtUsecase } from "../usecases/purchase-order/run-expected-at
 import { SetPurchaseOrderActiveUsecase } from "../usecases/purchase-order/set-active.usecase";
 import { SetSentPurchaseOrderUsecase } from "../usecases/purchase-order/set-sent.usecase";
 import { UpdatePurchaseOrderUsecase } from "../usecases/purchase-order/update.usecase";
+import { ExportPurchaseOrdersExcelUsecase } from "../usecases/purchase-order/export-excel.usecase";
 import { PurchaseOrderExpectedBootstrap } from "../jobs/purchase-order-expected-bootstrap";
 import { PurchaseOrderExpectedScheduler } from "../jobs/purchase-order-expected-scheduler";
 import { GetPurchaseOrderSearchStateUsecase } from "../usecases/purchase-search/get-state.usecase";
@@ -37,4 +38,5 @@ export const purchasesUsecasesProviders: Provider[] = [
   SavePurchaseOrderSearchMetricUsecase,
   DeletePurchaseOrderSearchMetricUsecase,
   PurchaseUnitConversionService,
+  ExportPurchaseOrdersExcelUsecase,
 ];
