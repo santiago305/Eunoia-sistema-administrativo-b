@@ -18,6 +18,8 @@ import {
 } from "../../domain/ports/inventory.repository";
 import { ProductCatalogInventoryBalance } from "../../domain/entities/inventory-balance";
 import { ProductCatalogInventoryLedgerEntry } from "../../domain/entities/inventory-ledger-entry";
+import { INVENTORY_LOCK, InventoryLock } from "../../integration/inventory/ports/inventory-lock.port";
+import { INVENTORY_REALTIME, InventoryRealtime, StockUpdatedEvent } from "../../integration/inventory/ports/inventory-realtime.port";
 
 @Injectable()
 export class ProcessProductCatalogInventoryDocument {
@@ -30,10 +32,14 @@ export class ProcessProductCatalogInventoryDocument {
     private readonly inventoryRepo: ProductCatalogInventoryRepository,
     @Inject(PRODUCT_CATALOG_INVENTORY_LEDGER_REPOSITORY)
     private readonly ledgerRepo: ProductCatalogInventoryLedgerRepository,
+    @Inject(INVENTORY_LOCK)
+    private readonly inventoryLock: InventoryLock,
+    @Inject(INVENTORY_REALTIME)
+    private readonly inventoryRealtime: InventoryRealtime,
   ) {}
 
   async execute(input: { docId: string; postedBy: string }) {
-    return this.uow.runInTransaction(async (tx) => {
+    const result = await this.uow.runInTransaction(async (tx) => {
       const document = await this.documentRepo.findById(input.docId, tx);
       if (!document) {
         throw new NotFoundException(errorResponse("Documento no encontrado"));
@@ -51,6 +57,7 @@ export class ProcessProductCatalogInventoryDocument {
       }
 
       const ledgerEntries: ProductCatalogInventoryLedgerEntry[] = [];
+      const stockUpdatedEvents: StockUpdatedEvent[] = [];
 
       if (document.docType === DocType.TRANSFER) {
         if (!document.fromWarehouseId || !document.toWarehouseId) {
@@ -59,6 +66,27 @@ export class ProcessProductCatalogInventoryDocument {
 
         for (const item of items) {
           const locationId = item.fromLocationId ?? item.toLocationId ?? null;
+          await this.inventoryLock.lockSnapshots(
+            [
+              {
+                warehouseId: document.fromWarehouseId,
+                stockItemId: item.stockItemId,
+                locationId: locationId ?? undefined,
+              },
+              {
+                warehouseId: document.toWarehouseId,
+                stockItemId: item.stockItemId,
+                locationId: locationId ?? undefined,
+              },
+            ]
+              .sort((a, b) =>
+                `${a.warehouseId}:${a.stockItemId}:${a.locationId ?? ""}`.localeCompare(
+                  `${b.warehouseId}:${b.stockItemId}:${b.locationId ?? ""}`,
+                ),
+              ),
+            tx,
+          );
+
           const currentBalances = await this.inventoryRepo.listByStockItemId(item.stockItemId, tx);
           const currentFrom =
             currentBalances.find((row) => row.warehouseId === document.fromWarehouseId && row.locationId === locationId) ??
@@ -79,7 +107,7 @@ export class ProcessProductCatalogInventoryDocument {
             throw new BadRequestException(errorResponse("El inventario no puede quedar en negativo"));
           }
 
-          await this.inventoryRepo.upsert(
+          const fromBalance = await this.inventoryRepo.upsert(
             new ProductCatalogInventoryBalance(
               document.fromWarehouseId,
               item.stockItemId,
@@ -91,7 +119,7 @@ export class ProcessProductCatalogInventoryDocument {
             tx,
           );
 
-          await this.inventoryRepo.upsert(
+          const toBalance = await this.inventoryRepo.upsert(
             new ProductCatalogInventoryBalance(
               document.toWarehouseId,
               item.stockItemId,
@@ -101,6 +129,28 @@ export class ProcessProductCatalogInventoryDocument {
               toOnHand - currentTo.reserved,
             ),
             tx,
+          );
+          stockUpdatedEvents.push(
+            {
+              warehouseId: fromBalance.warehouseId,
+              stockItemId: fromBalance.stockItemId,
+              locationId: fromBalance.locationId,
+              onHand: fromBalance.onHand,
+              reserved: fromBalance.reserved,
+              available: fromBalance.available ?? fromBalance.onHand - fromBalance.reserved,
+              documentId: document.id!,
+              occurredAt: new Date().toISOString(),
+            },
+            {
+              warehouseId: toBalance.warehouseId,
+              stockItemId: toBalance.stockItemId,
+              locationId: toBalance.locationId,
+              onHand: toBalance.onHand,
+              reserved: toBalance.reserved,
+              available: toBalance.available ?? toBalance.onHand - toBalance.reserved,
+              documentId: document.id!,
+              occurredAt: new Date().toISOString(),
+            },
           );
 
           ledgerEntries.push(
@@ -159,6 +209,17 @@ export class ProcessProductCatalogInventoryDocument {
 
           const quantity = Math.abs(qty);
           const locationId = (direction === Direction.OUT ? item.fromLocationId : item.toLocationId) ?? null;
+          await this.inventoryLock.lockSnapshots(
+            [
+              {
+                warehouseId,
+                stockItemId: item.stockItemId,
+                locationId: locationId ?? undefined,
+              },
+            ],
+            tx,
+          );
+
           const current =
             await this.inventoryRepo.getSnapshot({ warehouseId, stockItemId: item.stockItemId, locationId }, tx) ??
             new ProductCatalogInventoryBalance(warehouseId, item.stockItemId, locationId, 0, 0, 0);
@@ -175,7 +236,7 @@ export class ProcessProductCatalogInventoryDocument {
             throw new BadRequestException(errorResponse("El inventario no puede quedar en negativo"));
           }
 
-          await this.inventoryRepo.upsert(
+          const updatedBalance = await this.inventoryRepo.upsert(
             new ProductCatalogInventoryBalance(
               warehouseId,
               item.stockItemId,
@@ -186,6 +247,16 @@ export class ProcessProductCatalogInventoryDocument {
             ),
             tx,
           );
+          stockUpdatedEvents.push({
+            warehouseId: updatedBalance.warehouseId,
+            stockItemId: updatedBalance.stockItemId,
+            locationId: updatedBalance.locationId,
+            onHand: updatedBalance.onHand,
+            reserved: updatedBalance.reserved,
+            available: updatedBalance.available ?? updatedBalance.onHand - updatedBalance.reserved,
+            documentId: document.id!,
+            occurredAt: new Date().toISOString(),
+          });
 
           ledgerEntries.push(
             new ProductCatalogInventoryLedgerEntry(
@@ -209,10 +280,19 @@ export class ProcessProductCatalogInventoryDocument {
       }
       await this.documentRepo.markPosted({ docId: document.id!, postedBy: input.postedBy, postedAt: new Date() }, tx);
 
-      return successResponse("Documento procesado con exito", {
-        documentId: document.id!,
-        status: DocStatus.POSTED,
-      });
+      return {
+        response: successResponse("Documento procesado con exito", {
+          documentId: document.id!,
+          status: DocStatus.POSTED,
+        }),
+        stockUpdatedEvents,
+      };
     });
+
+    if (result.stockUpdatedEvents.length) {
+      this.inventoryRealtime.emitStockUpdated(result.stockUpdatedEvents);
+    }
+
+    return result.response;
   }
 }

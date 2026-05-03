@@ -29,12 +29,14 @@ import { DOCUMENT_REPOSITORY } from "src/modules/product-catalog/integration/inv
 import { LEDGER_REPOSITORY } from "src/modules/product-catalog/integration/inventory/ports/ledger.repository.port";
 import { INVENTORY_REPOSITORY } from "src/modules/product-catalog/integration/inventory/ports/inventory.repository.port";
 import { INVENTORY_LOCK } from "src/modules/product-catalog/integration/inventory/ports/inventory-lock.port";
+import { INVENTORY_REALTIME } from "src/modules/product-catalog/integration/inventory/ports/inventory-realtime.port";
 import { STOCK_ITEM_REPOSITORY } from "src/modules/product-catalog/integration/inventory/ports/stock-item.repository.port";
 import { DocumentSeriesBridge } from "../adapters/out/bridges/document-series.bridge";
 import { InventoryDocumentBridge } from "../adapters/out/bridges/inventory-document.bridge";
 import { InventoryLedgerBridge } from "../adapters/out/bridges/inventory-ledger.bridge";
 import { InventorySnapshotBridge } from "../adapters/out/bridges/inventory-snapshot.bridge";
 import { InventoryLockBridge } from "../adapters/out/bridges/inventory-lock.bridge";
+import { InventoryRealtimeBridge } from "../adapters/out/bridges/inventory-realtime.bridge";
 import { StockItemBridge } from "../adapters/out/bridges/stock-item.bridge";
 
 export const productCatalogModuleProviders: Provider[] = [
@@ -56,6 +58,7 @@ export const productCatalogModuleProviders: Provider[] = [
   { provide: LEDGER_REPOSITORY, useClass: InventoryLedgerBridge },
   { provide: INVENTORY_REPOSITORY, useClass: InventorySnapshotBridge },
   { provide: INVENTORY_LOCK, useClass: InventoryLockBridge },
+  { provide: INVENTORY_REALTIME, useClass: InventoryRealtimeBridge },
   { provide: STOCK_ITEM_REPOSITORY, useClass: StockItemBridge },
 ];
 

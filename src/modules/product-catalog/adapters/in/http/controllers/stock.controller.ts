@@ -1,5 +1,6 @@
-import { Body, Controller, Delete, Get, Inject, Param, ParseUUIDPipe, Post, Query, Res, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Inject, Param, ParseUUIDPipe, Post, Query, Res, Sse, UseGuards } from "@nestjs/common";
 import { Response } from "express";
+import { filter, map } from "rxjs/operators";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
 import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreateProductCatalogStockItem } from "src/modules/product-catalog/application/usecases/create-stock-item.usecase";
@@ -49,6 +50,7 @@ import { DocType } from "src/shared/domain/value-objects/doc-type";
 import { ProductCatalogProductType } from "src/modules/product-catalog/domain/value-objects/product-type";
 import { LISTING_SEARCH_STORAGE, ListingSearchStorageRepository } from "src/shared/listing-search/domain/listing-search.repository";
 import { XlsxBuilderService } from "src/shared/application/services/xlsx-builder.service";
+import { INVENTORY_REALTIME, InventoryRealtime, StockUpdatedEvent } from "src/modules/product-catalog/integration/inventory/ports/inventory-realtime.port";
 
 const INVENTORY_LEDGER_EXPORT_LABELS: Record<string, string> = {
   createdAt: "Fecha",
@@ -107,6 +109,8 @@ export class ProductCatalogStockController {
     private readonly deleteInventoryLedgerSearchMetricUc: DeleteInventoryLedgerSearchMetricUsecase,
     @Inject(LISTING_SEARCH_STORAGE)
     private readonly listingSearchStorage: ListingSearchStorageRepository,
+    @Inject(INVENTORY_REALTIME)
+    private readonly inventoryRealtime: InventoryRealtime,
   ) {}
 
   @Post("skus/:id/stock-item")
@@ -587,6 +591,31 @@ export class ProductCatalogStockController {
     });
   }
 
+  @Sse("inventory/stream")
+  streamInventory(
+    @Query("warehouseId") warehouseId?: string,
+    @Query("stockItemId") stockItemId?: string,
+    @Query("warehouseIds") warehouseIdsRaw?: string,
+    @Query("stockItemIds") stockItemIdsRaw?: string,
+  ) {
+    const warehouseIds = this.parseCsvFilterValues(warehouseIdsRaw);
+    const stockItemIds = this.parseCsvFilterValues(stockItemIdsRaw);
+    return this.inventoryRealtime.stream().pipe(
+      filter((event) =>
+        this.matchesStockStreamFilter(event.payload, {
+          warehouseId,
+          stockItemId,
+          warehouseIds,
+          stockItemIds,
+        }),
+      ),
+      map((event) => ({
+        type: event.type,
+        data: event.payload,
+      })),
+    );
+  }
+
   @Delete("inventory/export-presets/:metricId")
   deleteInventoryExportPreset(
     @CurrentUser() user: { id: string },
@@ -640,6 +669,31 @@ export class ProductCatalogStockController {
       key,
       label: labels[key] ?? key,
     }));
+  }
+
+  private matchesStockStreamFilter(
+    payload: StockUpdatedEvent,
+    filters: {
+      warehouseId?: string;
+      stockItemId?: string;
+      warehouseIds?: string[];
+      stockItemIds?: string[];
+    },
+  ) {
+    if (filters.warehouseId && payload.warehouseId !== filters.warehouseId) return false;
+    if (filters.stockItemId && payload.stockItemId !== filters.stockItemId) return false;
+    if (filters.warehouseIds?.length && !filters.warehouseIds.includes(payload.warehouseId)) return false;
+    if (filters.stockItemIds?.length && !filters.stockItemIds.includes(payload.stockItemId)) return false;
+    return true;
+  }
+
+  private parseCsvFilterValues(raw?: string): string[] | undefined {
+    if (!raw?.trim()) return undefined;
+    const values = raw
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
+    return values.length ? Array.from(new Set(values)) : undefined;
   }
 
   private parseInventoryDocumentFilters(raw?: string): InventoryDocumentsSearchRule[] | undefined {

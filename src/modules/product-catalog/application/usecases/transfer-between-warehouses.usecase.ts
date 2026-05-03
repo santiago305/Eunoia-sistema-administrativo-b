@@ -33,6 +33,8 @@ import { ProductCatalogInventoryDocumentItem } from "../../domain/entities/inven
 import { ProductCatalogInventoryBalance } from "../../domain/entities/inventory-balance";
 import { ProductCatalogInventoryLedgerEntry } from "../../domain/entities/inventory-ledger-entry";
 import { CreateProductCatalogStockItem } from "./create-stock-item.usecase";
+import { INVENTORY_LOCK, InventoryLock } from "../../integration/inventory/ports/inventory-lock.port";
+import { INVENTORY_REALTIME, InventoryRealtime, StockUpdatedEvent } from "../../integration/inventory/ports/inventory-realtime.port";
 
 @Injectable()
 export class TransferProductCatalogInventoryBetweenWarehouses {
@@ -53,6 +55,10 @@ export class TransferProductCatalogInventoryBetweenWarehouses {
     private readonly ledgerRepo: ProductCatalogInventoryLedgerRepository,
     @Inject(PRODUCT_CATALOG_DOCUMENT_SERIE_REPOSITORY)
     private readonly serieRepo: ProductCatalogDocumentSerieRepository,
+    @Inject(INVENTORY_LOCK)
+    private readonly inventoryLock: InventoryLock,
+    @Inject(INVENTORY_REALTIME)
+    private readonly inventoryRealtime: InventoryRealtime,
     private readonly createStockItem: CreateProductCatalogStockItem,
   ) {}
 
@@ -78,7 +84,7 @@ export class TransferProductCatalogInventoryBetweenWarehouses {
       throw new BadRequestException("fromWarehouseId y toWarehouseId no pueden ser iguales");
     }
 
-    return this.uow.runInTransaction(async (tx) => {
+    const result = await this.uow.runInTransaction(async (tx) => {
       const serie = await this.serieRepo.findById(input.serieId, tx);
       if (!serie?.id || !serie.isActive || serie.docType !== DocType.TRANSFER) {
         throw new NotFoundException(errorResponse("Serie no definida"));
@@ -180,6 +186,27 @@ export class TransferProductCatalogInventoryBetweenWarehouses {
         let fromBalance: ProductCatalogInventoryBalance | undefined;
         let toBalance: ProductCatalogInventoryBalance | undefined;
         if (shouldAutoPost) {
+          await this.inventoryLock.lockSnapshots(
+            [
+              {
+                warehouseId: input.fromWarehouseId,
+                stockItemId: stockItem.id!,
+                locationId: effectiveLocationId ?? undefined,
+              },
+              {
+                warehouseId: input.toWarehouseId,
+                stockItemId: stockItem.id!,
+                locationId: effectiveLocationId ?? undefined,
+              },
+            ]
+              .sort((a, b) =>
+                `${a.warehouseId}:${a.stockItemId}:${a.locationId ?? ""}`.localeCompare(
+                  `${b.warehouseId}:${b.stockItemId}:${b.locationId ?? ""}`,
+                ),
+              ),
+            tx,
+          );
+
           const currentBalances = await this.inventoryRepo.listByStockItemId(stockItem.id!, tx);
           const currentFrom =
             currentBalances.find(
@@ -304,12 +331,39 @@ export class TransferProductCatalogInventoryBetweenWarehouses {
       }
       
 
-      return successResponse(
-        shouldAutoPost ? "Transferencia creada con exito" : "Transferencia creada en borrador",
-        {
-        documentId: document.id!,
-        status: shouldAutoPost ? DocStatus.POSTED : DocStatus.DRAFT,
-      });
+      const stockUpdatedEvents: StockUpdatedEvent[] = shouldAutoPost
+        ? results.flatMap((row) =>
+          [row.fromBalance, row.toBalance]
+            .filter((balance): balance is ProductCatalogInventoryBalance => Boolean(balance))
+            .map((balance) => ({
+              warehouseId: balance.warehouseId,
+              stockItemId: balance.stockItemId,
+              locationId: balance.locationId,
+              onHand: balance.onHand,
+              reserved: balance.reserved,
+              available: balance.available ?? balance.onHand - balance.reserved,
+              documentId: document.id!,
+              occurredAt: new Date().toISOString(),
+            })),
+        )
+        : [];
+
+      return {
+        response: successResponse(
+          shouldAutoPost ? "Transferencia creada con exito" : "Transferencia creada en borrador",
+          {
+            documentId: document.id!,
+            status: shouldAutoPost ? DocStatus.POSTED : DocStatus.DRAFT,
+          },
+        ),
+        stockUpdatedEvents,
+      };
     });
+
+    if (result.stockUpdatedEvents.length) {
+      this.inventoryRealtime.emitStockUpdated(result.stockUpdatedEvents);
+    }
+
+    return result.response;
   }
 }

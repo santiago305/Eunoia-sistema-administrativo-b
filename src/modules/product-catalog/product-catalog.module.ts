@@ -43,6 +43,7 @@ import { DOCUMENT_REPOSITORY } from "./integration/inventory/ports/document.repo
 import { LEDGER_REPOSITORY } from "./integration/inventory/ports/ledger.repository.port";
 import { INVENTORY_REPOSITORY } from "./integration/inventory/ports/inventory.repository.port";
 import { INVENTORY_LOCK } from "./integration/inventory/ports/inventory-lock.port";
+import { INVENTORY_REALTIME } from "./integration/inventory/ports/inventory-realtime.port";
 import { STOCK_ITEM_REPOSITORY } from "./integration/inventory/ports/stock-item.repository.port";
 import { ProductCatalogDocumentSerieController } from "./adapters/in/http/controllers/document-serie.controller";
 import { ListingSearchMetricEntity } from "src/shared/listing-search/adapters/out/persistence/typeorm/entities/listing-search-metric.entity";
@@ -135,6 +136,7 @@ import { User as UserEntity } from "../users/adapters/out/persistence/typeorm/en
     LEDGER_REPOSITORY,
     INVENTORY_REPOSITORY,
     INVENTORY_LOCK,
+    INVENTORY_REALTIME,
     STOCK_ITEM_REPOSITORY,
     RegisterProductCatalogInventoryMovement,
     ReserveProductCatalogMaterials,

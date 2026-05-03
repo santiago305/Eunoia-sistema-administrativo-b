@@ -42,6 +42,8 @@ import { errorResponse } from "src/shared/response-standard/response";
 import { CreateProductCatalogStockItem } from "./create-stock-item.usecase";
 import { TransactionContext } from "src/shared/domain/ports/transaction-context.port";
 import { ProductCatalogProductType } from "../../domain/value-objects/product-type";
+import { INVENTORY_LOCK, InventoryLock } from "../../integration/inventory/ports/inventory-lock.port";
+import { INVENTORY_REALTIME, InventoryRealtime, StockUpdatedEvent } from "../../integration/inventory/ports/inventory-realtime.port";
 
 @Injectable()
 export class RegisterProductCatalogInventoryMovement {
@@ -62,6 +64,10 @@ export class RegisterProductCatalogInventoryMovement {
     private readonly inventoryRepo: ProductCatalogInventoryRepository,
     @Inject(PRODUCT_CATALOG_DOCUMENT_SERIE_REPOSITORY)
     private readonly serieRepo: ProductCatalogDocumentSerieRepository,
+    @Inject(INVENTORY_LOCK)
+    private readonly inventoryLock: InventoryLock,
+    @Inject(INVENTORY_REALTIME)
+    private readonly inventoryRealtime: InventoryRealtime,
     private readonly createStockItem: CreateProductCatalogStockItem,
   ) {}
 
@@ -90,9 +96,14 @@ export class RegisterProductCatalogInventoryMovement {
     tx?: TransactionContext,
   ) {
     if (tx) {
-      return this.executeInTx(input, tx);
+      const result = await this.executeInTx(input, tx);
+      return result.response;
     }
-    return this.uow.runInTransaction(async (nextTx) => this.executeInTx(input, nextTx));
+    const result = await this.uow.runInTransaction(async (nextTx) => this.executeInTx(input, nextTx));
+    if (result.stockUpdatedEvents.length) {
+      this.inventoryRealtime.emitStockUpdated(result.stockUpdatedEvents);
+    }
+    return result.response;
   }
 
   private async executeInTx(
@@ -253,6 +264,17 @@ export class RegisterProductCatalogInventoryMovement {
 
         let balance: ProductCatalogInventoryBalance | undefined;
         if (shouldAutoPost) {
+          await this.inventoryLock.lockSnapshots(
+            [
+              {
+                warehouseId: input.warehouseId,
+                stockItemId: stockItem.id!,
+                locationId: effectiveLocationId ?? undefined,
+              },
+            ],
+            tx,
+          );
+
           const currentBalances = await this.inventoryRepo.listByStockItemId(stockItem.id!, tx);
           const current =
             currentBalances.find(
@@ -342,10 +364,30 @@ export class RegisterProductCatalogInventoryMovement {
         );
       }
 
+      const stockUpdatedEvents: StockUpdatedEvent[] = shouldAutoPost
+        ? results.reduce<StockUpdatedEvent[]>((acc, row) => {
+          if (!row.balance) return acc;
+          acc.push({
+            warehouseId: row.balance.warehouseId,
+            stockItemId: row.balance.stockItemId,
+            locationId: row.balance.locationId,
+            onHand: row.balance.onHand,
+            reserved: row.balance.reserved,
+            available: row.balance.available ?? row.balance.onHand - row.balance.reserved,
+            documentId: document.id!,
+            occurredAt: new Date().toISOString(),
+          });
+          return acc;
+        }, [])
+        : [];
+
       return {
-        documentId: document.id!,
-        status: shouldAutoPost ? DocStatus.POSTED : DocStatus.DRAFT,
-        items: results,
+        response: {
+          documentId: document.id!,
+          status: shouldAutoPost ? DocStatus.POSTED : DocStatus.DRAFT,
+          items: results,
+        },
+        stockUpdatedEvents,
       };
   }
 }
