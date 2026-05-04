@@ -2,11 +2,11 @@ import { BadRequestException, Inject, NotFoundException } from "@nestjs/common";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
 import { PurchaseOrderStatus } from "src/modules/purchases/domain/value-objects/po-status";
-import { PostInventoryFromPurchaseUsecase } from "./Inventory-purchase.usecase";
-import { CLOCK, ClockPort } from "src/shared/application/ports/clock.port";
 import { PurchaseOrderId } from "src/modules/purchases/domain/value-objects/purchase-order-id.vo";
 import { DomainError } from "src/modules/purchases/domain/errors/domain.error";
 import { errorResponse } from "src/shared/response-standard/response";
+import { NotificationsService } from "src/modules/notifications/application/use-cases/notifications.service";
+import { PURCHASE_NOTIFICATION_TYPES } from "src/modules/notifications/domain/constants/purchase-notification-types";
 
 export class RunExpectedAtUsecase {
   constructor(
@@ -14,12 +14,10 @@ export class RunExpectedAtUsecase {
     private readonly uow: UnitOfWork,
     @Inject(PURCHASE_ORDER)
     private readonly purchaseRepo: PurchaseOrderRepository,
-    @Inject(CLOCK)
-    private readonly clock: ClockPort,
-    private readonly inventoryPurchase: PostInventoryFromPurchaseUsecase,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
-  async execute(poId: string): Promise<{ message: string }> {
+  async execute(poId: string): Promise<{ type: string; message: string }> {
     let validatedPoId: string;
     try {
       validatedPoId = new PurchaseOrderId(poId).value;
@@ -30,7 +28,7 @@ export class RunExpectedAtUsecase {
       throw err;
     }
 
-    return this.uow.runInTransaction(async (tx) => {
+    const result = await this.uow.runInTransaction(async (tx) => {
       const order = await this.purchaseRepo.findById(validatedPoId, tx);
       if (!order) {
         throw new NotFoundException(errorResponse("Orden no encontrada"));
@@ -44,18 +42,46 @@ export class RunExpectedAtUsecase {
         throw new BadRequestException(errorResponse("La orden no tiene expectedAt"));
       }
 
-      await this.inventoryPurchase.execute({
-        poId: order.poId,
-        toWarehouseId: order.warehouseId,
-        postedBy: order.createdBy,
-        createdBy: order.createdBy,
-        note: "Ingreso por compra",
+      const updated = await this.purchaseRepo.update(
+        { poId: order.poId, status: PurchaseOrderStatus.PENDING_RECEIPT_CONFIRMATION },
         tx,
-      });
+      );
 
-      await this.purchaseRepo.update({ poId: order.poId, status: PurchaseOrderStatus.RECEIVED }, tx);
-
-      return { type:"success", message: "Orden ejecutada y marcada como RECEIVED" };
+      return {
+        response: {
+          type: "success",
+          message: "Compra lista para confirmacion final. Falta decision de evidencia/foto.",
+        },
+        poId: order.poId,
+        createdBy: order.createdBy,
+        purchaseCode: [order.serie, order.correlative].filter(Boolean).join("-") || order.poId.slice(0, 8),
+        expectedAt: order.expectedAt,
+        status: updated?.status ?? PurchaseOrderStatus.PENDING_RECEIPT_CONFIRMATION,
+      };
     });
+
+    if (result.createdBy) {
+      await this.notificationsService.createNotificationForUsers({
+        recipientUserIds: [result.createdBy],
+        type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_PENDING_STOCK_CONFIRMATION,
+        category: "PURCHASES",
+        title: "Compra lista para confirmar",
+        message: `La compra ${result.purchaseCode} llegó a almacén. Falta decidir evidencia/foto y confirmar ingreso.`,
+        priority: "HIGH",
+        actionUrl: "/compras",
+        actionLabel: "Confirmar ingreso",
+        sourceModule: "purchases",
+        sourceEntityType: "purchase_order",
+        sourceEntityId: result.poId,
+        metadata: {
+          poId: result.poId,
+          purchaseCode: result.purchaseCode,
+          expectedAt: result.expectedAt,
+          status: result.status,
+        },
+      });
+    }
+
+    return result.response;
   }
 }

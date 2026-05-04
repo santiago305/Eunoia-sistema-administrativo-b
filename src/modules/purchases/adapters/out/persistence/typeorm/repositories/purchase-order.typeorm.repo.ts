@@ -278,7 +278,11 @@ export class PurchaseOrderTypeormRepository implements PurchaseOrderRepository {
               case PurchaseWaitTimeStates.NOT_STARTED:
                 return [PurchaseOrderStatus.DRAFT];
               case PurchaseWaitTimeStates.IN_PROGRESS:
-                return [PurchaseOrderStatus.SENT, PurchaseOrderStatus.PARTIAL];
+                return [
+                  PurchaseOrderStatus.SENT,
+                  PurchaseOrderStatus.PARTIAL,
+                  PurchaseOrderStatus.PENDING_RECEIPT_CONFIRMATION,
+                ];
               case PurchaseWaitTimeStates.COMPLETED:
                 return [PurchaseOrderStatus.RECEIVED];
               case PurchaseWaitTimeStates.CANCELLED:
@@ -340,7 +344,11 @@ export class PurchaseOrderTypeormRepository implements PurchaseOrderRepository {
                 case PurchaseWaitTimeStates.NOT_STARTED:
                   return [PurchaseOrderStatus.DRAFT];
                 case PurchaseWaitTimeStates.IN_PROGRESS:
-                  return [PurchaseOrderStatus.SENT, PurchaseOrderStatus.PARTIAL];
+                  return [
+                    PurchaseOrderStatus.SENT,
+                    PurchaseOrderStatus.PARTIAL,
+                    PurchaseOrderStatus.PENDING_RECEIPT_CONFIRMATION,
+                  ];
                 case PurchaseWaitTimeStates.COMPLETED:
                   return [PurchaseOrderStatus.RECEIVED];
                 case PurchaseWaitTimeStates.CANCELLED:

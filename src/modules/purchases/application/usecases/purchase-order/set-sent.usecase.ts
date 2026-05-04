@@ -6,6 +6,8 @@ import { successResponse } from "src/shared/response-standard/response";
 import { PurchaseOrderNotFoundApplicationError } from "../../errors/purchase-order-not-found.error";
 import { BadRequestException, Inject, NotFoundException } from "@nestjs/common";
 import { CLOCK, ClockPort } from "src/shared/application/ports/clock.port";
+import { NotificationsService } from "src/modules/notifications/application/use-cases/notifications.service";
+import { PURCHASE_NOTIFICATION_TYPES } from "src/modules/notifications/domain/constants/purchase-notification-types";
 
 export class SetSentPurchaseOrderUsecase {
   constructor(
@@ -16,10 +18,11 @@ export class SetSentPurchaseOrderUsecase {
     private readonly scheduler: PurchaseOrderExpectedScheduler,
     @Inject(CLOCK)
     private readonly clock: ClockPort,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async execute(poId: string): Promise<ReturnType<typeof successResponse>> {
-    return this.uow.runInTransaction(async (tx) => {
+    const result = await this.uow.runInTransaction(async (tx) => {
       const order = await this.purchaseRepo.findById(poId, tx);
       if (!order) {
         throw new NotFoundException(new PurchaseOrderNotFoundApplicationError().message);
@@ -56,7 +59,37 @@ export class SetSentPurchaseOrderUsecase {
 
       this.scheduler.schedule(updated.poId, recalculatedExpectedAt);
 
-      return successResponse("Orden marcada como SENT y programada");
+      return {
+        response: successResponse("Orden marcada como SENT y programada"),
+        poId: updated.poId,
+        createdBy: updated.createdBy,
+        expectedAt: recalculatedExpectedAt,
+        purchaseCode: [updated.serie, updated.correlative].filter(Boolean).join("-") || updated.poId.slice(0, 8),
+      };
     });
+
+    if (result.createdBy) {
+      await this.notificationsService.createNotificationForUsers({
+        recipientUserIds: [result.createdBy],
+        type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_SENT,
+        category: "PURCHASES",
+        title: "Compra enviada",
+        message: `La compra ${result.purchaseCode} fue enviada y quedó programada para ingreso.`,
+        priority: "NORMAL",
+        actionUrl: "/compras",
+        actionLabel: "Ver compras",
+        sourceModule: "purchases",
+        sourceEntityType: "purchase_order",
+        sourceEntityId: result.poId,
+        metadata: {
+          poId: result.poId,
+          purchaseCode: result.purchaseCode,
+          expectedAt: result.expectedAt,
+          status: "SENT",
+        },
+      });
+    }
+
+    return result.response;
   }
 }

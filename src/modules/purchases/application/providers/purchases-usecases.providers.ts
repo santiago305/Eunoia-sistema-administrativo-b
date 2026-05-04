@@ -18,6 +18,7 @@ import { GetPurchaseOrderSearchStateUsecase } from "../usecases/purchase-search/
 import { SavePurchaseOrderSearchMetricUsecase } from "../usecases/purchase-search/save-metric.usecase";
 import { DeletePurchaseOrderSearchMetricUsecase } from "../usecases/purchase-search/delete-metric.usecase";
 import { PurchaseUnitConversionService } from "../services/purchase-unit-conversion.service";
+import { ConfirmPurchaseReceptionUsecase } from "../usecases/purchase-order/confirm-reception.usecase";
 
 export const purchasesUsecasesProviders: Provider[] = [
   CreatePurchaseOrderUsecase,
@@ -39,4 +40,5 @@ export const purchasesUsecasesProviders: Provider[] = [
   DeletePurchaseOrderSearchMetricUsecase,
   PurchaseUnitConversionService,
   ExportPurchaseOrdersExcelUsecase,
+  ConfirmPurchaseReceptionUsecase,
 ];

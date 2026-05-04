@@ -124,6 +124,11 @@ export const PURCHASE_STATUS_SEARCH_OPTIONS: PurchaseSearchOptionOutput[] = [
   { id: PurchaseOrderStatus.DRAFT, label: "Borrador", keywords: ["draft"] },
   { id: PurchaseOrderStatus.SENT, label: "Enviado", keywords: ["sent"] },
   { id: PurchaseOrderStatus.PARTIAL, label: "Parcial", keywords: ["partial", "pendiente ingreso"] },
+  {
+    id: PurchaseOrderStatus.PENDING_RECEIPT_CONFIRMATION,
+    label: "Pendiente confirmacion",
+    keywords: ["confirmacion", "pendiente confirmacion", "evidencia"],
+  },
   { id: PurchaseOrderStatus.RECEIVED, label: "Recibido", keywords: ["received", "terminado", "completado"] },
   { id: PurchaseOrderStatus.CANCELLED, label: "Cancelado", keywords: ["cancelled", "anulado"] },
 ];

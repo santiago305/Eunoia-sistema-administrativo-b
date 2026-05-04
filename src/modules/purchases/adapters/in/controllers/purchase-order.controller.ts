@@ -26,12 +26,15 @@ import { sanitizePurchaseSearchSnapshot } from "src/modules/purchases/applicatio
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
 import { PurchaseOrderExpectedScheduler } from "src/modules/purchases/application/jobs/purchase-order-expected-scheduler";
 import { ExportPurchaseOrdersExcelUsecase } from "src/modules/purchases/application/usecases/purchase-order/export-excel.usecase";
+import { ConfirmPurchaseReceptionUsecase } from "src/modules/purchases/application/usecases/purchase-order/confirm-reception.usecase";
 import { LISTING_SEARCH_STORAGE, ListingSearchStorageRepository } from "src/shared/listing-search/domain/listing-search.repository";
 import { IMAGE_PROCESSOR, ImageProcessor } from "src/shared/application/ports/image-processor.port";
 import { FILE_STORAGE, FileStorage } from "src/shared/application/ports/file-storage.port";
 import { ImageProcessingError } from "src/shared/application/errors/image-processing.error";
 import { FileStorageConflictError, InvalidFileStoragePathError } from "src/shared/application/errors/file-storage.errors";
 import { RoleType } from "src/shared/constantes/constants";
+import { NotificationsService } from "src/modules/notifications/application/use-cases/notifications.service";
+import { PURCHASE_NOTIFICATION_TYPES } from "src/modules/notifications/domain/constants/purchase-notification-types";
 
 @Controller("purchases/orders")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
@@ -48,6 +51,7 @@ export class PurchaseOrdersController {
     private readonly saveSearchMetric: SavePurchaseOrderSearchMetricUsecase,
     private readonly deleteSearchMetric: DeletePurchaseOrderSearchMetricUsecase,
     private readonly exportExcel: ExportPurchaseOrdersExcelUsecase,
+    private readonly confirmReception: ConfirmPurchaseReceptionUsecase,
     @Inject(PURCHASE_ORDER)
     private readonly purchaseRepo: PurchaseOrderRepository,
     @Inject(LISTING_SEARCH_STORAGE)
@@ -57,6 +61,7 @@ export class PurchaseOrdersController {
     private readonly imageProcessor: ImageProcessor,
     @Inject(FILE_STORAGE)
     private readonly fileStorage: FileStorage,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   @Post()
@@ -92,6 +97,11 @@ export class PurchaseOrdersController {
   @Post(":id/run-expected")
   runExpectedAt(@Param("id", ParseUUIDPipe) id: string) {
     return this.runExpected.execute(id);
+  }
+
+  @Post(":id/confirm-reception")
+  confirmPurchaseReception(@Param("id", ParseUUIDPipe) id: string) {
+    return this.confirmReception.execute(id);
   }
 
   @Get()
@@ -276,7 +286,7 @@ export class PurchaseOrdersController {
   async uploadPurchaseImage(
     @Param("id", ParseUUIDPipe) id: string,
     @UploadedFile() file: Express.Multer.File,
-    @CurrentUser() user: { role?: string },
+    @CurrentUser() user: { id: string; role?: string },
   ) {
     if (!file?.buffer) {
       throw new BadRequestException("Debes enviar una imagen");
@@ -321,6 +331,26 @@ export class PurchaseOrdersController {
       if (!updated) {
         throw new BadRequestException("No se pudo guardar la imagen en la compra");
       }
+
+      const purchaseCode = [order.serie, order.correlative].filter(Boolean).join("-") || order.poId.slice(0, 8);
+      await this.notificationsService.createNotificationForUsers({
+        recipientUserIds: [user.id],
+        type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_PHOTO_UPLOADED,
+        category: "PURCHASES",
+        title: "Evidencia de compra subida",
+        message: `Se agregó una imagen a la compra ${purchaseCode}.`,
+        priority: "NORMAL",
+        actionUrl: "/compras",
+        actionLabel: "Ver compra",
+        sourceModule: "purchases",
+        sourceEntityType: "purchase_order",
+        sourceEntityId: order.poId,
+        metadata: {
+          poId: order.poId,
+          purchaseCode,
+          imageCount: updated.imageProdution?.length ?? 0,
+        },
+      });
 
       return {
         type: "success",

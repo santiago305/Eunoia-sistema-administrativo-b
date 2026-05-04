@@ -14,6 +14,7 @@ import { WarehouseEntity } from "src/modules/warehouses/adapters/out/persistence
 import { ListingSearchMetricEntity } from "src/shared/listing-search/adapters/out/persistence/typeorm/entities/listing-search-metric.entity";
 import { ListingSearchRecentEntity } from "src/shared/listing-search/adapters/out/persistence/typeorm/entities/listing-search-recent.entity";
 import { purchasesModuleProviders } from "../composition/container";
+import { NotificationsModule } from "src/modules/notifications";
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { purchasesModuleProviders } from "../composition/container";
     PaymentsModule,
     ProductCatalogModule,
     UsersModule,
+    NotificationsModule,
   ],
   controllers: [PurchaseOrdersController],
   providers: [...purchasesModuleProviders],

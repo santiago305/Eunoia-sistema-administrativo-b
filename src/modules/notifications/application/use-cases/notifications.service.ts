@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { NotificationRecipient } from '../../adapters/out/persistence/typeorm/entities/notification-recipient.entity';
 import { Notification } from '../../adapters/out/persistence/typeorm/entities/notification.entity';
 import { NotificationRealtimeService } from '../../infrastructure/realtime/notification-realtime.service';
@@ -8,6 +8,7 @@ import { User } from 'src/modules/users/adapters/out/persistence/typeorm/entitie
 import { NotificationOutbox } from '../../adapters/out/persistence/typeorm/entities/notification-outbox.entity';
 import { NotificationDeliveryAttempt } from '../../adapters/out/persistence/typeorm/entities/notification-delivery-attempt.entity';
 import { NotificationQueueService } from '../../infrastructure/queue/notification-queue.service';
+import { NotificationPriority } from '../../adapters/out/persistence/typeorm/entities/notification.entity';
 
 @Injectable()
 export class NotificationsService {
@@ -131,7 +132,8 @@ export class NotificationsService {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
 
-    const notification = this.notificationRepository.create({
+    const [created] = await this.createNotificationForUsers({
+      recipientUserIds: [userId],
       type: 'SYSTEM_MESSAGE',
       category: 'SYSTEM',
       title: 'Notificacion de prueba',
@@ -145,29 +147,72 @@ export class NotificationsService {
       sourceEntityType: 'notification',
       sourceEntityId: null,
     });
+
+    return this.getMyNotificationDetail(userId, created.recipientId);
+  }
+
+  async createNotificationForUsers(input: {
+    recipientUserIds: string[];
+    type: string;
+    category: string;
+    title: string;
+    message: string;
+    priority?: NotificationPriority;
+    actionUrl?: string | null;
+    actionLabel?: string | null;
+    metadata?: Record<string, unknown> | null;
+    isSystem?: boolean;
+    sourceModule?: string | null;
+    sourceEntityType?: string | null;
+    sourceEntityId?: string | null;
+  }) {
+    const recipientUserIds = Array.from(new Set(input.recipientUserIds.filter(Boolean)));
+    if (!recipientUserIds.length) return [];
+
+    const users = await this.userRepository.findBy({ id: In(recipientUserIds) });
+    if (!users.length) return [];
+
+    const notification = this.notificationRepository.create({
+      type: input.type,
+      category: input.category,
+      title: input.title,
+      message: input.message,
+      priority: input.priority ?? 'NORMAL',
+      actionUrl: input.actionUrl ?? null,
+      actionLabel: input.actionLabel ?? null,
+      metadata: input.metadata ?? {},
+      isSystem: input.isSystem ?? false,
+      sourceModule: input.sourceModule ?? null,
+      sourceEntityType: input.sourceEntityType ?? null,
+      sourceEntityId: input.sourceEntityId ?? null,
+    });
     const savedNotification = await this.notificationRepository.save(notification);
 
-    const recipient = this.recipientRepository.create({
-      notification: savedNotification,
-      recipientUser: user,
-      status: 'UNREAD',
-    });
-    const savedRecipient = await this.recipientRepository.save(recipient);
-    const outbox = this.outboxRepository.create({
-      notificationRecipient: savedRecipient,
-      eventType: 'NOTIFICATION_CREATED',
-      payload: {
-        recipientId: savedRecipient.id,
-        userId,
-        notificationId: savedNotification.id,
-      },
-      status: 'PENDING',
-      attempts: 0,
-    });
-    const savedOutbox = await this.outboxRepository.save(outbox);
-    await this.notificationQueueService.enqueueOutboxDelivery(savedOutbox.id);
+    const createdRecipients: Array<{ userId: string; recipientId: string }> = [];
+    for (const user of users) {
+      const recipient = this.recipientRepository.create({
+        notification: savedNotification,
+        recipientUser: user,
+        status: 'UNREAD',
+      });
+      const savedRecipient = await this.recipientRepository.save(recipient);
+      const outbox = this.outboxRepository.create({
+        notificationRecipient: savedRecipient,
+        eventType: 'NOTIFICATION_CREATED',
+        payload: {
+          recipientId: savedRecipient.id,
+          userId: user.id,
+          notificationId: savedNotification.id,
+        },
+        status: 'PENDING',
+        attempts: 0,
+      });
+      const savedOutbox = await this.outboxRepository.save(outbox);
+      await this.notificationQueueService.enqueueOutboxDelivery(savedOutbox.id);
+      createdRecipients.push({ userId: user.id, recipientId: savedRecipient.id });
+    }
 
-    return this.getMyNotificationDetail(userId, savedRecipient.id);
+    return createdRecipients;
   }
 
   private async emitUnreadCountUpdated(userId: string) {

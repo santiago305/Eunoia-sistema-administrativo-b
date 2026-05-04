@@ -17,6 +17,8 @@ import { CreditQuotaNotFoundError } from "src/modules/payments/application/error
 import { CreateProductCatalogStockItem } from "src/modules/product-catalog/application/usecases/create-stock-item.usecase";
 import { PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY, ProductCatalogStockItemRepository } from "src/modules/product-catalog/domain/ports/stock-item.repository";
 import { PurchaseUnitConversionService } from "../../services/purchase-unit-conversion.service";
+import { NotificationsService } from "src/modules/notifications/application/use-cases/notifications.service";
+import { PURCHASE_NOTIFICATION_TYPES } from "src/modules/notifications/domain/constants/purchase-notification-types";
 
 export class CreatePurchaseOrderUsecase {
   constructor(
@@ -36,11 +38,11 @@ export class CreatePurchaseOrderUsecase {
     private readonly stockItemRepo: ProductCatalogStockItemRepository,
     private readonly createStockItem: CreateProductCatalogStockItem,
     private readonly purchaseUnitConversionService: PurchaseUnitConversionService,
-
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async execute(input: CreatePurchaseOrderInput, createdBy: string): Promise<{ order: PurchaseOrder }> {
-    return this.uow.runInTransaction(async (tx) => {
+    const result = await this.uow.runInTransaction(async (tx) => {
       const currency = input.currency ?? "PEN";
 
       let data: PurchaseOrder;
@@ -134,6 +136,7 @@ export class CreatePurchaseOrderUsecase {
       }
 
       if (po.paymentForm === PaymentFormType.CONTADO && input.payments && input.payments.length > 0) {
+        let paymentsCreated = 0;
         for (const payment of input.payments) {
           if (payment.amount <= 0) {
             throw new BadRequestException("Monto inválido");
@@ -173,10 +176,32 @@ export class CreatePurchaseOrderUsecase {
 
           try {
             await this.paymentDocRepo.create(document, tx);
+            paymentsCreated += 1;
           } catch {
             throw new BadRequestException("No se pudo crear el documento de pago");
           }
         }
+
+        const purchaseCode = [po.serie, po.correlative].filter(Boolean).join("-") || po.poId.slice(0, 8);
+        await this.notificationsService.createNotificationForUsers({
+          recipientUserIds: [createdBy],
+          type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_PAYMENT_CREATED,
+          category: "PURCHASES",
+          title: "Pago registrado",
+          message: `Se registraron ${paymentsCreated} pago(s) para la compra ${purchaseCode}.`,
+          priority: "NORMAL",
+          actionUrl: "/compras",
+          actionLabel: "Ver compra",
+          sourceModule: "purchases",
+          sourceEntityType: "purchase_order",
+          sourceEntityId: po.poId,
+          metadata: {
+            poId: po.poId,
+            purchaseCode,
+            paymentsCreated,
+            paymentForm: po.paymentForm,
+          },
+        });
       }
 
       if (po.paymentForm === PaymentFormType.CREDITO) {
@@ -184,6 +209,8 @@ export class CreatePurchaseOrderUsecase {
           throw new BadRequestException("Debe registrar al menos una cuota");
         }
 
+        let quotasCreated = 0;
+        let paidQuotas = 0;
         for (const quotaInput of input.quotas) {
           if (quotaInput.totalPaid !== undefined && quotaInput.totalPaid > quotaInput.totalToPay) {
             throw new BadRequestException("El total pagado no puede ser mayor al total a pagar");
@@ -212,14 +239,87 @@ export class CreatePurchaseOrderUsecase {
 
           try {
             await this.creditQuotaRepo.create(quota, tx);
+            quotasCreated += 1;
+            if ((quotaInput.totalPaid ?? 0) > 0) {
+              paidQuotas += 1;
+            }
           } catch {
             throw new BadRequestException("No se pudo crear la cuota");
           }
+        }
+
+        const purchaseCode = [po.serie, po.correlative].filter(Boolean).join("-") || po.poId.slice(0, 8);
+        await this.notificationsService.createNotificationForUsers({
+          recipientUserIds: [createdBy],
+          type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_QUOTA_CREATED,
+          category: "PURCHASES",
+          title: "Cuotas registradas",
+          message: `Se registraron ${quotasCreated} cuota(s) para la compra ${purchaseCode}.`,
+          priority: "NORMAL",
+          actionUrl: "/compras",
+          actionLabel: "Ver compra",
+          sourceModule: "purchases",
+          sourceEntityType: "purchase_order",
+          sourceEntityId: po.poId,
+          metadata: {
+            poId: po.poId,
+            purchaseCode,
+            quotasCreated,
+            paidQuotas,
+            paymentForm: po.paymentForm,
+          },
+        });
+
+        if (paidQuotas > 0) {
+          await this.notificationsService.createNotificationForUsers({
+            recipientUserIds: [createdBy],
+            type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_QUOTA_PAID,
+            category: "PURCHASES",
+            title: "Cuotas con pago inicial",
+            message: `La compra ${purchaseCode} tiene ${paidQuotas} cuota(s) con pago inicial registrado.`,
+            priority: "NORMAL",
+            actionUrl: "/compras",
+            actionLabel: "Ver compra",
+            sourceModule: "purchases",
+            sourceEntityType: "purchase_order",
+            sourceEntityId: po.poId,
+            metadata: {
+              poId: po.poId,
+              purchaseCode,
+              paidQuotas,
+              paymentForm: po.paymentForm,
+            },
+          });
         }
       }
 
       return { order: po };
     });
+
+    const purchaseCode = [result.order.serie, result.order.correlative].filter(Boolean).join("-") || result.order.poId.slice(0, 8);
+    await this.notificationsService.createNotificationForUsers({
+      recipientUserIds: [createdBy],
+      type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_CREATED,
+      category: "PURCHASES",
+      title: "Compra creada",
+      message: `Se creó la compra ${purchaseCode} por ${result.order.total.getAmount().toFixed(2)} ${result.order.currency ?? "PEN"}.`,
+      priority: "NORMAL",
+      actionUrl: `/compras`,
+      actionLabel: "Ver compra",
+      sourceModule: "purchases",
+      sourceEntityType: "purchase_order",
+      sourceEntityId: result.order.poId,
+      metadata: {
+        poId: result.order.poId,
+        purchaseCode,
+        status: result.order.status,
+        total: result.order.total.getAmount(),
+        currency: result.order.currency ?? "PEN",
+        paymentForm: result.order.paymentForm ?? null,
+      },
+    });
+
+    return result;
   }
 }
 
