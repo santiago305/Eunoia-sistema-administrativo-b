@@ -37,6 +37,8 @@ import { RolesGuard } from 'src/shared/utilidades/guards/roles.guard';
 import { CsrfGuard } from 'src/shared/utilidades/guards/csrf.guard';
 import { User as CurrentUser } from 'src/shared/utilidades/decorators/user.decorator';
 import { RemoveAvatarUseCase } from 'src/modules/users/application/use-cases/remove-avatar.usecase';
+import { PermissionsGuard } from 'src/modules/access-control/adapters/in/guards/permissions.guard';
+import { RequirePermissions } from 'src/modules/access-control/adapters/in/decorators/require-permissions.decorator';
 import { IMAGE_PROCESSOR, ImageProcessor } from 'src/shared/application/ports/image-processor.port';
 import { FILE_STORAGE, FileStorage } from 'src/shared/application/ports/file-storage.port';
 import { ImageProcessingError } from 'src/shared/application/errors/image-processing.error';
@@ -73,15 +75,17 @@ export class UsersController {
   ) {}
 
   @Post('create')
-  @UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, CsrfGuard)
   @Roles(RoleType.ADMIN, RoleType.MODERATOR)
+  @RequirePermissions('users.create')
   create(@Body() dto: CreateUserDto, @CurrentUser() user: { role: RoleType }) {
     return this.createUserUseCase.execute(dto, user.role);
   }
 
   @Get('')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles(RoleType.ADMIN, RoleType.MODERATOR)
+  @RequirePermissions('users.read')
   async findAll(
     @Query('page') page: string,
     @Query('role') role: string,
@@ -113,8 +117,9 @@ export class UsersController {
   }
 
   @Get('count-by-role')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
   @Roles(RoleType.ADMIN, RoleType.MODERATOR)
+  @RequirePermissions('users.read')
   async countByRole(
     @Query('role') role: string,
     @Query('q') q: string,
@@ -143,8 +148,9 @@ export class UsersController {
   }
 
   @Patch(':id/role')
-  @UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, CsrfGuard)
   @Roles(RoleType.ADMIN)
+  @RequirePermissions('users.assign_roles')
   updateRole(
     @Param('id') id: string,
     @Body() dto: UpdateUserRoleDto,
@@ -162,15 +168,17 @@ export class UsersController {
   }
 
   @Patch('delete/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, CsrfGuard)
   @Roles(RoleType.ADMIN, RoleType.MODERATOR)
+  @RequirePermissions('users.delete')
   remove(@Param('id') id: string, @CurrentUser() user: { role: RoleType }) {
     return this.deleteUserUseCase.execute(id, user.role);
   }
 
   @Patch('restore/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard, CsrfGuard)
   @Roles(RoleType.ADMIN, RoleType.MODERATOR)
+  @RequirePermissions('users.restore')
   restore(@Param('id') id: string, @CurrentUser() user: { role: RoleType }) {
     return this.restoreUserUseCase.execute(id, user.role);
   }

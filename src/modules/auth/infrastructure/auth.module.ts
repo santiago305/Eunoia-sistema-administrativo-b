@@ -6,11 +6,13 @@ import { UsersModule } from 'src/modules/users/infrastructure/users.module';
 import { envs } from 'src/infrastructure/config/envs';
 import { AuthController } from '../adapters/in/controllers/auth.controller';
 import { authModuleProviders } from '../composition/container';
+import { AccessControlModule } from 'src/modules/access-control/infrastructure/access-control.module';
 
 @Module({
   imports: [
     UsersModule,
     SessionsModule,
+    AccessControlModule,
     PassportModule,
     JwtModule.register({
       secret: envs.jwt.secret,

@@ -31,6 +31,7 @@ import { ProductCatalogModule } from './modules/product-catalog/product-catalog.
 import { UbigeoModule } from './modules/ubigeo/ubigeo.module';
 import { CsrfGuard } from './shared/utilidades/guards/csrf.guard';
 import { NotificationsModule } from './modules/notifications/infrastructure/notifications.module';
+import { AccessControlModule } from './modules/access-control/infrastructure/access-control.module';
 
 const redisAuth = envs.redis.password ? `:${encodeURIComponent(envs.redis.password)}@` : '';
 const redisUrl = `redis://${redisAuth}${envs.redis.host}:${envs.redis.port}/${envs.redis.db}`;
@@ -69,6 +70,7 @@ const redisUrl = `redis://${redisAuth}${envs.redis.host}:${envs.redis.port}/${en
     PdfGeneratedModule,
     SecurityModule,
     NotificationsModule,
+    AccessControlModule,
   ],
   providers: [
     {
