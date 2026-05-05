@@ -18,6 +18,7 @@ export const seedUser = async (dataSource: DataSource) => {
       password: '123123123',
       roleDescription: RoleType.ADMIN,
       avatarUrl: '',
+      isSuperAdmin: true,
     },
     {
       name: 'ADMIN_INTERNAL',
@@ -25,6 +26,7 @@ export const seedUser = async (dataSource: DataSource) => {
       password: '12345678',
       roleDescription: RoleType.ADMIN,
       avatarUrl: '',
+      isSuperAdmin: false,
     },
     {
       name: 'MarAa',
@@ -32,6 +34,7 @@ export const seedUser = async (dataSource: DataSource) => {
       password: '123123123',
       roleDescription: RoleType.ADVISER,
       avatarUrl: '',
+      isSuperAdmin: false,
     },
   ];
 
@@ -52,7 +55,7 @@ export const seedUser = async (dataSource: DataSource) => {
     return;
   }
 
-  for (const { name, email, password, roleDescription, avatarUrl } of protectedUsers) {
+  for (const { name, email, password, roleDescription, avatarUrl, isSuperAdmin } of protectedUsers) {
     const role = roleMap.get(roleDescription);
     if (!role) {
       continue;
@@ -69,6 +72,7 @@ export const seedUser = async (dataSource: DataSource) => {
       existing.password = hashedPassword;
       existing.role = role;
       existing.avatarUrl = avatarUrl;
+      existing.isSuperAdmin = Boolean(isSuperAdmin);
       await userRepo.save(existing);
       console.log(`A Usuario protegido ${email} actualizado`);
       continue;
@@ -80,6 +84,7 @@ export const seedUser = async (dataSource: DataSource) => {
       password: hashedPassword,
       role,
       avatarUrl,
+      isSuperAdmin: Boolean(isSuperAdmin),
     });
 
     await userRepo.save(user);

@@ -15,12 +15,14 @@ export class GetAuthUserUseCase {
 
     const roles = await this.accessControlService.getUserRoles(userId);
     const permissions = await this.accessControlService.getEffectivePermissions(userId);
+    const preferredHomePath = await this.accessControlService.getUserPreferredHomePath(userId);
 
     return {
       user_id: userId,
       rol: user?.role || RoleType.ADVISER,
       roles,
       permissions,
+      preferredHomePath,
     };
   }
 }

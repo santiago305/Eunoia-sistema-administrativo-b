@@ -15,11 +15,16 @@ import { ListingSearchMetricEntity } from "src/shared/listing-search/adapters/ou
 import { ListingSearchRecentEntity } from "src/shared/listing-search/adapters/out/persistence/typeorm/entities/listing-search-recent.entity";
 import { purchasesModuleProviders } from "../composition/container";
 import { NotificationsModule } from "src/modules/notifications";
+import { PurchaseProcessingApprovalEntity } from "../adapters/out/persistence/typeorm/entities/purchase-processing-approval.entity";
+import { AccessControlModule } from "src/modules/access-control/infrastructure/access-control.module";
+import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       PurchaseOrderEntity,
+      PurchaseProcessingApprovalEntity,
+      User,
       PurchaseOrderItemEntity,
       ListingSearchRecentEntity,
       ListingSearchMetricEntity,
@@ -30,6 +35,7 @@ import { NotificationsModule } from "src/modules/notifications";
     ProductCatalogModule,
     UsersModule,
     NotificationsModule,
+    AccessControlModule,
   ],
   controllers: [PurchaseOrdersController],
   providers: [...purchasesModuleProviders],

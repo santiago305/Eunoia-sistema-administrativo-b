@@ -13,5 +13,6 @@ export class User {
     public avatarUrl?: string,
     public createdAt?: Date,
     public telefono?: string,
+    public preferredHomePath?: string | null,
   ) {}
 }

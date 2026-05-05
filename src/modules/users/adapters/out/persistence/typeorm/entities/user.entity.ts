@@ -45,11 +45,17 @@ export class User {
   @Column({ default: false })
   deleted: boolean;
 
+  @Column({ name: 'is_super_admin', default: false })
+  isSuperAdmin: boolean;
+
   @Column({ name: 'avatar_url', type: 'varchar', length: 500, nullable: true })
   avatarUrl?: string;
 
   @Column({ name: 'telefono', type: 'varchar', length: 30, nullable: true })
   telefono?: string;
+
+  @Column({ name: 'preferred_home_path', type: 'varchar', length: 255, nullable: true })
+  preferredHomePath?: string | null;
 
 
   /**

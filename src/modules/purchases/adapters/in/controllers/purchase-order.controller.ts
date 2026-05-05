@@ -35,6 +35,12 @@ import { FileStorageConflictError, InvalidFileStoragePathError } from "src/share
 import { RoleType } from "src/shared/constantes/constants";
 import { NotificationsService } from "src/modules/notifications/application/use-cases/notifications.service";
 import { PURCHASE_NOTIFICATION_TYPES } from "src/modules/notifications/domain/constants/purchase-notification-types";
+import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
+import { EntityManager, Repository } from "typeorm";
+import { PurchaseProcessingApprovalEntity } from "../../out/persistence/typeorm/entities/purchase-processing-approval.entity";
+import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
+import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
+import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
 
 @Controller("purchases/orders")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
@@ -62,6 +68,10 @@ export class PurchaseOrdersController {
     @Inject(FILE_STORAGE)
     private readonly fileStorage: FileStorage,
     private readonly notificationsService: NotificationsService,
+    @InjectRepository(PurchaseProcessingApprovalEntity)
+    private readonly purchaseApprovalRepository: Repository<PurchaseProcessingApprovalEntity>,
+    @InjectEntityManager()
+    private readonly entityManager: EntityManager,
   ) {}
 
   @Post()
@@ -97,6 +107,177 @@ export class PurchaseOrdersController {
   @Post(":id/run-expected")
   runExpectedAt(@Param("id", ParseUUIDPipe) id: string) {
     return this.runExpected.execute(id);
+  }
+
+  @Post(":id/request-processing")
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("purchases.process.request")
+  async requestProcessingApproval(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() body: { reason?: string },
+    @CurrentUser() user: { id: string },
+  ) {
+    const order = await this.purchaseRepo.findById(id);
+    if (!order) {
+      throw new BadRequestException("Orden de compra no encontrada");
+    }
+
+    const pending = await this.purchaseApprovalRepository.findOne({
+      where: { poId: id, status: "PENDING" },
+    });
+    if (pending) {
+      throw new ConflictException("La compra ya tiene una solicitud pendiente de aprobación");
+    }
+
+    const approval = this.purchaseApprovalRepository.create({
+      poId: id,
+      requestedBy: user.id,
+      status: "PENDING",
+      reason: body?.reason?.trim() || null,
+    });
+
+    const saved = await this.purchaseApprovalRepository.save(approval);
+
+    const approvers = await this.entityManager
+      .getRepository(User)
+      .createQueryBuilder("user")
+      .leftJoin("user.role", "role")
+      .where("user.deleted = false")
+      .andWhere("(user.isSuperAdmin = true OR lower(role.description) = :adminRole)", {
+        adminRole: RoleType.ADMIN,
+      })
+      .select(["user.id"])
+      .getMany();
+
+    const recipientIds = approvers.map((approver) => approver.id).filter((idValue) => idValue !== user.id);
+    if (recipientIds.length > 0) {
+      const purchaseCode = [order.serie, order.correlative].filter(Boolean).join("-") || order.poId.slice(0, 8);
+      await this.notificationsService.createNotificationForUsers({
+        recipientUserIds: recipientIds,
+        type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_PROCESSING_REQUESTED,
+        category: "PURCHASES",
+        title: "Solicitud de aprobación de compra",
+        message: `Se solicitó aprobación para procesar la compra ${purchaseCode}.`,
+        priority: "HIGH",
+        actionUrl: `/compras`,
+        actionLabel: "Revisar compra",
+        sourceModule: "purchases",
+        sourceEntityType: "purchase_order",
+        sourceEntityId: order.poId,
+        metadata: {
+          poId: order.poId,
+          purchaseCode,
+          approvalId: saved.id,
+          reason: saved.reason ?? null,
+        },
+      });
+    }
+
+    return {
+      type: "success",
+      message: "Solicitud de aprobación enviada",
+      approval: saved,
+    };
+  }
+
+  @Post(":id/approve-processing")
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("purchases.approve")
+  async approveProcessing(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() body: { comment?: string },
+    @CurrentUser() user: { id: string },
+  ) {
+    const pending = await this.purchaseApprovalRepository.findOne({
+      where: { poId: id, status: "PENDING" },
+      order: { createdAt: "DESC" },
+    });
+    if (!pending) {
+      throw new BadRequestException("No existe solicitud pendiente para esta compra");
+    }
+
+    const result = await this.runExpected.execute(id);
+
+    pending.status = "APPROVED";
+    pending.reviewedBy = user.id;
+    pending.reviewedAt = new Date();
+    pending.reviewComment = body?.comment?.trim() || null;
+    await this.purchaseApprovalRepository.save(pending);
+
+    await this.notificationsService.createNotificationForUsers({
+      recipientUserIds: [pending.requestedBy],
+      type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_PROCESSING_APPROVED,
+      category: "PURCHASES",
+      title: "Solicitud aprobada",
+      message: "Tu solicitud de procesamiento de compra fue aprobada.",
+      priority: "NORMAL",
+      actionUrl: "/compras",
+      actionLabel: "Ver estado",
+      sourceModule: "purchases",
+      sourceEntityType: "purchase_order",
+      sourceEntityId: id,
+      metadata: {
+        poId: id,
+        approvalId: pending.id,
+        reviewedBy: user.id,
+      },
+    });
+
+    return {
+      type: "success",
+      message: "Compra aprobada y procesada correctamente",
+      approval: pending,
+      result,
+    };
+  }
+
+  @Post(":id/reject-processing")
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("purchases.approve")
+  async rejectProcessing(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() body: { comment?: string },
+    @CurrentUser() user: { id: string },
+  ) {
+    const pending = await this.purchaseApprovalRepository.findOne({
+      where: { poId: id, status: "PENDING" },
+      order: { createdAt: "DESC" },
+    });
+    if (!pending) {
+      throw new BadRequestException("No existe solicitud pendiente para esta compra");
+    }
+
+    pending.status = "REJECTED";
+    pending.reviewedBy = user.id;
+    pending.reviewedAt = new Date();
+    pending.reviewComment = body?.comment?.trim() || null;
+    await this.purchaseApprovalRepository.save(pending);
+
+    await this.notificationsService.createNotificationForUsers({
+      recipientUserIds: [pending.requestedBy],
+      type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_PROCESSING_REJECTED,
+      category: "PURCHASES",
+      title: "Solicitud rechazada",
+      message: "Tu solicitud de procesamiento de compra fue rechazada.",
+      priority: "NORMAL",
+      actionUrl: "/compras",
+      actionLabel: "Ver detalle",
+      sourceModule: "purchases",
+      sourceEntityType: "purchase_order",
+      sourceEntityId: id,
+      metadata: {
+        poId: id,
+        approvalId: pending.id,
+        reviewedBy: user.id,
+        comment: pending.reviewComment ?? null,
+      },
+    });
+
+    return {
+      type: "success",
+      message: "Solicitud rechazada",
+      approval: pending,
+    };
   }
 
   @Post(":id/confirm-reception")

@@ -11,6 +11,7 @@ export class UserFactory {
     roleId: RoleId;
     avatarUrl?: string;
     telefono?: string;
+    preferredHomePath?: string | null;
   }): User {
     return new User(
       undefined,
@@ -22,6 +23,7 @@ export class UserFactory {
       params.avatarUrl,
       undefined,
       params.telefono,
+      params.preferredHomePath,
     );
   }
 
@@ -35,6 +37,7 @@ export class UserFactory {
     avatarUrl?: string;
     createdAt?: Date;
     telefono?: string;
+    preferredHomePath?: string | null;
   }): User {
     return new User(
       params.id,
@@ -46,6 +49,7 @@ export class UserFactory {
       params.avatarUrl,
       params.createdAt,
       params.telefono,
+      params.preferredHomePath,
     );
   }
 }
