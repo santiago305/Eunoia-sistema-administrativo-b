@@ -12,11 +12,21 @@ import { CreatePaymentUsecase } from "./application/usecases/payment/create.usec
 import { DeletePaymentUsecase } from "./application/usecases/payment/delete.usecase";
 import { paymentsModuleProviders } from "./composition/container";
 import { AccessControlModule } from "src/modules/access-control/infrastructure/access-control.module";
+import { ApprovalRequestEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/approval-request.entity";
+import { PurchaseHistoryEventEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-history-event.entity";
+import { PurchaseOrderEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-order.entity";
+import { NotificationsModule } from "src/modules/notifications";
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([PaymentDocumentEntity, CreditQuotaEntity]),
+    TypeOrmModule.forFeature([
+      ApprovalRequestEntity,
+      PurchaseHistoryEventEntity,
+      PurchaseOrderEntity,
+    ]),
     AccessControlModule,
+    NotificationsModule,
   ],
   controllers: [PaymentsController, CreditQuotasController],
   providers: [...paymentsModuleProviders],

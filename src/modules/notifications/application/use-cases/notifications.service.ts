@@ -162,6 +162,7 @@ export class NotificationsService {
     actionLabel?: string | null;
     metadata?: Record<string, unknown> | null;
     isSystem?: boolean;
+    showAsToast?: boolean;
     sourceModule?: string | null;
     sourceEntityType?: string | null;
     sourceEntityId?: string | null;
@@ -182,6 +183,7 @@ export class NotificationsService {
       actionLabel: input.actionLabel ?? null,
       metadata: input.metadata ?? {},
       isSystem: input.isSystem ?? false,
+      showAsToast: input.showAsToast ?? true,
       sourceModule: input.sourceModule ?? null,
       sourceEntityType: input.sourceEntityType ?? null,
       sourceEntityId: input.sourceEntityId ?? null,
@@ -327,6 +329,7 @@ export class NotificationsService {
         actionLabel: row.notification.actionLabel,
         metadata: row.notification.metadata,
         isSystem: row.notification.isSystem,
+        showAsToast: row.notification.showAsToast,
         createdAt: row.notification.createdAt,
       },
     };

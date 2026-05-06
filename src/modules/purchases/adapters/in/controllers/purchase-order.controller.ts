@@ -1,4 +1,4 @@
-import { BadRequestException, Body, ConflictException, Controller, Delete, Get, Inject, Param, ParseUUIDPipe, Patch, Post, Query, Res, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
+import { BadRequestException, Body, ConflictException, Controller, Delete, ForbiddenException, Get, Inject, Param, ParseUUIDPipe, Patch, Post, Query, Res, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
 import { Response } from "express";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { memoryStorage } from "multer";
@@ -13,6 +13,7 @@ import { HttpUpdatePurchaseOrderDto } from "../dtos/purchase-order/http-purchase
 import { HttpListPurchaseOrdersQueryDto } from "../dtos/purchase-order/http-purchase-order-list.dto";
 import { HttpCreatePurchaseSearchMetricDto } from "../dtos/purchase-order/http-purchase-search-metric-create.dto";
 import { HttpExportPurchaseOrdersDto } from "../dtos/purchase-order/http-export-purchase-orders.dto";
+import { HttpPurchaseHistoryListQueryDto } from "../dtos/purchase-order/http-purchase-history-list.dto";
 import { RunExpectedAtUsecase } from "src/modules/purchases/application/usecases/purchase-order/run-expected-at.usecase";
 import { SetSentPurchaseOrderUsecase } from "src/modules/purchases/application/usecases/purchase-order/set-sent.usecase";
 import { CancelPurchaseOrderUsecase } from "src/modules/purchases/application/usecases/purchase-order/cancel.usecase";
@@ -32,15 +33,18 @@ import { IMAGE_PROCESSOR, ImageProcessor } from "src/shared/application/ports/im
 import { FILE_STORAGE, FileStorage } from "src/shared/application/ports/file-storage.port";
 import { ImageProcessingError } from "src/shared/application/errors/image-processing.error";
 import { FileStorageConflictError, InvalidFileStoragePathError } from "src/shared/application/errors/file-storage.errors";
-import { RoleType } from "src/shared/constantes/constants";
 import { NotificationsService } from "src/modules/notifications/application/use-cases/notifications.service";
 import { PURCHASE_NOTIFICATION_TYPES } from "src/modules/notifications/domain/constants/purchase-notification-types";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, Repository } from "typeorm";
 import { PurchaseProcessingApprovalEntity } from "../../out/persistence/typeorm/entities/purchase-processing-approval.entity";
-import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
 import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
 import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
+import { AccessControlService } from "src/modules/access-control/application/services/access-control.service";
+import { ApprovalRequestEntity } from "../../out/persistence/typeorm/entities/approval-request.entity";
+import { PurchaseHistoryEventEntity } from "../../out/persistence/typeorm/entities/purchase-history-event.entity";
+import { PaymentDocumentEntity } from "src/modules/payments/adapters/out/persistence/typeorm/entities/payment-document.entity";
+import { PurchaseOrderEntity } from "../../out/persistence/typeorm/entities/purchase-order.entity";
 
 @Controller("purchases/orders")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
@@ -70,20 +74,141 @@ export class PurchaseOrdersController {
     private readonly notificationsService: NotificationsService,
     @InjectRepository(PurchaseProcessingApprovalEntity)
     private readonly purchaseApprovalRepository: Repository<PurchaseProcessingApprovalEntity>,
+    @InjectRepository(ApprovalRequestEntity)
+    private readonly approvalRequestRepository: Repository<ApprovalRequestEntity>,
+    @InjectRepository(PurchaseHistoryEventEntity)
+    private readonly purchaseHistoryRepository: Repository<PurchaseHistoryEventEntity>,
     @InjectEntityManager()
     private readonly entityManager: EntityManager,
+    private readonly accessControlService: AccessControlService,
   ) {}
 
   @Post()
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("purchases.create")
   async create(@Body() dto: HttpCreatePurchaseOrderDto, @CurrentUser() user: { id: string }) {
     try {
+      const canApproveCreationWithPayment = await this.accessControlService.userHasAllPermissions(user.id, [
+        "purchases.approve_creation_with_payment",
+      ]);
+      const requestedPayments = Array.isArray(dto.payments) ? dto.payments.length : 0;
+      const requiresApprovalForCreationWithPayment = requestedPayments > 0 && !canApproveCreationWithPayment;
       const result = await this.createOrder.execute(
         PurchaseOrderHttpMapper.toCreateInput(dto),
         user.id,
+        {
+          allowDirectPaymentCreation: !requiresApprovalForCreationWithPayment,
+        },
       );
+
+      if (requiresApprovalForCreationWithPayment) {
+        await this.purchaseRepo.update({
+          poId: result.order.poId,
+          approvalStatus: "PENDING",
+        });
+        const approvalRequest = this.approvalRequestRepository.create({
+          module: "purchases",
+          action: "PURCHASE_CREATION_WITH_PAYMENT",
+          entityType: "purchase_order",
+          entityId: result.order.poId,
+          requestedByUserId: user.id,
+          status: "PENDING",
+          payloadSnapshot: {
+            poId: result.order.poId,
+            paymentsRequested: requestedPayments,
+          },
+        });
+        const savedApprovalRequest = await this.approvalRequestRepository.save(approvalRequest);
+
+        await this.purchaseHistoryRepository.save(
+          this.purchaseHistoryRepository.create({
+            purchaseId: result.order.poId,
+            eventType: "PURCHASE_CREATED_WITH_PAYMENT_PENDING_APPROVAL",
+            description: "La compra fue creada con pagos pendientes de aprobación.",
+            metadata: {
+              paymentsRequested: requestedPayments,
+            },
+            performedByUserId: user.id,
+            targetUserId: user.id,
+            approvalRequestId: savedApprovalRequest.id,
+          }),
+        );
+
+        const approverIds = await this.accessControlService.getUserIdsWithPermission(
+          "purchases.approve_creation_with_payment",
+        );
+        const filteredApprovers = approverIds.filter((idValue) => idValue !== user.id);
+        if (filteredApprovers.length > 0) {
+          await this.notificationsService.createNotificationForUsers({
+            recipientUserIds: filteredApprovers,
+            type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_CREATION_WITH_PAYMENT_PENDING,
+            category: "PURCHASES",
+            title: "Aprobación pendiente de compra con pago",
+            message: "Un usuario solicitó crear una compra con pago directo y requiere aprobación.",
+            priority: "HIGH",
+            actionUrl: `/compras?purchaseId=${result.order.poId}&modal=detail`,
+            actionLabel: "Ver compra",
+            sourceModule: "purchases",
+            sourceEntityType: "purchase_order",
+            sourceEntityId: result.order.poId,
+            metadata: {
+              poId: result.order.poId,
+              approvalRequestId: savedApprovalRequest.id,
+              showAsToast: true,
+            },
+            showAsToast: true,
+          });
+        }
+      }
+
+      const silentWatcherPermission = "purchases.receive_created_purchase_notifications";
+      const watcherIds = await this.accessControlService.getUserIdsWithPermission(silentWatcherPermission);
+      const silentRecipientIds = watcherIds.filter((idValue) => idValue !== user.id);
+      if (silentRecipientIds.length > 0) {
+        const canViewCreatorIds = await this.accessControlService.getUserIdsWithPermission(
+          "purchases.view_creator_info",
+        );
+        const visibleCreatorRecipients = silentRecipientIds.filter((idValue) => canViewCreatorIds.includes(idValue));
+        const genericRecipients = silentRecipientIds.filter((idValue) => !canViewCreatorIds.includes(idValue));
+
+        if (visibleCreatorRecipients.length > 0) {
+          await this.notificationsService.createNotificationForUsers({
+            recipientUserIds: visibleCreatorRecipients,
+            type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_CREATED,
+            category: "PURCHASES",
+            title: "Nueva compra creada",
+            message: `El usuario ${user.id} creó una nueva compra.`,
+            priority: "LOW",
+            sourceModule: "purchases",
+            sourceEntityType: "purchase_order",
+            sourceEntityId: result.order.poId,
+            metadata: { poId: result.order.poId, showAsToast: false },
+            showAsToast: false,
+          });
+        }
+
+        if (genericRecipients.length > 0) {
+          await this.notificationsService.createNotificationForUsers({
+            recipientUserIds: genericRecipients,
+            type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_CREATED,
+            category: "PURCHASES",
+            title: "Nueva compra creada",
+            message: "Se creó una nueva compra.",
+            priority: "LOW",
+            sourceModule: "purchases",
+            sourceEntityType: "purchase_order",
+            sourceEntityId: result.order.poId,
+            metadata: { poId: result.order.poId, showAsToast: false },
+            showAsToast: false,
+          });
+        }
+      }
+
         return {
           type: "success",
-          message: "Orden de compra creada correctamente",
+          message: requiresApprovalForCreationWithPayment
+            ? "Orden de compra creada. Los pagos quedaron pendientes de aprobación."
+            : "Orden de compra creada correctamente",
           order: PurchaseOrderOutputMapper.toOrderOutput(result.order),
         };
     } catch (error: any) {
@@ -95,11 +220,33 @@ export class PurchaseOrdersController {
     }
   }
   @Patch(":id/sent")
-  setSentPurchase(@Param("id", ParseUUIDPipe) id: string) {
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("purchases.process")
+  async setSentPurchase(@Param("id", ParseUUIDPipe) id: string, @CurrentUser() user: { id: string }) {
+    const canApproveProcessing = await this.accessControlService.userHasAllPermissions(user.id, [
+      "purchases.approve_processing",
+    ]);
+    if (!canApproveProcessing) {
+      throw new ForbiddenException("No tienes permiso para procesar directamente. Debes solicitar aprobación.");
+    }
+    const order = await this.purchaseRepo.findById(id);
+    if (!order) throw new BadRequestException("Orden de compra no encontrada");
+    const orderEntity = await this.entityManager.getRepository(PurchaseOrderEntity).findOne({
+      where: { id },
+      select: ["id", "approvalStatus"],
+    });
+    if (orderEntity?.approvalStatus === "PENDING") {
+      throw new BadRequestException("La compra está pendiente de aprobación y no puede procesarse todavía.");
+    }
+    if (orderEntity?.approvalStatus === "REJECTED") {
+      throw new BadRequestException("La compra fue rechazada y no puede procesarse.");
+    }
     return this.setSent.execute(id);
   }
 
   @Patch(":id/cancel")
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("purchases.cancel_draft")
   cancel(@Param("id", ParseUUIDPipe) id: string) {
     return this.cancelOrder.execute(id);
   }
@@ -111,7 +258,7 @@ export class PurchaseOrdersController {
 
   @Post(":id/request-processing")
   @UseGuards(PermissionsGuard)
-  @RequirePermissions("purchases.process.request")
+  @RequirePermissions("purchases.process")
   async requestProcessingApproval(
     @Param("id", ParseUUIDPipe) id: string,
     @Body() body: { reason?: string },
@@ -120,6 +267,19 @@ export class PurchaseOrdersController {
     const order = await this.purchaseRepo.findById(id);
     if (!order) {
       throw new BadRequestException("Orden de compra no encontrada");
+    }
+    const orderEntity = await this.entityManager.getRepository(PurchaseOrderEntity).findOne({
+      where: { id },
+      select: ["id", "approvalStatus"],
+    });
+    if (orderEntity?.approvalStatus === "PENDING") {
+      throw new BadRequestException("La compra está pendiente de aprobación y no puede avanzar de etapa.");
+    }
+    if (orderEntity?.approvalStatus === "REJECTED") {
+      throw new BadRequestException("La compra fue rechazada y no puede procesarse.");
+    }
+    if (order.status !== "DRAFT") {
+      throw new BadRequestException("Solo las compras en borrador pueden solicitar procesamiento.");
     }
 
     const pending = await this.purchaseApprovalRepository.findOne({
@@ -138,18 +298,20 @@ export class PurchaseOrdersController {
 
     const saved = await this.purchaseApprovalRepository.save(approval);
 
-    const approvers = await this.entityManager
-      .getRepository(User)
-      .createQueryBuilder("user")
-      .leftJoin("user.role", "role")
-      .where("user.deleted = false")
-      .andWhere("(user.isSuperAdmin = true OR lower(role.description) = :adminRole)", {
-        adminRole: RoleType.ADMIN,
-      })
-      .select(["user.id"])
-      .getMany();
-
-    const recipientIds = approvers.map((approver) => approver.id).filter((idValue) => idValue !== user.id);
+    const approverIds = await this.accessControlService.getUserIdsWithPermission(
+      "purchases.approve_processing",
+    );
+    const recipientIds = approverIds.filter((idValue) => idValue !== user.id);
+    await this.purchaseHistoryRepository.save(
+      this.purchaseHistoryRepository.create({
+        purchaseId: id,
+        eventType: "PROCESSING_REQUESTED",
+        description: "Se solicitó aprobación para procesar la compra.",
+        performedByUserId: user.id,
+        targetUserId: null,
+        metadata: { reason: saved.reason ?? null },
+      }),
+    );
     if (recipientIds.length > 0) {
       const purchaseCode = [order.serie, order.correlative].filter(Boolean).join("-") || order.poId.slice(0, 8);
       await this.notificationsService.createNotificationForUsers({
@@ -157,10 +319,10 @@ export class PurchaseOrdersController {
         type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_PROCESSING_REQUESTED,
         category: "PURCHASES",
         title: "Solicitud de aprobación de compra",
-        message: `Se solicitó aprobación para procesar la compra ${purchaseCode}.`,
+        message: `El usuario ${user.id} quiere procesar el pedido ${purchaseCode}.`,
         priority: "HIGH",
-        actionUrl: `/compras`,
-        actionLabel: "Revisar compra",
+        actionUrl: `/compras?purchaseId=${order.poId}&modal=detail`,
+        actionLabel: "Ver compra",
         sourceModule: "purchases",
         sourceEntityType: "purchase_order",
         sourceEntityId: order.poId,
@@ -182,7 +344,7 @@ export class PurchaseOrdersController {
 
   @Post(":id/approve-processing")
   @UseGuards(PermissionsGuard)
-  @RequirePermissions("purchases.approve")
+  @RequirePermissions("purchases.approve_processing")
   async approveProcessing(
     @Param("id", ParseUUIDPipe) id: string,
     @Body() body: { comment?: string },
@@ -196,7 +358,7 @@ export class PurchaseOrdersController {
       throw new BadRequestException("No existe solicitud pendiente para esta compra");
     }
 
-    const result = await this.runExpected.execute(id);
+    const result = await this.setSent.execute(id);
 
     pending.status = "APPROVED";
     pending.reviewedBy = user.id;
@@ -211,8 +373,8 @@ export class PurchaseOrdersController {
       title: "Solicitud aprobada",
       message: "Tu solicitud de procesamiento de compra fue aprobada.",
       priority: "NORMAL",
-      actionUrl: "/compras",
-      actionLabel: "Ver estado",
+      actionUrl: `/compras?purchaseId=${id}&modal=detail`,
+      actionLabel: "Ver compra",
       sourceModule: "purchases",
       sourceEntityType: "purchase_order",
       sourceEntityId: id,
@@ -222,18 +384,160 @@ export class PurchaseOrdersController {
         reviewedBy: user.id,
       },
     });
+    await this.purchaseHistoryRepository.save(
+      this.purchaseHistoryRepository.create({
+        purchaseId: id,
+        eventType: "PROCESSING_APPROVED",
+        description: "Se aprobó el procesamiento de la compra.",
+        performedByUserId: user.id,
+        targetUserId: pending.requestedBy,
+        metadata: { comment: pending.reviewComment ?? null },
+      }),
+    );
 
     return {
       type: "success",
-      message: "Compra aprobada y procesada correctamente",
+      message: "Compra aprobada y enviada a procesamiento correctamente",
       approval: pending,
       result,
     };
   }
 
+  @Post(":id/approve-creation-with-payment")
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("purchases.approve_creation_with_payment")
+  async approveCreationWithPayment(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    const approval = await this.approvalRequestRepository.findOne({
+      where: { entityId: id, action: "PURCHASE_CREATION_WITH_PAYMENT", status: "PENDING" },
+      order: { createdAt: "DESC" },
+    });
+    if (!approval) {
+      throw new BadRequestException("No existe solicitud pendiente para creación con pago.");
+    }
+
+    await this.entityManager.getRepository(PaymentDocumentEntity).update(
+      { poId: id, status: "PENDING_APPROVAL" },
+      {
+        status: "APPROVED",
+        approvedByUserId: user.id,
+        approvedAt: new Date(),
+      },
+    );
+    await this.purchaseRepo.update({
+      poId: id,
+      approvalStatus: "APPROVED",
+    });
+
+    approval.status = "APPROVED";
+    approval.reviewedByUserId = user.id;
+    approval.reviewedAt = new Date();
+    await this.approvalRequestRepository.save(approval);
+
+    await this.purchaseHistoryRepository.save(
+      this.purchaseHistoryRepository.create({
+        purchaseId: id,
+        eventType: "PURCHASE_CREATION_APPROVED",
+        description: "Se aprobó la creación de compra con pago.",
+        performedByUserId: user.id,
+        targetUserId: approval.requestedByUserId,
+        approvalRequestId: approval.id,
+        metadata: {},
+      }),
+    );
+
+    await this.notificationsService.createNotificationForUsers({
+      recipientUserIds: [approval.requestedByUserId],
+      type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_CREATION_WITH_PAYMENT_APPROVED,
+      category: "PURCHASES",
+      title: "Compra aprobada",
+      message: "Tu compra con pago fue aprobada.",
+      priority: "NORMAL",
+      actionUrl: `/compras?purchaseId=${id}&modal=detail`,
+      actionLabel: "Ver compra",
+      sourceModule: "purchases",
+      sourceEntityType: "purchase_order",
+      sourceEntityId: id,
+      metadata: { poId: id, approvalRequestId: approval.id, showAsToast: true },
+      showAsToast: true,
+    });
+
+    return { type: "success", message: "Creación de compra con pago aprobada." };
+  }
+
+  @Post(":id/reject-creation-with-payment")
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("purchases.approve_creation_with_payment")
+  async rejectCreationWithPayment(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() body: { reason?: string },
+    @CurrentUser() user: { id: string },
+  ) {
+    const approval = await this.approvalRequestRepository.findOne({
+      where: { entityId: id, action: "PURCHASE_CREATION_WITH_PAYMENT", status: "PENDING" },
+      order: { createdAt: "DESC" },
+    });
+    if (!approval) {
+      throw new BadRequestException("No existe solicitud pendiente para creación con pago.");
+    }
+
+    const reason = body?.reason?.trim() || null;
+    await this.entityManager.getRepository(PaymentDocumentEntity).update(
+      { poId: id, status: "PENDING_APPROVAL" },
+      {
+        status: "REJECTED",
+        rejectedByUserId: user.id,
+        rejectedAt: new Date(),
+        rejectionReason: reason,
+      },
+    );
+    await this.purchaseRepo.update({
+      poId: id,
+      approvalStatus: "REJECTED",
+    });
+
+    approval.status = "REJECTED";
+    approval.reviewedByUserId = user.id;
+    approval.reviewedAt = new Date();
+    approval.reason = reason;
+    await this.approvalRequestRepository.save(approval);
+
+    await this.purchaseHistoryRepository.save(
+      this.purchaseHistoryRepository.create({
+        purchaseId: id,
+        eventType: "PURCHASE_CREATION_REJECTED",
+        description: "Se rechazó la creación de compra con pago.",
+        performedByUserId: user.id,
+        targetUserId: approval.requestedByUserId,
+        approvalRequestId: approval.id,
+        metadata: { reason },
+      }),
+    );
+
+    await this.notificationsService.createNotificationForUsers({
+      recipientUserIds: [approval.requestedByUserId],
+      type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_CREATION_WITH_PAYMENT_REJECTED,
+      category: "PURCHASES",
+      title: "Compra rechazada",
+      message: "Tu compra con pago fue rechazada.",
+      priority: "NORMAL",
+      actionUrl: `/compras?purchaseId=${id}&modal=detail`,
+      actionLabel: "Ver detalle",
+      sourceModule: "purchases",
+      sourceEntityType: "purchase_order",
+      sourceEntityId: id,
+      metadata: { poId: id, approvalRequestId: approval.id, reason, showAsToast: true },
+      showAsToast: true,
+    });
+
+    return { type: "success", message: "Creación de compra con pago rechazada." };
+  }
+
   @Post(":id/reject-processing")
   @UseGuards(PermissionsGuard)
-  @RequirePermissions("purchases.approve")
+  @RequirePermissions("purchases.approve_processing")
   async rejectProcessing(
     @Param("id", ParseUUIDPipe) id: string,
     @Body() body: { comment?: string },
@@ -260,7 +564,7 @@ export class PurchaseOrdersController {
       title: "Solicitud rechazada",
       message: "Tu solicitud de procesamiento de compra fue rechazada.",
       priority: "NORMAL",
-      actionUrl: "/compras",
+      actionUrl: `/compras?purchaseId=${id}&modal=detail`,
       actionLabel: "Ver detalle",
       sourceModule: "purchases",
       sourceEntityType: "purchase_order",
@@ -272,6 +576,16 @@ export class PurchaseOrdersController {
         comment: pending.reviewComment ?? null,
       },
     });
+    await this.purchaseHistoryRepository.save(
+      this.purchaseHistoryRepository.create({
+        purchaseId: id,
+        eventType: "PROCESSING_REJECTED",
+        description: "Se rechazó el procesamiento de la compra.",
+        performedByUserId: user.id,
+        targetUserId: pending.requestedBy,
+        metadata: { comment: pending.reviewComment ?? null },
+      }),
+    );
 
     return {
       type: "success",
@@ -286,6 +600,8 @@ export class PurchaseOrdersController {
   }
 
   @Get()
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("purchases.view")
   list(@Query() query: HttpListPurchaseOrdersQueryDto, @CurrentUser() user: { id: string }) {
     return this.listOrders.execute(PurchaseOrderHttpMapper.toListInput({
       status: query.status,
@@ -398,12 +714,156 @@ export class PurchaseOrdersController {
     return res.status(200).send(file.content);
   }
 
+  @Get("history")
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("purchases.view_history")
+  async listHistory(
+    @Query() query: HttpListPurchaseOrdersQueryDto,
+    @Query("eventType") eventType: string | undefined,
+    @Query("eventFrom") eventFrom: string | undefined,
+    @Query("eventTo") eventTo: string | undefined,
+    @Query("performedByUserId") performedByUserId: string | undefined,
+    @CurrentUser() user: { id: string },
+  ) {
+    let purchaseIdsWhitelist: string[] | undefined;
+    if (eventType || eventFrom || eventTo || performedByUserId) {
+      const eventQb = this.purchaseHistoryRepository
+        .createQueryBuilder("event")
+        .select("DISTINCT event.purchase_id", "purchaseId");
+
+      if (eventType) {
+        eventQb.andWhere("event.event_type = :eventType", { eventType });
+      }
+      if (eventFrom) {
+        eventQb.andWhere("event.created_at >= :eventFrom", { eventFrom: new Date(eventFrom) });
+      }
+      if (eventTo) {
+        eventQb.andWhere("event.created_at <= :eventTo", { eventTo: new Date(eventTo) });
+      }
+      if (performedByUserId) {
+        eventQb.andWhere("event.performed_by_user_id = :performedByUserId", {
+          performedByUserId,
+        });
+      }
+
+      const filtered = await eventQb.getRawMany<{ purchaseId: string }>();
+      purchaseIdsWhitelist = filtered.map((row) => row.purchaseId).filter(Boolean);
+    }
+
+    const base = await this.listOrders.execute(
+      PurchaseOrderHttpMapper.toListInput({
+        status: query.status,
+        statuses: query.statuses,
+        supplierId: query.supplierId,
+        supplierIds: query.supplierIds,
+        warehouseId: query.warehouseId,
+        warehouseIds: query.warehouseIds,
+        documentType: query.documentType,
+        documentTypes: query.documentTypes,
+        paymentForms: query.paymentForms,
+        number: query.number,
+        q: query.q,
+        filters: query.filters,
+        from: query.from,
+        to: query.to,
+        page: query.page,
+        limit: query.limit,
+        requestedBy: user?.id,
+        purchaseIdsWhitelist,
+      }),
+    );
+
+    const purchaseIds = (base.items ?? []).map((item) => item.poId).filter(Boolean);
+    const grouped = purchaseIds.length
+      ? await this.purchaseHistoryRepository
+          .createQueryBuilder("event")
+          .select("event.purchase_id", "purchaseId")
+          .addSelect("COUNT(event.purchase_history_event_id)", "eventsCount")
+          .addSelect("MAX(event.created_at)", "lastEventAt")
+          .where("event.purchase_id IN (:...purchaseIds)", { purchaseIds })
+          .groupBy("event.purchase_id")
+          .getRawMany<{ purchaseId: string; eventsCount: string; lastEventAt: string | null }>()
+      : [];
+
+    const summaryMap = new Map(
+      grouped.map((row) => [
+        row.purchaseId,
+        {
+          eventsCount: Number(row.eventsCount ?? 0),
+          lastEventAt: row.lastEventAt,
+        },
+      ]),
+    );
+
+    return {
+      ...base,
+      items: (base.items ?? []).map((item) => ({
+        ...item,
+        history: summaryMap.get(item.poId) ?? {
+          eventsCount: 0,
+          lastEventAt: null,
+        },
+      })),
+    };
+  }
+
+  @Get(":id/history")
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("purchases.view_history")
+  async getPurchaseTimeline(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Query() query: HttpPurchaseHistoryListQueryDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    const order = await this.purchaseRepo.findById(id);
+    if (!order) {
+      throw new BadRequestException("Orden de compra no encontrada");
+    }
+
+    const canViewAll = await this.accessControlService.userHasAllPermissions(user.id, ["purchases.view_all"]);
+    const canViewOthers = await this.accessControlService.userHasAllPermissions(user.id, ["purchases.view_created_by_others"]);
+    if (!canViewAll && !canViewOthers && order.createdBy && order.createdBy !== user.id) {
+      throw new ForbiddenException("No tienes permiso para ver historial de compras creadas por otros.");
+    }
+
+    const qb = this.purchaseHistoryRepository
+      .createQueryBuilder("event")
+      .where("event.purchase_id = :purchaseId", { purchaseId: id })
+      .orderBy("event.created_at", "ASC");
+
+    if (query.eventType) {
+      qb.andWhere("event.event_type = :eventType", { eventType: query.eventType });
+    }
+    if (query.performedByUserId) {
+      qb.andWhere("event.performed_by_user_id = :performedByUserId", {
+        performedByUserId: query.performedByUserId,
+      });
+    }
+    if (query.from) {
+      qb.andWhere("event.created_at >= :fromDate", { fromDate: new Date(query.from) });
+    }
+    if (query.to) {
+      qb.andWhere("event.created_at <= :toDate", { toDate: new Date(query.to) });
+    }
+
+    const events = await qb.getMany();
+
+    return {
+      purchaseId: id,
+      events,
+    };
+  }
+
   @Get(":id")
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("purchases.view_detail")
   getById(@Param("id", ParseUUIDPipe) id: string) {
     return this.getOrder.execute({ poId: id });
   }
 
   @Patch(":id")
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("purchases.edit_draft")
   update(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpUpdatePurchaseOrderDto) {
     return this.updateOrder.execute(PurchaseOrderHttpMapper.toUpdateInput(id, dto));
   }
@@ -451,6 +911,8 @@ export class PurchaseOrdersController {
   }
 
   @Patch(":id/image-prodution")
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("purchases.upload_processed_photo")
   @UseInterceptors(
     FileInterceptor("file", {
       storage: memoryStorage(),
@@ -478,9 +940,8 @@ export class PurchaseOrdersController {
       throw new BadRequestException("Orden de compra no encontrada");
     }
 
-    const isAdmin = (user?.role ?? "").toLowerCase() === RoleType.ADMIN;
-    if ((order.imageProdution?.length ?? 0) > 0 && !isAdmin) {
-      throw new BadRequestException("Solo un administrador puede agregar más fotos en esta compra");
+    if ((order.imageProdution?.length ?? 0) > 0) {
+      throw new BadRequestException("La compra ya cuenta con evidencia cargada");
     }
 
     let savedRelativePath = "";

@@ -14,6 +14,13 @@ export class PaymentDocument {
     public readonly note?: string,
     public readonly poId?: string,
     public readonly quotaId?: string,
+    public readonly status: "PENDING_APPROVAL" | "APPROVED" | "REJECTED" = "APPROVED",
+    public readonly requestedByUserId?: string,
+    public readonly approvedByUserId?: string,
+    public readonly rejectedByUserId?: string,
+    public readonly approvedAt?: Date,
+    public readonly rejectedAt?: Date,
+    public readonly rejectionReason?: string,
   ) {}
 
   static create(params: {
@@ -27,6 +34,13 @@ export class PaymentDocument {
     note?: string;
     poId?: string;
     quotaId?: string;
+    status?: "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
+    requestedByUserId?: string;
+    approvedByUserId?: string;
+    rejectedByUserId?: string;
+    approvedAt?: Date;
+    rejectedAt?: Date;
+    rejectionReason?: string;
   }) {
     const method = PaymentsDomainService.normalizeMethod(params.method);
     if (!method || Number.isNaN(params.date.getTime()) || !PaymentsDomainService.isPositiveAmount(params.amount)) {
@@ -44,6 +58,13 @@ export class PaymentDocument {
       params.note?.trim() || undefined,
       params.poId,
       params.quotaId,
+      params.status ?? "APPROVED",
+      params.requestedByUserId,
+      params.approvedByUserId,
+      params.rejectedByUserId,
+      params.approvedAt,
+      params.rejectedAt,
+      params.rejectionReason?.trim() || undefined,
     );
   }
 }

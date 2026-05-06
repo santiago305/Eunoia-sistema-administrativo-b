@@ -9,10 +9,14 @@ describe('GetAuthUserUseCase', () => {
       getEffectivePermissions: jest.fn().mockResolvedValue([]),
       getUserPreferredHomePath: jest.fn().mockResolvedValue('/dashboard'),
     } as any;
+    const userRepository = {
+      findOne: jest.fn().mockResolvedValue({ id: 'user-1', isSuperAdmin: false }),
+    } as any;
 
     return {
-      useCase: new GetAuthUserUseCase(accessControlService),
+      useCase: new GetAuthUserUseCase(accessControlService, userRepository),
       accessControlService,
+      userRepository,
     };
   };
 

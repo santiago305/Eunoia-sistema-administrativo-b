@@ -30,8 +30,10 @@ import { DeleteRoleUseCase } from 'src/modules/roles/application/use-cases/delet
 import { RestoreRoleUseCase } from 'src/modules/roles/application/use-cases/restore-role.usecase';
 import { PermissionsGuard } from 'src/modules/access-control/adapters/in/guards/permissions.guard';
 import { RequirePermissions } from 'src/modules/access-control/adapters/in/decorators/require-permissions.decorator';
+import { SuperAdminGuard } from 'src/shared/utilidades/guards/super-admin.guard';
 
 @Controller('roles')
+@UseGuards(JwtAuthGuard, SuperAdminGuard)
 export class RolesController {
   constructor(
     private readonly createRoleUseCase: CreateRoleUseCase,
@@ -43,14 +45,14 @@ export class RolesController {
   ) {}
 
   @Post('/create')
-  @UseGuards(JwtAuthGuard, PermissionsGuard, CsrfGuard)
+  @UseGuards(PermissionsGuard, CsrfGuard)
   @RequirePermissions('roles.create')
   create(@Body() dto: CreateRoleDto, @CurrentUser() user: { role: RoleType }) {
     return this.createRoleUseCase.execute(dto, user.role);
   }
 
   @Get('')
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @UseGuards(PermissionsGuard)
   @RequirePermissions('roles.read')
   findAll(
     @Query('status') status?: string,
@@ -68,28 +70,28 @@ export class RolesController {
   }
 
   @Get('/:id')
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @UseGuards(PermissionsGuard)
   @RequirePermissions('roles.read')
   findOne(@Param('id') id: string) {
     return this.getRoleByIdUseCase.execute(id);
   }
 
   @Patch('/:id')
-  @UseGuards(JwtAuthGuard, PermissionsGuard, CsrfGuard)
+  @UseGuards(PermissionsGuard, CsrfGuard)
   @RequirePermissions('roles.update')
   update(@Param('id') id: string, @Body() dto: UpdateRoleDto) {
     return this.updateRoleUseCase.execute(id, dto);
   }
 
   @Delete('/:id')
-  @UseGuards(JwtAuthGuard, PermissionsGuard, CsrfGuard)
+  @UseGuards(PermissionsGuard, CsrfGuard)
   @RequirePermissions('roles.delete')
   remove(@Param('id') id: string) {
     return this.deleteRoleUseCase.execute(id);
   }
 
   @Patch(':id/restore')
-  @UseGuards(JwtAuthGuard, PermissionsGuard, CsrfGuard)
+  @UseGuards(PermissionsGuard, CsrfGuard)
   @RequirePermissions('roles.restore')
   restore(@Param('id') id: string) {
     return this.restoreRoleUseCase.execute(id);

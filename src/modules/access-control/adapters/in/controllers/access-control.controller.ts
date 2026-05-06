@@ -5,9 +5,10 @@ import { Roles, User as CurrentUser } from 'src/shared/utilidades/decorators';
 import { RoleType } from 'src/shared/constantes/constants';
 import { AccessControlService } from '../../../application/services/access-control.service';
 import { SetUserPermissionOverrideDto } from '../dtos/set-user-permission-override.dto';
+import { SuperAdminGuard } from 'src/shared/utilidades/guards/super-admin.guard';
 
 @Controller('access-control')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, SuperAdminGuard)
 @Roles(RoleType.ADMIN)
 export class AccessControlController {
   constructor(private readonly accessControlService: AccessControlService) {}

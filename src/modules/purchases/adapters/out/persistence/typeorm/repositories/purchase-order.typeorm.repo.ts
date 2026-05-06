@@ -23,6 +23,7 @@ import {
   sanitizePurchaseSearchFilters,
 } from "src/modules/purchases/application/support/purchase-search.utils";
 import { PaymentDocumentEntity } from "src/modules/payments/adapters/out/persistence/typeorm/entities/payment-document.entity";
+import { PurchaseProcessingApprovalEntity } from "../entities/purchase-processing-approval.entity";
 import {
   PurchaseSearchFields,
   PurchaseSearchOperators,
@@ -97,6 +98,7 @@ export class PurchaseOrderTypeormRepository implements PurchaseOrderRepository {
       dateExpiration?: Date;
       createdAt?: Date;
       imageProdution?: string[];
+      approvalStatus?: "NOT_REQUIRED" | "PENDING" | "APPROVED" | "REJECTED";
     },
     tx?: TransactionContext,
   ): Promise<PurchaseOrder | null> {
@@ -124,6 +126,7 @@ export class PurchaseOrderTypeormRepository implements PurchaseOrderRepository {
     if (params.dateExpiration !== undefined) patch.dateExpiration = params.dateExpiration;
     if (params.createdAt !== undefined) patch.createdAt = params.createdAt;
     if (params.imageProdution !== undefined) patch.imageProdution = params.imageProdution;
+    if (params.approvalStatus !== undefined) patch.approvalStatus = params.approvalStatus;
 
     await repo.update({ id: params.poId }, patch);
     const updated = await repo.findOne({ where: { id: params.poId } });
@@ -138,6 +141,10 @@ export class PurchaseOrderTypeormRepository implements PurchaseOrderRepository {
       to?: Date;
       page?: number;
       limit?: number;
+      requestedBy?: string;
+      canViewCreatedByOthers?: boolean;
+      canViewAll?: boolean;
+      purchaseIdsWhitelist?: string[];
     },
     tx?: TransactionContext,
   ): Promise<{ items: PurchaseOrderListRecord[]; total: number; page: number; limit: number }> {
@@ -152,16 +159,31 @@ export class PurchaseOrderTypeormRepository implements PurchaseOrderRepository {
             .select(`"pd"."po_id"`, "po_id")
             .addSelect(`COALESCE(SUM("pd"."amount"), 0)`, "total_paid")
             .from(PaymentDocumentEntity, "pd")
+            .where(`"pd"."status" = :approvedPaymentStatus`, { approvedPaymentStatus: "APPROVED" })
             .groupBy(`"pd"."po_id"`),
         "payment_summary",
         `payment_summary.po_id = "po"."po_id"`,
+      )
+      .leftJoin(
+        (subQuery) =>
+          subQuery
+            .select(`DISTINCT ON ("ppa"."po_id") "ppa"."po_id"`, "po_id")
+            .addSelect(`"ppa"."status"`, "status")
+            .from(PurchaseProcessingApprovalEntity, "ppa")
+            .orderBy(`"ppa"."po_id"`, "ASC")
+            .addOrderBy(`"ppa"."created_at"`, "DESC"),
+        "processing_approval_latest",
+        `processing_approval_latest.po_id = "po"."po_id"`,
       )
       .addSelect(`"supplier"."name"`, "supplier_name")
       .addSelect(`"supplier"."last_name"`, "supplier_last_name")
       .addSelect(`"supplier"."trade_name"`, "supplier_trade_name")
       .addSelect(`"supplier"."document_number"`, "supplier_document_number")
       .addSelect(`"warehouse"."name"`, "warehouse_name")
-      .addSelect(`COALESCE(payment_summary.total_paid, 0)`, "payment_total_paid");
+      .addSelect(`COALESCE(payment_summary.total_paid, 0)`, "payment_total_paid")
+      .addSelect(`"po"."created_by"`, "purchase_created_by")
+      .addSelect(`"po"."approval_status"`, "purchase_approval_status")
+      .addSelect(`processing_approval_latest.status`, "purchase_processing_approval_status");
 
     const filters = sanitizePurchaseSearchFilters(params.filters);
     filters.forEach((filter, index) => {
@@ -367,6 +389,19 @@ export class PurchaseOrderTypeormRepository implements PurchaseOrderRepository {
     }
     if (params.from) qb.andWhere(`"po"."date_issue" >= :from`, { from: params.from });
     if (params.to) qb.andWhere(`"po"."date_issue" <= :to`, { to: params.to });
+    if (params.purchaseIdsWhitelist && params.purchaseIdsWhitelist.length > 0) {
+      qb.andWhere(`"po"."po_id" IN (:...purchaseIdsWhitelist)`, {
+        purchaseIdsWhitelist: params.purchaseIdsWhitelist,
+      });
+    } else if (params.purchaseIdsWhitelist && params.purchaseIdsWhitelist.length === 0) {
+      return { items: [], total: 0, page: params.page ?? 1, limit: params.limit ?? 20 };
+    }
+
+    if (!params.canViewAll) {
+      if (!params.canViewCreatedByOthers && params.requestedBy) {
+        qb.andWhere(`"po"."created_by" = :requestedBy`, { requestedBy: params.requestedBy });
+      }
+    }
 
     const page = params.page ?? 1;
     const limit = params.limit ?? 20;
@@ -392,6 +427,9 @@ export class PurchaseOrderTypeormRepository implements PurchaseOrderRepository {
         supplierDocumentNumber: rawRow.supplier_document_number || undefined,
         warehouseName: rawRow.warehouse_name || undefined,
         totalPaid: Number(rawRow.payment_total_paid ?? 0),
+        createdByUserId: rawRow.purchase_created_by || undefined,
+        approvalStatus: rawRow.purchase_approval_status ?? "NOT_REQUIRED",
+        processingApprovalStatus: rawRow.purchase_processing_approval_status ?? null,
       };
     });
 

@@ -15,6 +15,13 @@ export class PaymentsFactory {
     note?: string;
     poId?: string;
     quotaId?: string;
+    status?: "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
+    requestedByUserId?: string;
+    approvedByUserId?: string;
+    rejectedByUserId?: string;
+    approvedAt?: Date;
+    rejectedAt?: Date;
+    rejectionReason?: string;
   }) {
     return PaymentDocument.create(params);
   }

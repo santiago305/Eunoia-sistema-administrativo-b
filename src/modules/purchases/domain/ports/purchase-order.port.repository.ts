@@ -15,6 +15,9 @@ export interface PurchaseOrderListRecord {
     supplierDocumentNumber?: string;
     warehouseName?: string;
     totalPaid: number;
+    createdByUserId?: string;
+    approvalStatus?: "NOT_REQUIRED" | "PENDING" | "APPROVED" | "REJECTED";
+    processingApprovalStatus?: "PENDING" | "APPROVED" | "REJECTED" | null;
 }
 
 export interface PurchaseOrderRepository{
@@ -47,6 +50,7 @@ export interface PurchaseOrderRepository{
             dateExpiration?: Date;
             createdAt?: Date;
             imageProdution?: string[];
+            approvalStatus?: "NOT_REQUIRED" | "PENDING" | "APPROVED" | "REJECTED";
         },
         tx?: TransactionContext,
     ): Promise<PurchaseOrder | null>;
@@ -59,6 +63,10 @@ export interface PurchaseOrderRepository{
             to?: Date;
             page?: number;
             limit?: number;
+            requestedBy?: string;
+            canViewCreatedByOthers?: boolean;
+            canViewAll?: boolean;
+            purchaseIdsWhitelist?: string[];
         },
         tx?: TransactionContext,
     ): Promise<{ items: PurchaseOrderListRecord[]; total: number; page: number; limit: number }>;

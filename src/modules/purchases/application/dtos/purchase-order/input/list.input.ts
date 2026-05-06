@@ -21,4 +21,5 @@ export interface ListPurchaseOrdersInput {
   page?: number;
   limit?: number;
   requestedBy?: string;
+  purchaseIdsWhitelist?: string[];
 }

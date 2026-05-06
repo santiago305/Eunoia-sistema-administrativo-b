@@ -41,7 +41,13 @@ export class CreatePurchaseOrderUsecase {
     private readonly notificationsService: NotificationsService,
   ) {}
 
-  async execute(input: CreatePurchaseOrderInput, createdBy: string): Promise<{ order: PurchaseOrder }> {
+  async execute(
+    input: CreatePurchaseOrderInput,
+    createdBy: string,
+    options?: {
+      allowDirectPaymentCreation?: boolean;
+    },
+  ): Promise<{ order: PurchaseOrder; pendingPaymentsCreated: number; directPaymentsCreated: number }> {
     const result = await this.uow.runInTransaction(async (tx) => {
       const currency = input.currency ?? "PEN";
 
@@ -135,7 +141,10 @@ export class CreatePurchaseOrderUsecase {
         }
       }
 
+      let pendingPaymentsCreated = 0;
+      let directPaymentsCreated = 0;
       if (po.paymentForm === PaymentFormType.CONTADO && input.payments && input.payments.length > 0) {
+        const allowDirectPaymentCreation = options?.allowDirectPaymentCreation ?? false;
         let paymentsCreated = 0;
         for (const payment of input.payments) {
           if (payment.amount <= 0) {
@@ -172,11 +181,17 @@ export class CreatePurchaseOrderUsecase {
             note: payment.note,
             poId: po.poId,
             quotaId: payment.quotaId,
+            status: allowDirectPaymentCreation ? "APPROVED" : "PENDING_APPROVAL",
+            requestedByUserId: createdBy,
+            approvedByUserId: allowDirectPaymentCreation ? createdBy : undefined,
+            approvedAt: allowDirectPaymentCreation ? this.clock.now() : undefined,
           });
 
           try {
             await this.paymentDocRepo.create(document, tx);
             paymentsCreated += 1;
+            if (allowDirectPaymentCreation) directPaymentsCreated += 1;
+            else pendingPaymentsCreated += 1;
           } catch {
             throw new BadRequestException("No se pudo crear el documento de pago");
           }
@@ -185,10 +200,14 @@ export class CreatePurchaseOrderUsecase {
         const purchaseCode = [po.serie, po.correlative].filter(Boolean).join("-") || po.poId.slice(0, 8);
         await this.notificationsService.createNotificationForUsers({
           recipientUserIds: [createdBy],
-          type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_PAYMENT_CREATED,
+          type: allowDirectPaymentCreation
+            ? PURCHASE_NOTIFICATION_TYPES.PURCHASE_PAYMENT_CREATED
+            : PURCHASE_NOTIFICATION_TYPES.PURCHASE_PAYMENT_PENDING_APPROVAL,
           category: "PURCHASES",
           title: "Pago registrado",
-          message: `Se registraron ${paymentsCreated} pago(s) para la compra ${purchaseCode}.`,
+          message: allowDirectPaymentCreation
+            ? `Se registraron ${paymentsCreated} pago(s) para la compra ${purchaseCode}.`
+            : `Se enviaron ${paymentsCreated} pago(s) a aprobación para la compra ${purchaseCode}.`,
           priority: "NORMAL",
           actionUrl: "/compras",
           actionLabel: "Ver compra",
@@ -293,7 +312,7 @@ export class CreatePurchaseOrderUsecase {
         }
       }
 
-      return { order: po };
+      return { order: po, pendingPaymentsCreated, directPaymentsCreated };
     });
 
     const purchaseCode = [result.order.serie, result.order.correlative].filter(Boolean).join("-") || result.order.poId.slice(0, 8);

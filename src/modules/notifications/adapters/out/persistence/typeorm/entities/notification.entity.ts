@@ -44,6 +44,9 @@ export class Notification {
   @Column({ name: 'is_system', type: 'boolean', default: false })
   isSystem: boolean;
 
+  @Column({ name: 'show_as_toast', type: 'boolean', default: true })
+  showAsToast: boolean;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

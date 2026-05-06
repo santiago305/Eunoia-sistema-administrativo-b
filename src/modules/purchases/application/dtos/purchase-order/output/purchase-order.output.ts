@@ -33,5 +33,8 @@ export interface PurchaseOrderOutput {
   dateIssue?: Date;
   dateExpiration?: Date;
   createdAt?: Date;
+  createdByUserId?: string;
+  approvalStatus?: "NOT_REQUIRED" | "PENDING" | "APPROVED" | "REJECTED";
+  processingApprovalStatus?: "PENDING" | "APPROVED" | "REJECTED" | null;
   imageProdution?: string[];
 }

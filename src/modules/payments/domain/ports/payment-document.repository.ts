@@ -12,6 +12,7 @@ export interface PaymentDocumentRepository {
     tx?: TransactionContext,
   ): Promise<PaymentDocument | null>;
   create(document: PaymentDocument, tx?: TransactionContext): Promise<PaymentDocument>;
+  update(document: PaymentDocument, tx?: TransactionContext): Promise<PaymentDocument>;
   deleteById(payDocId: string, tx?: TransactionContext): Promise<void>;
   list(
     params: { poId?: string; quotaId?: string; page?: number; limit?: number },

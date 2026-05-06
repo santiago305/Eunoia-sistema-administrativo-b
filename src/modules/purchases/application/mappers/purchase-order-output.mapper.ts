@@ -42,6 +42,7 @@ export class PurchaseOrderOutputMapper {
       dateIssue: order.dateIssue,
       dateExpiration: order.dateExpiration,
       createdAt: order.createdAt,
+      createdByUserId: order.createdBy,
       imageProdution: order.imageProdution ?? [],
     };
   }
@@ -77,6 +78,13 @@ export class PurchaseOrderOutputMapper {
       fromDocumentType: row.fromDocumentType,
       poId: row.poId ?? "",
       quotaId: row.quotaId ?? null,
+      status: row.status,
+      requestedByUserId: row.requestedByUserId ?? null,
+      approvedByUserId: row.approvedByUserId ?? null,
+      rejectedByUserId: row.rejectedByUserId ?? null,
+      approvedAt: row.approvedAt ?? null,
+      rejectedAt: row.rejectedAt ?? null,
+      rejectionReason: row.rejectionReason ?? null,
     };
   }
 

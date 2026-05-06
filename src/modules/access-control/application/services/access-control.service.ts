@@ -154,6 +154,22 @@ export class AccessControlService {
     return requiredPermissions.every((permission) => effective.includes(permission));
   }
 
+  async getUserIdsWithPermission(permissionCode: string): Promise<string[]> {
+    const users = await this.userRepository.find({
+      where: { deleted: false },
+      select: ['id'],
+    });
+
+    const userIds: string[] = [];
+    for (const user of users) {
+      const allowed = await this.userHasAllPermissions(user.id, [permissionCode]);
+      if (allowed) {
+        userIds.push(user.id);
+      }
+    }
+    return userIds;
+  }
+
   async upsertUserPermissionOverride(params: {
     userId: string;
     permissionCode: string;

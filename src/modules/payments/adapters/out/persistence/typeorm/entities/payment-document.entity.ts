@@ -42,6 +42,27 @@ export class PaymentDocumentEntity {
   @Column({ name: "quota_id", type: "uuid", nullable: true })
   quotaId?: string | null;
 
+  @Column({ name: "status", type: "varchar", length: 30, default: "APPROVED" })
+  status: "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
+
+  @Column({ name: "requested_by_user_id", type: "uuid", nullable: true })
+  requestedByUserId?: string | null;
+
+  @Column({ name: "approved_by_user_id", type: "uuid", nullable: true })
+  approvedByUserId?: string | null;
+
+  @Column({ name: "rejected_by_user_id", type: "uuid", nullable: true })
+  rejectedByUserId?: string | null;
+
+  @Column({ name: "approved_at", type: "timestamptz", nullable: true })
+  approvedAt?: Date | null;
+
+  @Column({ name: "rejected_at", type: "timestamptz", nullable: true })
+  rejectedAt?: Date | null;
+
+  @Column({ name: "rejection_reason", type: "text", nullable: true })
+  rejectionReason?: string | null;
+
   @ManyToOne(() => CreditQuotaEntity, { nullable: true, onDelete: "SET NULL" })
   @JoinColumn({ name: "quota_id" })
   creditQuota?: CreditQuotaEntity | null;

@@ -18,7 +18,16 @@ export class CreatePaymentUsecase {
     private readonly creditQuotaRepo: CreditQuotaRepository,
   ) {}
 
-  async execute(input: CreatePaymentInput, poId?: string): Promise<{ message: string }> {
+  async execute(
+    input: CreatePaymentInput,
+    poId?: string,
+    options?: {
+      status?: "PENDING_APPROVAL" | "APPROVED";
+      requestedByUserId?: string;
+      approvedByUserId?: string;
+      approvedAt?: Date;
+    },
+  ): Promise<{ message: string; paymentId?: string }> {
     return this.uow.runInTransaction(async (tx) => {
       let quotaToUpdate: { quotaId: string; totalPaid: number } | null = null;
       const paymentPoId = poId ?? input.poId;
@@ -61,16 +70,22 @@ export class CreatePaymentUsecase {
         note: input.note,
         poId: paymentPoId,
         quotaId: input.quotaId,
+        status: options?.status ?? "APPROVED",
+        requestedByUserId: options?.requestedByUserId,
+        approvedByUserId: options?.approvedByUserId,
+        approvedAt: options?.approvedAt,
       });
 
+      let createdPaymentId: string | undefined;
       try {
-        await this.paymentDocRepo.create(document, tx);
+        const created = await this.paymentDocRepo.create(document, tx);
+        createdPaymentId = created.payDocId;
       } catch {
         throw new BadRequestException("No se pudo crear el documento de pago");
       }
 
       try {
-        if (quotaToUpdate) {
+        if (quotaToUpdate && (options?.status ?? "APPROVED") === "APPROVED") {
           const newTotalPaid = quotaToUpdate.totalPaid + input.amount;
           await this.creditQuotaRepo.updateTotalPaid(quotaToUpdate.quotaId, newTotalPaid, tx);
           await this.creditQuotaRepo.updatePaymentDate(quotaToUpdate.quotaId, date, tx);
@@ -79,7 +94,10 @@ export class CreatePaymentUsecase {
         throw new BadRequestException("No se pudo vincular el pago a la orden de compra");
       }
 
-      return successResponse("Pago registrado con exito");
+      return {
+        ...successResponse("Pago registrado con exito"),
+        paymentId: createdPaymentId,
+      };
     });
   }
 }

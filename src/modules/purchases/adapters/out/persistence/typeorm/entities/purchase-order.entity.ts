@@ -74,6 +74,9 @@ export class PurchaseOrderEntity {
   @Column({ name: "created_by", type: "uuid", nullable: true })
   createdBy?: string | null;
 
+  @Column({ name: "approval_status", type: "varchar", length: 20, default: "NOT_REQUIRED" })
+  approvalStatus: "NOT_REQUIRED" | "PENDING" | "APPROVED" | "REJECTED";
+
   @Column({ name: "image_prodution", type: "jsonb", default: () => "'[]'" })
   imageProdution: string[];
 

@@ -36,13 +36,21 @@ export const seedUser = async (dataSource: DataSource) => {
       avatarUrl: '',
       isSuperAdmin: false,
     },
+    {
+      name: 'Jefe de Compras',
+      email: 'jefecompras@eunoia.com',
+      password: '123123123',
+      roleDescription: RoleType.PURCHASING_MANAGER,
+      avatarUrl: '',
+      isSuperAdmin: false,
+    },
   ];
 
   const roles = await roleRepo
     .createQueryBuilder('role')
     .select(['role.roleId', 'role.description'])
     .where('role.description IN (:...descriptions)', {
-      descriptions: [RoleType.ADMIN, RoleType.MODERATOR, RoleType.ADVISER],
+      descriptions: [RoleType.ADMIN, RoleType.MODERATOR, RoleType.ADVISER, RoleType.PURCHASING_MANAGER],
     })
     .getMany();
 
@@ -50,8 +58,9 @@ export const seedUser = async (dataSource: DataSource) => {
   const adminRole = roleMap.get(RoleType.ADMIN);
   const moderatorRole = roleMap.get(RoleType.MODERATOR);
   const adviserRole = roleMap.get(RoleType.ADVISER);
+  const purchasingManagerRole = roleMap.get(RoleType.PURCHASING_MANAGER);
 
-  if (!adminRole || !adviserRole || !moderatorRole) {
+  if (!adminRole || !adviserRole || !moderatorRole || !purchasingManagerRole) {
     return;
   }
 

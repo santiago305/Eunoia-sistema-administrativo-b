@@ -16,6 +16,8 @@ import { ListingSearchRecentEntity } from "src/shared/listing-search/adapters/ou
 import { purchasesModuleProviders } from "../composition/container";
 import { NotificationsModule } from "src/modules/notifications";
 import { PurchaseProcessingApprovalEntity } from "../adapters/out/persistence/typeorm/entities/purchase-processing-approval.entity";
+import { ApprovalRequestEntity } from "../adapters/out/persistence/typeorm/entities/approval-request.entity";
+import { PurchaseHistoryEventEntity } from "../adapters/out/persistence/typeorm/entities/purchase-history-event.entity";
 import { AccessControlModule } from "src/modules/access-control/infrastructure/access-control.module";
 import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
 
@@ -23,6 +25,8 @@ import { User } from "src/modules/users/adapters/out/persistence/typeorm/entitie
   imports: [
     TypeOrmModule.forFeature([
       PurchaseOrderEntity,
+      ApprovalRequestEntity,
+      PurchaseHistoryEventEntity,
       PurchaseProcessingApprovalEntity,
       User,
       PurchaseOrderItemEntity,

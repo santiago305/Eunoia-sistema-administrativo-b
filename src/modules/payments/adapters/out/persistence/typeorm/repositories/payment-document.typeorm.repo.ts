@@ -37,6 +37,13 @@ export class PaymentDocumentTypeormRepository implements PaymentDocumentReposito
       note: row.note ?? undefined,
       poId: row.poId ?? undefined,
       quotaId: row.quotaId ?? undefined,
+      status: row.status,
+      requestedByUserId: row.requestedByUserId ?? undefined,
+      approvedByUserId: row.approvedByUserId ?? undefined,
+      rejectedByUserId: row.rejectedByUserId ?? undefined,
+      approvedAt: row.approvedAt ?? undefined,
+      rejectedAt: row.rejectedAt ?? undefined,
+      rejectionReason: row.rejectionReason ?? undefined,
     });
   }
 
@@ -80,6 +87,38 @@ export class PaymentDocumentTypeormRepository implements PaymentDocumentReposito
       fromDocumentType: document.fromDocumentType,
       poId: document.poId ?? null,
       quotaId: document.quotaId ?? null,
+      status: document.status,
+      requestedByUserId: document.requestedByUserId ?? null,
+      approvedByUserId: document.approvedByUserId ?? null,
+      rejectedByUserId: document.rejectedByUserId ?? null,
+      approvedAt: document.approvedAt ?? null,
+      rejectedAt: document.rejectedAt ?? null,
+      rejectionReason: document.rejectionReason ?? null,
+    });
+    const saved = await repo.save(row);
+    return this.toDomain(saved);
+  }
+
+  async update(document: PaymentDocument, tx?: TransactionContext): Promise<PaymentDocument> {
+    const repo = this.getRepo(tx);
+    const row = repo.create({
+      id: document.payDocId,
+      method: document.method,
+      date: document.date,
+      operationNumber: document.operationNumber ?? null,
+      currency: document.currency,
+      amount: document.amount,
+      note: document.note ?? null,
+      fromDocumentType: document.fromDocumentType,
+      poId: document.poId ?? null,
+      quotaId: document.quotaId ?? null,
+      status: document.status,
+      requestedByUserId: document.requestedByUserId ?? null,
+      approvedByUserId: document.approvedByUserId ?? null,
+      rejectedByUserId: document.rejectedByUserId ?? null,
+      approvedAt: document.approvedAt ?? null,
+      rejectedAt: document.rejectedAt ?? null,
+      rejectionReason: document.rejectionReason ?? null,
     });
     const saved = await repo.save(row);
     return this.toDomain(saved);

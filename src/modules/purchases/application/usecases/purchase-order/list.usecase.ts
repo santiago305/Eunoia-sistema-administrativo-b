@@ -10,6 +10,7 @@ import {
   hasPurchaseSearchCriteria,
   sanitizePurchaseSearchSnapshot,
 } from "../../support/purchase-search.utils";
+import { AccessControlService } from "src/modules/access-control/application/services/access-control.service";
 
 const PURCHASE_SEARCH_TABLE_KEY = "purchase-orders";
 
@@ -19,6 +20,7 @@ export class ListPurchaseOrdersUsecase {
     private readonly purchaseRepo: PurchaseOrderRepository,
     @Inject(PURCHASE_SEARCH)
     private readonly purchaseSearchRepo: PurchaseSearchRepository,
+    private readonly accessControlService: AccessControlService,
   ) {}
 
   async execute(input: ListPurchaseOrdersInput): Promise<PaginatedResult<PurchaseOrderOutput>> {
@@ -30,6 +32,17 @@ export class ListPurchaseOrdersUsecase {
       filters: input.filters ?? [],
     });
 
+    const requestedBy = input.requestedBy;
+    const canViewAll = requestedBy
+      ? await this.accessControlService.userHasAllPermissions(requestedBy, ["purchases.view_all"])
+      : false;
+    const canViewCreatedByOthers = requestedBy
+      ? await this.accessControlService.userHasAllPermissions(requestedBy, ["purchases.view_created_by_others"])
+      : false;
+    const canViewCreatorInfo = requestedBy
+      ? await this.accessControlService.userHasAllPermissions(requestedBy, ["purchases.view_creator_info"])
+      : false;
+
     const { items, total } = await this.purchaseRepo.list({
       filters: input.filters,
       q: input.q,
@@ -37,6 +50,10 @@ export class ListPurchaseOrdersUsecase {
       to: input.to ? ParseDateLocal(input.to, "end") : undefined,
       page,
       limit,
+      requestedBy,
+      canViewCreatedByOthers,
+      canViewAll,
+      purchaseIdsWhitelist: input.purchaseIdsWhitelist,
     });
 
     if (input.requestedBy && hasPurchaseSearchCriteria(snapshot)) {
@@ -58,6 +75,9 @@ export class ListPurchaseOrdersUsecase {
           ...mappedOrder,
           totalPaid: row.totalPaid,
           totalToPay: (mappedOrder.total ?? 0) - row.totalPaid,
+          createdByUserId: canViewCreatorInfo ? row.createdByUserId : undefined,
+          approvalStatus: row.approvalStatus ?? "NOT_REQUIRED",
+          processingApprovalStatus: row.processingApprovalStatus ?? null,
         };
       });
 

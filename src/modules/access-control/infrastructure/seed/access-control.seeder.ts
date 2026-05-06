@@ -44,11 +44,6 @@ export class AccessControlSeeder implements OnModuleInit {
       const roleCodes = ROLE_PERMISSION_SEED[roleKey];
       if (!roleCodes?.length) continue;
 
-      const existing = await this.rolePermissionRepository.count({
-        where: { roleId: role.roleId },
-      });
-      if (existing > 0) continue;
-
       if (roleCodes.includes('*')) {
         const wildcardPermission = await this.permissionRepository.findOne({
           where: { code: '*' },
@@ -71,7 +66,18 @@ export class AccessControlSeeder implements OnModuleInit {
         where: roleCodes.map((code) => ({ code })),
       });
 
+      const existingRolePermissions = await this.rolePermissionRepository.find({
+        where: { roleId: role.roleId },
+        relations: ['permission'],
+      });
+      const existingCodes = new Set(
+        existingRolePermissions
+          .map((item) => item.permission?.code)
+          .filter((code): code is string => Boolean(code)),
+      );
+
       for (const permission of permissions) {
+        if (existingCodes.has(permission.code)) continue;
         const entity = this.rolePermissionRepository.create({
           roleId: role.roleId,
           permissionId: permission.id,
@@ -83,4 +89,3 @@ export class AccessControlSeeder implements OnModuleInit {
     this.logger.log('Seed de access-control aplicado');
   }
 }
-
