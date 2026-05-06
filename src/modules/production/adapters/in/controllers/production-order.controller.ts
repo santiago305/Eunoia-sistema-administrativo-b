@@ -31,6 +31,8 @@ import { FileStorageConflictError, InvalidFileStoragePathError } from "src/share
 import { RoleType } from "src/shared/constantes/constants";
 import { ExportProductionOrdersExcelUsecase } from "src/modules/production/application/usecases/production-order/export-excel.usecase";
 import { LISTING_SEARCH_STORAGE, ListingSearchStorageRepository } from "src/shared/listing-search/domain/listing-search.repository";
+import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
+import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
 
 @Controller("production-orders")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
@@ -59,11 +61,15 @@ export class ProductionOrdersController {
   ) {}
 
   @Post()
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("production.create")
   create(@Body() dto: HttpCreateProductionOrderDto, @CurrentUser() user: { id: string } ) {
     return this.createOrder.execute(ProductionOrderHttpMapper.toCreateInput(dto), user.id);
   }
 
   @Get()
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("production.read")
   list(@Query() query: HttpListProductionOrdersQueryDto, @CurrentUser() user: { id: string }) {
     return this.listOrders.execute(ProductionOrderHttpMapper.toListInput({
       q: query.q,
@@ -80,11 +86,15 @@ export class ProductionOrdersController {
   }
 
   @Get("search-state")
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("production.read")
   getSearchStateForUser(@CurrentUser() user: { id: string }) {
     return this.getSearchState.execute(user.id);
   }
 
   @Post("search-metrics")
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("production.read")
   saveMetric(
     @Body() dto: HttpCreateProductionSearchMetricDto,
     @CurrentUser() user: { id: string },
@@ -100,6 +110,8 @@ export class ProductionOrdersController {
   }
 
   @Delete("search-metrics/:metricId")
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("production.read")
   deleteMetric(
     @Param("metricId", ParseUUIDPipe) metricId: string,
     @CurrentUser() user: { id: string },
@@ -108,11 +120,15 @@ export class ProductionOrdersController {
   }
 
   @Get("export-columns")
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("production.export")
   getExportColumns() {
     return this.exportExcel.getAvailableColumns();
   }
 
   @Get("export-presets")
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("production.export")
   getExportPresets(@CurrentUser() user: { id: string }) {
     return this.listingSearchStorage.listState({
       userId: user.id,
@@ -121,6 +137,8 @@ export class ProductionOrdersController {
   }
 
   @Post("export-presets")
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("production.export")
   saveExportPreset(
     @CurrentUser() user: { id: string },
     @Body() body: { name: string; columns: Array<{ key: string; label: string }>; useDateRange?: boolean },
@@ -134,6 +152,8 @@ export class ProductionOrdersController {
   }
 
   @Delete("export-presets/:metricId")
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("production.export")
   deleteExportPreset(
     @CurrentUser() user: { id: string },
     @Param("metricId", ParseUUIDPipe) metricId: string,
@@ -146,6 +166,8 @@ export class ProductionOrdersController {
   }
 
   @Post("export-excel")
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("production.export")
   async exportOrdersExcel(
     @Body() body: { columns: Array<{ key: string; label: string }>; q?: string; filters?: Record<string, unknown>[]; from?: string; to?: string; useDateRange?: boolean },
     @Res() res: Response,
@@ -157,11 +179,15 @@ export class ProductionOrdersController {
   }
 
   @Get(":id")
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("production.read")
   get(@Param("id", ParseUUIDPipe) id: string) {
     return this.getOrder.execute({ productionId: id });
   }
 
   @Patch(":id")
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("production.update")
   update(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpUpdateProductionOrderDto
   ,@CurrentUser() user: { id: string } 
 ) {
@@ -169,21 +195,29 @@ export class ProductionOrdersController {
   }
 
   @Post(":id/start")
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("production.start")
   start(@Param("id", ParseUUIDPipe) id: string ) {
     return this.startOrder.execute({ productionId: id});
   }
 
   @Post(":id/close")
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("production.close")
   close(@Param("id", ParseUUIDPipe) id: string,  @CurrentUser() user: { id: string } ) {
     return this.closeOrder.execute({ productionId: id, postedBy: user.id });
   }
 
   @Post(":id/cancel")
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("production.cancel")
   cancel(@Param("id", ParseUUIDPipe) id: string, @CurrentUser() user: { id: string }) {
     return this.cancelOrder.execute({ productionId: id }, user.id);
   }
 
   @Patch(":id/extra-time")
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("production.extra-time")
   async addExtraTime(
     @Param("id", ParseUUIDPipe) id: string,
     @Body() body: { days?: number; hours?: number; minutes?: number },
@@ -229,6 +263,8 @@ export class ProductionOrdersController {
   }
 
   @Patch(":id/image-prodution")
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("production.image.upload")
   @UseInterceptors(
     FileInterceptor("file", {
       storage: memoryStorage(),

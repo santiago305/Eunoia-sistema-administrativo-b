@@ -3,6 +3,7 @@ import { CanActivate, ExecutionContext, INestApplication, Injectable, Validation
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
 import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreateSupplierUsecase } from "src/modules/suppliers/application/usecases/supplier/create.usecase";
 import { UpdateSupplierUsecase } from "src/modules/suppliers/application/usecases/supplier/update.usecase";
@@ -63,6 +64,8 @@ describe("SuppliersController", () => {
       .overrideGuard(JwtAuthGuard)
       .useClass(TestJwtAuthGuard)
       .overrideGuard(CompanyConfiguredGuard)
+      .useClass(AllowGuard)
+      .overrideGuard(PermissionsGuard)
       .useClass(AllowGuard)
       .compile();
 

@@ -2,6 +2,7 @@ import { Repository } from "typeorm";
 import { ProductCatalogAttributeEntity } from "../entities/attribute.entity";
 import { ProductCatalogSkuAttributeValueEntity } from "../entities/sku-attribute-value.entity";
 import { ProductCatalogSkuEntity } from "../entities/sku.entity";
+import { ProductCatalogStockItemEntity } from "../entities/stock-item.entity";
 import { ProductCatalogSkuTypeormRepository } from "./sku.typeorm.repo";
 
 describe("ProductCatalogSkuTypeormRepository", () => {
@@ -39,7 +40,14 @@ describe("ProductCatalogSkuTypeormRepository", () => {
 
     const skuRepo = {
       createQueryBuilder: jest.fn().mockReturnValue(skuQueryBuilder),
-      manager: {},
+      manager: {
+        getRepository: jest.fn((entity) => {
+          if (entity === ProductCatalogStockItemEntity) {
+            return { find: jest.fn().mockResolvedValue([]) };
+          }
+          return { find: jest.fn().mockResolvedValue([]) };
+        }),
+      },
     } as unknown as Repository<ProductCatalogSkuEntity>;
 
     const attributeRepo = {} as Repository<ProductCatalogAttributeEntity>;
@@ -123,9 +131,10 @@ describe("ProductCatalogSkuTypeormRepository", () => {
       skuQueryBuilder.andWhere.mock.calls.some(
         ([sql, params]) =>
           typeof sql === "string" &&
-          sql.includes("LOWER(p.name) LIKE :q") &&
-          sql.includes("LOWER(COALESCE(p.description, '')) LIKE :q") &&
-          sql.includes("LOWER(COALESCE(p.brand, '')) LIKE :q") &&
+          sql.includes("LOWER(s.name) LIKE :q") &&
+          sql.includes("LOWER(s.backend_sku) LIKE :q") &&
+          sql.includes("LOWER(COALESCE(s.custom_sku, '')) LIKE :q") &&
+          sql.includes("pc_sku_attribute_values") &&
           params?.q === "%azucar%",
       ),
     ).toBe(true);

@@ -3,6 +3,7 @@ import { CanActivate, ExecutionContext, INestApplication, Injectable, Validation
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
 import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreateWarehouseUsecase } from "src/modules/warehouses/application/usecases/warehouse/create.usecase";
 import { GetWarehouseUsecase } from "src/modules/warehouses/application/usecases/warehouse/get-by-id.usecase";
@@ -68,6 +69,8 @@ describe("WarehousesController", () => {
       .overrideGuard(JwtAuthGuard)
       .useClass(TestJwtAuthGuard)
       .overrideGuard(CompanyConfiguredGuard)
+      .useClass(AllowGuard)
+      .overrideGuard(PermissionsGuard)
       .useClass(AllowGuard)
       .compile();
 

@@ -1,8 +1,6 @@
 import { BadRequestException, Body, Controller, Get, Param, Patch, Query, Res, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard';
-import { RolesGuard } from 'src/shared/utilidades/guards/roles.guard';
-import { Roles, User as CurrentUser } from 'src/shared/utilidades/decorators';
-import { RoleType } from 'src/shared/constantes/constants';
+import { User as CurrentUser } from 'src/shared/utilidades/decorators';
 import { ManageManualIpBlacklistUseCase } from 'src/modules/security/application/use-cases/manage-manual-ip-blacklist.usecase';
 import { ManualBanDto } from '../dtos/manual-ban.dto';
 import { Response } from 'express';
@@ -19,10 +17,11 @@ import { ExportSecurityAuditCsvUseCase } from 'src/modules/security/application/
 import { GetSecurityReasonsCatalogUseCase } from 'src/modules/security/application/use-cases/get-security-reasons-catalog.usecase';
 import { GetSecuritySummaryUseCase } from 'src/modules/security/application/use-cases/get-security-summary.usecase';
 import { SecurityValidationApplicationError } from 'src/modules/security/application/errors/security-validation.error';
+import { PermissionsGuard } from 'src/modules/access-control/adapters/in/guards/permissions.guard';
+import { RequirePermissions } from 'src/modules/access-control/adapters/in/decorators/require-permissions.decorator';
 
 @Controller('security')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(RoleType.ADMIN)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class SecurityController {
   constructor(
     private readonly getTopIpsSecurityUseCase: GetTopIpsSecurityUseCase,
@@ -41,6 +40,7 @@ export class SecurityController {
   ) {}
 
   @Get('summary')
+  @RequirePermissions('security.read')
   getSummary(
     @Query('hours') hours?: string,
     @Query('reason') reason?: string,
@@ -52,6 +52,7 @@ export class SecurityController {
   }
 
   @Get('top-ips')
+  @RequirePermissions('security.read')
   getTopIps(
     @Query('hours') hours?: string,
     @Query('page') page?: string,
@@ -71,6 +72,7 @@ export class SecurityController {
   }
 
   @Get('active-bans')
+  @RequirePermissions('security.read')
   getActiveBans(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -82,6 +84,7 @@ export class SecurityController {
   }
 
   @Get('history/:ip')
+  @RequirePermissions('security.read')
   getIpHistory(
     @Param('ip') ip: string,
     @Query('limit') limit?: string,
@@ -90,6 +93,7 @@ export class SecurityController {
   }
 
   @Get('activity-series')
+  @RequirePermissions('security.read')
   getActivitySeries(
     @Query('hours') hours?: string,
     @Query('groupBy') groupBy?: string,
@@ -103,6 +107,7 @@ export class SecurityController {
   }
 
   @Get('reason-distribution')
+  @RequirePermissions('security.read')
   getReasonDistribution(
     @Query('hours') hours?: string,
   ) {
@@ -112,6 +117,7 @@ export class SecurityController {
   }
 
   @Get('method-distribution')
+  @RequirePermissions('security.read')
   getMethodDistribution(
     @Query('hours') hours?: string,
     @Query('reason') reason?: string,
@@ -123,6 +129,7 @@ export class SecurityController {
   }
 
   @Get('reasons')
+  @RequirePermissions('security.read')
   getReasons(
     @Query('hours') hours?: string,
     @Query('activeOnly') activeOnly?: string,
@@ -134,6 +141,7 @@ export class SecurityController {
   }
 
   @Get('top-routes')
+  @RequirePermissions('security.read')
   getTopRoutes(
     @Query('hours') hours?: string,
     @Query('limit') limit?: string,
@@ -147,6 +155,7 @@ export class SecurityController {
   }
 
   @Get('risk-score')
+  @RequirePermissions('security.read')
   getRiskScore(
     @Query('hours') hours?: string,
   ) {
@@ -156,6 +165,7 @@ export class SecurityController {
   }
 
   @Get('risk-score/ip')
+  @RequirePermissions('security.read')
   getRiskScoreByIp(
     @Query('ip') ip?: string,
     @Query('hours') hours?: string,
@@ -171,6 +181,7 @@ export class SecurityController {
   }
 
   @Get('audit-export')
+  @RequirePermissions('security.export')
   async getAuditExport(
     @Query('hours') hours: string | undefined,
     @Query('reason') reason: string | undefined,
@@ -189,6 +200,7 @@ export class SecurityController {
   }
 
   @Patch('blacklist')
+  @RequirePermissions('security.blacklist.manage')
   setManualBlacklist(
     @Body() dto: ManualBanDto,
     @CurrentUser() user: { id: string; email?: string },
@@ -202,6 +214,7 @@ export class SecurityController {
   }
 
   @Patch('blacklist/remove/:ip')
+  @RequirePermissions('security.blacklist.manage')
   removeManualBlacklist(
     @Param('ip') ip: string,
     @CurrentUser() user: { id: string; email?: string },

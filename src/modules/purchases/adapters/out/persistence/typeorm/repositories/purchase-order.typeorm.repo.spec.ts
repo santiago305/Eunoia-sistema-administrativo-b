@@ -157,7 +157,13 @@ describe("PurchaseOrderTypeormRepository", () => {
     expect(qb.andWhere).toHaveBeenNthCalledWith(
       5,
       '"po"."status" IN (:...filter_4_values)',
-      { filter_4_values: [PurchaseOrderStatus.SENT, PurchaseOrderStatus.PARTIAL] },
+      {
+        filter_4_values: [
+          PurchaseOrderStatus.SENT,
+          PurchaseOrderStatus.PARTIAL,
+          PurchaseOrderStatus.PENDING_RECEIPT_CONFIRMATION,
+        ],
+      },
     );
   });
 

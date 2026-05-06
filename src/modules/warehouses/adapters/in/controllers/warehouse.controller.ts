@@ -1,5 +1,7 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
+import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
 import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreateWarehouseUsecase } from "src/modules/warehouses/application/usecases/warehouse/create.usecase";
 import { GetWarehouseUsecase } from "src/modules/warehouses/application/usecases/warehouse/get-by-id.usecase";
@@ -21,7 +23,7 @@ import { WarehouseHttpMapper } from "src/modules/warehouses/application/mappers/
 import { sanitizeWarehouseSearchSnapshot } from "src/modules/warehouses/application/support/warehouse-search.utils";
 
 @Controller("warehouses")
-@UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
+@UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
 export class WarehousesController {
   constructor(
     private readonly createWarehouse: CreateWarehouseUsecase,
@@ -35,11 +37,13 @@ export class WarehousesController {
     private readonly deleteSearchMetric: DeleteWarehouseSearchMetricUsecase,
   ) {}
 
+  @RequirePermissions("warehouses.manage")
   @Post()
   create(@Body() dto: HttpCreateWarehouseDto) {
     return this.createWarehouse.execute(WarehouseHttpMapper.toCreateWarehouseInput(dto));
   }
 
+  @RequirePermissions("warehouses.read")
   @Get()
   list(@Query() query: ListWarehouseQueryDto, @CurrentUser() user: { id: string }) {
     const isActive = query.isActive === undefined ? undefined : query.isActive === "true";
@@ -58,11 +62,13 @@ export class WarehousesController {
     }));
   }
 
+  @RequirePermissions("warehouses.read")
   @Get("search-state")
   getSearchStateForUser(@CurrentUser() user: { id: string }) {
     return this.getSearchState.execute(user.id);
   }
 
+  @RequirePermissions("warehouses.read")
   @Post("search-metrics")
   saveMetric(
     @Body() dto: HttpCreateWarehouseSearchMetricDto,
@@ -78,6 +84,7 @@ export class WarehousesController {
     });
   }
 
+  @RequirePermissions("warehouses.read")
   @Delete("search-metrics/:metricId")
   deleteMetric(
     @Param("metricId", ParseUUIDPipe) metricId: string,
@@ -86,21 +93,25 @@ export class WarehousesController {
     return this.deleteSearchMetric.execute(user.id, metricId);
   }
 
+  @RequirePermissions("warehouses.read")
   @Get(":id/stock")
   getStock(@Param("id", ParseUUIDPipe) id: string) {
     return this.getWarehouseStock.execute({ warehouseId: new WarehouseId(id) });
   }
 
+  @RequirePermissions("warehouses.read")
   @Get(":id")
   getById(@Param("id", ParseUUIDPipe) id: string) {
     return this.getWarehouse.execute({ warehouseId: new WarehouseId(id) });
   }
 
+  @RequirePermissions("warehouses.manage")
   @Patch(":id")
   update(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpUpdateWarehouseDto) {
     return this.updateWarehouse.execute(WarehouseHttpMapper.toUpdateWarehouseInput(id, dto));
   }
 
+  @RequirePermissions("warehouses.manage")
   @Patch(":id/active")
   setActive(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpSetWarehouseActiveDto) {
     return this.setWarehouseActive.execute(

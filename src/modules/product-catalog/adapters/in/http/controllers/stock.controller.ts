@@ -2,6 +2,8 @@ import { Body, Controller, Delete, Get, Inject, Param, ParseUUIDPipe, Post, Quer
 import { Response } from "express";
 import { filter, map } from "rxjs/operators";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
+import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
 import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreateProductCatalogStockItem } from "src/modules/product-catalog/application/usecases/create-stock-item.usecase";
 import { GetProductCatalogStockItem } from "src/modules/product-catalog/application/usecases/get-stock-item.usecase";
@@ -82,7 +84,7 @@ const INVENTORY_EXPORT_LABELS: Record<string, string> = {
 };
 
 @Controller()
-@UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
+@UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
 export class ProductCatalogStockController {
   constructor(
     private readonly createStockItem: CreateProductCatalogStockItem,
@@ -113,31 +115,37 @@ export class ProductCatalogStockController {
     private readonly inventoryRealtime: InventoryRealtime,
   ) {}
 
+  @RequirePermissions("catalog.manage")
   @Post("skus/:id/stock-item")
   createForSku(@Param("id", ParseUUIDPipe) skuId: string, @Body() dto: CreateProductCatalogStockItemDto) {
     return this.createStockItem.execute({ skuId, ...dto });
   }
 
+  @RequirePermissions("catalog.read")
   @Get("skus/:id/stock-item")
   getBySku(@Param("id", ParseUUIDPipe) skuId: string) {
     return this.getSkuStockItem.execute(skuId);
   }
 
+  @RequirePermissions("catalog.read")
   @Get("stock-items/:id")
   getById(@Param("id", ParseUUIDPipe) id: string) {
     return this.getStockItem.execute(id);
   }
 
+  @RequirePermissions("catalog.read")
   @Get("skus/:id/stock")
   listBySku(@Param("id", ParseUUIDPipe) skuId: string) {
     return this.listInventoryBySku.execute(skuId);
   }
 
+  @RequirePermissions("catalog.manage")
   @Post("stock-items/:id/balances")
   upsertBalance(@Param("id", ParseUUIDPipe) stockItemId: string, @Body() dto: UpsertProductCatalogInventoryBalanceDto) {
     return this.upsertInventoryBalance.execute({ stockItemId, ...dto });
   }
 
+  @RequirePermissions("catalog.manage")
   @Post("stock-items/movements/create")
   registerInventoryMovement(
     @CurrentUser() user: { id: string },
@@ -150,6 +158,7 @@ export class ProductCatalogStockController {
     });
   }
 
+  @RequirePermissions("catalog.manage")
   @Post("stock-items/movements/transfer")
   transferInventoryBetweenWarehouses(
     @CurrentUser() user: { id: string },
@@ -158,6 +167,7 @@ export class ProductCatalogStockController {
     return this.transferBetweenWarehouses.execute({ ...dto, createdBy: user.id, autoPost: false });
   }
 
+  @RequirePermissions("catalog.manage")
   @Post("inventory-documents/:id/process")
   processInventoryDocument(
     @Param("id", ParseUUIDPipe) docId: string,
@@ -166,22 +176,26 @@ export class ProductCatalogStockController {
     return this.processDocument.execute({ docId, postedBy: user.id });
   }
   
+  @RequirePermissions("catalog.read")
   @Get("stock-items/ledger/by-sku")
   ledgerBySku(@Query() query: ListProductCatalogInventoryLedgerDto) {
     return this.listLedger.execute(query);
   }
 
+  @RequirePermissions("catalog.read")
   @Get("stock-items/ledger/daily-totals/by-sku")
   dailyTotalsBySku(@Query() query: ListDailyMovementBySkuDto) {
     return this.listDailyMovementBySku.execute(query);
   }
 
+  @RequirePermissions("catalog.read")
   @Get("stock-items/:id/ledger")
   ledger(@Param("id", ParseUUIDPipe) stockItemId: string, @Query() query: ListProductCatalogInventoryLedgerDto) {
     return this.listLedger.execute({ stockItemId, ...query });
   }
 
 
+  @RequirePermissions("catalog.read")
   @Get("inventory-documents/search-state")
   getInventoryDocumentsSearchState(
     @CurrentUser() user: { id: string },
@@ -191,6 +205,7 @@ export class ProductCatalogStockController {
     return this.getInventoryDocsSearchState.execute({ userId: user.id, docType, productType });
   }
 
+  @RequirePermissions("catalog.read")
   @Get("inventory/search-state")
   getInventorySearchState(
     @CurrentUser() user: { id: string },
@@ -199,6 +214,7 @@ export class ProductCatalogStockController {
     return this.getInventorySearchStateUc.execute({ userId: user.id, productType });
   }
 
+  @RequirePermissions("catalog.read")
   @Post("inventory/search-metrics")
   saveInventorySearchMetric(
     @Body() dto: HttpCreateInventorySearchMetricDto,
@@ -215,6 +231,7 @@ export class ProductCatalogStockController {
     });
   }
 
+  @RequirePermissions("catalog.read")
   @Delete("inventory/search-metrics/:metricId")
   deleteInventorySearchMetric(
     @Param("metricId", ParseUUIDPipe) metricId: string,
@@ -228,6 +245,7 @@ export class ProductCatalogStockController {
     });
   }
 
+  @RequirePermissions("catalog.read")
   @Post("inventory-documents/search-metrics")
   saveInventoryDocumentsSearchMetric(
     @Body() dto: HttpCreateInventoryDocumentsSearchMetricDto,
@@ -245,6 +263,7 @@ export class ProductCatalogStockController {
     });
   }
 
+  @RequirePermissions("catalog.read")
   @Delete("inventory-documents/search-metrics/:metricId")
   deleteInventoryDocumentsSearchMetric(
     @Param("metricId", ParseUUIDPipe) metricId: string,
@@ -260,6 +279,7 @@ export class ProductCatalogStockController {
     });
   }
 
+  @RequirePermissions("catalog.read")
   @Get("inventory-ledger/search-state")
   getInventoryLedgerSearchState(
     @CurrentUser() user: { id: string },
@@ -268,6 +288,7 @@ export class ProductCatalogStockController {
     return this.getInventoryLedgerSearchStateUc.execute({ userId: user.id, productType });
   }
 
+  @RequirePermissions("catalog.read")
   @Post("inventory-ledger/search-metrics")
   saveInventoryLedgerSearchMetric(
     @Body() dto: HttpCreateInventoryLedgerSearchMetricDto,
@@ -284,6 +305,7 @@ export class ProductCatalogStockController {
     });
   }
 
+  @RequirePermissions("catalog.read")
   @Delete("inventory-ledger/search-metrics/:metricId")
   deleteInventoryLedgerSearchMetric(
     @Param("metricId", ParseUUIDPipe) metricId: string,
@@ -297,6 +319,7 @@ export class ProductCatalogStockController {
     });
   }
 
+  @RequirePermissions("catalog.read")
   @Get("inventory-ledger")
   listInventoryLedgerMovements(
     @Query() query: ListProductCatalogInventoryLedgerMovementsDto,
@@ -320,6 +343,7 @@ export class ProductCatalogStockController {
     });
   }
 
+  @RequirePermissions("catalog.export")
   @Get("inventory-ledger/export-columns")
   async listInventoryLedgerExportColumns(
     @Query() query: ListProductCatalogInventoryLedgerMovementsDto,
@@ -331,6 +355,7 @@ export class ProductCatalogStockController {
     return this.buildExportColumnsFromFirstRow(first, INVENTORY_LEDGER_EXPORT_LABELS);
   }
 
+  @RequirePermissions("catalog.export")
   @Get("inventory-ledger/export-presets")
   getInventoryLedgerExportPresets(
     @CurrentUser() user: { id: string },
@@ -342,6 +367,7 @@ export class ProductCatalogStockController {
     }).then((state) => state.metrics);
   }
 
+  @RequirePermissions("catalog.export")
   @Post("inventory-ledger/export-presets")
   saveInventoryLedgerExportPreset(
     @CurrentUser() user: { id: string },
@@ -355,6 +381,7 @@ export class ProductCatalogStockController {
     });
   }
 
+  @RequirePermissions("catalog.export")
   @Delete("inventory-ledger/export-presets/:metricId")
   deleteInventoryLedgerExportPreset(
     @CurrentUser() user: { id: string },
@@ -368,6 +395,7 @@ export class ProductCatalogStockController {
     });
   }
 
+  @RequirePermissions("catalog.export")
   @Post("inventory-ledger/export-excel")
   async exportInventoryLedgerExcel(
     @Body() body: ListProductCatalogInventoryLedgerMovementsDto & { columns: Array<{ key: string; label: string }> },
@@ -390,6 +418,7 @@ export class ProductCatalogStockController {
     return res.status(200).send(buffer);
   }
 
+  @RequirePermissions("catalog.read")
   @Get("inventory-documents")
   listInventoryDocuments(@Query() query: ListProductCatalogInventoryDocumentsDto, @CurrentUser() user: { id: string }) {
     const filters = this.parseInventoryDocumentFilters(query.filters);
@@ -452,6 +481,7 @@ export class ProductCatalogStockController {
     });
   }
 
+  @RequirePermissions("catalog.export")
   @Get("inventory-documents/export-columns")
   async listInventoryDocumentsExportColumns(
     @Query() query: ListProductCatalogInventoryDocumentsDto,
@@ -463,6 +493,7 @@ export class ProductCatalogStockController {
     return this.buildExportColumnsFromFirstRow(first, INVENTORY_DOCUMENTS_EXPORT_LABELS);
   }
 
+  @RequirePermissions("catalog.export")
   @Get("inventory-documents/export-presets")
   getInventoryDocumentsExportPresets(
     @CurrentUser() user: { id: string },
@@ -475,6 +506,7 @@ export class ProductCatalogStockController {
     }).then((state) => state.metrics);
   }
 
+  @RequirePermissions("catalog.export")
   @Post("inventory-documents/export-presets")
   saveInventoryDocumentsExportPreset(
     @CurrentUser() user: { id: string },
@@ -488,6 +520,7 @@ export class ProductCatalogStockController {
     });
   }
 
+  @RequirePermissions("catalog.export")
   @Delete("inventory-documents/export-presets/:metricId")
   deleteInventoryDocumentsExportPreset(
     @CurrentUser() user: { id: string },
@@ -502,6 +535,7 @@ export class ProductCatalogStockController {
     });
   }
 
+  @RequirePermissions("catalog.export")
   @Post("inventory-documents/export-excel")
   async exportInventoryDocumentsExcel(
     @Body() body: ListProductCatalogInventoryDocumentsDto & { columns: Array<{ key: string; label: string }> },
@@ -524,6 +558,7 @@ export class ProductCatalogStockController {
     return res.status(200).send(buffer);
   }
 
+  @RequirePermissions("catalog.read")
   @Get("inventory")
   listInventoryRows(
     @Query() query: ListProductCatalogInventoryDto,
@@ -556,6 +591,7 @@ export class ProductCatalogStockController {
     }
   }
 
+  @RequirePermissions("catalog.export")
   @Get("inventory/export-columns")
   async listInventoryExportColumns(
     @Query() query: ListProductCatalogInventoryDto,
@@ -567,6 +603,7 @@ export class ProductCatalogStockController {
     return this.buildExportColumnsFromFirstRow(first, INVENTORY_EXPORT_LABELS);
   }
 
+  @RequirePermissions("catalog.export")
   @Get("inventory/export-presets")
   getInventoryExportPresets(
     @CurrentUser() user: { id: string },
@@ -578,6 +615,7 @@ export class ProductCatalogStockController {
     }).then((state) => state.metrics);
   }
 
+  @RequirePermissions("catalog.export")
   @Post("inventory/export-presets")
   saveInventoryExportPreset(
     @CurrentUser() user: { id: string },
@@ -591,6 +629,7 @@ export class ProductCatalogStockController {
     });
   }
 
+  @RequirePermissions("catalog.read")
   @Sse("inventory/stream")
   streamInventory(
     @Query("warehouseId") warehouseId?: string,
@@ -616,6 +655,7 @@ export class ProductCatalogStockController {
     );
   }
 
+  @RequirePermissions("catalog.export")
   @Delete("inventory/export-presets/:metricId")
   deleteInventoryExportPreset(
     @CurrentUser() user: { id: string },
@@ -629,6 +669,7 @@ export class ProductCatalogStockController {
     });
   }
 
+  @RequirePermissions("catalog.export")
   @Post("inventory/export-excel")
   async exportInventoryExcel(
     @Body() body: ListProductCatalogInventoryDto & { columns: Array<{ key: string; label: string }> },

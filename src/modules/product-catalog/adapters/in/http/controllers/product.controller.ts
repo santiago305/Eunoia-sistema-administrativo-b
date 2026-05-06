@@ -1,5 +1,7 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
   import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+  import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
+  import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
   import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
   import { CreateProductCatalogProduct } from "src/modules/product-catalog/application/usecases/create-product.usecase";
   import { GetProductCatalogProduct } from "src/modules/product-catalog/application/usecases/get-product.usecase";
@@ -19,7 +21,7 @@ import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query
   import { ProductCatalogProductType } from "src/modules/product-catalog/domain/value-objects/product-type";
 
   @Controller("products")
-  @UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
+  @UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
   export class ProductCatalogProductController {
     constructor(
       private readonly createProduct: CreateProductCatalogProduct,
@@ -32,11 +34,13 @@ import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query
       private readonly deleteSearchMetric: DeleteProductCatalogProductSearchMetricUsecase,
     ) {}
 
+    @RequirePermissions("catalog.manage")
     @Post()
     create(@Body() dto: CreateProductCatalogProductDto) {
       return this.createProduct.execute(dto);
     }
 
+    @RequirePermissions("catalog.read")
     @Get()
     list(@Query() query: ListProductCatalogProductsDto, @CurrentUser() user: { id: string }) {
       return this.listProducts.execute({
@@ -50,11 +54,13 @@ import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query
       });
     }
 
+    @RequirePermissions("catalog.read")
     @Get("search-state")
     getSearchStateForUser(@CurrentUser() user: { id: string }, @Query("type") type?: ProductCatalogProductType) {
       return this.getSearchState.execute(user.id, type);
     }
 
+    @RequirePermissions("catalog.read")
     @Post("search-metrics")
     saveMetric(
       @Body() dto: HttpCreateProductSearchMetricDto,
@@ -72,6 +78,7 @@ import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query
       });
     }
 
+    @RequirePermissions("catalog.read")
     @Delete("search-metrics/:metricId")
     deleteMetric(
       @Param("metricId", ParseUUIDPipe) metricId: string,
@@ -81,16 +88,19 @@ import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query
       return this.deleteSearchMetric.execute(user.id, metricId, type);
     }
 
+    @RequirePermissions("catalog.read")
     @Get(":id")
     getById(@Param("id", ParseUUIDPipe) id: string) {
       return this.getProduct.execute(id);
     }
 
+    @RequirePermissions("catalog.read")
     @Get(":id/detail")
     getDetail(@Param("id", ParseUUIDPipe) id: string, @Query("warehouseId") warehouseId?: string) {
       return this.getProductDetail.execute(id, warehouseId);
     }
 
+    @RequirePermissions("catalog.manage")
     @Patch(":id")
     update(@Param("id", ParseUUIDPipe) id: string, @Body() dto: UpdateProductCatalogProductDto) {
       return this.updateProduct.execute(id, dto);

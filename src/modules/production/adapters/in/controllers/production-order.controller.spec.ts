@@ -1,8 +1,15 @@
 import "reflect-metadata";
 import { CanActivate, ExecutionContext, INestApplication, Injectable, ValidationPipe } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
+import { FILE_STORAGE } from "src/shared/application/ports/file-storage.port";
+import { IMAGE_PROCESSOR } from "src/shared/application/ports/image-processor.port";
+import { ExportProductionOrdersExcelUsecase } from "src/modules/production/application/usecases/production-order/export-excel.usecase";
+import { ProductionOrderExpectedScheduler } from "src/modules/production/application/jobs/production-order-expected-scheduler";
+import { PRODUCTION_ORDER_REPOSITORY } from "src/modules/production/application/ports/production-order.repository";
+import { LISTING_SEARCH_STORAGE } from "src/shared/listing-search/domain/listing-search.repository";
 import request from "supertest";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
 import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreateProductionOrder } from "src/modules/production/application/usecases/production-order/create.usecase";
 import { ListProductionOrders } from "src/modules/production/application/usecases/production-order/list-orders.usecase";
@@ -68,11 +75,19 @@ describe("ProductionOrdersController", () => {
         { provide: GetProductionOrderSearchStateUsecase, useValue: getSearchState },
         { provide: SaveProductionOrderSearchMetricUsecase, useValue: { execute: jest.fn() } },
         { provide: DeleteProductionOrderSearchMetricUsecase, useValue: { execute: jest.fn() } },
+        { provide: PRODUCTION_ORDER_REPOSITORY, useValue: { findById: jest.fn(), update: jest.fn() } },
+        { provide: ProductionOrderExpectedScheduler, useValue: { schedule: jest.fn() } },
+        { provide: IMAGE_PROCESSOR, useValue: { toWebp: jest.fn() } },
+        { provide: FILE_STORAGE, useValue: { save: jest.fn(), delete: jest.fn() } },
+        { provide: ExportProductionOrdersExcelUsecase, useValue: { execute: jest.fn(), getAvailableColumns: jest.fn().mockReturnValue([]) } },
+        { provide: LISTING_SEARCH_STORAGE, useValue: { listState: jest.fn().mockResolvedValue({ metrics: [] }), createMetric: jest.fn(), deleteMetric: jest.fn() } },
       ],
     })
       .overrideGuard(JwtAuthGuard)
       .useClass(TestJwtAuthGuard)
       .overrideGuard(CompanyConfiguredGuard)
+      .useClass(AllowGuard)
+      .overrideGuard(PermissionsGuard)
       .useClass(AllowGuard)
       .compile();
 

@@ -1,5 +1,7 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
+import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
 import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreateSupplierMethodUsecase } from "src/modules/payment-methods/application/usecases/supplier-method/create.usecase";
 import { DeleteSupplierMethodUsecase } from "src/modules/payment-methods/application/usecases/supplier-method/delete.usecase";
@@ -11,7 +13,7 @@ import { HttpSupplierMethodUpdateDto } from "../dtos/supplier-method/http-suppli
 import { PaymentMethodHttpMapper } from "src/modules/payment-methods/application/mappers/payment-method-http.mapper";
 
 @Controller("supplier-methods")
-@UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
+@UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
 export class SupplierMethodsController {
   constructor(
     private readonly createSupplierMethod: CreateSupplierMethodUsecase,
@@ -21,6 +23,7 @@ export class SupplierMethodsController {
     private readonly getSupplierMethodById: GetSupplierMethodByIdUsecase,
   ) {}
 
+  @RequirePermissions("payment-methods.manage")
   @Post()
   create(@Body() dto: HttpSupplierMethodCreateDto) {
     return this.createSupplierMethod.execute(
@@ -28,11 +31,13 @@ export class SupplierMethodsController {
     );
   }
 
+  @RequirePermissions("payment-methods.read")
   @Get("by-supplier/:supplierId")
   listBySupplier(@Param("supplierId", ParseUUIDPipe) supplierId: string) {
     return this.listSupplierMethods.execute({ supplierId });
   }
 
+  @RequirePermissions("payment-methods.read")
   @Get(":supplierMethodId")
   getById(
     @Param("supplierMethodId", ParseUUIDPipe) supplierMethodId: string,
@@ -40,6 +45,7 @@ export class SupplierMethodsController {
     return this.getSupplierMethodById.execute({ supplierMethodId });
   }
 
+  @RequirePermissions("payment-methods.manage")
   @Patch(":supplierMethodId")
   update(
     @Param("supplierMethodId", ParseUUIDPipe) supplierMethodId: string,
@@ -50,6 +56,7 @@ export class SupplierMethodsController {
     );
   }
 
+  @RequirePermissions("payment-methods.manage")
   @Delete(":supplierMethodId")
   remove(
     @Param("supplierMethodId", ParseUUIDPipe) supplierMethodId: string,

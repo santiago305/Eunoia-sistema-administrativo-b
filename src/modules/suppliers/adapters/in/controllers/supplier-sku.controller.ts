@@ -1,5 +1,7 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
+import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
 import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { SupplierHttpMapper } from "src/modules/suppliers/application/mappers/supplier-http.mapper";
 import { CreateSupplierSkuUsecase } from "src/modules/suppliers/application/usecases/supplier-sku/create.usecase";
@@ -11,7 +13,7 @@ import { ListSupplierSkuQueryDto } from "../dtos/supplier-sku/http-supplier-sku-
 import { HttpUpdateSupplierSkuDto } from "../dtos/supplier-sku/http-supplier-sku-update.dto";
 
 @Controller("suppliers/skus")
-@UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
+@UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
 export class SupplierSkusController {
   constructor(
     private readonly createSupplierSku: CreateSupplierSkuUsecase,
@@ -20,11 +22,13 @@ export class SupplierSkusController {
     private readonly listSupplierSkus: ListSupplierSkusUsecase,
   ) {}
 
+  @RequirePermissions("suppliers.manage")
   @Post()
   create(@Body() dto: HttpCreateSupplierSkuDto) {
     return this.createSupplierSku.execute(SupplierHttpMapper.toCreateSupplierSkuInput(dto));
   }
 
+  @RequirePermissions("suppliers.read")
   @Get("all")
   list(@Query() query: ListSupplierSkuQueryDto) {
     return this.listSupplierSkus.execute(
@@ -38,6 +42,7 @@ export class SupplierSkusController {
     );
   }
 
+  @RequirePermissions("suppliers.read")
   @Get(":supplierId/:skuId")
   getById(
     @Param("supplierId", ParseUUIDPipe) supplierId: string,
@@ -46,6 +51,7 @@ export class SupplierSkusController {
     return this.getSupplierSku.execute({ supplierId, skuId });
   }
 
+  @RequirePermissions("suppliers.manage")
   @Patch(":supplierId/:skuId")
   update(
     @Param("supplierId", ParseUUIDPipe) supplierId: string,

@@ -1,5 +1,7 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
+import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
 import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreatePaymentMethodUsecase } from "src/modules/payment-methods/application/usecases/payment-method/create.usecase";
 import { UpdatePaymentMethodUsecase } from "src/modules/payment-methods/application/usecases/payment-method/update.usecase";
@@ -16,7 +18,7 @@ import { HttpPaymentMethodListQueryDto } from "../dtos/payment-method/http-payme
 import { PaymentMethodHttpMapper } from "src/modules/payment-methods/application/mappers/payment-method-http.mapper";
 
 @Controller("payment-methods")
-@UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
+@UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
 export class PaymentMethodsController {
   constructor(
     private readonly createPaymentMethod: CreatePaymentMethodUsecase,
@@ -29,11 +31,13 @@ export class PaymentMethodsController {
     private readonly getPaymentMethodsRecords: GetPaymentMethodsRecordsUsecase,
   ) {}
 
+  @RequirePermissions("payment-methods.manage")
   @Post()
   create(@Body() dto: HttpPaymentMethodCreateDto) {
     return this.createPaymentMethod.execute(PaymentMethodHttpMapper.toCreatePaymentMethodInput(dto));
   }
 
+  @RequirePermissions("payment-methods.read")
   @Get()
   list(@Query() query: HttpPaymentMethodListQueryDto) {
     const isActived = query.isActive === undefined ? undefined : query.isActive === "true";
@@ -45,26 +49,31 @@ export class PaymentMethodsController {
     }));
   }
 
+  @RequirePermissions("payment-methods.read")
   @Get("records")
   getRecords() {
     return this.getPaymentMethodsRecords.execute();
   }
 
+  @RequirePermissions("payment-methods.read")
   @Get("by-company/:companyId")
   getByCompany(@Param("companyId", ParseUUIDPipe) companyId: string) {
     return this.getPaymentMethodsByCompany.execute({ companyId });
   }
 
+  @RequirePermissions("payment-methods.read")
   @Get("by-supplier/:supplierId")
   getBySupplier(@Param("supplierId", ParseUUIDPipe) supplierId: string) {
     return this.getPaymentMethodsBySupplier.execute({ supplierId });
   }
 
+  @RequirePermissions("payment-methods.read")
   @Get(":id")
   getById(@Param("id", ParseUUIDPipe) id: string) {
     return this.getPaymentMethodById.execute({ methodId: id });
   }
 
+  @RequirePermissions("payment-methods.manage")
   @Patch(":id")
   update(
     @Param("id", ParseUUIDPipe) id: string,
@@ -73,6 +82,7 @@ export class PaymentMethodsController {
     return this.updatePaymentMethod.execute(PaymentMethodHttpMapper.toUpdatePaymentMethodInput(id, dto));
   }
 
+  @RequirePermissions("payment-methods.manage")
   @Patch(":id/active")
   setActive(
     @Param("id", ParseUUIDPipe) id: string,

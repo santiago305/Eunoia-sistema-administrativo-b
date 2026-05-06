@@ -13,8 +13,10 @@ import { RemoveAvatarUseCase } from 'src/modules/users/application/use-cases/rem
 import { RestoreUserUseCase } from 'src/modules/users/application/use-cases/restore-user.usecase';
 import { UpdateAvatarUseCase } from 'src/modules/users/application/use-cases/update-avatar.usecase';
 import { UpdateUserUseCase } from 'src/modules/users/application/use-cases/update-user.usecase';
+import { UpdateUserRoleUseCase } from 'src/modules/users/application/use-cases/update-user-role.usecase';
+import { CountUsersByRoleUseCase } from 'src/modules/users/application/use-cases/count-users-by-role.usecase';
 import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard';
-import { RolesGuard } from 'src/shared/utilidades/guards/roles.guard';
+import { PermissionsGuard } from 'src/modules/access-control/adapters/in/guards/permissions.guard';
 import { RoleType } from 'src/shared/constantes/constants';
 import { IMAGE_PROCESSOR } from 'src/shared/application/ports/image-processor.port';
 import { FILE_STORAGE } from 'src/shared/application/ports/file-storage.port';
@@ -32,8 +34,10 @@ describe('UsersController (e2e)', () => {
       providers: [
         { provide: CreateUserUseCase, useValue: { execute: jest.fn() } },
         { provide: UpdateUserUseCase, useValue: { execute: jest.fn() } },
+        { provide: UpdateUserRoleUseCase, useValue: { execute: jest.fn() } },
         { provide: ChangePasswordUseCase, useValue: { execute: jest.fn() } },
         { provide: ListUsersUseCase, useValue: listUsersUseCase },
+        { provide: CountUsersByRoleUseCase, useValue: { execute: jest.fn() } },
         { provide: GetUserUseCase, useValue: { execute: jest.fn() } },
         { provide: GetUserByEmailUseCase, useValue: { execute: jest.fn() } },
         { provide: GetOwnUserUseCase, useValue: { execute: jest.fn() } },
@@ -53,7 +57,7 @@ describe('UsersController (e2e)', () => {
           return true;
         },
       })
-      .overrideGuard(RolesGuard)
+      .overrideGuard(PermissionsGuard)
       .useValue({ canActivate: () => true })
       .compile();
 

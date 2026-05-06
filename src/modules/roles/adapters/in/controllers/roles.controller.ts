@@ -12,9 +12,7 @@ import {
 } from '@nestjs/common';
 import { CreateRoleDto } from 'src/modules/roles/adapters/in/dtos/create-role.dto';
 import { UpdateRoleDto } from 'src/modules/roles/adapters/in/dtos/update-role.dto';
-import { Roles } from 'src/shared/utilidades/decorators/roles.decorator';
 import { RoleType } from 'src/shared/constantes/constants';
-import { RolesGuard } from 'src/shared/utilidades/guards/roles.guard';
 import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard';
 import { User as CurrentUser } from 'src/shared/utilidades/decorators/user.decorator';
 import { CsrfGuard } from 'src/shared/utilidades/guards/csrf.guard';
@@ -30,10 +28,10 @@ import { GetRoleByIdUseCase } from 'src/modules/roles/application/use-cases/get-
 import { UpdateRoleUseCase } from 'src/modules/roles/application/use-cases/update-role.usecase';
 import { DeleteRoleUseCase } from 'src/modules/roles/application/use-cases/delete-role.usecase';
 import { RestoreRoleUseCase } from 'src/modules/roles/application/use-cases/restore-role.usecase';
+import { PermissionsGuard } from 'src/modules/access-control/adapters/in/guards/permissions.guard';
+import { RequirePermissions } from 'src/modules/access-control/adapters/in/decorators/require-permissions.decorator';
 
 @Controller('roles')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(RoleType.ADMIN)
 export class RolesController {
   constructor(
     private readonly createRoleUseCase: CreateRoleUseCase,
@@ -45,13 +43,15 @@ export class RolesController {
   ) {}
 
   @Post('/create')
-  @UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard, CsrfGuard)
+  @RequirePermissions('roles.create')
   create(@Body() dto: CreateRoleDto, @CurrentUser() user: { role: RoleType }) {
     return this.createRoleUseCase.execute(dto, user.role);
   }
 
   @Get('')
-  @Roles(RoleType.ADMIN, RoleType.MODERATOR)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('roles.read')
   findAll(
     @Query('status') status?: string,
     @CurrentUser() user?: { role: RoleType },
@@ -68,24 +68,29 @@ export class RolesController {
   }
 
   @Get('/:id')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('roles.read')
   findOne(@Param('id') id: string) {
     return this.getRoleByIdUseCase.execute(id);
   }
 
   @Patch('/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard, CsrfGuard)
+  @RequirePermissions('roles.update')
   update(@Param('id') id: string, @Body() dto: UpdateRoleDto) {
     return this.updateRoleUseCase.execute(id, dto);
   }
 
   @Delete('/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard, CsrfGuard)
+  @RequirePermissions('roles.delete')
   remove(@Param('id') id: string) {
     return this.deleteRoleUseCase.execute(id);
   }
 
   @Patch(':id/restore')
-  @UseGuards(JwtAuthGuard, RolesGuard, CsrfGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard, CsrfGuard)
+  @RequirePermissions('roles.restore')
   restore(@Param('id') id: string) {
     return this.restoreRoleUseCase.execute(id);
   }

@@ -1,5 +1,7 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
+import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
 import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreateProductCatalogSku } from "src/modules/product-catalog/application/usecases/create-sku.usecase";
 import { GetProductCatalogSku } from "src/modules/product-catalog/application/usecases/get-sku.usecase";
@@ -16,7 +18,7 @@ import { ListSkuStockSnapshotsSearchDto } from "../dtos/list-sku-stock-snapshots
 import { ListAvailableStockUsecase } from "src/modules/product-catalog/application/usecases/list-available-stock";
 
 @Controller()
-@UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
+@UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
 export class ProductCatalogSkuController {
   constructor(
     private readonly createSku: CreateProductCatalogSku,
@@ -28,11 +30,13 @@ export class ProductCatalogSkuController {
     private readonly listAvailable: ListAvailableStockUsecase,
   ) {}
 
+  @RequirePermissions("catalog.manage")
   @Post("products/:id/skus")
   create(@Param("id", ParseUUIDPipe) productId: string, @Body() dto: CreateProductCatalogSkuDto) {
     return this.createSku.execute({ productId, ...dto });
   }
 
+  @RequirePermissions("catalog.read")
   @Get("skus")
   list(@Query() query: ListProductCatalogSkusDto) {
     return this.listSkus.execute({
@@ -45,6 +49,7 @@ export class ProductCatalogSkuController {
     });
   }
 
+  @RequirePermissions("catalog.read")
   @Get("products/:id/skus")
   listByProduct(@Param("id", ParseUUIDPipe) productId: string, @Query() query: ListProductCatalogSkusDto) {
     return this.listSkus.execute({
@@ -57,11 +62,13 @@ export class ProductCatalogSkuController {
     });
   }
 
+  @RequirePermissions("catalog.read")
   @Get("skus/get-stock")
   getSkuStock(@Query() query: getStockDto) {
     return this.getStock.execute(query);
   }
 
+  @RequirePermissions("catalog.read")
   @Get("skus/:id/stock/snapshot")
   getSkuStockSnapshot(
     @Param("id", ParseUUIDPipe) skuId: string,
@@ -74,6 +81,7 @@ export class ProductCatalogSkuController {
     });
   }
 
+  @RequirePermissions("catalog.read")
   @Get("skus/:id/stock/snapshots")
   listSkuStockSnapshots(@Param("id", ParseUUIDPipe) skuId: string, @Query() query: ListSkuStockSnapshotsDto) {
     return this.listSnapshots.execute({
@@ -82,6 +90,7 @@ export class ProductCatalogSkuController {
     });
   }
 
+  @RequirePermissions("catalog.read")
   @Get("available-stock/skus")
   listSkuStockSnapshotsSearch(@Query() query: ListSkuStockSnapshotsSearchDto) {
     return this.listAvailable.execute({
@@ -92,12 +101,14 @@ export class ProductCatalogSkuController {
       productType: query.productType,
     });
   }
+  @RequirePermissions("catalog.read")
   @Get("skus/:id")
   getById(@Param("id", ParseUUIDPipe) id: string) {
     return this.getSku.execute(id);
   }
   
 
+  @RequirePermissions("catalog.manage")
   @Patch("skus/:id")
   update(@Param("id", ParseUUIDPipe) id: string, @Body() dto: UpdateProductCatalogSkuDto) {
     return this.updateSku.execute(id, dto);

@@ -1,8 +1,20 @@
 import "reflect-metadata";
 import { CanActivate, ExecutionContext, INestApplication, Injectable, ValidationPipe } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
+import { getRepositoryToken } from "@nestjs/typeorm";
+import { EntityManager } from "typeorm";
+import { FILE_STORAGE } from "src/shared/application/ports/file-storage.port";
+import { IMAGE_PROCESSOR } from "src/shared/application/ports/image-processor.port";
+import { NotificationsService } from "src/modules/notifications/application/use-cases/notifications.service";
+import { ConfirmPurchaseReceptionUsecase } from "src/modules/purchases/application/usecases/purchase-order/confirm-reception.usecase";
+import { ExportPurchaseOrdersExcelUsecase } from "src/modules/purchases/application/usecases/purchase-order/export-excel.usecase";
+import { PurchaseOrderExpectedScheduler } from "src/modules/purchases/application/jobs/purchase-order-expected-scheduler";
+import { PurchaseProcessingApprovalEntity } from "../../out/persistence/typeorm/entities/purchase-processing-approval.entity";
+import { PURCHASE_ORDER } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
+import { LISTING_SEARCH_STORAGE } from "src/shared/listing-search/domain/listing-search.repository";
 import request from "supertest";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
 import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreatePurchaseOrderUsecase } from "src/modules/purchases/application/usecases/purchase-order/create.usecase";
 import { UpdatePurchaseOrderUsecase } from "src/modules/purchases/application/usecases/purchase-order/update.usecase";
@@ -70,11 +82,23 @@ describe("PurchaseOrdersController", () => {
         { provide: GetPurchaseOrderSearchStateUsecase, useValue: getSearchState },
         { provide: SavePurchaseOrderSearchMetricUsecase, useValue: { execute: jest.fn() } },
         { provide: DeletePurchaseOrderSearchMetricUsecase, useValue: { execute: jest.fn() } },
+        { provide: ExportPurchaseOrdersExcelUsecase, useValue: { execute: jest.fn(), getAvailableColumns: jest.fn().mockReturnValue([]) } },
+        { provide: ConfirmPurchaseReceptionUsecase, useValue: { execute: jest.fn() } },
+        { provide: PURCHASE_ORDER, useValue: { findById: jest.fn(), update: jest.fn() } },
+        { provide: LISTING_SEARCH_STORAGE, useValue: { listState: jest.fn().mockResolvedValue({ metrics: [] }), createMetric: jest.fn(), deleteMetric: jest.fn() } },
+        { provide: PurchaseOrderExpectedScheduler, useValue: { schedule: jest.fn() } },
+        { provide: IMAGE_PROCESSOR, useValue: { toWebp: jest.fn() } },
+        { provide: FILE_STORAGE, useValue: { save: jest.fn(), delete: jest.fn() } },
+        { provide: NotificationsService, useValue: { createNotificationForUsers: jest.fn() } },
+        { provide: getRepositoryToken(PurchaseProcessingApprovalEntity), useValue: { findOne: jest.fn(), create: jest.fn(), save: jest.fn() } },
+        { provide: EntityManager, useValue: { getRepository: jest.fn() } },
       ],
     })
       .overrideGuard(JwtAuthGuard)
       .useClass(TestJwtAuthGuard)
       .overrideGuard(CompanyConfiguredGuard)
+      .useClass(AllowGuard)
+      .overrideGuard(PermissionsGuard)
       .useClass(AllowGuard)
       .compile();
 

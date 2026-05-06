@@ -1,5 +1,7 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
+import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
 import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreateSupplierUsecase } from "src/modules/suppliers/application/usecases/supplier/create.usecase";
 import { UpdateSupplierUsecase } from "src/modules/suppliers/application/usecases/supplier/update.usecase";
@@ -19,7 +21,7 @@ import { ListSupplierQueryDto } from "../dtos/supplier/http-supplier-list.dto";
 import { sanitizeSupplierSearchSnapshot } from "src/modules/suppliers/application/support/supplier-search.utils";
 
 @Controller("suppliers")
-@UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
+@UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
 export class SuppliersController {
   constructor(
     private readonly createSupplier: CreateSupplierUsecase,
@@ -32,11 +34,13 @@ export class SuppliersController {
     private readonly deleteSearchMetric: DeleteSupplierSearchMetricUsecase,
   ) {}
 
+  @RequirePermissions("suppliers.manage")
   @Post()
   create(@Body() dto: HttpCreateSupplierDto) {
     return this.createSupplier.execute(SupplierHttpMapper.toCreateSupplierInput(dto));
   }
 
+  @RequirePermissions("suppliers.read")
   @Get()
   list(@Query() query: ListSupplierQueryDto, @CurrentUser() user: { id: string }) {
     const isActive = query.isActive === undefined ? undefined : query.isActive === "true";
@@ -57,11 +61,13 @@ export class SuppliersController {
     }));
   }
 
+  @RequirePermissions("suppliers.read")
   @Get("search-state")
   getSearchStateForUser(@CurrentUser() user: { id: string }) {
     return this.getSearchState.execute(user.id);
   }
 
+  @RequirePermissions("suppliers.read")
   @Post("search-metrics")
   saveMetric(
     @Body() dto: HttpCreateSupplierSearchMetricDto,
@@ -77,6 +83,7 @@ export class SuppliersController {
     });
   }
 
+  @RequirePermissions("suppliers.read")
   @Delete("search-metrics/:metricId")
   deleteMetric(
     @Param("metricId", ParseUUIDPipe) metricId: string,
@@ -85,16 +92,19 @@ export class SuppliersController {
     return this.deleteSearchMetric.execute(user.id, metricId);
   }
 
+  @RequirePermissions("suppliers.read")
   @Get(":id")
   getById(@Param("id", ParseUUIDPipe) id: string) {
     return this.getSupplier.execute({ supplierId: id });
   }
 
+  @RequirePermissions("suppliers.manage")
   @Patch(":id")
   update(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpUpdateSupplierDto) {
     return this.updateSupplier.execute(SupplierHttpMapper.toUpdateSupplierInput(id, dto));
   }
 
+  @RequirePermissions("suppliers.manage")
   @Patch(":id/active")
   setActive(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpSetSupplierActiveDto) {
     return this.setSupplierActive.execute(SupplierHttpMapper.toSetActiveInput(id, dto.isActive));
