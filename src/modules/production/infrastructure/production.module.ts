@@ -15,6 +15,7 @@ import { User } from "src/modules/users/adapters/out/persistence/typeorm/entitie
 import { WarehouseEntity } from "src/modules/warehouses/adapters/out/persistence/typeorm/entities/warehouse";
 import { ProductCatalogDocumentSerieEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/document-serie.entity";
 import { productionModuleProviders } from "../composition/container";
+import { AccessControlModule } from "src/modules/access-control/infrastructure/access-control.module";
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { productionModuleProviders } from "../composition/container";
     ]),
     ProductCatalogModule,
     UsersModule,
+    AccessControlModule,
   ],
   controllers: [ProductionOrdersController],
   providers: [...productionModuleProviders],

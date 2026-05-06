@@ -10,6 +10,7 @@ import { ListingSearchRecentEntity } from "src/shared/listing-search/adapters/ou
 import { LOCATION_REPOSITORY } from "./application/ports/location.repository.port";
 import { WAREHOUSE_REPOSITORY } from "./application/ports/warehouse.repository.port";
 import { warehousesModuleProviders } from "./composition/container";
+import { AccessControlModule } from "src/modules/access-control/infrastructure/access-control.module";
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { warehousesModuleProviders } from "./composition/container";
       ListingSearchMetricEntity,
     ]),
     ProductCatalogModule,
+    AccessControlModule,
   ],
   controllers: [WarehousesController, LocationsController],
   providers: [...warehousesModuleProviders],

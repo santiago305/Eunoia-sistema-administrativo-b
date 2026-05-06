@@ -65,6 +65,7 @@ import { DeleteInventoryLedgerSearchMetricUsecase } from "./application/usecases
 import { ListProductCatalogInventoryLedgerMovements } from "./application/usecases/list-inventory-ledger-movements.usecase";
 import { WarehouseEntity } from "../warehouses/adapters/out/persistence/typeorm/entities/warehouse";
 import { User as UserEntity } from "../users/adapters/out/persistence/typeorm/entities/user.entity";
+import { AccessControlModule } from "src/modules/access-control/infrastructure/access-control.module";
 
 @Module({
   imports: [
@@ -89,6 +90,7 @@ import { User as UserEntity } from "../users/adapters/out/persistence/typeorm/en
       WarehouseEntity,
       UserEntity,
     ]),
+    AccessControlModule,
   ],
   controllers: [
     ProductCatalogProductController,

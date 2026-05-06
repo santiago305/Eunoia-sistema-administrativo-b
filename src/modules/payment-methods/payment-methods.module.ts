@@ -12,12 +12,14 @@ import { PAYMENT_METHOD_REPOSITORY } from "./domain/ports/payment-method.reposit
 import { COMPANY_METHOD_REPOSITORY } from "./domain/ports/company-method.repository";
 import { SUPPLIER_METHOD_REPOSITORY } from "./domain/ports/supplier-method.repository";
 import { paymentMethodsModuleProviders } from "./composition/container";
+import { AccessControlModule } from "src/modules/access-control/infrastructure/access-control.module";
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([PaymentMethodEntity, CompanyMethodEntity, SupplierMethodEntity]),
     CompaniesModule,
     SuppliersModule,
+    AccessControlModule,
   ],
   controllers: [PaymentMethodsController, CompanyMethodsController, SupplierMethodsController],
   providers: [...paymentMethodsModuleProviders],

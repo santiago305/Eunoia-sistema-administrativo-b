@@ -9,6 +9,7 @@ import { SupplierEntity } from "./adapters/out/persistence/typeorm/entities/supp
 import { SUPPLIER_REPOSITORY } from "./domain/ports/supplier.repository";
 import { SUPPLIER_SKU_REPOSITORY } from "./domain/ports/supplier-sku.repository";
 import { suppliersModuleProviders } from "./composition/container";
+import { AccessControlModule } from "src/modules/access-control/infrastructure/access-control.module";
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { suppliersModuleProviders } from "./composition/container";
       ListingSearchMetricEntity,
     ]),
     ProductCatalogModule,
+    AccessControlModule,
   ],
   controllers: [SuppliersController],
   providers: [...suppliersModuleProviders],

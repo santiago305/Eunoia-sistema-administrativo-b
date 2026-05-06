@@ -11,9 +11,13 @@ import { CreateCreditQuotaUsecase } from "./application/usecases/credit-quota/cr
 import { CreatePaymentUsecase } from "./application/usecases/payment/create.usecase";
 import { DeletePaymentUsecase } from "./application/usecases/payment/delete.usecase";
 import { paymentsModuleProviders } from "./composition/container";
+import { AccessControlModule } from "src/modules/access-control/infrastructure/access-control.module";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([PaymentDocumentEntity, CreditQuotaEntity])],
+  imports: [
+    TypeOrmModule.forFeature([PaymentDocumentEntity, CreditQuotaEntity]),
+    AccessControlModule,
+  ],
   controllers: [PaymentsController, CreditQuotasController],
   providers: [...paymentsModuleProviders],
   exports: [

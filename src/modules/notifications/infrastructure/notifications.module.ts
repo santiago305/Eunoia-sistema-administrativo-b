@@ -11,6 +11,7 @@ import { NotificationOutbox } from '../adapters/out/persistence/typeorm/entities
 import { NotificationDeliveryAttempt } from '../adapters/out/persistence/typeorm/entities/notification-delivery-attempt.entity';
 import { NotificationQueueService } from './queue/notification-queue.service';
 import { NotificationWorkerService } from './queue/notification-worker.service';
+import { AccessControlModule } from 'src/modules/access-control/infrastructure/access-control.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { NotificationWorkerService } from './queue/notification-worker.service';
       NotificationDeliveryAttempt,
       User,
     ]),
+    AccessControlModule,
   ],
   controllers: [NotificationsController],
   providers: [
