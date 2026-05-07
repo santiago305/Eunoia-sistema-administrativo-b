@@ -149,6 +149,22 @@ export class HttpListPurchaseOrdersQueryDto {
   to?: string;
 
   @IsOptional()
+  @IsString()
+  eventType?: string;
+
+  @IsOptional()
+  @IsDateString()
+  eventFrom?: string;
+
+  @IsOptional()
+  @IsDateString()
+  eventTo?: string;
+
+  @IsOptional()
+  @IsUUID()
+  performedByUserId?: string;
+
+  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)

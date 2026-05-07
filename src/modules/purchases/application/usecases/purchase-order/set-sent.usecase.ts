@@ -60,7 +60,7 @@ export class SetSentPurchaseOrderUsecase {
       this.scheduler.schedule(updated.poId, recalculatedExpectedAt);
 
       return {
-        response: successResponse("Orden marcada como SENT y programada"),
+        response: successResponse("Compra en proceso."),
         poId: updated.poId,
         createdBy: updated.createdBy,
         expectedAt: recalculatedExpectedAt,
@@ -74,7 +74,7 @@ export class SetSentPurchaseOrderUsecase {
         type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_SENT,
         category: "PURCHASES",
         title: "Compra enviada",
-        message: `La compra ${result.purchaseCode} fue enviada y quedó programada para ingreso.`,
+        message: "Tu compra está siendo procesada.",
         priority: "NORMAL",
         actionUrl: "/compras",
         actionLabel: "Ver compras",

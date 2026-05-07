@@ -45,6 +45,7 @@ import { ApprovalRequestEntity } from "../../out/persistence/typeorm/entities/ap
 import { PurchaseHistoryEventEntity } from "../../out/persistence/typeorm/entities/purchase-history-event.entity";
 import { PaymentDocumentEntity } from "src/modules/payments/adapters/out/persistence/typeorm/entities/payment-document.entity";
 import { PurchaseOrderEntity } from "../../out/persistence/typeorm/entities/purchase-order.entity";
+import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
 
 @Controller("purchases/orders")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
@@ -82,6 +83,25 @@ export class PurchaseOrdersController {
     private readonly entityManager: EntityManager,
     private readonly accessControlService: AccessControlService,
   ) {}
+
+  private async notifyPurchaseRealtimeUpdate(poId: string, actorUserId?: string) {
+    const watchers = await this.accessControlService.getUserIdsWithPermission("purchases.view");
+    const recipients = watchers.filter((id) => id && id !== actorUserId);
+    if (!recipients.length) return;
+    await this.notificationsService.createNotificationForUsers({
+      recipientUserIds: recipients,
+      type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_UPDATED,
+      category: "PURCHASES",
+      title: "Compra actualizada",
+      message: "Se actualizó una compra.",
+      priority: "LOW",
+      sourceModule: "purchases",
+      sourceEntityType: "purchase_order",
+      sourceEntityId: poId,
+      metadata: { poId, showAsToast: false },
+      showAsToast: false,
+    });
+  }
 
   @Post()
   @UseGuards(PermissionsGuard)
@@ -143,8 +163,8 @@ export class PurchaseOrdersController {
             recipientUserIds: filteredApprovers,
             type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_CREATION_WITH_PAYMENT_PENDING,
             category: "PURCHASES",
-            title: "Aprobación pendiente de compra con pago",
-            message: "Un usuario solicitó crear una compra con pago directo y requiere aprobación.",
+            title: "Compra enviada",
+            message: "En espera de confirmación.",
             priority: "HIGH",
             actionUrl: `/compras?purchaseId=${result.order.poId}&modal=detail`,
             actionLabel: "Ver compra",
@@ -176,8 +196,8 @@ export class PurchaseOrdersController {
             recipientUserIds: visibleCreatorRecipients,
             type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_CREATED,
             category: "PURCHASES",
-            title: "Nueva compra creada",
-            message: `El usuario ${user.id} creó una nueva compra.`,
+            title: "Compra creada",
+            message: "Se creó una compra.",
             priority: "LOW",
             sourceModule: "purchases",
             sourceEntityType: "purchase_order",
@@ -192,8 +212,8 @@ export class PurchaseOrdersController {
             recipientUserIds: genericRecipients,
             type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_CREATED,
             category: "PURCHASES",
-            title: "Nueva compra creada",
-            message: "Se creó una nueva compra.",
+            title: "Compra creada",
+            message: "Se creó una compra.",
             priority: "LOW",
             sourceModule: "purchases",
             sourceEntityType: "purchase_order",
@@ -204,18 +224,19 @@ export class PurchaseOrdersController {
         }
       }
 
+        await this.notifyPurchaseRealtimeUpdate(result.order.poId, user.id);
         return {
           type: "success",
           message: requiresApprovalForCreationWithPayment
-            ? "Orden de compra creada. Los pagos quedaron pendientes de aprobación."
-            : "Orden de compra creada correctamente",
+            ? "Compra enviada. En espera de confirmación."
+            : "Compra creada.",
           order: PurchaseOrderOutputMapper.toOrderOutput(result.order),
         };
     } catch (error: any) {
       const payload = error?.response ?? error;
       return {
         type: "error",
-        message: payload?.message ?? "Ocurrio un error al crear la orden de compra",
+        message: payload?.message ?? "No se pudo crear la compra.",
       };
     }
   }
@@ -241,14 +262,66 @@ export class PurchaseOrdersController {
     if (orderEntity?.approvalStatus === "REJECTED") {
       throw new BadRequestException("La compra fue rechazada y no puede procesarse.");
     }
-    return this.setSent.execute(id);
+    const response = await this.setSent.execute(id);
+    await this.notifyPurchaseRealtimeUpdate(id, user.id);
+    return response;
   }
 
   @Patch(":id/cancel")
   @UseGuards(PermissionsGuard)
-  @RequirePermissions("purchases.cancel_draft")
-  cancel(@Param("id", ParseUUIDPipe) id: string) {
-    return this.cancelOrder.execute(id);
+  @RequirePermissions("purchases.cancel")
+  async cancel(@Param("id", ParseUUIDPipe) id: string, @CurrentUser() user: { id: string }) {
+    const order = await this.purchaseRepo.findById(id);
+    if (!order) throw new BadRequestException("Orden de compra no encontrada");
+
+    if (order.status === "RECEIVED") {
+      const canDeleteProcessed = await this.accessControlService.userHasAllPermissions(user.id, [
+        "purchases.delete_processed_purchase",
+      ]);
+      if (!canDeleteProcessed) {
+        throw new ForbiddenException("No tienes permiso para eliminar compras recibidas.");
+      }
+    } else {
+      const canCancelDraft = await this.accessControlService.userHasAllPermissions(user.id, [
+        "purchases.cancel_draft",
+      ]);
+      if (!canCancelDraft) {
+        throw new ForbiddenException("No tienes permiso para cancelar esta compra.");
+      }
+    }
+
+    const response = await this.cancelOrder.execute(id);
+    await this.notifyPurchaseRealtimeUpdate(id, user.id);
+    return response;
+  }
+
+  @Get("validate-number")
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("purchases.create")
+  async validatePurchaseNumber(
+    @Query("serie") serie?: string,
+    @Query("correlative") correlativeRaw?: string,
+    @Query("excludePoId") excludePoId?: string,
+  ) {
+    const normalizedSerie = (serie ?? "").trim();
+    const correlative = Number(correlativeRaw ?? 0);
+
+    if (!normalizedSerie || !Number.isFinite(correlative) || correlative <= 0) {
+      return { exists: false };
+    }
+
+    const qb = this.entityManager
+      .getRepository(PurchaseOrderEntity)
+      .createQueryBuilder("po")
+      .where("po.serie = :serie", { serie: normalizedSerie })
+      .andWhere("po.correlative = :correlative", { correlative });
+
+    if (excludePoId) {
+      qb.andWhere("po.id <> :excludePoId", { excludePoId });
+    }
+
+    const exists = Boolean(await qb.getOne());
+    return { exists };
   }
 
   @Post(":id/run-expected")
@@ -318,8 +391,8 @@ export class PurchaseOrdersController {
         recipientUserIds: recipientIds,
         type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_PROCESSING_REQUESTED,
         category: "PURCHASES",
-        title: "Solicitud de aprobación de compra",
-        message: `El usuario ${user.id} quiere procesar el pedido ${purchaseCode}.`,
+        title: "A. procesar",
+        message: "Confirmación enviada.",
         priority: "HIGH",
         actionUrl: `/compras?purchaseId=${order.poId}&modal=detail`,
         actionLabel: "Ver compra",
@@ -337,7 +410,7 @@ export class PurchaseOrdersController {
 
     return {
       type: "success",
-      message: "Solicitud de aprobación enviada",
+      message: "Confirmación enviada.",
       approval: saved,
     };
   }
@@ -370,8 +443,8 @@ export class PurchaseOrdersController {
       recipientUserIds: [pending.requestedBy],
       type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_PROCESSING_APPROVED,
       category: "PURCHASES",
-      title: "Solicitud aprobada",
-      message: "Tu solicitud de procesamiento de compra fue aprobada.",
+      title: "Procesando compra",
+      message: "Tu compra será procesada.",
       priority: "NORMAL",
       actionUrl: `/compras?purchaseId=${id}&modal=detail`,
       actionLabel: "Ver compra",
@@ -397,7 +470,7 @@ export class PurchaseOrdersController {
 
     return {
       type: "success",
-      message: "Compra aprobada y enviada a procesamiento correctamente",
+      message: "Procesando compra.",
       approval: pending,
       result,
     };
@@ -453,7 +526,7 @@ export class PurchaseOrdersController {
       type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_CREATION_WITH_PAYMENT_APPROVED,
       category: "PURCHASES",
       title: "Compra aprobada",
-      message: "Tu compra con pago fue aprobada.",
+      message: "Confirmación enviada.",
       priority: "NORMAL",
       actionUrl: `/compras?purchaseId=${id}&modal=detail`,
       actionLabel: "Ver compra",
@@ -464,7 +537,7 @@ export class PurchaseOrdersController {
       showAsToast: true,
     });
 
-    return { type: "success", message: "Creación de compra con pago aprobada." };
+    return { type: "success", message: "Compra aprobada." };
   }
 
   @Post(":id/reject-creation-with-payment")
@@ -521,7 +594,7 @@ export class PurchaseOrdersController {
       type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_CREATION_WITH_PAYMENT_REJECTED,
       category: "PURCHASES",
       title: "Compra rechazada",
-      message: "Tu compra con pago fue rechazada.",
+      message: "No se aprobó la compra.",
       priority: "NORMAL",
       actionUrl: `/compras?purchaseId=${id}&modal=detail`,
       actionLabel: "Ver detalle",
@@ -532,7 +605,7 @@ export class PurchaseOrdersController {
       showAsToast: true,
     });
 
-    return { type: "success", message: "Creación de compra con pago rechazada." };
+    return { type: "success", message: "Compra rechazada." };
   }
 
   @Post(":id/reject-processing")
@@ -561,8 +634,8 @@ export class PurchaseOrdersController {
       recipientUserIds: [pending.requestedBy],
       type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_PROCESSING_REJECTED,
       category: "PURCHASES",
-      title: "Solicitud rechazada",
-      message: "Tu solicitud de procesamiento de compra fue rechazada.",
+      title: "Procesamiento rechazado",
+      message: "No se aprobó el procesamiento.",
       priority: "NORMAL",
       actionUrl: `/compras?purchaseId=${id}&modal=detail`,
       actionLabel: "Ver detalle",
@@ -589,14 +662,19 @@ export class PurchaseOrdersController {
 
     return {
       type: "success",
-      message: "Solicitud rechazada",
+      message: "Procesamiento rechazado.",
       approval: pending,
     };
   }
 
   @Post(":id/confirm-reception")
-  confirmPurchaseReception(@Param("id", ParseUUIDPipe) id: string) {
-    return this.confirmReception.execute(id);
+  async confirmPurchaseReception(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    const response = await this.confirmReception.execute(id);
+    await this.notifyPurchaseRealtimeUpdate(id, user.id);
+    return response;
   }
 
   @Get()
@@ -847,10 +925,30 @@ export class PurchaseOrdersController {
     }
 
     const events = await qb.getMany();
+    const userIds = Array.from(
+      new Set(
+        events
+          .flatMap((event) => [event.performedByUserId ?? null, event.targetUserId ?? null])
+          .filter((value): value is string => Boolean(value)),
+      ),
+    );
+
+    const users = userIds.length
+      ? await this.entityManager.getRepository(User).find({
+          where: userIds.map((idValue) => ({ id: idValue })),
+          select: ["id", "name", "email"],
+        })
+      : [];
+    const userMap = new Map(users.map((value) => [value.id, value]));
+    const eventRows = events.map((event) => ({
+      ...event,
+      performedByUserName: event.performedByUserId ? userMap.get(event.performedByUserId)?.name ?? null : null,
+      targetUserName: event.targetUserId ? userMap.get(event.targetUserId)?.name ?? null : null,
+    }));
 
     return {
       purchaseId: id,
-      events,
+      events: eventRows,
     };
   }
 
@@ -905,7 +1003,7 @@ export class PurchaseOrdersController {
 
     return {
       type: "success",
-      message: "Tiempo extra agregado correctamente",
+      message: "Tiempo actualizado.",
       expectedAt: nextExpectedAt,
     };
   }
@@ -979,8 +1077,8 @@ export class PurchaseOrdersController {
         recipientUserIds: [user.id],
         type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_PHOTO_UPLOADED,
         category: "PURCHASES",
-        title: "Evidencia de compra subida",
-        message: `Se agregó una imagen a la compra ${purchaseCode}.`,
+        title: "Evidencia subida",
+        message: "Imagen registrada.",
         priority: "NORMAL",
         actionUrl: "/compras",
         actionLabel: "Ver compra",
@@ -996,7 +1094,7 @@ export class PurchaseOrdersController {
 
       return {
         type: "success",
-        message: "Imagen de compra guardada correctamente",
+        message: "Imagen guardada.",
         imageProdution: updated.imageProdution,
       };
     } catch (error) {

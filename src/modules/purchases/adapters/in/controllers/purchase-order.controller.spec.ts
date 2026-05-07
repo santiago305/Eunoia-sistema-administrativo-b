@@ -10,6 +10,8 @@ import { ConfirmPurchaseReceptionUsecase } from "src/modules/purchases/applicati
 import { ExportPurchaseOrdersExcelUsecase } from "src/modules/purchases/application/usecases/purchase-order/export-excel.usecase";
 import { PurchaseOrderExpectedScheduler } from "src/modules/purchases/application/jobs/purchase-order-expected-scheduler";
 import { PurchaseProcessingApprovalEntity } from "../../out/persistence/typeorm/entities/purchase-processing-approval.entity";
+import { ApprovalRequestEntity } from "../../out/persistence/typeorm/entities/approval-request.entity";
+import { PurchaseHistoryEventEntity } from "../../out/persistence/typeorm/entities/purchase-history-event.entity";
 import { PURCHASE_ORDER } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
 import { LISTING_SEARCH_STORAGE } from "src/shared/listing-search/domain/listing-search.repository";
 import request from "supertest";
@@ -30,6 +32,7 @@ import { GetPurchaseOrderSearchStateUsecase } from "src/modules/purchases/applic
 import { SavePurchaseOrderSearchMetricUsecase } from "src/modules/purchases/application/usecases/purchase-search/save-metric.usecase";
 import { DeletePurchaseOrderSearchMetricUsecase } from "src/modules/purchases/application/usecases/purchase-search/delete-metric.usecase";
 import { PurchaseOrdersController } from "./purchase-order.controller";
+import { AccessControlService } from "src/modules/access-control/application/services/access-control.service";
 
 @Injectable()
 class TestJwtAuthGuard implements CanActivate {
@@ -91,7 +94,16 @@ describe("PurchaseOrdersController", () => {
         { provide: FILE_STORAGE, useValue: { save: jest.fn(), delete: jest.fn() } },
         { provide: NotificationsService, useValue: { createNotificationForUsers: jest.fn() } },
         { provide: getRepositoryToken(PurchaseProcessingApprovalEntity), useValue: { findOne: jest.fn(), create: jest.fn(), save: jest.fn() } },
+        { provide: getRepositoryToken(ApprovalRequestEntity), useValue: { findOne: jest.fn(), create: jest.fn(), save: jest.fn() } },
+        { provide: getRepositoryToken(PurchaseHistoryEventEntity), useValue: { createQueryBuilder: jest.fn(), create: jest.fn(), save: jest.fn() } },
         { provide: EntityManager, useValue: { getRepository: jest.fn() } },
+        {
+          provide: AccessControlService,
+          useValue: {
+            userHasAllPermissions: jest.fn().mockResolvedValue(true),
+            getUserIdsWithPermission: jest.fn().mockResolvedValue(["user-2"]),
+          },
+        },
       ],
     })
       .overrideGuard(JwtAuthGuard)

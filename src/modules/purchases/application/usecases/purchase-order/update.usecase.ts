@@ -337,7 +337,7 @@ export class UpdatePurchaseOrderUsecase {
         }
       }
 
-      return {type:"success", message: "Orden de compra actualizada con exito" };
+      return {type:"success", message: "Compra actualizada." };
     });
   }
 

@@ -50,7 +50,7 @@ export class RunExpectedAtUsecase {
       return {
         response: {
           type: "success",
-          message: "Compra lista para confirmacion final. Falta decision de evidencia/foto.",
+          message: "Compra en espera de confirmación.",
         },
         poId: order.poId,
         createdBy: order.createdBy,
@@ -65,8 +65,8 @@ export class RunExpectedAtUsecase {
         recipientUserIds: [result.createdBy],
         type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_PENDING_STOCK_CONFIRMATION,
         category: "PURCHASES",
-        title: "Compra lista para confirmar",
-        message: `La compra ${result.purchaseCode} llegó a almacén. Falta decidir evidencia/foto y confirmar ingreso.`,
+        title: "Compra recibida",
+        message: "En espera de confirmación final.",
         priority: "HIGH",
         actionUrl: "/compras",
         actionLabel: "Confirmar ingreso",

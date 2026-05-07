@@ -46,7 +46,7 @@ export class ConfirmPurchaseReceptionUsecase {
 
       const hasPhotoEvidence = Array.isArray(order.imageProdution) && order.imageProdution.length > 0;
       return {
-        response: { type: "success", message: "Compra confirmada e ingresada a stock" },
+        response: { type: "success", message: "Compra finalizada." },
         poId: order.poId,
         createdBy: order.createdBy,
         hasPhotoEvidence,
@@ -63,8 +63,8 @@ export class ConfirmPurchaseReceptionUsecase {
         category: "PURCHASES",
         title: result.hasPhotoEvidence ? "Evidencia registrada" : "Evidencia omitida",
         message: result.hasPhotoEvidence
-          ? `La compra ${result.purchaseCode} se confirmó con evidencia y se ingresó a stock.`
-          : `La compra ${result.purchaseCode} se confirmó sin evidencia y se ingresó a stock.`,
+          ? "Compra confirmada con evidencia."
+          : "Compra confirmada sin evidencia.",
         priority: "NORMAL",
         actionUrl: "/compras",
         actionLabel: "Ver compra",
@@ -83,8 +83,8 @@ export class ConfirmPurchaseReceptionUsecase {
         recipientUserIds: [result.createdBy],
         type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_STOCK_POSTED,
         category: "PURCHASES",
-        title: "Compra ingresada a stock",
-        message: `La compra ${result.purchaseCode} fue procesada correctamente y su stock ya fue registrado.`,
+        title: "Compra finalizada",
+        message: "Tu compra ya llegó.",
         priority: "HIGH",
         actionUrl: "/compras",
         actionLabel: "Ver compra",

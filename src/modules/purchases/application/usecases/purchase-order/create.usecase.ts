@@ -204,10 +204,10 @@ export class CreatePurchaseOrderUsecase {
             ? PURCHASE_NOTIFICATION_TYPES.PURCHASE_PAYMENT_CREATED
             : PURCHASE_NOTIFICATION_TYPES.PURCHASE_PAYMENT_PENDING_APPROVAL,
           category: "PURCHASES",
-          title: "Pago registrado",
+          title: allowDirectPaymentCreation ? "Compra creada" : "Compra enviada",
           message: allowDirectPaymentCreation
-            ? `Se registraron ${paymentsCreated} pago(s) para la compra ${purchaseCode}.`
-            : `Se enviaron ${paymentsCreated} pago(s) a aprobación para la compra ${purchaseCode}.`,
+            ? "Pago registrado."
+            : "En espera de confirmación.",
           priority: "NORMAL",
           actionUrl: "/compras",
           actionLabel: "Ver compra",
@@ -272,8 +272,8 @@ export class CreatePurchaseOrderUsecase {
           recipientUserIds: [createdBy],
           type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_QUOTA_CREATED,
           category: "PURCHASES",
-          title: "Cuotas registradas",
-          message: `Se registraron ${quotasCreated} cuota(s) para la compra ${purchaseCode}.`,
+          title: "Compra creada",
+          message: "Cuotas registradas.",
           priority: "NORMAL",
           actionUrl: "/compras",
           actionLabel: "Ver compra",
@@ -294,8 +294,8 @@ export class CreatePurchaseOrderUsecase {
             recipientUserIds: [createdBy],
             type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_QUOTA_PAID,
             category: "PURCHASES",
-            title: "Cuotas con pago inicial",
-            message: `La compra ${purchaseCode} tiene ${paidQuotas} cuota(s) con pago inicial registrado.`,
+            title: "Compra creada",
+            message: "Pago inicial registrado.",
             priority: "NORMAL",
             actionUrl: "/compras",
             actionLabel: "Ver compra",
@@ -320,8 +320,10 @@ export class CreatePurchaseOrderUsecase {
       recipientUserIds: [createdBy],
       type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_CREATED,
       category: "PURCHASES",
-      title: "Compra creada",
-      message: `Se creó la compra ${purchaseCode} por ${result.order.total.getAmount().toFixed(2)} ${result.order.currency ?? "PEN"}.`,
+      title: result.pendingPaymentsCreated > 0 ? "Compra enviada" : "Compra creada",
+      message: result.pendingPaymentsCreated > 0
+        ? "En espera de confirmación."
+        : `Se creó la compra ${purchaseCode} por ${result.order.total.getAmount().toFixed(2)} ${result.order.currency ?? "PEN"}.`,
       priority: "NORMAL",
       actionUrl: `/compras`,
       actionLabel: "Ver compra",
