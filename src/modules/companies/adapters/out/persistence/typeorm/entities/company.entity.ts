@@ -54,6 +54,9 @@ export class CompanyEntity {
   logoPath!: string | null;
 
   @Column({ type: "varchar", length: 255, nullable: true })
+  isotypePath!: string | null;
+
+  @Column({ type: "varchar", length: 255, nullable: true })
   certPath!: string | null;
 
   @Column({ type: "boolean", default: true })

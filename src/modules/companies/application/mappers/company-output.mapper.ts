@@ -18,6 +18,7 @@ export class CompanyOutputMapper {
       codLocal: company.codLocal,
       solUser: company.solUser,
       logoPath: company.logoPath,
+      isotypePath: company.isotypePath,
       certPath: company.certPath,
       production: company.production,
       isActive: company.isActive,

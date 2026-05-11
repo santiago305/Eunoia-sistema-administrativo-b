@@ -5,7 +5,7 @@ import { successResponse } from "src/shared/response-standard/response";
 import { CompanyNotFoundApplicationError } from "../errors/company-not-found.error";
 import { CompanyOutputMapper } from "../mappers/company-output.mapper";
 
-export class UpdateCompanyCertUsecase {
+export class UpdateCompanyIsotypeUsecase {
   constructor(
     @Inject(COMPANY_REPOSITORY)
     private readonly companyRepo: CompanyRepository,
@@ -21,18 +21,17 @@ export class UpdateCompanyCertUsecase {
 
     const saved = await this.companyRepo.update({
       companyId: current.companyId!,
-      certPath: filePath,
+      isotypePath: filePath,
       updatedAt: this.clock.now(),
     });
 
     if (!saved) {
-      throw new InternalServerErrorException("No se pudo actualizar el certificado");
+      throw new InternalServerErrorException("No se pudo actualizar el isotipo");
     }
 
     return successResponse(
-      "Certificado actualizado correctamente",
+      "Isotipo actualizado correctamente",
       CompanyOutputMapper.toOutput(saved),
     );
   }
 }
-

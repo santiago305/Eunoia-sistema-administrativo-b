@@ -13,6 +13,7 @@ export interface CompanyOutput {
   codLocal?: string;
   solUser?: string;
   logoPath?: string;
+  isotypePath?: string;
   certPath?: string;
   production: boolean;
   isActive: boolean;

@@ -80,6 +80,7 @@ export class CompanyTypeormRepository implements CompanyRepository {
       solUser?: string;
       solPass?: string;
       logoPath?: string;
+      isotypePath?: string;
       certPath?: string;
       production?: boolean;
       isActive?: boolean;

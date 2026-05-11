@@ -13,6 +13,7 @@ export interface UpdateCompanyParams {
   solUser?: string;
   solPass?: string;
   logoPath?: string;
+  isotypePath?: string;
   certPath?: string;
   production?: boolean;
   isActive?: boolean;

@@ -13,6 +13,7 @@ export interface CompanyRepository {
     params: UpdateCompanyParams & {
       companyId: string;
       logoPath?: string;
+      isotypePath?: string;
       certPath?: string;
       createdAt?: Date;
       updatedAt?: Date;

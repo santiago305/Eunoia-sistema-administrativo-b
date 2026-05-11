@@ -22,6 +22,7 @@ export class CompanyTypeormMapper {
       solUser: entity.solUser ?? undefined,
       solPass: entity.solPass ?? undefined,
       logoPath: entity.logoPath ?? undefined,
+      isotypePath: entity.isotypePath ?? undefined,
       certPath: entity.certPath ?? undefined,
       production: entity.production,
       isActive: entity.isActive,
@@ -47,6 +48,7 @@ export class CompanyTypeormMapper {
       solUser: company.solUser ?? null,
       solPass: company.solPass ?? null,
       logoPath: company.logoPath ?? null,
+      isotypePath: company.isotypePath ?? null,
       certPath: company.certPath ?? null,
       production: company.production,
       isActive: company.isActive,
@@ -77,6 +79,7 @@ export class CompanyTypeormMapper {
     if (params.solUser !== undefined) patch.solUser = params.solUser;
     if (params.solPass !== undefined) patch.solPass = params.solPass;
     if (params.logoPath !== undefined) patch.logoPath = params.logoPath;
+    if (params.isotypePath !== undefined) patch.isotypePath = params.isotypePath;
     if (params.certPath !== undefined) patch.certPath = params.certPath;
     if (params.production !== undefined) patch.production = params.production;
     if (params.isActive !== undefined) patch.isActive = params.isActive;

@@ -3,6 +3,7 @@ import { COMPANY_REPOSITORY, CompanyRepository } from "src/modules/companies/dom
 import { CLOCK, ClockPort } from "src/shared/application/ports/clock.port";
 import { successResponse } from "src/shared/response-standard/response";
 import { CompanyNotFoundApplicationError } from "../errors/company-not-found.error";
+import { CompanyOutputMapper } from "../mappers/company-output.mapper";
 
 export class UpdateCompanyLogoUsecase {
   constructor(
@@ -28,10 +29,10 @@ export class UpdateCompanyLogoUsecase {
       throw new InternalServerErrorException("No se pudo actualizar el logo");
     }
 
-    return successResponse("Logo actualizado correctamente", {
-      companyId: saved.companyId,
-      logoPath: saved.logoPath,
-    });
+    return successResponse(
+      "Logo actualizado correctamente",
+      CompanyOutputMapper.toOutput(saved),
+    );
   }
 }
 

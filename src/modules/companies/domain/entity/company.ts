@@ -23,6 +23,7 @@ export class Company {
     public readonly solUser?: string,
     public readonly solPass?: string,
     public readonly logoPath?: string,
+    public readonly isotypePath?: string,
     public readonly certPath?: string,
     public readonly production: boolean = true,
     public readonly isActive: boolean = true,
@@ -80,6 +81,7 @@ export class Company {
       params.solUser,
       params.solPass,
       params.logoPath,
+      params.isotypePath,
       params.certPath,
       params.production ?? true,
       params.isActive ?? true,
@@ -104,6 +106,7 @@ export class Company {
     solUser?: string;
     solPass?: string;
     logoPath?: string;
+    isotypePath?: string;
     certPath?: string;
     production: boolean;
     isActive: boolean;
@@ -126,6 +129,7 @@ export class Company {
       params.solUser,
       params.solPass,
       params.logoPath,
+      params.isotypePath,
       params.certPath,
       params.production,
       params.isActive,
@@ -159,6 +163,7 @@ export class Company {
       params.solUser ?? this.solUser,
       params.solPass ?? this.solPass,
       params.logoPath ?? this.logoPath,
+      params.isotypePath ?? this.isotypePath,
       params.certPath ?? this.certPath,
       params.production ?? this.production,
       params.isActive ?? this.isActive,
