@@ -12,6 +12,9 @@ import { NotificationDeliveryAttempt } from '../adapters/out/persistence/typeorm
 import { NotificationQueueService } from './queue/notification-queue.service';
 import { NotificationWorkerService } from './queue/notification-worker.service';
 import { AccessControlModule } from 'src/modules/access-control/infrastructure/access-control.module';
+import { MessageEntity } from '../adapters/out/persistence/typeorm/entities/message.entity';
+import { MessageRecipientEntity } from '../adapters/out/persistence/typeorm/entities/message-recipient.entity';
+import { MessageThread } from '../adapters/out/persistence/typeorm/entities/message-thread.entity';
 
 @Module({
   imports: [
@@ -20,6 +23,9 @@ import { AccessControlModule } from 'src/modules/access-control/infrastructure/a
       NotificationRecipient,
       NotificationOutbox,
       NotificationDeliveryAttempt,
+      MessageEntity,
+      MessageRecipientEntity,
+      MessageThread,
       User,
     ]),
     AccessControlModule,

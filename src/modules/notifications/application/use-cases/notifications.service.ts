@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { ILike, In, Repository } from 'typeorm';
 import { NotificationRecipient } from '../../adapters/out/persistence/typeorm/entities/notification-recipient.entity';
 import { Notification } from '../../adapters/out/persistence/typeorm/entities/notification.entity';
 import { NotificationRealtimeService } from '../../infrastructure/realtime/notification-realtime.service';
@@ -9,6 +9,10 @@ import { NotificationOutbox } from '../../adapters/out/persistence/typeorm/entit
 import { NotificationDeliveryAttempt } from '../../adapters/out/persistence/typeorm/entities/notification-delivery-attempt.entity';
 import { NotificationQueueService } from '../../infrastructure/queue/notification-queue.service';
 import { NotificationPriority } from '../../adapters/out/persistence/typeorm/entities/notification.entity';
+import { MessageEntity } from '../../adapters/out/persistence/typeorm/entities/message.entity';
+import { MessageRecipientEntity } from '../../adapters/out/persistence/typeorm/entities/message-recipient.entity';
+import { MessageThread } from '../../adapters/out/persistence/typeorm/entities/message-thread.entity';
+import { AccessControlService } from 'src/modules/access-control/application/services/access-control.service';
 
 @Injectable()
 export class NotificationsService {
@@ -23,9 +27,587 @@ export class NotificationsService {
     private readonly outboxRepository: Repository<NotificationOutbox>,
     @InjectRepository(NotificationDeliveryAttempt)
     private readonly deliveryAttemptRepository: Repository<NotificationDeliveryAttempt>,
+    @InjectRepository(MessageEntity)
+    private readonly messageRepository: Repository<MessageEntity>,
+    @InjectRepository(MessageRecipientEntity)
+    private readonly messageRecipientRepository: Repository<MessageRecipientEntity>,
+    @InjectRepository(MessageThread)
+    private readonly messageThreadRepository: Repository<MessageThread>,
     private readonly realtimeService: NotificationRealtimeService,
     private readonly notificationQueueService: NotificationQueueService,
+    private readonly accessControlService: AccessControlService,
   ) {}
+
+  private readonly notificationModulePermissions: Record<string, string[]> = {
+    purchases: ['purchases.view'],
+    production: ['production.read'],
+    warehouse: ['warehouses.read'],
+    catalog: ['catalog.read'],
+    supplies: ['suppliers.read'],
+    security: ['security.read'],
+    roles: ['roles.read'],
+    providers: ['suppliers.read'],
+    corporate: ['page.notifications.view'],
+    system: ['page.notifications.view'],
+  };
+
+  private normalizeEmails(recipients: string) {
+    return Array.from(
+      new Set(
+        recipients
+          .split(',')
+          .map((email) => email.trim().toLowerCase())
+          .filter(Boolean),
+      ),
+    );
+  }
+
+  private isValidEmail(email: string) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  async getAllowedNotificationModules(userId: string) {
+    const entries = await Promise.all(
+      Object.entries(this.notificationModulePermissions).map(async ([moduleKey, requiredPermissions]) => ({
+        key: moduleKey,
+        allowed: await this.accessControlService.userHasAllPermissions(userId, requiredPermissions),
+      })),
+    );
+
+    const labels: Record<string, string> = {
+      purchases: 'Compras',
+      production: 'Produccion',
+      warehouse: 'Almacen',
+      catalog: 'Catalogo',
+      supplies: 'Suministros',
+      security: 'Seguridad',
+      roles: 'Roles',
+      providers: 'Proveedores',
+      corporate: 'Corporativo',
+      system: 'Sistema',
+    };
+    const icons: Record<string, string> = {
+      purchases: 'ShoppingCart',
+      production: 'Factory',
+      warehouse: 'Warehouse',
+      catalog: 'PackageSearch',
+      supplies: 'Boxes',
+      security: 'Shield',
+      roles: 'KeyRound',
+      providers: 'Truck',
+      corporate: 'Mail',
+      system: 'Bell',
+    };
+
+    return entries
+      .filter((entry) => entry.allowed)
+      .map((entry) => ({
+        key: entry.key,
+        label: labels[entry.key] ?? entry.key,
+        icon: icons[entry.key] ?? 'Bell',
+      }));
+  }
+
+  private async ensureCanAccessModule(userId: string, moduleKey: string) {
+    const requiredPermissions = this.notificationModulePermissions[moduleKey];
+    if (!requiredPermissions) {
+      throw new BadRequestException('ORIGIN_MODULE_REQUIRED');
+    }
+    const allowed = await this.accessControlService.userHasAllPermissions(userId, requiredPermissions);
+    if (!allowed) {
+      throw new ForbiddenException('ORIGIN_MODULE_ACCESS_DENIED');
+    }
+  }
+
+  private async resolveRecipientsOrFail(recipientsRaw: string) {
+    const recipientEmails = this.normalizeEmails(recipientsRaw);
+    if (!recipientEmails.length) {
+      throw new BadRequestException('RECIPIENT_EMAIL_NOT_FOUND');
+    }
+    const invalidFormat = recipientEmails.filter((email) => !this.isValidEmail(email));
+    if (invalidFormat.length) {
+      throw new BadRequestException({
+        message: 'Uno o mas destinatarios no existen',
+        identifier: 'RECIPIENT_EMAIL_NOT_FOUND',
+        invalidRecipients: invalidFormat,
+      });
+    }
+    const users = await this.userRepository.find({
+      where: recipientEmails.map((email) => ({ email })),
+      select: ['id', 'email', 'name'],
+    });
+    const foundByEmail = new Set(users.map((user) => user.email.toLowerCase()));
+    const invalidRecipients = recipientEmails.filter((email) => !foundByEmail.has(email));
+    if (invalidRecipients.length) {
+      throw new BadRequestException({
+        message: 'Uno o mas destinatarios no existen',
+        identifier: 'RECIPIENT_EMAIL_NOT_FOUND',
+        invalidRecipients,
+      });
+    }
+    return users;
+  }
+
+  async sendMessage(input: {
+    senderUserId: string;
+    recipients: string;
+    subject: string;
+    bodyHtml: string;
+    originModule?: string;
+  }) {
+    const users = await this.resolveRecipientsOrFail(input.recipients);
+
+    const originModule = (input.originModule ?? 'corporate').toLowerCase();
+    await this.ensureCanAccessModule(input.senderUserId, originModule);
+
+    const thread = await this.messageThreadRepository.save(
+      this.messageThreadRepository.create({
+        subject: input.subject,
+        createdByUserId: input.senderUserId,
+        lastMessageAt: new Date(),
+      }),
+    );
+
+    const message = await this.messageRepository.save(
+      this.messageRepository.create({
+        threadId: thread.id,
+        parentMessageId: null,
+        kind: 'USER_MESSAGE',
+        originModule,
+        senderType: 'USER',
+        senderUserId: input.senderUserId,
+        createdByUserId: input.senderUserId,
+        subject: input.subject,
+        bodyHtml: input.bodyHtml,
+        bodyText: input.bodyHtml.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(),
+        bodyJson: null,
+        status: 'SENT',
+        isDraft: false,
+        draftExpiresAt: null,
+        sentAt: new Date(),
+        sourceEntityType: null,
+        sourceEntityId: null,
+      }),
+    );
+
+    const recipients = users.map((user) =>
+      this.messageRecipientRepository.create({
+        messageId: message.id,
+        recipientUserId: user.id,
+        recipientEmail: user.email,
+        recipientType: 'TO',
+        deliveredAt: new Date(),
+      }),
+    );
+    await this.messageRecipientRepository.save(recipients);
+
+    recipients.forEach((recipient) => {
+      this.realtimeService.emitToUser(recipient.recipientUserId, 'notification.created', {
+        messageRecipientId: recipient.id,
+        message: {
+          id: message.id,
+          subject: message.subject,
+          preview: message.bodyText.slice(0, 140),
+          originModule: message.originModule,
+          senderName: 'Usuario',
+          senderType: 'USER',
+        },
+      });
+    });
+
+    return { id: message.id, threadId: thread.id, recipients: recipients.length };
+  }
+
+  async replyMessage(input: {
+    senderUserId: string;
+    parentMessageId: string;
+    bodyHtml: string;
+    recipients?: string;
+  }) {
+    const parent = await this.messageRepository.findOne({ where: { id: input.parentMessageId } });
+    if (!parent) throw new NotFoundException('MESSAGE_NOT_FOUND');
+    await this.ensureCanAccessModule(input.senderUserId, parent.originModule);
+
+    let users = [] as Array<{ id: string; email: string; name: string }>;
+    if (input.recipients?.trim()) {
+      users = await this.resolveRecipientsOrFail(input.recipients);
+    } else if (parent.senderUserId && parent.senderUserId !== input.senderUserId) {
+      const fallback = await this.userRepository.findOne({
+        where: { id: parent.senderUserId },
+        select: ['id', 'email', 'name'],
+      });
+      users = fallback ? [fallback] : [];
+    }
+    if (!users.length) {
+      throw new BadRequestException('RECIPIENT_EMAIL_NOT_FOUND');
+    }
+
+    const message = await this.messageRepository.save(
+      this.messageRepository.create({
+        threadId: parent.threadId,
+        parentMessageId: parent.id,
+        kind: 'USER_MESSAGE',
+        originModule: parent.originModule,
+        sourceEntityType: parent.sourceEntityType,
+        sourceEntityId: parent.sourceEntityId,
+        senderType: 'USER',
+        senderUserId: input.senderUserId,
+        createdByUserId: input.senderUserId,
+        subject: parent.subject.startsWith('Re:') ? parent.subject : `Re: ${parent.subject}`,
+        bodyHtml: input.bodyHtml,
+        bodyText: input.bodyHtml.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(),
+        bodyJson: null,
+        status: 'SENT',
+        isDraft: false,
+        draftExpiresAt: null,
+        sentAt: new Date(),
+      }),
+    );
+
+    if (parent.threadId) {
+      await this.messageThreadRepository.update(
+        { id: parent.threadId },
+        { lastMessageAt: new Date(), updatedAt: new Date() },
+      );
+    }
+
+    const recipients = users.map((user) =>
+      this.messageRecipientRepository.create({
+        messageId: message.id,
+        recipientUserId: user.id,
+        recipientEmail: user.email,
+        recipientType: 'TO',
+        deliveredAt: new Date(),
+      }),
+    );
+    await this.messageRecipientRepository.save(recipients);
+
+    return { id: message.id, threadId: message.threadId, recipients: recipients.length };
+  }
+
+  async forwardMessage(input: {
+    senderUserId: string;
+    parentMessageId: string;
+    recipients: string;
+    bodyHtml: string;
+  }) {
+    const parent = await this.messageRepository.findOne({ where: { id: input.parentMessageId } });
+    if (!parent) throw new NotFoundException('MESSAGE_NOT_FOUND');
+    const users = await this.resolveRecipientsOrFail(input.recipients);
+    await this.ensureCanAccessModule(input.senderUserId, parent.originModule);
+
+    const thread = await this.messageThreadRepository.save(
+      this.messageThreadRepository.create({
+        subject: parent.subject.startsWith('Fwd:') ? parent.subject : `Fwd: ${parent.subject}`,
+        createdByUserId: input.senderUserId,
+        lastMessageAt: new Date(),
+      }),
+    );
+
+    const bodyHtml = `${input.bodyHtml}<hr/><p>${parent.bodyHtml}</p>`;
+    const message = await this.messageRepository.save(
+      this.messageRepository.create({
+        threadId: thread.id,
+        parentMessageId: parent.id,
+        kind: 'USER_MESSAGE',
+        originModule: parent.originModule,
+        sourceEntityType: parent.sourceEntityType,
+        sourceEntityId: parent.sourceEntityId,
+        senderType: 'USER',
+        senderUserId: input.senderUserId,
+        createdByUserId: input.senderUserId,
+        subject: thread.subject,
+        bodyHtml,
+        bodyText: bodyHtml.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(),
+        bodyJson: null,
+        status: 'SENT',
+        isDraft: false,
+        draftExpiresAt: null,
+        sentAt: new Date(),
+      }),
+    );
+
+    const recipients = users.map((user) =>
+      this.messageRecipientRepository.create({
+        messageId: message.id,
+        recipientUserId: user.id,
+        recipientEmail: user.email,
+        recipientType: 'TO',
+        deliveredAt: new Date(),
+      }),
+    );
+    await this.messageRecipientRepository.save(recipients);
+    return { id: message.id, threadId: thread.id, recipients: recipients.length };
+  }
+
+  async listDrafts(userId: string) {
+    return this.messageRepository.find({
+      where: { createdByUserId: userId, isDraft: true, status: 'DRAFT' },
+      order: { updatedAt: 'DESC' },
+      take: 50,
+    });
+  }
+
+  async createDraft(input: {
+    userId: string;
+    recipients?: string;
+    subject?: string;
+    bodyHtml?: string;
+    originModule?: string;
+  }) {
+    const originModule = (input.originModule ?? 'corporate').toLowerCase();
+    await this.ensureCanAccessModule(input.userId, originModule);
+    const now = new Date();
+    const draftExpiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const thread = await this.messageThreadRepository.save(
+      this.messageThreadRepository.create({
+        subject: input.subject?.trim() || '(Sin asunto)',
+        createdByUserId: input.userId,
+        lastMessageAt: now,
+      }),
+    );
+    return this.messageRepository.save(
+      this.messageRepository.create({
+        threadId: thread.id,
+        parentMessageId: null,
+        kind: 'USER_MESSAGE',
+        originModule,
+        sourceEntityType: null,
+        sourceEntityId: null,
+        senderType: 'USER',
+        senderUserId: input.userId,
+        createdByUserId: input.userId,
+        subject: input.subject?.trim() || '(Sin asunto)',
+        bodyHtml: input.bodyHtml ?? '',
+        bodyText: (input.bodyHtml ?? '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(),
+        bodyJson: { draftRecipients: input.recipients ?? '' },
+        status: 'DRAFT',
+        isDraft: true,
+        draftExpiresAt,
+        sentAt: null,
+      }),
+    );
+  }
+
+  async updateDraft(input: {
+    userId: string;
+    draftId: string;
+    recipients?: string;
+    subject?: string;
+    bodyHtml?: string;
+  }) {
+    const draft = await this.messageRepository.findOne({
+      where: { id: input.draftId, createdByUserId: input.userId, isDraft: true, status: 'DRAFT' },
+    });
+    if (!draft) throw new NotFoundException('DRAFT_NOT_FOUND');
+    if (draft.draftExpiresAt && draft.draftExpiresAt.getTime() < Date.now()) {
+      throw new BadRequestException('DRAFT_EXPIRED');
+    }
+    if (typeof input.subject === 'string') draft.subject = input.subject.trim() || '(Sin asunto)';
+    if (typeof input.bodyHtml === 'string') {
+      draft.bodyHtml = input.bodyHtml;
+      draft.bodyText = input.bodyHtml.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+    if (typeof input.recipients === 'string') {
+      draft.bodyJson = {
+        ...(draft.bodyJson ?? {}),
+        draftRecipients: input.recipients,
+      };
+    }
+    const now = new Date();
+    draft.updatedAt = now;
+    draft.draftExpiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const saved = await this.messageRepository.save(draft);
+    return { draft: saved, recipients: input.recipients ?? null };
+  }
+
+  async deleteDraft(userId: string, draftId: string) {
+    const draft = await this.messageRepository.findOne({
+      where: { id: draftId, createdByUserId: userId, isDraft: true, status: 'DRAFT' },
+    });
+    if (!draft) throw new NotFoundException('DRAFT_NOT_FOUND');
+    draft.status = 'ARCHIVED';
+    return this.messageRepository.save(draft);
+  }
+
+  async sendDraft(userId: string, draftId: string, recipientsRaw?: string) {
+    const draft = await this.messageRepository.findOne({
+      where: { id: draftId, createdByUserId: userId, isDraft: true, status: 'DRAFT' },
+    });
+    if (!draft) throw new NotFoundException('DRAFT_NOT_FOUND');
+    if (draft.draftExpiresAt && draft.draftExpiresAt.getTime() < Date.now()) {
+      throw new BadRequestException('DRAFT_EXPIRED');
+    }
+    const draftRecipients = String((draft.bodyJson as Record<string, unknown> | null)?.draftRecipients ?? '').trim();
+    const users = await this.resolveRecipientsOrFail((recipientsRaw ?? '').trim() || draftRecipients);
+    draft.isDraft = false;
+    draft.status = 'SENT';
+    draft.sentAt = new Date();
+    draft.draftExpiresAt = null;
+    const sent = await this.messageRepository.save(draft);
+
+    const recipients = users.map((user) =>
+      this.messageRecipientRepository.create({
+        messageId: sent.id,
+        recipientUserId: user.id,
+        recipientEmail: user.email,
+        recipientType: 'TO',
+        deliveredAt: new Date(),
+      }),
+    );
+    await this.messageRecipientRepository.save(recipients);
+    return { id: sent.id, recipients: recipients.length };
+  }
+
+  async listMessages(
+    userId: string,
+    query: { folder?: 'inbox' | 'sent' | 'trash' | 'starred'; originModule?: string; q?: string; page?: number; limit?: number },
+  ) {
+    const folder = query.folder ?? 'inbox';
+    const page = Math.max(query.page ?? 1, 1);
+    const limit = Math.min(Math.max(query.limit ?? 50, 1), 100);
+
+    if (query.originModule) {
+      await this.ensureCanAccessModule(userId, query.originModule);
+    }
+
+    if (folder === 'sent') {
+      const where: any = { senderUserId: userId, isDraft: false };
+      if (query.originModule) where.originModule = query.originModule;
+      if (query.q) where.subject = ILike(`%${query.q}%`);
+      const [items, total] = await this.messageRepository.findAndCount({
+        where,
+        order: { sentAt: 'DESC', createdAt: 'DESC' },
+        take: limit,
+        skip: (page - 1) * limit,
+      });
+      return { page, limit, total, items };
+    }
+
+    const qb = this.messageRecipientRepository
+      .createQueryBuilder('mr')
+      .innerJoin(MessageEntity, 'm', 'm.id = mr.message_id')
+      .where('mr.recipient_user_id = :userId', { userId });
+
+    if (folder === 'trash') qb.andWhere('mr.deleted_at IS NOT NULL');
+    else qb.andWhere('mr.deleted_at IS NULL');
+    if (folder === 'starred') qb.andWhere('mr.starred_at IS NOT NULL');
+
+    if (query.originModule) qb.andWhere('m.origin_module = :originModule', { originModule: query.originModule });
+    if (query.q) qb.andWhere('(m.subject ILIKE :q OR m.body_text ILIKE :q)', { q: `%${query.q}%` });
+
+    qb.orderBy('m.sent_at', 'DESC').addOrderBy('m.created_at', 'DESC');
+    qb.take(limit).skip((page - 1) * limit);
+
+    const [rows, total] = await qb.getManyAndCount();
+    const messageIds = rows.map((row) => row.messageId);
+    const messages = messageIds.length
+      ? await this.messageRepository.find({ where: messageIds.map((id) => ({ id })) })
+      : [];
+    const messageMap = new Map(messages.map((message) => [message.id, message]));
+
+    return {
+      page,
+      limit,
+      total,
+      items: rows.map((row) => ({ recipient: row, message: messageMap.get(row.messageId) ?? null })),
+    };
+  }
+
+  async getMessageDetail(userId: string, id: string) {
+    const ownMessage = await this.messageRepository.findOne({ where: { id, senderUserId: userId } });
+    if (ownMessage) {
+      const thread = ownMessage.threadId
+        ? await this.messageRepository.find({
+            where: { threadId: ownMessage.threadId },
+            order: { createdAt: 'ASC' },
+          })
+        : [ownMessage];
+      return { message: ownMessage, thread };
+    }
+
+    const recipient = await this.messageRecipientRepository.findOne({ where: { id } });
+    if (!recipient || recipient.recipientUserId !== userId) {
+      throw new NotFoundException('MESSAGE_NOT_FOUND');
+    }
+
+    const message = await this.messageRepository.findOne({ where: { id: recipient.messageId } });
+    if (!message) throw new NotFoundException('MESSAGE_NOT_FOUND');
+    await this.ensureCanAccessModule(userId, message.originModule);
+
+    if (!recipient.readAt) {
+      recipient.readAt = new Date();
+      await this.messageRecipientRepository.save(recipient);
+    }
+
+    const thread = message.threadId
+      ? await this.messageRepository.find({
+          where: { threadId: message.threadId },
+          order: { createdAt: 'ASC' },
+        })
+      : [message];
+
+    return { recipient, message, thread };
+  }
+
+  async markMessageAsRead(userId: string, recipientId: string) {
+    const recipient = await this.messageRecipientRepository.findOne({ where: { id: recipientId } });
+    if (!recipient || recipient.recipientUserId !== userId) {
+      throw new NotFoundException('MESSAGE_NOT_FOUND');
+    }
+    if (!recipient.readAt) {
+      recipient.readAt = new Date();
+      await this.messageRecipientRepository.save(recipient);
+    }
+    return recipient;
+  }
+
+  async toggleStarMessage(userId: string, recipientId: string, value: boolean) {
+    const recipient = await this.messageRecipientRepository.findOne({ where: { id: recipientId } });
+    if (!recipient || recipient.recipientUserId !== userId) throw new NotFoundException('MESSAGE_NOT_FOUND');
+    recipient.starredAt = value ? new Date() : null;
+    return this.messageRecipientRepository.save(recipient);
+  }
+
+  async deleteMessage(userId: string, recipientId: string) {
+    const recipient = await this.messageRecipientRepository.findOne({ where: { id: recipientId } });
+    if (!recipient || recipient.recipientUserId !== userId) throw new NotFoundException('MESSAGE_NOT_FOUND');
+    const now = new Date();
+    recipient.deletedAt = now;
+    (recipient as any).trashExpiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    return this.messageRecipientRepository.save(recipient);
+  }
+
+  async restoreMessage(userId: string, recipientId: string) {
+    const recipient = await this.messageRecipientRepository.findOne({ where: { id: recipientId } });
+    if (!recipient || recipient.recipientUserId !== userId) throw new NotFoundException('MESSAGE_NOT_FOUND');
+    recipient.deletedAt = null;
+    return this.messageRecipientRepository.save(recipient);
+  }
+
+  async bulkUpdateMessages(
+    userId: string,
+    input: {
+      messageRecipientIds: string[];
+      action: 'MARK_AS_READ' | 'MARK_AS_UNREAD' | 'DELETE' | 'STAR' | 'UNSTAR' | 'RESTORE';
+    },
+  ) {
+    const ids = Array.from(new Set(input.messageRecipientIds.filter(Boolean)));
+    if (!ids.length) return { updated: 0 };
+    const recipients = await this.messageRecipientRepository.find({ where: ids.map((id) => ({ id })) });
+    const own = recipients.filter((recipient) => recipient.recipientUserId === userId);
+    const now = new Date();
+    own.forEach((recipient) => {
+      if (input.action === 'MARK_AS_READ') recipient.readAt = recipient.readAt ?? now;
+      if (input.action === 'MARK_AS_UNREAD') recipient.readAt = null;
+      if (input.action === 'DELETE') recipient.deletedAt = now;
+      if (input.action === 'RESTORE') recipient.deletedAt = null;
+      if (input.action === 'STAR') recipient.starredAt = now;
+      if (input.action === 'UNSTAR') recipient.starredAt = null;
+    });
+    await this.messageRecipientRepository.save(own);
+    return { updated: own.length };
+  }
 
   async listMyNotifications(userId: string, limit = 20, cursor?: string) {
     const qb = this.recipientRepository
