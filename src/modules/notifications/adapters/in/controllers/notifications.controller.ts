@@ -13,7 +13,7 @@ import { UpdateDraftDto } from '../dtos/update-draft.dto';
 import { SendDraftDto } from '../dtos/send-draft.dto';
 import { BulkMessageActionDto } from '../dtos/bulk-message-action.dto';
 
-@Controller('notifications')
+@Controller(['email', 'notifications'])
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}

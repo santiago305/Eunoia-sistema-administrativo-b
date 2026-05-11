@@ -76,9 +76,9 @@ export class CompanyController {
       storage: memoryStorage(),
       limits: { fileSize: 10 * 1024 * 1024 },
       fileFilter: (req, file, cb) => {
-        const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+        const allowed = ["image/png", "image/svg+xml"];
         if (!allowed.includes(file.mimetype)) {
-          return cb(new BadRequestException("Solo se permiten imagenes JPG/PNG/WEBP/GIF"), false);
+          return cb(new BadRequestException("Solo se permiten imagenes PNG o SVG"), false);
         }
         cb(null, true);
       },
@@ -90,20 +90,24 @@ export class CompanyController {
     }
 
     try {
-      const processed = await this.imageProcessor.toWebp({
-        buffer: file.buffer,
-        maxWidth: 512,
-        maxHeight: 512,
-        quality: 80,
-        maxInputBytes: 10 * 1024 * 1024,
-        maxInputPixels: 20_000_000,
-        maxOutputBytes: 1 * 1024 * 1024,
-      });
+      const isSvg = file.mimetype === "image/svg+xml";
+
+      const logoFile = isSvg
+        ? { buffer: file.buffer, extension: "svg" }
+        : await this.imageProcessor.toWebp({
+            buffer: file.buffer,
+            maxWidth: 512,
+            maxHeight: 512,
+            quality: 80,
+            maxInputBytes: 10 * 1024 * 1024,
+            maxInputPixels: 20_000_000,
+            maxOutputBytes: 1 * 1024 * 1024,
+          });
 
       const { relativePath } = await this.fileStorage.save({
         directory: "company",
-        buffer: processed.buffer,
-        extension: processed.extension,
+        buffer: logoFile.buffer,
+        extension: logoFile.extension,
         filenamePrefix: "logo",
       });
 
