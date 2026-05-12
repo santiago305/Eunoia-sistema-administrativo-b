@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, In, Repository } from 'typeorm';
 import { NotificationRecipient } from '../../adapters/out/persistence/typeorm/entities/notification-recipient.entity';
@@ -325,7 +325,7 @@ export class NotificationsService {
 
   async listMyLabels(userId: string) {
     return this.messageLabelRepository.find({
-      where: [{ ownerUserId: null }, { ownerUserId: userId }],
+      where: [{ ownerUserId: null, isVisible: true }, { ownerUserId: userId, isVisible: true }],
       order: { sortOrder: 'ASC', createdAt: 'ASC' },
     });
   }
@@ -333,18 +333,30 @@ export class NotificationsService {
   async createCustomLabel(userId: string, name: string, color: string) {
     const normalizedName = name.trim();
     if (!normalizedName) {
-      throw new BadRequestException('LABEL_NAME_REQUIRED');
+      throw new BadRequestException({ message: 'Nombre de etiqueta obligatorio.', identifier: 'LABEL_NAME_REQUIRED' });
     }
     const key = normalizedName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '');
     if (!key) {
-      throw new BadRequestException('LABEL_NAME_INVALID');
+      throw new BadRequestException({ message: 'Nombre de etiqueta invalido.', identifier: 'LABEL_NAME_INVALID' });
     }
 
     const exists = await this.messageLabelRepository.findOne({
       where: { ownerUserId: userId, key },
     });
-    if (exists) {
-      throw new BadRequestException('LABEL_ALREADY_EXISTS');
+    if (exists?.isVisible) {
+      throw new BadRequestException({ message: 'Etiqueta ya existente.', identifier: 'LABEL_ALREADY_EXISTS' });
+    }
+
+    if (exists && !exists.isVisible) {
+      exists.isVisible = true;
+      exists.color = color.trim();
+      exists.name = normalizedName;
+      exists.updatedAt = new Date();
+      try {
+        return await this.messageLabelRepository.save(exists);
+      } catch {
+        throw new InternalServerErrorException({ message: 'No se pudo reactivar la etiqueta.', identifier: 'LABEL_REACTIVATE_FAILED' });
+      }
     }
 
     const entity = this.messageLabelRepository.create({
@@ -357,7 +369,29 @@ export class NotificationsService {
       isVisible: true,
       sortOrder: 1000,
     });
-    return this.messageLabelRepository.save(entity);
+    try {
+      return await this.messageLabelRepository.save(entity);
+    } catch {
+      throw new InternalServerErrorException({ message: 'No se pudo crear la etiqueta.', identifier: 'LABEL_CREATE_FAILED' });
+    }
+  }
+
+  async deactivateCustomLabel(userId: string, labelId: string) {
+    const label = await this.messageLabelRepository.findOne({
+      where: { id: labelId, ownerUserId: userId, type: 'CUSTOM' },
+    });
+    if (!label) {
+      throw new NotFoundException({ message: 'Etiqueta no encontrada.', identifier: 'LABEL_NOT_FOUND' });
+    }
+
+    label.isVisible = false;
+    label.updatedAt = new Date();
+    try {
+      await this.messageLabelRepository.save(label);
+      return { id: label.id, isVisible: label.isVisible };
+    } catch {
+      throw new InternalServerErrorException({ message: 'No se pudo eliminar la etiqueta.', identifier: 'LABEL_DELETE_FAILED' });
+    }
   }
 
   private async attachLabelsToMessage(messageId: string, userId: string, labelIds: string[]) {

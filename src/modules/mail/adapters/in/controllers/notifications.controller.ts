@@ -52,6 +52,12 @@ export class NotificationsController {
     return this.notificationsService.createCustomLabel(user.id, body.name, body.color);
   }
 
+  @RequirePermissions('notifications.labels.create')
+  @Delete('labels/:id')
+  deleteLabel(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.notificationsService.deactivateCustomLabel(user.id, id);
+  }
+
   @RequirePermissions('notifications.read')
   @Get('messages')
   listMessages(@CurrentUser() user: { id: string }, @Query() query: ListMessagesQueryDto) {
