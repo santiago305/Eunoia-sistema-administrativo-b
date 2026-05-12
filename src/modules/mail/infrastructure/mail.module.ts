@@ -15,6 +15,8 @@ import { AccessControlModule } from 'src/modules/access-control/infrastructure/a
 import { MessageEntity } from '../adapters/out/persistence/typeorm/entities/message.entity';
 import { MessageRecipientEntity } from '../adapters/out/persistence/typeorm/entities/message-recipient.entity';
 import { MessageThread } from '../adapters/out/persistence/typeorm/entities/message-thread.entity';
+import { MessageLabelEntity } from '../adapters/out/persistence/typeorm/entities/message-label.entity';
+import { MessageMessageLabelEntity } from '../adapters/out/persistence/typeorm/entities/message-message-label.entity';
 
 @Module({
   imports: [
@@ -26,6 +28,8 @@ import { MessageThread } from '../adapters/out/persistence/typeorm/entities/mess
       MessageEntity,
       MessageRecipientEntity,
       MessageThread,
+      MessageLabelEntity,
+      MessageMessageLabelEntity,
       User,
     ]),
     AccessControlModule,

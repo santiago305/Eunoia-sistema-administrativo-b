@@ -13,6 +13,8 @@ import { MessageEntity } from '../../adapters/out/persistence/typeorm/entities/m
 import { MessageRecipientEntity } from '../../adapters/out/persistence/typeorm/entities/message-recipient.entity';
 import { MessageThread } from '../../adapters/out/persistence/typeorm/entities/message-thread.entity';
 import { AccessControlService } from 'src/modules/access-control/application/services/access-control.service';
+import { MessageLabelEntity } from '../../adapters/out/persistence/typeorm/entities/message-label.entity';
+import { MessageMessageLabelEntity } from '../../adapters/out/persistence/typeorm/entities/message-message-label.entity';
 
 @Injectable()
 export class NotificationsService {
@@ -33,6 +35,10 @@ export class NotificationsService {
     private readonly messageRecipientRepository: Repository<MessageRecipientEntity>,
     @InjectRepository(MessageThread)
     private readonly messageThreadRepository: Repository<MessageThread>,
+    @InjectRepository(MessageLabelEntity)
+    private readonly messageLabelRepository: Repository<MessageLabelEntity>,
+    @InjectRepository(MessageMessageLabelEntity)
+    private readonly messageMessageLabelRepository: Repository<MessageMessageLabelEntity>,
     private readonly realtimeService: NotificationRealtimeService,
     private readonly notificationQueueService: NotificationQueueService,
     private readonly accessControlService: AccessControlService,
@@ -195,6 +201,7 @@ export class NotificationsService {
     subject: string;
     bodyHtml: string;
     originModule?: string;
+    labelIds?: string[];
   }) {
     const users = await this.resolveRecipientsOrFail(input.recipients);
 
@@ -241,6 +248,7 @@ export class NotificationsService {
       }),
     );
     await this.messageRecipientRepository.save(recipients);
+    await this.attachLabelsToMessage(message.id, input.senderUserId, input.labelIds ?? []);
 
     await this.emitMessageRealtimeToRecipients(input.senderUserId, message, recipients);
 
@@ -313,6 +321,64 @@ export class NotificationsService {
     await this.emitMessageRealtimeToRecipients(input.senderUserId, message, recipients);
 
     return { id: message.id, threadId: message.threadId, recipients: recipients.length };
+  }
+
+  async listMyLabels(userId: string) {
+    return this.messageLabelRepository.find({
+      where: [{ ownerUserId: null }, { ownerUserId: userId }],
+      order: { sortOrder: 'ASC', createdAt: 'ASC' },
+    });
+  }
+
+  async createCustomLabel(userId: string, name: string, color: string) {
+    const normalizedName = name.trim();
+    if (!normalizedName) {
+      throw new BadRequestException('LABEL_NAME_REQUIRED');
+    }
+    const key = normalizedName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '');
+    if (!key) {
+      throw new BadRequestException('LABEL_NAME_INVALID');
+    }
+
+    const exists = await this.messageLabelRepository.findOne({
+      where: { ownerUserId: userId, key },
+    });
+    if (exists) {
+      throw new BadRequestException('LABEL_ALREADY_EXISTS');
+    }
+
+    const entity = this.messageLabelRepository.create({
+      ownerUserId: userId,
+      key,
+      name: normalizedName,
+      type: 'CUSTOM',
+      color: color.trim(),
+      icon: 'Tag',
+      isVisible: true,
+      sortOrder: 1000,
+    });
+    return this.messageLabelRepository.save(entity);
+  }
+
+  private async attachLabelsToMessage(messageId: string, userId: string, labelIds: string[]) {
+    const ids = Array.from(new Set((labelIds ?? []).filter(Boolean)));
+    if (!ids.length) return;
+
+    const labels = await this.messageLabelRepository.find({
+      where: ids.map((id) => ({ id })),
+      select: ['id', 'ownerUserId'],
+    });
+    const allowed = labels.filter((label) => !label.ownerUserId || label.ownerUserId === userId);
+    if (!allowed.length) return;
+
+    const records = allowed.map((label) =>
+      this.messageMessageLabelRepository.create({
+        messageId,
+        labelId: label.id,
+        createdByUserId: userId,
+      }),
+    );
+    await this.messageMessageLabelRepository.save(records);
   }
 
   async forwardMessage(input: {

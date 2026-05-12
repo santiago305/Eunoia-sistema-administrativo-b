@@ -12,6 +12,7 @@ import { CreateDraftDto } from '../dtos/create-draft.dto';
 import { UpdateDraftDto } from '../dtos/update-draft.dto';
 import { SendDraftDto } from '../dtos/send-draft.dto';
 import { BulkMessageActionDto } from '../dtos/bulk-message-action.dto';
+import { CreateLabelDto } from '../dtos/create-label.dto';
 
 @Controller(['email', 'notifications'])
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -40,6 +41,18 @@ export class NotificationsController {
   }
 
   @RequirePermissions('notifications.read')
+  @Get('labels')
+  listLabels(@CurrentUser() user: { id: string }) {
+    return this.notificationsService.listMyLabels(user.id);
+  }
+
+  @RequirePermissions('notifications.labels.create')
+  @Post('labels')
+  createLabel(@CurrentUser() user: { id: string }, @Body() body: CreateLabelDto) {
+    return this.notificationsService.createCustomLabel(user.id, body.name, body.color);
+  }
+
+  @RequirePermissions('notifications.read')
   @Get('messages')
   listMessages(@CurrentUser() user: { id: string }, @Query() query: ListMessagesQueryDto) {
     return this.notificationsService.listMessages(user.id, query);
@@ -60,6 +73,7 @@ export class NotificationsController {
       subject: body.subject,
       bodyHtml: body.bodyHtml,
       originModule: body.originModule,
+      labelIds: body.labelIds ?? [],
     });
   }
 

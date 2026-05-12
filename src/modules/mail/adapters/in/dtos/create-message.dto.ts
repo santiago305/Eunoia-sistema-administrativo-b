@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateMessageDto {
   @IsString()
@@ -16,4 +16,9 @@ export class CreateMessageDto {
   @IsOptional()
   @IsString()
   originModule?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  labelIds?: string[];
 }

@@ -68,6 +68,7 @@ export const PERMISSIONS_SEED: PermissionSeedItem[] = [
   { code: 'purchases.receive_created_purchase_notifications', name: 'Recibir notificaciones de compras creadas', description: 'Recibir notificaciones cuando otros usuarios crean compras', module: 'purchases', resource: 'purchases', action: 'receive_created_purchase_notifications', type: 'action' },
   { code: 'notifications.read', name: 'Listar notificaciones', description: 'Consultar notificaciones', module: 'notifications', resource: 'notifications', action: 'read', type: 'action' },
   { code: 'notifications.manage', name: 'Gestionar notificaciones', description: 'Marcar, archivar y gestionar notificaciones propias', module: 'notifications', resource: 'notifications', action: 'manage', type: 'action' },
+  { code: 'notifications.labels.create', name: 'Crear etiquetas de correo', description: 'Permite crear etiquetas personalizadas de correo', module: 'notifications', resource: 'notifications', action: 'labels.create', type: 'action' },
   { code: 'catalog.read', name: 'Consultar catalogo', description: 'Consultar productos, stock, documentos y consultas de catalogo', module: 'catalog', resource: 'catalog', action: 'read', type: 'action' },
   { code: 'catalog.manage', name: 'Gestionar catalogo', description: 'Crear, editar y operar recursos del catalogo', module: 'catalog', resource: 'catalog', action: 'manage', type: 'action' },
   { code: 'catalog.export', name: 'Exportar catalogo', description: 'Exportar reportes del catalogo e inventario', module: 'catalog', resource: 'catalog', action: 'export', type: 'action' },
@@ -151,6 +152,7 @@ export const ROLE_PERMISSION_SEED: Record<string, string[]> = {
     'purchases.approve',
     'notifications.read',
     'notifications.manage',
+    'notifications.labels.create',
   ],
   adviser: [
     'page.dashboard.view',
@@ -174,6 +176,7 @@ export const ROLE_PERMISSION_SEED: Record<string, string[]> = {
     'purchases.process',
     'notifications.read',
     'notifications.manage',
+    'notifications.labels.create',
   ],
   purchasing_manager: [
     'page.dashboard.view',
@@ -198,6 +201,7 @@ export const ROLE_PERMISSION_SEED: Record<string, string[]> = {
     'purchases.create_payment',
     'notifications.read',
     'notifications.manage',
+    'notifications.labels.create',
   ],
 };
 
