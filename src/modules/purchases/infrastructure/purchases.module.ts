@@ -14,7 +14,7 @@ import { WarehouseEntity } from "src/modules/warehouses/adapters/out/persistence
 import { ListingSearchMetricEntity } from "src/shared/listing-search/adapters/out/persistence/typeorm/entities/listing-search-metric.entity";
 import { ListingSearchRecentEntity } from "src/shared/listing-search/adapters/out/persistence/typeorm/entities/listing-search-recent.entity";
 import { purchasesModuleProviders } from "../composition/container";
-import { NotificationsModule } from "src/modules/notifications";
+import { MailModule } from "src/modules/mail";
 import { PurchaseProcessingApprovalEntity } from "../adapters/out/persistence/typeorm/entities/purchase-processing-approval.entity";
 import { ApprovalRequestEntity } from "../adapters/out/persistence/typeorm/entities/approval-request.entity";
 import { PurchaseHistoryEventEntity } from "../adapters/out/persistence/typeorm/entities/purchase-history-event.entity";
@@ -38,7 +38,7 @@ import { User } from "src/modules/users/adapters/out/persistence/typeorm/entitie
     PaymentsModule,
     ProductCatalogModule,
     UsersModule,
-    NotificationsModule,
+    MailModule,
     AccessControlModule,
   ],
   controllers: [PurchaseOrdersController],

@@ -5,7 +5,7 @@ import { getRepositoryToken } from "@nestjs/typeorm";
 import { EntityManager } from "typeorm";
 import { FILE_STORAGE } from "src/shared/application/ports/file-storage.port";
 import { IMAGE_PROCESSOR } from "src/shared/application/ports/image-processor.port";
-import { NotificationsService } from "src/modules/notifications/application/use-cases/notifications.service";
+import { NotificationsService } from "src/modules/mail/application/use-cases/notifications.service";
 import { ConfirmPurchaseReceptionUsecase } from "src/modules/purchases/application/usecases/purchase-order/confirm-reception.usecase";
 import { ExportPurchaseOrdersExcelUsecase } from "src/modules/purchases/application/usecases/purchase-order/export-excel.usecase";
 import { PurchaseOrderExpectedScheduler } from "src/modules/purchases/application/jobs/purchase-order-expected-scheduler";

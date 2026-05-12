@@ -4,8 +4,8 @@ import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/d
 import { PurchaseOrderStatus } from "src/modules/purchases/domain/value-objects/po-status";
 import { PostInventoryFromPurchaseUsecase } from "./Inventory-purchase.usecase";
 import { errorResponse } from "src/shared/response-standard/response";
-import { NotificationsService } from "src/modules/notifications/application/use-cases/notifications.service";
-import { PURCHASE_NOTIFICATION_TYPES } from "src/modules/notifications/domain/constants/purchase-notification-types";
+import { NotificationsService } from "src/modules/mail/application/use-cases/notifications.service";
+import { PURCHASE_NOTIFICATION_TYPES } from "src/modules/mail/domain/constants/purchase-notification-types";
 
 export class ConfirmPurchaseReceptionUsecase {
   constructor(

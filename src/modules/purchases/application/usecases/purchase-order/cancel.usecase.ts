@@ -10,8 +10,8 @@ import { RegisterProductCatalogInventoryMovement } from "src/modules/product-cat
 import { Direction } from "src/shared/domain/value-objects/direction";
 import { DocType } from "src/shared/domain/value-objects/doc-type";
 import { ReferenceType } from "src/shared/domain/value-objects/reference-type";
-import { NotificationsService } from "src/modules/notifications/application/use-cases/notifications.service";
-import { PURCHASE_NOTIFICATION_TYPES } from "src/modules/notifications/domain/constants/purchase-notification-types";
+import { NotificationsService } from "src/modules/mail/application/use-cases/notifications.service";
+import { PURCHASE_NOTIFICATION_TYPES } from "src/modules/mail/domain/constants/purchase-notification-types";
 import { CurrencyType } from "src/modules/purchases/domain/value-objects/currency-type";
 
 export class CancelPurchaseOrderUsecase {

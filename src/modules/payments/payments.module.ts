@@ -15,7 +15,7 @@ import { AccessControlModule } from "src/modules/access-control/infrastructure/a
 import { ApprovalRequestEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/approval-request.entity";
 import { PurchaseHistoryEventEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-history-event.entity";
 import { PurchaseOrderEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-order.entity";
-import { NotificationsModule } from "src/modules/notifications";
+import { MailModule } from "src/modules/mail";
 
 @Module({
   imports: [
@@ -26,7 +26,7 @@ import { NotificationsModule } from "src/modules/notifications";
       PurchaseOrderEntity,
     ]),
     AccessControlModule,
-    NotificationsModule,
+    MailModule,
   ],
   controllers: [PaymentsController, CreditQuotasController],
   providers: [...paymentsModuleProviders],

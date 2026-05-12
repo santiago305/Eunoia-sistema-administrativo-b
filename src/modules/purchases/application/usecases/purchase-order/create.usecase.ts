@@ -17,8 +17,8 @@ import { CreditQuotaNotFoundError } from "src/modules/payments/application/error
 import { CreateProductCatalogStockItem } from "src/modules/product-catalog/application/usecases/create-stock-item.usecase";
 import { PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY, ProductCatalogStockItemRepository } from "src/modules/product-catalog/domain/ports/stock-item.repository";
 import { PurchaseUnitConversionService } from "../../services/purchase-unit-conversion.service";
-import { NotificationsService } from "src/modules/notifications/application/use-cases/notifications.service";
-import { PURCHASE_NOTIFICATION_TYPES } from "src/modules/notifications/domain/constants/purchase-notification-types";
+import { NotificationsService } from "src/modules/mail/application/use-cases/notifications.service";
+import { PURCHASE_NOTIFICATION_TYPES } from "src/modules/mail/domain/constants/purchase-notification-types";
 
 export class CreatePurchaseOrderUsecase {
   constructor(

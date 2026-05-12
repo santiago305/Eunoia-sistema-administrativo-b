@@ -66,6 +66,47 @@ export class NotificationsService {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   }
 
+  private buildMessageRealtimePayload(
+    message: MessageEntity,
+    recipient: MessageRecipientEntity,
+    senderName: string,
+  ) {
+    return {
+      recipientId: recipient.id,
+      messageRecipientId: recipient.id,
+      message: {
+        id: message.id,
+        threadId: message.threadId,
+        subject: message.subject,
+        preview: message.bodyText.slice(0, 140),
+        originModule: message.originModule,
+        senderName,
+        senderType: message.senderType,
+        sentAt: message.sentAt,
+      },
+    };
+  }
+
+  private async emitMessageRealtimeToRecipients(
+    senderUserId: string,
+    message: MessageEntity,
+    recipients: MessageRecipientEntity[],
+  ) {
+    const sender =
+      (await this.userRepository.findOne({
+        where: { id: senderUserId },
+        select: ['name'],
+      })) ?? null;
+    const senderName = sender?.name?.trim() || 'Usuario';
+
+    recipients.forEach((recipient) => {
+      const payload = this.buildMessageRealtimePayload(message, recipient, senderName);
+      this.realtimeService.emitToUser(recipient.recipientUserId, 'message.created', payload);
+      // Compatibilidad temporal con clientes que aun escuchan eventos legacy.
+      this.realtimeService.emitToUser(recipient.recipientUserId, 'notification.created', payload);
+    });
+  }
+
   async getAllowedNotificationModules(userId: string) {
     const entries = await Promise.all(
       Object.entries(this.notificationModulePermissions).map(async ([moduleKey, requiredPermissions]) => ({
@@ -201,19 +242,7 @@ export class NotificationsService {
     );
     await this.messageRecipientRepository.save(recipients);
 
-    recipients.forEach((recipient) => {
-      this.realtimeService.emitToUser(recipient.recipientUserId, 'notification.created', {
-        messageRecipientId: recipient.id,
-        message: {
-          id: message.id,
-          subject: message.subject,
-          preview: message.bodyText.slice(0, 140),
-          originModule: message.originModule,
-          senderName: 'Usuario',
-          senderType: 'USER',
-        },
-      });
-    });
+    await this.emitMessageRealtimeToRecipients(input.senderUserId, message, recipients);
 
     return { id: message.id, threadId: thread.id, recipients: recipients.length };
   }
@@ -281,6 +310,7 @@ export class NotificationsService {
       }),
     );
     await this.messageRecipientRepository.save(recipients);
+    await this.emitMessageRealtimeToRecipients(input.senderUserId, message, recipients);
 
     return { id: message.id, threadId: message.threadId, recipients: recipients.length };
   }
@@ -337,6 +367,7 @@ export class NotificationsService {
       }),
     );
     await this.messageRecipientRepository.save(recipients);
+    await this.emitMessageRealtimeToRecipients(input.senderUserId, message, recipients);
     return { id: message.id, threadId: thread.id, recipients: recipients.length };
   }
 
@@ -456,6 +487,7 @@ export class NotificationsService {
       }),
     );
     await this.messageRecipientRepository.save(recipients);
+    await this.emitMessageRealtimeToRecipients(userId, sent, recipients);
     return { id: sent.id, recipients: recipients.length };
   }
 

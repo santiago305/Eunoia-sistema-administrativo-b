@@ -3,7 +3,7 @@ import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard
 import { PermissionsGuard } from 'src/modules/access-control/adapters/in/guards/permissions.guard';
 import { RequirePermissions } from 'src/modules/access-control/adapters/in/decorators/require-permissions.decorator';
 import { User as CurrentUser } from 'src/shared/utilidades/decorators/user.decorator';
-import { NotificationsService } from 'src/modules/notifications/application/use-cases/notifications.service';
+import { NotificationsService } from 'src/modules/mail/application/use-cases/notifications.service';
 import { ListNotificationsQueryDto } from '../dtos/list-notifications.query';
 import { CreateMessageDto } from '../dtos/create-message.dto';
 import { ListMessagesQueryDto } from '../dtos/list-messages.query';

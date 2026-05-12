@@ -9,7 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
-import { NotificationRealtimeService } from 'src/modules/notifications/infrastructure/realtime/notification-realtime.service';
+import { NotificationRealtimeService } from 'src/modules/mail/infrastructure/realtime/notification-realtime.service';
 
 @WebSocketGateway({
   namespace: '/notifications',

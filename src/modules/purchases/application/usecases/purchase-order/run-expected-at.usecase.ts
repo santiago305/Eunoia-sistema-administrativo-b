@@ -5,8 +5,8 @@ import { PurchaseOrderStatus } from "src/modules/purchases/domain/value-objects/
 import { PurchaseOrderId } from "src/modules/purchases/domain/value-objects/purchase-order-id.vo";
 import { DomainError } from "src/modules/purchases/domain/errors/domain.error";
 import { errorResponse } from "src/shared/response-standard/response";
-import { NotificationsService } from "src/modules/notifications/application/use-cases/notifications.service";
-import { PURCHASE_NOTIFICATION_TYPES } from "src/modules/notifications/domain/constants/purchase-notification-types";
+import { NotificationsService } from "src/modules/mail/application/use-cases/notifications.service";
+import { PURCHASE_NOTIFICATION_TYPES } from "src/modules/mail/domain/constants/purchase-notification-types";
 
 export class RunExpectedAtUsecase {
   constructor(

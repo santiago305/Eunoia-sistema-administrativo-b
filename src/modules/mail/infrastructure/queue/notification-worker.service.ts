@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Job, Worker } from 'bullmq';
 import { envs } from 'src/infrastructure/config/envs';
-import { NotificationsService } from 'src/modules/notifications/application/use-cases/notifications.service';
+import { NotificationsService } from 'src/modules/mail/application/use-cases/notifications.service';
 import { NOTIFICATION_DELIVERY_JOB, NOTIFICATION_QUEUE_NAME } from './notification-queue.constants';
 
 @Injectable()

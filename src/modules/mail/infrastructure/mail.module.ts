@@ -40,4 +40,4 @@ import { MessageThread } from '../adapters/out/persistence/typeorm/entities/mess
   ],
   exports: [NotificationsService, NotificationRealtimeService, NotificationQueueService],
 })
-export class NotificationsModule {}
+export class MailModule {}
