@@ -497,20 +497,43 @@ export class NotificationsService {
     if (query.q) qb.andWhere('(m.subject ILIKE :q OR m.body_text ILIKE :q)', { q: `%${query.q}%` });
 
     qb.orderBy('m.sent_at', 'DESC').addOrderBy('m.created_at', 'DESC');
-    qb.take(limit).skip((page - 1) * limit);
 
-    const [rows, total] = await qb.getManyAndCount();
-    const messageIds = rows.map((row) => row.messageId);
-    const messages = messageIds.length
-      ? await this.messageRepository.find({ where: messageIds.map((id) => ({ id })) })
+    const total = await qb.clone().getCount();
+
+    const rows = await qb
+      .clone()
+      .select(['mr.id AS recipient_id', 'mr.message_id AS message_id'])
+      .take(limit)
+      .skip((page - 1) * limit)
+      .getRawMany<{ recipient_id: string; message_id: string }>();
+
+    const recipientIds = rows.map((row) => row.recipient_id);
+    const messageIds = rows.map((row) => row.message_id);
+
+    const recipients = recipientIds.length
+      ? await this.messageRecipientRepository.find({
+          where: recipientIds.map((id) => ({ id })),
+        })
       : [];
+    const messages = messageIds.length
+      ? await this.messageRepository.find({
+          where: messageIds.map((id) => ({ id })),
+        })
+      : [];
+
+    const recipientMap = new Map(recipients.map((recipient) => [recipient.id, recipient]));
     const messageMap = new Map(messages.map((message) => [message.id, message]));
 
     return {
       page,
       limit,
       total,
-      items: rows.map((row) => ({ recipient: row, message: messageMap.get(row.messageId) ?? null })),
+      items: rows
+        .map((row) => ({
+          recipient: recipientMap.get(row.recipient_id) ?? null,
+          message: messageMap.get(row.message_id) ?? null,
+        }))
+        .filter((item): item is { recipient: MessageRecipientEntity; message: MessageEntity | null } => item.recipient !== null),
     };
   }
 
