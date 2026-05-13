@@ -26,6 +26,21 @@ export class MessageRecipientEntity {
   @Column({ name: 'deleted_at', type: 'timestamp', nullable: true })
   deletedAt: Date | null;
 
+  @Column({ name: 'archived_at', type: 'timestamp', nullable: true })
+  archivedAt: Date | null;
+
+  @Column({ name: 'snoozed_until', type: 'timestamp', nullable: true })
+  snoozedUntil: Date | null;
+
+  @Column({ name: 'snoozed_at', type: 'timestamp', nullable: true })
+  snoozedAt: Date | null;
+
+  @Column({ name: 'trash_expires_at', type: 'timestamp', nullable: true })
+  trashExpiresAt: Date | null;
+
+  @Column({ name: 'permanently_hidden_at', type: 'timestamp', nullable: true })
+  permanentlyHiddenAt: Date | null;
+
   @Column({ name: 'delivered_at', type: 'timestamp', nullable: true })
   deliveredAt: Date | null;
 

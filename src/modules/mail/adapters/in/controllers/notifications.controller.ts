@@ -13,6 +13,7 @@ import { UpdateDraftDto } from '../dtos/update-draft.dto';
 import { SendDraftDto } from '../dtos/send-draft.dto';
 import { BulkMessageActionDto } from '../dtos/bulk-message-action.dto';
 import { CreateLabelDto } from '../dtos/create-label.dto';
+import { SnoozeMessageDto } from '../dtos/snooze-message.dto';
 
 @Controller(['email', 'notifications'])
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -90,6 +91,12 @@ export class NotificationsController {
   }
 
   @RequirePermissions('notifications.manage')
+  @Patch('messages/:id/unread')
+  markMessageAsUnread(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.notificationsService.markMessageAsUnread(user.id, id);
+  }
+
+  @RequirePermissions('notifications.manage')
   @Patch('messages/:id/star')
   starMessage(@CurrentUser() user: { id: string }, @Param('id') id: string) {
     return this.notificationsService.toggleStarMessage(user.id, id, true);
@@ -105,6 +112,36 @@ export class NotificationsController {
   @Delete('messages/:id')
   deleteMessage(@CurrentUser() user: { id: string }, @Param('id') id: string) {
     return this.notificationsService.deleteMessage(user.id, id);
+  }
+
+  @RequirePermissions('notifications.manage')
+  @Delete('messages/:id/permanent')
+  permanentlyDeleteMessage(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.notificationsService.permanentlyDeleteMessage(user.id, id);
+  }
+
+  @RequirePermissions('notifications.manage')
+  @Patch('messages/:id/archive')
+  archiveMessage(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.notificationsService.archiveMessage(user.id, id);
+  }
+
+  @RequirePermissions('notifications.manage')
+  @Patch('messages/:id/unarchive')
+  unarchiveMessage(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.notificationsService.unarchiveMessage(user.id, id);
+  }
+
+  @RequirePermissions('notifications.manage')
+  @Patch('messages/:id/snooze')
+  snoozeMessage(@CurrentUser() user: { id: string }, @Param('id') id: string, @Body() body: SnoozeMessageDto) {
+    return this.notificationsService.snoozeMessage(user.id, id, body.snoozedUntil);
+  }
+
+  @RequirePermissions('notifications.manage')
+  @Patch('messages/:id/unsnooze')
+  unsnoozeMessage(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.notificationsService.unsnoozeMessage(user.id, id);
   }
 
   @RequirePermissions('notifications.manage')

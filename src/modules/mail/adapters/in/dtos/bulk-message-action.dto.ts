@@ -6,6 +6,6 @@ export class BulkMessageActionDto {
   messageRecipientIds: string[];
 
   @IsString()
-  @IsIn(['MARK_AS_READ', 'MARK_AS_UNREAD', 'DELETE', 'STAR', 'UNSTAR', 'RESTORE'])
-  action: 'MARK_AS_READ' | 'MARK_AS_UNREAD' | 'DELETE' | 'STAR' | 'UNSTAR' | 'RESTORE';
+  @IsIn(['MARK_AS_READ', 'MARK_AS_UNREAD', 'DELETE', 'STAR', 'UNSTAR', 'RESTORE', 'ARCHIVE', 'UNARCHIVE'])
+  action: 'MARK_AS_READ' | 'MARK_AS_UNREAD' | 'DELETE' | 'STAR' | 'UNSTAR' | 'RESTORE' | 'ARCHIVE' | 'UNARCHIVE';
 }

@@ -593,8 +593,18 @@ export class NotificationsService {
 
   async listMessages(
     userId: string,
-    query: { folder?: 'inbox' | 'sent' | 'trash' | 'starred'; originModule?: string; q?: string; page?: number; limit?: number },
+    query: {
+      folder?: 'inbox' | 'sent' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'drafts';
+      originModule?: string;
+      q?: string;
+      page?: number;
+      limit?: number;
+      read?: boolean;
+      labelId?: string;
+    },
   ) {
+    await this.releaseDueSnoozedMessagesForUser(userId);
+    await this.expireTrashForUser(userId);
     const folder = query.folder ?? 'inbox';
     const page = Math.max(query.page ?? 1, 1);
     const limit = Math.min(Math.max(query.limit ?? 50, 1), 100);
@@ -615,18 +625,48 @@ export class NotificationsService {
       });
       return { page, limit, total, items };
     }
+    if (folder === 'drafts') {
+      const [items, total] = await this.messageRepository.findAndCount({
+        where: { createdByUserId: userId, isDraft: true, status: 'DRAFT' },
+        order: { updatedAt: 'DESC' },
+        take: limit,
+        skip: (page - 1) * limit,
+      });
+      return { page, limit, total, items };
+    }
 
     const qb = this.messageRecipientRepository
       .createQueryBuilder('mr')
       .innerJoin(MessageEntity, 'm', 'm.id = mr.message_id')
-      .where('mr.recipient_user_id = :userId', { userId });
+      .where('mr.recipient_user_id = :userId', { userId })
+      .andWhere('mr.permanently_hidden_at IS NULL');
 
-    if (folder === 'trash') qb.andWhere('mr.deleted_at IS NOT NULL');
-    else qb.andWhere('mr.deleted_at IS NULL');
+    if (query.labelId) {
+      qb.innerJoin(
+        MessageMessageLabelEntity,
+        'mml',
+        'mml.message_id = m.id AND mml.label_id = :labelId',
+        { labelId: query.labelId },
+      );
+    }
+
+    if (folder === 'trash') {
+      qb.andWhere('mr.deleted_at IS NOT NULL');
+    } else {
+      qb.andWhere('mr.deleted_at IS NULL');
+    }
+    if (folder === 'archived') qb.andWhere('mr.archived_at IS NOT NULL');
+    if (folder !== 'archived') qb.andWhere('mr.archived_at IS NULL');
+    if (folder === 'snoozed') qb.andWhere('mr.snoozed_until IS NOT NULL AND mr.snoozed_until > now()');
+    if (folder !== 'snoozed') qb.andWhere('(mr.snoozed_until IS NULL OR mr.snoozed_until <= now())');
     if (folder === 'starred') qb.andWhere('mr.starred_at IS NOT NULL');
 
     if (query.originModule) qb.andWhere('m.origin_module = :originModule', { originModule: query.originModule });
     if (query.q) qb.andWhere('(m.subject ILIKE :q OR m.body_text ILIKE :q)', { q: `%${query.q}%` });
+    if (typeof query.read === 'boolean') {
+      if (query.read) qb.andWhere('mr.read_at IS NOT NULL');
+      else qb.andWhere('mr.read_at IS NULL');
+    }
 
     qb.orderBy('m.sent_at', 'DESC').addOrderBy('m.created_at', 'DESC');
 
@@ -652,6 +692,14 @@ export class NotificationsService {
           where: messageIds.map((id) => ({ id })),
         })
       : [];
+    const senderIds = Array.from(new Set(messages.map((m) => m.senderUserId).filter(Boolean))) as string[];
+    const senders = senderIds.length
+      ? await this.userRepository.find({
+          where: senderIds.map((id) => ({ id })),
+          select: ['id', 'name', 'email'],
+        })
+      : [];
+    const senderMap = new Map(senders.map((sender) => [sender.id, sender]));
 
     const recipientMap = new Map(recipients.map((recipient) => [recipient.id, recipient]));
     const messageMap = new Map(messages.map((message) => [message.id, message]));
@@ -664,25 +712,45 @@ export class NotificationsService {
         .map((row) => ({
           recipient: recipientMap.get(row.recipient_id) ?? null,
           message: messageMap.get(row.message_id) ?? null,
+          sender:
+            (() => {
+              const msg = messageMap.get(row.message_id);
+              if (!msg?.senderUserId) return null;
+              const sender = senderMap.get(msg.senderUserId);
+              if (!sender) return null;
+              return { id: sender.id, name: sender.name, email: sender.email };
+            })(),
         }))
-        .filter((item): item is { recipient: MessageRecipientEntity; message: MessageEntity | null } => item.recipient !== null),
+        .filter((item) => item.recipient !== null),
     };
   }
 
   async getMessageDetail(userId: string, id: string) {
+    await this.releaseDueSnoozedMessagesForUser(userId);
+    await this.expireTrashForUser(userId);
     const ownMessage = await this.messageRepository.findOne({ where: { id, senderUserId: userId } });
     if (ownMessage) {
+      const sender = ownMessage.senderUserId
+        ? await this.userRepository.findOne({
+            where: { id: ownMessage.senderUserId },
+            select: ['id', 'name', 'email'],
+          })
+        : null;
+      const recipients = await this.messageRecipientRepository.find({ where: { messageId: ownMessage.id } });
       const thread = ownMessage.threadId
         ? await this.messageRepository.find({
             where: { threadId: ownMessage.threadId },
             order: { createdAt: 'ASC' },
           })
         : [ownMessage];
-      return { message: ownMessage, thread };
+      return { message: ownMessage, sender, recipients, thread };
     }
 
     const recipient = await this.messageRecipientRepository.findOne({ where: { id } });
     if (!recipient || recipient.recipientUserId !== userId) {
+      throw new NotFoundException('MESSAGE_NOT_FOUND');
+    }
+    if (recipient.permanentlyHiddenAt) {
       throw new NotFoundException('MESSAGE_NOT_FOUND');
     }
 
@@ -702,7 +770,7 @@ export class NotificationsService {
         })
       : [message];
 
-    return { recipient, message, thread };
+    return { recipient, message, sender, recipients, thread };
   }
 
   async markMessageAsRead(userId: string, recipientId: string) {
@@ -717,6 +785,15 @@ export class NotificationsService {
     return recipient;
   }
 
+  async markMessageAsUnread(userId: string, recipientId: string) {
+    const recipient = await this.messageRecipientRepository.findOne({ where: { id: recipientId } });
+    if (!recipient || recipient.recipientUserId !== userId) {
+      throw new NotFoundException('MESSAGE_NOT_FOUND');
+    }
+    recipient.readAt = null;
+    return this.messageRecipientRepository.save(recipient);
+  }
+
   async toggleStarMessage(userId: string, recipientId: string, value: boolean) {
     const recipient = await this.messageRecipientRepository.findOne({ where: { id: recipientId } });
     if (!recipient || recipient.recipientUserId !== userId) throw new NotFoundException('MESSAGE_NOT_FOUND');
@@ -729,7 +806,16 @@ export class NotificationsService {
     if (!recipient || recipient.recipientUserId !== userId) throw new NotFoundException('MESSAGE_NOT_FOUND');
     const now = new Date();
     recipient.deletedAt = now;
-    (recipient as any).trashExpiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    recipient.trashExpiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    recipient.archivedAt = null;
+    return this.messageRecipientRepository.save(recipient);
+  }
+
+  async permanentlyDeleteMessage(userId: string, recipientId: string) {
+    const recipient = await this.messageRecipientRepository.findOne({ where: { id: recipientId } });
+    if (!recipient || recipient.recipientUserId !== userId) throw new NotFoundException('MESSAGE_NOT_FOUND');
+    if (!recipient.deletedAt) throw new BadRequestException('MESSAGE_NOT_IN_TRASH');
+    recipient.permanentlyHiddenAt = new Date();
     return this.messageRecipientRepository.save(recipient);
   }
 
@@ -737,14 +823,74 @@ export class NotificationsService {
     const recipient = await this.messageRecipientRepository.findOne({ where: { id: recipientId } });
     if (!recipient || recipient.recipientUserId !== userId) throw new NotFoundException('MESSAGE_NOT_FOUND');
     recipient.deletedAt = null;
+    recipient.trashExpiresAt = null;
+    recipient.permanentlyHiddenAt = null;
     return this.messageRecipientRepository.save(recipient);
+  }
+
+  async archiveMessage(userId: string, recipientId: string) {
+    const recipient = await this.messageRecipientRepository.findOne({ where: { id: recipientId } });
+    if (!recipient || recipient.recipientUserId !== userId) throw new NotFoundException('MESSAGE_NOT_FOUND');
+    recipient.archivedAt = new Date();
+    return this.messageRecipientRepository.save(recipient);
+  }
+
+  async unarchiveMessage(userId: string, recipientId: string) {
+    const recipient = await this.messageRecipientRepository.findOne({ where: { id: recipientId } });
+    if (!recipient || recipient.recipientUserId !== userId) throw new NotFoundException('MESSAGE_NOT_FOUND');
+    recipient.archivedAt = null;
+    return this.messageRecipientRepository.save(recipient);
+  }
+
+  async snoozeMessage(userId: string, recipientId: string, snoozedUntilIso: string) {
+    const recipient = await this.messageRecipientRepository.findOne({ where: { id: recipientId } });
+    if (!recipient || recipient.recipientUserId !== userId) throw new NotFoundException('MESSAGE_NOT_FOUND');
+    const snoozedUntil = new Date(snoozedUntilIso);
+    if (Number.isNaN(snoozedUntil.getTime()) || snoozedUntil.getTime() <= Date.now()) {
+      throw new BadRequestException('SNOOZE_DATE_INVALID');
+    }
+    recipient.snoozedUntil = snoozedUntil;
+    recipient.snoozedAt = new Date();
+    return this.messageRecipientRepository.save(recipient);
+  }
+
+  async unsnoozeMessage(userId: string, recipientId: string) {
+    const recipient = await this.messageRecipientRepository.findOne({ where: { id: recipientId } });
+    if (!recipient || recipient.recipientUserId !== userId) throw new NotFoundException('MESSAGE_NOT_FOUND');
+    recipient.snoozedUntil = null;
+    recipient.snoozedAt = null;
+    return this.messageRecipientRepository.save(recipient);
+  }
+
+  async releaseDueSnoozedMessagesForUser(userId: string) {
+    await this.messageRecipientRepository
+      .createQueryBuilder()
+      .update(MessageRecipientEntity)
+      .set({ snoozedUntil: null, snoozedAt: null })
+      .where('recipient_user_id = :userId', { userId })
+      .andWhere('snoozed_until IS NOT NULL')
+      .andWhere('snoozed_until <= now()')
+      .execute();
+  }
+
+  async expireTrashForUser(userId: string) {
+    await this.messageRecipientRepository
+      .createQueryBuilder()
+      .update(MessageRecipientEntity)
+      .set({ permanentlyHiddenAt: new Date() })
+      .where('recipient_user_id = :userId', { userId })
+      .andWhere('deleted_at IS NOT NULL')
+      .andWhere('trash_expires_at IS NOT NULL')
+      .andWhere('trash_expires_at <= now()')
+      .andWhere('permanently_hidden_at IS NULL')
+      .execute();
   }
 
   async bulkUpdateMessages(
     userId: string,
     input: {
       messageRecipientIds: string[];
-      action: 'MARK_AS_READ' | 'MARK_AS_UNREAD' | 'DELETE' | 'STAR' | 'UNSTAR' | 'RESTORE';
+      action: 'MARK_AS_READ' | 'MARK_AS_UNREAD' | 'DELETE' | 'STAR' | 'UNSTAR' | 'RESTORE' | 'ARCHIVE' | 'UNARCHIVE';
     },
   ) {
     const ids = Array.from(new Set(input.messageRecipientIds.filter(Boolean)));
@@ -755,10 +901,20 @@ export class NotificationsService {
     own.forEach((recipient) => {
       if (input.action === 'MARK_AS_READ') recipient.readAt = recipient.readAt ?? now;
       if (input.action === 'MARK_AS_UNREAD') recipient.readAt = null;
-      if (input.action === 'DELETE') recipient.deletedAt = now;
-      if (input.action === 'RESTORE') recipient.deletedAt = null;
+      if (input.action === 'DELETE') {
+        recipient.deletedAt = now;
+        recipient.trashExpiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+        recipient.archivedAt = null;
+      }
+      if (input.action === 'RESTORE') {
+        recipient.deletedAt = null;
+        recipient.trashExpiresAt = null;
+        recipient.permanentlyHiddenAt = null;
+      }
       if (input.action === 'STAR') recipient.starredAt = now;
       if (input.action === 'UNSTAR') recipient.starredAt = null;
+      if (input.action === 'ARCHIVE') recipient.archivedAt = now;
+      if (input.action === 'UNARCHIVE') recipient.archivedAt = null;
     });
     await this.messageRecipientRepository.save(own);
     return { updated: own.length };
@@ -1072,3 +1228,10 @@ export class NotificationsService {
     };
   }
 }
+    const sender = message.senderUserId
+      ? await this.userRepository.findOne({
+          where: { id: message.senderUserId },
+          select: ['id', 'name', 'email'],
+        })
+      : null;
+    const recipients = await this.messageRecipientRepository.find({ where: { messageId: message.id } });
