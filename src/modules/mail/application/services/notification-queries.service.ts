@@ -1,0 +1,167 @@
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from 'src/modules/users/adapters/out/persistence/typeorm/entities/user.entity';
+import { MessageEntity } from '../../adapters/out/persistence/typeorm/entities/message.entity';
+import { MessageLabelAssignmentEntity } from '../../adapters/out/persistence/typeorm/entities/message-label-assignment.entity';
+import { MessageLabelEntity } from '../../adapters/out/persistence/typeorm/entities/message-label.entity';
+import { MessageUserStateEntity } from '../../adapters/out/persistence/typeorm/entities/message-user-state.entity';
+import { NotificationLabelsService } from './notification-labels.service';
+
+@Injectable()
+export class NotificationQueriesService {
+  constructor(
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    @InjectRepository(MessageEntity)
+    private readonly messageRepository: Repository<MessageEntity>,
+    @InjectRepository(MessageUserStateEntity)
+    private readonly messageUserStateRepository: Repository<MessageUserStateEntity>,
+    @InjectRepository(MessageLabelAssignmentEntity)
+    private readonly messageLabelAssignmentRepository: Repository<MessageLabelAssignmentEntity>,
+    @InjectRepository(MessageLabelEntity)
+    private readonly messageLabelRepository: Repository<MessageLabelEntity>,
+    private readonly labelsService: NotificationLabelsService,
+  ) {}
+
+  async listMessages(
+    userId: string,
+    query: {
+      folder?: 'inbox' | 'sent' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'drafts' | 'all';
+      originModule?: string;
+      q?: string;
+      page?: number;
+      limit?: number;
+      read?: boolean;
+      hasAttachments?: boolean;
+      labelId?: string;
+    },
+  ) {
+    const folder = query.folder ?? 'inbox';
+    const page = Math.max(query.page ?? 1, 1);
+    const limit = Math.min(Math.max(query.limit ?? 50, 1), 100);
+
+    if (folder === 'sent') {
+      const qbSent = this.messageUserStateRepository
+        .createQueryBuilder('mus')
+        .innerJoin(MessageEntity, 'm', 'm.id = mus.message_id')
+        .where('mus.user_id = :userId', { userId })
+        .andWhere('mus.is_in_sent = true')
+        .andWhere('mus.permanently_hidden_at IS NULL')
+        .andWhere('m.is_draft = false');
+
+      if (query.originModule) qbSent.andWhere('m.origin_module = :originModule', { originModule: query.originModule });
+      if (query.q) {
+        qbSent.andWhere('(m.subject ILIKE :q OR m.body_text ILIKE :q)', { q: `%${query.q}%` });
+        await this.labelsService.trackSearch(userId, query.q);
+      }
+      if (typeof query.hasAttachments === 'boolean') {
+        qbSent.andWhere(query.hasAttachments ? 'EXISTS (SELECT 1 FROM message_attachments ma WHERE ma.message_id = m.id)' : 'NOT EXISTS (SELECT 1 FROM message_attachments ma WHERE ma.message_id = m.id)');
+      }
+
+      const total = await qbSent.clone().getCount();
+      const rows = await qbSent.clone().select(['m.id AS message_id']).orderBy('m.sent_at', 'DESC').addOrderBy('m.created_at', 'DESC').take(limit).skip((page - 1) * limit).getRawMany<{ message_id: string }>();
+      const messageIds = rows.map((row) => row.message_id);
+      const items = messageIds.length ? await this.messageRepository.find({ where: messageIds.map((id) => ({ id })) }) : [];
+      return { page, limit, total, items };
+    }
+
+    if (folder === 'drafts') {
+      const [items, total] = await this.messageRepository.findAndCount({ where: { createdByUserId: userId, isDraft: true, status: 'DRAFT' }, order: { updatedAt: 'DESC' }, take: limit, skip: (page - 1) * limit });
+      return { page, limit, total, items };
+    }
+
+    const qb = this.messageUserStateRepository
+      .createQueryBuilder('mus')
+      .innerJoin(MessageEntity, 'm', 'm.id = mus.message_id')
+      .where('mus.user_id = :userId', { userId })
+      .andWhere('mus.permanently_hidden_at IS NULL');
+
+    if (query.labelId) qb.innerJoin(MessageLabelAssignmentEntity, 'mla', 'mla.message_user_state_id = mus.id AND mla.label_id = :labelId', { labelId: query.labelId });
+
+    if (folder !== 'all') {
+      if (folder === 'trash') qb.andWhere('mus.deleted_at IS NOT NULL');
+      else qb.andWhere('mus.deleted_at IS NULL');
+      if (folder === 'archived') qb.andWhere('mus.is_archived = true');
+      if (folder !== 'archived') qb.andWhere('mus.is_archived = false');
+      if (folder === 'snoozed') qb.andWhere('mus.snoozed_until IS NOT NULL AND mus.snoozed_until > now()');
+      if (folder !== 'snoozed') qb.andWhere('(mus.snoozed_until IS NULL OR mus.snoozed_until <= now())');
+      if (folder === 'starred') qb.andWhere('mus.starred_at IS NOT NULL');
+      if (folder === 'inbox') qb.andWhere('mus.is_in_inbox = true');
+    }
+
+    if (query.originModule) qb.andWhere('m.origin_module = :originModule', { originModule: query.originModule });
+    if (query.q) {
+      qb.andWhere('(m.subject ILIKE :q OR m.body_text ILIKE :q)', { q: `%${query.q}%` });
+      await this.labelsService.trackSearch(userId, query.q);
+    }
+    if (typeof query.read === 'boolean') qb.andWhere(query.read ? 'mus.read_at IS NOT NULL' : 'mus.read_at IS NULL');
+    if (typeof query.hasAttachments === 'boolean') {
+      qb.andWhere(query.hasAttachments ? 'EXISTS (SELECT 1 FROM message_attachments ma WHERE ma.message_id = m.id)' : 'NOT EXISTS (SELECT 1 FROM message_attachments ma WHERE ma.message_id = m.id)');
+    }
+
+    qb.orderBy('m.sent_at', 'DESC').addOrderBy('m.created_at', 'DESC');
+
+    const total = await qb.clone().getCount();
+    const rows = await qb.clone().select(['mus.id AS state_id', 'mus.message_id AS message_id']).take(limit).skip((page - 1) * limit).getRawMany<{ state_id: string; message_id: string }>();
+
+    const stateIds = rows.map((row) => row.state_id);
+    const messageIds = rows.map((row) => row.message_id);
+
+    const states = stateIds.length ? await this.messageUserStateRepository.find({ where: stateIds.map((id) => ({ id })) }) : [];
+    const messages = messageIds.length ? await this.messageRepository.find({ where: messageIds.map((id) => ({ id })) }) : [];
+    const senderIds = Array.from(new Set(messages.map((m) => m.senderUserId).filter(Boolean))) as string[];
+    const senders = senderIds.length ? await this.userRepository.find({ where: senderIds.map((id) => ({ id })), select: ['id', 'name', 'email'] }) : [];
+    const senderMap = new Map(senders.map((sender) => [sender.id, sender]));
+
+    const stateMap = new Map(states.map((state) => [state.id, state]));
+    const messageMap = new Map(messages.map((message) => [message.id, message]));
+    const labelAssignments = stateIds.length ? await this.messageLabelAssignmentRepository.find({ where: stateIds.map((id) => ({ messageUserStateId: id, userId })) }) : [];
+    const labelIds = Array.from(new Set(labelAssignments.map((assignment) => assignment.labelId)));
+    const labels = labelIds.length ? await this.messageLabelRepository.find({ where: labelIds.map((id) => ({ id })) }) : [];
+    const labelMap = new Map(labels.map((label) => [label.id, label]));
+    const labelsByState = new Map<string, MessageLabelEntity[]>();
+    labelAssignments.forEach((assignment) => {
+      const bucket = labelsByState.get(assignment.messageUserStateId) ?? [];
+      const label = labelMap.get(assignment.labelId);
+      if (label) bucket.push(label);
+      labelsByState.set(assignment.messageUserStateId, bucket);
+    });
+
+    return {
+      page,
+      limit,
+      total,
+      items: rows
+        .map((row) => ({
+          recipient: (() => {
+            const state = stateMap.get(row.state_id);
+            if (!state) return null;
+            return {
+              id: state.id,
+              messageId: state.messageId,
+              recipientUserId: state.userId,
+              recipientEmail: state.recipientEmail ?? '',
+              recipientType: state.relationType === 'CC' ? 'CC' : state.relationType === 'BCC' ? 'BCC' : 'TO',
+              readAt: state.readAt,
+              starredAt: state.starredAt,
+              deletedAt: state.deletedAt,
+              deliveredAt: state.deliveredAt,
+              createdAt: state.createdAt,
+              updatedAt: state.updatedAt,
+            };
+          })(),
+          message: messageMap.get(row.message_id) ?? null,
+          labels: labelsByState.get(row.state_id) ?? [],
+          sender: (() => {
+            const msg = messageMap.get(row.message_id);
+            if (!msg?.senderUserId) return null;
+            const sender = senderMap.get(msg.senderUserId);
+            if (!sender) return null;
+            return { id: sender.id, name: sender.name, email: sender.email };
+          })(),
+        }))
+        .filter((item) => item.recipient !== null),
+    };
+  }
+}

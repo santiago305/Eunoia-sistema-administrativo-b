@@ -1,8 +1,6 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
-import { promises as fs } from 'node:fs';
-import * as path from 'node:path';
 import { NotificationRealtimeService } from '../../infrastructure/realtime/notification-realtime.service';
 import { User } from 'src/modules/users/adapters/out/persistence/typeorm/entities/user.entity';
 import { MessageEntity } from '../../adapters/out/persistence/typeorm/entities/message.entity';
@@ -15,6 +13,16 @@ import { MessageLabelAssignmentEntity } from '../../adapters/out/persistence/typ
 import { MessageSearchHistoryEntity } from '../../adapters/out/persistence/typeorm/entities/message-search-history.entity';
 import { MessageAuditLogEntity } from '../../adapters/out/persistence/typeorm/entities/message-audit-log.entity';
 import { ACCESS_CONTROL_PORT, AccessControlPort } from '../ports/access-control.port';
+import { MessageStateService } from '../services/message-state.service';
+import { MessageAccessService } from '../services/message-access.service';
+import { NotificationLabelsService } from '../services/notification-labels.service';
+import { NotificationAttachmentsService } from '../services/notification-attachments.service';
+import { NotificationQueriesService } from '../services/notification-queries.service';
+import {
+  NOTIFICATION_MODULE_ICONS,
+  NOTIFICATION_MODULE_LABELS,
+  NOTIFICATION_MODULE_PERMISSIONS,
+} from '../constants/notification-module-permissions';
 
 @Injectable()
 export class NotificationsService {
@@ -43,44 +51,12 @@ export class NotificationsService {
     private readonly dataSource: DataSource,
     @Inject(ACCESS_CONTROL_PORT)
     private readonly accessControlPort: AccessControlPort,
+    private readonly messageStateService: MessageStateService,
+    private readonly messageAccessService: MessageAccessService,
+    private readonly notificationLabelsService: NotificationLabelsService,
+    private readonly notificationAttachmentsService: NotificationAttachmentsService,
+    private readonly notificationQueriesService: NotificationQueriesService,
   ) {}
-
-  private readonly attachmentStorageDir = path.resolve(process.cwd(), 'storage', 'mail-attachments');
-  private readonly allowedAttachmentMimeTypes = new Set([
-    'application/pdf',
-    'image/jpeg',
-    'image/png',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'text/plain',
-  ]);
-  private readonly allowedAttachmentExtensions = new Set([
-    '.pdf',
-    '.jpg',
-    '.jpeg',
-    '.png',
-    '.doc',
-    '.docx',
-    '.xls',
-    '.xlsx',
-    '.txt',
-  ]);
-  private readonly maxAttachmentSizeBytes = 20 * 1024 * 1024;
-
-  private readonly notificationModulePermissions: Record<string, string[]> = {
-    purchases: ['purchases.view'],
-    production: ['production.read'],
-    warehouse: ['warehouses.read'],
-    catalog: ['catalog.read'],
-    supplies: ['suppliers.read'],
-    security: ['security.read'],
-    roles: ['roles.read'],
-    providers: ['suppliers.read'],
-    corporate: ['page.notifications.view'],
-    system: ['page.notifications.view'],
-  };
 
   private normalizeEmails(recipients: string[] | string | undefined | null) {
     if (!recipients) return [];
@@ -142,36 +118,14 @@ export class NotificationsService {
 
   async getAllowedNotificationModules(userId: string) {
     const entries = await Promise.all(
-      Object.entries(this.notificationModulePermissions).map(async ([moduleKey, requiredPermissions]) => ({
+      Object.entries(NOTIFICATION_MODULE_PERMISSIONS).map(async ([moduleKey, requiredPermissions]) => ({
         key: moduleKey,
-        allowed: await this.accessControlPort.canViewModuleMessages(userId, requiredPermissions),
+        allowed: await this.accessControlPort.canViewModuleMessages(userId, moduleKey, requiredPermissions),
       })),
     );
 
-    const labels: Record<string, string> = {
-      purchases: 'Compras',
-      production: 'Produccion',
-      warehouse: 'Almacen',
-      catalog: 'Catalogo',
-      supplies: 'Suministros',
-      security: 'Seguridad',
-      roles: 'Roles',
-      providers: 'Proveedores',
-      corporate: 'Corporativo',
-      system: 'Sistema',
-    };
-    const icons: Record<string, string> = {
-      purchases: 'ShoppingCart',
-      production: 'Factory',
-      warehouse: 'Warehouse',
-      catalog: 'PackageSearch',
-      supplies: 'Boxes',
-      security: 'Shield',
-      roles: 'KeyRound',
-      providers: 'Truck',
-      corporate: 'Mail',
-      system: 'Bell',
-    };
+    const labels = NOTIFICATION_MODULE_LABELS;
+    const icons = NOTIFICATION_MODULE_ICONS;
 
     return entries
       .filter((entry) => entry.allowed)
@@ -187,7 +141,9 @@ export class NotificationsService {
     if (ownMessage) {
       const allowed = await this.accessControlPort.canOpenMessage(
         userId,
-        this.notificationModulePermissions[ownMessage.originModule] ?? ['page.notifications.view'],
+        ownMessage.id,
+        ownMessage.originModule,
+        NOTIFICATION_MODULE_PERMISSIONS[ownMessage.originModule] ?? ['page.notifications.view'],
       );
       return allowed;
     }
@@ -197,19 +153,17 @@ export class NotificationsService {
     if (!message) return false;
     return this.accessControlPort.canOpenMessage(
       userId,
-      this.notificationModulePermissions[message.originModule] ?? ['page.notifications.view'],
+      message.id,
+      message.originModule,
+      NOTIFICATION_MODULE_PERMISSIONS[message.originModule] ?? ['page.notifications.view'],
     );
   }
 
   private async ensureCanAccessModule(userId: string, moduleKey: string) {
-    const requiredPermissions = this.notificationModulePermissions[moduleKey];
-    if (!requiredPermissions) {
+    if (!NOTIFICATION_MODULE_PERMISSIONS[moduleKey]) {
       throw new BadRequestException('ORIGIN_MODULE_REQUIRED');
     }
-    const allowed = await this.accessControlPort.canViewModuleMessages(userId, requiredPermissions);
-    if (!allowed) {
-      throw new ForbiddenException('ORIGIN_MODULE_ACCESS_DENIED');
-    }
+    await this.messageAccessService.ensureCanAccessModule(userId, moduleKey, NOTIFICATION_MODULE_PERMISSIONS);
   }
 
   private async resolveRecipientsByBucketsOrFail(input: {
@@ -389,9 +343,13 @@ export class NotificationsService {
   }
 
   private async findMessageStateOrThrow(userId: string, stateId: string) {
-    const state = await this.messageUserStateRepository.findOne({
-      where: { id: stateId, userId },
-    });
+    const state =
+      (await this.messageUserStateRepository.findOne({
+        where: { id: stateId, userId },
+      })) ??
+      (await this.messageUserStateRepository.findOne({
+        where: { messageId: stateId, userId },
+      }));
     if (!state) {
       throw new NotFoundException('MESSAGE_NOT_FOUND');
     }
@@ -399,10 +357,7 @@ export class NotificationsService {
   }
 
   private async ensureMessageParticipant(userId: string, messageId: string) {
-    const ownMessage = await this.messageRepository.findOne({ where: { id: messageId, senderUserId: userId } });
-    if (ownMessage) return true;
-    const state = await this.messageUserStateRepository.findOne({ where: { messageId, userId } });
-    return Boolean(state);
+    return this.messageAccessService.ensureMessageParticipant(userId, messageId);
   }
 
   private async upsertSearchHistory(userId: string, queryRaw: string) {
@@ -444,6 +399,7 @@ export class NotificationsService {
     recipients?: string;
     subject: string;
     bodyHtml: string;
+    bodyJson?: Record<string, unknown> | null;
     originModule?: string;
     labelIds?: string[];
     attachmentIds?: string[];
@@ -484,7 +440,7 @@ export class NotificationsService {
           subject: input.subject,
           bodyHtml,
           bodyText,
-          bodyJson: null,
+          bodyJson: input.bodyJson ?? null,
           status: 'SENT',
           isDraft: false,
           draftExpiresAt: null,
@@ -512,10 +468,10 @@ export class NotificationsService {
         },
         manager,
       );
-      await this.linkAttachmentsToMessage(input.senderUserId, message.id, input.attachmentIds ?? [], undefined, manager);
+      await this.notificationAttachmentsService.linkAttachmentsToMessage(input.senderUserId, message.id, input.attachmentIds ?? [], undefined, manager);
       const senderState = states.find((state) => state.userId === input.senderUserId && state.relationType === 'SENDER');
       if (senderState) {
-        await this.assignLabelsToState(senderState.id, input.senderUserId, input.labelIds ?? [], manager);
+        await this.notificationLabelsService.assignLabelsToState(senderState.id, input.senderUserId, input.labelIds ?? [], manager);
       }
 
       await this.createAuditLog(
@@ -547,6 +503,7 @@ export class NotificationsService {
     senderUserId: string;
     parentMessageId: string;
     bodyHtml: string;
+    bodyJson?: Record<string, unknown> | null;
     to?: string[] | string;
     cc?: string[] | string;
     bcc?: string[] | string;
@@ -602,7 +559,7 @@ export class NotificationsService {
           subject: parent.subject.startsWith('Re:') ? parent.subject : `Re: ${parent.subject}`,
           bodyHtml,
           bodyText,
-          bodyJson: null,
+          bodyJson: input.bodyJson ?? null,
           status: 'SENT',
           isDraft: false,
           draftExpiresAt: null,
@@ -632,7 +589,7 @@ export class NotificationsService {
         },
         manager,
       );
-      await this.linkAttachmentsToMessage(input.senderUserId, message.id, input.attachmentIds ?? [], undefined, manager);
+      await this.notificationAttachmentsService.linkAttachmentsToMessage(input.senderUserId, message.id, input.attachmentIds ?? [], undefined, manager);
       await this.createAuditLog(
         {
           action: 'MESSAGE_REPLIED',
@@ -657,77 +614,15 @@ export class NotificationsService {
   }
 
   async listMyLabels(userId: string) {
-    const labels = await this.messageLabelRepository.find({
-      where: [{ ownerUserId: null, isVisible: true }, { ownerUserId: userId, isVisible: true }],
-      order: { sortOrder: 'ASC', createdAt: 'ASC' },
-    });
-    const allowedModules = await this.getAllowedNotificationModules(userId);
-    const allowedKeys = new Set(allowedModules.map((moduleItem) => moduleItem.key));
-    return labels.filter((label) => (label.type === 'MODULE' ? allowedKeys.has(label.key) : true));
+    return this.notificationLabelsService.listMyLabels(userId);
   }
 
   async createCustomLabel(userId: string, name: string, color: string) {
-    const normalizedName = name.trim();
-    if (!normalizedName) {
-      throw new BadRequestException({ message: 'Nombre de etiqueta obligatorio.', identifier: 'LABEL_NAME_REQUIRED' });
-    }
-    const key = normalizedName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '');
-    if (!key) {
-      throw new BadRequestException({ message: 'Nombre de etiqueta invalido.', identifier: 'LABEL_NAME_INVALID' });
-    }
-
-    const exists = await this.messageLabelRepository.findOne({
-      where: { ownerUserId: userId, key },
-    });
-    if (exists?.isVisible) {
-      throw new BadRequestException({ message: 'Etiqueta ya existente.', identifier: 'LABEL_ALREADY_EXISTS' });
-    }
-
-    if (exists && !exists.isVisible) {
-      exists.isVisible = true;
-      exists.color = color.trim();
-      exists.name = normalizedName;
-      exists.updatedAt = new Date();
-      try {
-        return await this.messageLabelRepository.save(exists);
-      } catch {
-        throw new InternalServerErrorException({ message: 'No se pudo reactivar la etiqueta.', identifier: 'LABEL_REACTIVATE_FAILED' });
-      }
-    }
-
-    const entity = this.messageLabelRepository.create({
-      ownerUserId: userId,
-      key,
-      name: normalizedName,
-      type: 'CUSTOM',
-      color: color.trim(),
-      icon: 'Tag',
-      isVisible: true,
-      sortOrder: 1000,
-    });
-    try {
-      return await this.messageLabelRepository.save(entity);
-    } catch {
-      throw new InternalServerErrorException({ message: 'No se pudo crear la etiqueta.', identifier: 'LABEL_CREATE_FAILED' });
-    }
+    return this.notificationLabelsService.createCustomLabel(userId, name, color);
   }
 
   async deactivateCustomLabel(userId: string, labelId: string) {
-    const label = await this.messageLabelRepository.findOne({
-      where: { id: labelId, ownerUserId: userId, type: 'CUSTOM' },
-    });
-    if (!label) {
-      throw new NotFoundException({ message: 'Etiqueta no encontrada.', identifier: 'LABEL_NOT_FOUND' });
-    }
-
-    label.isVisible = false;
-    label.updatedAt = new Date();
-    try {
-      await this.messageLabelRepository.save(label);
-      return { id: label.id, isVisible: label.isVisible };
-    } catch {
-      throw new InternalServerErrorException({ message: 'No se pudo eliminar la etiqueta.', identifier: 'LABEL_DELETE_FAILED' });
-    }
+    return this.notificationLabelsService.deactivateCustomLabel(userId, labelId);
   }
 
   private async assignLabelsToState(messageUserStateId: string, userId: string, labelIds: string[], manager?: EntityManager) {
@@ -777,47 +672,7 @@ export class NotificationsService {
     labelId: string,
     input: { name?: string; color?: string; isVisible?: boolean },
   ) {
-    const label = await this.messageLabelRepository.findOne({
-      where: { id: labelId, ownerUserId: userId, type: 'CUSTOM' },
-    });
-    if (!label) {
-      throw new NotFoundException({ message: 'Etiqueta no encontrada.', identifier: 'LABEL_NOT_FOUND' });
-    }
-
-    if (typeof input.name === 'string') {
-      const normalizedName = input.name.trim();
-      if (!normalizedName) {
-        throw new BadRequestException({ message: 'Nombre de etiqueta obligatorio.', identifier: 'LABEL_NAME_REQUIRED' });
-      }
-      const key = normalizedName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '');
-      if (!key) {
-        throw new BadRequestException({ message: 'Nombre de etiqueta invalido.', identifier: 'LABEL_NAME_INVALID' });
-      }
-      const duplicated = await this.messageLabelRepository.findOne({
-        where: { ownerUserId: userId, key },
-      });
-      if (duplicated && duplicated.id !== label.id) {
-        throw new BadRequestException({ message: 'Etiqueta ya existente.', identifier: 'LABEL_ALREADY_EXISTS' });
-      }
-      label.name = normalizedName;
-      label.key = key;
-    }
-
-    if (typeof input.color === 'string') {
-      const color = input.color.trim();
-      label.color = color || null;
-    }
-
-    if (typeof input.isVisible === 'boolean') {
-      label.isVisible = input.isVisible;
-    }
-
-    label.updatedAt = new Date();
-    try {
-      return await this.messageLabelRepository.save(label);
-    } catch {
-      throw new InternalServerErrorException({ message: 'No se pudo actualizar la etiqueta.', identifier: 'LABEL_UPDATE_FAILED' });
-    }
+    return this.notificationLabelsService.updateCustomLabel(userId, labelId, input);
   }
 
   async forwardMessage(input: {
@@ -828,6 +683,7 @@ export class NotificationsService {
     bcc?: string[] | string;
     recipients?: string;
     bodyHtml: string;
+    bodyJson?: Record<string, unknown> | null;
     attachmentIds?: string[];
   }) {
     const parent = await this.messageRepository.findOne({ where: { id: input.parentMessageId } });
@@ -871,7 +727,7 @@ export class NotificationsService {
           subject: thread.subject,
           bodyHtml,
           bodyText,
-          bodyJson: null,
+          bodyJson: input.bodyJson ?? null,
           status: 'SENT',
           isDraft: false,
           draftExpiresAt: null,
@@ -897,7 +753,7 @@ export class NotificationsService {
         },
         manager,
       );
-      await this.linkAttachmentsToMessage(input.senderUserId, message.id, input.attachmentIds ?? [], undefined, manager);
+      await this.notificationAttachmentsService.linkAttachmentsToMessage(input.senderUserId, message.id, input.attachmentIds ?? [], undefined, manager);
       await this.createAuditLog(
         {
           action: 'MESSAGE_FORWARDED',
@@ -933,6 +789,7 @@ export class NotificationsService {
     recipients?: string;
     subject?: string;
     bodyHtml?: string;
+    bodyJson?: Record<string, unknown>;
     originModule?: string;
   }) {
     const originModule = (input.originModule ?? 'corporate').toLowerCase();
@@ -963,7 +820,7 @@ export class NotificationsService {
         subject: input.subject?.trim() || '(Sin asunto)',
         bodyHtml: this.normalizeHtmlBody(input.bodyHtml ?? ''),
         bodyText: this.toBodyText(input.bodyHtml ?? ''),
-        bodyJson: { draftRecipients: input.recipients ?? '' },
+        bodyJson: { ...(input.bodyJson ?? {}), draftRecipients: input.recipients ?? '' },
         status: 'DRAFT',
         isDraft: true,
         draftExpiresAt,
@@ -987,6 +844,7 @@ export class NotificationsService {
     recipients?: string;
     subject?: string;
     bodyHtml?: string;
+    bodyJson?: Record<string, unknown>;
   }) {
     const draft = await this.messageRepository.findOne({
       where: { id: input.draftId, createdByUserId: input.userId, isDraft: true, status: 'DRAFT' },
@@ -1004,6 +862,12 @@ export class NotificationsService {
       draft.bodyJson = {
         ...(draft.bodyJson ?? {}),
         draftRecipients: input.recipients,
+      };
+    }
+    if (input.bodyJson && typeof input.bodyJson === 'object') {
+      draft.bodyJson = {
+        ...(draft.bodyJson ?? {}),
+        ...input.bodyJson,
       };
     }
     const now = new Date();
@@ -1075,7 +939,7 @@ export class NotificationsService {
         },
         manager,
       );
-      await this.linkAttachmentsToMessage(userId, sent.id, attachmentIds, draftId, manager);
+      await this.notificationAttachmentsService.linkAttachmentsToMessage(userId, sent.id, attachmentIds, draftId, manager);
       await this.createAuditLog(
         {
           action: 'DRAFT_SENT',
@@ -1107,268 +971,8 @@ export class NotificationsService {
   ) {
     await this.releaseDueSnoozedMessagesForUser(userId);
     await this.expireTrashForUser(userId);
-    const folder = query.folder ?? 'inbox';
-    const page = Math.max(query.page ?? 1, 1);
-    const limit = Math.min(Math.max(query.limit ?? 50, 1), 100);
-
-    if (query.originModule) {
-      await this.ensureCanAccessModule(userId, query.originModule);
-    }
-
-    if (folder === 'sent') {
-      const qbSent = this.messageUserStateRepository
-        .createQueryBuilder('mus')
-        .innerJoin(MessageEntity, 'm', 'm.id = mus.message_id')
-        .where('mus.user_id = :userId', { userId })
-        .andWhere('mus.is_in_sent = true')
-        .andWhere('mus.permanently_hidden_at IS NULL')
-        .andWhere('m.is_draft = false');
-      if (query.originModule) qbSent.andWhere('m.origin_module = :originModule', { originModule: query.originModule });
-      if (query.q) {
-        qbSent.andWhere(
-          `(
-            m.subject ILIKE :q
-            OR m.body_text ILIKE :q
-            OR EXISTS (
-              SELECT 1
-              FROM users sender_u
-              WHERE sender_u.user_id = m.sender_user_id
-                AND (sender_u.name ILIKE :q OR sender_u.email ILIKE :q)
-            )
-            OR EXISTS (
-              SELECT 1
-              FROM message_user_states mus2
-              WHERE mus2.message_id = m.id
-                AND mus2.recipient_email ILIKE :q
-            )
-            OR EXISTS (
-              SELECT 1
-              FROM message_attachments ma2
-              WHERE ma2.message_id = m.id
-                AND ma2.original_name ILIKE :q
-            )
-            OR EXISTS (
-              SELECT 1
-              FROM message_label_assignments mla2
-              JOIN message_labels ml2 ON ml2.id = mla2.label_id
-              WHERE mla2.message_user_state_id = mus.id
-                AND mla2.user_id = :userId
-                AND (ml2.name ILIKE :q OR ml2.key ILIKE :q)
-            )
-          )`,
-          { q: `%${query.q}%`, userId },
-        );
-        await this.upsertSearchHistory(userId, query.q);
-      }
-      if (typeof query.hasAttachments === 'boolean') {
-        if (query.hasAttachments) {
-          qbSent.andWhere('EXISTS (SELECT 1 FROM message_attachments ma WHERE ma.message_id = m.id)');
-        } else {
-          qbSent.andWhere('NOT EXISTS (SELECT 1 FROM message_attachments ma WHERE ma.message_id = m.id)');
-        }
-      }
-      const total = await qbSent.clone().getCount();
-      const rows = await qbSent
-        .clone()
-        .select(['m.id AS message_id'])
-        .orderBy('m.sent_at', 'DESC')
-        .addOrderBy('m.created_at', 'DESC')
-        .take(limit)
-        .skip((page - 1) * limit)
-        .getRawMany<{ message_id: string }>();
-      const messageIds = rows.map((row) => row.message_id);
-      const items = messageIds.length
-        ? await this.messageRepository.find({ where: messageIds.map((id) => ({ id })) })
-        : [];
-      return { page, limit, total, items };
-    }
-    if (folder === 'drafts') {
-      const [items, total] = await this.messageRepository.findAndCount({
-        where: { createdByUserId: userId, isDraft: true, status: 'DRAFT' },
-        order: { updatedAt: 'DESC' },
-        take: limit,
-        skip: (page - 1) * limit,
-      });
-      return { page, limit, total, items };
-    }
-
-    const qb = this.messageUserStateRepository
-      .createQueryBuilder('mus')
-      .innerJoin(MessageEntity, 'm', 'm.id = mus.message_id')
-      .where('mus.user_id = :userId', { userId })
-      .andWhere('mus.permanently_hidden_at IS NULL');
-
-    if (query.labelId) {
-      qb.innerJoin(
-        MessageLabelAssignmentEntity,
-        'mla',
-        'mla.message_user_state_id = mus.id AND mla.label_id = :labelId',
-        { labelId: query.labelId },
-      );
-    }
-
-    if (folder !== 'all') {
-      if (folder === 'trash') {
-        qb.andWhere('mus.deleted_at IS NOT NULL');
-      } else {
-        qb.andWhere('mus.deleted_at IS NULL');
-      }
-      if (folder === 'archived') qb.andWhere('mus.is_archived = true');
-      if (folder !== 'archived') qb.andWhere('mus.is_archived = false');
-      if (folder === 'snoozed') qb.andWhere('mus.snoozed_until IS NOT NULL AND mus.snoozed_until > now()');
-      if (folder !== 'snoozed') qb.andWhere('(mus.snoozed_until IS NULL OR mus.snoozed_until <= now())');
-      if (folder === 'starred') qb.andWhere('mus.starred_at IS NOT NULL');
-      if (folder === 'inbox') qb.andWhere('mus.is_in_inbox = true');
-    }
-
-    if (query.originModule) qb.andWhere('m.origin_module = :originModule', { originModule: query.originModule });
-    if (query.q) {
-      qb.andWhere(
-        `(
-          m.subject ILIKE :q
-          OR m.body_text ILIKE :q
-          OR EXISTS (
-            SELECT 1
-            FROM users sender_u
-            WHERE sender_u.user_id = m.sender_user_id
-              AND (sender_u.name ILIKE :q OR sender_u.email ILIKE :q)
-          )
-          OR EXISTS (
-            SELECT 1
-            FROM message_user_states mus2
-            WHERE mus2.message_id = m.id
-              AND mus2.recipient_email ILIKE :q
-          )
-          OR EXISTS (
-            SELECT 1
-            FROM message_attachments ma2
-            WHERE ma2.message_id = m.id
-              AND ma2.original_name ILIKE :q
-          )
-          OR EXISTS (
-            SELECT 1
-            FROM message_label_assignments mla2
-            JOIN message_labels ml2 ON ml2.id = mla2.label_id
-            WHERE mla2.message_user_state_id = mus.id
-              AND mla2.user_id = :userId
-              AND (ml2.name ILIKE :q OR ml2.key ILIKE :q)
-          )
-        )`,
-        { q: `%${query.q}%`, userId },
-      );
-    }
-    if (query.q) {
-      await this.upsertSearchHistory(userId, query.q);
-    }
-    if (typeof query.read === 'boolean') {
-      if (query.read) qb.andWhere('mus.read_at IS NOT NULL');
-      else qb.andWhere('mus.read_at IS NULL');
-    }
-    if (typeof query.hasAttachments === 'boolean') {
-      if (query.hasAttachments) {
-        qb.andWhere('EXISTS (SELECT 1 FROM message_attachments ma WHERE ma.message_id = m.id)');
-      } else {
-        qb.andWhere('NOT EXISTS (SELECT 1 FROM message_attachments ma WHERE ma.message_id = m.id)');
-      }
-    }
-
-    qb.orderBy('m.sent_at', 'DESC').addOrderBy('m.created_at', 'DESC');
-
-    const total = await qb.clone().getCount();
-
-    const rows = await qb
-      .clone()
-      .select(['mus.id AS state_id', 'mus.message_id AS message_id'])
-      .take(limit)
-      .skip((page - 1) * limit)
-      .getRawMany<{ state_id: string; message_id: string }>();
-
-    const stateIds = rows.map((row) => row.state_id);
-    const messageIds = rows.map((row) => row.message_id);
-
-    const states = stateIds.length
-      ? await this.messageUserStateRepository.find({
-          where: stateIds.map((id) => ({ id })),
-        })
-      : [];
-    const messages = messageIds.length
-      ? await this.messageRepository.find({
-          where: messageIds.map((id) => ({ id })),
-        })
-      : [];
-    const senderIds = Array.from(new Set(messages.map((m) => m.senderUserId).filter(Boolean))) as string[];
-    const senders = senderIds.length
-      ? await this.userRepository.find({
-          where: senderIds.map((id) => ({ id })),
-          select: ['id', 'name', 'email'],
-        })
-      : [];
-    const senderMap = new Map(senders.map((sender) => [sender.id, sender]));
-
-    const stateMap = new Map(states.map((state) => [state.id, state]));
-    const messageMap = new Map(messages.map((message) => [message.id, message]));
-    const labelAssignments = stateIds.length
-      ? await this.messageLabelAssignmentRepository.find({
-          where: stateIds.map((id) => ({ messageUserStateId: id, userId })),
-        })
-      : [];
-    const labelIds = Array.from(new Set(labelAssignments.map((assignment) => assignment.labelId)));
-    const labels = labelIds.length
-      ? await this.messageLabelRepository.find({
-          where: labelIds.map((id) => ({ id })),
-        })
-      : [];
-    const labelMap = new Map(labels.map((label) => [label.id, label]));
-    const labelsByState = new Map<string, MessageLabelEntity[]>();
-    labelAssignments.forEach((assignment) => {
-      const bucket = labelsByState.get(assignment.messageUserStateId) ?? [];
-      const label = labelMap.get(assignment.labelId);
-      if (label) bucket.push(label);
-      labelsByState.set(assignment.messageUserStateId, bucket);
-    });
-
-    return {
-      page,
-      limit,
-      total,
-      items: rows
-        .map((row) => ({
-          recipient:
-            (() => {
-              const state = stateMap.get(row.state_id);
-              if (!state) return null;
-              return {
-                id: state.id,
-                messageId: state.messageId,
-                recipientUserId: state.userId,
-                recipientEmail: state.recipientEmail ?? '',
-                recipientType:
-                  state.relationType === 'CC'
-                    ? 'CC'
-                    : state.relationType === 'BCC'
-                      ? 'BCC'
-                      : 'TO',
-                readAt: state.readAt,
-                starredAt: state.starredAt,
-                deletedAt: state.deletedAt,
-                deliveredAt: state.deliveredAt,
-                createdAt: state.createdAt,
-                updatedAt: state.updatedAt,
-              };
-            })(),
-          message: messageMap.get(row.message_id) ?? null,
-          labels: labelsByState.get(row.state_id) ?? [],
-          sender:
-            (() => {
-              const msg = messageMap.get(row.message_id);
-              if (!msg?.senderUserId) return null;
-              const sender = senderMap.get(msg.senderUserId);
-              if (!sender) return null;
-              return { id: sender.id, name: sender.name, email: sender.email };
-            })(),
-        }))
-        .filter((item) => item.recipient !== null),
-    };
+    if (query.originModule) await this.ensureCanAccessModule(userId, query.originModule);
+    return this.notificationQueriesService.listMessages(userId, query);
   }
 
   async getMessageDetail(userId: string, id: string) {
@@ -1465,8 +1069,7 @@ export class NotificationsService {
   async markMessageAsRead(userId: string, recipientId: string) {
     const recipient = await this.findMessageStateOrThrow(userId, recipientId);
     if (!recipient.readAt) {
-      recipient.readAt = new Date();
-      recipient.openedAt = recipient.openedAt ?? new Date();
+      this.messageStateService.markRead(recipient);
       await this.messageUserStateRepository.save(recipient);
       await this.createAuditLog({
         action: 'MESSAGE_READ',
@@ -1480,7 +1083,7 @@ export class NotificationsService {
 
   async markMessageAsUnread(userId: string, recipientId: string) {
     const recipient = await this.findMessageStateOrThrow(userId, recipientId);
-    recipient.readAt = null;
+    this.messageStateService.markUnread(recipient);
     await this.createAuditLog({
       action: 'MESSAGE_UNREAD',
       actorUserId: userId,
@@ -1504,11 +1107,7 @@ export class NotificationsService {
 
   async deleteMessage(userId: string, recipientId: string) {
     const recipient = await this.findMessageStateOrThrow(userId, recipientId);
-    const now = new Date();
-    recipient.deletedAt = now;
-    recipient.trashExpiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-    recipient.isArchived = false;
-    recipient.isInInbox = false;
+    this.messageStateService.moveToTrash(recipient);
     await this.createAuditLog({
       action: 'MESSAGE_DELETED',
       actorUserId: userId,
@@ -1527,10 +1126,7 @@ export class NotificationsService {
 
   async restoreMessage(userId: string, recipientId: string) {
     const recipient = await this.findMessageStateOrThrow(userId, recipientId);
-    recipient.deletedAt = null;
-    recipient.trashExpiresAt = null;
-    recipient.permanentlyHiddenAt = null;
-    recipient.isInInbox = recipient.relationType !== 'SENDER';
+    this.messageStateService.restoreFromTrash(recipient);
     await this.createAuditLog({
       action: 'MESSAGE_RESTORED',
       actorUserId: userId,
@@ -1542,8 +1138,7 @@ export class NotificationsService {
 
   async archiveMessage(userId: string, recipientId: string) {
     const recipient = await this.findMessageStateOrThrow(userId, recipientId);
-    recipient.isArchived = true;
-    recipient.isInInbox = false;
+    this.messageStateService.archive(recipient);
     await this.createAuditLog({
       action: 'MESSAGE_ARCHIVED',
       actorUserId: userId,
@@ -1555,8 +1150,7 @@ export class NotificationsService {
 
   async unarchiveMessage(userId: string, recipientId: string) {
     const recipient = await this.findMessageStateOrThrow(userId, recipientId);
-    recipient.isArchived = false;
-    if (recipient.relationType !== 'SENDER') recipient.isInInbox = true;
+    this.messageStateService.unarchive(recipient);
     await this.createAuditLog({
       action: 'MESSAGE_UNARCHIVED',
       actorUserId: userId,
@@ -1572,9 +1166,7 @@ export class NotificationsService {
     if (Number.isNaN(snoozedUntil.getTime()) || snoozedUntil.getTime() <= Date.now()) {
       throw new BadRequestException('SNOOZE_DATE_INVALID');
     }
-    recipient.snoozedUntil = snoozedUntil;
-    recipient.snoozedAt = new Date();
-    recipient.isInInbox = false;
+    this.messageStateService.snooze(recipient, snoozedUntil);
     await this.createAuditLog({
       action: 'MESSAGE_SNOOZED',
       actorUserId: userId,
@@ -1587,9 +1179,7 @@ export class NotificationsService {
 
   async unsnoozeMessage(userId: string, recipientId: string) {
     const recipient = await this.findMessageStateOrThrow(userId, recipientId);
-    recipient.snoozedUntil = null;
-    recipient.snoozedAt = null;
-    if (recipient.relationType !== 'SENDER') recipient.isInInbox = true;
+    this.messageStateService.unsnooze(recipient);
     await this.createAuditLog({
       action: 'MESSAGE_UNSNOOZED',
       actorUserId: userId,
@@ -1709,7 +1299,7 @@ export class NotificationsService {
       return { updated: 0 };
     }
     if (input.action === 'ASSIGN_LABEL' && input.labelId) {
-      await Promise.all(own.map((state) => this.assignLabelsToState(state.id, userId, [input.labelId!])));
+      await Promise.all(own.map((state) => this.notificationLabelsService.assignLabelsToState(state.id, userId, [input.labelId!])));
     }
     if (input.action === 'REMOVE_LABEL' && input.labelId) {
       await this.messageLabelAssignmentRepository
@@ -1724,140 +1314,27 @@ export class NotificationsService {
   }
 
   async listSearchHistory(userId: string) {
-    return this.messageSearchHistoryRepository.find({
-      where: { userId },
-      order: { lastUsedAt: 'DESC', createdAt: 'DESC' },
-      take: 10,
-    });
+    return this.notificationLabelsService.listSearchHistory(userId);
   }
 
   async saveSearchHistory(userId: string, query: string) {
-    const normalized = query.trim();
-    if (!normalized) {
-      throw new BadRequestException('SEARCH_QUERY_REQUIRED');
-    }
-    await this.upsertSearchHistory(userId, normalized);
-    return this.listSearchHistory(userId);
+    return this.notificationLabelsService.saveSearchHistory(userId, query);
   }
 
   async deleteSearchHistory(userId: string, id: string) {
-    const history = await this.messageSearchHistoryRepository.findOne({ where: { id, userId } });
-    if (!history) {
-      throw new NotFoundException('SEARCH_HISTORY_NOT_FOUND');
-    }
-    await this.messageSearchHistoryRepository.delete({ id });
-    return { deleted: true };
+    return this.notificationLabelsService.deleteSearchHistory(userId, id);
   }
 
   async assignLabelToMessage(userId: string, messageId: string, labelId: string) {
-    const state =
-      (await this.messageUserStateRepository.findOne({
-        where: { messageId, userId },
-      })) ??
-      (await this.messageUserStateRepository.findOne({
-        where: { id: messageId, userId },
-      }));
-    if (!state) {
-      throw new NotFoundException('MESSAGE_NOT_FOUND');
-    }
-    await this.assignLabelsToState(state.id, userId, [labelId]);
-    await this.createAuditLog({
-      action: 'LABEL_ASSIGNED',
-      actorUserId: userId,
-      messageId: state.messageId,
-      threadId: state.threadId,
-      metadata: { labelId },
-    });
+    const result = await this.notificationLabelsService.assignLabelToMessage(userId, messageId, labelId);
+    await this.createAuditLog({ action: 'LABEL_ASSIGNED', actorUserId: userId, messageId: result.state.messageId, threadId: result.state.threadId, metadata: { labelId } });
     return { assigned: true };
   }
 
   async removeLabelFromMessage(userId: string, messageId: string, labelId: string) {
-    const state =
-      (await this.messageUserStateRepository.findOne({
-        where: { messageId, userId },
-      })) ??
-      (await this.messageUserStateRepository.findOne({
-        where: { id: messageId, userId },
-      }));
-    if (!state) {
-      throw new NotFoundException('MESSAGE_NOT_FOUND');
-    }
-    await this.messageLabelAssignmentRepository
-      .createQueryBuilder()
-      .delete()
-      .where('user_id = :userId', { userId })
-      .andWhere('label_id = :labelId', { labelId })
-      .andWhere('message_user_state_id = :stateId', { stateId: state.id })
-      .execute();
-    await this.createAuditLog({
-      action: 'LABEL_REMOVED',
-      actorUserId: userId,
-      messageId: state.messageId,
-      threadId: state.threadId,
-      metadata: { labelId },
-    });
+    const result = await this.notificationLabelsService.removeLabelFromMessage(userId, messageId, labelId);
+    await this.createAuditLog({ action: 'LABEL_REMOVED', actorUserId: userId, messageId: result.state.messageId, threadId: result.state.threadId, metadata: { labelId } });
     return { removed: true };
-  }
-
-  private validateAttachmentOrFail(fileName: string, mimeType: string, size: number) {
-    const extension = path.extname(fileName).toLowerCase();
-    if (!this.allowedAttachmentExtensions.has(extension)) {
-      throw new BadRequestException('ATTACHMENT_EXTENSION_NOT_ALLOWED');
-    }
-    if (!this.allowedAttachmentMimeTypes.has(mimeType)) {
-      throw new BadRequestException('ATTACHMENT_MIME_NOT_ALLOWED');
-    }
-    if (size > this.maxAttachmentSizeBytes) {
-      throw new BadRequestException('ATTACHMENT_TOO_LARGE');
-    }
-  }
-
-  private async linkAttachmentsToMessage(
-    userId: string,
-    messageId: string,
-    attachmentIds: string[],
-    draftId?: string,
-    manager?: EntityManager,
-  ) {
-    const attachmentRepo = manager ? manager.getRepository(MessageAttachmentEntity) : this.messageAttachmentRepository;
-    const ids = Array.from(new Set((attachmentIds ?? []).filter(Boolean)));
-    const whereBase = ids.length
-      ? ids.map((id) => ({ id, uploadedByUserId: userId }))
-      : draftId
-        ? [{ draftId, uploadedByUserId: userId }]
-        : [];
-    if (!whereBase.length) return;
-
-    const attachments = await attachmentRepo.find({
-      where: whereBase,
-    });
-    if (!attachments.length) return;
-
-    attachments.forEach((attachment) => {
-      attachment.messageId = messageId;
-      attachment.draftId = null;
-    });
-    await attachmentRepo.save(attachments);
-  }
-
-  private async ensureAttachmentAccessOrFail(userId: string, attachment: MessageAttachmentEntity) {
-    if (attachment.uploadedByUserId === userId) return;
-    const targetMessageId = attachment.messageId ?? attachment.draftId;
-    if (!targetMessageId) {
-      throw new ForbiddenException('ATTACHMENT_ACCESS_DENIED');
-    }
-    const canAccess = await this.ensureMessageParticipant(userId, targetMessageId);
-    if (!canAccess) {
-      throw new ForbiddenException('ATTACHMENT_ACCESS_DENIED');
-    }
-    const relatedMessage = await this.messageRepository.findOne({ where: { id: targetMessageId } });
-    if (relatedMessage) {
-      const requiredPermissions = this.notificationModulePermissions[relatedMessage.originModule] ?? ['page.notifications.view'];
-      const allowed = await this.accessControlPort.canDownloadAttachment(userId, requiredPermissions);
-      if (!allowed) {
-        throw new ForbiddenException('ATTACHMENT_ACCESS_DENIED');
-      }
-    }
   }
 
   async uploadAttachment(input: {
@@ -1869,49 +1346,10 @@ export class NotificationsService {
     messageId?: string;
     draftId?: string;
   }) {
-    if (!input.fileName || !input.mimeType || !input.buffer?.length) {
-      throw new BadRequestException('ATTACHMENT_FILE_REQUIRED');
-    }
-    if (!input.messageId && !input.draftId) {
-      throw new BadRequestException('ATTACHMENT_TARGET_REQUIRED');
-    }
-
-    this.validateAttachmentOrFail(input.fileName, input.mimeType, input.size);
-
-    if (input.messageId) {
-      const canAccess = await this.ensureMessageParticipant(input.userId, input.messageId);
-      if (!canAccess) {
-        throw new ForbiddenException('ATTACHMENT_ACCESS_DENIED');
-      }
-    }
-
-    if (input.draftId) {
-      const draft = await this.messageRepository.findOne({
-        where: { id: input.draftId, createdByUserId: input.userId, isDraft: true, status: 'DRAFT' },
-      });
-      if (!draft) {
-        throw new ForbiddenException('ATTACHMENT_ACCESS_DENIED');
-      }
-    }
-
-    await fs.mkdir(this.attachmentStorageDir, { recursive: true });
-    const storedName = `${Date.now()}-${Math.random().toString(36).slice(2)}${path.extname(input.fileName).toLowerCase()}`;
-    const storageKey = path.join(this.attachmentStorageDir, storedName);
-    await fs.writeFile(storageKey, input.buffer);
-
-    const saved = await this.messageAttachmentRepository.save(
-      this.messageAttachmentRepository.create({
-        messageId: input.messageId ?? null,
-        draftId: input.draftId ?? null,
-        originalName: input.fileName,
-        storedName,
-        mimeType: input.mimeType,
-        sizeBytes: String(input.size),
-        storageKey,
-        uploadedByUserId: input.userId,
-      }),
-    );
-
+    const saved = await this.notificationAttachmentsService.uploadAttachment({
+      ...input,
+      modulePermissions: NOTIFICATION_MODULE_PERMISSIONS,
+    });
     await this.createAuditLog({
       action: 'ATTACHMENT_UPLOADED',
       actorUserId: input.userId,
@@ -1935,29 +1373,24 @@ export class NotificationsService {
   }
 
   async downloadAttachment(userId: string, attachmentId: string) {
-    const attachment = await this.messageAttachmentRepository.findOne({ where: { id: attachmentId } });
-    if (!attachment) throw new NotFoundException('ATTACHMENT_NOT_FOUND');
-    await this.ensureAttachmentAccessOrFail(userId, attachment);
-    const fileBuffer = await fs.readFile(attachment.storageKey);
+    const file = await this.notificationAttachmentsService.downloadAttachment(
+      userId,
+      attachmentId,
+      NOTIFICATION_MODULE_PERMISSIONS,
+    );
     return {
-      fileName: attachment.originalName,
-      mimeType: attachment.mimeType,
-      buffer: fileBuffer,
+      fileName: file.attachment.originalName,
+      mimeType: file.attachment.mimeType,
+      buffer: file.buffer,
     };
   }
 
   async deleteAttachment(userId: string, attachmentId: string) {
-    const attachment = await this.messageAttachmentRepository.findOne({ where: { id: attachmentId } });
-    if (!attachment) throw new NotFoundException('ATTACHMENT_NOT_FOUND');
-    await this.ensureAttachmentAccessOrFail(userId, attachment);
-
-    await this.messageAttachmentRepository.delete({ id: attachment.id });
-    try {
-      await fs.unlink(attachment.storageKey);
-    } catch {
-      // Archivo puede no existir; no bloquea la eliminacion logica.
-    }
-
+    const attachment = await this.notificationAttachmentsService.deleteAttachment(
+      userId,
+      attachmentId,
+      NOTIFICATION_MODULE_PERMISSIONS,
+    );
     await this.createAuditLog({
       action: 'ATTACHMENT_REMOVED',
       actorUserId: userId,
@@ -2112,7 +1545,7 @@ export class NotificationsService {
       title: 'Notificacion de prueba',
       message: `Mensaje realtime para ${user.email}`,
       priority: 'HIGH',
-      actionUrl: '/notifications',
+      actionUrl: '/email',
       actionLabel: 'Ver bandeja',
       metadata: { source: 'dev-endpoint' },
       isSystem: true,
@@ -2291,3 +1724,8 @@ export class NotificationsService {
     };
   }
 }
+
+
+
+
+

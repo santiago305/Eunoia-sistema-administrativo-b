@@ -21,6 +21,12 @@ import { ExpireTrashJob } from './jobs/expire-trash.job';
 import { ReleaseSnoozedMessagesJob } from './jobs/release-snoozed-messages.job';
 import { CleanOrphanAttachmentsJob } from './jobs/clean-orphan-attachments.job';
 import { CreateYearlyPartitionsJob } from './jobs/create-yearly-partitions.job';
+import { MailJobsScheduler } from './jobs/mail-jobs.scheduler';
+import { MessageStateService } from '../application/services/message-state.service';
+import { MessageAccessService } from '../application/services/message-access.service';
+import { NotificationLabelsService } from '../application/services/notification-labels.service';
+import { NotificationAttachmentsService } from '../application/services/notification-attachments.service';
+import { NotificationQueriesService } from '../application/services/notification-queries.service';
 import { ACCESS_CONTROL_PORT } from '../application/ports/access-control.port';
 import { AccessControlAdapter } from '../adapters/out/access-control/access-control.adapter';
 
@@ -44,6 +50,11 @@ import { AccessControlAdapter } from '../adapters/out/access-control/access-cont
   controllers: [NotificationsController],
   providers: [
     NotificationsService,
+    MessageStateService,
+    MessageAccessService,
+    NotificationLabelsService,
+    NotificationAttachmentsService,
+    NotificationQueriesService,
     AccessControlAdapter,
     { provide: ACCESS_CONTROL_PORT, useExisting: AccessControlAdapter },
     NotificationRealtimeService,
@@ -53,6 +64,7 @@ import { AccessControlAdapter } from '../adapters/out/access-control/access-cont
     ReleaseSnoozedMessagesJob,
     CleanOrphanAttachmentsJob,
     CreateYearlyPartitionsJob,
+    MailJobsScheduler,
   ],
   exports: [NotificationsService, NotificationRealtimeService],
 })

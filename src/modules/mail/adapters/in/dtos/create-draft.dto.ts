@@ -1,4 +1,4 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsObject, IsOptional, IsString } from 'class-validator';
 
 export class CreateDraftDto {
   @IsOptional()
@@ -12,6 +12,10 @@ export class CreateDraftDto {
   @IsOptional()
   @IsString()
   bodyHtml?: string;
+
+  @IsOptional()
+  @IsObject()
+  bodyJson?: Record<string, unknown>;
 
   @IsOptional()
   @IsString()

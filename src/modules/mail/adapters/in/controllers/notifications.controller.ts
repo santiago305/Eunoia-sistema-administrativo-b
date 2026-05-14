@@ -21,7 +21,7 @@ import { SnoozeMessageDto } from '../dtos/snooze-message.dto';
 import { CreateSearchHistoryDto } from '../dtos/create-search-history.dto';
 import { UploadAttachmentDto } from '../dtos/upload-attachment.dto';
 
-@Controller(['email', 'notifications'])
+@Controller('email')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
@@ -124,6 +124,7 @@ export class NotificationsController {
       recipients: body.recipients,
       subject: body.subject,
       bodyHtml: body.bodyHtml,
+      bodyJson: body.bodyJson,
       originModule: body.originModule,
       labelIds: body.labelIds ?? [],
       attachmentIds: body.attachmentIds ?? [],
@@ -215,6 +216,7 @@ export class NotificationsController {
       senderUserId: user.id,
       parentMessageId: id,
       bodyHtml: body.bodyHtml,
+      bodyJson: body.bodyJson,
       to: body.to,
       cc: body.cc,
       bcc: body.bcc,
@@ -235,6 +237,7 @@ export class NotificationsController {
       senderUserId: user.id,
       parentMessageId: id,
       bodyHtml: body.bodyHtml,
+      bodyJson: body.bodyJson,
       to: body.to,
       cc: body.cc,
       bcc: body.bcc,
@@ -257,6 +260,7 @@ export class NotificationsController {
       recipients: body.recipients,
       subject: body.subject,
       bodyHtml: body.bodyHtml,
+      bodyJson: body.bodyJson,
       originModule: body.originModule,
     });
   }
@@ -270,6 +274,7 @@ export class NotificationsController {
       recipients: body.recipients,
       subject: body.subject,
       bodyHtml: body.bodyHtml,
+      bodyJson: body.bodyJson,
     });
   }
 

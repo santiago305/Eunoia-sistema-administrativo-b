@@ -6,15 +6,25 @@ import { AccessControlPort } from 'src/modules/mail/application/ports/access-con
 export class AccessControlAdapter implements AccessControlPort {
   constructor(private readonly accessControlService: AccessControlService) {}
 
-  async canViewModuleMessages(userId: string, requiredPermissions: string[]): Promise<boolean> {
+  async canViewModuleMessages(userId: string, _originModule: string, requiredPermissions: string[]): Promise<boolean> {
     return this.accessControlService.userHasAllPermissions(userId, requiredPermissions);
   }
 
-  async canOpenMessage(userId: string, requiredPermissions: string[]): Promise<boolean> {
+  async canOpenMessage(
+    userId: string,
+    _messageId: string,
+    _originModule: string,
+    requiredPermissions: string[],
+  ): Promise<boolean> {
     return this.accessControlService.userHasAllPermissions(userId, requiredPermissions);
   }
 
-  async canDownloadAttachment(userId: string, requiredPermissions: string[]): Promise<boolean> {
+  async canDownloadAttachment(
+    userId: string,
+    _attachmentId: string,
+    _originModule: string,
+    requiredPermissions: string[],
+  ): Promise<boolean> {
     return this.accessControlService.userHasAllPermissions(userId, requiredPermissions);
   }
 }

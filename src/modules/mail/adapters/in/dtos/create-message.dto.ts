@@ -1,4 +1,4 @@
-import { IsArray, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsArray, IsNotEmpty, IsObject, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateMessageDto {
   @IsOptional()
@@ -28,6 +28,10 @@ export class CreateMessageDto {
   @IsString()
   @IsNotEmpty()
   bodyHtml: string;
+
+  @IsOptional()
+  @IsObject()
+  bodyJson?: Record<string, unknown>;
 
   @IsOptional()
   @IsString()

@@ -58,6 +58,11 @@ import { seedUbigeo } from './src/modules/ubigeo/infrastructure/seed/ubigeo.seed
 import { seedInventoryDocuments } from 'src/modules/product-catalog/infrastructure/seed/document-inventory.seeder';
 import { seedInventoryTransfers } from 'src/modules/product-catalog/infrastructure/seed/document-transfer.seeder';
 import { seedInventoryAdjustments } from 'src/modules/product-catalog/infrastructure/seed/document-adjustment.seeder';
+import { MessageEntity } from 'src/modules/mail/adapters/out/persistence/typeorm/entities/message.entity';
+import { MessageThread } from 'src/modules/mail/adapters/out/persistence/typeorm/entities/message-thread.entity';
+import { MessageUserStateEntity } from 'src/modules/mail/adapters/out/persistence/typeorm/entities/message-user-state.entity';
+import { MessageRecipientEntity } from 'src/modules/mail/adapters/out/persistence/typeorm/entities/message-recipient.entity';
+import { seedSystemNotificationsForUser } from 'src/modules/mail/infrastructure/seed/system-notifications.seeder';
 
 const entities = [
   Role,
@@ -99,6 +104,10 @@ const entities = [
   UbigeoDepartmentEntity,
   UbigeoProvinceEntity,
   UbigeoDistrictEntity,
+  MessageEntity,
+  MessageThread,
+  MessageUserStateEntity,
+  MessageRecipientEntity,
 ];
 
 const dataSource = new DataSource({
@@ -166,6 +175,7 @@ dataSource
     await seedPaymentMethods(dataSource);
     await seedSuppliers(dataSource, 10);
     await seedSupplierSkus(dataSource);
+    await seedSystemNotificationsForUser(dataSource);
 
     await dataSource.destroy();
     console.log('Seeding completo!');
