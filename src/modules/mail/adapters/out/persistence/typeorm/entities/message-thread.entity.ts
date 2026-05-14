@@ -11,6 +11,15 @@ export class MessageThread {
   @Column({ name: 'created_by_user_id', type: 'uuid', nullable: true })
   createdByUserId: string | null;
 
+  @Column({ name: 'origin_module', type: 'varchar', length: 60, nullable: true })
+  originModule: string | null;
+
+  @Column({ name: 'source_entity_type', type: 'varchar', length: 80, nullable: true })
+  sourceEntityType: string | null;
+
+  @Column({ name: 'source_entity_id', type: 'uuid', nullable: true })
+  sourceEntityId: string | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

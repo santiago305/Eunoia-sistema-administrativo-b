@@ -53,6 +53,12 @@ export class MessageEntity {
   @Column({ name: 'draft_expires_at', type: 'timestamp', nullable: true })
   draftExpiresAt: Date | null;
 
+  @Column({ name: 'last_autosaved_at', type: 'timestamp', nullable: true })
+  lastAutosavedAt: Date | null;
+
+  @Column({ name: 'scheduled_at', type: 'timestamp', nullable: true })
+  scheduledAt: Date | null;
+
   @Column({ name: 'sent_at', type: 'timestamp', nullable: true })
   sentAt: Date | null;
 

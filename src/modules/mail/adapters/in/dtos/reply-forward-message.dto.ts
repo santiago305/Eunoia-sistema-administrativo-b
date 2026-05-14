@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class ReplyForwardMessageDto {
   @IsOptional()
@@ -8,4 +8,9 @@ export class ReplyForwardMessageDto {
   @IsString()
   @IsNotEmpty()
   bodyHtml: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  attachmentIds?: string[];
 }

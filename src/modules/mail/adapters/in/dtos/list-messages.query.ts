@@ -3,8 +3,12 @@ import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-va
 
 export class ListMessagesQueryDto {
   @IsOptional()
-  @IsIn(['inbox', 'sent', 'trash', 'starred', 'archived', 'snoozed', 'drafts'])
-  folder?: 'inbox' | 'sent' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'drafts';
+  @IsIn(['inbox', 'sent', 'trash', 'starred', 'archived', 'snoozed', 'drafts', 'all'])
+  view?: 'inbox' | 'sent' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'drafts' | 'all';
+
+  @IsOptional()
+  @IsIn(['inbox', 'sent', 'trash', 'starred', 'archived', 'snoozed', 'drafts', 'all'])
+  folder?: 'inbox' | 'sent' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'drafts' | 'all';
 
   @IsOptional()
   @IsString()

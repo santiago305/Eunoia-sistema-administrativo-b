@@ -1,4 +1,6 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { Response } from 'express';
 import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/modules/access-control/adapters/in/guards/permissions.guard';
 import { RequirePermissions } from 'src/modules/access-control/adapters/in/decorators/require-permissions.decorator';
@@ -14,6 +16,8 @@ import { SendDraftDto } from '../dtos/send-draft.dto';
 import { BulkMessageActionDto } from '../dtos/bulk-message-action.dto';
 import { CreateLabelDto } from '../dtos/create-label.dto';
 import { SnoozeMessageDto } from '../dtos/snooze-message.dto';
+import { CreateSearchHistoryDto } from '../dtos/create-search-history.dto';
+import { UploadAttachmentDto } from '../dtos/upload-attachment.dto';
 
 @Controller(['email', 'notifications'])
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -59,10 +63,38 @@ export class NotificationsController {
     return this.notificationsService.deactivateCustomLabel(user.id, id);
   }
 
+  @RequirePermissions('notifications.manage')
+  @Post('messages/:id/labels/:labelId')
+  assignLabelToMessage(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Param('labelId') labelId: string,
+  ) {
+    return this.notificationsService.assignLabelToMessage(user.id, id, labelId);
+  }
+
+  @RequirePermissions('notifications.manage')
+  @Delete('messages/:id/labels/:labelId')
+  removeLabelFromMessage(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Param('labelId') labelId: string,
+  ) {
+    return this.notificationsService.removeLabelFromMessage(user.id, id, labelId);
+  }
+
   @RequirePermissions('notifications.read')
   @Get('messages')
   listMessages(@CurrentUser() user: { id: string }, @Query() query: ListMessagesQueryDto) {
-    return this.notificationsService.listMessages(user.id, query);
+    return this.notificationsService.listMessages(user.id, {
+      folder: query.folder ?? query.view,
+      originModule: query.originModule,
+      q: query.q,
+      page: query.page,
+      limit: query.limit,
+      read: query.read,
+      labelId: query.labelId,
+    });
   }
 
   @RequirePermissions('notifications.read')
@@ -81,6 +113,7 @@ export class NotificationsController {
       bodyHtml: body.bodyHtml,
       originModule: body.originModule,
       labelIds: body.labelIds ?? [],
+      attachmentIds: body.attachmentIds ?? [],
     });
   }
 
@@ -168,6 +201,7 @@ export class NotificationsController {
       parentMessageId: id,
       bodyHtml: body.bodyHtml,
       recipients: body.recipients,
+      attachmentIds: body.attachmentIds ?? [],
     });
   }
 
@@ -183,6 +217,7 @@ export class NotificationsController {
       parentMessageId: id,
       bodyHtml: body.bodyHtml,
       recipients: body.recipients ?? '',
+      attachmentIds: body.attachmentIds ?? [],
     });
   }
 
@@ -225,7 +260,59 @@ export class NotificationsController {
   @RequirePermissions('notifications.manage')
   @Post('drafts/:id/send')
   sendDraft(@CurrentUser() user: { id: string }, @Param('id') id: string, @Body() body: SendDraftDto) {
-    return this.notificationsService.sendDraft(user.id, id, body.recipients);
+    return this.notificationsService.sendDraft(user.id, id, body.recipients, body.attachmentIds ?? []);
+  }
+
+  @RequirePermissions('notifications.manage')
+  @Post('attachments')
+  @UseInterceptors(FileInterceptor('file'))
+  uploadAttachment(
+    @CurrentUser() user: { id: string },
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: UploadAttachmentDto,
+  ) {
+    return this.notificationsService.uploadAttachment({
+      userId: user.id,
+      fileName: file?.originalname ?? '',
+      mimeType: file?.mimetype ?? '',
+      size: file?.size ?? 0,
+      buffer: file?.buffer ?? Buffer.alloc(0),
+      messageId: body.messageId,
+      draftId: body.draftId,
+    });
+  }
+
+  @RequirePermissions('notifications.read')
+  @Get('attachments/:id/download')
+  async downloadAttachment(@CurrentUser() user: { id: string }, @Param('id') id: string, @Res() res: Response) {
+    const file = await this.notificationsService.downloadAttachment(user.id, id);
+    res.setHeader('Content-Type', file.mimeType);
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(file.fileName)}"`);
+    res.send(file.buffer);
+  }
+
+  @RequirePermissions('notifications.manage')
+  @Delete('attachments/:id')
+  deleteAttachment(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.notificationsService.deleteAttachment(user.id, id);
+  }
+
+  @RequirePermissions('notifications.read')
+  @Get('search-history')
+  listSearchHistory(@CurrentUser() user: { id: string }) {
+    return this.notificationsService.listSearchHistory(user.id);
+  }
+
+  @RequirePermissions('notifications.manage')
+  @Post('search-history')
+  saveSearchHistory(@CurrentUser() user: { id: string }, @Body() body: CreateSearchHistoryDto) {
+    return this.notificationsService.saveSearchHistory(user.id, body.query);
+  }
+
+  @RequirePermissions('notifications.manage')
+  @Delete('search-history/:id')
+  deleteSearchHistory(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.notificationsService.deleteSearchHistory(user.id, id);
   }
 
   @RequirePermissions('notifications.read')

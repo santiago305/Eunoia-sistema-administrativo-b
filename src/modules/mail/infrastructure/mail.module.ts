@@ -17,6 +17,16 @@ import { MessageRecipientEntity } from '../adapters/out/persistence/typeorm/enti
 import { MessageThread } from '../adapters/out/persistence/typeorm/entities/message-thread.entity';
 import { MessageLabelEntity } from '../adapters/out/persistence/typeorm/entities/message-label.entity';
 import { MessageMessageLabelEntity } from '../adapters/out/persistence/typeorm/entities/message-message-label.entity';
+import { MessageUserStateEntity } from '../adapters/out/persistence/typeorm/entities/message-user-state.entity';
+import { MessageAttachmentEntity } from '../adapters/out/persistence/typeorm/entities/message-attachment.entity';
+import { MessageLabelAssignmentEntity } from '../adapters/out/persistence/typeorm/entities/message-label-assignment.entity';
+import { MessageSearchHistoryEntity } from '../adapters/out/persistence/typeorm/entities/message-search-history.entity';
+import { MessageAuditLogEntity } from '../adapters/out/persistence/typeorm/entities/message-audit-log.entity';
+import { ExpireDraftsJob } from './jobs/expire-drafts.job';
+import { ExpireTrashJob } from './jobs/expire-trash.job';
+import { ReleaseSnoozedMessagesJob } from './jobs/release-snoozed-messages.job';
+import { CleanOrphanAttachmentsJob } from './jobs/clean-orphan-attachments.job';
+import { CreateYearlyPartitionsJob } from './jobs/create-yearly-partitions.job';
 
 @Module({
   imports: [
@@ -30,6 +40,11 @@ import { MessageMessageLabelEntity } from '../adapters/out/persistence/typeorm/e
       MessageThread,
       MessageLabelEntity,
       MessageMessageLabelEntity,
+      MessageUserStateEntity,
+      MessageAttachmentEntity,
+      MessageLabelAssignmentEntity,
+      MessageSearchHistoryEntity,
+      MessageAuditLogEntity,
       User,
     ]),
     AccessControlModule,
@@ -41,6 +56,11 @@ import { MessageMessageLabelEntity } from '../adapters/out/persistence/typeorm/e
     NotificationGateway,
     NotificationQueueService,
     NotificationWorkerService,
+    ExpireDraftsJob,
+    ExpireTrashJob,
+    ReleaseSnoozedMessagesJob,
+    CleanOrphanAttachmentsJob,
+    CreateYearlyPartitionsJob,
   ],
   exports: [NotificationsService, NotificationRealtimeService, NotificationQueueService],
 })

@@ -21,4 +21,9 @@ export class CreateMessageDto {
   @IsArray()
   @IsUUID('4', { each: true })
   labelIds?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsUUID('4', { each: true })
+  attachmentIds?: string[];
 }
