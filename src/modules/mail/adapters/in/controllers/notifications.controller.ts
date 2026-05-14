@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
 import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/modules/access-control/adapters/in/guards/permissions.guard';
@@ -15,6 +16,7 @@ import { UpdateDraftDto } from '../dtos/update-draft.dto';
 import { SendDraftDto } from '../dtos/send-draft.dto';
 import { BulkMessageActionDto } from '../dtos/bulk-message-action.dto';
 import { CreateLabelDto } from '../dtos/create-label.dto';
+import { UpdateLabelDto } from '../dtos/update-label.dto';
 import { SnoozeMessageDto } from '../dtos/snooze-message.dto';
 import { CreateSearchHistoryDto } from '../dtos/create-search-history.dto';
 import { UploadAttachmentDto } from '../dtos/upload-attachment.dto';
@@ -63,6 +65,12 @@ export class NotificationsController {
     return this.notificationsService.deactivateCustomLabel(user.id, id);
   }
 
+  @RequirePermissions('notifications.labels.create')
+  @Patch('labels/:id')
+  updateLabel(@CurrentUser() user: { id: string }, @Param('id') id: string, @Body() body: UpdateLabelDto) {
+    return this.notificationsService.updateCustomLabel(user.id, id, body);
+  }
+
   @RequirePermissions('notifications.manage')
   @Post('messages/:id/labels/:labelId')
   assignLabelToMessage(
@@ -93,6 +101,7 @@ export class NotificationsController {
       page: query.page,
       limit: query.limit,
       read: query.read,
+      hasAttachments: query.hasAttachments,
       labelId: query.labelId,
     });
   }
@@ -103,6 +112,7 @@ export class NotificationsController {
     return this.notificationsService.getMessageDetail(user.id, id);
   }
 
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @RequirePermissions('notifications.manage')
   @Post('messages')
   sendMessage(@CurrentUser() user: { id: string }, @Body() body: CreateMessageDto) {
@@ -186,12 +196,14 @@ export class NotificationsController {
     return this.notificationsService.restoreMessage(user.id, id);
   }
 
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @RequirePermissions('notifications.manage')
   @Post('messages/bulk')
   bulkUpdateMessages(@CurrentUser() user: { id: string }, @Body() body: BulkMessageActionDto) {
     return this.notificationsService.bulkUpdateMessages(user.id, body);
   }
 
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @RequirePermissions('notifications.manage')
   @Post('messages/:id/reply')
   replyMessage(
@@ -211,6 +223,7 @@ export class NotificationsController {
     });
   }
 
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @RequirePermissions('notifications.manage')
   @Post('messages/:id/forward')
   forwardMessage(
@@ -266,6 +279,7 @@ export class NotificationsController {
     return this.notificationsService.deleteDraft(user.id, id);
   }
 
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
   @RequirePermissions('notifications.manage')
   @Post('drafts/:id/send')
   sendDraft(@CurrentUser() user: { id: string }, @Param('id') id: string, @Body() body: SendDraftDto) {

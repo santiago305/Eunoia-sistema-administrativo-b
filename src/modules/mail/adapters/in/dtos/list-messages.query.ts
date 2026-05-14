@@ -24,6 +24,15 @@ export class ListMessagesQueryDto {
   read?: boolean;
 
   @IsOptional()
+  @Transform(({ value }) => {
+    if (value === true || value === 'true') return true;
+    if (value === false || value === 'false') return false;
+    return value;
+  })
+  @IsBoolean()
+  hasAttachments?: boolean;
+
+  @IsOptional()
   @IsString()
   labelId?: string;
 

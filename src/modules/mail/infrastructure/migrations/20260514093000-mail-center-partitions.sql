@@ -28,6 +28,18 @@ BEGIN
       PARTITION OF messages DEFAULT
     ';
   ELSE
-    RAISE NOTICE 'messages no es una tabla particionada; se omite creacion de particiones.';
+    -- Fallback operativo: mantener performance si la tabla aun no fue migrada a particionada.
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_messages_created_at_fallback ON messages (created_at DESC)';
+    EXECUTE '
+      CREATE INDEX IF NOT EXISTS idx_messages_created_at_2026_fallback
+      ON messages (created_at DESC)
+      WHERE created_at >= ''2026-01-01'' AND created_at < ''2027-01-01''
+    ';
+    EXECUTE '
+      CREATE INDEX IF NOT EXISTS idx_messages_created_at_2027_fallback
+      ON messages (created_at DESC)
+      WHERE created_at >= ''2027-01-01'' AND created_at < ''2028-01-01''
+    ';
+    RAISE NOTICE 'messages no es particionada; se crearon indices fallback por fecha.';
   END IF;
 END $$;

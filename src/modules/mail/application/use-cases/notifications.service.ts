@@ -1,40 +1,26 @@
-import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
-import { NotificationRecipient } from '../../adapters/out/persistence/typeorm/entities/notification-recipient.entity';
-import { Notification } from '../../adapters/out/persistence/typeorm/entities/notification.entity';
 import { NotificationRealtimeService } from '../../infrastructure/realtime/notification-realtime.service';
 import { User } from 'src/modules/users/adapters/out/persistence/typeorm/entities/user.entity';
-import { NotificationOutbox } from '../../adapters/out/persistence/typeorm/entities/notification-outbox.entity';
-import { NotificationDeliveryAttempt } from '../../adapters/out/persistence/typeorm/entities/notification-delivery-attempt.entity';
-import { NotificationQueueService } from '../../infrastructure/queue/notification-queue.service';
-import { NotificationPriority } from '../../adapters/out/persistence/typeorm/entities/notification.entity';
 import { MessageEntity } from '../../adapters/out/persistence/typeorm/entities/message.entity';
 import { MessageRecipientEntity } from '../../adapters/out/persistence/typeorm/entities/message-recipient.entity';
 import { MessageThread } from '../../adapters/out/persistence/typeorm/entities/message-thread.entity';
-import { AccessControlService } from 'src/modules/access-control/application/services/access-control.service';
 import { MessageLabelEntity } from '../../adapters/out/persistence/typeorm/entities/message-label.entity';
 import { MessageUserStateEntity } from '../../adapters/out/persistence/typeorm/entities/message-user-state.entity';
 import { MessageAttachmentEntity } from '../../adapters/out/persistence/typeorm/entities/message-attachment.entity';
 import { MessageLabelAssignmentEntity } from '../../adapters/out/persistence/typeorm/entities/message-label-assignment.entity';
 import { MessageSearchHistoryEntity } from '../../adapters/out/persistence/typeorm/entities/message-search-history.entity';
 import { MessageAuditLogEntity } from '../../adapters/out/persistence/typeorm/entities/message-audit-log.entity';
+import { ACCESS_CONTROL_PORT, AccessControlPort } from '../ports/access-control.port';
 
 @Injectable()
 export class NotificationsService {
   constructor(
-    @InjectRepository(Notification)
-    private readonly notificationRepository: Repository<Notification>,
-    @InjectRepository(NotificationRecipient)
-    private readonly recipientRepository: Repository<NotificationRecipient>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    @InjectRepository(NotificationOutbox)
-    private readonly outboxRepository: Repository<NotificationOutbox>,
-    @InjectRepository(NotificationDeliveryAttempt)
-    private readonly deliveryAttemptRepository: Repository<NotificationDeliveryAttempt>,
     @InjectRepository(MessageEntity)
     private readonly messageRepository: Repository<MessageEntity>,
     @InjectRepository(MessageRecipientEntity)
@@ -54,8 +40,9 @@ export class NotificationsService {
     @InjectRepository(MessageAuditLogEntity)
     private readonly messageAuditLogRepository: Repository<MessageAuditLogEntity>,
     private readonly realtimeService: NotificationRealtimeService,
-    private readonly notificationQueueService: NotificationQueueService,
-    private readonly accessControlService: AccessControlService,
+    private readonly dataSource: DataSource,
+    @Inject(ACCESS_CONTROL_PORT)
+    private readonly accessControlPort: AccessControlPort,
   ) {}
 
   private readonly attachmentStorageDir = path.resolve(process.cwd(), 'storage', 'mail-attachments');
@@ -157,7 +144,7 @@ export class NotificationsService {
     const entries = await Promise.all(
       Object.entries(this.notificationModulePermissions).map(async ([moduleKey, requiredPermissions]) => ({
         key: moduleKey,
-        allowed: await this.accessControlService.userHasAllPermissions(userId, requiredPermissions),
+        allowed: await this.accessControlPort.canViewModuleMessages(userId, requiredPermissions),
       })),
     );
 
@@ -198,7 +185,7 @@ export class NotificationsService {
   async canOpenMessage(userId: string, messageId: string) {
     const ownMessage = await this.messageRepository.findOne({ where: { id: messageId, senderUserId: userId } });
     if (ownMessage) {
-      const allowed = await this.accessControlService.userHasAllPermissions(
+      const allowed = await this.accessControlPort.canOpenMessage(
         userId,
         this.notificationModulePermissions[ownMessage.originModule] ?? ['page.notifications.view'],
       );
@@ -208,7 +195,7 @@ export class NotificationsService {
     if (!state) return false;
     const message = await this.messageRepository.findOne({ where: { id: messageId } });
     if (!message) return false;
-    return this.accessControlService.userHasAllPermissions(
+    return this.accessControlPort.canOpenMessage(
       userId,
       this.notificationModulePermissions[message.originModule] ?? ['page.notifications.view'],
     );
@@ -219,7 +206,7 @@ export class NotificationsService {
     if (!requiredPermissions) {
       throw new BadRequestException('ORIGIN_MODULE_REQUIRED');
     }
-    const allowed = await this.accessControlService.userHasAllPermissions(userId, requiredPermissions);
+    const allowed = await this.accessControlPort.canViewModuleMessages(userId, requiredPermissions);
     if (!allowed) {
       throw new ForbiddenException('ORIGIN_MODULE_ACCESS_DENIED');
     }
@@ -328,9 +315,10 @@ export class NotificationsService {
     messageId?: string | null;
     threadId?: string | null;
     metadata?: Record<string, unknown>;
-  }) {
-    await this.messageAuditLogRepository.save(
-      this.messageAuditLogRepository.create({
+  }, manager?: EntityManager) {
+    const repo = manager ? manager.getRepository(MessageAuditLogEntity) : this.messageAuditLogRepository;
+    await repo.save(
+      repo.create({
         action: input.action,
         actorUserId: input.actorUserId ?? null,
         messageId: input.messageId ?? null,
@@ -344,12 +332,13 @@ export class NotificationsService {
     message: MessageEntity;
     senderUserId: string;
     recipients: Array<{ id: string; email: string; relationType: 'TO' | 'CC' | 'BCC' }>;
-  }) {
+  }, manager?: EntityManager) {
+    const stateRepo = manager ? manager.getRepository(MessageUserStateEntity) : this.messageUserStateRepository;
     const now = new Date();
     const states: MessageUserStateEntity[] = [];
 
     states.push(
-      this.messageUserStateRepository.create({
+      stateRepo.create({
         messageId: input.message.id,
         threadId: input.message.threadId,
         userId: input.senderUserId,
@@ -373,7 +362,7 @@ export class NotificationsService {
 
     for (const recipient of input.recipients) {
       states.push(
-        this.messageUserStateRepository.create({
+        stateRepo.create({
           messageId: input.message.id,
           threadId: input.message.threadId,
           userId: recipient.id,
@@ -396,7 +385,7 @@ export class NotificationsService {
       );
     }
 
-    return this.messageUserStateRepository.save(states);
+    return stateRepo.save(states);
   }
 
   private async findMessageStateOrThrow(userId: string, stateId: string) {
@@ -470,76 +459,88 @@ export class NotificationsService {
     await this.ensureCanAccessModule(input.senderUserId, originModule);
     const bodyHtml = this.normalizeHtmlBody(input.bodyHtml);
     const bodyText = this.toBodyText(bodyHtml);
+    const txResult = await this.dataSource.transaction(async (manager) => {
+      const threadRepo = manager.getRepository(MessageThread);
+      const messageRepo = manager.getRepository(MessageEntity);
+      const recipientRepo = manager.getRepository(MessageRecipientEntity);
+      const thread = await threadRepo.save(
+        threadRepo.create({
+          subject: input.subject,
+          createdByUserId: input.senderUserId,
+          originModule,
+          lastMessageAt: new Date(),
+        }),
+      );
 
-    const thread = await this.messageThreadRepository.save(
-      this.messageThreadRepository.create({
-        subject: input.subject,
-        createdByUserId: input.senderUserId,
-        originModule,
-        lastMessageAt: new Date(),
-      }),
-    );
+      const message = await messageRepo.save(
+        messageRepo.create({
+          threadId: thread.id,
+          parentMessageId: null,
+          kind: 'USER_MESSAGE',
+          originModule,
+          senderType: 'USER',
+          senderUserId: input.senderUserId,
+          createdByUserId: input.senderUserId,
+          subject: input.subject,
+          bodyHtml,
+          bodyText,
+          bodyJson: null,
+          status: 'SENT',
+          isDraft: false,
+          draftExpiresAt: null,
+          sentAt: new Date(),
+          sourceEntityType: null,
+          sourceEntityId: null,
+        }),
+      );
 
-    const message = await this.messageRepository.save(
-      this.messageRepository.create({
-        threadId: thread.id,
-        parentMessageId: null,
-        kind: 'USER_MESSAGE',
-        originModule,
-        senderType: 'USER',
-        senderUserId: input.senderUserId,
-        createdByUserId: input.senderUserId,
-        subject: input.subject,
-        bodyHtml,
-        bodyText,
-        bodyJson: null,
-        status: 'SENT',
-        isDraft: false,
-        draftExpiresAt: null,
-        sentAt: new Date(),
-        sourceEntityType: null,
-        sourceEntityId: null,
-      }),
-    );
+      const recipients = resolvedRecipients.map((user) =>
+        recipientRepo.create({
+          messageId: message.id,
+          recipientUserId: user.id,
+          recipientEmail: user.email,
+          recipientType: user.relationType,
+          deliveredAt: new Date(),
+        }),
+      );
+      const savedRecipients = await recipientRepo.save(recipients);
+      const states = await this.createMessageUserStates(
+        {
+          message,
+          senderUserId: input.senderUserId,
+          recipients: resolvedRecipients.map((user) => ({ id: user.id, email: user.email, relationType: user.relationType })),
+        },
+        manager,
+      );
+      await this.linkAttachmentsToMessage(input.senderUserId, message.id, input.attachmentIds ?? [], undefined, manager);
+      const senderState = states.find((state) => state.userId === input.senderUserId && state.relationType === 'SENDER');
+      if (senderState) {
+        await this.assignLabelsToState(senderState.id, input.senderUserId, input.labelIds ?? [], manager);
+      }
 
-    const recipients = resolvedRecipients.map((user) =>
-      this.messageRecipientRepository.create({
-        messageId: message.id,
-        recipientUserId: user.id,
-        recipientEmail: user.email,
-        recipientType: user.relationType,
-        deliveredAt: new Date(),
-      }),
-    );
-    await this.messageRecipientRepository.save(recipients);
-    const states = await this.createMessageUserStates({
-      message,
-      senderUserId: input.senderUserId,
-      recipients: resolvedRecipients.map((user) => ({ id: user.id, email: user.email, relationType: user.relationType })),
+      await this.createAuditLog(
+        {
+          action: 'MESSAGE_SENT',
+          actorUserId: input.senderUserId,
+          messageId: message.id,
+          threadId: message.threadId,
+          metadata: {
+            recipients: resolvedRecipients.map((user) => user.email),
+            to: resolvedRecipients.filter((item) => item.relationType === 'TO').map((item) => item.email),
+            cc: resolvedRecipients.filter((item) => item.relationType === 'CC').map((item) => item.email),
+            bcc: resolvedRecipients.filter((item) => item.relationType === 'BCC').map((item) => item.email),
+            originModule,
+          },
+        },
+        manager,
+      );
+
+      return { message, thread, recipients: savedRecipients };
     });
-    await this.linkAttachmentsToMessage(input.senderUserId, message.id, input.attachmentIds ?? []);
-    const senderState = states.find((state) => state.userId === input.senderUserId && state.relationType === 'SENDER');
-    if (senderState) {
-      await this.assignLabelsToState(senderState.id, input.senderUserId, input.labelIds ?? []);
-    }
 
-    await this.createAuditLog({
-      action: 'MESSAGE_SENT',
-      actorUserId: input.senderUserId,
-      messageId: message.id,
-      threadId: message.threadId,
-      metadata: {
-        recipients: resolvedRecipients.map((user) => user.email),
-        to: resolvedRecipients.filter((item) => item.relationType === 'TO').map((item) => item.email),
-        cc: resolvedRecipients.filter((item) => item.relationType === 'CC').map((item) => item.email),
-        bcc: resolvedRecipients.filter((item) => item.relationType === 'BCC').map((item) => item.email),
-        originModule,
-      },
-    });
+    await this.emitMessageRealtimeToRecipients(input.senderUserId, txResult.message, txResult.recipients);
 
-    await this.emitMessageRealtimeToRecipients(input.senderUserId, message, recipients);
-
-    return { id: message.id, threadId: thread.id, recipients: recipients.length };
+    return { id: txResult.message.id, threadId: txResult.thread.id, recipients: txResult.recipients.length };
   }
 
   async replyMessage(input: {
@@ -583,67 +584,76 @@ export class NotificationsService {
 
     const bodyHtml = this.normalizeHtmlBody(input.bodyHtml);
     const bodyText = this.toBodyText(bodyHtml);
-    const message = await this.messageRepository.save(
-      this.messageRepository.create({
-        threadId: parent.threadId,
-        parentMessageId: parent.id,
-        kind: 'USER_MESSAGE',
-        originModule: parent.originModule,
-        sourceEntityType: parent.sourceEntityType,
-        sourceEntityId: parent.sourceEntityId,
-        senderType: 'USER',
-        senderUserId: input.senderUserId,
-        createdByUserId: input.senderUserId,
-        subject: parent.subject.startsWith('Re:') ? parent.subject : `Re: ${parent.subject}`,
-        bodyHtml,
-        bodyText,
-        bodyJson: null,
-        status: 'SENT',
-        isDraft: false,
-        draftExpiresAt: null,
-        sentAt: new Date(),
-      }),
-    );
-
-    if (parent.threadId) {
-      await this.messageThreadRepository.update(
-        { id: parent.threadId },
-        { lastMessageAt: new Date(), updatedAt: new Date() },
+    const txResult = await this.dataSource.transaction(async (manager) => {
+      const messageRepo = manager.getRepository(MessageEntity);
+      const threadRepo = manager.getRepository(MessageThread);
+      const recipientRepo = manager.getRepository(MessageRecipientEntity);
+      const message = await messageRepo.save(
+        messageRepo.create({
+          threadId: parent.threadId,
+          parentMessageId: parent.id,
+          kind: 'USER_MESSAGE',
+          originModule: parent.originModule,
+          sourceEntityType: parent.sourceEntityType,
+          sourceEntityId: parent.sourceEntityId,
+          senderType: 'USER',
+          senderUserId: input.senderUserId,
+          createdByUserId: input.senderUserId,
+          subject: parent.subject.startsWith('Re:') ? parent.subject : `Re: ${parent.subject}`,
+          bodyHtml,
+          bodyText,
+          bodyJson: null,
+          status: 'SENT',
+          isDraft: false,
+          draftExpiresAt: null,
+          sentAt: new Date(),
+        }),
       );
-    }
 
-    const recipients = resolvedRecipients.map((user) =>
-      this.messageRecipientRepository.create({
-        messageId: message.id,
-        recipientUserId: user.id,
-        recipientEmail: user.email,
-        recipientType: user.relationType,
-        deliveredAt: new Date(),
-      }),
-    );
-    await this.messageRecipientRepository.save(recipients);
-    await this.createMessageUserStates({
-      message,
-      senderUserId: input.senderUserId,
-      recipients: resolvedRecipients.map((user) => ({ id: user.id, email: user.email, relationType: user.relationType })),
-    });
-    await this.linkAttachmentsToMessage(input.senderUserId, message.id, input.attachmentIds ?? []);
-    await this.createAuditLog({
-      action: 'MESSAGE_REPLIED',
-      actorUserId: input.senderUserId,
-      messageId: message.id,
-      threadId: message.threadId,
-      metadata: {
-        parentMessageId: parent.id,
-        recipients: resolvedRecipients.map((user) => user.email),
-        to: resolvedRecipients.filter((item) => item.relationType === 'TO').map((item) => item.email),
-        cc: resolvedRecipients.filter((item) => item.relationType === 'CC').map((item) => item.email),
-        bcc: resolvedRecipients.filter((item) => item.relationType === 'BCC').map((item) => item.email),
-      },
-    });
-    await this.emitMessageRealtimeToRecipients(input.senderUserId, message, recipients);
+      if (parent.threadId) {
+        await threadRepo.update({ id: parent.threadId }, { lastMessageAt: new Date(), updatedAt: new Date() });
+      }
 
-    return { id: message.id, threadId: message.threadId, recipients: recipients.length };
+      const recipients = resolvedRecipients.map((user) =>
+        recipientRepo.create({
+          messageId: message.id,
+          recipientUserId: user.id,
+          recipientEmail: user.email,
+          recipientType: user.relationType,
+          deliveredAt: new Date(),
+        }),
+      );
+      const savedRecipients = await recipientRepo.save(recipients);
+      await this.createMessageUserStates(
+        {
+          message,
+          senderUserId: input.senderUserId,
+          recipients: resolvedRecipients.map((user) => ({ id: user.id, email: user.email, relationType: user.relationType })),
+        },
+        manager,
+      );
+      await this.linkAttachmentsToMessage(input.senderUserId, message.id, input.attachmentIds ?? [], undefined, manager);
+      await this.createAuditLog(
+        {
+          action: 'MESSAGE_REPLIED',
+          actorUserId: input.senderUserId,
+          messageId: message.id,
+          threadId: message.threadId,
+          metadata: {
+            parentMessageId: parent.id,
+            recipients: resolvedRecipients.map((user) => user.email),
+            to: resolvedRecipients.filter((item) => item.relationType === 'TO').map((item) => item.email),
+            cc: resolvedRecipients.filter((item) => item.relationType === 'CC').map((item) => item.email),
+            bcc: resolvedRecipients.filter((item) => item.relationType === 'BCC').map((item) => item.email),
+          },
+        },
+        manager,
+      );
+      return { message, recipients: savedRecipients };
+    });
+    await this.emitMessageRealtimeToRecipients(input.senderUserId, txResult.message, txResult.recipients);
+
+    return { id: txResult.message.id, threadId: txResult.message.threadId, recipients: txResult.recipients.length };
   }
 
   async listMyLabels(userId: string) {
@@ -720,11 +730,13 @@ export class NotificationsService {
     }
   }
 
-  private async assignLabelsToState(messageUserStateId: string, userId: string, labelIds: string[]) {
+  private async assignLabelsToState(messageUserStateId: string, userId: string, labelIds: string[], manager?: EntityManager) {
+    const labelRepo = manager ? manager.getRepository(MessageLabelEntity) : this.messageLabelRepository;
+    const assignmentRepo = manager ? manager.getRepository(MessageLabelAssignmentEntity) : this.messageLabelAssignmentRepository;
     const ids = Array.from(new Set((labelIds ?? []).filter(Boolean)));
     if (!ids.length) return;
 
-    const labels = await this.messageLabelRepository.find({
+    const labels = await labelRepo.find({
       where: ids.map((id) => ({ id })),
       select: ['id', 'ownerUserId', 'key', 'type'],
     });
@@ -738,7 +750,7 @@ export class NotificationsService {
     });
     if (!allowed.length) return;
 
-    const existing = await this.messageLabelAssignmentRepository.find({
+    const existing = await assignmentRepo.find({
       where: allowed.map((label) => ({
         messageUserStateId,
         userId,
@@ -751,13 +763,61 @@ export class NotificationsService {
     if (!toInsert.length) return;
 
     const records = toInsert.map((label) =>
-      this.messageLabelAssignmentRepository.create({
+      assignmentRepo.create({
         labelId: label.id,
         messageUserStateId,
         userId,
       }),
     );
-    await this.messageLabelAssignmentRepository.save(records);
+    await assignmentRepo.save(records);
+  }
+
+  async updateCustomLabel(
+    userId: string,
+    labelId: string,
+    input: { name?: string; color?: string; isVisible?: boolean },
+  ) {
+    const label = await this.messageLabelRepository.findOne({
+      where: { id: labelId, ownerUserId: userId, type: 'CUSTOM' },
+    });
+    if (!label) {
+      throw new NotFoundException({ message: 'Etiqueta no encontrada.', identifier: 'LABEL_NOT_FOUND' });
+    }
+
+    if (typeof input.name === 'string') {
+      const normalizedName = input.name.trim();
+      if (!normalizedName) {
+        throw new BadRequestException({ message: 'Nombre de etiqueta obligatorio.', identifier: 'LABEL_NAME_REQUIRED' });
+      }
+      const key = normalizedName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-_]/g, '');
+      if (!key) {
+        throw new BadRequestException({ message: 'Nombre de etiqueta invalido.', identifier: 'LABEL_NAME_INVALID' });
+      }
+      const duplicated = await this.messageLabelRepository.findOne({
+        where: { ownerUserId: userId, key },
+      });
+      if (duplicated && duplicated.id !== label.id) {
+        throw new BadRequestException({ message: 'Etiqueta ya existente.', identifier: 'LABEL_ALREADY_EXISTS' });
+      }
+      label.name = normalizedName;
+      label.key = key;
+    }
+
+    if (typeof input.color === 'string') {
+      const color = input.color.trim();
+      label.color = color || null;
+    }
+
+    if (typeof input.isVisible === 'boolean') {
+      label.isVisible = input.isVisible;
+    }
+
+    label.updatedAt = new Date();
+    try {
+      return await this.messageLabelRepository.save(label);
+    } catch {
+      throw new InternalServerErrorException({ message: 'No se pudo actualizar la etiqueta.', identifier: 'LABEL_UPDATE_FAILED' });
+    }
   }
 
   async forwardMessage(input: {
@@ -780,72 +840,84 @@ export class NotificationsService {
     });
     await this.ensureCanAccessModule(input.senderUserId, parent.originModule);
 
-    const thread = await this.messageThreadRepository.save(
-      this.messageThreadRepository.create({
-        subject: parent.subject.startsWith('Fwd:') ? parent.subject : `Fwd: ${parent.subject}`,
-        createdByUserId: input.senderUserId,
-        originModule: parent.originModule,
-        sourceEntityType: parent.sourceEntityType,
-        sourceEntityId: parent.sourceEntityId,
-        lastMessageAt: new Date(),
-      }),
-    );
-
     const bodyHtml = this.normalizeHtmlBody(`${this.normalizeHtmlBody(input.bodyHtml)}<hr/><p>${parent.bodyHtml}</p>`);
     const bodyText = this.toBodyText(bodyHtml);
-    const message = await this.messageRepository.save(
-      this.messageRepository.create({
-        threadId: thread.id,
-        parentMessageId: parent.id,
-        kind: 'USER_MESSAGE',
-        originModule: parent.originModule,
-        sourceEntityType: parent.sourceEntityType,
-        sourceEntityId: parent.sourceEntityId,
-        senderType: 'USER',
-        senderUserId: input.senderUserId,
-        createdByUserId: input.senderUserId,
-        subject: thread.subject,
-        bodyHtml,
-        bodyText,
-        bodyJson: null,
-        status: 'SENT',
-        isDraft: false,
-        draftExpiresAt: null,
-        sentAt: new Date(),
-      }),
-    );
+    const txResult = await this.dataSource.transaction(async (manager) => {
+      const threadRepo = manager.getRepository(MessageThread);
+      const messageRepo = manager.getRepository(MessageEntity);
+      const recipientRepo = manager.getRepository(MessageRecipientEntity);
+      const thread = await threadRepo.save(
+        threadRepo.create({
+          subject: parent.subject.startsWith('Fwd:') ? parent.subject : `Fwd: ${parent.subject}`,
+          createdByUserId: input.senderUserId,
+          originModule: parent.originModule,
+          sourceEntityType: parent.sourceEntityType,
+          sourceEntityId: parent.sourceEntityId,
+          lastMessageAt: new Date(),
+        }),
+      );
 
-    const recipients = resolvedRecipients.map((user) =>
-      this.messageRecipientRepository.create({
-        messageId: message.id,
-        recipientUserId: user.id,
-        recipientEmail: user.email,
-        recipientType: user.relationType,
-        deliveredAt: new Date(),
-      }),
-    );
-    await this.messageRecipientRepository.save(recipients);
-    await this.createMessageUserStates({
-      message,
-      senderUserId: input.senderUserId,
-      recipients: resolvedRecipients.map((user) => ({ id: user.id, email: user.email, relationType: user.relationType })),
+      const message = await messageRepo.save(
+        messageRepo.create({
+          threadId: thread.id,
+          parentMessageId: parent.id,
+          kind: 'USER_MESSAGE',
+          originModule: parent.originModule,
+          sourceEntityType: parent.sourceEntityType,
+          sourceEntityId: parent.sourceEntityId,
+          senderType: 'USER',
+          senderUserId: input.senderUserId,
+          createdByUserId: input.senderUserId,
+          subject: thread.subject,
+          bodyHtml,
+          bodyText,
+          bodyJson: null,
+          status: 'SENT',
+          isDraft: false,
+          draftExpiresAt: null,
+          sentAt: new Date(),
+        }),
+      );
+
+      const recipients = resolvedRecipients.map((user) =>
+        recipientRepo.create({
+          messageId: message.id,
+          recipientUserId: user.id,
+          recipientEmail: user.email,
+          recipientType: user.relationType,
+          deliveredAt: new Date(),
+        }),
+      );
+      const savedRecipients = await recipientRepo.save(recipients);
+      await this.createMessageUserStates(
+        {
+          message,
+          senderUserId: input.senderUserId,
+          recipients: resolvedRecipients.map((user) => ({ id: user.id, email: user.email, relationType: user.relationType })),
+        },
+        manager,
+      );
+      await this.linkAttachmentsToMessage(input.senderUserId, message.id, input.attachmentIds ?? [], undefined, manager);
+      await this.createAuditLog(
+        {
+          action: 'MESSAGE_FORWARDED',
+          actorUserId: input.senderUserId,
+          messageId: message.id,
+          threadId: message.threadId,
+          metadata: {
+            parentMessageId: parent.id,
+            recipients: resolvedRecipients.map((user) => user.email),
+            to: resolvedRecipients.filter((item) => item.relationType === 'TO').map((item) => item.email),
+            cc: resolvedRecipients.filter((item) => item.relationType === 'CC').map((item) => item.email),
+            bcc: resolvedRecipients.filter((item) => item.relationType === 'BCC').map((item) => item.email),
+          },
+        },
+        manager,
+      );
+      return { message, thread, recipients: savedRecipients };
     });
-    await this.linkAttachmentsToMessage(input.senderUserId, message.id, input.attachmentIds ?? []);
-    await this.createAuditLog({
-      action: 'MESSAGE_FORWARDED',
-      actorUserId: input.senderUserId,
-      messageId: message.id,
-      threadId: message.threadId,
-      metadata: {
-        parentMessageId: parent.id,
-        recipients: resolvedRecipients.map((user) => user.email),
-        to: resolvedRecipients.filter((item) => item.relationType === 'TO').map((item) => item.email),
-        cc: resolvedRecipients.filter((item) => item.relationType === 'CC').map((item) => item.email),
-        bcc: resolvedRecipients.filter((item) => item.relationType === 'BCC').map((item) => item.email),
-      },
-    });
-    await this.emitMessageRealtimeToRecipients(input.senderUserId, message, recipients);
-    return { id: message.id, threadId: thread.id, recipients: recipients.length };
+    await this.emitMessageRealtimeToRecipients(input.senderUserId, txResult.message, txResult.recipients);
+    return { id: txResult.message.id, threadId: txResult.thread.id, recipients: txResult.recipients.length };
   }
 
   async listDrafts(userId: string) {
@@ -976,37 +1048,48 @@ export class NotificationsService {
     const { recipients: resolvedRecipients } = await this.resolveRecipientsByBucketsOrFail({
       recipients: (recipientsRaw ?? '').trim() || draftRecipients,
     });
-    draft.isDraft = false;
-    draft.status = 'SENT';
-    draft.sentAt = new Date();
-    draft.draftExpiresAt = null;
-    const sent = await this.messageRepository.save(draft);
+    const txResult = await this.dataSource.transaction(async (manager) => {
+      const messageRepo = manager.getRepository(MessageEntity);
+      const recipientRepo = manager.getRepository(MessageRecipientEntity);
+      draft.isDraft = false;
+      draft.status = 'SENT';
+      draft.sentAt = new Date();
+      draft.draftExpiresAt = null;
+      const sent = await messageRepo.save(draft);
 
-    const recipients = resolvedRecipients.map((user) =>
-      this.messageRecipientRepository.create({
-        messageId: sent.id,
-        recipientUserId: user.id,
-        recipientEmail: user.email,
-        recipientType: user.relationType,
-        deliveredAt: new Date(),
-      }),
-    );
-    await this.messageRecipientRepository.save(recipients);
-    await this.createMessageUserStates({
-      message: sent,
-      senderUserId: userId,
-      recipients: resolvedRecipients.map((user) => ({ id: user.id, email: user.email, relationType: user.relationType })),
+      const recipients = resolvedRecipients.map((user) =>
+        recipientRepo.create({
+          messageId: sent.id,
+          recipientUserId: user.id,
+          recipientEmail: user.email,
+          recipientType: user.relationType,
+          deliveredAt: new Date(),
+        }),
+      );
+      const savedRecipients = await recipientRepo.save(recipients);
+      await this.createMessageUserStates(
+        {
+          message: sent,
+          senderUserId: userId,
+          recipients: resolvedRecipients.map((user) => ({ id: user.id, email: user.email, relationType: user.relationType })),
+        },
+        manager,
+      );
+      await this.linkAttachmentsToMessage(userId, sent.id, attachmentIds, draftId, manager);
+      await this.createAuditLog(
+        {
+          action: 'DRAFT_SENT',
+          actorUserId: userId,
+          messageId: sent.id,
+          threadId: sent.threadId,
+          metadata: { recipients: resolvedRecipients.map((user) => user.email) },
+        },
+        manager,
+      );
+      return { sent, recipients: savedRecipients };
     });
-    await this.linkAttachmentsToMessage(userId, sent.id, attachmentIds, draftId);
-    await this.createAuditLog({
-      action: 'DRAFT_SENT',
-      actorUserId: userId,
-      messageId: sent.id,
-      threadId: sent.threadId,
-      metadata: { recipients: resolvedRecipients.map((user) => user.email) },
-    });
-    await this.emitMessageRealtimeToRecipients(userId, sent, recipients);
-    return { id: sent.id, recipients: recipients.length };
+    await this.emitMessageRealtimeToRecipients(userId, txResult.sent, txResult.recipients);
+    return { id: txResult.sent.id, recipients: txResult.recipients.length };
   }
 
   async listMessages(
@@ -1018,6 +1101,7 @@ export class NotificationsService {
       page?: number;
       limit?: number;
       read?: boolean;
+      hasAttachments?: boolean;
       labelId?: string;
     },
   ) {
@@ -1041,8 +1125,47 @@ export class NotificationsService {
         .andWhere('m.is_draft = false');
       if (query.originModule) qbSent.andWhere('m.origin_module = :originModule', { originModule: query.originModule });
       if (query.q) {
-        qbSent.andWhere('(m.subject ILIKE :q OR m.body_text ILIKE :q)', { q: `%${query.q}%` });
+        qbSent.andWhere(
+          `(
+            m.subject ILIKE :q
+            OR m.body_text ILIKE :q
+            OR EXISTS (
+              SELECT 1
+              FROM users sender_u
+              WHERE sender_u.user_id = m.sender_user_id
+                AND (sender_u.name ILIKE :q OR sender_u.email ILIKE :q)
+            )
+            OR EXISTS (
+              SELECT 1
+              FROM message_user_states mus2
+              WHERE mus2.message_id = m.id
+                AND mus2.recipient_email ILIKE :q
+            )
+            OR EXISTS (
+              SELECT 1
+              FROM message_attachments ma2
+              WHERE ma2.message_id = m.id
+                AND ma2.original_name ILIKE :q
+            )
+            OR EXISTS (
+              SELECT 1
+              FROM message_label_assignments mla2
+              JOIN message_labels ml2 ON ml2.id = mla2.label_id
+              WHERE mla2.message_user_state_id = mus.id
+                AND mla2.user_id = :userId
+                AND (ml2.name ILIKE :q OR ml2.key ILIKE :q)
+            )
+          )`,
+          { q: `%${query.q}%`, userId },
+        );
         await this.upsertSearchHistory(userId, query.q);
+      }
+      if (typeof query.hasAttachments === 'boolean') {
+        if (query.hasAttachments) {
+          qbSent.andWhere('EXISTS (SELECT 1 FROM message_attachments ma WHERE ma.message_id = m.id)');
+        } else {
+          qbSent.andWhere('NOT EXISTS (SELECT 1 FROM message_attachments ma WHERE ma.message_id = m.id)');
+        }
       }
       const total = await qbSent.clone().getCount();
       const rows = await qbSent
@@ -1099,13 +1222,54 @@ export class NotificationsService {
     }
 
     if (query.originModule) qb.andWhere('m.origin_module = :originModule', { originModule: query.originModule });
-    if (query.q) qb.andWhere('(m.subject ILIKE :q OR m.body_text ILIKE :q)', { q: `%${query.q}%` });
+    if (query.q) {
+      qb.andWhere(
+        `(
+          m.subject ILIKE :q
+          OR m.body_text ILIKE :q
+          OR EXISTS (
+            SELECT 1
+            FROM users sender_u
+            WHERE sender_u.user_id = m.sender_user_id
+              AND (sender_u.name ILIKE :q OR sender_u.email ILIKE :q)
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM message_user_states mus2
+            WHERE mus2.message_id = m.id
+              AND mus2.recipient_email ILIKE :q
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM message_attachments ma2
+            WHERE ma2.message_id = m.id
+              AND ma2.original_name ILIKE :q
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM message_label_assignments mla2
+            JOIN message_labels ml2 ON ml2.id = mla2.label_id
+            WHERE mla2.message_user_state_id = mus.id
+              AND mla2.user_id = :userId
+              AND (ml2.name ILIKE :q OR ml2.key ILIKE :q)
+          )
+        )`,
+        { q: `%${query.q}%`, userId },
+      );
+    }
     if (query.q) {
       await this.upsertSearchHistory(userId, query.q);
     }
     if (typeof query.read === 'boolean') {
       if (query.read) qb.andWhere('mus.read_at IS NOT NULL');
       else qb.andWhere('mus.read_at IS NULL');
+    }
+    if (typeof query.hasAttachments === 'boolean') {
+      if (query.hasAttachments) {
+        qb.andWhere('EXISTS (SELECT 1 FROM message_attachments ma WHERE ma.message_id = m.id)');
+      } else {
+        qb.andWhere('NOT EXISTS (SELECT 1 FROM message_attachments ma WHERE ma.message_id = m.id)');
+      }
     }
 
     qb.orderBy('m.sent_at', 'DESC').addOrderBy('m.created_at', 'DESC');
@@ -1653,7 +1817,9 @@ export class NotificationsService {
     messageId: string,
     attachmentIds: string[],
     draftId?: string,
+    manager?: EntityManager,
   ) {
+    const attachmentRepo = manager ? manager.getRepository(MessageAttachmentEntity) : this.messageAttachmentRepository;
     const ids = Array.from(new Set((attachmentIds ?? []).filter(Boolean)));
     const whereBase = ids.length
       ? ids.map((id) => ({ id, uploadedByUserId: userId }))
@@ -1662,7 +1828,7 @@ export class NotificationsService {
         : [];
     if (!whereBase.length) return;
 
-    const attachments = await this.messageAttachmentRepository.find({
+    const attachments = await attachmentRepo.find({
       where: whereBase,
     });
     if (!attachments.length) return;
@@ -1671,7 +1837,7 @@ export class NotificationsService {
       attachment.messageId = messageId;
       attachment.draftId = null;
     });
-    await this.messageAttachmentRepository.save(attachments);
+    await attachmentRepo.save(attachments);
   }
 
   private async ensureAttachmentAccessOrFail(userId: string, attachment: MessageAttachmentEntity) {
@@ -1683,6 +1849,14 @@ export class NotificationsService {
     const canAccess = await this.ensureMessageParticipant(userId, targetMessageId);
     if (!canAccess) {
       throw new ForbiddenException('ATTACHMENT_ACCESS_DENIED');
+    }
+    const relatedMessage = await this.messageRepository.findOne({ where: { id: targetMessageId } });
+    if (relatedMessage) {
+      const requiredPermissions = this.notificationModulePermissions[relatedMessage.originModule] ?? ['page.notifications.view'];
+      const allowed = await this.accessControlPort.canDownloadAttachment(userId, requiredPermissions);
+      if (!allowed) {
+        throw new ForbiddenException('ATTACHMENT_ACCESS_DENIED');
+      }
     }
   }
 
@@ -1795,104 +1969,136 @@ export class NotificationsService {
   }
 
   async listMyNotifications(userId: string, limit = 20, cursor?: string) {
-    const qb = this.recipientRepository
-      .createQueryBuilder('recipient')
-      .innerJoinAndSelect('recipient.notification', 'notification')
-      .innerJoin('recipient.recipientUser', 'user')
-      .where('user.id = :userId', { userId })
-      .orderBy('recipient.createdAt', 'DESC')
-      .take(Math.min(Math.max(limit, 1), 100));
+    const normalizedLimit = Math.min(Math.max(limit, 1), 100);
+    const qb = this.messageUserStateRepository
+      .createQueryBuilder('mus')
+      .innerJoin(MessageEntity, 'm', 'm.id = mus.message_id')
+      .where('mus.user_id = :userId', { userId })
+      .andWhere('mus.permanently_hidden_at IS NULL')
+      .andWhere('mus.deleted_at IS NULL')
+      .andWhere('mus.is_archived = false')
+      .andWhere('(mus.snoozed_until IS NULL OR mus.snoozed_until <= now())')
+      .orderBy('coalesce(m.sent_at, m.created_at)', 'DESC')
+      .addOrderBy('mus.created_at', 'DESC')
+      .take(normalizedLimit);
 
     if (cursor) {
-      qb.andWhere('recipient.createdAt < :cursor', { cursor: new Date(cursor) });
+      qb.andWhere('coalesce(m.sent_at, m.created_at) < :cursor', { cursor: new Date(cursor) });
     }
 
-    const rows = await qb.getMany();
-    return rows.map((row) => this.toResponse(row));
+    const rows = await qb.select(['mus.id AS state_id', 'mus.message_id AS message_id']).getRawMany<{ state_id: string; message_id: string }>();
+    if (!rows.length) return [];
+
+    const stateIds = rows.map((row) => row.state_id);
+    const messageIds = rows.map((row) => row.message_id);
+    const states = await this.messageUserStateRepository.find({ where: stateIds.map((id) => ({ id })) });
+    const messages = await this.messageRepository.find({ where: messageIds.map((id) => ({ id })) });
+    const stateMap = new Map(states.map((state) => [state.id, state]));
+    const messageMap = new Map(messages.map((message) => [message.id, message]));
+
+    return rows
+      .map((row) => {
+        const state = stateMap.get(row.state_id);
+        const message = messageMap.get(row.message_id);
+        if (!state || !message) return null;
+        return this.toNotificationResponse(state, message);
+      })
+      .filter((item): item is ReturnType<NotificationsService['toNotificationResponse']> => Boolean(item));
   }
 
   async getUnreadCount(userId: string) {
-    const unread = await this.recipientRepository
-      .createQueryBuilder('recipient')
-      .innerJoin('recipient.recipientUser', 'user')
-      .where('user.id = :userId', { userId })
-      .andWhere('recipient.readAt IS NULL')
-      .andWhere("recipient.status NOT IN ('ARCHIVED', 'DELETED')")
+    const unread = await this.messageUserStateRepository
+      .createQueryBuilder('mus')
+      .where('mus.user_id = :userId', { userId })
+      .andWhere('mus.read_at IS NULL')
+      .andWhere('mus.permanently_hidden_at IS NULL')
+      .andWhere('mus.deleted_at IS NULL')
+      .andWhere('mus.is_archived = false')
+      .andWhere('(mus.snoozed_until IS NULL OR mus.snoozed_until <= now())')
       .getCount();
 
-    const unseen = await this.recipientRepository
-      .createQueryBuilder('recipient')
-      .innerJoin('recipient.recipientUser', 'user')
-      .where('user.id = :userId', { userId })
-      .andWhere('recipient.seenAt IS NULL')
-      .andWhere("recipient.status NOT IN ('ARCHIVED', 'DELETED')")
+    const unseen = await this.messageUserStateRepository
+      .createQueryBuilder('mus')
+      .where('mus.user_id = :userId', { userId })
+      .andWhere('mus.opened_at IS NULL')
+      .andWhere('mus.permanently_hidden_at IS NULL')
+      .andWhere('mus.deleted_at IS NULL')
+      .andWhere('mus.is_archived = false')
+      .andWhere('(mus.snoozed_until IS NULL OR mus.snoozed_until <= now())')
       .getCount();
 
     return { unread, unseen };
   }
 
   async getMyNotificationDetail(userId: string, recipientId: string) {
-    const row = await this.findRecipientOrThrow(userId, recipientId);
-    return this.toResponse(row);
+    const state = await this.findMessageStateOrThrow(userId, recipientId);
+    const message = await this.messageRepository.findOne({ where: { id: state.messageId } });
+    if (!message) throw new NotFoundException('Notification not found');
+    return this.toNotificationResponse(state, message);
   }
 
   async markAsSeen(userId: string, recipientId: string) {
-    const row = await this.findRecipientOrThrow(userId, recipientId);
-    if (!row.seenAt) {
-      row.seenAt = new Date();
-      if (row.status === 'UNREAD') {
-        row.status = 'SEEN';
+    const state = await this.findMessageStateOrThrow(userId, recipientId);
+    if (!state.openedAt) {
+      state.openedAt = new Date();
+      await this.messageUserStateRepository.save(state);
+      const message = await this.messageRepository.findOne({ where: { id: state.messageId } });
+      if (message) {
+        this.realtimeService.emitToUser(userId, 'notification.seen', this.toNotificationResponse(state, message));
       }
-      await this.recipientRepository.save(row);
-      this.realtimeService.emitToUser(userId, 'notification.seen', this.toResponse(row));
       await this.emitUnreadCountUpdated(userId);
     }
-
-    return this.toResponse(row);
+    const message = await this.messageRepository.findOne({ where: { id: state.messageId } });
+    if (!message) throw new NotFoundException('Notification not found');
+    return this.toNotificationResponse(state, message);
   }
 
   async markAsRead(userId: string, recipientId: string) {
-    const row = await this.findRecipientOrThrow(userId, recipientId);
+    const row = await this.findMessageStateOrThrow(userId, recipientId);
     const now = new Date();
-    if (!row.seenAt) row.seenAt = now;
+    if (!row.openedAt) row.openedAt = now;
     if (!row.readAt) row.readAt = now;
-    row.status = 'READ';
-    await this.recipientRepository.save(row);
-    this.realtimeService.emitToUser(userId, 'notification.read', this.toResponse(row));
+    await this.messageUserStateRepository.save(row);
+    const message = await this.messageRepository.findOne({ where: { id: row.messageId } });
+    if (!message) throw new NotFoundException('Notification not found');
+    this.realtimeService.emitToUser(userId, 'notification.read', this.toNotificationResponse(row, message));
     await this.emitUnreadCountUpdated(userId);
-    return this.toResponse(row);
+    return this.toNotificationResponse(row, message);
   }
 
   async markAllAsRead(userId: string) {
-    const rows = await this.recipientRepository
-      .createQueryBuilder('recipient')
-      .innerJoinAndSelect('recipient.recipientUser', 'user')
-      .where('user.id = :userId', { userId })
-      .andWhere('recipient.readAt IS NULL')
+    const rows = await this.messageUserStateRepository
+      .createQueryBuilder('mus')
+      .where('mus.user_id = :userId', { userId })
+      .andWhere('mus.read_at IS NULL')
+      .andWhere('mus.permanently_hidden_at IS NULL')
+      .andWhere('mus.deleted_at IS NULL')
+      .andWhere('mus.is_archived = false')
       .getMany();
 
     if (!rows.length) return { updated: 0 };
 
     const now = new Date();
     rows.forEach((row) => {
-      row.seenAt = row.seenAt ?? now;
+      row.openedAt = row.openedAt ?? now;
       row.readAt = now;
-      row.status = 'READ';
     });
-    await this.recipientRepository.save(rows);
+    await this.messageUserStateRepository.save(rows);
     this.realtimeService.emitToUser(userId, 'notification.updated', { type: 'READ_ALL' });
     await this.emitUnreadCountUpdated(userId);
     return { updated: rows.length };
   }
 
   async archive(userId: string, recipientId: string) {
-    const row = await this.findRecipientOrThrow(userId, recipientId);
-    row.archivedAt = new Date();
-    row.status = 'ARCHIVED';
-    await this.recipientRepository.save(row);
-    this.realtimeService.emitToUser(userId, 'notification.archived', this.toResponse(row));
+    const row = await this.findMessageStateOrThrow(userId, recipientId);
+    row.isArchived = true;
+    row.isInInbox = false;
+    await this.messageUserStateRepository.save(row);
+    const message = await this.messageRepository.findOne({ where: { id: row.messageId } });
+    if (!message) throw new NotFoundException('Notification not found');
+    this.realtimeService.emitToUser(userId, 'notification.archived', this.toNotificationResponse(row, message));
     await this.emitUnreadCountUpdated(userId);
-    return this.toResponse(row);
+    return this.toNotificationResponse(row, message);
   }
 
   async createDevNotificationForUser(userId: string) {
@@ -1924,7 +2130,7 @@ export class NotificationsService {
     category: string;
     title: string;
     message: string;
-    priority?: NotificationPriority;
+    priority?: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT' | 'CRITICAL';
     actionUrl?: string | null;
     actionLabel?: string | null;
     metadata?: Record<string, unknown> | null;
@@ -1933,7 +2139,7 @@ export class NotificationsService {
     sourceModule?: string | null;
     sourceEntityType?: string | null;
     sourceEntityId?: string | null;
-  }) {
+  }): Promise<Array<{ userId: string; recipientId: string }>> {
     const recipientUserIds = Array.from(new Set(input.recipientUserIds.filter(Boolean)));
     if (!recipientUserIds.length) return [];
 
@@ -1980,7 +2186,7 @@ export class NotificationsService {
       }),
     );
 
-    await this.messageUserStateRepository.save(
+    const savedStates = await this.messageUserStateRepository.save(
       users.map((user) =>
         this.messageUserStateRepository.create({
           messageId: systemMessage.id,
@@ -2005,45 +2211,24 @@ export class NotificationsService {
       ),
     );
 
-    const notification = this.notificationRepository.create({
-      type: input.type,
-      category: input.category,
-      title: input.title,
-      message: input.message,
-      priority: input.priority ?? 'NORMAL',
-      actionUrl: input.actionUrl ?? null,
-      actionLabel: input.actionLabel ?? null,
-      metadata: input.metadata ?? {},
-      isSystem: input.isSystem ?? false,
-      showAsToast: input.showAsToast ?? true,
-      sourceModule: input.sourceModule ?? null,
-      sourceEntityType: input.sourceEntityType ?? null,
-      sourceEntityId: input.sourceEntityId ?? null,
-    });
-    const savedNotification = await this.notificationRepository.save(notification);
+    const createdRecipients: Array<{ userId: string; recipientId: string }> = savedStates.map((state) => ({
+      userId: state.userId,
+      recipientId: state.id,
+    }));
 
-    const createdRecipients: Array<{ userId: string; recipientId: string }> = [];
-    for (const user of users) {
-      const recipient = this.recipientRepository.create({
-        notification: savedNotification,
-        recipientUser: user,
-        status: 'UNREAD',
-      });
-      const savedRecipient = await this.recipientRepository.save(recipient);
-      const outbox = this.outboxRepository.create({
-        notificationRecipient: savedRecipient,
-        eventType: 'NOTIFICATION_CREATED',
-        payload: {
-          recipientId: savedRecipient.id,
-          userId: user.id,
-          notificationId: savedNotification.id,
-        },
-        status: 'PENDING',
-        attempts: 0,
-      });
-      const savedOutbox = await this.outboxRepository.save(outbox);
-      await this.notificationQueueService.enqueueOutboxDelivery(savedOutbox.id);
-      createdRecipients.push({ userId: user.id, recipientId: savedRecipient.id });
+    for (const state of savedStates) {
+      const payload = this.toNotificationResponse(state, systemMessage);
+      payload.notification = {
+        ...payload.notification,
+        type: input.type,
+        category: input.category,
+        priority: input.priority ?? 'NORMAL',
+        actionUrl: input.actionUrl ?? null,
+        actionLabel: input.actionLabel ?? null,
+        metadata: { ...(payload.notification.metadata ?? {}), ...(input.metadata ?? {}) },
+        showAsToast: input.showAsToast ?? true,
+      };
+      this.realtimeService.emitToUser(state.userId, 'notification.created', payload);
     }
 
     await this.createAuditLog({
@@ -2066,115 +2251,42 @@ export class NotificationsService {
     this.realtimeService.emitToUser(userId, 'notification.unread_count_updated', count);
   }
 
-  async processOutboxDeliveryJob(outboxId: string) {
-    const outbox = await this.outboxRepository.findOne({
-      where: { id: outboxId },
-      relations: ['notificationRecipient', 'notificationRecipient.notification', 'notificationRecipient.recipientUser'],
-    });
-
-    if (!outbox) {
-      return;
-    }
-
-    if (outbox.status === 'PROCESSED') {
-      return;
-    }
-
-    const attemptNumber = outbox.attempts + 1;
-    const recipient = outbox.notificationRecipient;
-    const userId = recipient.recipientUser.id;
-
-    outbox.status = 'PROCESSING';
-    await this.outboxRepository.save(outbox);
-
-    try {
-      const payload = await this.getMyNotificationDetail(userId, recipient.id);
-      this.realtimeService.emitToUser(userId, 'notification.created', payload);
-
-      if (!recipient.deliveredAt) {
-        recipient.deliveredAt = new Date();
-        await this.recipientRepository.save(recipient);
-      }
-
-      const successAttempt = this.deliveryAttemptRepository.create({
-        notificationRecipient: recipient,
-        channel: 'WEBSOCKET',
-        status: 'SUCCESS',
-        attemptNumber,
-        errorMessage: null,
-        providerResponse: { event: 'notification.created' },
-      });
-      await this.deliveryAttemptRepository.save(successAttempt);
-
-      outbox.status = 'PROCESSED';
-      outbox.processedAt = new Date();
-      outbox.nextRetryAt = null;
-      outbox.attempts = attemptNumber;
-      await this.outboxRepository.save(outbox);
-
-      await this.emitUnreadCountUpdated(userId);
-    } catch (error) {
-      const failAttempt = this.deliveryAttemptRepository.create({
-        notificationRecipient: recipient,
-        channel: 'WEBSOCKET',
-        status: 'FAILED',
-        attemptNumber,
-        errorMessage: error instanceof Error ? error.message : 'Unknown delivery error',
-        providerResponse: {},
-      });
-      await this.deliveryAttemptRepository.save(failAttempt);
-
-      outbox.status = 'FAILED';
-      outbox.attempts = attemptNumber;
-      outbox.nextRetryAt = new Date(Date.now() + 30_000);
-      await this.outboxRepository.save(outbox);
-
-      throw error;
-    }
-  }
-
-  private async findRecipientOrThrow(userId: string, recipientId: string) {
-    const row = await this.recipientRepository
-      .createQueryBuilder('recipient')
-      .innerJoinAndSelect('recipient.notification', 'notification')
-      .innerJoinAndSelect('recipient.recipientUser', 'user')
-      .where('recipient.id = :recipientId', { recipientId })
-      .andWhere('user.id = :userId', { userId })
-      .getOne();
-
-    if (!row) {
-      throw new NotFoundException('Notification not found');
-    }
-
-    return row;
-  }
-
-  private toResponse(row: NotificationRecipient) {
+  private toNotificationResponse(state: MessageUserStateEntity, message: MessageEntity) {
+    const metadata = (message.bodyJson ?? {}) as Record<string, unknown>;
+    const sourceModule = message.originModule ?? null;
     return {
-      recipientId: row.id,
-      status: row.status,
-      seenAt: row.seenAt,
-      readAt: row.readAt,
-      deliveredAt: row.deliveredAt,
-      archivedAt: row.archivedAt,
-      dismissedAt: row.dismissedAt,
-      createdAt: row.createdAt,
+      recipientId: state.id,
+      status: state.isArchived
+        ? 'ARCHIVED'
+        : state.deletedAt
+          ? 'DELETED'
+          : state.readAt
+            ? 'READ'
+            : state.openedAt
+              ? 'SEEN'
+              : 'UNREAD',
+      seenAt: state.openedAt,
+      readAt: state.readAt,
+      deliveredAt: state.deliveredAt,
+      archivedAt: state.isArchived ? state.updatedAt : null,
+      dismissedAt: null,
+      createdAt: state.createdAt,
       notification: {
-        id: row.notification.id,
-        type: row.notification.type,
-        category: row.notification.category,
-        title: row.notification.title,
-        message: row.notification.message,
-        priority: row.notification.priority,
-        sourceModule: row.notification.sourceModule,
-        sourceEntityType: row.notification.sourceEntityType,
-        sourceEntityId: row.notification.sourceEntityId,
-        actionUrl: row.notification.actionUrl,
-        actionLabel: row.notification.actionLabel,
-        metadata: row.notification.metadata,
-        isSystem: row.notification.isSystem,
-        showAsToast: row.notification.showAsToast,
-        createdAt: row.notification.createdAt,
+        id: message.id,
+        type: String(metadata?.type ?? message.kind ?? 'SYSTEM_MESSAGE'),
+        category: String(metadata?.category ?? (sourceModule === 'purchases' ? 'PURCHASES' : 'SYSTEM')),
+        title: message.subject,
+        message: message.bodyText,
+        priority: String(metadata?.priority ?? 'NORMAL'),
+        sourceModule,
+        sourceEntityType: message.sourceEntityType,
+        sourceEntityId: message.sourceEntityId,
+        actionUrl: typeof metadata?.actionUrl === 'string' ? metadata.actionUrl : null,
+        actionLabel: typeof metadata?.actionLabel === 'string' ? metadata.actionLabel : null,
+        metadata,
+        isSystem: message.senderType === 'SYSTEM',
+        showAsToast: metadata?.showAsToast !== false,
+        createdAt: message.createdAt,
       },
     };
   }

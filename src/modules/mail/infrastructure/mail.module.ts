@@ -1,16 +1,10 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { NotificationsController } from '../adapters/in/controllers/notifications.controller';
-import { Notification } from '../adapters/out/persistence/typeorm/entities/notification.entity';
-import { NotificationRecipient } from '../adapters/out/persistence/typeorm/entities/notification-recipient.entity';
 import { NotificationsService } from '../application/use-cases/notifications.service';
 import { User } from 'src/modules/users/adapters/out/persistence/typeorm/entities/user.entity';
 import { NotificationGateway } from '../adapters/in/websocket/notification.gateway';
 import { NotificationRealtimeService } from './realtime/notification-realtime.service';
-import { NotificationOutbox } from '../adapters/out/persistence/typeorm/entities/notification-outbox.entity';
-import { NotificationDeliveryAttempt } from '../adapters/out/persistence/typeorm/entities/notification-delivery-attempt.entity';
-import { NotificationQueueService } from './queue/notification-queue.service';
-import { NotificationWorkerService } from './queue/notification-worker.service';
 import { AccessControlModule } from 'src/modules/access-control/infrastructure/access-control.module';
 import { MessageEntity } from '../adapters/out/persistence/typeorm/entities/message.entity';
 import { MessageRecipientEntity } from '../adapters/out/persistence/typeorm/entities/message-recipient.entity';
@@ -27,14 +21,12 @@ import { ExpireTrashJob } from './jobs/expire-trash.job';
 import { ReleaseSnoozedMessagesJob } from './jobs/release-snoozed-messages.job';
 import { CleanOrphanAttachmentsJob } from './jobs/clean-orphan-attachments.job';
 import { CreateYearlyPartitionsJob } from './jobs/create-yearly-partitions.job';
+import { ACCESS_CONTROL_PORT } from '../application/ports/access-control.port';
+import { AccessControlAdapter } from '../adapters/out/access-control/access-control.adapter';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
-      Notification,
-      NotificationRecipient,
-      NotificationOutbox,
-      NotificationDeliveryAttempt,
       MessageEntity,
       MessageRecipientEntity,
       MessageThread,
@@ -52,16 +44,16 @@ import { CreateYearlyPartitionsJob } from './jobs/create-yearly-partitions.job';
   controllers: [NotificationsController],
   providers: [
     NotificationsService,
+    AccessControlAdapter,
+    { provide: ACCESS_CONTROL_PORT, useExisting: AccessControlAdapter },
     NotificationRealtimeService,
     NotificationGateway,
-    NotificationQueueService,
-    NotificationWorkerService,
     ExpireDraftsJob,
     ExpireTrashJob,
     ReleaseSnoozedMessagesJob,
     CleanOrphanAttachmentsJob,
     CreateYearlyPartitionsJob,
   ],
-  exports: [NotificationsService, NotificationRealtimeService, NotificationQueueService],
+  exports: [NotificationsService, NotificationRealtimeService],
 })
 export class MailModule {}
