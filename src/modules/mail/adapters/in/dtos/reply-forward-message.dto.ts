@@ -2,6 +2,22 @@ import { IsArray, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validat
 
 export class ReplyForwardMessageDto {
   @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  to?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  cc?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  bcc?: string[];
+
+  // Compatibilidad temporal con clientes legacy.
+  @IsOptional()
   @IsString()
   recipients?: string;
 

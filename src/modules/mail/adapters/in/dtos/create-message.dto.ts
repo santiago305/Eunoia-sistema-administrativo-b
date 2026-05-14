@@ -1,9 +1,25 @@
 import { IsArray, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateMessageDto {
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  to?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  cc?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  bcc?: string[];
+
+  // Compatibilidad temporal con clientes legacy.
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  recipients: string;
+  recipients?: string;
 
   @IsString()
   @IsNotEmpty()

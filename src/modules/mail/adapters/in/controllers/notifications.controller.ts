@@ -108,6 +108,9 @@ export class NotificationsController {
   sendMessage(@CurrentUser() user: { id: string }, @Body() body: CreateMessageDto) {
     return this.notificationsService.sendMessage({
       senderUserId: user.id,
+      to: body.to,
+      cc: body.cc,
+      bcc: body.bcc,
       recipients: body.recipients,
       subject: body.subject,
       bodyHtml: body.bodyHtml,
@@ -200,6 +203,9 @@ export class NotificationsController {
       senderUserId: user.id,
       parentMessageId: id,
       bodyHtml: body.bodyHtml,
+      to: body.to,
+      cc: body.cc,
+      bcc: body.bcc,
       recipients: body.recipients,
       attachmentIds: body.attachmentIds ?? [],
     });
@@ -216,6 +222,9 @@ export class NotificationsController {
       senderUserId: user.id,
       parentMessageId: id,
       bodyHtml: body.bodyHtml,
+      to: body.to,
+      cc: body.cc,
+      bcc: body.bcc,
       recipients: body.recipients ?? '',
       attachmentIds: body.attachmentIds ?? [],
     });

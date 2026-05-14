@@ -95,15 +95,10 @@ export class NotificationsService {
     system: ['page.notifications.view'],
   };
 
-  private normalizeEmails(recipients: string) {
-    return Array.from(
-      new Set(
-        recipients
-          .split(',')
-          .map((email) => email.trim().toLowerCase())
-          .filter(Boolean),
-      ),
-    );
+  private normalizeEmails(recipients: string[] | string | undefined | null) {
+    if (!recipients) return [];
+    const values = Array.isArray(recipients) ? recipients : recipients.split(',');
+    return Array.from(new Set(values.map((email) => email.trim().toLowerCase()).filter(Boolean)));
   }
 
   private isValidEmail(email: string) {
@@ -230,8 +225,35 @@ export class NotificationsService {
     }
   }
 
-  private async resolveRecipientsOrFail(recipientsRaw: string) {
-    const recipientEmails = this.normalizeEmails(recipientsRaw);
+  private async resolveRecipientsByBucketsOrFail(input: {
+    to?: string[] | string;
+    cc?: string[] | string;
+    bcc?: string[] | string;
+    recipients?: string;
+  }) {
+    const ordered: Array<{ type: 'TO' | 'CC' | 'BCC'; emails: string[] }> = [
+      { type: 'TO', emails: this.normalizeEmails(input.to) },
+      { type: 'CC', emails: this.normalizeEmails(input.cc) },
+      { type: 'BCC', emails: this.normalizeEmails(input.bcc) },
+    ];
+
+    if (!ordered.some((entry) => entry.emails.length) && input.recipients) {
+      ordered[0].emails = this.normalizeEmails(input.recipients);
+    }
+
+    const dedupedByPriority = new Set<string>();
+    const byType = new Map<'TO' | 'CC' | 'BCC', string[]>();
+    ordered.forEach((entry) => {
+      const list: string[] = [];
+      entry.emails.forEach((email) => {
+        if (dedupedByPriority.has(email)) return;
+        dedupedByPriority.add(email);
+        list.push(email);
+      });
+      byType.set(entry.type, list);
+    });
+
+    const recipientEmails = Array.from(dedupedByPriority);
     if (!recipientEmails.length) {
       throw new BadRequestException('RECIPIENT_EMAIL_NOT_FOUND');
     }
@@ -256,11 +278,44 @@ export class NotificationsService {
         invalidRecipients,
       });
     }
-    return users;
+    const usersByEmail = new Map(users.map((user) => [user.email.toLowerCase(), user]));
+    const recipients = Array.from(byType.entries()).flatMap(([relationType, emails]) =>
+      emails
+        .map((email) => {
+          const user = usersByEmail.get(email);
+          if (!user) return null;
+          return { id: user.id, email: user.email, name: user.name, relationType };
+        })
+        .filter((item): item is { id: string; email: string; name: string; relationType: 'TO' | 'CC' | 'BCC' } => Boolean(item)),
+    );
+
+    return { recipients, byType };
+  }
+
+  private sanitizeHtmlBody(bodyHtml: string) {
+    let sanitized = String(bodyHtml ?? '');
+    sanitized = sanitized.replace(/<!--[\s\S]*?-->/g, '');
+    sanitized = sanitized.replace(/<\s*(script|style|iframe|object|embed|link|meta|base|form|input|button|textarea|select|svg|math)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, '');
+    sanitized = sanitized.replace(/<\s*(script|style|iframe|object|embed|link|meta|base|form|input|button|textarea|select|svg|math)[^>]*\/?\s*>/gi, '');
+    sanitized = sanitized.replace(/\s+on[a-z]+\s*=\s*"[^"]*"/gi, '');
+    sanitized = sanitized.replace(/\s+on[a-z]+\s*=\s*'[^']*'/gi, '');
+    sanitized = sanitized.replace(/\s+on[a-z]+\s*=\s*[^\s>]+/gi, '');
+    sanitized = sanitized.replace(/\s(href|src)\s*=\s*"\s*javascript:[^"]*"/gi, ' $1="#"');
+    sanitized = sanitized.replace(/\s(href|src)\s*=\s*'\s*javascript:[^']*'/gi, " $1='#'");
+    sanitized = sanitized.replace(/\s(href|src)\s*=\s*(javascript:[^\s>]+)/gi, ' $1="#"');
+    sanitized = sanitized.replace(/\sstyle\s*=\s*"[^"]*(expression|javascript:|url\s*\(\s*javascript:)[^"]*"/gi, '');
+    sanitized = sanitized.replace(/\sstyle\s*=\s*'[^']*(expression|javascript:|url\s*\(\s*javascript:)[^']*'/gi, '');
+    sanitized = sanitized.replace(/<a\b([^>]*)>/gi, (_m, attrs: string) => {
+      const hasTargetBlank = /\btarget\s*=\s*(['"])_blank\1/i.test(attrs);
+      if (!hasTargetBlank) return `<a${attrs}>`;
+      if (/\brel\s*=/i.test(attrs)) return `<a${attrs}>`;
+      return `<a${attrs} rel="noopener noreferrer">`;
+    });
+    return sanitized.trim();
   }
 
   private normalizeHtmlBody(bodyHtml: string) {
-    return String(bodyHtml ?? '').trim();
+    return this.sanitizeHtmlBody(bodyHtml);
   }
 
   private toBodyText(bodyHtml: string) {
@@ -288,7 +343,7 @@ export class NotificationsService {
   private async createMessageUserStates(input: {
     message: MessageEntity;
     senderUserId: string;
-    recipients: Array<{ id: string; email: string }>;
+    recipients: Array<{ id: string; email: string; relationType: 'TO' | 'CC' | 'BCC' }>;
   }) {
     const now = new Date();
     const states: MessageUserStateEntity[] = [];
@@ -322,7 +377,7 @@ export class NotificationsService {
           messageId: input.message.id,
           threadId: input.message.threadId,
           userId: recipient.id,
-          relationType: 'TO',
+          relationType: recipient.relationType,
           recipientEmail: recipient.email,
           isInInbox: true,
           isInSent: false,
@@ -394,14 +449,22 @@ export class NotificationsService {
 
   async sendMessage(input: {
     senderUserId: string;
-    recipients: string;
+    to?: string[] | string;
+    cc?: string[] | string;
+    bcc?: string[] | string;
+    recipients?: string;
     subject: string;
     bodyHtml: string;
     originModule?: string;
     labelIds?: string[];
     attachmentIds?: string[];
   }) {
-    const users = await this.resolveRecipientsOrFail(input.recipients);
+    const { recipients: resolvedRecipients } = await this.resolveRecipientsByBucketsOrFail({
+      to: input.to,
+      cc: input.cc,
+      bcc: input.bcc,
+      recipients: input.recipients,
+    });
 
     const originModule = (input.originModule ?? 'corporate').toLowerCase();
     await this.ensureCanAccessModule(input.senderUserId, originModule);
@@ -439,12 +502,12 @@ export class NotificationsService {
       }),
     );
 
-    const recipients = users.map((user) =>
+    const recipients = resolvedRecipients.map((user) =>
       this.messageRecipientRepository.create({
         messageId: message.id,
         recipientUserId: user.id,
         recipientEmail: user.email,
-        recipientType: 'TO',
+        recipientType: user.relationType,
         deliveredAt: new Date(),
       }),
     );
@@ -452,7 +515,7 @@ export class NotificationsService {
     const states = await this.createMessageUserStates({
       message,
       senderUserId: input.senderUserId,
-      recipients: users.map((user) => ({ id: user.id, email: user.email })),
+      recipients: resolvedRecipients.map((user) => ({ id: user.id, email: user.email, relationType: user.relationType })),
     });
     await this.linkAttachmentsToMessage(input.senderUserId, message.id, input.attachmentIds ?? []);
     const senderState = states.find((state) => state.userId === input.senderUserId && state.relationType === 'SENDER');
@@ -465,7 +528,13 @@ export class NotificationsService {
       actorUserId: input.senderUserId,
       messageId: message.id,
       threadId: message.threadId,
-      metadata: { recipients: users.map((user) => user.email), originModule },
+      metadata: {
+        recipients: resolvedRecipients.map((user) => user.email),
+        to: resolvedRecipients.filter((item) => item.relationType === 'TO').map((item) => item.email),
+        cc: resolvedRecipients.filter((item) => item.relationType === 'CC').map((item) => item.email),
+        bcc: resolvedRecipients.filter((item) => item.relationType === 'BCC').map((item) => item.email),
+        originModule,
+      },
     });
 
     await this.emitMessageRealtimeToRecipients(input.senderUserId, message, recipients);
@@ -477,6 +546,9 @@ export class NotificationsService {
     senderUserId: string;
     parentMessageId: string;
     bodyHtml: string;
+    to?: string[] | string;
+    cc?: string[] | string;
+    bcc?: string[] | string;
     recipients?: string;
     attachmentIds?: string[];
   }) {
@@ -484,17 +556,28 @@ export class NotificationsService {
     if (!parent) throw new NotFoundException('MESSAGE_NOT_FOUND');
     await this.ensureCanAccessModule(input.senderUserId, parent.originModule);
 
-    let users = [] as Array<{ id: string; email: string; name: string }>;
-    if (input.recipients?.trim()) {
-      users = await this.resolveRecipientsOrFail(input.recipients);
+    let resolvedRecipients: Array<{ id: string; email: string; name: string; relationType: 'TO' | 'CC' | 'BCC' }> = [];
+    const hasTypedRecipients =
+      this.normalizeEmails(input.to).length > 0 ||
+      this.normalizeEmails(input.cc).length > 0 ||
+      this.normalizeEmails(input.bcc).length > 0 ||
+      Boolean(input.recipients?.trim());
+    if (hasTypedRecipients) {
+      const resolved = await this.resolveRecipientsByBucketsOrFail({
+        to: input.to,
+        cc: input.cc,
+        bcc: input.bcc,
+        recipients: input.recipients,
+      });
+      resolvedRecipients = resolved.recipients;
     } else if (parent.senderUserId && parent.senderUserId !== input.senderUserId) {
       const fallback = await this.userRepository.findOne({
         where: { id: parent.senderUserId },
         select: ['id', 'email', 'name'],
       });
-      users = fallback ? [fallback] : [];
+      resolvedRecipients = fallback ? [{ ...fallback, relationType: 'TO' }] : [];
     }
-    if (!users.length) {
+    if (!resolvedRecipients.length) {
       throw new BadRequestException('RECIPIENT_EMAIL_NOT_FOUND');
     }
 
@@ -529,12 +612,12 @@ export class NotificationsService {
       );
     }
 
-    const recipients = users.map((user) =>
+    const recipients = resolvedRecipients.map((user) =>
       this.messageRecipientRepository.create({
         messageId: message.id,
         recipientUserId: user.id,
         recipientEmail: user.email,
-        recipientType: 'TO',
+        recipientType: user.relationType,
         deliveredAt: new Date(),
       }),
     );
@@ -542,7 +625,7 @@ export class NotificationsService {
     await this.createMessageUserStates({
       message,
       senderUserId: input.senderUserId,
-      recipients: users.map((user) => ({ id: user.id, email: user.email })),
+      recipients: resolvedRecipients.map((user) => ({ id: user.id, email: user.email, relationType: user.relationType })),
     });
     await this.linkAttachmentsToMessage(input.senderUserId, message.id, input.attachmentIds ?? []);
     await this.createAuditLog({
@@ -550,7 +633,13 @@ export class NotificationsService {
       actorUserId: input.senderUserId,
       messageId: message.id,
       threadId: message.threadId,
-      metadata: { parentMessageId: parent.id, recipients: users.map((user) => user.email) },
+      metadata: {
+        parentMessageId: parent.id,
+        recipients: resolvedRecipients.map((user) => user.email),
+        to: resolvedRecipients.filter((item) => item.relationType === 'TO').map((item) => item.email),
+        cc: resolvedRecipients.filter((item) => item.relationType === 'CC').map((item) => item.email),
+        bcc: resolvedRecipients.filter((item) => item.relationType === 'BCC').map((item) => item.email),
+      },
     });
     await this.emitMessageRealtimeToRecipients(input.senderUserId, message, recipients);
 
@@ -674,13 +763,21 @@ export class NotificationsService {
   async forwardMessage(input: {
     senderUserId: string;
     parentMessageId: string;
-    recipients: string;
+    to?: string[] | string;
+    cc?: string[] | string;
+    bcc?: string[] | string;
+    recipients?: string;
     bodyHtml: string;
     attachmentIds?: string[];
   }) {
     const parent = await this.messageRepository.findOne({ where: { id: input.parentMessageId } });
     if (!parent) throw new NotFoundException('MESSAGE_NOT_FOUND');
-    const users = await this.resolveRecipientsOrFail(input.recipients);
+    const { recipients: resolvedRecipients } = await this.resolveRecipientsByBucketsOrFail({
+      to: input.to,
+      cc: input.cc,
+      bcc: input.bcc,
+      recipients: input.recipients,
+    });
     await this.ensureCanAccessModule(input.senderUserId, parent.originModule);
 
     const thread = await this.messageThreadRepository.save(
@@ -694,7 +791,7 @@ export class NotificationsService {
       }),
     );
 
-    const bodyHtml = `${this.normalizeHtmlBody(input.bodyHtml)}<hr/><p>${parent.bodyHtml}</p>`;
+    const bodyHtml = this.normalizeHtmlBody(`${this.normalizeHtmlBody(input.bodyHtml)}<hr/><p>${parent.bodyHtml}</p>`);
     const bodyText = this.toBodyText(bodyHtml);
     const message = await this.messageRepository.save(
       this.messageRepository.create({
@@ -718,12 +815,12 @@ export class NotificationsService {
       }),
     );
 
-    const recipients = users.map((user) =>
+    const recipients = resolvedRecipients.map((user) =>
       this.messageRecipientRepository.create({
         messageId: message.id,
         recipientUserId: user.id,
         recipientEmail: user.email,
-        recipientType: 'TO',
+        recipientType: user.relationType,
         deliveredAt: new Date(),
       }),
     );
@@ -731,7 +828,7 @@ export class NotificationsService {
     await this.createMessageUserStates({
       message,
       senderUserId: input.senderUserId,
-      recipients: users.map((user) => ({ id: user.id, email: user.email })),
+      recipients: resolvedRecipients.map((user) => ({ id: user.id, email: user.email, relationType: user.relationType })),
     });
     await this.linkAttachmentsToMessage(input.senderUserId, message.id, input.attachmentIds ?? []);
     await this.createAuditLog({
@@ -739,7 +836,13 @@ export class NotificationsService {
       actorUserId: input.senderUserId,
       messageId: message.id,
       threadId: message.threadId,
-      metadata: { parentMessageId: parent.id, recipients: users.map((user) => user.email) },
+      metadata: {
+        parentMessageId: parent.id,
+        recipients: resolvedRecipients.map((user) => user.email),
+        to: resolvedRecipients.filter((item) => item.relationType === 'TO').map((item) => item.email),
+        cc: resolvedRecipients.filter((item) => item.relationType === 'CC').map((item) => item.email),
+        bcc: resolvedRecipients.filter((item) => item.relationType === 'BCC').map((item) => item.email),
+      },
     });
     await this.emitMessageRealtimeToRecipients(input.senderUserId, message, recipients);
     return { id: message.id, threadId: thread.id, recipients: recipients.length };
@@ -786,8 +889,8 @@ export class NotificationsService {
         senderUserId: input.userId,
         createdByUserId: input.userId,
         subject: input.subject?.trim() || '(Sin asunto)',
-        bodyHtml: input.bodyHtml ?? '',
-        bodyText: (input.bodyHtml ?? '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim(),
+        bodyHtml: this.normalizeHtmlBody(input.bodyHtml ?? ''),
+        bodyText: this.toBodyText(input.bodyHtml ?? ''),
         bodyJson: { draftRecipients: input.recipients ?? '' },
         status: 'DRAFT',
         isDraft: true,
@@ -822,8 +925,8 @@ export class NotificationsService {
     }
     if (typeof input.subject === 'string') draft.subject = input.subject.trim() || '(Sin asunto)';
     if (typeof input.bodyHtml === 'string') {
-      draft.bodyHtml = input.bodyHtml;
-      draft.bodyText = input.bodyHtml.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      draft.bodyHtml = this.normalizeHtmlBody(input.bodyHtml);
+      draft.bodyText = this.toBodyText(input.bodyHtml);
     }
     if (typeof input.recipients === 'string') {
       draft.bodyJson = {
@@ -870,19 +973,21 @@ export class NotificationsService {
       throw new BadRequestException('DRAFT_EXPIRED');
     }
     const draftRecipients = String((draft.bodyJson as Record<string, unknown> | null)?.draftRecipients ?? '').trim();
-    const users = await this.resolveRecipientsOrFail((recipientsRaw ?? '').trim() || draftRecipients);
+    const { recipients: resolvedRecipients } = await this.resolveRecipientsByBucketsOrFail({
+      recipients: (recipientsRaw ?? '').trim() || draftRecipients,
+    });
     draft.isDraft = false;
     draft.status = 'SENT';
     draft.sentAt = new Date();
     draft.draftExpiresAt = null;
     const sent = await this.messageRepository.save(draft);
 
-    const recipients = users.map((user) =>
+    const recipients = resolvedRecipients.map((user) =>
       this.messageRecipientRepository.create({
         messageId: sent.id,
         recipientUserId: user.id,
         recipientEmail: user.email,
-        recipientType: 'TO',
+        recipientType: user.relationType,
         deliveredAt: new Date(),
       }),
     );
@@ -890,7 +995,7 @@ export class NotificationsService {
     await this.createMessageUserStates({
       message: sent,
       senderUserId: userId,
-      recipients: users.map((user) => ({ id: user.id, email: user.email })),
+      recipients: resolvedRecipients.map((user) => ({ id: user.id, email: user.email, relationType: user.relationType })),
     });
     await this.linkAttachmentsToMessage(userId, sent.id, attachmentIds, draftId);
     await this.createAuditLog({
@@ -898,7 +1003,7 @@ export class NotificationsService {
       actorUserId: userId,
       messageId: sent.id,
       threadId: sent.threadId,
-      metadata: { recipients: users.map((user) => user.email) },
+      metadata: { recipients: resolvedRecipients.map((user) => user.email) },
     });
     await this.emitMessageRealtimeToRecipients(userId, sent, recipients);
     return { id: sent.id, recipients: recipients.length };
