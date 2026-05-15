@@ -28,6 +28,14 @@ import { MessageAccessService } from '../application/services/message-access.ser
 import { NotificationLabelsService } from '../application/services/notification-labels.service';
 import { NotificationAttachmentsService } from '../application/services/notification-attachments.service';
 import { NotificationQueriesService } from '../application/services/notification-queries.service';
+import { MessageContentService } from '../application/services/message-content.service';
+import { MessageRecipientsResolverService } from '../application/services/message-recipients-resolver.service';
+import { MessageAuditService } from '../application/services/message-audit.service';
+import { MessageUserStatesService } from '../application/services/message-user-states.service';
+import { MessageRealtimeEventsService } from '../application/services/message-realtime-events.service';
+import { NotificationPayloadMapperService } from '../application/services/notification-payload-mapper.service';
+import { MessageUserStateAccessService } from '../application/services/message-user-state-access.service';
+import { SystemNotificationService } from '../application/services/system-notification.service';
 import { ACCESS_CONTROL_PORT } from '../application/ports/access-control.port';
 import { AccessControlAdapter } from '../adapters/out/access-control/access-control.adapter';
 
@@ -56,6 +64,14 @@ import { AccessControlAdapter } from '../adapters/out/access-control/access-cont
     NotificationLabelsService,
     NotificationAttachmentsService,
     NotificationQueriesService,
+    MessageContentService,
+    MessageRecipientsResolverService,
+    MessageAuditService,
+    MessageUserStatesService,
+    MessageRealtimeEventsService,
+    NotificationPayloadMapperService,
+    MessageUserStateAccessService,
+    SystemNotificationService,
     AccessControlAdapter,
     { provide: ACCESS_CONTROL_PORT, useExisting: AccessControlAdapter },
     NotificationRealtimeService,

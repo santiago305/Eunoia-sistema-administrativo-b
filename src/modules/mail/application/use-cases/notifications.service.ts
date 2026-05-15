@@ -1,6 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, In, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { NotificationRealtimeService } from '../../infrastructure/realtime/notification-realtime.service';
 import { User } from 'src/modules/users/adapters/out/persistence/typeorm/entities/user.entity';
 import { MessageEntity } from '../../adapters/out/persistence/typeorm/entities/message.entity';
@@ -10,14 +10,20 @@ import { MessageLabelEntity } from '../../adapters/out/persistence/typeorm/entit
 import { MessageUserStateEntity } from '../../adapters/out/persistence/typeorm/entities/message-user-state.entity';
 import { MessageAttachmentEntity } from '../../adapters/out/persistence/typeorm/entities/message-attachment.entity';
 import { MessageLabelAssignmentEntity } from '../../adapters/out/persistence/typeorm/entities/message-label-assignment.entity';
-import { MessageSearchHistoryEntity } from '../../adapters/out/persistence/typeorm/entities/message-search-history.entity';
-import { MessageAuditLogEntity } from '../../adapters/out/persistence/typeorm/entities/message-audit-log.entity';
 import { ACCESS_CONTROL_PORT, AccessControlPort } from '../ports/access-control.port';
 import { MessageStateService } from '../services/message-state.service';
 import { MessageAccessService } from '../services/message-access.service';
 import { NotificationLabelsService } from '../services/notification-labels.service';
 import { NotificationAttachmentsService } from '../services/notification-attachments.service';
 import { NotificationQueriesService } from '../services/notification-queries.service';
+import { MessageContentService } from '../services/message-content.service';
+import { MessageRecipientsResolverService } from '../services/message-recipients-resolver.service';
+import { MessageAuditService } from '../services/message-audit.service';
+import { MessageUserStatesService } from '../services/message-user-states.service';
+import { MessageRealtimeEventsService } from '../services/message-realtime-events.service';
+import { NotificationPayloadMapperService } from '../services/notification-payload-mapper.service';
+import { MessageUserStateAccessService } from '../services/message-user-state-access.service';
+import { SystemNotificationService } from '../services/system-notification.service';
 import {
   NOTIFICATION_MODULE_ICONS,
   NOTIFICATION_MODULE_LABELS,
@@ -43,10 +49,6 @@ export class NotificationsService {
     private readonly messageAttachmentRepository: Repository<MessageAttachmentEntity>,
     @InjectRepository(MessageLabelAssignmentEntity)
     private readonly messageLabelAssignmentRepository: Repository<MessageLabelAssignmentEntity>,
-    @InjectRepository(MessageSearchHistoryEntity)
-    private readonly messageSearchHistoryRepository: Repository<MessageSearchHistoryEntity>,
-    @InjectRepository(MessageAuditLogEntity)
-    private readonly messageAuditLogRepository: Repository<MessageAuditLogEntity>,
     private readonly realtimeService: NotificationRealtimeService,
     private readonly dataSource: DataSource,
     @Inject(ACCESS_CONTROL_PORT)
@@ -56,65 +58,16 @@ export class NotificationsService {
     private readonly notificationLabelsService: NotificationLabelsService,
     private readonly notificationAttachmentsService: NotificationAttachmentsService,
     private readonly notificationQueriesService: NotificationQueriesService,
+    private readonly messageContentService: MessageContentService,
+    private readonly messageRecipientsResolverService: MessageRecipientsResolverService,
+    private readonly messageAuditService: MessageAuditService,
+    private readonly messageUserStatesService: MessageUserStatesService,
+    private readonly messageRealtimeEventsService: MessageRealtimeEventsService,
+    private readonly notificationPayloadMapperService: NotificationPayloadMapperService,
+    private readonly messageUserStateAccessService: MessageUserStateAccessService,
+    private readonly systemNotificationService: SystemNotificationService,
   ) {}
 
-  private normalizeEmails(recipients: string[] | string | undefined | null) {
-    if (!recipients) return [];
-    const values = Array.isArray(recipients) ? recipients : recipients.split(',');
-    return Array.from(new Set(values.map((email) => email.trim().toLowerCase()).filter(Boolean)));
-  }
-
-  private isValidEmail(email: string) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-  }
-
-  private toUuidOrNull(value?: string | null) {
-    if (!value) return null;
-    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
-      ? value
-      : null;
-  }
-
-  private buildMessageRealtimePayload(
-    message: MessageEntity,
-    recipient: MessageRecipientEntity,
-    senderName: string,
-  ) {
-    return {
-      recipientId: recipient.id,
-      messageRecipientId: recipient.id,
-      message: {
-        id: message.id,
-        threadId: message.threadId,
-        subject: message.subject,
-        preview: message.bodyText.slice(0, 140),
-        originModule: message.originModule,
-        senderName,
-        senderType: message.senderType,
-        sentAt: message.sentAt,
-      },
-    };
-  }
-
-  private async emitMessageRealtimeToRecipients(
-    senderUserId: string,
-    message: MessageEntity,
-    recipients: MessageRecipientEntity[],
-  ) {
-    const sender =
-      (await this.userRepository.findOne({
-        where: { id: senderUserId },
-        select: ['name'],
-      })) ?? null;
-    const senderName = sender?.name?.trim() || 'Usuario';
-
-    recipients.forEach((recipient) => {
-      const payload = this.buildMessageRealtimePayload(message, recipient, senderName);
-      this.realtimeService.emitToUser(recipient.recipientUserId, 'message.created', payload);
-      // Compatibilidad temporal con clientes que aun escuchan eventos legacy.
-      this.realtimeService.emitToUser(recipient.recipientUserId, 'notification.created', payload);
-    });
-  }
 
   async getAllowedNotificationModules(userId: string) {
     const allowedModules = await this.accessControlPort.getAllowedNotificationModules(
@@ -163,231 +116,6 @@ export class NotificationsService {
     await this.messageAccessService.ensureCanAccessModule(userId, moduleKey, NOTIFICATION_MODULE_PERMISSIONS);
   }
 
-  private async resolveRecipientsByBucketsOrFail(input: {
-    to?: string[] | string;
-    cc?: string[] | string;
-    bcc?: string[] | string;
-    recipients?: string;
-  }) {
-    const ordered: Array<{ type: 'TO' | 'CC' | 'BCC'; emails: string[] }> = [
-      { type: 'TO', emails: this.normalizeEmails(input.to) },
-      { type: 'CC', emails: this.normalizeEmails(input.cc) },
-      { type: 'BCC', emails: this.normalizeEmails(input.bcc) },
-    ];
-
-    if (!ordered.some((entry) => entry.emails.length) && input.recipients) {
-      ordered[0].emails = this.normalizeEmails(input.recipients);
-    }
-
-    const dedupedByPriority = new Set<string>();
-    const byType = new Map<'TO' | 'CC' | 'BCC', string[]>();
-    ordered.forEach((entry) => {
-      const list: string[] = [];
-      entry.emails.forEach((email) => {
-        if (dedupedByPriority.has(email)) return;
-        dedupedByPriority.add(email);
-        list.push(email);
-      });
-      byType.set(entry.type, list);
-    });
-
-    const recipientEmails = Array.from(dedupedByPriority);
-    if (!recipientEmails.length) {
-      throw new BadRequestException('RECIPIENT_EMAIL_NOT_FOUND');
-    }
-    const invalidFormat = recipientEmails.filter((email) => !this.isValidEmail(email));
-    if (invalidFormat.length) {
-      throw new BadRequestException({
-        message: 'Uno o mas destinatarios no existen',
-        identifier: 'RECIPIENT_EMAIL_NOT_FOUND',
-        invalidRecipients: invalidFormat,
-      });
-    }
-    const users = await this.userRepository.find({
-      where: recipientEmails.map((email) => ({ email })),
-      select: ['id', 'email', 'name'],
-    });
-    const foundByEmail = new Set(users.map((user) => user.email.toLowerCase()));
-    const invalidRecipients = recipientEmails.filter((email) => !foundByEmail.has(email));
-    if (invalidRecipients.length) {
-      throw new BadRequestException({
-        message: 'Uno o mas destinatarios no existen',
-        identifier: 'RECIPIENT_EMAIL_NOT_FOUND',
-        invalidRecipients,
-      });
-    }
-    const usersByEmail = new Map(users.map((user) => [user.email.toLowerCase(), user]));
-    const recipients = Array.from(byType.entries()).flatMap(([relationType, emails]) =>
-      emails
-        .map((email) => {
-          const user = usersByEmail.get(email);
-          if (!user) return null;
-          return { id: user.id, email: user.email, name: user.name, relationType };
-        })
-        .filter((item): item is { id: string; email: string; name: string; relationType: 'TO' | 'CC' | 'BCC' } => Boolean(item)),
-    );
-
-    return { recipients, byType };
-  }
-
-  private sanitizeHtmlBody(bodyHtml: string) {
-    let sanitized = String(bodyHtml ?? '');
-    sanitized = sanitized.replace(/<!--[\s\S]*?-->/g, '');
-    sanitized = sanitized.replace(/<\s*(script|style|iframe|object|embed|link|meta|base|form|input|button|textarea|select|svg|math)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, '');
-    sanitized = sanitized.replace(/<\s*(script|style|iframe|object|embed|link|meta|base|form|input|button|textarea|select|svg|math)[^>]*\/?\s*>/gi, '');
-    sanitized = sanitized.replace(/\s+on[a-z]+\s*=\s*"[^"]*"/gi, '');
-    sanitized = sanitized.replace(/\s+on[a-z]+\s*=\s*'[^']*'/gi, '');
-    sanitized = sanitized.replace(/\s+on[a-z]+\s*=\s*[^\s>]+/gi, '');
-    sanitized = sanitized.replace(/\s(href|src)\s*=\s*"\s*javascript:[^"]*"/gi, ' $1="#"');
-    sanitized = sanitized.replace(/\s(href|src)\s*=\s*'\s*javascript:[^']*'/gi, " $1='#'");
-    sanitized = sanitized.replace(/\s(href|src)\s*=\s*(javascript:[^\s>]+)/gi, ' $1="#"');
-    sanitized = sanitized.replace(/\sstyle\s*=\s*"[^"]*(expression|javascript:|url\s*\(\s*javascript:)[^"]*"/gi, '');
-    sanitized = sanitized.replace(/\sstyle\s*=\s*'[^']*(expression|javascript:|url\s*\(\s*javascript:)[^']*'/gi, '');
-    sanitized = sanitized.replace(/<a\b([^>]*)>/gi, (_m, attrs: string) => {
-      const hasTargetBlank = /\btarget\s*=\s*(['"])_blank\1/i.test(attrs);
-      if (!hasTargetBlank) return `<a${attrs}>`;
-      if (/\brel\s*=/i.test(attrs)) return `<a${attrs}>`;
-      return `<a${attrs} rel="noopener noreferrer">`;
-    });
-    return sanitized.trim();
-  }
-
-  private normalizeHtmlBody(bodyHtml: string) {
-    return this.sanitizeHtmlBody(bodyHtml);
-  }
-
-  private toBodyText(bodyHtml: string) {
-    return this.normalizeHtmlBody(bodyHtml).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-  }
-
-  private async createAuditLog(input: {
-    action: string;
-    actorUserId?: string | null;
-    messageId?: string | null;
-    threadId?: string | null;
-    metadata?: Record<string, unknown>;
-  }, manager?: EntityManager) {
-    const repo = manager ? manager.getRepository(MessageAuditLogEntity) : this.messageAuditLogRepository;
-    await repo.save(
-      repo.create({
-        action: input.action,
-        actorUserId: input.actorUserId ?? null,
-        messageId: input.messageId ?? null,
-        threadId: input.threadId ?? null,
-        metadata: input.metadata ?? {},
-      }),
-    );
-  }
-
-  private async createMessageUserStates(input: {
-    message: MessageEntity;
-    senderUserId: string;
-    recipients: Array<{ id: string; email: string; relationType: 'TO' | 'CC' | 'BCC' }>;
-  }, manager?: EntityManager) {
-    const stateRepo = manager ? manager.getRepository(MessageUserStateEntity) : this.messageUserStateRepository;
-    const now = new Date();
-    const states: MessageUserStateEntity[] = [];
-
-    states.push(
-      stateRepo.create({
-        messageId: input.message.id,
-        threadId: input.message.threadId,
-        userId: input.senderUserId,
-        relationType: 'SENDER',
-        recipientEmail: null,
-        isInInbox: false,
-        isInSent: true,
-        isArchived: false,
-        isMuted: false,
-        readAt: now,
-        starredAt: null,
-        snoozedUntil: null,
-        snoozedAt: null,
-        deletedAt: null,
-        trashExpiresAt: null,
-        permanentlyHiddenAt: null,
-        deliveredAt: now,
-        openedAt: now,
-      }),
-    );
-
-    for (const recipient of input.recipients) {
-      states.push(
-        stateRepo.create({
-          messageId: input.message.id,
-          threadId: input.message.threadId,
-          userId: recipient.id,
-          relationType: recipient.relationType,
-          recipientEmail: recipient.email,
-          isInInbox: true,
-          isInSent: false,
-          isArchived: false,
-          isMuted: false,
-          readAt: null,
-          starredAt: null,
-          snoozedUntil: null,
-          snoozedAt: null,
-          deletedAt: null,
-          trashExpiresAt: null,
-          permanentlyHiddenAt: null,
-          deliveredAt: now,
-          openedAt: null,
-        }),
-      );
-    }
-
-    return stateRepo.save(states);
-  }
-
-  private async findMessageStateOrThrow(userId: string, stateId: string) {
-    const state =
-      (await this.messageUserStateRepository.findOne({
-        where: { id: stateId, userId },
-      })) ??
-      (await this.messageUserStateRepository.findOne({
-        where: { messageId: stateId, userId },
-      }));
-    if (!state) {
-      throw new NotFoundException('MESSAGE_NOT_FOUND');
-    }
-    return state;
-  }
-
-  private async ensureMessageParticipant(userId: string, messageId: string) {
-    return this.messageAccessService.ensureMessageParticipant(userId, messageId);
-  }
-
-  private async upsertSearchHistory(userId: string, queryRaw: string) {
-    const query = queryRaw.trim();
-    if (!query) return;
-    const existing = await this.messageSearchHistoryRepository.findOne({
-      where: { userId, query },
-    });
-    if (existing) {
-      existing.usedCount += 1;
-      existing.lastUsedAt = new Date();
-      await this.messageSearchHistoryRepository.save(existing);
-    } else {
-      await this.messageSearchHistoryRepository.save(
-        this.messageSearchHistoryRepository.create({
-          userId,
-          query,
-          usedCount: 1,
-          lastUsedAt: new Date(),
-        }),
-      );
-    }
-
-    const all = await this.messageSearchHistoryRepository.find({
-      where: { userId },
-      order: { lastUsedAt: 'DESC', createdAt: 'DESC' },
-    });
-    if (all.length > 10) {
-      const overflow = all.slice(10);
-      await this.messageSearchHistoryRepository.delete(overflow.map((item) => item.id));
-    }
-  }
-
   async sendMessage(input: {
     senderUserId: string;
     to?: string[] | string;
@@ -401,7 +129,7 @@ export class NotificationsService {
     labelIds?: string[];
     attachmentIds?: string[];
   }) {
-    const { recipients: resolvedRecipients } = await this.resolveRecipientsByBucketsOrFail({
+    const { recipients: resolvedRecipients } = await this.messageRecipientsResolverService.resolveRecipientsByBucketsOrFail({
       to: input.to,
       cc: input.cc,
       bcc: input.bcc,
@@ -410,8 +138,8 @@ export class NotificationsService {
 
     const originModule = (input.originModule ?? 'corporate').toLowerCase();
     await this.ensureCanAccessModule(input.senderUserId, originModule);
-    const bodyHtml = this.normalizeHtmlBody(input.bodyHtml);
-    const bodyText = this.toBodyText(bodyHtml);
+    const bodyHtml = this.messageContentService.normalizeHtmlBody(input.bodyHtml);
+    const bodyText = this.messageContentService.toBodyText(bodyHtml);
     const txResult = await this.dataSource.transaction(async (manager) => {
       const threadRepo = manager.getRepository(MessageThread);
       const messageRepo = manager.getRepository(MessageEntity);
@@ -457,7 +185,7 @@ export class NotificationsService {
         }),
       );
       const savedRecipients = await recipientRepo.save(recipients);
-      const states = await this.createMessageUserStates(
+      const states = await this.messageUserStatesService.createMessageUserStates(
         {
           message,
           senderUserId: input.senderUserId,
@@ -471,7 +199,7 @@ export class NotificationsService {
         await this.notificationLabelsService.assignLabelsToState(senderState.id, input.senderUserId, input.labelIds ?? [], manager);
       }
 
-      await this.createAuditLog(
+      await this.messageAuditService.createAuditLog(
         {
           action: 'MESSAGE_SENT',
           actorUserId: input.senderUserId,
@@ -491,7 +219,7 @@ export class NotificationsService {
       return { message, thread, recipients: savedRecipients };
     });
 
-    await this.emitMessageRealtimeToRecipients(input.senderUserId, txResult.message, txResult.recipients);
+    await this.messageRealtimeEventsService.emitMessageCreatedToRecipients(input.senderUserId, txResult.message, txResult.recipients);
 
     return { id: txResult.message.id, threadId: txResult.thread.id, recipients: txResult.recipients.length };
   }
@@ -513,12 +241,14 @@ export class NotificationsService {
 
     let resolvedRecipients: Array<{ id: string; email: string; name: string; relationType: 'TO' | 'CC' | 'BCC' }> = [];
     const hasTypedRecipients =
-      this.normalizeEmails(input.to).length > 0 ||
-      this.normalizeEmails(input.cc).length > 0 ||
-      this.normalizeEmails(input.bcc).length > 0 ||
-      Boolean(input.recipients?.trim());
+      this.messageRecipientsResolverService.hasAnyRecipient({
+        to: input.to,
+        cc: input.cc,
+        bcc: input.bcc,
+        recipients: input.recipients,
+      });
     if (hasTypedRecipients) {
-      const resolved = await this.resolveRecipientsByBucketsOrFail({
+      const resolved = await this.messageRecipientsResolverService.resolveRecipientsByBucketsOrFail({
         to: input.to,
         cc: input.cc,
         bcc: input.bcc,
@@ -536,8 +266,8 @@ export class NotificationsService {
       throw new BadRequestException('RECIPIENT_EMAIL_NOT_FOUND');
     }
 
-    const bodyHtml = this.normalizeHtmlBody(input.bodyHtml);
-    const bodyText = this.toBodyText(bodyHtml);
+    const bodyHtml = this.messageContentService.normalizeHtmlBody(input.bodyHtml);
+    const bodyText = this.messageContentService.toBodyText(bodyHtml);
     const txResult = await this.dataSource.transaction(async (manager) => {
       const messageRepo = manager.getRepository(MessageEntity);
       const threadRepo = manager.getRepository(MessageThread);
@@ -578,7 +308,7 @@ export class NotificationsService {
         }),
       );
       const savedRecipients = await recipientRepo.save(recipients);
-      await this.createMessageUserStates(
+      await this.messageUserStatesService.createMessageUserStates(
         {
           message,
           senderUserId: input.senderUserId,
@@ -587,7 +317,7 @@ export class NotificationsService {
         manager,
       );
       await this.notificationAttachmentsService.linkAttachmentsToMessage(input.senderUserId, message.id, input.attachmentIds ?? [], undefined, manager);
-      await this.createAuditLog(
+      await this.messageAuditService.createAuditLog(
         {
           action: 'MESSAGE_REPLIED',
           actorUserId: input.senderUserId,
@@ -605,7 +335,7 @@ export class NotificationsService {
       );
       return { message, recipients: savedRecipients };
     });
-    await this.emitMessageRealtimeToRecipients(input.senderUserId, txResult.message, txResult.recipients);
+    await this.messageRealtimeEventsService.emitMessageCreatedToRecipients(input.senderUserId, txResult.message, txResult.recipients);
 
     return { id: txResult.message.id, threadId: txResult.message.threadId, recipients: txResult.recipients.length };
   }
@@ -685,7 +415,7 @@ export class NotificationsService {
   }) {
     const parent = await this.messageRepository.findOne({ where: { id: input.parentMessageId } });
     if (!parent) throw new NotFoundException('MESSAGE_NOT_FOUND');
-    const { recipients: resolvedRecipients } = await this.resolveRecipientsByBucketsOrFail({
+    const { recipients: resolvedRecipients } = await this.messageRecipientsResolverService.resolveRecipientsByBucketsOrFail({
       to: input.to,
       cc: input.cc,
       bcc: input.bcc,
@@ -693,8 +423,10 @@ export class NotificationsService {
     });
     await this.ensureCanAccessModule(input.senderUserId, parent.originModule);
 
-    const bodyHtml = this.normalizeHtmlBody(`${this.normalizeHtmlBody(input.bodyHtml)}<hr/><p>${parent.bodyHtml}</p>`);
-    const bodyText = this.toBodyText(bodyHtml);
+    const bodyHtml = this.messageContentService.normalizeHtmlBody(
+      `${this.messageContentService.normalizeHtmlBody(input.bodyHtml)}<hr/><p>${parent.bodyHtml}</p>`,
+    );
+    const bodyText = this.messageContentService.toBodyText(bodyHtml);
     const txResult = await this.dataSource.transaction(async (manager) => {
       const threadRepo = manager.getRepository(MessageThread);
       const messageRepo = manager.getRepository(MessageEntity);
@@ -742,7 +474,7 @@ export class NotificationsService {
         }),
       );
       const savedRecipients = await recipientRepo.save(recipients);
-      await this.createMessageUserStates(
+      await this.messageUserStatesService.createMessageUserStates(
         {
           message,
           senderUserId: input.senderUserId,
@@ -751,7 +483,7 @@ export class NotificationsService {
         manager,
       );
       await this.notificationAttachmentsService.linkAttachmentsToMessage(input.senderUserId, message.id, input.attachmentIds ?? [], undefined, manager);
-      await this.createAuditLog(
+      await this.messageAuditService.createAuditLog(
         {
           action: 'MESSAGE_FORWARDED',
           actorUserId: input.senderUserId,
@@ -769,7 +501,7 @@ export class NotificationsService {
       );
       return { message, thread, recipients: savedRecipients };
     });
-    await this.emitMessageRealtimeToRecipients(input.senderUserId, txResult.message, txResult.recipients);
+    await this.messageRealtimeEventsService.emitMessageCreatedToRecipients(input.senderUserId, txResult.message, txResult.recipients);
     return { id: txResult.message.id, threadId: txResult.thread.id, recipients: txResult.recipients.length };
   }
 
@@ -815,8 +547,8 @@ export class NotificationsService {
         senderUserId: input.userId,
         createdByUserId: input.userId,
         subject: input.subject?.trim() || '(Sin asunto)',
-        bodyHtml: this.normalizeHtmlBody(input.bodyHtml ?? ''),
-        bodyText: this.toBodyText(input.bodyHtml ?? ''),
+        bodyHtml: this.messageContentService.normalizeHtmlBody(input.bodyHtml ?? ''),
+        bodyText: this.messageContentService.toBodyText(input.bodyHtml ?? ''),
         bodyJson: { ...(input.bodyJson ?? {}), draftRecipients: input.recipients ?? '' },
         status: 'DRAFT',
         isDraft: true,
@@ -826,7 +558,7 @@ export class NotificationsService {
         sentAt: null,
       }),
     );
-    await this.createAuditLog({
+    await this.messageAuditService.createAuditLog({
       action: 'DRAFT_CREATED',
       actorUserId: input.userId,
       messageId: draft.id,
@@ -852,8 +584,8 @@ export class NotificationsService {
     }
     if (typeof input.subject === 'string') draft.subject = input.subject.trim() || '(Sin asunto)';
     if (typeof input.bodyHtml === 'string') {
-      draft.bodyHtml = this.normalizeHtmlBody(input.bodyHtml);
-      draft.bodyText = this.toBodyText(input.bodyHtml);
+      draft.bodyHtml = this.messageContentService.normalizeHtmlBody(input.bodyHtml);
+      draft.bodyText = this.messageContentService.toBodyText(input.bodyHtml);
     }
     if (typeof input.recipients === 'string') {
       draft.bodyJson = {
@@ -872,7 +604,7 @@ export class NotificationsService {
     draft.draftExpiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
     draft.lastAutosavedAt = now;
     const saved = await this.messageRepository.save(draft);
-    await this.createAuditLog({
+    await this.messageAuditService.createAuditLog({
       action: 'DRAFT_UPDATED',
       actorUserId: input.userId,
       messageId: saved.id,
@@ -888,7 +620,7 @@ export class NotificationsService {
     if (!draft) throw new NotFoundException('DRAFT_NOT_FOUND');
     draft.status = 'ARCHIVED';
     const saved = await this.messageRepository.save(draft);
-    await this.createAuditLog({
+    await this.messageAuditService.createAuditLog({
       action: 'DRAFT_DISCARDED',
       actorUserId: userId,
       messageId: saved.id,
@@ -906,7 +638,7 @@ export class NotificationsService {
       throw new BadRequestException('DRAFT_EXPIRED');
     }
     const draftRecipients = String((draft.bodyJson as Record<string, unknown> | null)?.draftRecipients ?? '').trim();
-    const { recipients: resolvedRecipients } = await this.resolveRecipientsByBucketsOrFail({
+    const { recipients: resolvedRecipients } = await this.messageRecipientsResolverService.resolveRecipientsByBucketsOrFail({
       recipients: (recipientsRaw ?? '').trim() || draftRecipients,
     });
     const txResult = await this.dataSource.transaction(async (manager) => {
@@ -928,7 +660,7 @@ export class NotificationsService {
         }),
       );
       const savedRecipients = await recipientRepo.save(recipients);
-      await this.createMessageUserStates(
+      await this.messageUserStatesService.createMessageUserStates(
         {
           message: sent,
           senderUserId: userId,
@@ -937,7 +669,7 @@ export class NotificationsService {
         manager,
       );
       await this.notificationAttachmentsService.linkAttachmentsToMessage(userId, sent.id, attachmentIds, draftId, manager);
-      await this.createAuditLog(
+      await this.messageAuditService.createAuditLog(
         {
           action: 'DRAFT_SENT',
           actorUserId: userId,
@@ -949,7 +681,7 @@ export class NotificationsService {
       );
       return { sent, recipients: savedRecipients };
     });
-    await this.emitMessageRealtimeToRecipients(userId, txResult.sent, txResult.recipients);
+    await this.messageRealtimeEventsService.emitMessageCreatedToRecipients(userId, txResult.sent, txResult.recipients);
     return { id: txResult.sent.id, recipients: txResult.recipients.length };
   }
 
@@ -1045,7 +777,7 @@ export class NotificationsService {
       recipient.readAt = new Date();
       recipient.openedAt = new Date();
       await this.messageUserStateRepository.save(recipient);
-      await this.createAuditLog({
+      await this.messageAuditService.createAuditLog({
         action: 'MESSAGE_READ',
         actorUserId: userId,
         messageId: message.id,
@@ -1064,11 +796,11 @@ export class NotificationsService {
   }
 
   async markMessageAsRead(userId: string, recipientId: string) {
-    const recipient = await this.findMessageStateOrThrow(userId, recipientId);
+    const recipient = await this.messageUserStateAccessService.findMessageStateOrThrow(userId, recipientId);
     if (!recipient.readAt) {
       this.messageStateService.markRead(recipient);
       await this.messageUserStateRepository.save(recipient);
-      await this.createAuditLog({
+      await this.messageAuditService.createAuditLog({
         action: 'MESSAGE_READ',
         actorUserId: userId,
         messageId: recipient.messageId,
@@ -1079,9 +811,9 @@ export class NotificationsService {
   }
 
   async markMessageAsUnread(userId: string, recipientId: string) {
-    const recipient = await this.findMessageStateOrThrow(userId, recipientId);
+    const recipient = await this.messageUserStateAccessService.findMessageStateOrThrow(userId, recipientId);
     this.messageStateService.markUnread(recipient);
-    await this.createAuditLog({
+    await this.messageAuditService.createAuditLog({
       action: 'MESSAGE_UNREAD',
       actorUserId: userId,
       messageId: recipient.messageId,
@@ -1091,9 +823,9 @@ export class NotificationsService {
   }
 
   async toggleStarMessage(userId: string, recipientId: string, value: boolean) {
-    const recipient = await this.findMessageStateOrThrow(userId, recipientId);
+    const recipient = await this.messageUserStateAccessService.findMessageStateOrThrow(userId, recipientId);
     recipient.starredAt = value ? new Date() : null;
-    await this.createAuditLog({
+    await this.messageAuditService.createAuditLog({
       action: value ? 'MESSAGE_STARRED' : 'MESSAGE_UNSTARRED',
       actorUserId: userId,
       messageId: recipient.messageId,
@@ -1103,9 +835,9 @@ export class NotificationsService {
   }
 
   async deleteMessage(userId: string, recipientId: string) {
-    const recipient = await this.findMessageStateOrThrow(userId, recipientId);
+    const recipient = await this.messageUserStateAccessService.findMessageStateOrThrow(userId, recipientId);
     this.messageStateService.moveToTrash(recipient);
-    await this.createAuditLog({
+    await this.messageAuditService.createAuditLog({
       action: 'MESSAGE_DELETED',
       actorUserId: userId,
       messageId: recipient.messageId,
@@ -1115,16 +847,16 @@ export class NotificationsService {
   }
 
   async permanentlyDeleteMessage(userId: string, recipientId: string) {
-    const recipient = await this.findMessageStateOrThrow(userId, recipientId);
+    const recipient = await this.messageUserStateAccessService.findMessageStateOrThrow(userId, recipientId);
     if (!recipient.deletedAt) throw new BadRequestException('MESSAGE_NOT_IN_TRASH');
     recipient.permanentlyHiddenAt = new Date();
     return this.messageUserStateRepository.save(recipient);
   }
 
   async restoreMessage(userId: string, recipientId: string) {
-    const recipient = await this.findMessageStateOrThrow(userId, recipientId);
+    const recipient = await this.messageUserStateAccessService.findMessageStateOrThrow(userId, recipientId);
     this.messageStateService.restoreFromTrash(recipient);
-    await this.createAuditLog({
+    await this.messageAuditService.createAuditLog({
       action: 'MESSAGE_RESTORED',
       actorUserId: userId,
       messageId: recipient.messageId,
@@ -1134,9 +866,9 @@ export class NotificationsService {
   }
 
   async archiveMessage(userId: string, recipientId: string) {
-    const recipient = await this.findMessageStateOrThrow(userId, recipientId);
+    const recipient = await this.messageUserStateAccessService.findMessageStateOrThrow(userId, recipientId);
     this.messageStateService.archive(recipient);
-    await this.createAuditLog({
+    await this.messageAuditService.createAuditLog({
       action: 'MESSAGE_ARCHIVED',
       actorUserId: userId,
       messageId: recipient.messageId,
@@ -1146,9 +878,9 @@ export class NotificationsService {
   }
 
   async unarchiveMessage(userId: string, recipientId: string) {
-    const recipient = await this.findMessageStateOrThrow(userId, recipientId);
+    const recipient = await this.messageUserStateAccessService.findMessageStateOrThrow(userId, recipientId);
     this.messageStateService.unarchive(recipient);
-    await this.createAuditLog({
+    await this.messageAuditService.createAuditLog({
       action: 'MESSAGE_UNARCHIVED',
       actorUserId: userId,
       messageId: recipient.messageId,
@@ -1158,13 +890,13 @@ export class NotificationsService {
   }
 
   async snoozeMessage(userId: string, recipientId: string, snoozedUntilIso: string) {
-    const recipient = await this.findMessageStateOrThrow(userId, recipientId);
+    const recipient = await this.messageUserStateAccessService.findMessageStateOrThrow(userId, recipientId);
     const snoozedUntil = new Date(snoozedUntilIso);
     if (Number.isNaN(snoozedUntil.getTime()) || snoozedUntil.getTime() <= Date.now()) {
       throw new BadRequestException('SNOOZE_DATE_INVALID');
     }
     this.messageStateService.snooze(recipient, snoozedUntil);
-    await this.createAuditLog({
+    await this.messageAuditService.createAuditLog({
       action: 'MESSAGE_SNOOZED',
       actorUserId: userId,
       messageId: recipient.messageId,
@@ -1175,9 +907,9 @@ export class NotificationsService {
   }
 
   async unsnoozeMessage(userId: string, recipientId: string) {
-    const recipient = await this.findMessageStateOrThrow(userId, recipientId);
+    const recipient = await this.messageUserStateAccessService.findMessageStateOrThrow(userId, recipientId);
     this.messageStateService.unsnooze(recipient);
-    await this.createAuditLog({
+    await this.messageAuditService.createAuditLog({
       action: 'MESSAGE_UNSNOOZED',
       actorUserId: userId,
       messageId: recipient.messageId,
@@ -1324,13 +1056,13 @@ export class NotificationsService {
 
   async assignLabelToMessage(userId: string, messageId: string, labelId: string) {
     const result = await this.notificationLabelsService.assignLabelToMessage(userId, messageId, labelId);
-    await this.createAuditLog({ action: 'LABEL_ASSIGNED', actorUserId: userId, messageId: result.state.messageId, threadId: result.state.threadId, metadata: { labelId } });
+    await this.messageAuditService.createAuditLog({ action: 'LABEL_ASSIGNED', actorUserId: userId, messageId: result.state.messageId, threadId: result.state.threadId, metadata: { labelId } });
     return { assigned: true };
   }
 
   async removeLabelFromMessage(userId: string, messageId: string, labelId: string) {
     const result = await this.notificationLabelsService.removeLabelFromMessage(userId, messageId, labelId);
-    await this.createAuditLog({ action: 'LABEL_REMOVED', actorUserId: userId, messageId: result.state.messageId, threadId: result.state.threadId, metadata: { labelId } });
+    await this.messageAuditService.createAuditLog({ action: 'LABEL_REMOVED', actorUserId: userId, messageId: result.state.messageId, threadId: result.state.threadId, metadata: { labelId } });
     return { removed: true };
   }
 
@@ -1347,7 +1079,7 @@ export class NotificationsService {
       ...input,
       modulePermissions: NOTIFICATION_MODULE_PERMISSIONS,
     });
-    await this.createAuditLog({
+    await this.messageAuditService.createAuditLog({
       action: 'ATTACHMENT_UPLOADED',
       actorUserId: input.userId,
       messageId: input.messageId ?? input.draftId ?? null,
@@ -1388,7 +1120,7 @@ export class NotificationsService {
       attachmentId,
       NOTIFICATION_MODULE_PERMISSIONS,
     );
-    await this.createAuditLog({
+    await this.messageAuditService.createAuditLog({
       action: 'ATTACHMENT_REMOVED',
       actorUserId: userId,
       messageId: attachment.messageId ?? attachment.draftId ?? null,
@@ -1431,9 +1163,9 @@ export class NotificationsService {
         const state = stateMap.get(row.state_id);
         const message = messageMap.get(row.message_id);
         if (!state || !message) return null;
-        return this.toNotificationResponse(state, message);
+        return this.notificationPayloadMapperService.toNotificationResponse(state, message);
       })
-      .filter((item): item is ReturnType<NotificationsService['toNotificationResponse']> => Boolean(item));
+      .filter((item): item is NonNullable<typeof item> => Boolean(item));
   }
 
   async getUnreadCount(userId: string) {
@@ -1461,39 +1193,39 @@ export class NotificationsService {
   }
 
   async getMyNotificationDetail(userId: string, recipientId: string) {
-    const state = await this.findMessageStateOrThrow(userId, recipientId);
+    const state = await this.messageUserStateAccessService.findMessageStateOrThrow(userId, recipientId);
     const message = await this.messageRepository.findOne({ where: { id: state.messageId } });
     if (!message) throw new NotFoundException('Notification not found');
-    return this.toNotificationResponse(state, message);
+    return this.notificationPayloadMapperService.toNotificationResponse(state, message);
   }
 
   async markAsSeen(userId: string, recipientId: string) {
-    const state = await this.findMessageStateOrThrow(userId, recipientId);
+    const state = await this.messageUserStateAccessService.findMessageStateOrThrow(userId, recipientId);
     if (!state.openedAt) {
       state.openedAt = new Date();
       await this.messageUserStateRepository.save(state);
       const message = await this.messageRepository.findOne({ where: { id: state.messageId } });
       if (message) {
-        this.realtimeService.emitToUser(userId, 'notification.seen', this.toNotificationResponse(state, message));
+        this.realtimeService.emitToUser(userId, 'notification.seen', this.notificationPayloadMapperService.toNotificationResponse(state, message));
       }
       await this.emitUnreadCountUpdated(userId);
     }
     const message = await this.messageRepository.findOne({ where: { id: state.messageId } });
     if (!message) throw new NotFoundException('Notification not found');
-    return this.toNotificationResponse(state, message);
+    return this.notificationPayloadMapperService.toNotificationResponse(state, message);
   }
 
   async markAsRead(userId: string, recipientId: string) {
-    const row = await this.findMessageStateOrThrow(userId, recipientId);
+    const row = await this.messageUserStateAccessService.findMessageStateOrThrow(userId, recipientId);
     const now = new Date();
     if (!row.openedAt) row.openedAt = now;
     if (!row.readAt) row.readAt = now;
     await this.messageUserStateRepository.save(row);
     const message = await this.messageRepository.findOne({ where: { id: row.messageId } });
     if (!message) throw new NotFoundException('Notification not found');
-    this.realtimeService.emitToUser(userId, 'notification.read', this.toNotificationResponse(row, message));
+    this.realtimeService.emitToUser(userId, 'notification.read', this.notificationPayloadMapperService.toNotificationResponse(row, message));
     await this.emitUnreadCountUpdated(userId);
-    return this.toNotificationResponse(row, message);
+    return this.notificationPayloadMapperService.toNotificationResponse(row, message);
   }
 
   async markAllAsRead(userId: string) {
@@ -1520,22 +1252,22 @@ export class NotificationsService {
   }
 
   async archive(userId: string, recipientId: string) {
-    const row = await this.findMessageStateOrThrow(userId, recipientId);
+    const row = await this.messageUserStateAccessService.findMessageStateOrThrow(userId, recipientId);
     row.isArchived = true;
     row.isInInbox = false;
     await this.messageUserStateRepository.save(row);
     const message = await this.messageRepository.findOne({ where: { id: row.messageId } });
     if (!message) throw new NotFoundException('Notification not found');
-    this.realtimeService.emitToUser(userId, 'notification.archived', this.toNotificationResponse(row, message));
+    this.realtimeService.emitToUser(userId, 'notification.archived', this.notificationPayloadMapperService.toNotificationResponse(row, message));
     await this.emitUnreadCountUpdated(userId);
-    return this.toNotificationResponse(row, message);
+    return this.notificationPayloadMapperService.toNotificationResponse(row, message);
   }
 
   async createDevNotificationForUser(userId: string) {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
 
-    const [created] = await this.createNotificationForUsers({
+    const [created] = await this.systemNotificationService.createNotificationForUsers({
       recipientUserIds: [userId],
       type: 'SYSTEM_MESSAGE',
       category: 'SYSTEM',
@@ -1570,157 +1302,18 @@ export class NotificationsService {
     sourceEntityType?: string | null;
     sourceEntityId?: string | null;
   }): Promise<Array<{ userId: string; recipientId: string }>> {
-    const recipientUserIds = Array.from(new Set(input.recipientUserIds.filter(Boolean)));
-    if (!recipientUserIds.length) return [];
-
-    const users = await this.userRepository.findBy({ id: In(recipientUserIds) });
-    if (!users.length) return [];
-
-    const originModule = (input.sourceModule ?? 'system').toLowerCase();
-    const subject = input.title?.trim() || 'Notificacion del sistema';
-    const bodyText = input.message?.trim() || '';
-    const bodyHtml = `<p>${bodyText}</p>`;
-
-    const thread = await this.messageThreadRepository.save(
-      this.messageThreadRepository.create({
-        subject,
-        createdByUserId: null,
-        originModule,
-        sourceEntityType: input.sourceEntityType ?? null,
-        sourceEntityId: this.toUuidOrNull(input.sourceEntityId ?? null),
-        lastMessageAt: new Date(),
-      }),
-    );
-
-    const systemMessage = await this.messageRepository.save(
-      this.messageRepository.create({
-        threadId: thread.id,
-        parentMessageId: null,
-        kind: 'SYSTEM_NOTIFICATION',
-        originModule,
-        sourceEntityType: input.sourceEntityType ?? null,
-        sourceEntityId: this.toUuidOrNull(input.sourceEntityId ?? null),
-        senderType: 'SYSTEM',
-        senderUserId: null,
-        createdByUserId: null,
-        subject,
-        bodyHtml,
-        bodyText,
-        bodyJson: input.metadata ?? {},
-        status: 'SENT',
-        isDraft: false,
-        draftExpiresAt: null,
-        lastAutosavedAt: null,
-        scheduledAt: null,
-        sentAt: new Date(),
-      }),
-    );
-
-    const savedStates = await this.messageUserStateRepository.save(
-      users.map((user) =>
-        this.messageUserStateRepository.create({
-          messageId: systemMessage.id,
-          threadId: thread.id,
-          userId: user.id,
-          relationType: 'SYSTEM_RECIPIENT',
-          recipientEmail: user.email,
-          isInInbox: true,
-          isInSent: false,
-          isArchived: false,
-          isMuted: false,
-          readAt: null,
-          starredAt: null,
-          snoozedUntil: null,
-          snoozedAt: null,
-          deletedAt: null,
-          trashExpiresAt: null,
-          permanentlyHiddenAt: null,
-          deliveredAt: new Date(),
-          openedAt: null,
-        }),
-      ),
-    );
-
-    const createdRecipients: Array<{ userId: string; recipientId: string }> = savedStates.map((state) => ({
-      userId: state.userId,
-      recipientId: state.id,
-    }));
-
-    for (const state of savedStates) {
-      const payload = this.toNotificationResponse(state, systemMessage);
-      payload.notification = {
-        ...payload.notification,
-        type: input.type,
-        category: input.category,
-        priority: input.priority ?? 'NORMAL',
-        actionUrl: input.actionUrl ?? null,
-        actionLabel: input.actionLabel ?? null,
-        metadata: { ...(payload.notification.metadata ?? {}), ...(input.metadata ?? {}) },
-        showAsToast: input.showAsToast ?? true,
-      };
-      this.realtimeService.emitToUser(state.userId, 'notification.created', payload);
-    }
-
-    await this.createAuditLog({
-      action: 'SYSTEM_NOTIFICATION_CREATED',
-      actorUserId: null,
-      messageId: systemMessage.id,
-      threadId: systemMessage.threadId,
-      metadata: {
-        type: input.type,
-        category: input.category,
-        recipients: users.map((user) => user.email),
-      },
-    });
-
-    return createdRecipients;
+    return this.systemNotificationService.createNotificationForUsers(input);
   }
 
   private async emitUnreadCountUpdated(userId: string) {
     const count = await this.getUnreadCount(userId);
     this.realtimeService.emitToUser(userId, 'notification.unread_count_updated', count);
   }
-
-  private toNotificationResponse(state: MessageUserStateEntity, message: MessageEntity) {
-    const metadata = (message.bodyJson ?? {}) as Record<string, unknown>;
-    const sourceModule = message.originModule ?? null;
-    return {
-      recipientId: state.id,
-      status: state.isArchived
-        ? 'ARCHIVED'
-        : state.deletedAt
-          ? 'DELETED'
-          : state.readAt
-            ? 'READ'
-            : state.openedAt
-              ? 'SEEN'
-              : 'UNREAD',
-      seenAt: state.openedAt,
-      readAt: state.readAt,
-      deliveredAt: state.deliveredAt,
-      archivedAt: state.isArchived ? state.updatedAt : null,
-      dismissedAt: null,
-      createdAt: state.createdAt,
-      notification: {
-        id: message.id,
-        type: String(metadata?.type ?? message.kind ?? 'SYSTEM_MESSAGE'),
-        category: String(metadata?.category ?? (sourceModule === 'purchases' ? 'PURCHASES' : 'SYSTEM')),
-        title: message.subject,
-        message: message.bodyText,
-        priority: String(metadata?.priority ?? 'NORMAL'),
-        sourceModule,
-        sourceEntityType: message.sourceEntityType,
-        sourceEntityId: message.sourceEntityId,
-        actionUrl: typeof metadata?.actionUrl === 'string' ? metadata.actionUrl : null,
-        actionLabel: typeof metadata?.actionLabel === 'string' ? metadata.actionLabel : null,
-        metadata,
-        isSystem: message.senderType === 'SYSTEM',
-        showAsToast: metadata?.showAsToast !== false,
-        createdAt: message.createdAt,
-      },
-    };
-  }
 }
+
+
+
+
 
 
 
