@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { NotificationRealtimeService } from '../../infrastructure/realtime/notification-realtime.service';
@@ -114,6 +114,13 @@ export class NotificationsService {
       throw new BadRequestException('ORIGIN_MODULE_REQUIRED');
     }
     await this.messageAccessService.ensureCanAccessModule(userId, moduleKey, NOTIFICATION_MODULE_PERMISSIONS);
+  }
+
+  private async ensureCanOpenMessageOrThrow(userId: string, messageId: string) {
+    const allowed = await this.canOpenMessage(userId, messageId);
+    if (!allowed) {
+      throw new ForbiddenException('MESSAGE_ACCESS_DENIED');
+    }
   }
 
   async sendMessage(input: {
@@ -237,6 +244,7 @@ export class NotificationsService {
   }) {
     const parent = await this.messageRepository.findOne({ where: { id: input.parentMessageId } });
     if (!parent) throw new NotFoundException('MESSAGE_NOT_FOUND');
+    await this.ensureCanOpenMessageOrThrow(input.senderUserId, parent.id);
     await this.ensureCanAccessModule(input.senderUserId, parent.originModule);
 
     let resolvedRecipients: Array<{ id: string; email: string; name: string; relationType: 'TO' | 'CC' | 'BCC' }> = [];
@@ -415,6 +423,7 @@ export class NotificationsService {
   }) {
     const parent = await this.messageRepository.findOne({ where: { id: input.parentMessageId } });
     if (!parent) throw new NotFoundException('MESSAGE_NOT_FOUND');
+    await this.ensureCanOpenMessageOrThrow(input.senderUserId, parent.id);
     const { recipients: resolvedRecipients } = await this.messageRecipientsResolverService.resolveRecipientsByBucketsOrFail({
       to: input.to,
       cc: input.cc,
@@ -709,6 +718,7 @@ export class NotificationsService {
     await this.expireTrashForUser(userId);
     const ownMessage = await this.messageRepository.findOne({ where: { id, senderUserId: userId } });
     if (ownMessage) {
+      await this.ensureCanAccessModule(userId, ownMessage.originModule);
       const sender = ownMessage.senderUserId
         ? await this.userRepository.findOne({
             where: { id: ownMessage.senderUserId },
