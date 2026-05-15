@@ -48,13 +48,26 @@ export class NotificationQueriesService {
         .where('mus.user_id = :userId', { userId })
         .andWhere('mus.is_in_sent = true')
         .andWhere('mus.permanently_hidden_at IS NULL')
+        .andWhere('mus.deleted_at IS NULL')
+        .andWhere('mus.is_archived = false')
+        .andWhere('(mus.snoozed_until IS NULL OR mus.snoozed_until <= now())')
         .andWhere('m.is_draft = false');
+
+      if (query.labelId) {
+        qbSent.innerJoin(
+          MessageLabelAssignmentEntity,
+          'mla',
+          'mla.message_user_state_id = mus.id AND mla.label_id = :labelId AND mla.user_id = :userId',
+          { labelId: query.labelId, userId },
+        );
+      }
 
       if (query.originModule) qbSent.andWhere('m.origin_module = :originModule', { originModule: query.originModule });
       if (query.q) {
         qbSent.andWhere('(m.subject ILIKE :q OR m.body_text ILIKE :q)', { q: `%${query.q}%` });
         await this.labelsService.trackSearch(userId, query.q);
       }
+      if (typeof query.read === 'boolean') qbSent.andWhere(query.read ? 'mus.read_at IS NOT NULL' : 'mus.read_at IS NULL');
       if (typeof query.hasAttachments === 'boolean') {
         qbSent.andWhere(query.hasAttachments ? 'EXISTS (SELECT 1 FROM message_attachments ma WHERE ma.message_id = m.id)' : 'NOT EXISTS (SELECT 1 FROM message_attachments ma WHERE ma.message_id = m.id)');
       }
