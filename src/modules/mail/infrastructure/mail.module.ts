@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { NotificationsController } from '../adapters/in/controllers/notifications.controller';
+import { LegacyNotificationsController } from '../adapters/in/controllers/legacy-notifications.controller';
 import { NotificationsService } from '../application/use-cases/notifications.service';
 import { User } from 'src/modules/users/adapters/out/persistence/typeorm/entities/user.entity';
 import { NotificationGateway } from '../adapters/in/websocket/notification.gateway';
@@ -47,7 +48,7 @@ import { AccessControlAdapter } from '../adapters/out/access-control/access-cont
     ]),
     AccessControlModule,
   ],
-  controllers: [NotificationsController],
+  controllers: [NotificationsController, LegacyNotificationsController],
   providers: [
     NotificationsService,
     MessageStateService,

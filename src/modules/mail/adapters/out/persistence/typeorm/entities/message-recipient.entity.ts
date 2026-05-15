@@ -17,30 +17,6 @@ export class MessageRecipientEntity {
   @Column({ name: 'recipient_type', type: 'varchar', length: 10, default: 'TO' })
   recipientType: 'TO' | 'CC' | 'BCC';
 
-  @Column({ name: 'read_at', type: 'timestamp', nullable: true })
-  readAt: Date | null;
-
-  @Column({ name: 'starred_at', type: 'timestamp', nullable: true })
-  starredAt: Date | null;
-
-  @Column({ name: 'deleted_at', type: 'timestamp', nullable: true })
-  deletedAt: Date | null;
-
-  @Column({ name: 'archived_at', type: 'timestamp', nullable: true })
-  archivedAt: Date | null;
-
-  @Column({ name: 'snoozed_until', type: 'timestamp', nullable: true })
-  snoozedUntil: Date | null;
-
-  @Column({ name: 'snoozed_at', type: 'timestamp', nullable: true })
-  snoozedAt: Date | null;
-
-  @Column({ name: 'trash_expires_at', type: 'timestamp', nullable: true })
-  trashExpiresAt: Date | null;
-
-  @Column({ name: 'permanently_hidden_at', type: 'timestamp', nullable: true })
-  permanentlyHiddenAt: Date | null;
-
   @Column({ name: 'delivered_at', type: 'timestamp', nullable: true })
   deliveredAt: Date | null;
 

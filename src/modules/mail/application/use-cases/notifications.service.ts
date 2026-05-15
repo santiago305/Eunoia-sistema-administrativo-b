@@ -117,22 +117,19 @@ export class NotificationsService {
   }
 
   async getAllowedNotificationModules(userId: string) {
-    const entries = await Promise.all(
-      Object.entries(NOTIFICATION_MODULE_PERMISSIONS).map(async ([moduleKey, requiredPermissions]) => ({
-        key: moduleKey,
-        allowed: await this.accessControlPort.canViewModuleMessages(userId, moduleKey, requiredPermissions),
-      })),
+    const allowedModules = await this.accessControlPort.getAllowedNotificationModules(
+      userId,
+      NOTIFICATION_MODULE_PERMISSIONS,
     );
 
     const labels = NOTIFICATION_MODULE_LABELS;
     const icons = NOTIFICATION_MODULE_ICONS;
 
-    return entries
-      .filter((entry) => entry.allowed)
-      .map((entry) => ({
-        key: entry.key,
-        label: labels[entry.key] ?? entry.key,
-        icon: icons[entry.key] ?? 'Bell',
+    return allowedModules
+      .map((moduleKey) => ({
+        key: moduleKey,
+        label: labels[moduleKey] ?? moduleKey,
+        icon: icons[moduleKey] ?? 'Bell',
       }));
   }
 
