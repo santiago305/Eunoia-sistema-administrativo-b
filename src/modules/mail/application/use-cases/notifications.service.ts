@@ -738,7 +738,24 @@ export class NotificationsService {
             order: { createdAt: 'ASC' },
           })
         : [ownMessage];
-      return { recipient: senderState, message: ownMessage, sender, recipients, attachments, labels, thread };
+      return {
+        recipient: senderState,
+        message: ownMessage,
+        sender,
+        recipients,
+        attachments,
+        labels,
+        thread,
+        permissions: {
+          canOpen: true,
+          canReply: true,
+          canForward: true,
+          canArchive: true,
+          canDelete: true,
+          canDownloadAttachments: true,
+          canViewModule: true,
+        },
+      };
     }
 
     const recipient =
@@ -791,8 +808,38 @@ export class NotificationsService {
           order: { createdAt: 'ASC' },
         })
       : [message];
+    const canViewModule = await this.accessControlPort.canViewModuleMessages(
+      userId,
+      message.originModule,
+      NOTIFICATION_MODULE_PERMISSIONS[message.originModule] ?? ['page.notifications.view'],
+    );
+    const canDownloadAttachment = attachments.length
+      ? await this.accessControlPort.canDownloadAttachment(
+          userId,
+          attachments[0].id,
+          message.originModule,
+          NOTIFICATION_MODULE_PERMISSIONS[message.originModule] ?? ['page.notifications.view'],
+        )
+      : true;
 
-    return { recipient, message, sender, recipients, attachments, labels, thread };
+    return {
+      recipient,
+      message,
+      sender,
+      recipients,
+      attachments,
+      labels,
+      thread,
+      permissions: {
+        canOpen: true,
+        canReply: true,
+        canForward: true,
+        canArchive: true,
+        canDelete: true,
+        canDownloadAttachments: canDownloadAttachment,
+        canViewModule,
+      },
+    };
   }
 
   async markMessageAsRead(userId: string, recipientId: string) {

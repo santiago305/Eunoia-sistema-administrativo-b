@@ -21,17 +21,10 @@ export class CreateYearlyPartitionsJob {
       LIMIT 1
     `);
     if (!tableInfo || tableInfo.relkind !== 'p') {
-      await this.dataSource.query(`
-        CREATE INDEX IF NOT EXISTS idx_messages_created_at_fallback
-        ON messages (created_at DESC)
-      `);
-      await this.dataSource.query(`
-        CREATE INDEX IF NOT EXISTS idx_messages_created_at_${year}_fallback
-        ON messages (created_at DESC)
-        WHERE created_at >= '${year}-01-01' AND created_at < '${nextYear}-01-01'
-      `);
-      this.logger.warn('create-yearly-partitions fallback: messages no es particionada, indices de fecha aplicados');
-      return { created: null, reason: 'messages_not_partitioned_fallback_indexed' };
+      this.logger.error(
+        'create-yearly-partitions blocked: messages no es una tabla particionada (relkind!=p).',
+      );
+      return { created: null, reason: 'messages_not_partitioned_blocked' };
     }
 
     const sql = `

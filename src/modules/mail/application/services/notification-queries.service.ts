@@ -64,7 +64,39 @@ export class NotificationQueriesService {
 
       if (query.originModule) qbSent.andWhere('m.origin_module = :originModule', { originModule: query.originModule });
       if (query.q) {
-        qbSent.andWhere('(m.subject ILIKE :q OR m.body_text ILIKE :q)', { q: `%${query.q}%` });
+        qbSent.andWhere(
+          `(
+            m.subject ILIKE :q
+            OR m.body_text ILIKE :q
+            OR EXISTS (
+              SELECT 1
+              FROM users su
+              WHERE su.user_id = m.sender_user_id
+                AND (su.name ILIKE :q OR su.email ILIKE :q)
+            )
+            OR EXISTS (
+              SELECT 1
+              FROM message_recipients mr
+              WHERE mr.message_id = m.id
+                AND mr.recipient_email ILIKE :q
+            )
+            OR EXISTS (
+              SELECT 1
+              FROM message_attachments ma
+              WHERE ma.message_id = m.id
+                AND ma.original_name ILIKE :q
+            )
+            OR EXISTS (
+              SELECT 1
+              FROM message_label_assignments mla2
+              JOIN message_labels ml2 ON ml2.id = mla2.label_id
+              WHERE mla2.message_user_state_id = mus.id
+                AND (ml2.name ILIKE :q OR ml2.key ILIKE :q)
+            )
+            OR m.origin_module ILIKE :q
+          )`,
+          { q: `%${query.q}%` },
+        );
         await this.labelsService.trackSearch(userId, query.q);
       }
       if (typeof query.read === 'boolean') qbSent.andWhere(query.read ? 'mus.read_at IS NOT NULL' : 'mus.read_at IS NULL');
@@ -105,7 +137,39 @@ export class NotificationQueriesService {
 
     if (query.originModule) qb.andWhere('m.origin_module = :originModule', { originModule: query.originModule });
     if (query.q) {
-      qb.andWhere('(m.subject ILIKE :q OR m.body_text ILIKE :q)', { q: `%${query.q}%` });
+      qb.andWhere(
+        `(
+          m.subject ILIKE :q
+          OR m.body_text ILIKE :q
+          OR EXISTS (
+            SELECT 1
+            FROM users su
+            WHERE su.user_id = m.sender_user_id
+              AND (su.name ILIKE :q OR su.email ILIKE :q)
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM message_recipients mr
+            WHERE mr.message_id = m.id
+              AND mr.recipient_email ILIKE :q
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM message_attachments ma
+            WHERE ma.message_id = m.id
+              AND ma.original_name ILIKE :q
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM message_label_assignments mla2
+            JOIN message_labels ml2 ON ml2.id = mla2.label_id
+            WHERE mla2.message_user_state_id = mus.id
+              AND (ml2.name ILIKE :q OR ml2.key ILIKE :q)
+          )
+          OR m.origin_module ILIKE :q
+        )`,
+        { q: `%${query.q}%` },
+      );
       await this.labelsService.trackSearch(userId, query.q);
     }
     if (typeof query.read === 'boolean') qb.andWhere(query.read ? 'mus.read_at IS NOT NULL' : 'mus.read_at IS NULL');
