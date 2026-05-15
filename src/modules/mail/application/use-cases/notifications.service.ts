@@ -907,6 +907,12 @@ export class NotificationsService {
     const recipient = await this.messageUserStateAccessService.findMessageStateOrThrow(userId, recipientId);
     if (!recipient.deletedAt) throw new BadRequestException('MESSAGE_NOT_IN_TRASH');
     recipient.permanentlyHiddenAt = new Date();
+    await this.messageAuditService.createAuditLog({
+      action: 'MESSAGE_DELETED_PERMANENTLY',
+      actorUserId: userId,
+      messageId: recipient.messageId,
+      threadId: recipient.threadId,
+    });
     return this.messageUserStateRepository.save(recipient);
   }
 
@@ -1096,6 +1102,18 @@ export class NotificationsService {
         .andWhere('message_user_state_id IN (:...ids)', { ids: own.map((state) => state.id) })
         .execute();
     }
+    await this.messageAuditService.createAuditLog({
+      action: 'MESSAGE_BULK_ACTION',
+      actorUserId: userId,
+      metadata: {
+        action: input.action,
+        updated: own.length,
+        messageStateIds: own.map((state) => state.id),
+        messageIds: own.map((state) => state.messageId),
+        labelId: input.labelId ?? null,
+        snoozedUntil: input.snoozedUntil ?? null,
+      },
+    });
     return { updated: own.length };
   }
 
@@ -1261,6 +1279,12 @@ export class NotificationsService {
     if (!state.openedAt) {
       state.openedAt = new Date();
       await this.messageUserStateRepository.save(state);
+      await this.messageAuditService.createAuditLog({
+        action: 'MESSAGE_OPENED',
+        actorUserId: userId,
+        messageId: state.messageId,
+        threadId: state.threadId,
+      });
       const message = await this.messageRepository.findOne({ where: { id: state.messageId } });
       if (message) {
         this.realtimeService.emitToUser(userId, 'notification.seen', this.notificationPayloadMapperService.toNotificationResponse(state, message));
@@ -1278,6 +1302,13 @@ export class NotificationsService {
     if (!row.openedAt) row.openedAt = now;
     if (!row.readAt) row.readAt = now;
     await this.messageUserStateRepository.save(row);
+    await this.messageAuditService.createAuditLog({
+      action: 'MESSAGE_READ',
+      actorUserId: userId,
+      messageId: row.messageId,
+      threadId: row.threadId,
+      metadata: { source: 'legacy_notifications_endpoint' },
+    });
     const message = await this.messageRepository.findOne({ where: { id: row.messageId } });
     if (!message) throw new NotFoundException('Notification not found');
     this.realtimeService.emitToUser(userId, 'notification.read', this.notificationPayloadMapperService.toNotificationResponse(row, message));
@@ -1303,6 +1334,11 @@ export class NotificationsService {
       row.readAt = now;
     });
     await this.messageUserStateRepository.save(rows);
+    await this.messageAuditService.createAuditLog({
+      action: 'MESSAGE_READ_ALL',
+      actorUserId: userId,
+      metadata: { updated: rows.length },
+    });
     this.realtimeService.emitToUser(userId, 'notification.updated', { type: 'READ_ALL' });
     await this.emitUnreadCountUpdated(userId);
     return { updated: rows.length };
@@ -1313,6 +1349,13 @@ export class NotificationsService {
     row.isArchived = true;
     row.isInInbox = false;
     await this.messageUserStateRepository.save(row);
+    await this.messageAuditService.createAuditLog({
+      action: 'MESSAGE_ARCHIVED',
+      actorUserId: userId,
+      messageId: row.messageId,
+      threadId: row.threadId,
+      metadata: { source: 'legacy_notifications_endpoint' },
+    });
     const message = await this.messageRepository.findOne({ where: { id: row.messageId } });
     if (!message) throw new NotFoundException('Notification not found');
     this.realtimeService.emitToUser(userId, 'notification.archived', this.notificationPayloadMapperService.toNotificationResponse(row, message));

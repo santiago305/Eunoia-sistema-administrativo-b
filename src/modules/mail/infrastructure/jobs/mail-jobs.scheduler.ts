@@ -9,6 +9,7 @@ import { CreateYearlyPartitionsJob } from './create-yearly-partitions.job';
 export class MailJobsScheduler implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(MailJobsScheduler.name);
   private readonly timers: NodeJS.Timeout[] = [];
+  private readonly runningJobs = new Set<string>();
 
   constructor(
     private readonly expireDraftsJob: ExpireDraftsJob,
@@ -32,11 +33,26 @@ export class MailJobsScheduler implements OnModuleInit, OnModuleDestroy {
   }
 
   private schedule(name: string, everyMs: number, runner: () => Promise<unknown>) {
-    void runner().catch((error) => {
+    const runSafely = async () => {
+      if (this.runningJobs.has(name)) {
+        this.logger.debug(`${name} skipped: previous run still in progress`);
+        return;
+      }
+      this.runningJobs.add(name);
+      const startedAt = Date.now();
+      try {
+        const result = await runner();
+        this.logger.debug(`${name} completed in ${Date.now() - startedAt}ms result=${JSON.stringify(result)}`);
+      } finally {
+        this.runningJobs.delete(name);
+      }
+    };
+
+    void runSafely().catch((error) => {
       this.logger.warn(`${name} initial run failed: ${(error as Error)?.message ?? 'unknown'}`);
     });
     const timer = setInterval(() => {
-      void runner().catch((error) => {
+      void runSafely().catch((error) => {
         this.logger.warn(`${name} run failed: ${(error as Error)?.message ?? 'unknown'}`);
       });
     }, everyMs);

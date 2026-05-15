@@ -13,11 +13,14 @@ export class CleanOrphanAttachmentsJob {
   ) {}
 
   async run() {
+    // Safety window: do not delete very recent uploads that might still be linking.
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const result = await this.attachmentRepository
       .createQueryBuilder()
       .delete()
       .where('message_id IS NULL')
       .andWhere('draft_id IS NULL')
+      .andWhere('created_at <= :cutoff', { cutoff })
       .execute();
 
     this.logger.debug(`clean-orphan-attachments deleted=${result.affected ?? 0}`);

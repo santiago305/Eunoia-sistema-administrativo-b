@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { User } from 'src/modules/users/adapters/out/persistence/typeorm/entities/user.entity';
@@ -11,6 +11,8 @@ import { MessageAuditService } from './message-audit.service';
 
 @Injectable()
 export class SystemNotificationService {
+  private readonly logger = new Logger(SystemNotificationService.name);
+
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
@@ -150,6 +152,10 @@ export class SystemNotificationService {
         recipients: users.map((user) => user.email),
       },
     });
+
+    this.logger.debug(
+      `mail_system_notification_created messageId=${systemMessage.id} originModule=${originModule} recipients=${users.length} type=${input.type}`,
+    );
 
     return createdRecipients;
   }

@@ -96,7 +96,7 @@ export class NotificationsController {
     return this.notificationsService.getMessageDetail(user.id, id);
   }
 
-  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Throttle({ default: { limit: 12, ttl: 60_000 } })
   @RequirePermissions('notifications.manage')
   @Post('messages')
   sendMessage(@CurrentUser() user: { id: string }, @Body() body: CreateMessageDto) {
@@ -181,14 +181,14 @@ export class NotificationsController {
     return this.notificationsService.restoreMessage(user.id, id);
   }
 
-  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @RequirePermissions('notifications.manage')
   @Post('messages/bulk')
   bulkUpdateMessages(@CurrentUser() user: { id: string }, @Body() body: BulkMessageActionDto) {
     return this.notificationsService.bulkUpdateMessages(user.id, body);
   }
 
-  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @RequirePermissions('notifications.manage')
   @Post('messages/:id/reply')
   replyMessage(
@@ -209,7 +209,7 @@ export class NotificationsController {
     });
   }
 
-  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @RequirePermissions('notifications.manage')
   @Post('messages/:id/forward')
   forwardMessage(
@@ -268,13 +268,14 @@ export class NotificationsController {
     return this.notificationsService.deleteDraft(user.id, id);
   }
 
-  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @RequirePermissions('notifications.manage')
   @Post('drafts/:id/send')
   sendDraft(@CurrentUser() user: { id: string }, @Param('id') id: string, @Body() body: SendDraftDto) {
     return this.notificationsService.sendDraft(user.id, id, body.recipients, body.attachmentIds ?? []);
   }
 
+  @Throttle({ default: { limit: 40, ttl: 60_000 } })
   @RequirePermissions('notifications.manage')
   @Post('attachments')
   @UseInterceptors(FileInterceptor('file'))

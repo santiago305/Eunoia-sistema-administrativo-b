@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from 'src/modules/users/adapters/out/persistence/typeorm/entities/user.entity';
@@ -8,6 +8,8 @@ import { NotificationRealtimeService } from '../../infrastructure/realtime/notif
 
 @Injectable()
 export class MessageRealtimeEventsService {
+  private readonly logger = new Logger(MessageRealtimeEventsService.name);
+
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
@@ -50,8 +52,10 @@ export class MessageRealtimeEventsService {
     recipients.forEach((recipient) => {
       const payload = this.buildMessageRealtimePayload(message, recipient, senderName);
       this.realtimeService.emitToUser(recipient.recipientUserId, 'message.created', payload);
-      // Compatibilidad temporal con clientes que aun escuchan eventos legacy.
-      this.realtimeService.emitToUser(recipient.recipientUserId, 'notification.created', payload);
     });
+
+    this.logger.debug(
+      `mail_realtime_emit event=message.created messageId=${message.id} recipients=${recipients.length} originModule=${message.originModule}`,
+    );
   }
 }
