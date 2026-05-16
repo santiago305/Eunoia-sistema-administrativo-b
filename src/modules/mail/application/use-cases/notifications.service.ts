@@ -780,6 +780,12 @@ export class NotificationsService {
     return this.notificationQueriesService.countMessages(userId, query);
   }
 
+  async countSidebarMessages(userId: string, labelIds: string[] = []) {
+    await this.releaseDueSnoozedMessagesForUser(userId);
+    await this.expireTrashForUser(userId);
+    return this.notificationQueriesService.countSidebarMessages(userId, labelIds);
+  }
+
   async getMessageDetail(userId: string, id: string) {
     await this.releaseDueSnoozedMessagesForUser(userId);
     await this.expireTrashForUser(userId);

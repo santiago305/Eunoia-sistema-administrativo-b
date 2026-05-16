@@ -24,13 +24,11 @@ export class NotificationLabelsService {
   ) {}
 
   private async getAllowedModuleKeys(userId: string) {
-    const entries = await Promise.all(
-      Object.entries(NOTIFICATION_MODULE_PERMISSIONS).map(async ([moduleKey, requiredPermissions]) => ({
-        moduleKey,
-        allowed: await this.accessControlPort.canViewModuleMessages(userId, moduleKey, requiredPermissions),
-      })),
+    const allowedModules = await this.accessControlPort.getAllowedNotificationModules(
+      userId,
+      NOTIFICATION_MODULE_PERMISSIONS,
     );
-    return new Set(entries.filter((entry) => entry.allowed).map((entry) => entry.moduleKey));
+    return new Set(allowedModules);
   }
 
   async listMyLabels(userId: string) {

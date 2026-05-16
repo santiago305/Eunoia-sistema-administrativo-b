@@ -21,8 +21,8 @@ export class CreateYearlyPartitionsJob {
       LIMIT 1
     `);
     if (!tableInfo || tableInfo.relkind !== 'p') {
-      this.logger.error(
-        'create-yearly-partitions blocked: messages no es una tabla particionada (relkind!=p).',
+      this.logger.warn(
+        'create-yearly-partitions skipped: messages no es una tabla particionada (relkind!=p).',
       );
       return { created: null, reason: 'messages_not_partitioned_blocked' };
     }

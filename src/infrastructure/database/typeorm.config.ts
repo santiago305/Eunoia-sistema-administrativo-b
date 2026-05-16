@@ -13,7 +13,7 @@ export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   username: envs.db.username,
   password: envs.db.password,
   database: envs.db.name,
-  logging: true,
+  logging: false,
 });
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({

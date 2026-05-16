@@ -96,10 +96,11 @@ const dataSource = new DataSource({
 dataSource
   .initialize()
   .then(async () => {
-    console.log('[Clear] Esquema eliminado y recreado correctamente.');
+    console.log('[Clear] Se eliminaron todas las tablas y datos (incluyendo historial de migraciones).');
+    console.log('[Clear] Esquema recreado vacio para ejecutar migrate/seed.');
     await dataSource.destroy();
-    console.log('[Clear] Base de datos lista para seed.');
   })
   .catch((err) => {
     console.error('[Clear] Error al inicializar la conexion:', err);
+    process.exitCode = 1;
   });

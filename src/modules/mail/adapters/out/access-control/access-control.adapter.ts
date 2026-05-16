@@ -20,14 +20,13 @@ export class AccessControlAdapter implements AccessControlPort {
   ) {}
 
   async getAllowedNotificationModules(userId: string, modulePermissions: Record<string, string[]>): Promise<string[]> {
-    const entries = await Promise.all(
-      Object.entries(modulePermissions).map(async ([moduleKey, requiredPermissions]) => ({
-        moduleKey,
-        allowed: await this.accessControlService.userHasAllPermissions(userId, requiredPermissions),
-      })),
-    );
+    const effectivePermissions = new Set(await this.accessControlService.getEffectivePermissions(userId));
+    const hasAll = (requiredPermissions: string[]) =>
+      requiredPermissions.every((permission) => effectivePermissions.has(permission));
 
-    return entries.filter((entry) => entry.allowed).map((entry) => entry.moduleKey);
+    return Object.entries(modulePermissions)
+      .filter(([, requiredPermissions]) => hasAll(requiredPermissions))
+      .map(([moduleKey]) => moduleKey);
   }
 
   async canViewModuleMessages(userId: string, _originModule: string, requiredPermissions: string[]): Promise<boolean> {

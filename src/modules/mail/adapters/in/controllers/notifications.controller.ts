@@ -27,7 +27,7 @@ class UpsertModuleLabelConfigDto {
   labelId?: string | null;
 }
 
-@Controller('api/notifications')
+@Controller('mail')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
@@ -117,6 +117,19 @@ export class NotificationsController {
       hasAttachments: query.hasAttachments,
       labelId: query.labelId,
     });
+  }
+
+  @RequirePermissions('notifications.read')
+  @Get('messages/sidebar-counts')
+  countSidebarMessages(
+    @CurrentUser() user: { id: string },
+    @Query('labelIds') labelIdsRaw?: string,
+  ) {
+    const labelIds = (labelIdsRaw ?? '')
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean);
+    return this.notificationsService.countSidebarMessages(user.id, labelIds);
   }
 
   @RequirePermissions('notifications.read')

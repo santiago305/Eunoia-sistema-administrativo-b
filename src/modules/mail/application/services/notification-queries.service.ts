@@ -89,6 +89,70 @@ export class NotificationQueriesService {
     return { total };
   }
 
+  async countSidebarMessages(userId: string, labelIds: string[] = []) {
+    const sidebarRaw = await this.messageUserStateRepository
+      .createQueryBuilder('mus')
+      .select('COALESCE(COUNT(*) FILTER (WHERE mus.deleted_at IS NULL AND mus.is_archived = false AND (mus.snoozed_until IS NULL OR mus.snoozed_until <= now()) AND mus.is_in_inbox = true AND mus.read_at IS NULL), 0)', 'inbox')
+      .addSelect('COALESCE(COUNT(*) FILTER (WHERE mus.deleted_at IS NULL AND mus.is_archived = false AND (mus.snoozed_until IS NULL OR mus.snoozed_until <= now()) AND mus.starred_at IS NOT NULL AND mus.read_at IS NULL), 0)', 'starred')
+      .addSelect('COALESCE(COUNT(*) FILTER (WHERE mus.deleted_at IS NOT NULL AND mus.read_at IS NULL), 0)', 'trash')
+      .addSelect('COALESCE(COUNT(*) FILTER (WHERE mus.deleted_at IS NULL AND mus.is_archived = true AND mus.read_at IS NULL), 0)', 'archived')
+      .addSelect('COALESCE(COUNT(*) FILTER (WHERE mus.deleted_at IS NULL AND mus.is_archived = false AND mus.snoozed_until IS NOT NULL AND mus.snoozed_until > now() AND mus.read_at IS NULL), 0)', 'snoozed')
+      .addSelect('COALESCE(COUNT(*) FILTER (WHERE mus.deleted_at IS NULL AND mus.is_archived = false AND (mus.snoozed_until IS NULL OR mus.snoozed_until <= now()) AND mus.is_in_sent = true), 0)', 'sent')
+      .where('mus.user_id = :userId', { userId })
+      .andWhere('mus.permanently_hidden_at IS NULL')
+      .getRawOne<{
+        inbox: string;
+        starred: string;
+        trash: string;
+        archived: string;
+        snoozed: string;
+        sent: string;
+      }>();
+
+    const drafts = await this.messageRepository.count({
+      where: { createdByUserId: userId, isDraft: true, status: 'DRAFT' },
+    });
+
+    const uniqueLabelIds = Array.from(new Set((labelIds ?? []).filter(Boolean)));
+    const labelUnreadById: Record<string, number> = {};
+    if (uniqueLabelIds.length) {
+      const labelRows = await this.messageLabelAssignmentRepository
+        .createQueryBuilder('mla')
+        .innerJoin(MessageUserStateEntity, 'mus', 'mus.id = mla.message_user_state_id')
+        .select('mla.label_id', 'labelId')
+        .addSelect('COUNT(*)', 'total')
+        .where('mla.user_id = :userId', { userId })
+        .andWhere('mla.label_id IN (:...labelIds)', { labelIds: uniqueLabelIds })
+        .andWhere('mus.user_id = :userId', { userId })
+        .andWhere('mus.permanently_hidden_at IS NULL')
+        .andWhere('mus.deleted_at IS NULL')
+        .andWhere('mus.is_archived = false')
+        .andWhere('(mus.snoozed_until IS NULL OR mus.snoozed_until <= now())')
+        .andWhere('mus.is_in_inbox = true')
+        .andWhere('mus.read_at IS NULL')
+        .groupBy('mla.label_id')
+        .getRawMany<{ labelId: string; total: string }>();
+
+      uniqueLabelIds.forEach((labelId) => {
+        labelUnreadById[labelId] = 0;
+      });
+      labelRows.forEach((row) => {
+        labelUnreadById[row.labelId] = Number(row.total ?? 0);
+      });
+    }
+
+    return {
+      inbox: Number(sidebarRaw?.inbox ?? 0),
+      starred: Number(sidebarRaw?.starred ?? 0),
+      sent: Number(sidebarRaw?.sent ?? 0),
+      drafts,
+      trash: Number(sidebarRaw?.trash ?? 0),
+      archived: Number(sidebarRaw?.archived ?? 0),
+      snoozed: Number(sidebarRaw?.snoozed ?? 0),
+      labelUnreadById,
+    };
+  }
+
   async listMessages(
     userId: string,
     query: {
