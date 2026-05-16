@@ -96,11 +96,23 @@ export class NotificationsController {
   @Get('messages')
   listMessages(@CurrentUser() user: { id: string }, @Query() query: ListMessagesQueryDto) {
     return this.notificationsService.listMessages(user.id, {
-      folder: query.folder ?? query.view,
+      view: query.view,
       originModule: query.originModule,
       q: query.q,
       page: query.page,
       limit: query.limit,
+      read: query.read,
+      hasAttachments: query.hasAttachments,
+      labelId: query.labelId,
+    });
+  }
+
+  @RequirePermissions('notifications.read')
+  @Get('messages/count')
+  countMessages(@CurrentUser() user: { id: string }, @Query() query: ListMessagesQueryDto) {
+    return this.notificationsService.countMessages(user.id, {
+      view: query.view,
+      originModule: query.originModule,
       read: query.read,
       hasAttachments: query.hasAttachments,
       labelId: query.labelId,

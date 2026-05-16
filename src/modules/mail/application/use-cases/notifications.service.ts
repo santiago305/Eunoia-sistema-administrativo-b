@@ -748,7 +748,7 @@ export class NotificationsService {
   async listMessages(
     userId: string,
     query: {
-      folder?: 'inbox' | 'sent' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'drafts' | 'all';
+      view?: 'inbox' | 'sent' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'drafts' | 'all';
       originModule?: string;
       q?: string;
       page?: number;
@@ -762,6 +762,22 @@ export class NotificationsService {
     await this.expireTrashForUser(userId);
     if (query.originModule) await this.ensureCanAccessModule(userId, query.originModule);
     return this.notificationQueriesService.listMessages(userId, query);
+  }
+
+  async countMessages(
+    userId: string,
+    query: {
+      view?: 'inbox' | 'sent' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'drafts' | 'all';
+      originModule?: string;
+      read?: boolean;
+      hasAttachments?: boolean;
+      labelId?: string;
+    },
+  ) {
+    await this.releaseDueSnoozedMessagesForUser(userId);
+    await this.expireTrashForUser(userId);
+    if (query.originModule) await this.ensureCanAccessModule(userId, query.originModule);
+    return this.notificationQueriesService.countMessages(userId, query);
   }
 
   async getMessageDetail(userId: string, id: string) {

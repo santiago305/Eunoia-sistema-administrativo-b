@@ -7,10 +7,6 @@ export class ListMessagesQueryDto {
   view?: 'inbox' | 'sent' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'drafts' | 'all';
 
   @IsOptional()
-  @IsIn(['inbox', 'sent', 'trash', 'starred', 'archived', 'snoozed', 'drafts', 'all'])
-  folder?: 'inbox' | 'sent' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'drafts' | 'all';
-
-  @IsOptional()
   @IsString()
   originModule?: string;
 

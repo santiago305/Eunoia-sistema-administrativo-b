@@ -24,10 +24,75 @@ export class NotificationQueriesService {
     private readonly labelsService: NotificationLabelsService,
   ) {}
 
+  async countMessages(
+    userId: string,
+    query: {
+      view?: 'inbox' | 'sent' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'drafts' | 'all';
+      originModule?: string;
+      read?: boolean;
+      hasAttachments?: boolean;
+      labelId?: string;
+    },
+  ) {
+    const view = query.view ?? 'inbox';
+
+    if (view === 'drafts') {
+      const total = await this.messageRepository.count({
+        where: { createdByUserId: userId, isDraft: true, status: 'DRAFT' },
+      });
+      return { total };
+    }
+
+    const qb = this.messageUserStateRepository
+      .createQueryBuilder('mus')
+      .innerJoin(MessageEntity, 'm', 'm.id = mus.message_id')
+      .where('mus.user_id = :userId', { userId })
+      .andWhere('mus.permanently_hidden_at IS NULL');
+
+    if (view === 'sent') {
+      qb.andWhere('mus.is_in_sent = true')
+        .andWhere('mus.deleted_at IS NULL')
+        .andWhere('mus.is_archived = false')
+        .andWhere('(mus.snoozed_until IS NULL OR mus.snoozed_until <= now())')
+        .andWhere('m.is_draft = false');
+    } else if (view !== 'all') {
+      if (view === 'trash') qb.andWhere('mus.deleted_at IS NOT NULL');
+      else qb.andWhere('mus.deleted_at IS NULL');
+      if (view === 'archived') qb.andWhere('mus.is_archived = true');
+      if (view !== 'archived') qb.andWhere('mus.is_archived = false');
+      if (view === 'snoozed') qb.andWhere('mus.snoozed_until IS NOT NULL AND mus.snoozed_until > now()');
+      if (view !== 'snoozed') qb.andWhere('(mus.snoozed_until IS NULL OR mus.snoozed_until <= now())');
+      if (view === 'starred') qb.andWhere('mus.starred_at IS NOT NULL');
+      if (view === 'inbox') qb.andWhere('mus.is_in_inbox = true');
+    }
+
+    if (query.labelId) {
+      qb.innerJoin(
+        MessageLabelAssignmentEntity,
+        'mla',
+        'mla.message_user_state_id = mus.id AND mla.label_id = :labelId AND mla.user_id = :userId',
+        { labelId: query.labelId, userId },
+      );
+    }
+
+    if (query.originModule) qb.andWhere('m.origin_module = :originModule', { originModule: query.originModule });
+    if (typeof query.read === 'boolean') qb.andWhere(query.read ? 'mus.read_at IS NOT NULL' : 'mus.read_at IS NULL');
+    if (typeof query.hasAttachments === 'boolean') {
+      qb.andWhere(
+        query.hasAttachments
+          ? 'EXISTS (SELECT 1 FROM message_attachments ma WHERE ma.message_id = m.id)'
+          : 'NOT EXISTS (SELECT 1 FROM message_attachments ma WHERE ma.message_id = m.id)',
+      );
+    }
+
+    const total = await qb.getCount();
+    return { total };
+  }
+
   async listMessages(
     userId: string,
     query: {
-      folder?: 'inbox' | 'sent' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'drafts' | 'all';
+      view?: 'inbox' | 'sent' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'drafts' | 'all';
       originModule?: string;
       q?: string;
       page?: number;
@@ -37,11 +102,11 @@ export class NotificationQueriesService {
       labelId?: string;
     },
   ) {
-    const folder = query.folder ?? 'inbox';
+    const view = query.view ?? 'inbox';
     const page = Math.max(query.page ?? 1, 1);
     const limit = Math.min(Math.max(query.limit ?? 50, 1), 100);
 
-    if (folder === 'sent') {
+    if (view === 'sent') {
       const qbSent = this.messageUserStateRepository
         .createQueryBuilder('mus')
         .innerJoin(MessageEntity, 'm', 'm.id = mus.message_id')
@@ -105,13 +170,20 @@ export class NotificationQueriesService {
       }
 
       const total = await qbSent.clone().getCount();
-      const rows = await qbSent.clone().select(['m.id AS message_id']).orderBy('m.sent_at', 'DESC').addOrderBy('m.created_at', 'DESC').take(limit).skip((page - 1) * limit).getRawMany<{ message_id: string }>();
+      const rows = await qbSent
+        .clone()
+        .select(['m.id AS message_id'])
+        .orderBy('m.sent_at', 'DESC')
+        .addOrderBy('m.created_at', 'DESC')
+        .limit(limit)
+        .offset((page - 1) * limit)
+        .getRawMany<{ message_id: string }>();
       const messageIds = rows.map((row) => row.message_id);
       const items = messageIds.length ? await this.messageRepository.find({ where: messageIds.map((id) => ({ id })) }) : [];
       return { page, limit, total, items };
     }
 
-    if (folder === 'drafts') {
+    if (view === 'drafts') {
       const [items, total] = await this.messageRepository.findAndCount({ where: { createdByUserId: userId, isDraft: true, status: 'DRAFT' }, order: { updatedAt: 'DESC' }, take: limit, skip: (page - 1) * limit });
       return { page, limit, total, items };
     }
@@ -124,15 +196,15 @@ export class NotificationQueriesService {
 
     if (query.labelId) qb.innerJoin(MessageLabelAssignmentEntity, 'mla', 'mla.message_user_state_id = mus.id AND mla.label_id = :labelId', { labelId: query.labelId });
 
-    if (folder !== 'all') {
-      if (folder === 'trash') qb.andWhere('mus.deleted_at IS NOT NULL');
+    if (view !== 'all') {
+      if (view === 'trash') qb.andWhere('mus.deleted_at IS NOT NULL');
       else qb.andWhere('mus.deleted_at IS NULL');
-      if (folder === 'archived') qb.andWhere('mus.is_archived = true');
-      if (folder !== 'archived') qb.andWhere('mus.is_archived = false');
-      if (folder === 'snoozed') qb.andWhere('mus.snoozed_until IS NOT NULL AND mus.snoozed_until > now()');
-      if (folder !== 'snoozed') qb.andWhere('(mus.snoozed_until IS NULL OR mus.snoozed_until <= now())');
-      if (folder === 'starred') qb.andWhere('mus.starred_at IS NOT NULL');
-      if (folder === 'inbox') qb.andWhere('mus.is_in_inbox = true');
+      if (view === 'archived') qb.andWhere('mus.is_archived = true');
+      if (view !== 'archived') qb.andWhere('mus.is_archived = false');
+      if (view === 'snoozed') qb.andWhere('mus.snoozed_until IS NOT NULL AND mus.snoozed_until > now()');
+      if (view !== 'snoozed') qb.andWhere('(mus.snoozed_until IS NULL OR mus.snoozed_until <= now())');
+      if (view === 'starred') qb.andWhere('mus.starred_at IS NOT NULL');
+      if (view === 'inbox') qb.andWhere('mus.is_in_inbox = true');
     }
 
     if (query.originModule) qb.andWhere('m.origin_module = :originModule', { originModule: query.originModule });
@@ -180,7 +252,12 @@ export class NotificationQueriesService {
     qb.orderBy('m.sent_at', 'DESC').addOrderBy('m.created_at', 'DESC');
 
     const total = await qb.clone().getCount();
-    const rows = await qb.clone().select(['mus.id AS state_id', 'mus.message_id AS message_id']).take(limit).skip((page - 1) * limit).getRawMany<{ state_id: string; message_id: string }>();
+    const rows = await qb
+      .clone()
+      .select(['mus.id AS state_id', 'mus.message_id AS message_id'])
+      .limit(limit)
+      .offset((page - 1) * limit)
+      .getRawMany<{ state_id: string; message_id: string }>();
 
     const stateIds = rows.map((row) => row.state_id);
     const messageIds = rows.map((row) => row.message_id);
