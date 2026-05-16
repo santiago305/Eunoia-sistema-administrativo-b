@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { NotificationsController } from '../adapters/in/controllers/notifications.controller';
-import { LegacyNotificationsController } from '../adapters/in/controllers/legacy-notifications.controller';
 import { NotificationsService } from '../application/use-cases/notifications.service';
 import { User } from 'src/modules/users/adapters/out/persistence/typeorm/entities/user.entity';
 import { NotificationGateway } from '../adapters/in/websocket/notification.gateway';
@@ -17,6 +16,7 @@ import { MessageAttachmentEntity } from '../adapters/out/persistence/typeorm/ent
 import { MessageLabelAssignmentEntity } from '../adapters/out/persistence/typeorm/entities/message-label-assignment.entity';
 import { MessageSearchHistoryEntity } from '../adapters/out/persistence/typeorm/entities/message-search-history.entity';
 import { MessageAuditLogEntity } from '../adapters/out/persistence/typeorm/entities/message-audit-log.entity';
+import { NotificationModuleLabelConfigEntity } from '../adapters/out/persistence/typeorm/entities/notification-module-label-config.entity';
 import { ExpireDraftsJob } from './jobs/expire-drafts.job';
 import { ExpireTrashJob } from './jobs/expire-trash.job';
 import { ReleaseSnoozedMessagesJob } from './jobs/release-snoozed-messages.job';
@@ -52,11 +52,12 @@ import { AccessControlAdapter } from '../adapters/out/access-control/access-cont
       MessageLabelAssignmentEntity,
       MessageSearchHistoryEntity,
       MessageAuditLogEntity,
+      NotificationModuleLabelConfigEntity,
       User,
     ]),
     AccessControlModule,
   ],
-  controllers: [NotificationsController, LegacyNotificationsController],
+  controllers: [NotificationsController],
   providers: [
     NotificationsService,
     MessageStateService,

@@ -17,7 +17,7 @@ export class ExpireDraftsJob {
     const result = await this.messageRepository
       .createQueryBuilder()
       .update(MessageEntity)
-      .set({ status: 'ARCHIVED', updatedAt: now })
+      .set({ isDraft: false, draftExpiresAt: null, updatedAt: now })
       .where('is_draft = true')
       .andWhere("status = 'DRAFT'")
       .andWhere('draft_expires_at IS NOT NULL')

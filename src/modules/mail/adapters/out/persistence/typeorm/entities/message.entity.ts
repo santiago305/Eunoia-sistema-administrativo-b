@@ -1,4 +1,5 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import type { MessageStatus } from '../../../../../domain/enums/message-status.enum';
 
 @Entity('messages')
 export class MessageEntity {
@@ -45,7 +46,7 @@ export class MessageEntity {
   bodyJson: Record<string, unknown> | null;
 
   @Column({ name: 'status', type: 'varchar', length: 20 })
-  status: 'DRAFT' | 'SENT' | 'FAILED' | 'SCHEDULED' | 'ARCHIVED';
+  status: MessageStatus;
 
   @Column({ name: 'is_draft', type: 'boolean', default: false })
   isDraft: boolean;

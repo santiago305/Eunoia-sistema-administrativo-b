@@ -1,7 +1,6 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
-import { NotificationRealtimeService } from '../../infrastructure/realtime/notification-realtime.service';
 import { User } from 'src/modules/users/adapters/out/persistence/typeorm/entities/user.entity';
 import { MessageEntity } from '../../adapters/out/persistence/typeorm/entities/message.entity';
 import { MessageRecipientEntity } from '../../adapters/out/persistence/typeorm/entities/message-recipient.entity';
@@ -10,6 +9,7 @@ import { MessageLabelEntity } from '../../adapters/out/persistence/typeorm/entit
 import { MessageUserStateEntity } from '../../adapters/out/persistence/typeorm/entities/message-user-state.entity';
 import { MessageAttachmentEntity } from '../../adapters/out/persistence/typeorm/entities/message-attachment.entity';
 import { MessageLabelAssignmentEntity } from '../../adapters/out/persistence/typeorm/entities/message-label-assignment.entity';
+import { NotificationModuleLabelConfigEntity } from '../../adapters/out/persistence/typeorm/entities/notification-module-label-config.entity';
 import { ACCESS_CONTROL_PORT, AccessControlPort } from '../ports/access-control.port';
 import { MessageStateService } from '../services/message-state.service';
 import { MessageAccessService } from '../services/message-access.service';
@@ -21,9 +21,10 @@ import { MessageRecipientsResolverService } from '../services/message-recipients
 import { MessageAuditService } from '../services/message-audit.service';
 import { MessageUserStatesService } from '../services/message-user-states.service';
 import { MessageRealtimeEventsService } from '../services/message-realtime-events.service';
-import { NotificationPayloadMapperService } from '../services/notification-payload-mapper.service';
 import { MessageUserStateAccessService } from '../services/message-user-state-access.service';
 import { SystemNotificationService } from '../services/system-notification.service';
+import { ORIGIN_MODULE } from '../../domain/enums/origin-module.enum';
+import { normalizeOriginModule } from '../../domain/utils/normalize-origin-module';
 import {
   NOTIFICATION_MODULE_ICONS,
   NOTIFICATION_MODULE_LABELS,
@@ -49,7 +50,8 @@ export class NotificationsService {
     private readonly messageAttachmentRepository: Repository<MessageAttachmentEntity>,
     @InjectRepository(MessageLabelAssignmentEntity)
     private readonly messageLabelAssignmentRepository: Repository<MessageLabelAssignmentEntity>,
-    private readonly realtimeService: NotificationRealtimeService,
+    @InjectRepository(NotificationModuleLabelConfigEntity)
+    private readonly notificationModuleLabelConfigRepository: Repository<NotificationModuleLabelConfigEntity>,
     private readonly dataSource: DataSource,
     @Inject(ACCESS_CONTROL_PORT)
     private readonly accessControlPort: AccessControlPort,
@@ -63,7 +65,6 @@ export class NotificationsService {
     private readonly messageAuditService: MessageAuditService,
     private readonly messageUserStatesService: MessageUserStatesService,
     private readonly messageRealtimeEventsService: MessageRealtimeEventsService,
-    private readonly notificationPayloadMapperService: NotificationPayloadMapperService,
     private readonly messageUserStateAccessService: MessageUserStateAccessService,
     private readonly systemNotificationService: SystemNotificationService,
   ) {}
@@ -143,7 +144,7 @@ export class NotificationsService {
       recipients: input.recipients,
     });
 
-    const originModule = (input.originModule ?? 'corporate').toLowerCase();
+    const originModule = normalizeOriginModule(input.originModule, ORIGIN_MODULE.CORPORATE);
     await this.ensureCanAccessModule(input.senderUserId, originModule);
     const bodyHtml = this.messageContentService.normalizeHtmlBody(input.bodyHtml);
     const bodyText = this.messageContentService.toBodyText(bodyHtml);
@@ -352,6 +353,55 @@ export class NotificationsService {
     return this.notificationLabelsService.listMyLabels(userId);
   }
 
+  async listModuleLabelConfigs() {
+    const rows = await this.notificationModuleLabelConfigRepository.find({
+      order: { moduleKey: 'ASC' },
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      moduleKey: row.moduleKey,
+      labelId: row.labelId,
+      updatedByUserId: row.updatedByUserId,
+      updatedAt: row.updatedAt,
+    }));
+  }
+
+  async upsertModuleLabelConfig(userId: string, moduleKeyRaw: string, labelId?: string | null) {
+    const moduleKey = String(moduleKeyRaw ?? '').trim().toLowerCase();
+    if (!NOTIFICATION_MODULE_PERMISSIONS[moduleKey]) {
+      throw new BadRequestException('ORIGIN_MODULE_REQUIRED');
+    }
+
+    let targetLabelId: string | null = null;
+    if (labelId) {
+      const label = await this.messageLabelRepository.findOne({
+        where: [{ id: labelId, isVisible: true, ownerUserId: null }, { id: labelId, isVisible: true, ownerUserId: userId }],
+        select: ['id'],
+      });
+      if (!label) {
+        throw new NotFoundException('LABEL_NOT_FOUND');
+      }
+      targetLabelId = label.id;
+    }
+
+    const current = await this.notificationModuleLabelConfigRepository.findOne({ where: { moduleKey } });
+    if (current) {
+      current.labelId = targetLabelId;
+      current.updatedByUserId = userId;
+      const saved = await this.notificationModuleLabelConfigRepository.save(current);
+      return { id: saved.id, moduleKey: saved.moduleKey, labelId: saved.labelId, updatedByUserId: saved.updatedByUserId, updatedAt: saved.updatedAt };
+    }
+
+    const created = await this.notificationModuleLabelConfigRepository.save(
+      this.notificationModuleLabelConfigRepository.create({
+        moduleKey,
+        labelId: targetLabelId,
+        updatedByUserId: userId,
+      }),
+    );
+    return { id: created.id, moduleKey: created.moduleKey, labelId: created.labelId, updatedByUserId: created.updatedByUserId, updatedAt: created.updatedAt };
+  }
+
   async createCustomLabel(userId: string, name: string, color: string) {
     return this.notificationLabelsService.createCustomLabel(userId, name, color);
   }
@@ -530,7 +580,7 @@ export class NotificationsService {
     bodyJson?: Record<string, unknown>;
     originModule?: string;
   }) {
-    const originModule = (input.originModule ?? 'corporate').toLowerCase();
+    const originModule = normalizeOriginModule(input.originModule, ORIGIN_MODULE.CORPORATE);
     await this.ensureCanAccessModule(input.userId, originModule);
     const now = new Date();
     const draftExpiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -627,7 +677,8 @@ export class NotificationsService {
       where: { id: draftId, createdByUserId: userId, isDraft: true, status: 'DRAFT' },
     });
     if (!draft) throw new NotFoundException('DRAFT_NOT_FOUND');
-    draft.status = 'ARCHIVED';
+    draft.isDraft = false;
+    draft.draftExpiresAt = null;
     const saved = await this.messageRepository.save(draft);
     await this.messageAuditService.createAuditLog({
       action: 'DRAFT_DISCARDED',
@@ -1205,187 +1256,6 @@ export class NotificationsService {
     return { deleted: true };
   }
 
-  async listMyNotifications(userId: string, limit = 20, cursor?: string) {
-    const normalizedLimit = Math.min(Math.max(limit, 1), 100);
-    const qb = this.messageUserStateRepository
-      .createQueryBuilder('mus')
-      .innerJoin(MessageEntity, 'm', 'm.id = mus.message_id')
-      .where('mus.user_id = :userId', { userId })
-      .andWhere('mus.permanently_hidden_at IS NULL')
-      .andWhere('mus.deleted_at IS NULL')
-      .andWhere('mus.is_archived = false')
-      .andWhere('(mus.snoozed_until IS NULL OR mus.snoozed_until <= now())')
-      .orderBy('coalesce(m.sent_at, m.created_at)', 'DESC')
-      .addOrderBy('mus.created_at', 'DESC')
-      .take(normalizedLimit);
-
-    if (cursor) {
-      qb.andWhere('coalesce(m.sent_at, m.created_at) < :cursor', { cursor: new Date(cursor) });
-    }
-
-    const rows = await qb.select(['mus.id AS state_id', 'mus.message_id AS message_id']).getRawMany<{ state_id: string; message_id: string }>();
-    if (!rows.length) return [];
-
-    const stateIds = rows.map((row) => row.state_id);
-    const messageIds = rows.map((row) => row.message_id);
-    const states = await this.messageUserStateRepository.find({ where: stateIds.map((id) => ({ id })) });
-    const messages = await this.messageRepository.find({ where: messageIds.map((id) => ({ id })) });
-    const stateMap = new Map(states.map((state) => [state.id, state]));
-    const messageMap = new Map(messages.map((message) => [message.id, message]));
-
-    return rows
-      .map((row) => {
-        const state = stateMap.get(row.state_id);
-        const message = messageMap.get(row.message_id);
-        if (!state || !message) return null;
-        return this.notificationPayloadMapperService.toNotificationResponse(state, message);
-      })
-      .filter((item): item is NonNullable<typeof item> => Boolean(item));
-  }
-
-  async getUnreadCount(userId: string) {
-    const unread = await this.messageUserStateRepository
-      .createQueryBuilder('mus')
-      .where('mus.user_id = :userId', { userId })
-      .andWhere('mus.read_at IS NULL')
-      .andWhere('mus.permanently_hidden_at IS NULL')
-      .andWhere('mus.deleted_at IS NULL')
-      .andWhere('mus.is_archived = false')
-      .andWhere('(mus.snoozed_until IS NULL OR mus.snoozed_until <= now())')
-      .getCount();
-
-    const unseen = await this.messageUserStateRepository
-      .createQueryBuilder('mus')
-      .where('mus.user_id = :userId', { userId })
-      .andWhere('mus.opened_at IS NULL')
-      .andWhere('mus.permanently_hidden_at IS NULL')
-      .andWhere('mus.deleted_at IS NULL')
-      .andWhere('mus.is_archived = false')
-      .andWhere('(mus.snoozed_until IS NULL OR mus.snoozed_until <= now())')
-      .getCount();
-
-    return { unread, unseen };
-  }
-
-  async getMyNotificationDetail(userId: string, recipientId: string) {
-    const state = await this.messageUserStateAccessService.findMessageStateOrThrow(userId, recipientId);
-    const message = await this.messageRepository.findOne({ where: { id: state.messageId } });
-    if (!message) throw new NotFoundException('Notification not found');
-    return this.notificationPayloadMapperService.toNotificationResponse(state, message);
-  }
-
-  async markAsSeen(userId: string, recipientId: string) {
-    const state = await this.messageUserStateAccessService.findMessageStateOrThrow(userId, recipientId);
-    if (!state.openedAt) {
-      state.openedAt = new Date();
-      await this.messageUserStateRepository.save(state);
-      await this.messageAuditService.createAuditLog({
-        action: 'MESSAGE_OPENED',
-        actorUserId: userId,
-        messageId: state.messageId,
-        threadId: state.threadId,
-      });
-      const message = await this.messageRepository.findOne({ where: { id: state.messageId } });
-      if (message) {
-        this.realtimeService.emitToUser(userId, 'notification.seen', this.notificationPayloadMapperService.toNotificationResponse(state, message));
-      }
-      await this.emitUnreadCountUpdated(userId);
-    }
-    const message = await this.messageRepository.findOne({ where: { id: state.messageId } });
-    if (!message) throw new NotFoundException('Notification not found');
-    return this.notificationPayloadMapperService.toNotificationResponse(state, message);
-  }
-
-  async markAsRead(userId: string, recipientId: string) {
-    const row = await this.messageUserStateAccessService.findMessageStateOrThrow(userId, recipientId);
-    const now = new Date();
-    if (!row.openedAt) row.openedAt = now;
-    if (!row.readAt) row.readAt = now;
-    await this.messageUserStateRepository.save(row);
-    await this.messageAuditService.createAuditLog({
-      action: 'MESSAGE_READ',
-      actorUserId: userId,
-      messageId: row.messageId,
-      threadId: row.threadId,
-      metadata: { source: 'legacy_notifications_endpoint' },
-    });
-    const message = await this.messageRepository.findOne({ where: { id: row.messageId } });
-    if (!message) throw new NotFoundException('Notification not found');
-    this.realtimeService.emitToUser(userId, 'notification.read', this.notificationPayloadMapperService.toNotificationResponse(row, message));
-    await this.emitUnreadCountUpdated(userId);
-    return this.notificationPayloadMapperService.toNotificationResponse(row, message);
-  }
-
-  async markAllAsRead(userId: string) {
-    const rows = await this.messageUserStateRepository
-      .createQueryBuilder('mus')
-      .where('mus.user_id = :userId', { userId })
-      .andWhere('mus.read_at IS NULL')
-      .andWhere('mus.permanently_hidden_at IS NULL')
-      .andWhere('mus.deleted_at IS NULL')
-      .andWhere('mus.is_archived = false')
-      .getMany();
-
-    if (!rows.length) return { updated: 0 };
-
-    const now = new Date();
-    rows.forEach((row) => {
-      row.openedAt = row.openedAt ?? now;
-      row.readAt = now;
-    });
-    await this.messageUserStateRepository.save(rows);
-    await this.messageAuditService.createAuditLog({
-      action: 'MESSAGE_READ_ALL',
-      actorUserId: userId,
-      metadata: { updated: rows.length },
-    });
-    this.realtimeService.emitToUser(userId, 'notification.updated', { type: 'READ_ALL' });
-    await this.emitUnreadCountUpdated(userId);
-    return { updated: rows.length };
-  }
-
-  async archive(userId: string, recipientId: string) {
-    const row = await this.messageUserStateAccessService.findMessageStateOrThrow(userId, recipientId);
-    row.isArchived = true;
-    row.isInInbox = false;
-    await this.messageUserStateRepository.save(row);
-    await this.messageAuditService.createAuditLog({
-      action: 'MESSAGE_ARCHIVED',
-      actorUserId: userId,
-      messageId: row.messageId,
-      threadId: row.threadId,
-      metadata: { source: 'legacy_notifications_endpoint' },
-    });
-    const message = await this.messageRepository.findOne({ where: { id: row.messageId } });
-    if (!message) throw new NotFoundException('Notification not found');
-    this.realtimeService.emitToUser(userId, 'notification.archived', this.notificationPayloadMapperService.toNotificationResponse(row, message));
-    await this.emitUnreadCountUpdated(userId);
-    return this.notificationPayloadMapperService.toNotificationResponse(row, message);
-  }
-
-  async createDevNotificationForUser(userId: string) {
-    const user = await this.userRepository.findOne({ where: { id: userId } });
-    if (!user) throw new NotFoundException('User not found');
-
-    const [created] = await this.systemNotificationService.createNotificationForUsers({
-      recipientUserIds: [userId],
-      type: 'SYSTEM_MESSAGE',
-      category: 'SYSTEM',
-      title: 'Notificacion de prueba',
-      message: `Mensaje realtime para ${user.email}`,
-      priority: 'HIGH',
-      actionUrl: '/email',
-      actionLabel: 'Ver bandeja',
-      metadata: { source: 'dev-endpoint' },
-      isSystem: true,
-      sourceModule: 'notifications',
-      sourceEntityType: 'notification',
-      sourceEntityId: null,
-    });
-
-    return this.getMyNotificationDetail(userId, created.recipientId);
-  }
-
   async createNotificationForUsers(input: {
     recipientUserIds: string[];
     type: string;
@@ -1403,11 +1273,6 @@ export class NotificationsService {
     sourceEntityId?: string | null;
   }): Promise<Array<{ userId: string; recipientId: string }>> {
     return this.systemNotificationService.createNotificationForUsers(input);
-  }
-
-  private async emitUnreadCountUpdated(userId: string) {
-    const count = await this.getUnreadCount(userId);
-    this.realtimeService.emitToUser(userId, 'notification.unread_count_updated', count);
   }
 }
 

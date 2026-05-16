@@ -19,6 +19,13 @@ import { UpdateLabelDto } from '../dtos/update-label.dto';
 import { SnoozeMessageDto } from '../dtos/snooze-message.dto';
 import { CreateSearchHistoryDto } from '../dtos/create-search-history.dto';
 import { UploadAttachmentDto } from '../dtos/upload-attachment.dto';
+import { IsOptional, IsUUID } from 'class-validator';
+
+class UpsertModuleLabelConfigDto {
+  @IsOptional()
+  @IsUUID()
+  labelId?: string | null;
+}
 
 @Controller('api/notifications')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -26,15 +33,25 @@ export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
   @RequirePermissions('notifications.read')
-  @Get('modules')
-  getAllowedModules(@CurrentUser() user: { id: string }) {
-    return this.notificationsService.getAllowedNotificationModules(user.id);
-  }
-
-  @RequirePermissions('notifications.read')
   @Get('labels')
   listLabels(@CurrentUser() user: { id: string }) {
     return this.notificationsService.listMyLabels(user.id);
+  }
+
+  @RequirePermissions('notifications.read')
+  @Get('module-label-configs')
+  listModuleLabelConfigs() {
+    return this.notificationsService.listModuleLabelConfigs();
+  }
+
+  @RequirePermissions('notifications.manage')
+  @Patch('module-label-configs/:moduleKey')
+  upsertModuleLabelConfig(
+    @CurrentUser() user: { id: string },
+    @Param('moduleKey') moduleKey: string,
+    @Body() body: UpsertModuleLabelConfigDto,
+  ) {
+    return this.notificationsService.upsertModuleLabelConfig(user.id, moduleKey, body.labelId ?? null);
   }
 
   @RequirePermissions('notifications.labels.create')

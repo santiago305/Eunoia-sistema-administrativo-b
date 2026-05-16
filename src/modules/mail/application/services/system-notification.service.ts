@@ -5,9 +5,13 @@ import { User } from 'src/modules/users/adapters/out/persistence/typeorm/entitie
 import { MessageThread } from '../../adapters/out/persistence/typeorm/entities/message-thread.entity';
 import { MessageEntity } from '../../adapters/out/persistence/typeorm/entities/message.entity';
 import { MessageUserStateEntity } from '../../adapters/out/persistence/typeorm/entities/message-user-state.entity';
+import { NotificationModuleLabelConfigEntity } from '../../adapters/out/persistence/typeorm/entities/notification-module-label-config.entity';
 import { NotificationRealtimeService } from '../../infrastructure/realtime/notification-realtime.service';
 import { NotificationPayloadMapperService } from './notification-payload-mapper.service';
 import { MessageAuditService } from './message-audit.service';
+import { NotificationLabelsService } from './notification-labels.service';
+import { ORIGIN_MODULE } from '../../domain/enums/origin-module.enum';
+import { normalizeOriginModule } from '../../domain/utils/normalize-origin-module';
 
 @Injectable()
 export class SystemNotificationService {
@@ -22,9 +26,12 @@ export class SystemNotificationService {
     private readonly messageRepository: Repository<MessageEntity>,
     @InjectRepository(MessageUserStateEntity)
     private readonly messageUserStateRepository: Repository<MessageUserStateEntity>,
+    @InjectRepository(NotificationModuleLabelConfigEntity)
+    private readonly notificationModuleLabelConfigRepository: Repository<NotificationModuleLabelConfigEntity>,
     private readonly realtimeService: NotificationRealtimeService,
     private readonly notificationPayloadMapperService: NotificationPayloadMapperService,
     private readonly messageAuditService: MessageAuditService,
+    private readonly notificationLabelsService: NotificationLabelsService,
   ) {}
 
   private toUuidOrNull(value?: string | null) {
@@ -56,7 +63,7 @@ export class SystemNotificationService {
     const users = await this.userRepository.findBy({ id: In(recipientUserIds) });
     if (!users.length) return [];
 
-    const originModule = (input.sourceModule ?? 'system').toLowerCase();
+    const originModule = normalizeOriginModule(input.sourceModule, ORIGIN_MODULE.SYSTEM);
     const subject = input.title?.trim() || 'Notificacion del sistema';
     const bodyText = input.message?.trim() || '';
     const bodyHtml = `<p>${bodyText}</p>`;
@@ -120,6 +127,18 @@ export class SystemNotificationService {
         }),
       ),
     );
+
+    const moduleLabelConfig = await this.notificationModuleLabelConfigRepository.findOne({
+      where: { moduleKey: originModule },
+      select: ['labelId'],
+    });
+    if (moduleLabelConfig?.labelId) {
+      await Promise.all(
+        savedStates.map((state) =>
+          this.notificationLabelsService.assignLabelsToState(state.id, state.userId, [moduleLabelConfig.labelId!]),
+        ),
+      );
+    }
 
     const createdRecipients: Array<{ userId: string; recipientId: string }> = savedStates.map((state) => ({
       userId: state.userId,
