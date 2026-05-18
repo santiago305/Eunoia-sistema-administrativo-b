@@ -133,6 +133,12 @@ export class NotificationsController {
   }
 
   @RequirePermissions('notifications.read')
+  @Get('messages/has-unread')
+  hasUnreadMessages(@CurrentUser() user: { id: string }) {
+    return this.notificationsService.hasUnreadMessages(user.id);
+  }
+
+  @RequirePermissions('notifications.read')
   @Get('messages/:id')
   getMessageDetail(@CurrentUser() user: { id: string }, @Param('id') id: string) {
     return this.notificationsService.getMessageDetail(user.id, id);

@@ -786,6 +786,16 @@ export class NotificationsService {
     return this.notificationQueriesService.countSidebarMessages(userId, labelIds);
   }
 
+  async hasUnreadMessages(userId: string) {
+    await this.releaseDueSnoozedMessagesForUser(userId);
+    await this.expireTrashForUser(userId);
+    const result = await this.notificationQueriesService.countMessages(userId, {
+      view: 'inbox',
+      read: false,
+    });
+    return { hasUnread: (result.total ?? 0) > 0 };
+  }
+
   async getMessageDetail(userId: string, id: string) {
     await this.releaseDueSnoozedMessagesForUser(userId);
     await this.expireTrashForUser(userId);
