@@ -3,7 +3,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from 'src/modules/users/adapters/out/persistence/typeorm/entities/user.entity';
 import { MessageEntity } from '../../adapters/out/persistence/typeorm/entities/message.entity';
+import { MessageLabelAssignmentEntity } from '../../adapters/out/persistence/typeorm/entities/message-label-assignment.entity';
+import { MessageLabelEntity } from '../../adapters/out/persistence/typeorm/entities/message-label.entity';
 import { MessageRecipientEntity } from '../../adapters/out/persistence/typeorm/entities/message-recipient.entity';
+import { MessageUserStateEntity } from '../../adapters/out/persistence/typeorm/entities/message-user-state.entity';
 import { NotificationRealtimeService } from '../../infrastructure/realtime/notification-realtime.service';
 
 @Injectable()
@@ -13,27 +16,84 @@ export class MessageRealtimeEventsService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(MessageUserStateEntity)
+    private readonly messageUserStateRepository: Repository<MessageUserStateEntity>,
+    @InjectRepository(MessageLabelAssignmentEntity)
+    private readonly messageLabelAssignmentRepository: Repository<MessageLabelAssignmentEntity>,
+    @InjectRepository(MessageLabelEntity)
+    private readonly messageLabelRepository: Repository<MessageLabelEntity>,
     private readonly realtimeService: NotificationRealtimeService,
   ) {}
 
-  private buildMessageRealtimePayload(
+  private buildMessageRealtimePayload(params: {
     message: MessageEntity,
+    state: MessageUserStateEntity,
     recipient: MessageRecipientEntity,
-    senderName: string,
-  ) {
+    sender: { id: string; name: string; email: string } | null,
+    labels: MessageLabelEntity[],
+  }) {
+    const { message, state, recipient, sender, labels } = params;
+    const snoozedUntilIso = state.snoozedUntil ? state.snoozedUntil.toISOString() : null;
+    const recipientType =
+      state.relationType === 'CC' ? 'CC' : state.relationType === 'BCC' ? 'BCC' : 'TO';
+
     return {
-      recipientId: recipient.id,
+      recipientId: state.id,
       messageRecipientId: recipient.id,
+      hasUnreadMail: true,
+      countsDelta: {
+        inbox: 1,
+      },
+      recipient: {
+        id: state.id,
+        messageId: state.messageId,
+        recipientUserId: state.userId,
+        recipientEmail: state.recipientEmail ?? recipient.recipientEmail,
+        recipientType,
+        readAt: state.readAt,
+        starredAt: state.starredAt,
+        deletedAt: state.deletedAt,
+        deliveredAt: state.deliveredAt ?? recipient.deliveredAt,
+        createdAt: state.createdAt,
+        updatedAt: state.updatedAt,
+        isArchived: state.isArchived,
+        isInInbox: state.isInInbox,
+        snoozedUntil: snoozedUntilIso,
+      },
       message: {
         id: message.id,
         threadId: message.threadId,
-        subject: message.subject,
-        preview: message.bodyText.slice(0, 140),
+        parentMessageId: message.parentMessageId,
+        kind: message.kind,
         originModule: message.originModule,
-        senderName,
         senderType: message.senderType,
+        senderUserId: message.senderUserId,
+        createdByUserId: message.createdByUserId,
+        subject: message.subject,
+        bodyHtml: message.bodyHtml,
+        bodyText: message.bodyText,
+        bodyJson: message.bodyJson ?? null,
+        sourceEntityType: message.sourceEntityType,
+        sourceEntityId: message.sourceEntityId,
+        status: message.status,
+        isDraft: message.isDraft,
         sentAt: message.sentAt,
+        createdAt: message.createdAt,
+        updatedAt: message.updatedAt,
+        preview: message.bodyText.slice(0, 140),
       },
+      sender,
+      labels: labels.map((label) => ({
+        id: label.id,
+        ownerUserId: label.ownerUserId,
+        key: label.key,
+        name: label.name,
+        type: label.type,
+        color: label.color,
+        icon: label.icon,
+        isVisible: label.isVisible,
+        sortOrder: label.sortOrder,
+      })),
     };
   }
 
@@ -42,17 +102,56 @@ export class MessageRealtimeEventsService {
     message: MessageEntity,
     recipients: MessageRecipientEntity[],
   ) {
-    const sender =
-      (await this.userRepository.findOne({
+    const [sender, states] = await Promise.all([
+      this.userRepository.findOne({
         where: { id: senderUserId },
-        select: ['name'],
-      })) ?? null;
-    const senderName = sender?.name?.trim() || 'Usuario';
-
-    recipients.forEach((recipient) => {
-      const payload = this.buildMessageRealtimePayload(message, recipient, senderName);
-      this.realtimeService.emitToUser(recipient.recipientUserId, 'message.created', payload);
+        select: ['id', 'name', 'email'],
+      }),
+      this.messageUserStateRepository.find({ where: { messageId: message.id } }),
+    ]);
+    const senderPayload = sender
+      ? {
+          id: sender.id,
+          name: sender.name?.trim() || 'Usuario',
+          email: sender.email,
+        }
+      : null;
+    const stateByKey = new Map<string, MessageUserStateEntity>();
+    states.forEach((state) => {
+      stateByKey.set(`${state.messageId}:${state.userId}`, state);
     });
+    const stateIds = states.map((state) => state.id);
+    const assignments = stateIds.length
+      ? await this.messageLabelAssignmentRepository.find({
+          where: stateIds.map((stateId) => ({ messageUserStateId: stateId })),
+        })
+      : [];
+    const labelIds = Array.from(new Set(assignments.map((assignment) => assignment.labelId)));
+    const labels = labelIds.length
+      ? await this.messageLabelRepository.find({ where: labelIds.map((id) => ({ id })) })
+      : [];
+    const labelById = new Map(labels.map((label) => [label.id, label]));
+    const labelsByStateId = new Map<string, MessageLabelEntity[]>();
+    assignments.forEach((assignment) => {
+      const current = labelsByStateId.get(assignment.messageUserStateId) ?? [];
+      const label = labelById.get(assignment.labelId);
+      if (label) current.push(label);
+      labelsByStateId.set(assignment.messageUserStateId, current);
+    });
+
+    for (const recipient of recipients) {
+      const state = stateByKey.get(`${message.id}:${recipient.recipientUserId}`);
+      if (!state) continue;
+
+      const payload = this.buildMessageRealtimePayload({
+        message,
+        state,
+        recipient,
+        sender: senderPayload,
+        labels: labelsByStateId.get(state.id) ?? [],
+      });
+      this.realtimeService.emitToUser(recipient.recipientUserId, 'message.created', payload);
+    }
 
     this.logger.debug(
       `mail_realtime_emit event=message.created messageId=${message.id} recipients=${recipients.length} originModule=${message.originModule}`,
