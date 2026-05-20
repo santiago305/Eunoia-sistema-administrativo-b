@@ -75,6 +75,21 @@ export class NotificationsService {
     }
   }
 
+  private buildForwardedMessageMetadata(
+    parent: MessageEntity,
+    sender: Pick<User, 'name' | 'email'> | null,
+  ) {
+    return {
+      id: parent.id,
+      subject: parent.subject,
+      senderName: sender?.name ?? 'Usuario',
+      senderEmail: sender?.email ?? '',
+      sentAt: (parent.sentAt ?? parent.createdAt)?.toISOString?.() ?? null,
+      bodyPreview: (parent.bodyText || this.messageContentService.toBodyText(parent.bodyHtml)).slice(0, 500),
+      attachmentSummary: [],
+    };
+  }
+
   async getAllowedNotificationModules(userId: string) {
     const allowedModules = await this.accessControlPort.getAllowedNotificationModules(
       userId,
@@ -489,10 +504,18 @@ export class NotificationsService {
     });
     await this.ensureCanAccessModule(input.senderUserId, parent.originModule);
 
-    const bodyHtml = this.messageContentService.normalizeHtmlBody(
-      `${this.messageContentService.normalizeHtmlBody(input.bodyHtml)}<hr/><p>${parent.bodyHtml}</p>`,
-    );
+    const parentSender = parent.senderUserId
+      ? await this.userRepository.findOne({
+          where: { id: parent.senderUserId },
+          select: ['name', 'email'],
+        })
+      : null;
+    const bodyHtml = this.messageContentService.normalizeHtmlBody(input.bodyHtml);
     const bodyText = this.messageContentService.toBodyText(bodyHtml);
+    const bodyJson = {
+      ...(input.bodyJson ?? {}),
+      forwardedMessage: this.buildForwardedMessageMetadata(parent, parentSender),
+    };
     const txResult = await this.dataSource.transaction(async (manager) => {
       const threadRepo = manager.getRepository(MessageThread);
       const messageRepo = manager.getRepository(MessageEntity);
@@ -522,7 +545,7 @@ export class NotificationsService {
           subject: thread.subject,
           bodyHtml,
           bodyText,
-          bodyJson: input.bodyJson ?? null,
+          bodyJson,
           status: 'SENT',
           isDraft: false,
           draftExpiresAt: null,
