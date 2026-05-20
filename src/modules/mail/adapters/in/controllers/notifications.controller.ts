@@ -340,6 +340,7 @@ export class NotificationsController {
       buffer: file?.buffer ?? Buffer.alloc(0),
       messageId: body.messageId,
       draftId: body.draftId,
+      kind: body.kind,
     });
   }
 

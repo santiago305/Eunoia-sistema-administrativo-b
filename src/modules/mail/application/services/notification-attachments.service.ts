@@ -8,16 +8,19 @@ import { MessageEntity } from '../../adapters/out/persistence/typeorm/entities/m
 import { ACCESS_CONTROL_PORT, AccessControlPort } from '../ports/access-control.port';
 import { MessageAccessService } from './message-access.service';
 
+export type MailAttachmentKind = 'file' | 'image';
+
 @Injectable()
 export class NotificationAttachmentsService {
   private readonly attachmentStorageDir = path.resolve(process.cwd(), 'storage', 'mail-attachments');
   private readonly allowedAttachmentMimeTypes = new Set([
-    'application/pdf', 'image/jpeg', 'image/png', 'application/msword',
+    'application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/plain',
   ]);
-  private readonly allowedAttachmentExtensions = new Set(['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx', '.xls', '.xlsx', '.txt']);
-  private readonly maxAttachmentSizeBytes = 20 * 1024 * 1024;
+  private readonly allowedAttachmentExtensions = new Set(['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.gif', '.doc', '.docx', '.xls', '.xlsx', '.txt']);
+  private readonly allowedImageExtensions = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif']);
+  private readonly maxAttachmentSizeBytes = 5 * 1024 * 1024;
 
   constructor(
     @InjectRepository(MessageAttachmentEntity)
@@ -29,11 +32,19 @@ export class NotificationAttachmentsService {
     private readonly messageAccessService: MessageAccessService,
   ) {}
 
-  private validateAttachmentOrFail(fileName: string, mimeType: string, size: number) {
+  private normalizeKind(kind?: MailAttachmentKind): MailAttachmentKind {
+    return kind === 'image' ? 'image' : 'file';
+  }
+
+  private validateAttachmentOrFail(fileName: string, mimeType: string, size: number, kind?: MailAttachmentKind) {
     const extension = path.extname(fileName).toLowerCase();
+    const normalizedKind = this.normalizeKind(kind);
     if (!this.allowedAttachmentExtensions.has(extension)) throw new BadRequestException('ATTACHMENT_EXTENSION_NOT_ALLOWED');
     if (!this.allowedAttachmentMimeTypes.has(mimeType)) throw new BadRequestException('ATTACHMENT_MIME_NOT_ALLOWED');
     if (size > this.maxAttachmentSizeBytes) throw new BadRequestException('ATTACHMENT_TOO_LARGE');
+    if (normalizedKind === 'image' && (!mimeType.startsWith('image/') || !this.allowedImageExtensions.has(extension))) {
+      throw new BadRequestException('ATTACHMENT_IMAGE_MIME_REQUIRED');
+    }
   }
 
   async linkAttachmentsToMessage(userId: string, messageId: string, attachmentIds: string[], draftId?: string, manager?: EntityManager) {
@@ -66,11 +77,12 @@ export class NotificationAttachmentsService {
     }
   }
 
-  async uploadAttachment(input: { userId: string; fileName: string; mimeType: string; size: number; buffer: Buffer; messageId?: string; draftId?: string; modulePermissions: Record<string, string[]>; }) {
+  async uploadAttachment(input: { userId: string; fileName: string; mimeType: string; size: number; buffer: Buffer; messageId?: string; draftId?: string; kind?: MailAttachmentKind; modulePermissions: Record<string, string[]>; }) {
     if (!input.fileName || !input.mimeType || !input.buffer?.length) throw new BadRequestException('ATTACHMENT_FILE_REQUIRED');
     if (!input.messageId && !input.draftId) throw new BadRequestException('ATTACHMENT_TARGET_REQUIRED');
 
-    this.validateAttachmentOrFail(input.fileName, input.mimeType, input.size);
+    const attachmentKind = this.normalizeKind(input.kind);
+    this.validateAttachmentOrFail(input.fileName, input.mimeType, input.size, attachmentKind);
 
     if (input.messageId) {
       const canAccess = await this.messageAccessService.ensureMessageParticipant(input.userId, input.messageId);
@@ -96,6 +108,7 @@ export class NotificationAttachmentsService {
       sizeBytes: String(input.size),
       storageKey,
       uploadedByUserId: input.userId,
+      attachmentKind,
     }));
 
     return saved;

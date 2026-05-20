@@ -1232,6 +1232,7 @@ export class NotificationsService {
     buffer: Buffer;
     messageId?: string;
     draftId?: string;
+    kind?: 'file' | 'image';
   }) {
     const saved = await this.notificationAttachmentsService.uploadAttachment({
       ...input,
@@ -1245,6 +1246,7 @@ export class NotificationsService {
         attachmentId: saved.id,
         originalName: saved.originalName,
         sizeBytes: saved.sizeBytes,
+        attachmentKind: saved.attachmentKind,
       },
     });
 
@@ -1253,6 +1255,7 @@ export class NotificationsService {
       name: saved.originalName,
       mimeType: saved.mimeType,
       sizeBytes: Number(saved.sizeBytes),
+      attachmentKind: saved.attachmentKind,
       messageId: saved.messageId,
       draftId: saved.draftId,
       createdAt: saved.createdAt,

@@ -27,6 +27,14 @@ describe('MessageContentService', () => {
     expect(sanitized).not.toMatch(/href\s*=/i);
   });
 
+  it('removes image tags when the source is stripped by sanitization', () => {
+    const html = '<p>hola<img src="blob:http://localhost/123" alt="foto.png" /></p>';
+    const sanitized = service.normalizeHtmlBody(html);
+
+    expect(sanitized).toBe('<p>hola</p>');
+    expect(sanitized).not.toContain('<img');
+  });
+
   it('adds noopener noreferrer when link opens on new tab', () => {
     const html = '<a href="https://example.com" target="_blank">go</a>';
     const sanitized = service.normalizeHtmlBody(html);

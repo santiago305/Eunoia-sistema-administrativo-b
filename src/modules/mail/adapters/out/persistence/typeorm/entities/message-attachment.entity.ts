@@ -29,6 +29,9 @@ export class MessageAttachmentEntity {
   @Column({ name: 'uploaded_by_user_id', type: 'uuid' })
   uploadedByUserId: string;
 
+  @Column({ name: 'attachment_kind', type: 'varchar', length: 20, default: 'file' })
+  attachmentKind: 'file' | 'image';
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 }

@@ -90,7 +90,7 @@ export class MessageContentService {
         },
       },
     });
-    return sanitized.trim();
+    return sanitized.replace(/<img\b(?![^>]*\bsrc=)[^>]*\/?>/gi, '').trim();
   }
 
   normalizeHtmlBody(bodyHtml: string) {

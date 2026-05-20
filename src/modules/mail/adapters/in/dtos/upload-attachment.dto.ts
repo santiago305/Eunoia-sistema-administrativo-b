@@ -1,4 +1,4 @@
-import { IsOptional, IsUUID } from 'class-validator';
+import { IsIn, IsOptional, IsUUID } from 'class-validator';
 
 export class UploadAttachmentDto {
   @IsOptional()
@@ -8,4 +8,8 @@ export class UploadAttachmentDto {
   @IsOptional()
   @IsUUID('4')
   draftId?: string;
+
+  @IsOptional()
+  @IsIn(['file', 'image'])
+  kind?: 'file' | 'image';
 }
