@@ -27,12 +27,13 @@ export class NotificationQueriesService {
   private stateViewCondition(
     stateAlias: string,
     messageAlias: string,
-    view: 'inbox' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'all',
+    view: 'inbox' | 'sent' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'all',
   ) {
     const parts = [`${stateAlias}.permanently_hidden_at IS NULL`];
     if (view !== 'all') {
       if (view === 'trash') parts.push(`${stateAlias}.deleted_at IS NOT NULL`);
       else parts.push(`${stateAlias}.deleted_at IS NULL`);
+      if (view === 'sent') parts.push(`${stateAlias}.is_in_sent = true`);
       if (view === 'archived') parts.push(`${stateAlias}.is_archived = true`);
       if (view !== 'archived') parts.push(`${stateAlias}.is_archived = false`);
       if (view === 'snoozed') parts.push(`${stateAlias}.snoozed_until IS NOT NULL AND ${stateAlias}.snoozed_until > now()`);
@@ -46,7 +47,7 @@ export class NotificationQueriesService {
 
   private applyThreadAnchorFilter<T extends { andWhere: (...args: any[]) => T }>(
     qb: T,
-    view: 'inbox' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'all',
+    view: 'inbox' | 'sent' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'all',
   ): T {
     const newerStateCondition = this.stateViewCondition('newer_mus', 'newer_m', view);
     return qb.andWhere(`
@@ -143,7 +144,7 @@ export class NotificationQueriesService {
       if (view === 'starred') qb.andWhere('mus.starred_at IS NOT NULL');
       if (view === 'inbox') qb.andWhere('mus.is_in_inbox = true');
     }
-    if (view !== 'sent') this.applyThreadAnchorFilter(qb, view);
+    this.applyThreadAnchorFilter(qb, view);
 
     if (query.labelId) {
       qb.innerJoin(
@@ -171,12 +172,13 @@ export class NotificationQueriesService {
   async countSidebarMessages(userId: string, labelIds: string[] = []) {
     const sidebarRaw = await this.messageUserStateRepository
       .createQueryBuilder('mus')
+      .innerJoin(MessageEntity, 'm', 'm.id = mus.message_id')
       .select('COALESCE(COUNT(*) FILTER (WHERE mus.deleted_at IS NULL AND mus.is_archived = false AND (mus.snoozed_until IS NULL OR mus.snoozed_until <= now()) AND mus.is_in_inbox = true AND mus.read_at IS NULL), 0)', 'inbox')
       .addSelect('COALESCE(COUNT(*) FILTER (WHERE mus.deleted_at IS NULL AND mus.is_archived = false AND (mus.snoozed_until IS NULL OR mus.snoozed_until <= now()) AND mus.starred_at IS NOT NULL AND mus.read_at IS NULL), 0)', 'starred')
       .addSelect('COALESCE(COUNT(*) FILTER (WHERE mus.deleted_at IS NOT NULL AND mus.read_at IS NULL), 0)', 'trash')
       .addSelect('COALESCE(COUNT(*) FILTER (WHERE mus.deleted_at IS NULL AND mus.is_archived = true AND mus.read_at IS NULL), 0)', 'archived')
       .addSelect('COALESCE(COUNT(*) FILTER (WHERE mus.deleted_at IS NULL AND mus.is_archived = false AND mus.snoozed_until IS NOT NULL AND mus.snoozed_until > now() AND mus.read_at IS NULL), 0)', 'snoozed')
-      .addSelect('COALESCE(COUNT(*) FILTER (WHERE mus.deleted_at IS NULL AND mus.is_archived = false AND (mus.snoozed_until IS NULL OR mus.snoozed_until <= now()) AND mus.is_in_sent = true), 0)', 'sent')
+      .addSelect('COALESCE(COUNT(DISTINCT COALESCE(m.thread_id, m.id)) FILTER (WHERE mus.deleted_at IS NULL AND mus.is_archived = false AND (mus.snoozed_until IS NULL OR mus.snoozed_until <= now()) AND mus.is_in_sent = true AND m.is_draft = false), 0)', 'sent')
       .where('mus.user_id = :userId', { userId })
       .andWhere('mus.permanently_hidden_at IS NULL')
       .getRawOne<{
@@ -311,6 +313,7 @@ export class NotificationQueriesService {
       if (typeof query.hasAttachments === 'boolean') {
         qbSent.andWhere(query.hasAttachments ? 'EXISTS (SELECT 1 FROM message_attachments ma WHERE ma.message_id = m.id)' : 'NOT EXISTS (SELECT 1 FROM message_attachments ma WHERE ma.message_id = m.id)');
       }
+      this.applyThreadAnchorFilter(qbSent, 'sent');
 
       const total = await qbSent.clone().getCount();
       const rows = await qbSent
