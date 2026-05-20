@@ -2,6 +2,7 @@ import { ORIGIN_MODULE, type OriginModule } from '../enums/origin-module.enum';
 
 const ORIGIN_MODULE_ALIASES: Record<string, OriginModule> = {
   purchase: ORIGIN_MODULE.PURCHASES,
+  purchases: ORIGIN_MODULE.PURCHASES,
   compras: ORIGIN_MODULE.PURCHASES,
   produccion: ORIGIN_MODULE.PRODUCTION,
   production: ORIGIN_MODULE.PRODUCTION,

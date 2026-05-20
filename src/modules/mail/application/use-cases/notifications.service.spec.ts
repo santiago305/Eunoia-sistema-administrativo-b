@@ -212,3 +212,102 @@ describe('NotificationsService forward preview', () => {
     });
   });
 });
+
+describe('NotificationsService replies', () => {
+  const userId = '7dc2492a-6613-46db-8339-d213d5ea6dda';
+  const parentMessageId = 'a07978de-bf9c-4521-984a-85d4dc54b117';
+
+  it('stores reply with the original conversation subject without Re prefix', async () => {
+    const parent = {
+      id: parentMessageId,
+      kind: 'USER_MESSAGE',
+      senderType: 'USER',
+      senderUserId: 'parent-user-id',
+      originModule: 'corporate',
+      sourceEntityType: null,
+      sourceEntityId: null,
+      threadId: 'thread-1',
+      subject: 'Re: Reporte original',
+      bodyHtml: '<p>Original</p>',
+      bodyText: 'Original',
+      sentAt: new Date('2026-05-20T10:00:00.000Z'),
+      createdAt: new Date('2026-05-20T09:59:00.000Z'),
+    };
+    let savedMessage: Record<string, unknown> | null = null;
+
+    const messageRepository = {
+      findOne: jest.fn().mockResolvedValue(parent),
+    };
+    const userRepository = {
+      findOne: jest.fn().mockResolvedValue({
+        id: parent.senderUserId,
+        name: 'Santiago',
+        email: 'santiago@example.com',
+      }),
+    };
+    const dataSource = {
+      transaction: jest.fn(async (callback: (manager: { getRepository: (entity: unknown) => unknown }) => Promise<unknown>) =>
+        callback({
+          getRepository: (entity: unknown) => {
+            if (entity === MessageThread) {
+              return { update: jest.fn() };
+            }
+            if (entity === MessageEntity) {
+              return {
+                create: jest.fn((value) => value),
+                save: jest.fn(async (value) => {
+                  savedMessage = { ...value, id: 'message-reply-id' };
+                  return savedMessage;
+                }),
+              };
+            }
+            if (entity === MessageRecipientEntity) {
+              return {
+                create: jest.fn((value) => value),
+                save: jest.fn(async (value) => value),
+              };
+            }
+            throw new Error('UNEXPECTED_REPOSITORY');
+          },
+        }) as Promise<unknown>,
+      ),
+    };
+
+    const service = new NotificationsService(
+      userRepository as any,
+      messageRepository as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      dataSource as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      { linkAttachmentsToMessage: jest.fn() } as any,
+      {} as any,
+      { normalizeHtmlBody: jest.fn((value) => value), toBodyText: jest.fn((value) => value) } as any,
+      { hasAnyRecipient: jest.fn(() => false) } as any,
+      { createAuditLog: jest.fn() } as any,
+      { createMessageUserStates: jest.fn() } as any,
+      { emitMessageCreatedToRecipients: jest.fn() } as any,
+      {} as any,
+      {} as any,
+    ) as any;
+
+    service.ensureCanOpenMessageOrThrow = jest.fn();
+    service.ensureCanAccessModule = jest.fn();
+
+    await service.replyMessage({
+      senderUserId: userId,
+      parentMessageId,
+      bodyHtml: '<p>Respuesta</p>',
+    });
+
+    expect(savedMessage?.subject).toBe('Reporte original');
+  });
+});

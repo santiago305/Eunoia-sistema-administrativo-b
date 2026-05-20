@@ -24,6 +24,84 @@ export class NotificationQueriesService {
     private readonly labelsService: NotificationLabelsService,
   ) {}
 
+  private stateViewCondition(
+    stateAlias: string,
+    messageAlias: string,
+    view: 'inbox' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'all',
+  ) {
+    const parts = [`${stateAlias}.permanently_hidden_at IS NULL`];
+    if (view !== 'all') {
+      if (view === 'trash') parts.push(`${stateAlias}.deleted_at IS NOT NULL`);
+      else parts.push(`${stateAlias}.deleted_at IS NULL`);
+      if (view === 'archived') parts.push(`${stateAlias}.is_archived = true`);
+      if (view !== 'archived') parts.push(`${stateAlias}.is_archived = false`);
+      if (view === 'snoozed') parts.push(`${stateAlias}.snoozed_until IS NOT NULL AND ${stateAlias}.snoozed_until > now()`);
+      if (view !== 'snoozed') parts.push(`(${stateAlias}.snoozed_until IS NULL OR ${stateAlias}.snoozed_until <= now())`);
+      if (view === 'starred') parts.push(`${stateAlias}.starred_at IS NOT NULL`);
+      if (view === 'inbox') parts.push(`${stateAlias}.is_in_inbox = true`);
+    }
+    parts.push(`${messageAlias}.is_draft = false`);
+    return parts.join(' AND ');
+  }
+
+  private applyThreadAnchorFilter<T extends { andWhere: (...args: any[]) => T }>(
+    qb: T,
+    view: 'inbox' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'all',
+  ): T {
+    const newerStateCondition = this.stateViewCondition('newer_mus', 'newer_m', view);
+    return qb.andWhere(`
+      NOT EXISTS (
+        SELECT 1
+        FROM message_user_states newer_mus
+        INNER JOIN messages newer_m ON newer_m.id = newer_mus.message_id
+        WHERE newer_mus.user_id = mus.user_id
+          AND newer_mus.thread_id = mus.thread_id
+          AND ${newerStateCondition}
+          AND (
+            COALESCE(newer_m.sent_at, newer_m.created_at) > COALESCE(m.sent_at, m.created_at)
+            OR (
+              COALESCE(newer_m.sent_at, newer_m.created_at) = COALESCE(m.sent_at, m.created_at)
+              AND newer_m.id > m.id
+            )
+          )
+      )
+    `);
+  }
+
+  private latestVisibleThreadMessageIdExpression() {
+    return `
+      COALESCE((
+        SELECT latest_m.id
+        FROM messages latest_m
+        INNER JOIN message_user_states latest_mus
+          ON latest_mus.message_id = latest_m.id
+          AND latest_mus.user_id = mus.user_id
+          AND latest_mus.permanently_hidden_at IS NULL
+        WHERE latest_m.thread_id = m.thread_id
+          AND latest_m.is_draft = false
+        ORDER BY COALESCE(latest_m.sent_at, latest_m.created_at) DESC, latest_m.id DESC
+        LIMIT 1
+      ), m.id)
+    `;
+  }
+
+  private latestVisibleThreadMessageDateExpression() {
+    return `
+      COALESCE((
+        SELECT COALESCE(latest_m.sent_at, latest_m.created_at)
+        FROM messages latest_m
+        INNER JOIN message_user_states latest_mus
+          ON latest_mus.message_id = latest_m.id
+          AND latest_mus.user_id = mus.user_id
+          AND latest_mus.permanently_hidden_at IS NULL
+        WHERE latest_m.thread_id = m.thread_id
+          AND latest_m.is_draft = false
+        ORDER BY COALESCE(latest_m.sent_at, latest_m.created_at) DESC, latest_m.id DESC
+        LIMIT 1
+      ), COALESCE(m.sent_at, m.created_at))
+    `;
+  }
+
   async countMessages(
     userId: string,
     query: {
@@ -65,6 +143,7 @@ export class NotificationQueriesService {
       if (view === 'starred') qb.andWhere('mus.starred_at IS NOT NULL');
       if (view === 'inbox') qb.andWhere('mus.is_in_inbox = true');
     }
+    if (view !== 'sent') this.applyThreadAnchorFilter(qb, view);
 
     if (query.labelId) {
       qb.innerJoin(
@@ -270,6 +349,7 @@ export class NotificationQueriesService {
       if (view === 'starred') qb.andWhere('mus.starred_at IS NOT NULL');
       if (view === 'inbox') qb.andWhere('mus.is_in_inbox = true');
     }
+    this.applyThreadAnchorFilter(qb, view);
 
     if (query.originModule) qb.andWhere('m.origin_module = :originModule', { originModule: query.originModule });
     if (query.q) {
@@ -313,12 +393,14 @@ export class NotificationQueriesService {
       qb.andWhere(query.hasAttachments ? 'EXISTS (SELECT 1 FROM message_attachments ma WHERE ma.message_id = m.id)' : 'NOT EXISTS (SELECT 1 FROM message_attachments ma WHERE ma.message_id = m.id)');
     }
 
-    qb.orderBy('m.sent_at', 'DESC').addOrderBy('m.created_at', 'DESC');
+    const latestMessageIdExpression = this.latestVisibleThreadMessageIdExpression();
+    const latestMessageDateExpression = this.latestVisibleThreadMessageDateExpression();
+    qb.orderBy(latestMessageDateExpression, 'DESC').addOrderBy('m.created_at', 'DESC');
 
     const total = await qb.clone().getCount();
     const rows = await qb
       .clone()
-      .select(['mus.id AS state_id', 'mus.message_id AS message_id'])
+      .select(['mus.id AS state_id', `${latestMessageIdExpression} AS message_id`])
       .limit(limit)
       .offset((page - 1) * limit)
       .getRawMany<{ state_id: string; message_id: string }>();
@@ -328,6 +410,23 @@ export class NotificationQueriesService {
 
     const states = stateIds.length ? await this.messageUserStateRepository.find({ where: stateIds.map((id) => ({ id })) }) : [];
     const messages = messageIds.length ? await this.messageRepository.find({ where: messageIds.map((id) => ({ id })) }) : [];
+    const groupedSystemThreadIds = Array.from(
+      new Set(
+        messages
+          .filter((message) => message.senderType === 'SYSTEM' && message.sourceEntityType && message.sourceEntityId && message.threadId)
+          .map((message) => message.threadId!),
+      ),
+    );
+    const threadCountRows = groupedSystemThreadIds.length
+      ? await this.messageRepository
+          .createQueryBuilder('m')
+          .select('m.thread_id', 'threadId')
+          .addSelect('COUNT(*)', 'total')
+          .where('m.thread_id IN (:...threadIds)', { threadIds: groupedSystemThreadIds })
+          .groupBy('m.thread_id')
+          .getRawMany<{ threadId: string; total: string }>()
+      : [];
+    const threadCountMap = new Map(threadCountRows.map((row) => [row.threadId, Number(row.total ?? 0)]));
     const senderIds = Array.from(new Set(messages.map((m) => m.senderUserId).filter(Boolean))) as string[];
     const senders = senderIds.length ? await this.userRepository.find({ where: senderIds.map((id) => ({ id })), select: ['id', 'name', 'email'] }) : [];
     const senderMap = new Map(senders.map((sender) => [sender.id, sender]));
@@ -369,7 +468,19 @@ export class NotificationQueriesService {
               updatedAt: state.updatedAt,
             };
           })(),
-          message: messageMap.get(row.message_id) ?? null,
+          message: (() => {
+            const msg = messageMap.get(row.message_id);
+            if (!msg) return null;
+            const threadMessageCount = msg.threadId ? threadCountMap.get(msg.threadId) ?? null : null;
+            if (!threadMessageCount) return msg;
+            return {
+              ...msg,
+              latestMessageId: msg.id,
+              threadMessageCount,
+              threadLatestIndex: threadMessageCount,
+              threadLabel: `Sistema ${threadMessageCount} de ${threadMessageCount} mensajes`,
+            };
+          })(),
           labels: labelsByState.get(row.state_id) ?? [],
           sender: (() => {
             const msg = messageMap.get(row.message_id);

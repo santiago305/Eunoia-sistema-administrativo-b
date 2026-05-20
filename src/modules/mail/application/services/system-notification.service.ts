@@ -67,26 +67,49 @@ export class SystemNotificationService {
     const subject = input.title?.trim() || 'Notificacion del sistema';
     const bodyText = input.message?.trim() || '';
     const bodyHtml = `<p>${bodyText}</p>`;
+    const sourceEntityType = input.sourceEntityType?.trim() || null;
+    const sourceEntityId = this.toUuidOrNull(input.sourceEntityId ?? null);
+    const canGroupByEntity = Boolean(sourceEntityType && sourceEntityId);
 
-    const thread = await this.messageThreadRepository.save(
-      this.messageThreadRepository.create({
+    const existingThread = canGroupByEntity
+      ? await this.messageThreadRepository.findOne({
+          where: {
+            originModule,
+            sourceEntityType,
+            sourceEntityId,
+          },
+        })
+      : null;
+    const previousMessage = existingThread
+      ? await this.messageRepository.findOne({
+          where: { threadId: existingThread.id },
+          order: { sentAt: 'DESC', createdAt: 'DESC' },
+        })
+      : null;
+
+    const thread = existingThread
+      ? await this.messageThreadRepository.save({
+          ...existingThread,
+          subject,
+          lastMessageAt: new Date(),
+        })
+      : await this.messageThreadRepository.save(this.messageThreadRepository.create({
         subject,
         createdByUserId: null,
         originModule,
-        sourceEntityType: input.sourceEntityType ?? null,
-        sourceEntityId: this.toUuidOrNull(input.sourceEntityId ?? null),
+        sourceEntityType,
+        sourceEntityId,
         lastMessageAt: new Date(),
-      }),
-    );
+      }));
 
     const systemMessage = await this.messageRepository.save(
       this.messageRepository.create({
         threadId: thread.id,
-        parentMessageId: null,
+        parentMessageId: previousMessage?.id ?? null,
         kind: 'SYSTEM_NOTIFICATION',
         originModule,
-        sourceEntityType: input.sourceEntityType ?? null,
-        sourceEntityId: this.toUuidOrNull(input.sourceEntityId ?? null),
+        sourceEntityType,
+        sourceEntityId,
         senderType: 'SYSTEM',
         senderUserId: null,
         createdByUserId: null,

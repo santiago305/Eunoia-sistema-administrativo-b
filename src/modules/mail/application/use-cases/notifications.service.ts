@@ -90,6 +90,66 @@ export class NotificationsService {
     };
   }
 
+  private normalizeConversationSubject(subject: string) {
+    return String(subject ?? '').replace(/^(?:\s*(?:re|fwd):\s*)+/i, '').trim() || '(Sin asunto)';
+  }
+
+  private async buildThreadItems(message: MessageEntity) {
+    const isGroupedSystemThread = Boolean(
+      message.senderType === 'SYSTEM' &&
+      message.sourceEntityType &&
+      message.sourceEntityId,
+    );
+    const threadMessages = message.threadId
+      ? await this.messageRepository.find({
+          where: { threadId: message.threadId },
+          order: isGroupedSystemThread ? { createdAt: 'DESC' } : { createdAt: 'ASC' },
+        })
+      : [message];
+    const messageIds = threadMessages.map((item) => item.id);
+    const senderIds = Array.from(new Set(threadMessages.map((item) => item.senderUserId).filter(Boolean))) as string[];
+    const senders = senderIds.length
+      ? await this.userRepository.find({
+          where: senderIds.map((id) => ({ id })),
+          select: ['id', 'name', 'email'],
+        })
+      : [];
+    const recipients = messageIds.length
+      ? await this.messageUserStateRepository.find({
+          where: messageIds.map((messageId) => ({ messageId })),
+        })
+      : [];
+    const attachments = messageIds.length
+      ? await this.messageAttachmentRepository.find({
+          where: messageIds.map((messageId) => ({ messageId })),
+        })
+      : [];
+    const senderMap = new Map(senders.map((sender) => [sender.id, sender]));
+    const recipientsByMessage = new Map<string, MessageUserStateEntity[]>();
+    recipients.forEach((recipient) => {
+      const bucket = recipientsByMessage.get(recipient.messageId) ?? [];
+      bucket.push(recipient);
+      recipientsByMessage.set(recipient.messageId, bucket);
+    });
+    const attachmentsByMessage = new Map<string, MessageAttachmentEntity[]>();
+    attachments.forEach((attachment) => {
+      if (!attachment.messageId) return;
+      const bucket = attachmentsByMessage.get(attachment.messageId) ?? [];
+      bucket.push(attachment);
+      attachmentsByMessage.set(attachment.messageId, bucket);
+    });
+
+    return threadMessages.map((threadMessage, index) => ({
+      ...threadMessage,
+      sender: threadMessage.senderUserId ? senderMap.get(threadMessage.senderUserId) ?? null : null,
+      recipients: recipientsByMessage.get(threadMessage.id) ?? [],
+      attachments: attachmentsByMessage.get(threadMessage.id) ?? [],
+      threadMessageCount: threadMessages.length,
+      threadLatestIndex: isGroupedSystemThread ? index + 1 : threadMessages.length,
+      threadLabel: isGroupedSystemThread ? `Sistema ${index + 1} de ${threadMessages.length} mensajes` : null,
+    }));
+  }
+
   async getAllowedNotificationModules(userId: string) {
     const allowedModules = await this.accessControlPort.getAllowedNotificationModules(
       userId,
@@ -313,7 +373,7 @@ export class NotificationsService {
           senderType: 'USER',
           senderUserId: input.senderUserId,
           createdByUserId: input.senderUserId,
-          subject: parent.subject.startsWith('Re:') ? parent.subject : `Re: ${parent.subject}`,
+          subject: this.normalizeConversationSubject(parent.subject),
           bodyHtml,
           bodyText,
           bodyJson: input.bodyJson ?? null,
@@ -855,12 +915,7 @@ export class NotificationsService {
             where: labelAssignments.map((assignment) => ({ id: assignment.labelId })),
           })
         : [];
-      const thread = ownMessage.threadId
-        ? await this.messageRepository.find({
-            where: { threadId: ownMessage.threadId },
-            order: { createdAt: 'ASC' },
-          })
-        : [ownMessage];
+      const thread = await this.buildThreadItems(ownMessage);
       return {
         recipient: senderState,
         message: ownMessage,
@@ -925,12 +980,7 @@ export class NotificationsService {
       });
     }
 
-    const thread = message.threadId
-      ? await this.messageRepository.find({
-          where: { threadId: message.threadId },
-          order: { createdAt: 'ASC' },
-        })
-      : [message];
+    const thread = await this.buildThreadItems(message);
     const canViewModule = await this.accessControlPort.canViewModuleMessages(
       userId,
       message.originModule,
