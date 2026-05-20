@@ -69,6 +69,11 @@ export class NotificationsService {
     private readonly systemNotificationService: SystemNotificationService,
   ) {}
 
+  private ensureUserReplyableMessage(parent: MessageEntity) {
+    if (parent.senderType === 'SYSTEM' || parent.kind !== 'USER_MESSAGE') {
+      throw new BadRequestException('SYSTEM_MESSAGE_NOT_REPLYABLE');
+    }
+  }
 
   async getAllowedNotificationModules(userId: string) {
     const allowedModules = await this.accessControlPort.getAllowedNotificationModules(
@@ -245,6 +250,7 @@ export class NotificationsService {
   }) {
     const parent = await this.messageRepository.findOne({ where: { id: input.parentMessageId } });
     if (!parent) throw new NotFoundException('MESSAGE_NOT_FOUND');
+    this.ensureUserReplyableMessage(parent);
     await this.ensureCanOpenMessageOrThrow(input.senderUserId, parent.id);
     await this.ensureCanAccessModule(input.senderUserId, parent.originModule);
 
@@ -473,6 +479,7 @@ export class NotificationsService {
   }) {
     const parent = await this.messageRepository.findOne({ where: { id: input.parentMessageId } });
     if (!parent) throw new NotFoundException('MESSAGE_NOT_FOUND');
+    this.ensureUserReplyableMessage(parent);
     await this.ensureCanOpenMessageOrThrow(input.senderUserId, parent.id);
     const { recipients: resolvedRecipients } = await this.messageRecipientsResolverService.resolveRecipientsByBucketsOrFail({
       to: input.to,
@@ -841,8 +848,8 @@ export class NotificationsService {
         thread,
         permissions: {
           canOpen: true,
-          canReply: true,
-          canForward: true,
+          canReply: ownMessage.senderType !== 'SYSTEM' && ownMessage.kind === 'USER_MESSAGE',
+          canForward: ownMessage.senderType !== 'SYSTEM' && ownMessage.kind === 'USER_MESSAGE',
           canArchive: true,
           canDelete: true,
           canDownloadAttachments: true,
@@ -923,12 +930,12 @@ export class NotificationsService {
       attachments,
       labels,
       thread,
-      permissions: {
-        canOpen: true,
-        canReply: true,
-        canForward: true,
-        canArchive: true,
-        canDelete: true,
+        permissions: {
+          canOpen: true,
+          canReply: message.senderType !== 'SYSTEM' && message.kind === 'USER_MESSAGE',
+          canForward: message.senderType !== 'SYSTEM' && message.kind === 'USER_MESSAGE',
+          canArchive: true,
+          canDelete: true,
         canDownloadAttachments: canDownloadAttachment,
         canViewModule,
       },
