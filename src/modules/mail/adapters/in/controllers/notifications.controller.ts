@@ -19,6 +19,8 @@ import { UpdateLabelDto } from '../dtos/update-label.dto';
 import { SnoozeMessageDto } from '../dtos/snooze-message.dto';
 import { CreateSearchHistoryDto } from '../dtos/create-search-history.dto';
 import { UploadAttachmentDto } from '../dtos/upload-attachment.dto';
+import { ListMailActionsQueryDto } from '../dtos/list-mail-actions.query';
+import { ExecuteMailActionDto } from '../dtos/execute-mail-action.dto';
 import { IsOptional, IsUUID } from 'class-validator';
 
 class UpsertModuleLabelConfigDto {
@@ -142,6 +144,30 @@ export class NotificationsController {
   @Get('messages/:id')
   getMessageDetail(@CurrentUser() user: { id: string }, @Param('id') id: string) {
     return this.notificationsService.getMessageDetail(user.id, id);
+  }
+
+  @RequirePermissions('notifications.read')
+  @Get('actions')
+  listActions(@CurrentUser() user: { id: string }, @Query() query: ListMailActionsQueryDto) {
+    return this.notificationsService.listMessageActions(user.id, {
+      threadId: query.threadId,
+      messageId: query.messageId,
+    });
+  }
+
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @RequirePermissions('notifications.manage')
+  @Post('actions/:id/execute')
+  executeAction(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Body() body: ExecuteMailActionDto,
+  ) {
+    return this.notificationsService.executeMessageAction({
+      userId: user.id,
+      actionId: id,
+      comment: body.comment,
+    });
   }
 
   @Throttle({ default: { limit: 12, ttl: 60_000 } })

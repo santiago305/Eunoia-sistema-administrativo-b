@@ -174,6 +174,20 @@ export class PurchaseOrdersController {
             metadata: {
               poId: result.order.poId,
               approvalRequestId: savedApprovalRequest.id,
+              actions: [
+                {
+                  actionKey: `purchase-confirmation:${result.order.poId}`,
+                  actionType: "PURCHASE_CONFIRMATION",
+                  targetEntityType: "purchase_order",
+                  targetEntityId: result.order.poId,
+                  canExecuteUserIds: filteredApprovers,
+                  requiredPermissions: ["purchases.approve_creation_with_payment"],
+                  metadata: {
+                    label: "Confirmar compra",
+                    completedLabel: "Compra confirmada",
+                  },
+                },
+              ],
               showAsToast: true,
             },
             showAsToast: true,

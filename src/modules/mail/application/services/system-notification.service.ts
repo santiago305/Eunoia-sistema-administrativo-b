@@ -10,6 +10,7 @@ import { NotificationRealtimeService } from '../../infrastructure/realtime/notif
 import { NotificationPayloadMapperService } from './notification-payload-mapper.service';
 import { MessageAuditService } from './message-audit.service';
 import { NotificationLabelsService } from './notification-labels.service';
+import { MessageActionsService } from './message-actions.service';
 import { ORIGIN_MODULE } from '../../domain/enums/origin-module.enum';
 import { normalizeOriginModule } from '../../domain/utils/normalize-origin-module';
 
@@ -32,6 +33,7 @@ export class SystemNotificationService {
     private readonly notificationPayloadMapperService: NotificationPayloadMapperService,
     private readonly messageAuditService: MessageAuditService,
     private readonly notificationLabelsService: NotificationLabelsService,
+    private readonly messageActionsService: MessageActionsService,
   ) {}
 
   private toUuidOrNull(value?: string | null) {
@@ -167,6 +169,16 @@ export class SystemNotificationService {
       userId: state.userId,
       recipientId: state.id,
     }));
+
+    await this.messageActionsService.createActionsForSystemMessage({
+      threadId: thread.id,
+      messageId: systemMessage.id,
+      recipientUserIds: users.map((user) => user.id),
+      actionsRaw:
+        input.metadata && typeof input.metadata === 'object' && !Array.isArray(input.metadata)
+          ? (input.metadata as Record<string, unknown>).actions
+          : undefined,
+    });
 
     for (const state of savedStates) {
       const payload = this.notificationPayloadMapperService.toNotificationResponse(state, systemMessage);

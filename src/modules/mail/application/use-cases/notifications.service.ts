@@ -23,6 +23,7 @@ import { MessageUserStatesService } from '../services/message-user-states.servic
 import { MessageRealtimeEventsService } from '../services/message-realtime-events.service';
 import { MessageUserStateAccessService } from '../services/message-user-state-access.service';
 import { SystemNotificationService } from '../services/system-notification.service';
+import { MessageActionsService } from '../services/message-actions.service';
 import { ORIGIN_MODULE } from '../../domain/enums/origin-module.enum';
 import { normalizeOriginModule } from '../../domain/utils/normalize-origin-module';
 import {
@@ -67,6 +68,7 @@ export class NotificationsService {
     private readonly messageRealtimeEventsService: MessageRealtimeEventsService,
     private readonly messageUserStateAccessService: MessageUserStateAccessService,
     private readonly systemNotificationService: SystemNotificationService,
+    private readonly messageActionsService: MessageActionsService,
   ) {}
 
   private ensureUserReplyableMessage(parent: MessageEntity) {
@@ -94,7 +96,7 @@ export class NotificationsService {
     return String(subject ?? '').replace(/^(?:\s*(?:re|fwd):\s*)+/i, '').trim() || '(Sin asunto)';
   }
 
-  private async buildThreadItems(message: MessageEntity) {
+  private async buildThreadItems(message: MessageEntity, userId: string) {
     const isGroupedSystemThread = Boolean(
       message.senderType === 'SYSTEM' &&
       message.sourceEntityType &&
@@ -138,12 +140,34 @@ export class NotificationsService {
       bucket.push(attachment);
       attachmentsByMessage.set(attachment.messageId, bucket);
     });
+    const threadActions = await this.messageActionsService.listThreadActionsForMessages(userId, {
+      threadId: message.threadId,
+      messageIds,
+    });
+    const actionsByMessageId = new Map<string, Array<Record<string, unknown>>>();
+    const threadLevelActions: Array<Record<string, unknown>> = [];
+    threadActions.forEach((action) => {
+      if (action.messageId) {
+        const bucket = actionsByMessageId.get(action.messageId) ?? [];
+        bucket.push(action);
+        actionsByMessageId.set(action.messageId, bucket);
+      } else {
+        threadLevelActions.push(action);
+      }
+    });
+    const threadLevelTargetId = threadMessages[0]?.id ?? null;
+    if (threadLevelTargetId && threadLevelActions.length) {
+      const bucket = actionsByMessageId.get(threadLevelTargetId) ?? [];
+      bucket.push(...threadLevelActions);
+      actionsByMessageId.set(threadLevelTargetId, bucket);
+    }
 
     return threadMessages.map((threadMessage, index) => ({
       ...threadMessage,
       sender: threadMessage.senderUserId ? senderMap.get(threadMessage.senderUserId) ?? null : null,
       recipients: recipientsByMessage.get(threadMessage.id) ?? [],
       attachments: attachmentsByMessage.get(threadMessage.id) ?? [],
+      actions: actionsByMessageId.get(threadMessage.id) ?? [],
       threadMessageCount: threadMessages.length,
       threadLatestIndex: isGroupedSystemThread ? index + 1 : threadMessages.length,
       threadLabel: isGroupedSystemThread ? `Sistema ${index + 1} de ${threadMessages.length} mensajes` : null,
@@ -886,6 +910,18 @@ export class NotificationsService {
     return { hasUnread: (result.total ?? 0) > 0 };
   }
 
+  async listMessageActions(userId: string, query: { threadId?: string; messageId?: string }) {
+    return this.messageActionsService.listActionsForUser(userId, query);
+  }
+
+  async executeMessageAction(input: { userId: string; actionId: string; comment?: string }) {
+    return this.messageActionsService.executeAction({
+      userId: input.userId,
+      actionId: input.actionId,
+      comment: input.comment,
+    });
+  }
+
   async getMessageDetail(userId: string, id: string) {
     await this.releaseDueSnoozedMessagesForUser(userId);
     await this.expireTrashForUser(userId);
@@ -915,7 +951,7 @@ export class NotificationsService {
             where: labelAssignments.map((assignment) => ({ id: assignment.labelId })),
           })
         : [];
-      const thread = await this.buildThreadItems(ownMessage);
+      const thread = await this.buildThreadItems(ownMessage, userId);
       return {
         recipient: senderState,
         message: ownMessage,
@@ -980,7 +1016,7 @@ export class NotificationsService {
       });
     }
 
-    const thread = await this.buildThreadItems(message);
+    const thread = await this.buildThreadItems(message, userId);
     const canViewModule = await this.accessControlPort.canViewModuleMessages(
       userId,
       message.originModule,

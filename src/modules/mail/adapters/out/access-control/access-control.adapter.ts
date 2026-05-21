@@ -91,4 +91,9 @@ export class AccessControlAdapter implements AccessControlPort {
 
     return Boolean(participant);
   }
+
+  async userHasAllPermissions(userId: string, permissions: string[]): Promise<boolean> {
+    if (!permissions.length) return true;
+    return this.accessControlService.userHasAllPermissions(userId, permissions);
+  }
 }

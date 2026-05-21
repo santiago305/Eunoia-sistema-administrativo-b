@@ -8,4 +8,5 @@ export interface AccessControlPort {
   canViewModuleMessages(userId: string, originModule: string, requiredPermissions: string[]): Promise<boolean>;
   canOpenMessage(userId: string, messageId: string, originModule: string, requiredPermissions: string[]): Promise<boolean>;
   canDownloadAttachment(userId: string, attachmentId: string, originModule: string, requiredPermissions: string[]): Promise<boolean>;
+  userHasAllPermissions(userId: string, permissions: string[]): Promise<boolean>;
 }

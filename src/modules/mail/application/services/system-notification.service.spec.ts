@@ -52,6 +52,7 @@ describe('SystemNotificationService grouped threads', () => {
       { toNotificationResponse: jest.fn(() => ({ notification: {} })) } as any,
       { createAuditLog: jest.fn() } as any,
       { assignLabelsToState: jest.fn() } as any,
+      { createActionsForSystemMessage: jest.fn() } as any,
     );
 
     await service.createNotificationForUsers({
