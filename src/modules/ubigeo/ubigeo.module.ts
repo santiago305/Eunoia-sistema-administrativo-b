@@ -5,6 +5,7 @@ import { UbigeoDepartmentEntity } from "./adapters/out/persistence/typeorm/entit
 import { UbigeoDistrictEntity } from "./adapters/out/persistence/typeorm/entities/ubigeo-district.entity";
 import { UbigeoProvinceEntity } from "./adapters/out/persistence/typeorm/entities/ubigeo-province.entity";
 import { ubigeoModuleProviders } from "./composition/container";
+import { UBIGEO_REPOSITORY } from "./domain/ports/ubigeo.repository";
 
 @Module({
   imports: [
@@ -16,5 +17,6 @@ import { ubigeoModuleProviders } from "./composition/container";
   ],
   controllers: [UbigeoController],
   providers: [...ubigeoModuleProviders],
+  exports: [UBIGEO_REPOSITORY],
 })
 export class UbigeoModule {}

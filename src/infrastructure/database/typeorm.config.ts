@@ -4,7 +4,10 @@ import { envs } from "../config/envs";
 import { EnableUnaccentExtension20260411000000 } from "./migrations/20260411000000-enable-unaccent-extension";
 import { AddListingIndexes20260412000000 } from "./migrations/20260412000000-add-listing-indexes";
 import { CreateUbigeoTables20260421010000 } from "./migrations/20260421010000-create-ubigeo-tables";
+import { CreateClientsCore20260519000000 } from "./migrations/20260519000000-create-clients-core";
 import { CreateCorporateMessagingCore20260511000000 } from "./migrations/20260511000000-create-corporate-messaging-core";
+import { CreatePacksCore20260519010000 } from "./migrations/20260519010000-create-packs-core";
+import { AddClientsNoneDocType20260520020000 } from "./migrations/20260520020000-add-clients-none-doc-type";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -31,6 +34,9 @@ export const getMigrationDataSourceOptions = (): DataSourceOptions => ({
     AddListingIndexes20260412000000,
     CreateUbigeoTables20260421010000,
     CreateCorporateMessagingCore20260511000000,
+    CreateClientsCore20260519000000,
+    CreatePacksCore20260519010000,
+    AddClientsNoneDocType20260520020000,
   ],
 });
 
