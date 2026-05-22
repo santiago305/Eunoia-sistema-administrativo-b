@@ -280,7 +280,9 @@ export class MessageActionsService {
       };
     });
 
-    await this.emitActionUpdated(input.actionId);
+    if (result.code === 'ACTION_COMPLETED') {
+      await this.emitActionUpdated(input.actionId);
+    }
     return result;
   }
 

@@ -90,6 +90,8 @@ describe('MessageActionsService', () => {
       }),
     };
 
+    const realtimeService = { emitToUser: jest.fn() };
+
     const service = new MessageActionsService(
       { findOne: jest.fn() } as any,
       { findOne: actionRepoFindOne, createQueryBuilder: jest.fn(), save: jest.fn(), create: jest.fn() } as any,
@@ -97,10 +99,10 @@ describe('MessageActionsService', () => {
       dataSource as any,
       { userHasAllPermissions: jest.fn(async () => allowPermissions) } as any,
       { createAuditLog: jest.fn() } as any,
-      { emitToUser: jest.fn() } as any,
+      realtimeService as any,
     );
 
-    return { service };
+    return { service, realtimeService };
   };
 
   it('returns ACTION_ALREADY_COMPLETED when action already completed by another user', async () => {
@@ -111,6 +113,16 @@ describe('MessageActionsService', () => {
     });
     expect(result.code).toBe('ACTION_ALREADY_COMPLETED');
     expect(result.action.status).toBe('COMPLETED');
+  });
+
+  it('does not emit realtime update when action was already completed', async () => {
+    const { service, realtimeService } = buildService({ actionStatus: 'COMPLETED' });
+    const result = await service.executeAction({
+      actionId: 'action-1',
+      userId: 'user-1',
+    });
+    expect(result.code).toBe('ACTION_ALREADY_COMPLETED');
+    expect(realtimeService.emitToUser).not.toHaveBeenCalled();
   });
 
   it('rejects execution when user does not have required permission', async () => {
