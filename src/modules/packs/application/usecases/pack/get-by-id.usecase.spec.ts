@@ -16,7 +16,14 @@ describe("GetPackUsecase", () => {
             quantity: 1,
             price: 20,
             lineTotal: 20,
-            sku: { id: "sku-1", backendSku: "00001", name: "SKU 1", price: 99, isActive: true },
+            sku: {
+              id: "sku-1",
+              backendSku: "00001",
+              name: "SKU 1",
+              price: 99,
+              isActive: true,
+              attributes: [{ code: "variant", name: "Variante", value: "curcuma" }],
+            },
           },
         ],
       }),
@@ -46,4 +53,3 @@ describe("GetPackUsecase", () => {
     }
   });
 });
-

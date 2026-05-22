@@ -8,10 +8,6 @@ export class GetPackUsecase {
   ) {}
 
   async execute(input: { packId: string }) {
-    if (!this.packRepo.findByIdWithItems) {
-      throw new NotFoundException("Pack no encontrado");
-    }
-
     const details = await this.packRepo.findByIdWithItems(input.packId);
     if (!details) {
       throw new NotFoundException("Pack no encontrado");

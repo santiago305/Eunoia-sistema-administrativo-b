@@ -49,5 +49,41 @@ export class PackItemTypeormRepository implements PackItemRepository {
     }));
     await repo.save(rows);
   }
-}
 
+  async listByPackId(
+    packId: string,
+    tx?: TransactionContext,
+  ): Promise<Array<{ id: string; skuId: string; quantity: number; price: number }>> {
+    const repo = this.getRepo(tx);
+    const rows = await repo.find({
+      where: { packId },
+      order: { id: "ASC" },
+    });
+
+    return rows.map((row) => ({
+      id: row.id,
+      skuId: row.skuId,
+      quantity: Number(row.quantity ?? 0),
+      price: Number(row.price ?? 0),
+    }));
+  }
+
+  async deleteByIds(ids: string[], tx?: TransactionContext): Promise<void> {
+    if (!ids.length) return;
+    const repo = this.getRepo(tx);
+    await repo.delete(ids);
+  }
+
+  async updateMany(
+    patch: Array<{ id: string; quantity: number; price: number }>,
+    tx?: TransactionContext,
+  ): Promise<void> {
+    const repo = this.getRepo(tx);
+    for (const item of patch) {
+      await repo.update(
+        { id: item.id },
+        { quantity: item.quantity as any, price: item.price as any },
+      );
+    }
+  }
+}
