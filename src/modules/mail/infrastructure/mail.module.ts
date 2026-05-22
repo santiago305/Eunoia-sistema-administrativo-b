@@ -25,6 +25,7 @@ import { PaymentDocumentEntity } from 'src/modules/payments/adapters/out/persist
 import { ExpireDraftsJob } from './jobs/expire-drafts.job';
 import { ExpireTrashJob } from './jobs/expire-trash.job';
 import { ReleaseSnoozedMessagesJob } from './jobs/release-snoozed-messages.job';
+import { ReleaseScheduledMessagesJob } from './jobs/release-scheduled-messages.job';
 import { CleanOrphanAttachmentsJob } from './jobs/clean-orphan-attachments.job';
 import { CreateYearlyPartitionsJob } from './jobs/create-yearly-partitions.job';
 import { MailJobsScheduler } from './jobs/mail-jobs.scheduler';
@@ -92,6 +93,7 @@ import { AccessControlAdapter } from '../adapters/out/access-control/access-cont
     ExpireDraftsJob,
     ExpireTrashJob,
     ReleaseSnoozedMessagesJob,
+    ReleaseScheduledMessagesJob,
     CleanOrphanAttachmentsJob,
     CreateYearlyPartitionsJob,
     MailJobsScheduler,

@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/commo
 import { ExpireDraftsJob } from './expire-drafts.job';
 import { ExpireTrashJob } from './expire-trash.job';
 import { ReleaseSnoozedMessagesJob } from './release-snoozed-messages.job';
+import { ReleaseScheduledMessagesJob } from './release-scheduled-messages.job';
 import { CleanOrphanAttachmentsJob } from './clean-orphan-attachments.job';
 import { CreateYearlyPartitionsJob } from './create-yearly-partitions.job';
 
@@ -15,12 +16,14 @@ export class MailJobsScheduler implements OnModuleInit, OnModuleDestroy {
     private readonly expireDraftsJob: ExpireDraftsJob,
     private readonly expireTrashJob: ExpireTrashJob,
     private readonly releaseSnoozedMessagesJob: ReleaseSnoozedMessagesJob,
+    private readonly releaseScheduledMessagesJob: ReleaseScheduledMessagesJob,
     private readonly cleanOrphanAttachmentsJob: CleanOrphanAttachmentsJob,
     private readonly createYearlyPartitionsJob: CreateYearlyPartitionsJob,
   ) {}
 
   onModuleInit() {
     this.schedule('release-snoozed', 60_000, () => this.releaseSnoozedMessagesJob.run());
+    this.schedule('release-scheduled', 60_000, () => this.releaseScheduledMessagesJob.run());
     this.schedule('expire-trash', 5 * 60_000, () => this.expireTrashJob.run());
     this.schedule('expire-drafts', 60 * 60_000, () => this.expireDraftsJob.run());
     this.schedule('clean-orphan-attachments', 6 * 60 * 60_000, () => this.cleanOrphanAttachmentsJob.run());

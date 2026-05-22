@@ -8,6 +8,7 @@ import { RequirePermissions } from 'src/modules/access-control/adapters/in/decor
 import { User as CurrentUser } from 'src/shared/utilidades/decorators/user.decorator';
 import { NotificationsService } from 'src/modules/mail/application/use-cases/notifications.service';
 import { CreateMessageDto } from '../dtos/create-message.dto';
+import { CreateScheduledMessageDto } from '../dtos/create-scheduled-message.dto';
 import { ListMessagesQueryDto } from '../dtos/list-messages.query';
 import { ReplyForwardMessageDto } from '../dtos/reply-forward-message.dto';
 import { CreateDraftDto } from '../dtos/create-draft.dto';
@@ -17,6 +18,7 @@ import { BulkMessageActionDto } from '../dtos/bulk-message-action.dto';
 import { CreateLabelDto } from '../dtos/create-label.dto';
 import { UpdateLabelDto } from '../dtos/update-label.dto';
 import { SnoozeMessageDto } from '../dtos/snooze-message.dto';
+import { ScheduleMessageDto } from '../dtos/schedule-message.dto';
 import { CreateSearchHistoryDto } from '../dtos/create-search-history.dto';
 import { UploadAttachmentDto } from '../dtos/upload-attachment.dto';
 import { ListMailActionsQueryDto } from '../dtos/list-mail-actions.query';
@@ -187,6 +189,48 @@ export class NotificationsController {
       labelIds: body.labelIds ?? [],
       attachmentIds: body.attachmentIds ?? [],
     });
+  }
+
+  @Throttle({ default: { limit: 12, ttl: 60_000 } })
+  @RequirePermissions('notifications.manage')
+  @Post('messages/scheduled')
+  createScheduledMessage(@CurrentUser() user: { id: string }, @Body() body: CreateScheduledMessageDto) {
+    return this.notificationsService.createScheduledMessage({
+      senderUserId: user.id,
+      to: body.to,
+      cc: body.cc,
+      bcc: body.bcc,
+      recipients: body.recipients,
+      subject: body.subject,
+      bodyHtml: body.bodyHtml,
+      bodyJson: body.bodyJson,
+      scheduledAt: body.scheduledAt,
+      originModule: body.originModule,
+      labelIds: body.labelIds ?? [],
+      attachmentIds: body.attachmentIds ?? [],
+    });
+  }
+
+  @RequirePermissions('notifications.manage')
+  @Patch('messages/:id/schedule')
+  rescheduleMessage(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Body() body: ScheduleMessageDto,
+  ) {
+    return this.notificationsService.rescheduleMessage(user.id, id, body.scheduledAt);
+  }
+
+  @RequirePermissions('notifications.manage')
+  @Delete('messages/:id/schedule')
+  cancelScheduledMessage(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.notificationsService.cancelScheduledMessage(user.id, id);
+  }
+
+  @RequirePermissions('notifications.manage')
+  @Post('messages/:id/schedule/send-now')
+  sendScheduledMessageNow(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    return this.notificationsService.sendScheduledMessageNow(user.id, id);
   }
 
   @RequirePermissions('notifications.manage')

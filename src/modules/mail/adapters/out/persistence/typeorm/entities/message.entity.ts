@@ -57,7 +57,7 @@ export class MessageEntity {
   @Column({ name: 'last_autosaved_at', type: 'timestamp', nullable: true })
   lastAutosavedAt: Date | null;
 
-  @Column({ name: 'scheduled_at', type: 'timestamp', nullable: true })
+  @Column({ name: 'scheduled_at', type: 'timestamptz', nullable: true })
   scheduledAt: Date | null;
 
   @Column({ name: 'sent_at', type: 'timestamp', nullable: true })

@@ -27,7 +27,7 @@ export class NotificationQueriesService {
   private stateViewCondition(
     stateAlias: string,
     messageAlias: string,
-    view: 'inbox' | 'sent' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'all',
+    view: 'inbox' | 'sent' | 'scheduled' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'all',
   ) {
     const parts = [`${stateAlias}.permanently_hidden_at IS NULL`];
     if (view !== 'all') {
@@ -47,7 +47,7 @@ export class NotificationQueriesService {
 
   private applyThreadAnchorFilter<T extends { andWhere: (...args: any[]) => T }>(
     qb: T,
-    view: 'inbox' | 'sent' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'all',
+    view: 'inbox' | 'sent' | 'scheduled' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'all',
   ): T {
     const newerStateCondition = this.stateViewCondition('newer_mus', 'newer_m', view);
     return qb.andWhere(`
@@ -106,7 +106,7 @@ export class NotificationQueriesService {
   async countMessages(
     userId: string,
     query: {
-      view?: 'inbox' | 'sent' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'drafts' | 'all';
+      view?: 'inbox' | 'sent' | 'scheduled' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'drafts' | 'all';
       originModule?: string;
       read?: boolean;
       hasAttachments?: boolean;
@@ -118,6 +118,19 @@ export class NotificationQueriesService {
     if (view === 'drafts') {
       const total = await this.messageRepository.count({
         where: { createdByUserId: userId, isDraft: true, status: 'DRAFT' },
+      });
+      return { total };
+    }
+
+    if (view === 'scheduled') {
+      const where: Partial<MessageEntity> = {
+        createdByUserId: userId,
+        isDraft: false,
+        status: 'SCHEDULED',
+      };
+      if (query.originModule) where.originModule = query.originModule;
+      const total = await this.messageRepository.count({
+        where,
       });
       return { total };
     }
@@ -193,6 +206,9 @@ export class NotificationQueriesService {
     const drafts = await this.messageRepository.count({
       where: { createdByUserId: userId, isDraft: true, status: 'DRAFT' },
     });
+    const scheduled = await this.messageRepository.count({
+      where: { createdByUserId: userId, isDraft: false, status: 'SCHEDULED' },
+    });
 
     const uniqueLabelIds = Array.from(new Set((labelIds ?? []).filter(Boolean)));
     const labelUnreadById: Record<string, number> = {};
@@ -226,6 +242,7 @@ export class NotificationQueriesService {
       inbox: Number(sidebarRaw?.inbox ?? 0),
       starred: Number(sidebarRaw?.starred ?? 0),
       sent: Number(sidebarRaw?.sent ?? 0),
+      scheduled,
       drafts,
       trash: Number(sidebarRaw?.trash ?? 0),
       archived: Number(sidebarRaw?.archived ?? 0),
@@ -237,7 +254,7 @@ export class NotificationQueriesService {
   async listMessages(
     userId: string,
     query: {
-      view?: 'inbox' | 'sent' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'drafts' | 'all';
+      view?: 'inbox' | 'sent' | 'scheduled' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'drafts' | 'all';
       originModule?: string;
       q?: string;
       page?: number;
@@ -331,6 +348,57 @@ export class NotificationQueriesService {
 
     if (view === 'drafts') {
       const [items, total] = await this.messageRepository.findAndCount({ where: { createdByUserId: userId, isDraft: true, status: 'DRAFT' }, order: { updatedAt: 'DESC' }, take: limit, skip: (page - 1) * limit });
+      return { page, limit, total, items };
+    }
+
+    if (view === 'scheduled') {
+      const scheduledQb = this.messageRepository
+        .createQueryBuilder('m')
+        .where('m.created_by_user_id = :userId', { userId })
+        .andWhere("m.status = 'SCHEDULED'")
+        .andWhere('m.is_draft = false');
+
+      if (query.originModule) scheduledQb.andWhere('m.origin_module = :originModule', { originModule: query.originModule });
+      if (query.q) {
+        scheduledQb.andWhere(
+          `(
+            m.subject ILIKE :q
+            OR m.body_text ILIKE :q
+            OR EXISTS (
+              SELECT 1
+              FROM message_recipients mr
+              WHERE mr.message_id = m.id
+                AND mr.recipient_email ILIKE :q
+            )
+            OR EXISTS (
+              SELECT 1
+              FROM message_attachments ma
+              WHERE ma.message_id = m.id
+                AND ma.original_name ILIKE :q
+            )
+            OR m.origin_module ILIKE :q
+          )`,
+          { q: `%${query.q}%` },
+        );
+        await this.labelsService.trackSearch(userId, query.q);
+      }
+      if (typeof query.hasAttachments === 'boolean') {
+        scheduledQb.andWhere(
+          query.hasAttachments
+            ? 'EXISTS (SELECT 1 FROM message_attachments ma WHERE ma.message_id = m.id)'
+            : 'NOT EXISTS (SELECT 1 FROM message_attachments ma WHERE ma.message_id = m.id)',
+        );
+      }
+
+      const total = await scheduledQb.clone().getCount();
+      const items = await scheduledQb
+        .clone()
+        .orderBy('m.scheduled_at', 'ASC')
+        .addOrderBy('m.created_at', 'DESC')
+        .take(limit)
+        .skip((page - 1) * limit)
+        .getMany();
+
       return { page, limit, total, items };
     }
 

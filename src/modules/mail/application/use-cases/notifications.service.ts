@@ -228,6 +228,113 @@ export class NotificationsService {
     }
   }
 
+  private validateScheduledAtOrThrow(scheduledAtIso: string) {
+    const scheduledAt = new Date(scheduledAtIso);
+    if (Number.isNaN(scheduledAt.getTime())) {
+      throw new BadRequestException('SCHEDULE_DATE_INVALID');
+    }
+    const minLeadMs = 60_000;
+    if (scheduledAt.getTime() <= Date.now() + minLeadMs) {
+      throw new BadRequestException('SCHEDULE_DATE_INVALID');
+    }
+    return scheduledAt;
+  }
+
+  private getScheduledLabelIds(bodyJson?: Record<string, unknown> | null) {
+    const raw = bodyJson && typeof bodyJson === 'object' ? bodyJson.scheduledLabelIds : [];
+    if (!Array.isArray(raw)) return [];
+    return raw.filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+  }
+
+  private async releaseScheduledMessageInTransaction(
+    manager: EntityManager,
+    input: {
+      messageId: string;
+      actorUserId?: string | null;
+      force: boolean;
+      auditAction: string;
+    },
+  ) {
+    const now = new Date();
+    const messageRepo = manager.getRepository(MessageEntity);
+    const recipientRepo = manager.getRepository(MessageRecipientEntity);
+    const claimQb = messageRepo
+      .createQueryBuilder()
+      .update(MessageEntity)
+      .set({ status: 'SENT', sentAt: now, scheduledAt: null, updatedAt: now })
+      .where('id = :id', { id: input.messageId })
+      .andWhere("status = 'SCHEDULED'");
+
+    if (!input.force) {
+      claimQb.andWhere('scheduled_at IS NOT NULL').andWhere('scheduled_at <= :releaseNow', { releaseNow: now });
+    }
+
+    const claimed = await claimQb.execute();
+    if (!(claimed.affected ?? 0)) return null;
+
+    const message = await messageRepo.findOne({ where: { id: input.messageId } });
+    if (!message) throw new NotFoundException('MESSAGE_NOT_FOUND');
+    const senderUserId = message.senderUserId ?? message.createdByUserId ?? input.actorUserId ?? null;
+    if (!senderUserId) throw new BadRequestException('SCHEDULED_SENDER_NOT_FOUND');
+
+    const recipients = await recipientRepo.find({ where: { messageId: message.id } });
+    if (!recipients.length) throw new BadRequestException('SCHEDULED_RECIPIENTS_NOT_FOUND');
+    recipients.forEach((recipient) => {
+      recipient.deliveredAt = recipient.deliveredAt ?? now;
+    });
+    const savedRecipients = await recipientRepo.save(recipients);
+    const resolvedRecipients = savedRecipients
+      .filter((recipient) => Boolean(recipient.recipientUserId))
+      .map((recipient) => {
+        const relationType: 'TO' | 'CC' | 'BCC' =
+          recipient.recipientType === 'CC'
+            ? 'CC'
+            : recipient.recipientType === 'BCC'
+              ? 'BCC'
+              : 'TO';
+        return {
+          id: recipient.recipientUserId!,
+          email: recipient.recipientEmail,
+          relationType,
+        };
+      });
+    if (!resolvedRecipients.length) throw new BadRequestException('SCHEDULED_RECIPIENTS_NOT_FOUND');
+
+    const states = await this.messageUserStatesService.createMessageUserStates(
+      {
+        message,
+        senderUserId,
+        recipients: resolvedRecipients,
+      },
+      manager,
+    );
+    const senderState = states.find((state) => state.userId === senderUserId && state.relationType === 'SENDER');
+    if (senderState) {
+      await this.notificationLabelsService.assignLabelsToState(
+        senderState.id,
+        senderUserId,
+        this.getScheduledLabelIds(message.bodyJson),
+        manager,
+      );
+    }
+
+    await this.messageAuditService.createAuditLog(
+      {
+        action: input.auditAction,
+        actorUserId: input.actorUserId ?? senderUserId,
+        messageId: message.id,
+        threadId: message.threadId,
+        metadata: {
+          recipients: resolvedRecipients.map((recipient) => recipient.email),
+          releasedAt: now.toISOString(),
+        },
+      },
+      manager,
+    );
+
+    return { message, recipients: savedRecipients, senderUserId };
+  }
+
   async sendMessage(input: {
     senderUserId: string;
     to?: string[] | string;
@@ -334,6 +441,243 @@ export class NotificationsService {
     await this.messageRealtimeEventsService.emitMessageCreatedToRecipients(input.senderUserId, txResult.message, txResult.recipients);
 
     return { id: txResult.message.id, threadId: txResult.thread.id, recipients: txResult.recipients.length };
+  }
+
+  async createScheduledMessage(input: {
+    senderUserId: string;
+    to?: string[] | string;
+    cc?: string[] | string;
+    bcc?: string[] | string;
+    recipients?: string;
+    subject: string;
+    bodyHtml: string;
+    bodyJson?: Record<string, unknown> | null;
+    scheduledAt: string;
+    originModule?: string;
+    labelIds?: string[];
+    attachmentIds?: string[];
+  }) {
+    const scheduledAt = this.validateScheduledAtOrThrow(input.scheduledAt);
+    const { recipients: resolvedRecipients } = await this.messageRecipientsResolverService.resolveRecipientsByBucketsOrFail({
+      to: input.to,
+      cc: input.cc,
+      bcc: input.bcc,
+      recipients: input.recipients,
+    });
+
+    const originModule = normalizeOriginModule(input.originModule, ORIGIN_MODULE.CORPORATE);
+    await this.ensureCanAccessModule(input.senderUserId, originModule);
+
+    const bodyHtml = this.messageContentService.normalizeHtmlBody(input.bodyHtml);
+    const bodyText = this.messageContentService.toBodyText(bodyHtml);
+    const scheduledLabelIds = Array.from(new Set((input.labelIds ?? []).filter(Boolean)));
+    const bodyJson = {
+      ...(input.bodyJson ?? {}),
+      scheduledLabelIds,
+    };
+
+    const txResult = await this.dataSource.transaction(async (manager) => {
+      const threadRepo = manager.getRepository(MessageThread);
+      const messageRepo = manager.getRepository(MessageEntity);
+      const recipientRepo = manager.getRepository(MessageRecipientEntity);
+      const thread = await threadRepo.save(
+        threadRepo.create({
+          subject: input.subject,
+          createdByUserId: input.senderUserId,
+          originModule,
+          lastMessageAt: scheduledAt,
+        }),
+      );
+
+      const message = await messageRepo.save(
+        messageRepo.create({
+          threadId: thread.id,
+          parentMessageId: null,
+          kind: 'USER_MESSAGE',
+          originModule,
+          senderType: 'USER',
+          senderUserId: input.senderUserId,
+          createdByUserId: input.senderUserId,
+          subject: input.subject,
+          bodyHtml,
+          bodyText,
+          bodyJson,
+          status: 'SCHEDULED',
+          isDraft: false,
+          draftExpiresAt: null,
+          scheduledAt,
+          sentAt: null,
+          sourceEntityType: null,
+          sourceEntityId: null,
+        }),
+      );
+
+      const recipients = resolvedRecipients.map((user) =>
+        recipientRepo.create({
+          messageId: message.id,
+          recipientUserId: user.id,
+          recipientEmail: user.email,
+          recipientType: user.relationType,
+          deliveredAt: null,
+        }),
+      );
+      const savedRecipients = await recipientRepo.save(recipients);
+
+      await this.notificationAttachmentsService.linkAttachmentsToMessage(
+        input.senderUserId,
+        message.id,
+        input.attachmentIds ?? [],
+        undefined,
+        manager,
+      );
+      await this.messageAuditService.createAuditLog(
+        {
+          action: 'MESSAGE_SCHEDULED',
+          actorUserId: input.senderUserId,
+          messageId: message.id,
+          threadId: message.threadId,
+          metadata: {
+            scheduledAt: scheduledAt.toISOString(),
+            recipients: resolvedRecipients.map((user) => user.email),
+            to: resolvedRecipients.filter((item) => item.relationType === 'TO').map((item) => item.email),
+            cc: resolvedRecipients.filter((item) => item.relationType === 'CC').map((item) => item.email),
+            bcc: resolvedRecipients.filter((item) => item.relationType === 'BCC').map((item) => item.email),
+            originModule,
+          },
+        },
+        manager,
+      );
+
+      return { message, thread, recipients: savedRecipients };
+    });
+
+    return {
+      id: txResult.message.id,
+      threadId: txResult.thread.id,
+      recipients: txResult.recipients.length,
+      scheduledAt: scheduledAt.toISOString(),
+    };
+  }
+
+  async rescheduleMessage(userId: string, messageId: string, scheduledAtIso: string) {
+    const scheduledAt = this.validateScheduledAtOrThrow(scheduledAtIso);
+    const message = await this.messageRepository.findOne({
+      where: { id: messageId, createdByUserId: userId, status: 'SCHEDULED', isDraft: false },
+    });
+    if (!message) throw new NotFoundException('SCHEDULED_MESSAGE_NOT_FOUND');
+    await this.ensureCanAccessModule(userId, message.originModule);
+
+    message.scheduledAt = scheduledAt;
+    message.updatedAt = new Date();
+    const saved = await this.messageRepository.save(message);
+    await this.messageAuditService.createAuditLog({
+      action: 'MESSAGE_RESCHEDULED',
+      actorUserId: userId,
+      messageId: saved.id,
+      threadId: saved.threadId,
+      metadata: { scheduledAt: scheduledAt.toISOString() },
+    });
+    return { id: saved.id, scheduledAt: saved.scheduledAt?.toISOString() ?? null };
+  }
+
+  async cancelScheduledMessage(userId: string, messageId: string) {
+    const message = await this.messageRepository.findOne({
+      where: { id: messageId, createdByUserId: userId, status: 'SCHEDULED', isDraft: false },
+    });
+    if (!message) throw new NotFoundException('SCHEDULED_MESSAGE_NOT_FOUND');
+    await this.ensureCanAccessModule(userId, message.originModule);
+
+    const now = new Date();
+    message.status = 'DRAFT';
+    message.isDraft = true;
+    message.scheduledAt = null;
+    message.sentAt = null;
+    message.draftExpiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    message.lastAutosavedAt = now;
+    message.updatedAt = now;
+
+    await this.dataSource.transaction(async (manager) => {
+      await manager.getRepository(MessageEntity).save(message);
+      await manager.getRepository(MessageRecipientEntity).delete({ messageId: message.id });
+      await this.messageAuditService.createAuditLog(
+        {
+          action: 'MESSAGE_SCHEDULE_CANCELED',
+          actorUserId: userId,
+          messageId: message.id,
+          threadId: message.threadId,
+        },
+        manager,
+      );
+    });
+
+    return { id: message.id, status: message.status, isDraft: message.isDraft };
+  }
+
+  async sendScheduledMessageNow(userId: string, messageId: string) {
+    const scheduledMessage = await this.messageRepository.findOne({
+      where: { id: messageId, createdByUserId: userId, status: 'SCHEDULED', isDraft: false },
+    });
+    if (!scheduledMessage) throw new NotFoundException('SCHEDULED_MESSAGE_NOT_FOUND');
+    await this.ensureCanAccessModule(userId, scheduledMessage.originModule);
+
+    const released = await this.dataSource.transaction((manager) =>
+      this.releaseScheduledMessageInTransaction(manager, {
+        messageId,
+        actorUserId: userId,
+        force: true,
+        auditAction: 'MESSAGE_SCHEDULED_SENT_NOW',
+      }),
+    );
+    if (!released) throw new BadRequestException('SCHEDULED_MESSAGE_INVALID_STATE');
+
+    await this.messageRealtimeEventsService.emitMessageCreatedToRecipients(
+      released.senderUserId,
+      released.message,
+      released.recipients,
+    );
+    this.messageRealtimeEventsService.emitScheduledMessageReleasedToSender(
+      released.senderUserId,
+      released.message,
+    );
+
+    return { id: released.message.id, status: released.message.status, sentAt: released.message.sentAt };
+  }
+
+  async releaseDueScheduledMessages(limit = 50) {
+    const releaseNow = new Date();
+    const dueIds = await this.messageRepository
+      .createQueryBuilder('m')
+      .select('m.id', 'id')
+      .where("m.status = 'SCHEDULED'")
+      .andWhere('m.scheduled_at IS NOT NULL')
+      .andWhere('m.scheduled_at <= :releaseNow', { releaseNow })
+      .orderBy('m.scheduled_at', 'ASC')
+      .limit(Math.max(1, limit))
+      .getRawMany<{ id: string }>();
+
+    let releasedCount = 0;
+    for (const row of dueIds) {
+      const released = await this.dataSource.transaction((manager) =>
+        this.releaseScheduledMessageInTransaction(manager, {
+          messageId: row.id,
+          actorUserId: null,
+          force: false,
+          auditAction: 'MESSAGE_SCHEDULED_RELEASED',
+        }),
+      );
+      if (!released) continue;
+      releasedCount += 1;
+      await this.messageRealtimeEventsService.emitMessageCreatedToRecipients(
+        released.senderUserId,
+        released.message,
+        released.recipients,
+      );
+      this.messageRealtimeEventsService.emitScheduledMessageReleasedToSender(
+        released.senderUserId,
+        released.message,
+      );
+    }
+    return { released: releasedCount };
   }
 
   async replyMessage(input: {
@@ -862,7 +1206,7 @@ export class NotificationsService {
   async listMessages(
     userId: string,
     query: {
-      view?: 'inbox' | 'sent' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'drafts' | 'all';
+      view?: 'inbox' | 'sent' | 'scheduled' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'drafts' | 'all';
       originModule?: string;
       q?: string;
       page?: number;
@@ -881,7 +1225,7 @@ export class NotificationsService {
   async countMessages(
     userId: string,
     query: {
-      view?: 'inbox' | 'sent' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'drafts' | 'all';
+      view?: 'inbox' | 'sent' | 'scheduled' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'drafts' | 'all';
       originModule?: string;
       read?: boolean;
       hasAttachments?: boolean;

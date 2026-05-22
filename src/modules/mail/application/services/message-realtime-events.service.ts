@@ -157,4 +157,41 @@ export class MessageRealtimeEventsService {
       `mail_realtime_emit event=message.created messageId=${message.id} recipients=${recipients.length} originModule=${message.originModule}`,
     );
   }
+
+  emitScheduledMessageReleasedToSender(senderUserId: string, message: MessageEntity) {
+    this.realtimeService.emitToUser(senderUserId, 'message.created', {
+      hasUnreadMail: false,
+      countsDelta: {
+        scheduled: -1,
+        sent: 1,
+      },
+      message: {
+        id: message.id,
+        threadId: message.threadId,
+        parentMessageId: message.parentMessageId,
+        kind: message.kind,
+        originModule: message.originModule,
+        senderType: message.senderType,
+        senderUserId: message.senderUserId,
+        createdByUserId: message.createdByUserId,
+        subject: message.subject,
+        bodyHtml: message.bodyHtml,
+        bodyText: message.bodyText,
+        bodyJson: message.bodyJson ?? null,
+        sourceEntityType: message.sourceEntityType,
+        sourceEntityId: message.sourceEntityId,
+        status: message.status,
+        isDraft: message.isDraft,
+        scheduledAt: null,
+        sentAt: message.sentAt,
+        createdAt: message.createdAt,
+        updatedAt: message.updatedAt,
+        preview: message.bodyText.slice(0, 140),
+      },
+    });
+
+    this.logger.debug(
+      `mail_realtime_emit event=message.created senderId=${senderUserId} messageId=${message.id} scheduledReleased=true`,
+    );
+  }
 }

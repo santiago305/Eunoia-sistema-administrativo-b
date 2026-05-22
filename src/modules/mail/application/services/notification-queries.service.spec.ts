@@ -79,4 +79,27 @@ describe('NotificationQueriesService sent view', () => {
 
     expect(sentSelect).toContain('COUNT(DISTINCT COALESCE(m.thread_id, m.id))');
   });
+
+  it('counts scheduled view from messages table', async () => {
+    const countMock = jest.fn(async () => 7);
+    const service = new NotificationQueriesService(
+      {} as any,
+      { count: countMock } as any,
+      { createQueryBuilder: jest.fn(() => createQueryBuilderMock().qb) } as any,
+      {} as any,
+      {} as any,
+      {} as any,
+    );
+
+    const result = await service.countMessages('user-1', { view: 'scheduled' });
+
+    expect(result.total).toBe(7);
+    expect(countMock).toHaveBeenCalledWith({
+      where: {
+        createdByUserId: 'user-1',
+        isDraft: false,
+        status: 'SCHEDULED',
+      },
+    });
+  });
 });
