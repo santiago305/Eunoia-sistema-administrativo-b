@@ -7,6 +7,7 @@ import { MessageAttachmentEntity } from '../../adapters/out/persistence/typeorm/
 import { MessageEntity } from '../../adapters/out/persistence/typeorm/entities/message.entity';
 import { ACCESS_CONTROL_PORT, AccessControlPort } from '../ports/access-control.port';
 import { MessageAccessService } from './message-access.service';
+import { MailStorageQuotaService } from './mail-storage-quota.service';
 
 export type MailAttachmentKind = 'file' | 'image';
 
@@ -30,6 +31,7 @@ export class NotificationAttachmentsService {
     @Inject(ACCESS_CONTROL_PORT)
     private readonly accessControlPort: AccessControlPort,
     private readonly messageAccessService: MessageAccessService,
+    private readonly mailStorageQuotaService: MailStorageQuotaService,
   ) {}
 
   private normalizeKind(kind?: MailAttachmentKind): MailAttachmentKind {
@@ -61,6 +63,12 @@ export class NotificationAttachmentsService {
       attachment.draftId = null;
     });
     await attachmentRepo.save(attachments);
+    await this.mailStorageQuotaService.syncAttachmentRefsToMessage({
+      attachmentIds: attachments.map((attachment) => attachment.id),
+      userId,
+      messageId,
+      manager,
+    });
   }
 
   private async ensureAttachmentAccessOrFail(userId: string, attachment: MessageAttachmentEntity, modulePermissions: Record<string, string[]>) {
@@ -94,6 +102,8 @@ export class NotificationAttachmentsService {
       if (!draft) throw new ForbiddenException('ATTACHMENT_ACCESS_DENIED');
     }
 
+    await this.mailStorageQuotaService.assertCanAddBytes(input.userId, input.size);
+
     await fs.mkdir(this.attachmentStorageDir, { recursive: true });
     const storedName = `${Date.now()}-${Math.random().toString(36).slice(2)}${path.extname(input.fileName).toLowerCase()}`;
     const storageKey = path.join(this.attachmentStorageDir, storedName);
@@ -110,6 +120,11 @@ export class NotificationAttachmentsService {
       uploadedByUserId: input.userId,
       attachmentKind,
     }));
+    await this.mailStorageQuotaService.trackAttachmentOwnership({
+      attachmentId: saved.id,
+      userId: input.userId,
+      messageId: saved.messageId,
+    });
 
     return saved;
   }

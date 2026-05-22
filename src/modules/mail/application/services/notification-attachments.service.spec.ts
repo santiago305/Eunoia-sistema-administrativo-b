@@ -40,6 +40,11 @@ describe('NotificationAttachmentsService', () => {
       messageRepository as any,
       { canDownloadAttachment: jest.fn() } as any,
       { ensureMessageParticipant: jest.fn() } as any,
+      {
+        assertCanAddBytes: jest.fn(),
+        trackAttachmentOwnership: jest.fn(),
+        syncAttachmentRefsToMessage: jest.fn(),
+      } as any,
     );
   });
 

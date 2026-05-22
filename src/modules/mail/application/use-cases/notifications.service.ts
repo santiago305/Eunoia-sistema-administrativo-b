@@ -24,6 +24,7 @@ import { MessageRealtimeEventsService } from '../services/message-realtime-event
 import { MessageUserStateAccessService } from '../services/message-user-state-access.service';
 import { SystemNotificationService } from '../services/system-notification.service';
 import { MessageActionsService } from '../services/message-actions.service';
+import { MailStorageQuotaService } from '../services/mail-storage-quota.service';
 import { ORIGIN_MODULE } from '../../domain/enums/origin-module.enum';
 import { normalizeOriginModule } from '../../domain/utils/normalize-origin-module';
 import {
@@ -69,6 +70,7 @@ export class NotificationsService {
     private readonly messageUserStateAccessService: MessageUserStateAccessService,
     private readonly systemNotificationService: SystemNotificationService,
     private readonly messageActionsService: MessageActionsService,
+    private readonly mailStorageQuotaService: MailStorageQuotaService,
   ) {}
 
   private ensureUserReplyableMessage(parent: MessageEntity) {
@@ -94,6 +96,19 @@ export class NotificationsService {
 
   private normalizeConversationSubject(subject: string) {
     return String(subject ?? '').replace(/^(?:\s*(?:re|fwd):\s*)+/i, '').trim() || '(Sin asunto)';
+  }
+
+  private async assertSuperAdminOrFail(userId: string) {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ['id', 'deleted', 'isSuperAdmin'],
+    });
+    if (!user || user.deleted) {
+      throw new ForbiddenException('SUPERADMIN_REQUIRED');
+    }
+    if (!user.isSuperAdmin) {
+      throw new ForbiddenException('SUPERADMIN_REQUIRED');
+    }
   }
 
   private async buildThreadItems(message: MessageEntity, userId: string) {
@@ -1749,6 +1764,30 @@ export class NotificationsService {
     });
 
     return { deleted: true };
+  }
+
+  async getMyStorageSummary(userId: string) {
+    return this.mailStorageQuotaService.getStorageSummary(userId);
+  }
+
+  async getUserStorageSummary(requesterUserId: string, targetUserId: string) {
+    await this.assertSuperAdminOrFail(requesterUserId);
+    const target = await this.userRepository.findOne({
+      where: { id: targetUserId },
+      select: ['id', 'deleted'],
+    });
+    if (!target || target.deleted) throw new NotFoundException('USER_NOT_FOUND');
+    return this.mailStorageQuotaService.getStorageSummary(targetUserId);
+  }
+
+  async updateUserStorageQuota(requesterUserId: string, targetUserId: string, mailStorageQuotaGb: number) {
+    await this.assertSuperAdminOrFail(requesterUserId);
+    const target = await this.userRepository.findOne({
+      where: { id: targetUserId },
+      select: ['id', 'deleted'],
+    });
+    if (!target || target.deleted) throw new NotFoundException('USER_NOT_FOUND');
+    return this.mailStorageQuotaService.setQuotaGb(targetUserId, mailStorageQuotaGb, requesterUserId);
   }
 
   async createNotificationForUsers(input: {

@@ -74,8 +74,8 @@ export class CreateUserUseCase {
     });
 
     try {
-      await this.userRepository.save(domainUser);
-      return successResponse('Usuario creado correctamente');
+      const created = await this.userRepository.save(domainUser);
+      return successResponse('Usuario creado correctamente', { id: created.id });
     } catch {
       throw new InternalServerErrorException('Se ha producido un error al crear al usuario');
     }

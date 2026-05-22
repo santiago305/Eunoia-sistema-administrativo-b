@@ -23,6 +23,7 @@ import { CreateSearchHistoryDto } from '../dtos/create-search-history.dto';
 import { UploadAttachmentDto } from '../dtos/upload-attachment.dto';
 import { ListMailActionsQueryDto } from '../dtos/list-mail-actions.query';
 import { ExecuteMailActionDto } from '../dtos/execute-mail-action.dto';
+import { UpdateMailStorageQuotaDto } from '../dtos/update-mail-storage-quota.dto';
 import { IsOptional, IsUUID } from 'class-validator';
 
 class UpsertModuleLabelConfigDto {
@@ -140,6 +141,31 @@ export class NotificationsController {
   @Get('messages/has-unread')
   hasUnreadMessages(@CurrentUser() user: { id: string }) {
     return this.notificationsService.hasUnreadMessages(user.id);
+  }
+
+  @RequirePermissions('notifications.read')
+  @Get('storage/me')
+  getMyStorageSummary(@CurrentUser() user: { id: string }) {
+    return this.notificationsService.getMyStorageSummary(user.id);
+  }
+
+  @RequirePermissions('users.read')
+  @Get('storage/users/:id')
+  getUserStorageSummary(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+  ) {
+    return this.notificationsService.getUserStorageSummary(user.id, id);
+  }
+
+  @RequirePermissions('users.update')
+  @Patch('storage/users/:id/quota')
+  updateUserStorageQuota(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Body() body: UpdateMailStorageQuotaDto,
+  ) {
+    return this.notificationsService.updateUserStorageQuota(user.id, id, body.mailStorageQuotaGb);
   }
 
   @RequirePermissions('notifications.read')

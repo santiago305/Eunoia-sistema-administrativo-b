@@ -1,4 +1,5 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsEmail, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
 
 /**
  * DTO para la creaciAn de un nuevo usuario.
@@ -46,5 +47,11 @@ export class CreateUserDto {
   @IsString()
   telefono?: string;
 
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(5)
+  mailStorageQuotaGb?: number;
 }
 

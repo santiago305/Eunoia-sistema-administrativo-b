@@ -19,6 +19,8 @@ import { MessageAuditLogEntity } from '../adapters/out/persistence/typeorm/entit
 import { NotificationModuleLabelConfigEntity } from '../adapters/out/persistence/typeorm/entities/notification-module-label-config.entity';
 import { MessageActionEntity } from '../adapters/out/persistence/typeorm/entities/message-action.entity';
 import { MessageActionRecipientEntity } from '../adapters/out/persistence/typeorm/entities/message-action-recipient.entity';
+import { MailStorageQuotaEntity } from '../adapters/out/persistence/typeorm/entities/mail-storage-quota.entity';
+import { MailAttachmentUserRefEntity } from '../adapters/out/persistence/typeorm/entities/mail-attachment-user-ref.entity';
 import { ApprovalRequestEntity } from 'src/modules/purchases/adapters/out/persistence/typeorm/entities/approval-request.entity';
 import { PurchaseOrderEntity } from 'src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-order.entity';
 import { PaymentDocumentEntity } from 'src/modules/payments/adapters/out/persistence/typeorm/entities/payment-document.entity';
@@ -43,6 +45,7 @@ import { NotificationPayloadMapperService } from '../application/services/notifi
 import { MessageUserStateAccessService } from '../application/services/message-user-state-access.service';
 import { SystemNotificationService } from '../application/services/system-notification.service';
 import { MessageActionsService } from '../application/services/message-actions.service';
+import { MailStorageQuotaService } from '../application/services/mail-storage-quota.service';
 import { ACCESS_CONTROL_PORT } from '../application/ports/access-control.port';
 import { AccessControlAdapter } from '../adapters/out/access-control/access-control.adapter';
 
@@ -62,6 +65,8 @@ import { AccessControlAdapter } from '../adapters/out/access-control/access-cont
       NotificationModuleLabelConfigEntity,
       MessageActionEntity,
       MessageActionRecipientEntity,
+      MailStorageQuotaEntity,
+      MailAttachmentUserRefEntity,
       ApprovalRequestEntity,
       PurchaseOrderEntity,
       PaymentDocumentEntity,
@@ -86,6 +91,7 @@ import { AccessControlAdapter } from '../adapters/out/access-control/access-cont
     MessageUserStateAccessService,
     SystemNotificationService,
     MessageActionsService,
+    MailStorageQuotaService,
     AccessControlAdapter,
     { provide: ACCESS_CONTROL_PORT, useExisting: AccessControlAdapter },
     NotificationRealtimeService,

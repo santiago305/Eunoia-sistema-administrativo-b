@@ -22,6 +22,7 @@ interface EnvVars {
     REDIS_PASSWORD?: string;
     REDIS_DB?: number;
     REDIS_TTL_MS?: number;
+    MAIL_DEFAULT_USER_STORAGE_GB?: number;
 
     IDENTITY_API_KEY?: string;
     IDENTITY_BASE_URL?: string;
@@ -47,6 +48,7 @@ const envsSchema = joi.object({
     REDIS_PASSWORD: joi.string().allow('').optional(),
     REDIS_DB: joi.number().optional(),
     REDIS_TTL_MS: joi.number().optional(),
+    MAIL_DEFAULT_USER_STORAGE_GB: joi.number().min(1).max(5).optional(),
     IDENTITY_BASE_URL: joi.string().optional(),
     IDENTITY_API_KEY: joi.string().optional(),
     IDENTITY_TIMEOUT_MS: joi.number().optional(),
@@ -92,5 +94,8 @@ export const envs = {
         password: envsVars.REDIS_PASSWORD,
         db: envsVars.REDIS_DB ?? 0,
         ttlMs: envsVars.REDIS_TTL_MS ?? 60_000,
+    },
+    mail: {
+        defaultUserStorageGb: envsVars.MAIL_DEFAULT_USER_STORAGE_GB ?? 1,
     },
 }

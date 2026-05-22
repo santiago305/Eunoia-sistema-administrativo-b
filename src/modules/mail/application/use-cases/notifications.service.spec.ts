@@ -38,6 +38,7 @@ const createNotificationsService = (parent: Record<string, unknown>) => {
     {} as any,
     {} as any,
     {} as any,
+    {} as any,
   );
 
   return { service, recipientResolver };
@@ -187,6 +188,7 @@ describe('NotificationsService forward preview', () => {
       {} as any,
       {} as any,
       {} as any,
+      {} as any,
     ) as any;
 
     service.ensureCanOpenMessageOrThrow = jest.fn();
@@ -297,6 +299,7 @@ describe('NotificationsService replies', () => {
       { createAuditLog: jest.fn() } as any,
       { createMessageUserStates: jest.fn() } as any,
       { emitMessageCreatedToRecipients: jest.fn() } as any,
+      {} as any,
       {} as any,
       {} as any,
       {} as any,
