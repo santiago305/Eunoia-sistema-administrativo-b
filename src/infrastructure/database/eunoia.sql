@@ -1216,3 +1216,146 @@ create table if not exists pc_inventory_ledger (
   unit_cost numeric(12,2),
   created_at timestamptz not null default now()
 );
+
+/*PEDIDOS */
+
+begin
+  if not exists (select 1 from pg_type where typname = 'doc_type_client') then
+    create type doc_type_client as enum ('DNI', 'CE', 'RUC');
+  end if;
+
+  if not exists (select 1 from pg_type where typname = 'client_type') then
+    create type client_type as enum ('NEW', 'LAGGING', 'REPURCHASE');
+  end if;
+
+  if not exists (select 1 from pg_type where typname = 'delivery_type') then
+    create type delivery_type as enum ('CASH_ON_DELIVERY', 'SHIPPING_PAID');
+  end if;
+end $$;
+
+create table departments (
+  id uuid primary key default uuid_generate_v4(),
+  name varchar
+);
+
+create table provinces (
+  id uuid primary key default uuid_generate_v4(),
+  name varchar,
+  department_id uuid references departments(id)
+);
+
+create table districts (
+  id uuid primary key default uuid_generate_v4(),
+  name varchar,
+  province_id uuid references provinces(id)
+);
+
+create table clients (
+  id uuid primary key default uuid_generate_v4(),
+  type client_type,
+  full_name varchar,
+  doc_type doc_type_client,
+  doc_number varchar,
+  reference varchar,
+  address varchar,
+  department_id uuid references departments(id),
+  province_id uuid references provinces(id),
+  district_id uuid references districts(id),
+  is_active boolean default true
+);
+
+create table telephones (
+  id uuid primary key default uuid_generate_v4(),
+  number varchar,
+  client_id uuid references clients(id) on delete cascade,
+  is_active boolean default true
+);
+
+create table packs (
+  id uuid primary key default uuid_generate_v4(),
+  description varchar,
+  price numeric(12,2),
+  is_active boolean default true,
+  created_at timestamp default now()
+);
+
+create table pack_items (
+  id uuid primary key default uuid_generate_v4(),
+  pack_id uuid references packs(id) on delete cascade,
+  sku_id uuid references pc_skus(sku_id),
+  quantity numeric(12,2),
+  price numeric(12,2)
+);
+
+create table agencies (
+  id uuid primary key default uuid_generate_v4(),
+  name varchar,
+  reference varchar,
+  address varchar,
+  department_id uuid references departments(id),
+  province_id uuid references provinces(id),
+  district_id uuid references districts(id),
+  is_active boolean default true
+);
+
+create table sources (
+  id uuid primary key default uuid_generate_v4(),
+  name varchar,
+  is_active boolean default true,
+  created_at timestamp default now()
+);
+
+create table sale_orders (
+  id uuid primary key default uuid_generate_v4(),
+  number_order numeric,
+  serie varchar,
+  correlative numeric,
+  schedule_date date,
+  delivery_date date,
+  delivery_type delivery_type,
+  sub_total numeric(12,2),
+  delivery_cost numeric(12,2),
+  total numeric(12,2),
+  note varchar,
+  client_id uuid references clients(id),
+  agency_id uuid references agencies(id),
+  source_id uuid references sources(id),
+  created_by uuid references users(user_id),
+  status varchar,
+  is_active boolean default true
+);
+
+create table sale_order_items (
+  id uuid primary key default uuid_generate_v4(),
+  description varchar,
+  quantity numeric(12,2),
+  unit_price numeric(12,2),
+  total numeric(12,2),
+  sale_order_id uuid references sale_orders(id) on delete cascade,
+  pack_id uuid references packs(id)
+);
+
+create index idx_provinces_department_id on provinces(department_id);
+create index idx_districts_province_id on districts(province_id);
+
+create index idx_clients_department_id on clients(department_id);
+create index idx_clients_province_id on clients(province_id);
+create index idx_clients_district_id on clients(district_id);
+create index idx_clients_doc on clients(doc_type, doc_number);
+
+create index idx_telephones_client_id on telephones(client_id);
+
+create index idx_pack_items_pack_id on pack_items(pack_id);
+create index idx_pack_items_sku_id on pack_items(sku_id);
+
+create index idx_agencies_department_id on agencies(department_id);
+create index idx_agencies_province_id on agencies(province_id);
+create index idx_agencies_district_id on agencies(district_id);
+
+create index idx_sale_orders_client_id on sale_orders(client_id);
+create index idx_sale_orders_agency_id on sale_orders(agency_id);
+create index idx_sale_orders_source_id on sale_orders(source_id);
+create index idx_sale_orders_created_by on sale_orders(created_by);
+
+create index idx_sale_order_items_sale_order_id on sale_order_items(sale_order_id);
+create index idx_sale_order_items_pack_id on sale_order_items(pack_id);
