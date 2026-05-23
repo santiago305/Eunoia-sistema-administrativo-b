@@ -61,6 +61,7 @@ export class ListPacksQueryDto {
   q?: string;
 
   @IsOptional()
+  @Transform(({ value }) => (value === "" ? undefined : value))
   @IsBooleanString()
   isActive?: string;
 

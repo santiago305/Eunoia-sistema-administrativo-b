@@ -1,14 +1,14 @@
 import { plainToInstance, Transform, Type } from "class-transformer";
 import { IsArray, IsBooleanString, IsEnum, IsInt, IsOptional, IsString, Max, Min, ValidateNested } from "class-validator";
 import {
-  ClientSearchField,
-  ClientSearchFields,
-  ClientSearchOperator,
-  ClientSearchOperators,
-  ClientSearchRuleMode,
-} from "src/modules/clients/application/dtos/client-search/client-search-snapshot";
+  AgencySearchField,
+  AgencySearchFields,
+  AgencySearchOperator,
+  AgencySearchOperators,
+  AgencySearchRuleMode,
+} from "src/modules/agencies/application/dtos/agency-search/agency-search-snapshot";
 
-const ClientSearchRuleModes = {
+const AgencySearchRuleModes = {
   INCLUDE: "include",
   EXCLUDE: "exclude",
 } as const;
@@ -16,34 +16,34 @@ const ClientSearchRuleModes = {
 const toFiltersArray = (value: unknown) => {
   if (value === undefined || value === null || value === "") return undefined;
   if (Array.isArray(value)) {
-    return value.map((item) => plainToInstance(HttpClientSearchRuleDto, item));
+    return value.map((item) => plainToInstance(HttpAgencySearchRuleDto, item));
   }
   if (typeof value !== "string") return undefined;
 
   try {
     const parsed = JSON.parse(value);
     return Array.isArray(parsed)
-      ? parsed.map((item) => plainToInstance(HttpClientSearchRuleDto, item))
+      ? parsed.map((item) => plainToInstance(HttpAgencySearchRuleDto, item))
       : undefined;
   } catch {
     return undefined;
   }
 };
 
-class HttpClientSearchRuleDto {
+class HttpAgencySearchRuleDto {
   @IsString()
   @IsOptional()
-  @IsEnum(ClientSearchFields)
-  field: ClientSearchField;
+  @IsEnum(AgencySearchFields)
+  field: AgencySearchField;
 
   @IsString()
   @IsOptional()
-  @IsEnum(ClientSearchOperators)
-  operator: ClientSearchOperator;
+  @IsEnum(AgencySearchOperators)
+  operator: AgencySearchOperator;
 
   @IsOptional()
-  @IsEnum(ClientSearchRuleModes)
-  mode?: ClientSearchRuleMode;
+  @IsEnum(AgencySearchRuleModes)
+  mode?: AgencySearchRuleMode;
 
   @IsOptional()
   @IsString()
@@ -55,7 +55,7 @@ class HttpClientSearchRuleDto {
   values?: string[];
 }
 
-export class ListClientsQueryDto {
+export class ListAgenciesQueryDto {
   @IsOptional()
   @IsString()
   q?: string;
@@ -82,6 +82,7 @@ export class ListClientsQueryDto {
   @Transform(({ value }) => toFiltersArray(value))
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => HttpClientSearchRuleDto)
-  filters?: HttpClientSearchRuleDto[];
+  @Type(() => HttpAgencySearchRuleDto)
+  filters?: HttpAgencySearchRuleDto[];
 }
+

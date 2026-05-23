@@ -34,6 +34,7 @@ import { MailModule } from './modules/mail/infrastructure/mail.module';
 import { AccessControlModule } from './modules/access-control/infrastructure/access-control.module';
 import { ClientsModule } from './modules/clients/clients.module';
 import { PacksModule } from './modules/packs/packs.module';
+import { AgenciesModule } from './modules/agencies/agencies.module';
 
 const redisAuth = envs.redis.password ? `:${encodeURIComponent(envs.redis.password)}@` : '';
 const redisUrl = `redis://${redisAuth}${envs.redis.host}:${envs.redis.port}/${envs.redis.db}`;
@@ -70,6 +71,7 @@ const redisUrl = `redis://${redisAuth}${envs.redis.host}:${envs.redis.port}/${en
     ProductCatalogModule,
     UbigeoModule,
     ClientsModule,
+    AgenciesModule,
     PacksModule,
     PdfGeneratedModule,
     SecurityModule,

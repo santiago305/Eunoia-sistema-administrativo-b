@@ -1,22 +1,19 @@
 import { Inject } from "@nestjs/common";
-import {
-  LISTING_SEARCH_STORAGE,
-  ListingSearchStorageRepository,
-} from "src/shared/listing-search/domain/listing-search.repository";
-import { SavePackSearchMetricInput } from "../../dtos/pack-search/input/save-pack-search-metric.input";
-import { hasPackSearchCriteria, sanitizePackSearchSnapshot } from "../../support/pack-search.utils";
+import { LISTING_SEARCH_STORAGE, ListingSearchStorageRepository } from "src/shared/listing-search/domain/listing-search.repository";
+import { SaveAgencySearchMetricInput } from "../../dtos/agency-search/input/save-agency-search-metric.input";
+import { hasAgencySearchCriteria, sanitizeAgencySearchSnapshot } from "../../support/agency-search.utils";
 
-const PACKS_SEARCH_TABLE_KEY = "packs";
+const AGENCIES_SEARCH_TABLE_KEY = "agencies";
 
-export class SavePackSearchMetricUsecase {
+export class SaveAgencySearchMetricUsecase {
   constructor(
     @Inject(LISTING_SEARCH_STORAGE)
     private readonly searchStorage: ListingSearchStorageRepository,
   ) {}
 
-  async execute(input: SavePackSearchMetricInput) {
-    const snapshot = sanitizePackSearchSnapshot(input.snapshot);
-    if (!hasPackSearchCriteria(snapshot)) {
+  async execute(input: SaveAgencySearchMetricInput) {
+    const snapshot = sanitizeAgencySearchSnapshot(input.snapshot);
+    if (!hasAgencySearchCriteria(snapshot)) {
       return {
         type: "error" as const,
         message: "No hay filtros para guardar en la metrica",
@@ -33,7 +30,7 @@ export class SavePackSearchMetricUsecase {
 
     const metric = await this.searchStorage.createMetric({
       userId: input.userId,
-      tableKey: PACKS_SEARCH_TABLE_KEY,
+      tableKey: AGENCIES_SEARCH_TABLE_KEY,
       name,
       snapshot,
     });
@@ -45,3 +42,4 @@ export class SavePackSearchMetricUsecase {
     };
   }
 }
+
