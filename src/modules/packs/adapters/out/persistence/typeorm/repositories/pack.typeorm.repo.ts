@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { EntityManager, Repository } from "typeorm";
+import { EntityManager, In, Repository } from "typeorm";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
 import { PackRepository, PackWithItems } from "src/modules/packs/domain/ports/pack.repository";
@@ -68,32 +68,7 @@ export class PackTypeormRepository implements PackRepository {
 
     return {
       pack: this.toDomain(packRow),
-      items: itemRows.map((row) => {
-        if (!row.sku) {
-          throw new Error("SKU relation not loaded for pack item");
-        }
-
-        const quantity = Number(row.quantity ?? 0);
-        const price = Number(row.price ?? 0);
-
-        return {
-          id: row.id,
-          skuId: row.skuId,
-          quantity,
-          price,
-          lineTotal: this.computeLineTotal(quantity, price),
-          sku: {
-            id: row.sku.id,
-            backendSku: row.sku.backendSku,
-            customSku: row.sku.customSku ?? null,
-            name: row.sku.name,
-            barcode: row.sku.barcode ?? null,
-            price: Number(row.sku.price ?? 0),
-            isActive: Boolean(row.sku.isActive),
-            attributes: attributesBySkuId.get(row.sku.id) ?? [],
-          },
-        };
-      }),
+      items: itemRows.map((row) => this.toItemDetails(row, attributesBySkuId)),
     };
   }
 
@@ -135,6 +110,37 @@ export class PackTypeormRepository implements PackRepository {
     const priceCents = this.toCents(price);
     const lineCents = Math.round((qtyCents * priceCents) / 100);
     return lineCents / 100;
+  }
+
+  private toItemDetails(
+    row: PackItemEntity,
+    attributesBySkuId: Map<string, Array<{ code: string; name: string | null; value: string }>>,
+  ): PackWithItems["items"][number] {
+    if (!row.sku) {
+      throw new Error("SKU relation not loaded for pack item");
+    }
+
+    const quantity = Number(row.quantity ?? 0);
+    const price = Number(row.price ?? 0);
+
+    return {
+      id: row.id,
+      skuId: row.skuId,
+      quantity,
+      price,
+      lineTotal: this.computeLineTotal(quantity, price),
+      sku: {
+        id: row.sku.id,
+        backendSku: row.sku.backendSku,
+        customSku: row.sku.customSku ?? null,
+        name: row.sku.name,
+        barcode: row.sku.barcode ?? null,
+        price: Number(row.sku.price ?? 0),
+        image: row.sku.image ?? null,
+        isActive: Boolean(row.sku.isActive),
+        attributes: attributesBySkuId.get(row.sku.id) ?? [],
+      },
+    };
   }
 
   async create(pack: Pack, tx?: TransactionContext): Promise<Pack> {
@@ -183,7 +189,7 @@ export class PackTypeormRepository implements PackRepository {
   async list(
     params: { q?: string; isActive?: boolean; filters?: PackSearchRule[]; page?: number; limit?: number },
     tx?: TransactionContext,
-  ): Promise<{ items: Pack[]; total: number }> {
+  ): Promise<{ items: PackWithItems[]; total: number }> {
     const repo = this.getRepo(tx);
     const qb = repo.createQueryBuilder("p");
 
@@ -297,6 +303,37 @@ export class PackTypeormRepository implements PackRepository {
       .take(limit)
       .getManyAndCount();
 
-    return { items: rows.map((r) => this.toDomain(r)), total };
+    if (!rows.length) {
+      return { items: [], total };
+    }
+
+    const manager = this.getManager(tx);
+    const packIds = rows.map((row) => row.id);
+
+    const itemRows = await manager.getRepository(PackItemEntity).find({
+      where: { packId: In(packIds) },
+      relations: { sku: true },
+      order: { packId: "ASC", id: "ASC" },
+    });
+
+    const skuIds = Array.from(new Set(itemRows.map((row) => row.skuId).filter(Boolean))) as string[];
+    const attributesBySkuId = await this.loadSkuAttributes(manager, skuIds);
+
+    const itemsByPackId = new Map<string, PackItemEntity[]>();
+    for (const row of itemRows) {
+      const list = itemsByPackId.get(row.packId) ?? [];
+      list.push(row);
+      itemsByPackId.set(row.packId, list);
+    }
+
+    return {
+      items: rows.map((packRow) => ({
+        pack: this.toDomain(packRow),
+        items: (itemsByPackId.get(packRow.id) ?? []).map((itemRow) =>
+          this.toItemDetails(itemRow, attributesBySkuId),
+        ),
+      })),
+      total,
+    };
   }
 }

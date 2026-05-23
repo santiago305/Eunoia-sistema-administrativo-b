@@ -1,6 +1,6 @@
 import { Inject } from "@nestjs/common";
 import { PaginatedResult } from "src/shared/utilidades/dto/paginateResult";
-import { PACK_REPOSITORY, PackRepository } from "src/modules/packs/domain/ports/pack.repository";
+import { PACK_REPOSITORY, PackRepository, PackWithItems } from "src/modules/packs/domain/ports/pack.repository";
 import { PackSearchRule } from "src/modules/packs/application/dtos/pack-search/pack-search-snapshot";
 import {
   LISTING_SEARCH_STORAGE,
@@ -47,7 +47,7 @@ export class ListPacksUsecase {
       }
     }
 
-    const response: PaginatedResult<any> = { items, total, page, limit };
+    const response: PaginatedResult<PackWithItems> = { items, total, page, limit };
     return response;
   }
 }
