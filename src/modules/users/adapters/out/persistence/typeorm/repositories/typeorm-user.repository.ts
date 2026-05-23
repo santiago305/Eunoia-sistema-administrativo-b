@@ -49,10 +49,20 @@ export class TypeormUserRepository implements UserRepository {
   }
 
   async updateDeleted(id: string, deleted: boolean): Promise<void> {
+    const setPayload = deleted
+      ? {
+          deleted: true,
+          deletedAt: () => 'COALESCE(deleted_at, NOW())',
+        }
+      : {
+          deleted: false,
+          deletedAt: null,
+        };
+
     await this.ormRepository
       .createQueryBuilder()
       .update(OrmUser)
-      .set({ deleted })
+      .set(setPayload)
       .where('user_id = :id', { id })
       .execute();
   }

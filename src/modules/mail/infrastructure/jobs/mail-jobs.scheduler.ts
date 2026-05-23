@@ -5,6 +5,8 @@ import { ReleaseSnoozedMessagesJob } from './release-snoozed-messages.job';
 import { ReleaseScheduledMessagesJob } from './release-scheduled-messages.job';
 import { CleanOrphanAttachmentsJob } from './clean-orphan-attachments.job';
 import { CreateYearlyPartitionsJob } from './create-yearly-partitions.job';
+import { ArchiveDeletedMailJob } from './archive-deleted-mail.job';
+import { PurgeDisabledUserMailJob } from './purge-disabled-user-mail.job';
 
 @Injectable()
 export class MailJobsScheduler implements OnModuleInit, OnModuleDestroy {
@@ -19,6 +21,8 @@ export class MailJobsScheduler implements OnModuleInit, OnModuleDestroy {
     private readonly releaseScheduledMessagesJob: ReleaseScheduledMessagesJob,
     private readonly cleanOrphanAttachmentsJob: CleanOrphanAttachmentsJob,
     private readonly createYearlyPartitionsJob: CreateYearlyPartitionsJob,
+    private readonly archiveDeletedMailJob: ArchiveDeletedMailJob,
+    private readonly purgeDisabledUserMailJob: PurgeDisabledUserMailJob,
   ) {}
 
   onModuleInit() {
@@ -27,6 +31,8 @@ export class MailJobsScheduler implements OnModuleInit, OnModuleDestroy {
     this.schedule('expire-trash', 5 * 60_000, () => this.expireTrashJob.run());
     this.schedule('expire-drafts', 60 * 60_000, () => this.expireDraftsJob.run());
     this.schedule('clean-orphan-attachments', 6 * 60 * 60_000, () => this.cleanOrphanAttachmentsJob.run());
+    this.schedule('archive-deleted-mail', 6 * 60 * 60_000, () => this.archiveDeletedMailJob.run());
+    this.schedule('purge-disabled-user-mail', 24 * 60 * 60_000, () => this.purgeDisabledUserMailJob.run());
     this.schedule('create-yearly-partitions', 24 * 60 * 60_000, () => this.createYearlyPartitionsJob.run());
   }
 

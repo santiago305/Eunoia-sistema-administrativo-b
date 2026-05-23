@@ -30,7 +30,10 @@ import { ReleaseSnoozedMessagesJob } from './jobs/release-snoozed-messages.job';
 import { ReleaseScheduledMessagesJob } from './jobs/release-scheduled-messages.job';
 import { CleanOrphanAttachmentsJob } from './jobs/clean-orphan-attachments.job';
 import { CreateYearlyPartitionsJob } from './jobs/create-yearly-partitions.job';
+import { ArchiveDeletedMailJob } from './jobs/archive-deleted-mail.job';
+import { PurgeDisabledUserMailJob } from './jobs/purge-disabled-user-mail.job';
 import { MailJobsScheduler } from './jobs/mail-jobs.scheduler';
+import { DeletedMailDataSourceProvider } from './deleted-mail.datasource.provider';
 import { MessageStateService } from '../application/services/message-state.service';
 import { MessageAccessService } from '../application/services/message-access.service';
 import { NotificationLabelsService } from '../application/services/notification-labels.service';
@@ -102,6 +105,9 @@ import { AccessControlAdapter } from '../adapters/out/access-control/access-cont
     ReleaseScheduledMessagesJob,
     CleanOrphanAttachmentsJob,
     CreateYearlyPartitionsJob,
+    ArchiveDeletedMailJob,
+    PurgeDisabledUserMailJob,
+    DeletedMailDataSourceProvider,
     MailJobsScheduler,
   ],
   exports: [NotificationsService, NotificationRealtimeService],

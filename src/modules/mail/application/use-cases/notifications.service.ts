@@ -332,6 +332,16 @@ export class NotificationsService {
         manager,
       );
     }
+    const messageAttachments = await manager.getRepository(MessageAttachmentEntity).find({
+      where: { messageId: message.id },
+      select: ['id'],
+    });
+    await this.mailStorageQuotaService.ensureAttachmentRefsForUsers({
+      attachmentIds: messageAttachments.map((attachment) => attachment.id),
+      userIds: [senderUserId, ...resolvedRecipients.map((recipient) => recipient.id)],
+      messageId: message.id,
+      manager,
+    });
 
     await this.messageAuditService.createAuditLog(
       {
@@ -428,6 +438,12 @@ export class NotificationsService {
         manager,
       );
       await this.notificationAttachmentsService.linkAttachmentsToMessage(input.senderUserId, message.id, input.attachmentIds ?? [], undefined, manager);
+      await this.mailStorageQuotaService.ensureAttachmentRefsForUsers({
+        attachmentIds: input.attachmentIds ?? [],
+        userIds: [input.senderUserId, ...resolvedRecipients.map((user) => user.id)],
+        messageId: message.id,
+        manager,
+      });
       const senderState = states.find((state) => state.userId === input.senderUserId && state.relationType === 'SENDER');
       if (senderState) {
         await this.notificationLabelsService.assignLabelsToState(senderState.id, input.senderUserId, input.labelIds ?? [], manager);
@@ -545,6 +561,12 @@ export class NotificationsService {
         undefined,
         manager,
       );
+      await this.mailStorageQuotaService.ensureAttachmentRefsForUsers({
+        attachmentIds: input.attachmentIds ?? [],
+        userIds: [input.senderUserId],
+        messageId: message.id,
+        manager,
+      });
       await this.messageAuditService.createAuditLog(
         {
           action: 'MESSAGE_SCHEDULED',
@@ -790,6 +812,12 @@ export class NotificationsService {
         manager,
       );
       await this.notificationAttachmentsService.linkAttachmentsToMessage(input.senderUserId, message.id, input.attachmentIds ?? [], undefined, manager);
+      await this.mailStorageQuotaService.ensureAttachmentRefsForUsers({
+        attachmentIds: input.attachmentIds ?? [],
+        userIds: [input.senderUserId, ...resolvedRecipients.map((user) => user.id)],
+        messageId: message.id,
+        manager,
+      });
       await this.messageAuditService.createAuditLog(
         {
           action: 'MESSAGE_REPLIED',
@@ -1015,6 +1043,12 @@ export class NotificationsService {
         manager,
       );
       await this.notificationAttachmentsService.linkAttachmentsToMessage(input.senderUserId, message.id, input.attachmentIds ?? [], undefined, manager);
+      await this.mailStorageQuotaService.ensureAttachmentRefsForUsers({
+        attachmentIds: input.attachmentIds ?? [],
+        userIds: [input.senderUserId, ...resolvedRecipients.map((user) => user.id)],
+        messageId: message.id,
+        manager,
+      });
       await this.messageAuditService.createAuditLog(
         {
           action: 'MESSAGE_FORWARDED',
@@ -1202,6 +1236,12 @@ export class NotificationsService {
         manager,
       );
       await this.notificationAttachmentsService.linkAttachmentsToMessage(userId, sent.id, attachmentIds, draftId, manager);
+      await this.mailStorageQuotaService.ensureAttachmentRefsForUsers({
+        attachmentIds,
+        userIds: [userId, ...resolvedRecipients.map((user) => user.id)],
+        messageId: sent.id,
+        manager,
+      });
       await this.messageAuditService.createAuditLog(
         {
           action: 'DRAFT_SENT',
@@ -1750,6 +1790,13 @@ export class NotificationsService {
     };
   }
 
+  async listMyFiles(
+    userId: string,
+    query?: { type?: 'all' | 'image' | 'file'; page?: number; limit?: number; q?: string },
+  ) {
+    return this.notificationAttachmentsService.listUserFiles(userId, query);
+  }
+
   async deleteAttachment(userId: string, attachmentId: string) {
     const attachment = await this.notificationAttachmentsService.deleteAttachment(
       userId,
@@ -1766,8 +1813,50 @@ export class NotificationsService {
     return { deleted: true };
   }
 
+  async deleteMyFile(userId: string, attachmentId: string) {
+    const result = await this.notificationAttachmentsService.deleteAttachmentForUser(
+      userId,
+      attachmentId,
+      NOTIFICATION_MODULE_PERMISSIONS,
+    );
+    await this.messageAuditService.createAuditLog({
+      action: 'ATTACHMENT_REMOVED',
+      actorUserId: userId,
+      messageId: result.attachment.messageId ?? result.attachment.draftId ?? null,
+      metadata: {
+        attachmentId,
+        source: 'MAIL_FILES',
+        fullyReleased: result.fullyReleased,
+      },
+    });
+    return { deleted: true };
+  }
+
+  async bulkDeleteMyFiles(userId: string, attachmentIds: string[]) {
+    const result = await this.notificationAttachmentsService.bulkDeleteAttachmentsForUser(
+      userId,
+      attachmentIds,
+      NOTIFICATION_MODULE_PERMISSIONS,
+    );
+    await this.messageAuditService.createAuditLog({
+      action: 'ATTACHMENT_REMOVED',
+      actorUserId: userId,
+      metadata: {
+        source: 'MAIL_FILES_BULK',
+        deleted: result.deleted,
+        attachmentIds: Array.from(new Set((attachmentIds ?? []).filter(Boolean))),
+      },
+    });
+    return result;
+  }
+
   async getMyStorageSummary(userId: string) {
     return this.mailStorageQuotaService.getStorageSummary(userId);
+  }
+
+  async updateMyStorageQuota(userId: string, mailStorageQuotaGb: number) {
+    await this.assertSuperAdminOrFail(userId);
+    return this.mailStorageQuotaService.setQuotaGb(userId, mailStorageQuotaGb, userId);
   }
 
   async getUserStorageSummary(requesterUserId: string, targetUserId: string) {

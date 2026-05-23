@@ -45,6 +45,9 @@ export class User {
   @Column({ default: false })
   deleted: boolean;
 
+  @Column({ name: 'deleted_at', type: 'timestamptz', nullable: true })
+  deletedAt: Date | null;
+
   @Column({ name: 'is_super_admin', default: false })
   isSuperAdmin: boolean;
 

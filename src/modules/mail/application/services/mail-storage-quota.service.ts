@@ -171,6 +171,55 @@ export class MailStorageQuotaService {
       .execute();
   }
 
+  async ensureAttachmentRefsForUsers(input: {
+    attachmentIds: string[];
+    userIds: string[];
+    messageId: string;
+    manager?: EntityManager;
+  }) {
+    const refRepo = input.manager
+      ? input.manager.getRepository(MailAttachmentUserRefEntity)
+      : this.attachmentUserRefRepository;
+    const attachmentIds = Array.from(new Set((input.attachmentIds ?? []).filter(Boolean)));
+    const userIds = Array.from(new Set((input.userIds ?? []).filter(Boolean)));
+    if (!attachmentIds.length || !userIds.length) return;
+
+    const rows: Array<{
+      attachmentId: string;
+      userId: string;
+      messageId: string;
+      countsStorage: boolean;
+      deletedAt: null;
+      permanentlyDeletedAt: null;
+    }> = [];
+    attachmentIds.forEach((attachmentId) => {
+      userIds.forEach((userId) => {
+        rows.push({
+          attachmentId,
+          userId,
+          messageId: input.messageId,
+          countsStorage: true,
+          deletedAt: null,
+          permanentlyDeletedAt: null,
+        });
+      });
+    });
+
+    await refRepo.upsert(rows, ['attachmentId', 'userId']);
+    await refRepo
+      .createQueryBuilder()
+      .update(MailAttachmentUserRefEntity)
+      .set({
+        messageId: input.messageId,
+        countsStorage: true,
+        deletedAt: null,
+        permanentlyDeletedAt: null,
+      })
+      .where('attachment_id IN (:...attachmentIds)', { attachmentIds })
+      .andWhere('user_id IN (:...userIds)', { userIds })
+      .execute();
+  }
+
   async getStorageSummary(userId: string, manager?: EntityManager) {
     const [quota, usedBytes] = await Promise.all([
       this.getQuota(userId, manager),

@@ -16,11 +16,13 @@ describe('NotificationAttachmentsService', () => {
 
   let attachmentRepository: ReturnType<typeof createRepository>;
   let messageRepository: ReturnType<typeof createRepository>;
+  let attachmentUserRefRepository: ReturnType<typeof createRepository>;
   let service: NotificationAttachmentsService;
 
   beforeEach(() => {
     attachmentRepository = createRepository();
     messageRepository = createRepository();
+    attachmentUserRefRepository = createRepository();
     messageRepository.findOne.mockResolvedValue({
       id: draftId,
       createdByUserId: userId,
@@ -38,6 +40,7 @@ describe('NotificationAttachmentsService', () => {
     service = new NotificationAttachmentsService(
       attachmentRepository as any,
       messageRepository as any,
+      attachmentUserRefRepository as any,
       { canDownloadAttachment: jest.fn() } as any,
       { ensureMessageParticipant: jest.fn() } as any,
       {
