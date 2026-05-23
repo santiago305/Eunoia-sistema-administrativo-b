@@ -19,6 +19,7 @@ export type PackWithItems = {
       name: string;
       barcode?: string | null;
       price: number;
+      image?: string | null;
       isActive: boolean;
       attributes: Array<{ code: string; name: string | null; value: string }>;
     };
@@ -37,5 +38,5 @@ export interface PackRepository {
   list(
     params: { q?: string; isActive?: boolean; filters?: PackSearchRule[]; page?: number; limit?: number },
     tx?: TransactionContext,
-  ): Promise<{ items: Pack[]; total: number }>;
+  ): Promise<{ items: PackWithItems[]; total: number }>;
 }
