@@ -12,6 +12,16 @@ import { MailStorageQuotaService } from './mail-storage-quota.service';
 import { envs } from 'src/infrastructure/config/envs';
 
 export type MailAttachmentKind = 'file' | 'image';
+type DetectedAttachmentSignature =
+  | 'pdf'
+  | 'jpeg'
+  | 'png'
+  | 'webp'
+  | 'gif'
+  | 'ole2'
+  | 'zip'
+  | 'text'
+  | 'unknown';
 
 @Injectable()
 export class NotificationAttachmentsService {
@@ -25,6 +35,19 @@ export class NotificationAttachmentsService {
   private readonly allowedAttachmentExtensions = new Set(['.pdf', '.jpg', '.jpeg', '.png', '.webp', '.gif', '.doc', '.docx', '.xls', '.xlsx', '.txt']);
   private readonly allowedImageExtensions = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif']);
   private readonly maxAttachmentSizeBytes = 5 * 1024 * 1024;
+  private readonly allowedMimeTypesByExtension = new Map<string, string[]>([
+    ['.pdf', ['application/pdf']],
+    ['.jpg', ['image/jpeg']],
+    ['.jpeg', ['image/jpeg']],
+    ['.png', ['image/png']],
+    ['.webp', ['image/webp']],
+    ['.gif', ['image/gif']],
+    ['.doc', ['application/msword']],
+    ['.docx', ['application/vnd.openxmlformats-officedocument.wordprocessingml.document']],
+    ['.xls', ['application/vnd.ms-excel']],
+    ['.xlsx', ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']],
+    ['.txt', ['text/plain']],
+  ]);
 
   constructor(
     @InjectRepository(MessageAttachmentEntity)
@@ -43,12 +66,80 @@ export class NotificationAttachmentsService {
     return kind === 'image' ? 'image' : 'file';
   }
 
-  private validateAttachmentOrFail(fileName: string, mimeType: string, size: number, kind?: MailAttachmentKind) {
+  private startsWithBytes(buffer: Buffer, bytes: number[]) {
+    if (buffer.length < bytes.length) return false;
+    return bytes.every((byte, index) => buffer[index] === byte);
+  }
+
+  private looksLikeTextPlain(buffer: Buffer) {
+    const sample = buffer.subarray(0, Math.min(buffer.length, 4096));
+    if (!sample.length) return false;
+    let printable = 0;
+    for (const byte of sample) {
+      if (byte === 0x00) return false;
+      const isControl = byte < 0x20 && byte !== 0x09 && byte !== 0x0a && byte !== 0x0d;
+      if (!isControl) printable += 1;
+    }
+    return printable / sample.length >= 0.85;
+  }
+
+  private detectAttachmentSignature(buffer: Buffer): DetectedAttachmentSignature {
+    if (this.startsWithBytes(buffer, [0x25, 0x50, 0x44, 0x46, 0x2d])) return 'pdf';
+    if (this.startsWithBytes(buffer, [0xff, 0xd8, 0xff])) return 'jpeg';
+    if (this.startsWithBytes(buffer, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return 'png';
+    if (
+      this.startsWithBytes(buffer, [0x52, 0x49, 0x46, 0x46]) &&
+      buffer.length >= 12 &&
+      buffer.subarray(8, 12).toString('ascii') === 'WEBP'
+    ) {
+      return 'webp';
+    }
+    if (this.startsWithBytes(buffer, [0x47, 0x49, 0x46, 0x38])) return 'gif';
+    if (this.startsWithBytes(buffer, [0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1])) return 'ole2';
+    if (this.startsWithBytes(buffer, [0x50, 0x4b, 0x03, 0x04])) return 'zip';
+    if (this.looksLikeTextPlain(buffer)) return 'text';
+    return 'unknown';
+  }
+
+  private validateAttachmentSignatureOrFail(extension: string, signature: DetectedAttachmentSignature) {
+    const signaturesByExtension: Record<string, DetectedAttachmentSignature[]> = {
+      '.pdf': ['pdf'],
+      '.jpg': ['jpeg'],
+      '.jpeg': ['jpeg'],
+      '.png': ['png'],
+      '.webp': ['webp'],
+      '.gif': ['gif'],
+      '.doc': ['ole2'],
+      '.xls': ['ole2'],
+      '.docx': ['zip'],
+      '.xlsx': ['zip'],
+      '.txt': ['text'],
+    };
+    const expectedSignatures = signaturesByExtension[extension] ?? [];
+    if (!expectedSignatures.length) return;
+    if (!expectedSignatures.includes(signature)) {
+      throw new BadRequestException('ATTACHMENT_SIGNATURE_MISMATCH');
+    }
+  }
+
+  private validateAttachmentOrFail(
+    fileName: string,
+    mimeType: string,
+    size: number,
+    buffer: Buffer,
+    kind?: MailAttachmentKind,
+  ) {
     const extension = path.extname(fileName).toLowerCase();
     const normalizedKind = this.normalizeKind(kind);
     if (!this.allowedAttachmentExtensions.has(extension)) throw new BadRequestException('ATTACHMENT_EXTENSION_NOT_ALLOWED');
     if (!this.allowedAttachmentMimeTypes.has(mimeType)) throw new BadRequestException('ATTACHMENT_MIME_NOT_ALLOWED');
     if (size > this.maxAttachmentSizeBytes) throw new BadRequestException('ATTACHMENT_TOO_LARGE');
+    const allowedMimeTypes = this.allowedMimeTypesByExtension.get(extension) ?? [];
+    if (allowedMimeTypes.length && !allowedMimeTypes.includes(mimeType)) {
+      throw new BadRequestException('ATTACHMENT_MIME_NOT_ALLOWED');
+    }
+    const detectedSignature = this.detectAttachmentSignature(buffer);
+    this.validateAttachmentSignatureOrFail(extension, detectedSignature);
     if (normalizedKind === 'image' && (!mimeType.startsWith('image/') || !this.allowedImageExtensions.has(extension))) {
       throw new BadRequestException('ATTACHMENT_IMAGE_MIME_REQUIRED');
     }
@@ -106,7 +197,7 @@ export class NotificationAttachmentsService {
     if (!input.messageId && !input.draftId) throw new BadRequestException('ATTACHMENT_TARGET_REQUIRED');
 
     const attachmentKind = this.normalizeKind(input.kind);
-    this.validateAttachmentOrFail(input.fileName, input.mimeType, input.size, attachmentKind);
+    this.validateAttachmentOrFail(input.fileName, input.mimeType, input.size, input.buffer, attachmentKind);
 
     if (input.messageId) {
       const canAccess = await this.messageAccessService.ensureMessageParticipant(input.userId, input.messageId);

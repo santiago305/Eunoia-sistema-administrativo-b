@@ -61,7 +61,7 @@ describe('NotificationAttachmentsService', () => {
       fileName: 'archivo.pdf',
       mimeType: 'application/pdf',
       size: 1024,
-      buffer: Buffer.from('file'),
+      buffer: Buffer.from('%PDF-1.7\nmock'),
       draftId,
       modulePermissions: {},
       ...overrides,
@@ -78,6 +78,7 @@ describe('NotificationAttachmentsService', () => {
     const result = (await upload({
       fileName: 'foto.png',
       mimeType: 'image/png',
+      buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
       kind: 'file' as any,
     })) as any;
 
@@ -95,6 +96,17 @@ describe('NotificationAttachmentsService', () => {
     await expect(upload({ kind: 'image' as any })).rejects.toThrow(
       new BadRequestException('ATTACHMENT_IMAGE_MIME_REQUIRED'),
     );
+    expect(fs.writeFile).not.toHaveBeenCalled();
+  });
+
+  it('rejects spoofed files when extension/mime do not match binary signature', async () => {
+    await expect(
+      upload({
+        fileName: 'foto.png',
+        mimeType: 'image/png',
+        buffer: Buffer.from('%PDF-1.7\nthis-is-not-png'),
+      }),
+    ).rejects.toThrow(new BadRequestException('ATTACHMENT_SIGNATURE_MISMATCH'));
     expect(fs.writeFile).not.toHaveBeenCalled();
   });
 });

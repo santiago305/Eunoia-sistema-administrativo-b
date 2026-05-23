@@ -493,7 +493,9 @@ export class NotificationQueriesService {
           .createQueryBuilder('m')
           .select('m.thread_id', 'threadId')
           .addSelect('COUNT(*)', 'total')
+          .innerJoin(MessageUserStateEntity, 'mus_count', 'mus_count.message_id = m.id AND mus_count.user_id = :userId', { userId })
           .where('m.thread_id IN (:...threadIds)', { threadIds: groupedSystemThreadIds })
+          .andWhere(this.stateViewCondition('mus_count', 'm', view))
           .groupBy('m.thread_id')
           .getRawMany<{ threadId: string; total: string }>()
       : [];
