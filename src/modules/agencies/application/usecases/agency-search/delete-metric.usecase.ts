@@ -1,12 +1,9 @@
 import { Inject } from "@nestjs/common";
-import {
-  LISTING_SEARCH_STORAGE,
-  ListingSearchStorageRepository,
-} from "src/shared/listing-search/domain/listing-search.repository";
+import { LISTING_SEARCH_STORAGE, ListingSearchStorageRepository } from "src/shared/listing-search/domain/listing-search.repository";
 
-const PACKS_SEARCH_TABLE_KEY = "packs";
+const AGENCIES_SEARCH_TABLE_KEY = "agencies";
 
-export class DeletePackSearchMetricUsecase {
+export class DeleteAgencySearchMetricUsecase {
   constructor(
     @Inject(LISTING_SEARCH_STORAGE)
     private readonly searchStorage: ListingSearchStorageRepository,
@@ -15,7 +12,7 @@ export class DeletePackSearchMetricUsecase {
   async execute(userId: string, metricId: string) {
     const deleted = await this.searchStorage.deleteMetric({
       userId,
-      tableKey: PACKS_SEARCH_TABLE_KEY,
+      tableKey: AGENCIES_SEARCH_TABLE_KEY,
       metricId,
     });
 

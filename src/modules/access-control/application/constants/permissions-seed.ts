@@ -20,6 +20,7 @@ export const PERMISSIONS_SEED: PermissionSeedItem[] = [
   { code: 'page.warehouses.view', name: 'Ver almacenes', description: 'Acceso a pantallas de almacenes', module: 'warehouses', resource: 'warehouses', action: 'view', type: 'page' },
   { code: 'page.clients.view', name: 'Ver clientes', description: 'Acceso a pantalla de clientes', module: 'clients', resource: 'clients', action: 'view', type: 'page' },
   { code: 'page.packs.view', name: 'Ver packs', description: 'Acceso a pantalla de packs', module: 'packs', resource: 'packs', action: 'view', type: 'page' },
+  { code: 'page.agencies.view', name: 'Ver agencias', description: 'Acceso a pantalla de agencias', module: 'agencies', resource: 'agencies', action: 'view', type: 'page' },
   { code: 'page.providers.view', name: 'Ver proveedores', description: 'Acceso a pantalla de proveedores', module: 'providers', resource: 'providers', action: 'view', type: 'page' },
   { code: 'page.purchases.view', name: 'Ver compras', description: 'Acceso a pantalla de compras', module: 'purchases', resource: 'purchases', action: 'view', type: 'page' },
   { code: 'page.payments.view', name: 'Ver pagos', description: 'Acceso a pantalla de pagos', module: 'payments', resource: 'payments', action: 'view', type: 'page' },
@@ -98,6 +99,8 @@ export const PERMISSIONS_SEED: PermissionSeedItem[] = [
   { code: 'security.read', name: 'Consultar seguridad', description: 'Consultar metricas y reportes de seguridad', module: 'security', resource: 'security', action: 'read', type: 'action' },
   { code: 'security.export', name: 'Exportar auditoria de seguridad', description: 'Exportar auditoria de seguridad a CSV', module: 'security', resource: 'security', action: 'export', type: 'action' },
   { code: 'security.blacklist.manage', name: 'Gestionar blacklist de seguridad', description: 'Agregar o remover IPs en blacklist manual', module: 'security', resource: 'blacklist', action: 'manage', type: 'action' },
+  { code: 'agencies.read', name: 'Consultar agencias', description: 'Consultar agencias', module: 'agencies', resource: 'agencies', action: 'read', type: 'action' },
+  { code: 'agencies.manage', name: 'Gestionar agencias', description: 'Crear/actualizar agencias y su estado', module: 'agencies', resource: 'agencies', action: 'manage', type: 'action' },
 ];
 
 export const ROLE_PERMISSION_SEED: Record<string, string[]> = {
