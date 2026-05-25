@@ -21,6 +21,7 @@ export const PERMISSIONS_SEED: PermissionSeedItem[] = [
   { code: 'page.clients.view', name: 'Ver clientes', description: 'Acceso a pantalla de clientes', module: 'clients', resource: 'clients', action: 'view', type: 'page' },
   { code: 'page.packs.view', name: 'Ver packs', description: 'Acceso a pantalla de packs', module: 'packs', resource: 'packs', action: 'view', type: 'page' },
   { code: 'page.agencies.view', name: 'Ver agencias', description: 'Acceso a pantalla de agencias', module: 'agencies', resource: 'agencies', action: 'view', type: 'page' },
+  { code: 'page.sources.view', name: 'Ver fuentes', description: 'Acceso a pantalla de fuentes', module: 'sources', resource: 'sources', action: 'view', type: 'page' },
   { code: 'page.providers.view', name: 'Ver proveedores', description: 'Acceso a pantalla de proveedores', module: 'providers', resource: 'providers', action: 'view', type: 'page' },
   { code: 'page.purchases.view', name: 'Ver compras', description: 'Acceso a pantalla de compras', module: 'purchases', resource: 'purchases', action: 'view', type: 'page' },
   { code: 'page.payments.view', name: 'Ver pagos', description: 'Acceso a pantalla de pagos', module: 'payments', resource: 'payments', action: 'view', type: 'page' },
@@ -101,6 +102,8 @@ export const PERMISSIONS_SEED: PermissionSeedItem[] = [
   { code: 'security.blacklist.manage', name: 'Gestionar blacklist de seguridad', description: 'Agregar o remover IPs en blacklist manual', module: 'security', resource: 'blacklist', action: 'manage', type: 'action' },
   { code: 'agencies.read', name: 'Consultar agencias', description: 'Consultar agencias', module: 'agencies', resource: 'agencies', action: 'read', type: 'action' },
   { code: 'agencies.manage', name: 'Gestionar agencias', description: 'Crear/actualizar agencias y su estado', module: 'agencies', resource: 'agencies', action: 'manage', type: 'action' },
+  { code: 'sources.read', name: 'Consultar fuentes', description: 'Consultar fuentes', module: 'sources', resource: 'sources', action: 'read', type: 'action' },
+  { code: 'sources.manage', name: 'Gestionar fuentes', description: 'Crear/actualizar fuentes y su estado', module: 'sources', resource: 'sources', action: 'manage', type: 'action' },
 ];
 
 export const ROLE_PERMISSION_SEED: Record<string, string[]> = {
