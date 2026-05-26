@@ -13,14 +13,14 @@ export const NOTIFICATION_MODULE_PERMISSIONS: Record<string, string[]> = {
 
 export const NOTIFICATION_MODULE_LABELS: Record<string, string> = {
   purchases: 'Compras',
-  production: 'Produccion',
-  warehouse: 'Almacen',
-  catalog: 'Catalogo',
+  production: 'Producción',
+  warehouse: 'Almacenes',
+  catalog: 'Catálogo',
   supplies: 'Suministros',
   security: 'Seguridad',
   roles: 'Roles',
   providers: 'Proveedores',
-  corporate: 'Corporativo',
+  corporate: 'Sistema',
   system: 'Sistema',
 };
 
