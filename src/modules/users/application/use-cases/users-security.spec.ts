@@ -6,6 +6,13 @@ import { RoleType } from 'src/shared/constantes/constants';
 describe('Users security responses', () => {
   it('never returns password in list users response', async () => {
     const listUsersUseCase = new ListUsersUseCase({
+      findManagementScopeById: jest.fn().mockResolvedValue({
+        id: 'req-1',
+        roleDescription: RoleType.ADMIN,
+        isSuperAdmin: false,
+        manageableRoleDescriptions: null,
+        manageableUserIds: null,
+      }),
       listUsers: jest.fn().mockResolvedValue({
         items: [
           {
@@ -27,7 +34,7 @@ describe('Users security responses', () => {
       }),
     } as any);
 
-    const result = await listUsersUseCase.execute({ page: 1 }, RoleType.ADMIN);
+    const result = await listUsersUseCase.execute({ page: 1 }, { role: RoleType.ADMIN, userId: 'req-1' });
     expect(result.items[0]).not.toHaveProperty('password');
   });
 

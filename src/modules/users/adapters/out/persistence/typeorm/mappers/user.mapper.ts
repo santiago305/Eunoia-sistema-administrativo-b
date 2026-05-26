@@ -24,6 +24,9 @@ export class UserMapper {
       createdAt: orm.createdAt,
       telefono: orm.telefono,
       preferredHomePath: orm.preferredHomePath ?? null,
+      createdByUserId: orm.createdByUserId ?? null,
+      manageableRoleDescriptions: orm.manageableRoleDescriptions ?? null,
+      manageableUserIds: orm.manageableUserIds ?? null,
     });
   }
 
@@ -37,6 +40,9 @@ export class UserMapper {
       avatarUrl: domain.avatarUrl,
       telefono: domain.telefono,
       preferredHomePath: domain.preferredHomePath ?? null,
+      createdByUserId: domain.createdByUserId ?? null,
+      manageableRoleDescriptions: domain.manageableRoleDescriptions ?? null,
+      manageableUserIds: domain.manageableUserIds ?? null,
       role: domain.roleId ? ({ roleId: domain.roleId.value } as OrmUser['role']) : undefined,
       createdAt: domain.createdAt,
     };

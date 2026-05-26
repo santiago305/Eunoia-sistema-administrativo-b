@@ -18,5 +18,13 @@ export interface UserRepository {
       securityDisabledAt?: Date | null;
     },
   ): Promise<void>;
+  updateManagementScope(
+    id: string,
+    params: {
+      manageableRoleDescriptions: string[] | null;
+      manageableUserIds: string[] | null;
+    },
+  ): Promise<void>;
+  reassignRole(fromRoleId: string, toRoleId: string): Promise<void>;
   save(user: User): Promise<User>;
 }

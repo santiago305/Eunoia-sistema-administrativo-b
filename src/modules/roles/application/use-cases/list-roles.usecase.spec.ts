@@ -1,6 +1,4 @@
 import { ListRolesUseCase } from './list-roles.usecase';
-import { ForbiddenException } from '@nestjs/common';
-import { RoleType } from 'src/shared/constantes/constants';
 
 describe('ListRolesUseCase', () => {
   const makeUseCase = (overrides?: { roleReadRepository?: any }) => {
@@ -29,7 +27,7 @@ describe('ListRolesUseCase', () => {
     };
     const useCase = makeUseCase({ roleReadRepository });
 
-    const result = await useCase.execute(undefined, RoleType.ADMIN);
+    const result = await useCase.execute();
 
     expect(roleReadRepository.listRoles).toHaveBeenCalledWith({
       status: 'all',
@@ -43,34 +41,23 @@ describe('ListRolesUseCase', () => {
     };
     const useCase = makeUseCase({ roleReadRepository });
 
-    await useCase.execute({ status: 'inactive' }, RoleType.ADMIN);
+    await useCase.execute({ status: 'inactive' });
 
     expect(roleReadRepository.listRoles).toHaveBeenCalledWith({
       status: 'inactive',
     });
   });
 
-  it('returns only adviser role for moderator', async () => {
+  it('returns all roles without role hardcode filter', async () => {
     const expected = [
-      { id: 'role-1', description: RoleType.ADMIN, deleted: false, createdAt: new Date() },
-      { id: 'role-2', description: RoleType.MODERATOR, deleted: false, createdAt: new Date() },
-      { id: 'role-3', description: RoleType.ADVISER, deleted: false, createdAt: new Date() },
+      { id: 'role-1', description: 'admin', deleted: false, createdAt: new Date() },
+      { id: 'role-2', description: 'custom_role', deleted: false, createdAt: new Date() },
     ];
-    const roleReadRepository = {
-      listRoles: jest.fn().mockResolvedValue(expected),
-    };
+    const roleReadRepository = { listRoles: jest.fn().mockResolvedValue(expected) };
     const useCase = makeUseCase({ roleReadRepository });
 
-    const result = await useCase.execute(undefined, RoleType.MODERATOR);
+    const result = await useCase.execute();
 
-    expect(result).toEqual([expected[2]]);
-  });
-
-  it('rejects listing roles for non-management roles', async () => {
-    const useCase = makeUseCase();
-
-    await expect(useCase.execute(undefined, RoleType.ADVISER)).rejects.toBeInstanceOf(
-      ForbiddenException,
-    );
+    expect(result).toEqual(expected);
   });
 });

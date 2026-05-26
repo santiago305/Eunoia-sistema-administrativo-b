@@ -4,5 +4,6 @@ export class Role {
     public description: string,
     public deleted: boolean,
     public createdAt?: Date,
+    public createdByUserId?: string | null,
   ) {}
 }

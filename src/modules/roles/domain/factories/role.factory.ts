@@ -4,11 +4,14 @@ export class RoleFactory {
 
   static createNew(params: {
     description: string;
+    createdByUserId?: string | null;
   }): Role {
     return new Role(
       undefined,             
       params.description,
-      false                   
+      false,
+      undefined,
+      params.createdByUserId ?? null,
     );
   }
   static reconstitute(params: {
@@ -16,12 +19,14 @@ export class RoleFactory {
     description: string;
     deleted: boolean;
     createdAt?: Date;
+    createdByUserId?: string | null;
   }): Role {
     return new Role(
       params.id,
       params.description,
       params.deleted,
-      params.createdAt
+      params.createdAt,
+      params.createdByUserId ?? null,
     );
   }
 }

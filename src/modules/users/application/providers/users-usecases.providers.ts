@@ -12,6 +12,7 @@ import { RestoreUserUseCase } from "../use-cases/restore-user.usecase";
 import { UpdateAvatarUseCase } from "../use-cases/update-avatar.usecase";
 import { UpdateUserRoleUseCase } from "../use-cases/update-user-role.usecase";
 import { UpdateUserUseCase } from "../use-cases/update-user.usecase";
+import { UpdateUserManagementScopeUseCase } from "../use-cases/update-user-management-scope.usecase";
 
 export const usersUsecasesProviders = [
   CreateUserUseCase,
@@ -28,4 +29,5 @@ export const usersUsecasesProviders = [
   UpdateAvatarUseCase,
   GetUserWithPasswordByEmailUseCase,
   RemoveAvatarUseCase,
+  UpdateUserManagementScopeUseCase,
 ];

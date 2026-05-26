@@ -30,11 +30,13 @@ import { CreateUserDto } from 'src/modules/users/adapters/in/dtos/create-user.dt
 import { UpdateUserDto } from 'src/modules/users/adapters/in/dtos/update-user.dto';
 import { ChangePasswordDto } from 'src/modules/users/adapters/in/dtos/change-password.dto';
 import { UpdateUserRoleDto } from 'src/modules/users/adapters/in/dtos/update-user-role.dto';
+import { UpdateUserManagementScopeDto } from 'src/modules/users/adapters/in/dtos/update-user-management-scope.dto';
 import { RoleType } from 'src/shared/constantes/constants';
 import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard';
 import { CsrfGuard } from 'src/shared/utilidades/guards/csrf.guard';
 import { User as CurrentUser } from 'src/shared/utilidades/decorators/user.decorator';
 import { RemoveAvatarUseCase } from 'src/modules/users/application/use-cases/remove-avatar.usecase';
+import { UpdateUserManagementScopeUseCase } from 'src/modules/users/application/use-cases/update-user-management-scope.usecase';
 import { PermissionsGuard } from 'src/modules/access-control/adapters/in/guards/permissions.guard';
 import { RequirePermissions } from 'src/modules/access-control/adapters/in/decorators/require-permissions.decorator';
 import { IMAGE_PROCESSOR, ImageProcessor } from 'src/shared/application/ports/image-processor.port';
@@ -66,6 +68,7 @@ export class UsersController {
     private readonly restoreUserUseCase: RestoreUserUseCase,
     private readonly updateAvatarUseCase: UpdateAvatarUseCase,
     private readonly removeAvatarUseCase: RemoveAvatarUseCase,
+    private readonly updateUserManagementScopeUseCase: UpdateUserManagementScopeUseCase,
     @Inject(IMAGE_PROCESSOR)
     private readonly imageProcessor: ImageProcessor,
     @Inject(FILE_STORAGE)
@@ -75,8 +78,8 @@ export class UsersController {
   @Post('create')
   @UseGuards(JwtAuthGuard, PermissionsGuard, CsrfGuard)
   @RequirePermissions('users.create')
-  create(@Body() dto: CreateUserDto, @CurrentUser() user: { role: RoleType }) {
-    return this.createUserUseCase.execute(dto, user.role);
+  create(@Body() dto: CreateUserDto, @CurrentUser() user: { role: RoleType; id: string }) {
+    return this.createUserUseCase.execute(dto, { role: user.role, userId: user.id });
   }
 
   @Get('')
@@ -89,7 +92,7 @@ export class UsersController {
     @Query('sortBy') sortBy: string,
     @Query('order') order: 'ASC' | 'DESC',
     @Query('status') status: string,
-    @CurrentUser() user: { role: RoleType }
+    @CurrentUser() user: { role: RoleType; id: string }
   ) {
     if (status && !USER_LIST_STATUSES.includes(status as UserListStatus)) {
       throw new BadRequestException(
@@ -103,7 +106,7 @@ export class UsersController {
       sortBy: this.normalizeSortBy(sortBy),
       order: this.normalizeOrder(order),
       status: (status as UserListStatus | undefined) ?? 'all',
-    }, user.role);
+    }, { role: user.role, userId: user.id });
   }
 
   @Get('me')
@@ -119,7 +122,7 @@ export class UsersController {
     @Query('role') role: string,
     @Query('q') q: string,
     @Query('status') status: string,
-    @CurrentUser() user: { role: RoleType },
+    @CurrentUser() user: { role: RoleType; id: string },
   ) {
     if (status && !USER_LIST_STATUSES.includes(status as UserListStatus)) {
       throw new BadRequestException(
@@ -130,7 +133,25 @@ export class UsersController {
     return this.countUsersByRoleUseCase.execute({
       filters: { role, q },
       status: (status as UserListStatus | undefined) ?? 'all',
-    }, user.role);
+    }, { role: user.role, userId: user.id });
+  }
+
+  @Patch(':id/management-scope')
+  @UseGuards(JwtAuthGuard, PermissionsGuard, CsrfGuard)
+  @RequirePermissions('users.assign_permissions')
+  updateManagementScope(
+    @Param('id') id: string,
+    @Body() dto: UpdateUserManagementScopeDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.updateUserManagementScopeUseCase.execute(
+      id,
+      {
+        manageableRoleDescriptions: dto.manageableRoleDescriptions,
+        manageableUserIds: dto.manageableUserIds,
+      },
+      user.id,
+    );
   }
 
   @Patch('me/update')
@@ -148,9 +169,9 @@ export class UsersController {
   updateRole(
     @Param('id') id: string,
     @Body() dto: UpdateUserRoleDto,
-    @CurrentUser() user: { role: RoleType }
+    @CurrentUser() user: { role: RoleType; id: string }
   ) {
-    return this.updateUserRoleUseCase.execute(id, dto.roleId, user.role);
+    return this.updateUserRoleUseCase.execute(id, dto.roleId, { role: user.role, userId: user.id });
   }
 
   @Delete('me/avatar')
@@ -164,15 +185,15 @@ export class UsersController {
   @Patch('delete/:id')
   @UseGuards(JwtAuthGuard, PermissionsGuard, CsrfGuard)
   @RequirePermissions('users.delete')
-  remove(@Param('id') id: string, @CurrentUser() user: { role: RoleType }) {
-    return this.deleteUserUseCase.execute(id, user.role);
+  remove(@Param('id') id: string, @CurrentUser() user: { role: RoleType; id: string }) {
+    return this.deleteUserUseCase.execute(id, { role: user.role, userId: user.id });
   }
 
   @Patch('restore/:id')
   @UseGuards(JwtAuthGuard, PermissionsGuard, CsrfGuard)
   @RequirePermissions('users.restore')
-  restore(@Param('id') id: string, @CurrentUser() user: { role: RoleType }) {
-    return this.restoreUserUseCase.execute(id, user.role);
+  restore(@Param('id') id: string, @CurrentUser() user: { role: RoleType; id: string }) {
+    return this.restoreUserUseCase.execute(id, { role: user.role, userId: user.id });
   }
 
   @Patch('me/change-password')

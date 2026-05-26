@@ -10,7 +10,15 @@ describe('DeleteUserUseCase', () => {
       updateDeleted: jest.fn(),
     };
     const userReadRepository = overrides?.userReadRepository ?? {
+      findManagementScopeById: jest.fn().mockResolvedValue({
+        id: "req-1",
+        roleDescription: RoleType.ADMIN,
+        isSuperAdmin: false,
+        manageableRoleDescriptions: [RoleType.ADVISER],
+        manageableUserIds: null,
+      }),
       findPublicById: jest.fn().mockResolvedValue({
+        id: "user-1",
         role: { description: RoleType.ADVISER },
       }),
     };
@@ -20,22 +28,30 @@ describe('DeleteUserUseCase', () => {
   it('deletes user for admin', async () => {
     const useCase = makeUseCase();
 
-    const result = await useCase.execute('user-1', RoleType.ADMIN);
+    const result = await useCase.execute('user-1', { role: RoleType.ADMIN, userId: 'req-1' });
 
     expect(result).toEqual(successResponse('El usuario ha sido eliminado'));
   });
 
-  it('rejects moderator deleting admin', async () => {
+  it('rejects deleting outside configured scope', async () => {
     const useCase = makeUseCase({
       userReadRepository: {
+        findManagementScopeById: jest.fn().mockResolvedValue({
+          id: "req-1",
+          roleDescription: RoleType.ADVISER,
+          isSuperAdmin: false,
+          manageableRoleDescriptions: [RoleType.ADVISER],
+          manageableUserIds: null,
+        }),
         findPublicById: jest.fn().mockResolvedValue({
+          id: "user-1",
           role: { description: RoleType.ADMIN },
         }),
       },
     });
 
     await expect(
-      useCase.execute('user-1', RoleType.MODERATOR)
+      useCase.execute('user-1', { role: RoleType.MODERATOR, userId: 'req-1' })
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
@@ -47,7 +63,7 @@ describe('DeleteUserUseCase', () => {
     });
 
     await expect(
-      useCase.execute('user-1', RoleType.ADMIN)
+      useCase.execute('user-1', { role: RoleType.ADMIN, userId: 'req-1' })
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

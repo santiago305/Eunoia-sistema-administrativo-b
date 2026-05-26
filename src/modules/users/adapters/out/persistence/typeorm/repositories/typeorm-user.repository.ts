@@ -120,6 +120,31 @@ export class TypeormUserRepository implements UserRepository {
 
     return UserMapper.toDomain(saved);
   }
+
+  async updateManagementScope(
+    id: string,
+    params: {
+      manageableRoleDescriptions: string[] | null;
+      manageableUserIds: string[] | null;
+    },
+  ): Promise<void> {
+    await this.ormRepository
+      .createQueryBuilder()
+      .update(OrmUser)
+      .set({
+        manageableRoleDescriptions: params.manageableRoleDescriptions,
+        manageableUserIds: params.manageableUserIds,
+      })
+      .where('user_id = :id', { id })
+      .execute();
+  }
+
+  async reassignRole(fromRoleId: string, toRoleId: string): Promise<void> {
+    await this.ormRepository.query(
+      'UPDATE users SET role_id = $1 WHERE role_id = $2',
+      [toRoleId, fromRoleId],
+    );
+  }
 }
 
 

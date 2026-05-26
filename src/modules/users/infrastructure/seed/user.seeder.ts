@@ -5,7 +5,7 @@ import { Role } from '../../../roles/adapters/out/persistence/typeorm/entities/r
 import { RoleType } from 'src/shared/constantes/constants';
 
 /**
- * Seeder para insertar usuarios por defecto (admin y adviser).
+ * Seeder para insertar usuario protegido por defecto (superadministrador).
  */
 export const seedUser = async (dataSource: DataSource) => {
   const userRepo = dataSource.getRepository(User);
@@ -20,47 +20,19 @@ export const seedUser = async (dataSource: DataSource) => {
       avatarUrl: '',
       isSuperAdmin: true,
     },
-    {
-      name: 'ADMIN_INTERNAL',
-      email: 'admin@gmail.com',
-      password: '12345678',
-      roleDescription: RoleType.ADMIN,
-      avatarUrl: '',
-      isSuperAdmin: false,
-    },
-    {
-      name: 'MarAa',
-      email: 'maria@example.com',
-      password: '123123123',
-      roleDescription: RoleType.ADVISER,
-      avatarUrl: '',
-      isSuperAdmin: false,
-    },
-    {
-      name: 'Jefe de Compras',
-      email: 'jefecompras@eunoia.com',
-      password: '123123123',
-      roleDescription: RoleType.PURCHASING_MANAGER,
-      avatarUrl: '',
-      isSuperAdmin: false,
-    },
   ];
 
   const roles = await roleRepo
     .createQueryBuilder('role')
     .select(['role.roleId', 'role.description'])
     .where('role.description IN (:...descriptions)', {
-      descriptions: [RoleType.ADMIN, RoleType.MODERATOR, RoleType.ADVISER, RoleType.PURCHASING_MANAGER],
+      descriptions: [RoleType.ADMIN],
     })
     .getMany();
 
   const roleMap = new Map(roles.map((r) => [r.description, r]));
   const adminRole = roleMap.get(RoleType.ADMIN);
-  const moderatorRole = roleMap.get(RoleType.MODERATOR);
-  const adviserRole = roleMap.get(RoleType.ADVISER);
-  const purchasingManagerRole = roleMap.get(RoleType.PURCHASING_MANAGER);
-
-  if (!adminRole || !adviserRole || !moderatorRole || !purchasingManagerRole) {
+  if (!adminRole) {
     return;
   }
 

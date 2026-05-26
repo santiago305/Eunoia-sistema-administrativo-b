@@ -1,7 +1,6 @@
 import {
   BadRequestException,
   ConflictException,
-  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
@@ -12,16 +11,8 @@ import {
   ROLE_READ_REPOSITORY,
   RoleReadRepository,
 } from '../ports/role-read.repository';
-import { RoleType } from 'src/shared/constantes/constants';
 import { RoleConflictApplicationError } from '../errors/role-conflict.error';
-import { RoleForbiddenApplicationError } from '../errors/role-forbidden.error';
 import { RoleNotFoundApplicationError } from '../errors/role-not-found.error';
-
-const PROTECTED_SYSTEM_ROLES = new Set<string>([
-  RoleType.ADMIN,
-  RoleType.MODERATOR,
-  RoleType.ADVISER,
-]);
 
 @Injectable()
 export class UpdateRoleUseCase {
@@ -51,15 +42,9 @@ export class UpdateRoleUseCase {
     const currentDescription = (role.description || '').trim().toLowerCase();
     const isSemanticDescriptionChange = nextDescription !== currentDescription;
 
-    if (PROTECTED_SYSTEM_ROLES.has(currentDescription) && isSemanticDescriptionChange) {
-      throw new ForbiddenException(
-        new RoleForbiddenApplicationError('No se puede renombrar un rol base del sistema').message,
-      );
-    }
-
     if (isSemanticDescriptionChange) {
-      const exists = await this.roleReadRepository.existsByDescription(nextDescription);
-      if (exists) {
+      const exists = await this.roleReadRepository.findByDescription(nextDescription, { includeDeleted: true });
+      if (exists && exists.id !== id) {
         throw new ConflictException(new RoleConflictApplicationError().message);
       }
     }

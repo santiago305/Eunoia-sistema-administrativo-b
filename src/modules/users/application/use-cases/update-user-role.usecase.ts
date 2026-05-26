@@ -19,18 +19,13 @@ export class UpdateUserRoleUseCase {
     private readonly roleReadRepository: RoleReadRepository,
   ) {}
 
-  async execute(id: string, roleId: string, requesterRole: RoleType) {
-    if (requesterRole !== RoleType.ADMIN) {
-      throw new ForbiddenException(new UserForbiddenApplicationError('No autorizado para cambiar roles de usuario').message);
-    }
+  async execute(id: string, roleId: string, requester: { role: RoleType; userId: string }) {
+    const requesterScope = await this.userReadRepository.findManagementScopeById(requester.userId);
+    const isSuperAdmin = Boolean(requesterScope?.isSuperAdmin);
 
     const target = await this.userReadRepository.findManagementById(id);
     if (!target) {
       throw new NotFoundException(new UserNotFoundApplicationError().message);
-    }
-
-    if (target.role.description === RoleType.ADMIN) {
-      throw new ForbiddenException(new UserForbiddenApplicationError('No puedes cambiar el rol de un administrador').message);
     }
 
     const nextRole = await this.roleReadRepository.findById(roleId);
@@ -38,8 +33,27 @@ export class UpdateUserRoleUseCase {
       throw new NotFoundException('Rol invalido');
     }
 
-    if (nextRole.description === RoleType.ADMIN) {
-      throw new ForbiddenException(new UserForbiddenApplicationError('No puedes asignar rol administrador').message);
+    if (!isSuperAdmin) {
+      const allowedRoles = Array.isArray(requesterScope?.manageableRoleDescriptions)
+        ? requesterScope.manageableRoleDescriptions.filter((value) => value && value.trim().length > 0)
+        : requesterScope?.roleDescription
+          ? [requesterScope.roleDescription]
+          : requester.role
+            ? [requester.role]
+            : [];
+      const allowedUserIds = Array.isArray(requesterScope?.manageableUserIds)
+        ? requesterScope.manageableUserIds
+        : [];
+
+      const canManageTarget =
+        allowedRoles.includes(target.role.description) || allowedUserIds.includes(target.id);
+      const canAssignNextRole = allowedRoles.includes(nextRole.description);
+
+      if (!canManageTarget || !canAssignNextRole) {
+        throw new ForbiddenException(
+          new UserForbiddenApplicationError('No autorizado para cambiar el rol de este usuario').message,
+        );
+      }
     }
 
     const user = await this.userRepository.findById(id);

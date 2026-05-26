@@ -11,6 +11,7 @@ export interface UserReadRepository {
       role?: string;
       q?: string;
       allowedRoles?: string[];
+      allowedUserIds?: string[];
     };
     sortBy?: string;
     order?: 'ASC' | 'DESC';
@@ -26,6 +27,10 @@ export interface UserReadRepository {
       deleted: boolean;
       createdAt: Date;
       updatedAt?: Date;
+      createdByUserId?: string | null;
+      createdByUserName?: string | null;
+      manageableRoleDescriptions?: string[] | null;
+      manageableUserIds?: string[] | null;
     }>;
     total: number;
     page: number;
@@ -37,6 +42,7 @@ export interface UserReadRepository {
       role?: string;
       q?: string;
       allowedRoles?: string[];
+      allowedUserIds?: string[];
     };
     status?: UserListStatus;
   }): Promise<{
@@ -77,6 +83,17 @@ export interface UserReadRepository {
     avatarUrl?: string;
     createdAt?: Date;
     role: { id: string; description: string };
+    isSuperAdmin?: boolean;
+    manageableRoleDescriptions?: string[] | null;
+    manageableUserIds?: string[] | null;
+  } | null>;
+
+  findManagementScopeById(id: string): Promise<{
+    id: string;
+    roleDescription: string;
+    isSuperAdmin: boolean;
+    manageableRoleDescriptions: string[] | null;
+    manageableUserIds: string[] | null;
   } | null>;
 
   findWithPasswordByEmail(email: string): Promise<{

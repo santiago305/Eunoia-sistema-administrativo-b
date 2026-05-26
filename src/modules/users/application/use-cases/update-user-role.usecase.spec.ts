@@ -14,6 +14,13 @@ describe('UpdateUserRoleUseCase', () => {
       ...(overrides?.userRepository ?? {}),
     };
     const userReadRepository = {
+      findManagementScopeById: jest.fn().mockResolvedValue({
+        id: 'req-1',
+        roleDescription: RoleType.ADMIN,
+        isSuperAdmin: false,
+        manageableRoleDescriptions: [RoleType.ADVISER, RoleType.MODERATOR],
+        manageableUserIds: null,
+      }),
       findManagementById: jest.fn().mockResolvedValue({
         id: 'user-1',
         role: { id: 'role-1', description: RoleType.ADVISER },
@@ -44,7 +51,7 @@ describe('UpdateUserRoleUseCase', () => {
   it('updates role for admin', async () => {
     const { useCase, userRepository } = makeUseCase();
 
-    const result = await useCase.execute('user-1', 'role-2', RoleType.ADMIN);
+    const result = await useCase.execute('user-1', 'role-2', { role: RoleType.ADMIN, userId: 'req-1' });
 
     expect(userRepository.save).toHaveBeenCalledTimes(1);
     expect(result).toEqual(
@@ -54,16 +61,35 @@ describe('UpdateUserRoleUseCase', () => {
     );
   });
 
-  it('rejects non admin requester', async () => {
-    const { useCase } = makeUseCase();
+  it('rejects requester outside configured scope', async () => {
+    const { useCase } = makeUseCase({
+      userReadRepository: {
+        findManagementScopeById: jest.fn().mockResolvedValue({
+          id: 'req-1',
+          roleDescription: RoleType.ADVISER,
+          isSuperAdmin: false,
+          manageableRoleDescriptions: [RoleType.ADVISER],
+          manageableUserIds: null,
+        }),
+      },
+    });
 
     await expect(
-      useCase.execute('user-1', 'role-2', RoleType.MODERATOR),
+      useCase.execute('user-1', 'role-2', { role: RoleType.ADVISER, userId: 'req-1' }),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
-  it('rejects assigning admin role', async () => {
+  it('allows superadmin assigning any role', async () => {
     const { useCase } = makeUseCase({
+      userReadRepository: {
+        findManagementScopeById: jest.fn().mockResolvedValue({
+          id: 'req-1',
+          roleDescription: RoleType.ADMIN,
+          isSuperAdmin: true,
+          manageableRoleDescriptions: null,
+          manageableUserIds: null,
+        }),
+      },
       roleReadRepository: {
         findById: jest.fn().mockResolvedValue({
           id: 'role-admin',
@@ -71,26 +97,15 @@ describe('UpdateUserRoleUseCase', () => {
           deleted: false,
         }),
       },
-    });
-
-    await expect(
-      useCase.execute('user-1', 'role-admin', RoleType.ADMIN),
-    ).rejects.toBeInstanceOf(ForbiddenException);
-  });
-
-  it('rejects changing role for admin target', async () => {
-    const { useCase } = makeUseCase({
-      userReadRepository: {
-        findManagementById: jest.fn().mockResolvedValue({
-          id: 'user-1',
-          role: { id: 'role-admin', description: RoleType.ADMIN },
-        }),
+      userRepository: {
+        findById: jest.fn().mockResolvedValue({ roleId: { value: 'role-1' } }),
+        save: jest.fn().mockResolvedValue(undefined),
       },
     });
 
-    await expect(
-      useCase.execute('user-1', 'role-2', RoleType.ADMIN),
-    ).rejects.toBeInstanceOf(ForbiddenException);
+    const result = await useCase.execute('user-1', 'role-admin', { role: RoleType.ADMIN, userId: 'req-1' });
+
+    expect(result).toEqual(expect.objectContaining({ message: 'Rol actualizado correctamente' }));
   });
 
   it('rejects when target user does not exist', async () => {
@@ -101,7 +116,7 @@ describe('UpdateUserRoleUseCase', () => {
     });
 
     await expect(
-      useCase.execute('user-1', 'role-2', RoleType.ADMIN),
+      useCase.execute('user-1', 'role-2', { role: RoleType.ADMIN, userId: 'req-1' }),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 });

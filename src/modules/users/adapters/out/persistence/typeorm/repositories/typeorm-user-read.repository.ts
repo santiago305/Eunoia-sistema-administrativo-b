@@ -20,6 +20,7 @@ export class TypeormUserReadRepository implements UserReadRepository {
       role?: string;
       q?: string;
       allowedRoles?: string[];
+      allowedUserIds?: string[];
     };
     sortBy?: string;
     order?: 'ASC' | 'DESC';
@@ -64,7 +65,8 @@ export class TypeormUserReadRepository implements UserReadRepository {
 
     const baseQuery = this.ormRepository
       .createQueryBuilder('user')
-      .leftJoin('user.role', 'role');
+      .leftJoin('user.role', 'role')
+      .leftJoin(OrmUser, 'creator', 'creator.id = user.createdByUserId');
 
     const status = params.status ?? 'all';
     if (status === 'active') {
@@ -79,10 +81,24 @@ export class TypeormUserReadRepository implements UserReadRepository {
       baseQuery.andWhere('role.description = :role', { role: params.filters.role });
     }
 
-    if (params.filters?.allowedRoles && params.filters.allowedRoles.length > 0) {
-      baseQuery.andWhere('role.description IN (:...allowedRoles)', {
-        allowedRoles: params.filters.allowedRoles,
-      });
+    if (
+      (params.filters?.allowedRoles && params.filters.allowedRoles.length > 0)
+      || (params.filters?.allowedUserIds && params.filters.allowedUserIds.length > 0)
+    ) {
+      if (params.filters?.allowedRoles?.length && params.filters?.allowedUserIds?.length) {
+        baseQuery.andWhere('(role.description IN (:...allowedRoles) OR user.id IN (:...allowedUserIds))', {
+          allowedRoles: params.filters.allowedRoles,
+          allowedUserIds: params.filters.allowedUserIds,
+        });
+      } else if (params.filters?.allowedRoles?.length) {
+        baseQuery.andWhere('role.description IN (:...allowedRoles)', {
+          allowedRoles: params.filters.allowedRoles,
+        });
+      } else if (params.filters?.allowedUserIds?.length) {
+        baseQuery.andWhere('user.id IN (:...allowedUserIds)', {
+          allowedUserIds: params.filters.allowedUserIds,
+        });
+      }
     }
 
     if (params.filters?.q) {
@@ -105,6 +121,10 @@ export class TypeormUserReadRepository implements UserReadRepository {
         'user.deleted AS deleted',
         'user.createdAt AS "createdAt"',
         'user.updatedAt AS "updatedAt"',
+        'user.createdByUserId AS "createdByUserId"',
+        'creator.name AS "createdByUserName"',
+        'user.manageableRoleDescriptions AS "manageableRoleDescriptions"',
+        'user.manageableUserIds AS "manageableUserIds"',
       ])
       .orderBy(sortBy, order)
       .offset(offset)
@@ -117,6 +137,11 @@ export class TypeormUserReadRepository implements UserReadRepository {
         ?? (item as { createdAt?: Date; createdat?: Date }).createdat,
       updatedAt: (item as { updatedAt?: Date; updatedat?: Date }).updatedAt
         ?? (item as { updatedAt?: Date; updatedat?: Date }).updatedat,
+      createdByUserId: (item as { createdByUserId?: string | null }).createdByUserId ?? null,
+      createdByUserName: (item as { createdByUserName?: string | null }).createdByUserName ?? null,
+      manageableRoleDescriptions:
+        (item as { manageableRoleDescriptions?: string[] | null }).manageableRoleDescriptions ?? null,
+      manageableUserIds: (item as { manageableUserIds?: string[] | null }).manageableUserIds ?? null,
     }));
 
     return {
@@ -132,6 +157,7 @@ export class TypeormUserReadRepository implements UserReadRepository {
       role?: string;
       q?: string;
       allowedRoles?: string[];
+      allowedUserIds?: string[];
     };
     status?: UserListStatus;
   }): Promise<{
@@ -157,10 +183,24 @@ export class TypeormUserReadRepository implements UserReadRepository {
       query.andWhere('role.description = :role', { role: params.filters.role });
     }
 
-    if (params.filters?.allowedRoles && params.filters.allowedRoles.length > 0) {
-      query.andWhere('role.description IN (:...allowedRoles)', {
-        allowedRoles: params.filters.allowedRoles,
-      });
+    if (
+      (params.filters?.allowedRoles && params.filters.allowedRoles.length > 0)
+      || (params.filters?.allowedUserIds && params.filters.allowedUserIds.length > 0)
+    ) {
+      if (params.filters?.allowedRoles?.length && params.filters?.allowedUserIds?.length) {
+        query.andWhere('(role.description IN (:...allowedRoles) OR user.id IN (:...allowedUserIds))', {
+          allowedRoles: params.filters.allowedRoles,
+          allowedUserIds: params.filters.allowedUserIds,
+        });
+      } else if (params.filters?.allowedRoles?.length) {
+        query.andWhere('role.description IN (:...allowedRoles)', {
+          allowedRoles: params.filters.allowedRoles,
+        });
+      } else if (params.filters?.allowedUserIds?.length) {
+        query.andWhere('user.id IN (:...allowedUserIds)', {
+          allowedUserIds: params.filters.allowedUserIds,
+        });
+      }
     }
 
     if (params.filters?.q) {
@@ -278,6 +318,9 @@ export class TypeormUserReadRepository implements UserReadRepository {
     avatarUrl?: string;
     createdAt?: Date;
     role: { id: string; description: string };
+    isSuperAdmin?: boolean;
+    manageableRoleDescriptions?: string[] | null;
+    manageableUserIds?: string[] | null;
   } | null> {
     const user = await this.ormRepository
       .createQueryBuilder('user')
@@ -290,6 +333,9 @@ export class TypeormUserReadRepository implements UserReadRepository {
         'user.deleted',
         'user.avatarUrl',
         'user.createdAt',
+        'user.isSuperAdmin',
+        'user.manageableRoleDescriptions',
+        'user.manageableUserIds',
         'role.roleId',
         'role.description',
       ])
@@ -310,6 +356,46 @@ export class TypeormUserReadRepository implements UserReadRepository {
         id: user.role.roleId,
         description: user.role.description,
       },
+      isSuperAdmin: Boolean(user.isSuperAdmin),
+      manageableRoleDescriptions: user.manageableRoleDescriptions ?? null,
+      manageableUserIds: user.manageableUserIds ?? null,
+    };
+  }
+
+  async findManagementScopeById(id: string): Promise<{
+    id: string;
+    roleDescription: string;
+    isSuperAdmin: boolean;
+    manageableRoleDescriptions: string[] | null;
+    manageableUserIds: string[] | null;
+  } | null> {
+    const row = await this.ormRepository
+      .createQueryBuilder('user')
+      .leftJoin('user.role', 'role')
+      .select([
+        'user.id AS id',
+        'user.isSuperAdmin AS "isSuperAdmin"',
+        'user.manageableRoleDescriptions AS "manageableRoleDescriptions"',
+        'user.manageableUserIds AS "manageableUserIds"',
+        'role.description AS "roleDescription"',
+      ])
+      .where('user.id = :id', { id })
+      .getRawOne<{
+        id: string;
+        isSuperAdmin: boolean;
+        manageableRoleDescriptions: string[] | null;
+        manageableUserIds: string[] | null;
+        roleDescription: string;
+      }>();
+
+    if (!row) return null;
+
+    return {
+      id: row.id,
+      roleDescription: row.roleDescription,
+      isSuperAdmin: Boolean(row.isSuperAdmin),
+      manageableRoleDescriptions: row.manageableRoleDescriptions ?? null,
+      manageableUserIds: row.manageableUserIds ?? null,
     };
   }
 

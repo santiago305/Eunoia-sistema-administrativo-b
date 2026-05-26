@@ -60,6 +60,15 @@ export class User {
   @Column({ name: 'preferred_home_path', type: 'varchar', length: 255, nullable: true })
   preferredHomePath?: string | null;
 
+  @Column({ name: 'created_by_user_id', type: 'uuid', nullable: true })
+  createdByUserId?: string | null;
+
+  @Column({ name: 'manageable_role_descriptions', type: 'text', array: true, nullable: true })
+  manageableRoleDescriptions?: string[] | null;
+
+  @Column({ name: 'manageable_user_ids', type: 'uuid', array: true, nullable: true })
+  manageableUserIds?: string[] | null;
+
 
   /**
    * Rol asignado al usuario.

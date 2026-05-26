@@ -15,22 +15,32 @@ export class RestoreUserUseCase {
     private readonly userReadRepository: UserReadRepository,
   ) {}
 
-  async execute(id: string, requesterRole: RoleType) {
-    if (requesterRole !== RoleType.ADMIN && requesterRole !== RoleType.MODERATOR) {
-      throw new ForbiddenException(new UserForbiddenApplicationError('No autorizado para restaurar usuarios').message);
-    }
+  async execute(id: string, requester: { role: RoleType; userId: string }) {
+    const requesterScope = await this.userReadRepository.findManagementScopeById(requester.userId);
+    const isSuperAdmin = Boolean(requesterScope?.isSuperAdmin);
 
     const target = await this.userReadRepository.findManagementById(id);
     if (!target) {
       throw new NotFoundException(new UserNotFoundApplicationError().message);
     }
 
-    if (target.role.description === RoleType.ADMIN) {
-      throw new ForbiddenException(new UserForbiddenApplicationError('No puedes restaurar usuarios administradores').message);
-    }
+    if (!isSuperAdmin) {
+      const allowedRoles = Array.isArray(requesterScope?.manageableRoleDescriptions)
+        ? requesterScope.manageableRoleDescriptions.filter((value) => value && value.trim().length > 0)
+        : requesterScope?.roleDescription
+          ? [requesterScope.roleDescription]
+          : requester.role
+            ? [requester.role]
+            : [];
+      const allowedUserIds = Array.isArray(requesterScope?.manageableUserIds)
+        ? requesterScope.manageableUserIds
+        : [];
 
-    if (requesterRole === RoleType.MODERATOR && target.role.description !== RoleType.ADVISER) {
-      throw new ForbiddenException(new UserForbiddenApplicationError('No estas autorizado para restaurar usuario').message);
+      if (!allowedRoles.includes(target.role.description) && !allowedUserIds.includes(target.id)) {
+        throw new ForbiddenException(
+          new UserForbiddenApplicationError('No autorizado para restaurar este usuario').message,
+        );
+      }
     }
 
     const isDeleted = await this.userRepository.existsByIdAndDeleted(id, true);

@@ -8,6 +8,7 @@ import { CreateClientsCore20260519000000 } from "./migrations/20260519000000-cre
 import { CreateCorporateMessagingCore20260511000000 } from "./migrations/20260511000000-create-corporate-messaging-core";
 import { CreatePacksCore20260519010000 } from "./migrations/20260519010000-create-packs-core";
 import { AddClientsNoneDocType20260520020000 } from "./migrations/20260520020000-add-clients-none-doc-type";
+import { AddUserRoleManagementAudit20260526000000 } from "./migrations/20260526000000-add-user-role-management-audit";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -37,6 +38,7 @@ export const getMigrationDataSourceOptions = (): DataSourceOptions => ({
     CreateClientsCore20260519000000,
     CreatePacksCore20260519010000,
     AddClientsNoneDocType20260520020000,
+    AddUserRoleManagementAudit20260526000000,
   ],
 });
 

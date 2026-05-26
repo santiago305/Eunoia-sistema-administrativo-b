@@ -1,11 +1,10 @@
-import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import {
   USER_READ_REPOSITORY,
   UserListStatus,
   UserReadRepository,
 } from 'src/modules/users/application/ports/user-read.repository';
 import { RoleType } from 'src/shared/constantes/constants';
-import { UserForbiddenApplicationError } from '../errors/user-forbidden.error';
 
 @Injectable()
 export class CountUsersByRoleUseCase {
@@ -22,43 +21,26 @@ export class CountUsersByRoleUseCase {
       };
       status?: UserListStatus;
     },
-    requesterRole: RoleType,
+    requester: { role: RoleType; userId: string },
   ) {
-    this.assertCanCountUsers(requesterRole);
-    const scopedParams = this.applyRoleScope(params, requesterRole);
+    const requesterScope = await this.userReadRepository.findManagementScopeById(requester.userId);
+    const scopedParams = this.applyRoleScope(params, requester.role, requesterScope);
     const summary = await this.userReadRepository.countUsersByRole({
       filters: scopedParams.filters,
       status: scopedParams.status ?? 'all',
     });
 
-    if (requesterRole === RoleType.MODERATOR) {
+    if (requesterScope?.isSuperAdmin) {
       return {
-        total: summary.byRole[RoleType.ADVISER] ?? 0,
-        byRole: {
-          [RoleType.ADVISER]: summary.byRole[RoleType.ADVISER] ?? 0,
-        },
+        total: summary.total,
+        byRole: summary.byRole,
       };
     }
 
     return {
-      total:
-        (summary.byRole[RoleType.ADMIN] ?? 0) +
-        (summary.byRole[RoleType.MODERATOR] ?? 0) +
-        (summary.byRole[RoleType.ADVISER] ?? 0),
-      byRole: {
-        [RoleType.ADMIN]: summary.byRole[RoleType.ADMIN] ?? 0,
-        [RoleType.MODERATOR]: summary.byRole[RoleType.MODERATOR] ?? 0,
-        [RoleType.ADVISER]: summary.byRole[RoleType.ADVISER] ?? 0,
-      },
+      total: summary.total,
+      byRole: summary.byRole,
     };
-  }
-
-  private assertCanCountUsers(requesterRole: RoleType) {
-    if (requesterRole !== RoleType.ADMIN && requesterRole !== RoleType.MODERATOR) {
-      throw new ForbiddenException(
-        new UserForbiddenApplicationError('No autorizado para consultar conteo de usuarios por rol').message,
-      );
-    }
   }
 
   private applyRoleScope(
@@ -70,29 +52,53 @@ export class CountUsersByRoleUseCase {
       status?: UserListStatus;
     },
     requesterRole: RoleType,
+    requesterScope?: {
+      id: string;
+      roleDescription: string;
+      isSuperAdmin: boolean;
+      manageableRoleDescriptions: string[] | null;
+      manageableUserIds: string[] | null;
+    } | null,
   ) {
-    if (requesterRole === RoleType.MODERATOR) {
+    if (requesterScope?.isSuperAdmin) {
+      return params;
+    }
+
+    const configuredAllowedRoles = Array.isArray(requesterScope?.manageableRoleDescriptions)
+      ? requesterScope.manageableRoleDescriptions.filter((value) => value && value.trim().length > 0)
+      : [];
+    const configuredAllowedUserIds = Array.isArray(requesterScope?.manageableUserIds)
+      ? requesterScope.manageableUserIds.filter((value) => value && value.trim().length > 0)
+      : [];
+
+    if (configuredAllowedRoles.length > 0 || configuredAllowedUserIds.length > 0) {
+      const requestedRole = params.filters?.role;
+      const normalizedRequestedRole =
+        requestedRole && configuredAllowedRoles.length > 0 && !configuredAllowedRoles.includes(requestedRole)
+          ? '__none__'
+          : requestedRole;
+
       return {
         ...params,
         filters: {
           ...(params.filters || {}),
-          role: RoleType.ADVISER,
-          allowedRoles: [RoleType.ADVISER],
+          role: normalizedRequestedRole,
+          allowedRoles: configuredAllowedRoles.length > 0 ? configuredAllowedRoles : undefined,
+          allowedUserIds: configuredAllowedUserIds.length > 0 ? configuredAllowedUserIds : undefined,
         },
       };
     }
 
-    const requestedRole = params.filters?.role;
-    const allowedRoles = [RoleType.ADMIN, RoleType.MODERATOR, RoleType.ADVISER];
-    const normalizedRequestedRole =
-      requestedRole && !allowedRoles.includes(requestedRole as RoleType) ? '__none__' : requestedRole;
-
+    const fallbackAllowedRoles = requesterScope?.roleDescription
+      ? [requesterScope.roleDescription]
+      : requesterRole
+        ? [requesterRole]
+        : [];
     return {
       ...params,
       filters: {
         ...(params.filters || {}),
-        role: normalizedRequestedRole,
-        allowedRoles,
+        allowedRoles: fallbackAllowedRoles.length > 0 ? fallbackAllowedRoles : undefined,
       },
     };
   }

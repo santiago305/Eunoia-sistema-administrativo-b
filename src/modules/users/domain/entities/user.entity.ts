@@ -14,5 +14,8 @@ export class User {
     public createdAt?: Date,
     public telefono?: string,
     public preferredHomePath?: string | null,
+    public createdByUserId?: string | null,
+    public manageableRoleDescriptions?: string[] | null,
+    public manageableUserIds?: string[] | null,
   ) {}
 }
