@@ -13,6 +13,7 @@ import {
 } from '../ports/role-read.repository';
 import { RoleConflictApplicationError } from '../errors/role-conflict.error';
 import { RoleNotFoundApplicationError } from '../errors/role-not-found.error';
+import { MASTER_ROLE_DESCRIPTION } from 'src/shared/constantes/constants';
 
 @Injectable()
 export class UpdateRoleUseCase {
@@ -36,6 +37,10 @@ export class UpdateRoleUseCase {
 
     if (!role) {
       throw new NotFoundException(new RoleNotFoundApplicationError().message);
+    }
+
+    if ((role.description || '').trim().toLowerCase() === MASTER_ROLE_DESCRIPTION) {
+      throw new BadRequestException('El rol maestro no puede renombrarse');
     }
 
     const nextDescription = normalizedDescription;

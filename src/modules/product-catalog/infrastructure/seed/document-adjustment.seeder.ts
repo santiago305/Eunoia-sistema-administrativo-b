@@ -7,12 +7,12 @@ import { ProductCatalogInventoryDocumentItemEntity } from "../../adapters/out/pe
 import { ProductCatalogInventoryLedgerEntity } from "../../adapters/out/persistence/typeorm/entities/inventory-ledger.entity";
 import { ProductCatalogDocumentSerieEntity } from "../../adapters/out/persistence/typeorm/entities/document-serie.entity";
 import { ProductCatalogProductEntity } from "../../adapters/out/persistence/typeorm/entities/product.entity";
-import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
 
 import { DocType } from "src/shared/domain/value-objects/doc-type";
 import { DocStatus } from "src/shared/domain/value-objects/doc-status";
 import { Direction } from "src/shared/domain/value-objects/direction";
 import { ProductCatalogProductType } from "../../domain/value-objects/product-type";
+import { resolveSeedCreatedBy } from "./resolve-seed-created-by";
 
 type WarehouseSeedRef = { id: string };
 
@@ -61,22 +61,7 @@ export async function seedInventoryAdjustments(
   const ledgerRepo = dataSource.getRepository(ProductCatalogInventoryLedgerEntity);
   const serieRepo = dataSource.getRepository(ProductCatalogDocumentSerieEntity);
   const productRepo = dataSource.getRepository(ProductCatalogProductEntity);
-  const userRepo = dataSource.getRepository(User);
-
-  let createdBy = options.createdBy ?? null;
-
-  if (!createdBy) {
-    const seedUser = await userRepo
-      .createQueryBuilder("user")
-      .where("user.email = :email", { email: "admin@gmail.com" })
-      .getOne();
-
-    if (!seedUser) {
-      throw new Error("No se encontró el usuario admin@gmail.com para usar como createdBy");
-    }
-
-    createdBy = (seedUser as any).userId ?? (seedUser as any).id ?? null;
-  }
+  const createdBy = await resolveSeedCreatedBy(dataSource, options.createdBy);
 
   // Cargar todos los SKUs activos
   const allSkus = await skuRepo.find({ where: { isActive: true } as any });

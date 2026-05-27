@@ -104,6 +104,7 @@ export const PERMISSIONS_SEED: PermissionSeedItem[] = [
 ];
 
 export const ROLE_PERMISSION_SEED: Record<string, string[]> = {
+  super_administrator: ['*'],
   admin: ['*'],
   moderator: [
     'page.dashboard.view',

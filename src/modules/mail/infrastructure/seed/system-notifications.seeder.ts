@@ -5,7 +5,7 @@ import { MessageThread } from 'src/modules/mail/adapters/out/persistence/typeorm
 import { MessageUserStateEntity } from 'src/modules/mail/adapters/out/persistence/typeorm/entities/message-user-state.entity';
 import { MessageRecipientEntity } from 'src/modules/mail/adapters/out/persistence/typeorm/entities/message-recipient.entity';
 
-const TARGET_EMAIL = 'minecratf633@gmail.com';
+const FALLBACK_TARGET_EMAIL = 'minecratf633@gmail.com';
 const TOTAL_SYSTEM_MESSAGES = 80;
 
 const MODULES = [
@@ -27,9 +27,14 @@ export const seedSystemNotificationsForUser = async (dataSource: DataSource): Pr
   const stateRepo = dataSource.getRepository(MessageUserStateEntity);
   const recipientRepo = dataSource.getRepository(MessageRecipientEntity);
 
-  const user = await userRepo.findOne({ where: { email: TARGET_EMAIL }, select: ['id', 'email'] });
+  const superAdmin = await userRepo.findOne({
+    where: { isSuperAdmin: true, deleted: false },
+    select: ['id', 'email'],
+    order: { createdAt: 'ASC' },
+  });
+  const user = superAdmin ?? (await userRepo.findOne({ where: { email: FALLBACK_TARGET_EMAIL }, select: ['id', 'email'] }));
   if (!user) {
-    console.warn(`seedSystemNotificationsForUser: usuario ${TARGET_EMAIL} no encontrado, se omite.`);
+    console.warn(`seedSystemNotificationsForUser: no se encontro un usuario objetivo para notificaciones, se omite.`);
     return;
   }
 
@@ -81,7 +86,7 @@ export const seedSystemNotificationsForUser = async (dataSource: DataSource): Pr
         bodyJson: {
           seeded: true,
           index: i + 1,
-          targetEmail: TARGET_EMAIL,
+          targetEmail: user.email,
           originModule,
         },
         status: 'SENT',
@@ -127,6 +132,6 @@ export const seedSystemNotificationsForUser = async (dataSource: DataSource): Pr
     );
   }
 
-  console.log(`seedSystemNotificationsForUser: ${TOTAL_SYSTEM_MESSAGES} notificaciones creadas para ${TARGET_EMAIL}.`);
+  console.log(`seedSystemNotificationsForUser: ${TOTAL_SYSTEM_MESSAGES} notificaciones creadas para ${user.email}.`);
 };
 

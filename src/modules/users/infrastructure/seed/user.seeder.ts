@@ -16,7 +16,7 @@ export const seedUser = async (dataSource: DataSource) => {
       name: 'Santiago',
       email: 'minecratf633@gmail.com',
       password: '123123123',
-      roleDescription: RoleType.ADMIN,
+      roleDescription: RoleType.SUPER_ADMINISTRATOR,
       avatarUrl: '',
       isSuperAdmin: true,
     },
@@ -26,13 +26,13 @@ export const seedUser = async (dataSource: DataSource) => {
     .createQueryBuilder('role')
     .select(['role.roleId', 'role.description'])
     .where('role.description IN (:...descriptions)', {
-      descriptions: [RoleType.ADMIN],
+      descriptions: [RoleType.SUPER_ADMINISTRATOR, RoleType.ADMIN],
     })
     .getMany();
 
   const roleMap = new Map(roles.map((r) => [r.description, r]));
-  const adminRole = roleMap.get(RoleType.ADMIN);
-  if (!adminRole) {
+  const masterRole = roleMap.get(RoleType.SUPER_ADMINISTRATOR);
+  if (!masterRole) {
     return;
   }
 

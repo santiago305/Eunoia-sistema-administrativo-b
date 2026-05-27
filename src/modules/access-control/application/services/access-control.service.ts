@@ -6,6 +6,7 @@ import { User } from 'src/modules/users/adapters/out/persistence/typeorm/entitie
 import { Permission } from '../../adapters/out/persistence/typeorm/entities/permission.entity';
 import { RolePermission } from '../../adapters/out/persistence/typeorm/entities/role-permission.entity';
 import { PermissionEffect, UserPermissionOverride } from '../../adapters/out/persistence/typeorm/entities/user-permission-override.entity';
+import { MASTER_ROLE_DESCRIPTION } from 'src/shared/constantes/constants';
 
 @Injectable()
 export class AccessControlService {
@@ -64,9 +65,6 @@ export class AccessControlService {
     });
     if (!user) throw new NotFoundException('Usuario no encontrado');
 
-    const roleDescription = String(user.role?.description ?? '').toLowerCase();
-    const isSuperAdmin = Boolean(user.isSuperAdmin);
-
     const rolePermissions = await this.rolePermissionRepository.find({
       where: { roleId: user.role?.roleId },
       relations: ['permission'],
@@ -76,7 +74,7 @@ export class AccessControlService {
       .map((rp) => rp.permission?.code)
       .filter((code): code is string => Boolean(code));
 
-    const hasWildcard = fromRole.includes('*') || roleDescription === 'admin' || isSuperAdmin;
+    const hasWildcard = fromRole.includes('*');
     if (hasWildcard) {
       const all = await this.permissionRepository.find({
         where: { isActive: true },
@@ -254,12 +252,12 @@ export class AccessControlService {
     const role = await this.roleRepository.findOne({ where: { roleId } });
     if (!role) throw new NotFoundException('Rol no encontrado');
 
-    const isAdminRole = String(role.description ?? '').trim().toLowerCase() === 'admin';
-    if (isAdminRole) {
+    const isMasterRole = String(role.description ?? '').trim().toLowerCase() === MASTER_ROLE_DESCRIPTION;
+    if (isMasterRole) {
       const actorIsSuperAdmin = await this.isUserSuperAdmin(performedBy);
       if (!actorIsSuperAdmin) {
         throw new ForbiddenException(
-          'Solo un super administrador puede modificar permisos del rol admin',
+          'Solo un super administrador puede modificar permisos del rol maestro',
         );
       }
     }

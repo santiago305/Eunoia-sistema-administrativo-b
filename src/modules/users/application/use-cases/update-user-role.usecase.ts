@@ -3,7 +3,7 @@ import { ROLE_READ_REPOSITORY, RoleReadRepository } from 'src/modules/roles/appl
 import { USER_READ_REPOSITORY, UserReadRepository } from 'src/modules/users/application/ports/user-read.repository';
 import { USER_REPOSITORY, UserRepository } from 'src/modules/users/application/ports/user.repository';
 import { RoleId } from 'src/modules/users/domain';
-import { RoleType } from 'src/shared/constantes/constants';
+import { MASTER_ROLE_DESCRIPTION, RoleType } from 'src/shared/constantes/constants';
 import { successResponse } from 'src/shared/response-standard/response';
 import { UserForbiddenApplicationError } from '../errors/user-forbidden.error';
 import { UserNotFoundApplicationError } from '../errors/user-not-found.error';
@@ -27,10 +27,21 @@ export class UpdateUserRoleUseCase {
     if (!target) {
       throw new NotFoundException(new UserNotFoundApplicationError().message);
     }
+    if (target.isSuperAdmin) {
+      throw new ForbiddenException(
+        new UserForbiddenApplicationError('No autorizado para cambiar el rol de un super administrador').message,
+      );
+    }
 
     const nextRole = await this.roleReadRepository.findById(roleId);
     if (!nextRole || nextRole.deleted) {
       throw new NotFoundException('Rol invalido');
+    }
+
+    if (String(nextRole.description ?? '').trim().toLowerCase() === MASTER_ROLE_DESCRIPTION) {
+      throw new ForbiddenException(
+        new UserForbiddenApplicationError('No autorizado para asignar el rol maestro').message,
+      );
     }
 
     if (!isSuperAdmin) {

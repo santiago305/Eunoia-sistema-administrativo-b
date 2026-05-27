@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { CreateUserUseCase } from './create-user.usecase';
 import { RoleType } from 'src/shared/constantes/constants';
@@ -50,7 +50,7 @@ describe('CreateUserUseCase', () => {
     (argon2.hash as jest.Mock).mockResolvedValue('hashed');
 
     const roleReadRepository: Partial<RoleReadRepository> = {
-      findByDescription: jest.fn().mockResolvedValue({
+      findById: jest.fn().mockResolvedValue({
         id: 'role-1',
         description: RoleType.ADVISER,
         deleted: false,
@@ -70,13 +70,13 @@ describe('CreateUserUseCase', () => {
         name: 'Ana',
         email: 'ana@example.com',
         password: 'secret',
+        roleId: 'role-1',
       } as any,
       { role: RoleType.ADMIN, userId: 'req-1' }
     );
 
     expect(userRepository.existsByEmail).toHaveBeenCalledWith(new Email('ana@example.com'));
-    expect(roleReadRepository.findByDescription).toHaveBeenCalledWith(RoleType.ADVISER);
-    expect((roleReadRepository.findById as jest.Mock | undefined)).toBeUndefined();
+    expect(roleReadRepository.findById).toHaveBeenCalledWith('role-1');
     expect(userRepository.save).toHaveBeenCalled();
     expect(result).toEqual(successResponse('Usuario creado correctamente', { id: undefined }));
   });
@@ -110,10 +110,27 @@ describe('CreateUserUseCase', () => {
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
-  it('rejects when default adviser role is missing', async () => {
+  it('rejects when role is missing', async () => {
+    const useCase = makeUseCase({
+      roleReadRepository: {},
+    });
+
+    await expect(
+      useCase.execute(
+        {
+          name: 'Ana',
+          email: 'ana@example.com',
+          password: 'secret',
+        } as any,
+        { role: RoleType.ADMIN, userId: 'req-1' }
+      )
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejects when roleId does not exist', async () => {
     const useCase = makeUseCase({
       roleReadRepository: {
-        findByDescription: jest.fn().mockResolvedValue(null),
+        findById: jest.fn().mockResolvedValue(null),
       },
     });
 
@@ -123,6 +140,7 @@ describe('CreateUserUseCase', () => {
           name: 'Ana',
           email: 'ana@example.com',
           password: 'secret',
+          roleId: 'role-x',
         } as any,
         { role: RoleType.ADMIN, userId: 'req-1' }
       )

@@ -24,7 +24,7 @@ import { RoleType } from 'src/shared/constantes/constants';
 export const seedRoles = async (dataSource: DataSource) => {
   const repo = dataSource.getRepository(Role);
 
-  const rolesToInsert = [RoleType.ADMIN].map((roleName) =>
+  const rolesToInsert = [RoleType.SUPER_ADMINISTRATOR, RoleType.ADMIN].map((roleName) =>
     repo.create({ description: roleName })
   );
 

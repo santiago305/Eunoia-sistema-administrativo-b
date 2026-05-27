@@ -32,7 +32,7 @@ export class UpdateUserManagementScopeUseCase {
 
     const targetUser = await this.userReadRepository.findManagementById(userId);
     if (!targetUser) {
-      throw new NotFoundException(new UserNotFoundApplicationError('Usuario no encontrado').message);
+      throw new NotFoundException(new UserNotFoundApplicationError().message);
     }
 
     const manageableRoleDescriptions = Array.isArray(params.manageableRoleDescriptions)

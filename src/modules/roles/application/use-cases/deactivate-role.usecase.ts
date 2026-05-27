@@ -5,6 +5,7 @@ import { RoleNotFoundApplicationError } from '../errors/role-not-found.error';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from 'src/modules/users/adapters/out/persistence/typeorm/entities/user.entity';
 import { Repository } from 'typeorm';
+import { MASTER_ROLE_DESCRIPTION } from 'src/shared/constantes/constants';
 
 @Injectable()
 export class DeactivateRoleUseCase {
@@ -27,12 +28,15 @@ export class DeactivateRoleUseCase {
       throw new NotFoundException(new RoleNotFoundApplicationError().message);
     }
     if (role.deleted) {
-      throw new BadRequestException('Rol ya está desactivado');
+      throw new BadRequestException('Rol ya esta desactivado');
+    }
+    if (String(role.description ?? '').trim().toLowerCase() === MASTER_ROLE_DESCRIPTION) {
+      throw new BadRequestException('El rol maestro no puede desactivarse');
     }
 
     const replacementRole = await this.roleRepository.findById(params.replacementRoleId);
     if (!replacementRole || replacementRole.deleted) {
-      throw new NotFoundException('Rol de reemplazo inválido');
+      throw new NotFoundException('Rol de reemplazo invalido');
     }
     if (replacementRole.id === role.id) {
       throw new BadRequestException('Debes seleccionar un rol diferente como reemplazo');
@@ -40,7 +44,7 @@ export class DeactivateRoleUseCase {
 
     const expectedConfirmationText = `Eliminar ${role.description}`;
     if (params.confirmationText.trim() !== expectedConfirmationText) {
-      throw new BadRequestException('Texto de confirmación inválido');
+      throw new BadRequestException('Texto de confirmacion invalido');
     }
 
     await this.userRepository.query(

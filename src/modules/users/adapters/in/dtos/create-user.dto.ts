@@ -31,12 +31,11 @@ export class CreateUserDto {
 
   /**
    * ID del rol asignado al usuario.
-   * No es obligatorio.
+   * Es obligatorio.
    */
-  @IsOptional()
   @IsUUID()
   @IsNotEmpty()
-  roleId?: string;
+  roleId: string;
 
   /**URL de la imagen del usuario (opcional) */
   @IsOptional()

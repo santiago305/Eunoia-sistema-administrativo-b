@@ -9,7 +9,7 @@ import { SuperAdminGuard } from 'src/shared/utilidades/guards/super-admin.guard'
 
 @Controller('access-control')
 @UseGuards(JwtAuthGuard, RolesGuard, SuperAdminGuard)
-@Roles(RoleType.ADMIN)
+@Roles(RoleType.ADMIN, RoleType.SUPER_ADMINISTRATOR)
 export class AccessControlController {
   constructor(private readonly accessControlService: AccessControlService) {}
 

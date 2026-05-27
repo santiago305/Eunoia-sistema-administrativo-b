@@ -51,7 +51,7 @@ export class RolesController {
   @UseGuards(PermissionsGuard, CsrfGuard)
   @RequirePermissions('roles.create')
   create(@Body() dto: CreateRoleDto, @CurrentUser() user: { role: RoleType; id: string }) {
-    return this.createRoleUseCase.execute(dto, { role: user.role, userId: user.id });
+    return this.createRoleUseCase.execute(dto, { userId: user.id });
   }
 
   @Get('')
