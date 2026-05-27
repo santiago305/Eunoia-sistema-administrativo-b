@@ -9,9 +9,11 @@ import { USER_REPOSITORY } from '../application/ports/user.repository';
 import { GetUserWithPasswordByEmailUseCase } from '../application/use-cases/get-user-with-password-by-email.usecase';
 import { usersModuleProviders } from '../composition/container';
 import { AccessControlModule } from 'src/modules/access-control/infrastructure/access-control.module';
+import { CompaniesModule } from 'src/modules/companies/companies.module';
+import { MailModule } from 'src/modules/mail/infrastructure/mail.module';
 
 @Module({
-  imports: [RolesModule, AccessControlModule, TypeOrmModule.forFeature([User, Role])],
+  imports: [RolesModule, AccessControlModule, CompaniesModule, MailModule, TypeOrmModule.forFeature([User, Role])],
   controllers: [UsersController],
   providers: [...usersModuleProviders],
   exports: [USER_REPOSITORY, USER_READ_REPOSITORY, GetUserWithPasswordByEmailUseCase],

@@ -38,6 +38,7 @@ interface EnvVars {
     IDENTITY_API_KEY?: string;
     IDENTITY_BASE_URL?: string;
     IDENTITY_TIMEOUT_MS?: number;
+    APP_COMPANY_NAME?: string;
     }
 
 const envsSchema = joi.object({
@@ -74,6 +75,7 @@ const envsSchema = joi.object({
     IDENTITY_BASE_URL: joi.string().optional(),
     IDENTITY_API_KEY: joi.string().optional(),
     IDENTITY_TIMEOUT_MS: joi.number().optional(),
+    APP_COMPANY_NAME: joi.string().optional(),
 })
 .unknown(true)
 
@@ -103,6 +105,7 @@ export const envs = {
         apiKey: envsVars.IDENTITY_API_KEY,
         timeoutMs: envsVars.IDENTITY_TIMEOUT_MS,
     },
+    appCompanyName: envsVars.APP_COMPANY_NAME,
     db: {
         host: envsVars.DB_HOST,
         port: envsVars.DB_PORT,
