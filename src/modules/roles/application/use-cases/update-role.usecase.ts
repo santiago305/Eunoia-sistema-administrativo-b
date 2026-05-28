@@ -13,7 +13,9 @@ import {
 } from '../ports/role-read.repository';
 import { RoleConflictApplicationError } from '../errors/role-conflict.error';
 import { RoleNotFoundApplicationError } from '../errors/role-not-found.error';
-import { MASTER_ROLE_DESCRIPTION } from 'src/shared/constantes/constants';
+import { MASTER_ROLE_DESCRIPTION, RoleType } from 'src/shared/constantes/constants';
+import { USER_READ_REPOSITORY, UserReadRepository } from 'src/modules/users/application/ports/user-read.repository';
+import { assertCanManageRoleByScope } from '../support/role-scope.util';
 
 @Injectable()
 export class UpdateRoleUseCase {
@@ -22,9 +24,11 @@ export class UpdateRoleUseCase {
     private readonly roleReadRepository: RoleReadRepository,
     @Inject(ROLE_REPOSITORY)
     private readonly roleRepository: RoleRepository,
+    @Inject(USER_READ_REPOSITORY)
+    private readonly userReadRepository: UserReadRepository,
   ) {}
 
-  async execute(id: string, dto: UpdateRoleDto) {
+  async execute(id: string, dto: UpdateRoleDto, requester?: { userId: string; role?: RoleType | null }) {
     if (dto.description === undefined) {
       throw new BadRequestException('Debe enviar al menos un campo para actualizar');
     }
@@ -37,6 +41,16 @@ export class UpdateRoleUseCase {
 
     if (!role) {
       throw new NotFoundException(new RoleNotFoundApplicationError().message);
+    }
+    if (requester?.userId) {
+      const requesterScope = await this.userReadRepository.findManagementScopeById(requester.userId);
+      assertCanManageRoleByScope({
+        requesterRole: requester.role,
+        requesterUserId: requester.userId,
+        targetRoleDescription: role.description,
+        targetCreatedByUserId: role.createdByUserId ?? null,
+        scope: requesterScope,
+      });
     }
 
     if ((role.description || '').trim().toLowerCase() === MASTER_ROLE_DESCRIPTION) {

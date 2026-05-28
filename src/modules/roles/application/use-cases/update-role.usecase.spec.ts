@@ -3,10 +3,20 @@ import { UpdateRoleUseCase } from './update-role.usecase';
 import { RoleType } from 'src/shared/constantes/constants';
 
 describe('UpdateRoleUseCase', () => {
-  const makeUseCase = (overrides?: { roleRepository?: any; roleReadRepository?: any }) => {
+  const makeUseCase = (overrides?: { roleRepository?: any; roleReadRepository?: any; userReadRepository?: any }) => {
     const roleReadRepository = {
       findByDescription: jest.fn().mockResolvedValue(null),
       ...overrides?.roleReadRepository,
+    };
+    const userReadRepository = {
+      findManagementScopeById: jest.fn().mockResolvedValue({
+        id: 'u-1',
+        roleDescription: RoleType.MODERATOR,
+        isSuperAdmin: false,
+        manageableRoleDescriptions: [RoleType.MODERATOR],
+        manageableUserIds: null,
+      }),
+      ...overrides?.userReadRepository,
     };
 
     const roleRepository = {
@@ -18,7 +28,7 @@ describe('UpdateRoleUseCase', () => {
       ...overrides?.roleRepository,
     };
 
-    return new UpdateRoleUseCase(roleReadRepository, roleRepository);
+    return new UpdateRoleUseCase(roleReadRepository, roleRepository, userReadRepository);
   };
 
   it('throws when role does not exist', async () => {

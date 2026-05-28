@@ -32,10 +32,9 @@ import { DeactivateRoleUseCase } from 'src/modules/roles/application/use-cases/d
 import { RestoreRoleUseCase } from 'src/modules/roles/application/use-cases/restore-role.usecase';
 import { PermissionsGuard } from 'src/modules/access-control/adapters/in/guards/permissions.guard';
 import { RequirePermissions } from 'src/modules/access-control/adapters/in/decorators/require-permissions.decorator';
-import { SuperAdminGuard } from 'src/shared/utilidades/guards/super-admin.guard';
 
 @Controller('roles')
-@UseGuards(JwtAuthGuard, SuperAdminGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class RolesController {
   constructor(
     private readonly createRoleUseCase: CreateRoleUseCase,
@@ -48,59 +47,65 @@ export class RolesController {
   ) {}
 
   @Post('/create')
-  @UseGuards(PermissionsGuard, CsrfGuard)
+  @UseGuards(CsrfGuard)
   @RequirePermissions('roles.create')
-  create(@Body() dto: CreateRoleDto, @CurrentUser() user: { role: RoleType; id: string }) {
-    return this.createRoleUseCase.execute(dto, { userId: user.id });
+  create(@Body() dto: CreateRoleDto, @CurrentUser() user: { role?: RoleType | null; id: string }) {
+    return this.createRoleUseCase.execute(dto, { userId: user.id, role: user.role });
   }
 
   @Get('')
-  @UseGuards(PermissionsGuard)
   @RequirePermissions('roles.read')
   findAll(
     @Query('status') status?: string,
+    @CurrentUser() user?: { role?: RoleType | null; id: string },
   ) {
     if (status && !ROLE_LIST_STATUSES.includes(status as RoleListStatus)) {
       throw new BadRequestException(
         `Invalid status '${status}'. Allowed values: ${ROLE_LIST_STATUSES.join(', ')}`,
       );
     }
-    return this.listRolesUseCase.execute({ status: status as RoleListStatus | undefined });
+    return this.listRolesUseCase.execute(
+      { status: status as RoleListStatus | undefined },
+      { userId: String(user?.id ?? ''), role: user?.role ?? null },
+    );
   }
 
   @Get('/:id')
-  @UseGuards(PermissionsGuard)
   @RequirePermissions('roles.read')
-  findOne(@Param('id') id: string) {
-    return this.getRoleByIdUseCase.execute(id);
+  findOne(@Param('id') id: string, @CurrentUser() user: { role?: RoleType | null; id: string }) {
+    return this.getRoleByIdUseCase.execute(id, { userId: user.id, role: user.role });
   }
 
   @Patch('/:id')
-  @UseGuards(PermissionsGuard, CsrfGuard)
+  @UseGuards(CsrfGuard)
   @RequirePermissions('roles.update')
-  update(@Param('id') id: string, @Body() dto: UpdateRoleDto) {
-    return this.updateRoleUseCase.execute(id, dto);
+  update(@Param('id') id: string, @Body() dto: UpdateRoleDto, @CurrentUser() user: { role?: RoleType | null; id: string }) {
+    return this.updateRoleUseCase.execute(id, dto, { userId: user.id, role: user.role });
   }
 
   @Delete('/:id')
-  @UseGuards(PermissionsGuard, CsrfGuard)
+  @UseGuards(CsrfGuard)
   @RequirePermissions('roles.delete')
-  remove(@Param('id') id: string) {
-    return this.deleteRoleUseCase.execute(id);
+  remove(@Param('id') id: string, @CurrentUser() user: { role?: RoleType | null; id: string }) {
+    return this.deleteRoleUseCase.execute(id, { userId: user.id, role: user.role });
   }
 
   @Post('/:id/deactivate')
-  @UseGuards(PermissionsGuard, CsrfGuard)
+  @UseGuards(CsrfGuard)
   @RequirePermissions('roles.delete')
-  deactivate(@Param('id') id: string, @Body() dto: DeactivateRoleDto) {
-    return this.deactivateRoleUseCase.execute(id, dto);
+  deactivate(
+    @Param('id') id: string,
+    @Body() dto: DeactivateRoleDto,
+    @CurrentUser() user: { role?: RoleType | null; id: string },
+  ) {
+    return this.deactivateRoleUseCase.execute(id, dto, { userId: user.id, role: user.role });
   }
 
   @Patch(':id/restore')
-  @UseGuards(PermissionsGuard, CsrfGuard)
+  @UseGuards(CsrfGuard)
   @RequirePermissions('roles.restore')
-  restore(@Param('id') id: string) {
-    return this.restoreRoleUseCase.execute(id);
+  restore(@Param('id') id: string, @CurrentUser() user: { role?: RoleType | null; id: string }) {
+    return this.restoreRoleUseCase.execute(id, { userId: user.id, role: user.role });
   }
 }
 

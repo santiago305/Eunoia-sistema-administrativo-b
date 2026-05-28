@@ -11,6 +11,7 @@ import { RoleFactory } from '../../domain/factories/role.factory';
 import { successResponse } from 'src/shared/response-standard/response';
 import { ROLE_READ_REPOSITORY, RoleReadRepository  } from '../ports/role-read.repository';
 import { RoleConflictApplicationError } from '../errors/role-conflict.error';
+import { RoleType } from 'src/shared/constantes/constants';
 
 @Injectable()
 export class CreateRoleUseCase {
@@ -21,7 +22,7 @@ export class CreateRoleUseCase {
     private readonly roleRepository: RoleRepository,
   ) {}
 
-  async execute(dto: CreateRoleDto, requester: { userId: string }) {
+  async execute(dto: CreateRoleDto, requester: { userId: string; role?: RoleType | null }) {
     const normalizedDescription = dto.description.trim().toLowerCase();
     if (!normalizedDescription) {
       throw new BadRequestException('La descripcion no puede quedar vacia');
