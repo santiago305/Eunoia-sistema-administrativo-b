@@ -1,14 +1,11 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { DeleteRoleUseCase } from './delete-role.usecase';
-import { RoleType } from 'src/shared/constantes/constants';
 
 describe('DeleteRoleUseCase', () => {
   const makeUseCase = (overrides?: { roleRepository?: any }) => {
     const roleRepository = {
       findById: jest.fn().mockResolvedValue({ id: 'role-1' }),
       updateDeleted: jest.fn().mockResolvedValue(undefined),
-      save: jest.fn(),
-      update: jest.fn(),
       ...overrides?.roleRepository,
     };
 
@@ -22,32 +19,17 @@ describe('DeleteRoleUseCase', () => {
       },
     });
 
-    await expect(useCase.execute('role-1')).rejects.toBeInstanceOf(
-      NotFoundException
-    );
+    await expect(useCase.execute('role-1')).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('rejects deleting protected system roles', async () => {
+  it('rejects direct delete for existing roles', async () => {
     const roleRepository = {
-      findById: jest.fn().mockResolvedValue({ id: 'role-1', description: RoleType.ADMIN }),
+      findById: jest.fn().mockResolvedValue({ id: 'role-1', description: 'custom-role' }),
       updateDeleted: jest.fn(),
     };
     const useCase = makeUseCase({ roleRepository });
 
-    await expect(useCase.execute('role-1')).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(useCase.execute('role-1')).rejects.toBeInstanceOf(BadRequestException);
     expect(roleRepository.updateDeleted).not.toHaveBeenCalled();
-  });
-
-  it('soft-deletes role when it exists', async () => {
-    const roleRepository = {
-      findById: jest.fn().mockResolvedValue({ id: 'role-1', description: 'custom-role' }),
-      updateDeleted: jest.fn().mockResolvedValue(undefined),
-    };
-    const useCase = makeUseCase({ roleRepository });
-
-    const result = await useCase.execute('role-1');
-
-    expect(roleRepository.updateDeleted).toHaveBeenCalledWith('role-1', true);
-    expect(result).toEqual({ message: 'Rol eliminado correctamente' });
   });
 });

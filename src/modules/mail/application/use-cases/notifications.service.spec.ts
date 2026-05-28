@@ -188,7 +188,7 @@ describe('NotificationsService forward preview', () => {
       {} as any,
       {} as any,
       {} as any,
-      {} as any,
+      { ensureAttachmentRefsForUsers: jest.fn() } as any,
     ) as any;
 
     service.ensureCanOpenMessageOrThrow = jest.fn();
@@ -302,7 +302,7 @@ describe('NotificationsService replies', () => {
       {} as any,
       {} as any,
       {} as any,
-      {} as any,
+      { ensureAttachmentRefsForUsers: jest.fn() } as any,
     ) as any;
 
     service.ensureCanOpenMessageOrThrow = jest.fn();

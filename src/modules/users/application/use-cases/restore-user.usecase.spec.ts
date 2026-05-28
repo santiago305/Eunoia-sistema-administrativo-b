@@ -5,11 +5,12 @@ import { RoleType } from 'src/shared/constantes/constants';
 
 describe('RestoreUserUseCase', () => {
   const makeUseCase = (overrides?: { userRepository?: any; userReadRepository?: any }) => {
-    const userRepository = overrides?.userRepository ?? {
+    const userRepository = {
       existsByIdAndDeleted: jest.fn().mockResolvedValue(true),
       updateDeleted: jest.fn(),
+      ...overrides?.userRepository,
     };
-    const userReadRepository = overrides?.userReadRepository ?? {
+    const userReadRepository = {
       findManagementScopeById: jest.fn().mockResolvedValue({
         id: "req-1",
         roleDescription: RoleType.ADMIN,
@@ -21,6 +22,7 @@ describe('RestoreUserUseCase', () => {
         id: 'user-1',
         role: { description: RoleType.ADVISER },
       }),
+      ...overrides?.userReadRepository,
     };
     return new RestoreUserUseCase(userRepository, userReadRepository);
   };
@@ -34,7 +36,21 @@ describe('RestoreUserUseCase', () => {
   });
 
   it('rejects restoring outside configured scope', async () => {
-    const useCase = makeUseCase();
+    const useCase = makeUseCase({
+      userReadRepository: {
+        findManagementScopeById: jest.fn().mockResolvedValue({
+          id: 'req-1',
+          roleDescription: RoleType.ADVISER,
+          isSuperAdmin: false,
+          manageableRoleDescriptions: [RoleType.ADVISER],
+          manageableUserIds: null,
+        }),
+        findManagementById: jest.fn().mockResolvedValue({
+          id: 'user-1',
+          role: { description: RoleType.ADMIN },
+        }),
+      },
+    });
 
     await expect(
       useCase.execute('user-1', { role: RoleType.ADVISER, userId: 'req-1' }),

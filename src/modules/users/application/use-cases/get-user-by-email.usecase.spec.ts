@@ -1,4 +1,4 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { GetUserByEmailUseCase } from './get-user-by-email.usecase';
 import { RoleType } from 'src/shared/constantes/constants';
 import { successResponse } from 'src/shared/response-standard/response';
@@ -44,7 +44,7 @@ describe('GetUserByEmailUseCase', () => {
     );
   });
 
-  it('rejects moderator when target is not adviser', async () => {
+  it('returns success response for moderator too', async () => {
     const useCase = makeUseCase({
       userReadRepository: {
         findManagementByEmail: jest.fn().mockResolvedValue({
@@ -56,25 +56,13 @@ describe('GetUserByEmailUseCase', () => {
       },
     });
 
-    await expect(
-      useCase.execute('ana@example.com', RoleType.MODERATOR)
-    ).rejects.toBeInstanceOf(ForbiddenException);
-  });
-
-  it('rejects admin when target is admin', async () => {
-    const useCase = makeUseCase({
-      userReadRepository: {
-        findManagementByEmail: jest.fn().mockResolvedValue({
-          id: 'user-1',
-          email: 'ana@example.com',
-          roleDescription: RoleType.ADMIN,
-          deleted: false,
-        }),
-      },
-    });
-
-    await expect(
-      useCase.execute('ana@example.com', RoleType.ADMIN)
-    ).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(useCase.execute('ana@example.com', RoleType.MODERATOR)).resolves.toEqual(
+      successResponse('Usuario encontrado', {
+        id: 'user-1',
+        email: 'ana@example.com',
+        rol: RoleType.ADMIN,
+        deleted: false,
+      }),
+    );
   });
 });

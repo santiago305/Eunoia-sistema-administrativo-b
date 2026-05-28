@@ -23,6 +23,7 @@ import { CsrfGuard } from 'src/shared/utilidades/guards/csrf.guard';
 import { randomBytes } from 'crypto';
 import { RevokeSessionUseCase } from 'src/modules/sessions/application/use-cases/revoke-session.usecase';
 import { Throttle } from '@nestjs/throttler';
+import { envs } from 'src/infrastructure/config/envs';
 
 @Controller('auth')
 export class AuthController {
@@ -43,7 +44,7 @@ export class AuthController {
   ): Promise<{ message: string } | ErrorResponse> {
     const deviceName = (req.headers['x-device-name'] as string | undefined) ?? null;
     const userAgent = (req.headers['x-user-agent'] as string | undefined) ?? req.headers['user-agent'] ?? null;
-    const ip = (req.headers['x-forwarded-for'] as string | undefined) ?? req.ip ?? null;
+    const ip = req.ip ?? req.socket?.remoteAddress ?? null;
 
     const result = await this.loginAuthUseCase.execute({
       dto,
@@ -55,22 +56,23 @@ export class AuthController {
 
     const { access_token, refresh_token } = result;
     const csrfToken = randomBytes(32).toString('hex');
+    const secureCookie = envs.nodeEnv === 'production';
     res.cookie('refresh_token', refresh_token, {
       httpOnly: true,
-      secure: false,
+      secure: secureCookie,
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     res.cookie('access_token', access_token, {
       httpOnly: true,
-      secure: false,
+      secure: secureCookie,
       sameSite: 'lax',
       maxAge: 60 * 60 * 1000,
     });
     res.cookie('csrf_token', csrfToken, {
       httpOnly: false,
-      secure: false,
+      secure: secureCookie,
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
@@ -120,23 +122,24 @@ export class AuthController {
 
     const { access_token, refresh_token } = result;
     const csrfToken = randomBytes(32).toString('hex');
+    const secureCookie = envs.nodeEnv === 'production';
 
     res.cookie('access_token', access_token, {
       httpOnly: true,
-      secure: false,
+      secure: secureCookie,
       sameSite: 'lax',
       maxAge: 60 * 60 * 1000, // 1h
     });
 
     res.cookie('refresh_token', refresh_token, {
       httpOnly: true,
-      secure: false,
+      secure: secureCookie,
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
     res.cookie('csrf_token', csrfToken, {
       httpOnly: false,
-      secure: false,
+      secure: secureCookie,
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });

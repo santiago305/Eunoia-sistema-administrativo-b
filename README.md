@@ -97,3 +97,43 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+
+ackend: tests completos
+cd C:\proyectos\eunoia\Eunoia-sistema-administrativo-b
+npm test -- --runInBand
+powershell
+
+# Backend: build TypeScript/Nest
+cd C:\proyectos\eunoia\Eunoia-sistema-administrativo-b
+npm run build
+powershell
+
+# Frontend: build TypeScript/Vite
+cd C:\proyectos\eunoia\Eunoia-sistema-administrativo-f
+npm run build
+powershell
+
+# Frontend: tests completos
+cd C:\proyectos\eunoia\Eunoia-sistema-administrativo-f
+npm run test:unit
+Tests solo fase 0:
+
+powershell
+
+cd C:\proyectos\eunoia\Eunoia-sistema-administrativo-b
+npm test -- auth.controller.spec.ts envs.spec.ts typeorm.config.spec.ts roles.guard.spec.ts create-user.dto.spec.ts --runInBand
+powershell
+
+cd C:\proyectos\eunoia\Eunoia-sistema-administrativo-f
+npm run test:unit -- src/shared/schemas/userSchemas.test.ts
+Para buscar rápido archivos con fallos actuales:
+
+powershell
+
+cd C:\proyectos\eunoia\Eunoia-sistema-administrativo-f
+npm run build
+powershell
+
+cd C:\proyectos\eunoia\Eunoia-sistema-administrativo-b
+npm test -- --runInBand

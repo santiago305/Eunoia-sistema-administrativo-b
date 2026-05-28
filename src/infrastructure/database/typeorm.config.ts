@@ -23,7 +23,7 @@ export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({
   ...getBaseTypeOrmOptions(),
-  synchronize: true, // SOLO EN DESARROLLO
+  synchronize: envs.nodeEnv === "development",
   autoLoadEntities: true,
 });
 

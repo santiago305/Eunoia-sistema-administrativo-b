@@ -71,6 +71,7 @@ describe('MessageStateService', () => {
     const sender = buildState('SENDER');
     sender.snoozedUntil = new Date();
     sender.snoozedAt = new Date();
+    sender.isInInbox = false;
 
     service.unsnooze(sender);
     expect(sender.isInInbox).toBe(false);

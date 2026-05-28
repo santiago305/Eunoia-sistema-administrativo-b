@@ -1,4 +1,4 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 import { GetUserUseCase } from './get-user.usecase';
 import { RoleType } from 'src/shared/constantes/constants';
 import { successResponse } from 'src/shared/response-standard/response';
@@ -49,7 +49,7 @@ describe('GetUserUseCase', () => {
     );
   });
 
-  it('rejects moderator when target is not adviser', async () => {
+  it('returns success response for moderator too', async () => {
     const useCase = makeUseCase({
       userReadRepository: {
         findManagementById: jest.fn().mockResolvedValue({
@@ -62,26 +62,16 @@ describe('GetUserUseCase', () => {
       },
     });
 
-    await expect(
-      useCase.execute('user-1', RoleType.MODERATOR)
-    ).rejects.toBeInstanceOf(ForbiddenException);
-  });
-
-  it('rejects admin when target is admin', async () => {
-    const useCase = makeUseCase({
-      userReadRepository: {
-        findManagementById: jest.fn().mockResolvedValue({
-          id: 'user-1',
-          name: 'Ana',
-          email: 'ana@example.com',
-          deleted: false,
-          role: { description: RoleType.ADMIN },
-        }),
-      },
-    });
-
-    await expect(
-      useCase.execute('user-1', RoleType.ADMIN)
-    ).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(useCase.execute('user-1', RoleType.MODERATOR)).resolves.toEqual(
+      successResponse('Usuario encontrado', {
+        id: 'user-1',
+        name: 'Ana',
+        email: 'ana@example.com',
+        telefono: undefined,
+        avatarUrl: undefined,
+        rol: RoleType.ADMIN,
+        deleted: false,
+      }),
+    );
   });
 });

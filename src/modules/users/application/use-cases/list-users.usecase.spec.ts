@@ -135,7 +135,7 @@ describe('ListUsersUseCase', () => {
 
     expect(userReadRepository.listUsers).toHaveBeenCalledWith({
       page: 1,
-      filters: { role: RoleType.ADMIN, allowedRoles: [RoleType.ADVISER], allowedUserIds: ['u-2'] },
+      filters: { role: '__none__', allowedRoles: [RoleType.ADVISER], allowedUserIds: ['u-2'] },
       sortBy: undefined,
       order: undefined,
       status: 'all',

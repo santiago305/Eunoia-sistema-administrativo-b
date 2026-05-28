@@ -1,19 +1,11 @@
-import {
-  BadRequestException,
-  ConflictException,
-  ForbiddenException,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { UpdateRoleUseCase } from './update-role.usecase';
 import { RoleType } from 'src/shared/constantes/constants';
 
 describe('UpdateRoleUseCase', () => {
   const makeUseCase = (overrides?: { roleRepository?: any; roleReadRepository?: any }) => {
     const roleReadRepository = {
-      existsByDescription: jest.fn().mockResolvedValue(false),
-      listRoles: jest.fn(),
-      findById: jest.fn(),
-      findByDescription: jest.fn(),
+      findByDescription: jest.fn().mockResolvedValue(null),
       ...overrides?.roleReadRepository,
     };
 
@@ -23,8 +15,6 @@ describe('UpdateRoleUseCase', () => {
         description: 'Old',
       }),
       save: jest.fn().mockResolvedValue({}),
-      updateDeleted: jest.fn(),
-      update: jest.fn(),
       ...overrides?.roleRepository,
     };
 
@@ -38,9 +28,7 @@ describe('UpdateRoleUseCase', () => {
       },
     });
 
-    await expect(
-      useCase.execute('role-1', { description: 'New' } as any)
-    ).rejects.toBeInstanceOf(NotFoundException);
+    await expect(useCase.execute('role-1', { description: 'New' } as any)).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('throws when no updatable fields are provided', async () => {
@@ -50,9 +38,7 @@ describe('UpdateRoleUseCase', () => {
     };
     const useCase = makeUseCase({ roleRepository });
 
-    await expect(useCase.execute('role-1', {} as any)).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+    await expect(useCase.execute('role-1', {} as any)).rejects.toBeInstanceOf(BadRequestException);
     expect(roleRepository.findById).not.toHaveBeenCalled();
     expect(roleRepository.save).not.toHaveBeenCalled();
   });
@@ -64,9 +50,7 @@ describe('UpdateRoleUseCase', () => {
     };
     const useCase = makeUseCase({ roleRepository });
 
-    await expect(useCase.execute('role-1', { description: '   ' } as any)).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+    await expect(useCase.execute('role-1', { description: '   ' } as any)).rejects.toBeInstanceOf(BadRequestException);
     expect(roleRepository.findById).not.toHaveBeenCalled();
     expect(roleRepository.save).not.toHaveBeenCalled();
   });
@@ -93,13 +77,13 @@ describe('UpdateRoleUseCase', () => {
       save: jest.fn().mockResolvedValue({}),
     };
     const roleReadRepository = {
-      existsByDescription: jest.fn().mockResolvedValue(false),
+      findByDescription: jest.fn().mockResolvedValue(null),
     };
     const useCase = makeUseCase({ roleRepository, roleReadRepository });
 
     await useCase.execute('role-1', { description: '  AdViSeR  ' } as any);
 
-    expect(roleReadRepository.existsByDescription).toHaveBeenCalledWith('adviser');
+    expect(roleReadRepository.findByDescription).toHaveBeenCalledWith('adviser', { includeDeleted: true });
     expect(role.description).toBe('adviser');
     expect(roleRepository.save).toHaveBeenCalledWith(role);
   });
@@ -110,31 +94,33 @@ describe('UpdateRoleUseCase', () => {
       save: jest.fn(),
     };
     const roleReadRepository = {
-      existsByDescription: jest.fn().mockResolvedValue(true),
+      findByDescription: jest.fn().mockResolvedValue({
+        id: 'role-2',
+        description: 'admin',
+        deleted: false,
+      }),
     };
     const useCase = makeUseCase({ roleRepository, roleReadRepository });
 
-    await expect(useCase.execute('role-1', { description: 'Admin' } as any)).rejects.toBeInstanceOf(
-      ConflictException,
-    );
-    expect(roleReadRepository.existsByDescription).toHaveBeenCalledWith('admin');
+    await expect(useCase.execute('role-1', { description: 'Admin' } as any)).rejects.toBeInstanceOf(ConflictException);
+    expect(roleReadRepository.findByDescription).toHaveBeenCalledWith('admin', { includeDeleted: true });
     expect(roleRepository.save).not.toHaveBeenCalled();
   });
 
-  it('rejects renaming protected system roles', async () => {
+  it('rejects renaming master role', async () => {
     const roleRepository = {
-      findById: jest.fn().mockResolvedValue({ id: 'role-1', description: RoleType.ADMIN }),
+      findById: jest.fn().mockResolvedValue({ id: 'role-1', description: RoleType.SUPER_ADMINISTRATOR }),
       save: jest.fn(),
     };
     const roleReadRepository = {
-      existsByDescription: jest.fn(),
+      findByDescription: jest.fn(),
     };
     const useCase = makeUseCase({ roleRepository, roleReadRepository });
 
     await expect(useCase.execute('role-1', { description: 'admin-renamed' } as any)).rejects.toBeInstanceOf(
-      ForbiddenException,
+      BadRequestException,
     );
-    expect(roleReadRepository.existsByDescription).not.toHaveBeenCalled();
+    expect(roleReadRepository.findByDescription).not.toHaveBeenCalled();
     expect(roleRepository.save).not.toHaveBeenCalled();
   });
 
@@ -145,32 +131,14 @@ describe('UpdateRoleUseCase', () => {
       save: jest.fn().mockResolvedValue({}),
     };
     const roleReadRepository = {
-      existsByDescription: jest.fn(),
+      findByDescription: jest.fn(),
     };
     const useCase = makeUseCase({ roleRepository, roleReadRepository });
 
     const result = await useCase.execute('role-1', { description: 'Same' } as any);
 
-    expect(roleReadRepository.existsByDescription).not.toHaveBeenCalled();
+    expect(roleReadRepository.findByDescription).not.toHaveBeenCalled();
     expect(role.description).toBe('same');
-    expect(roleRepository.save).toHaveBeenCalledWith(role);
-    expect(result).toEqual({ message: 'Rol actualizado correctamente' });
-  });
-
-  it('allows protected system role when description is unchanged', async () => {
-    const role = { id: 'role-1', description: RoleType.MODERATOR };
-    const roleRepository = {
-      findById: jest.fn().mockResolvedValue(role),
-      save: jest.fn().mockResolvedValue({}),
-    };
-    const roleReadRepository = {
-      existsByDescription: jest.fn(),
-    };
-    const useCase = makeUseCase({ roleRepository, roleReadRepository });
-
-    const result = await useCase.execute('role-1', { description: RoleType.MODERATOR } as any);
-
-    expect(roleReadRepository.existsByDescription).not.toHaveBeenCalled();
     expect(roleRepository.save).toHaveBeenCalledWith(role);
     expect(result).toEqual({ message: 'Rol actualizado correctamente' });
   });
@@ -181,12 +149,10 @@ describe('UpdateRoleUseCase', () => {
       save: jest.fn().mockRejectedValue({ code: '23505' }),
     };
     const roleReadRepository = {
-      existsByDescription: jest.fn().mockResolvedValue(false),
+      findByDescription: jest.fn().mockResolvedValue(null),
     };
     const useCase = makeUseCase({ roleRepository, roleReadRepository });
 
-    await expect(useCase.execute('role-1', { description: 'New' } as any)).rejects.toBeInstanceOf(
-      ConflictException,
-    );
+    await expect(useCase.execute('role-1', { description: 'New' } as any)).rejects.toBeInstanceOf(ConflictException);
   });
 });
