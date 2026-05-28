@@ -15,6 +15,8 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { memoryStorage } from "multer";
 
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
+import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
 import { CsrfGuard } from "src/shared/utilidades/guards/csrf.guard";
 import { CreateCompanyUsecase } from "src/modules/companies/application/usecases/create.usecase";
 import { GetCompanyUsecase } from "src/modules/companies/application/usecases/get.usecase";
@@ -52,8 +54,8 @@ export class CompanyController {
   ) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard)
-  @UseGuards(CsrfGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard, CsrfGuard)
+  @RequirePermissions("company.manage")
   async create(@Body() dto: HttpCreateCompanyDto) {
     return this.createCompanyUsecase.execute(
       CompanyHttpMapper.toCreateInput(dto),
@@ -61,7 +63,8 @@ export class CompanyController {
   }
 
   @Get()
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions("company.read")
   async get() {
     return this.getCompanyUsecase.execute();
   }
@@ -72,8 +75,8 @@ export class CompanyController {
   }
 
   @Patch()
-  @UseGuards(JwtAuthGuard)
-  @UseGuards(CsrfGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard, CsrfGuard)
+  @RequirePermissions("company.manage")
   async update(@Body() dto: HttpUpdateCompanyDto) {
     return this.updateCompanyUsecase.execute(
       CompanyHttpMapper.toUpdateInput(dto),
@@ -81,8 +84,8 @@ export class CompanyController {
   }
 
   @Patch("logo")
-  @UseGuards(JwtAuthGuard)
-  @UseGuards(CsrfGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard, CsrfGuard)
+  @RequirePermissions("company.manage")
   @UseInterceptors(
     FileInterceptor("file", {
       storage: memoryStorage(),
@@ -141,8 +144,8 @@ export class CompanyController {
   }
 
   @Patch("isotype")
-  @UseGuards(JwtAuthGuard)
-  @UseGuards(CsrfGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard, CsrfGuard)
+  @RequirePermissions("company.manage")
   @UseInterceptors(
     FileInterceptor("file", {
       storage: memoryStorage(),
@@ -201,8 +204,8 @@ export class CompanyController {
   }
 
   @Patch("cert")
-  @UseGuards(JwtAuthGuard)
-  @UseGuards(CsrfGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard, CsrfGuard)
+  @RequirePermissions("company.manage")
   @UseInterceptors(
     FileInterceptor("file", {
       storage: memoryStorage(),

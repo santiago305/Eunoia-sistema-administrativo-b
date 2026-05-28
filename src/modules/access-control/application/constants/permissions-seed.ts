@@ -44,6 +44,10 @@ export const PERMISSIONS_SEED: PermissionSeedItem[] = [
   { code: 'roles.restore', name: 'Restaurar roles', description: 'Restaurar roles eliminados', module: 'roles', resource: 'roles', action: 'restore', type: 'action' },
   { code: 'roles.assign_permissions', name: 'Asignar permisos a rol', description: 'Asignar permisos base a un rol', module: 'roles', resource: 'roles', action: 'assign_permissions', type: 'action' },
   { code: 'permissions.read', name: 'Listar permisos', description: 'Consultar catalogo de permisos', module: 'permissions', resource: 'permissions', action: 'read', type: 'action' },
+  { code: 'company.read', name: 'Consultar empresa', description: 'Consultar configuracion de empresa', module: 'company', resource: 'company', action: 'read', type: 'action' },
+  { code: 'company.manage', name: 'Gestionar empresa', description: 'Crear y actualizar configuracion de empresa', module: 'company', resource: 'company', action: 'manage', type: 'action' },
+  { code: 'identity.lookup', name: 'Consultar identidad', description: 'Consultar servicios de identidad (DNI/RUC)', module: 'identity', resource: 'identity', action: 'lookup', type: 'action' },
+  { code: 'pdf.generate', name: 'Generar PDF', description: 'Generar y visualizar documentos PDF', module: 'pdf', resource: 'pdf', action: 'generate', type: 'action' },
   { code: 'purchases.read', name: 'Listar compras', description: 'Ver compras', module: 'purchases', resource: 'purchases', action: 'read', type: 'action' },
   { code: 'purchases.view', name: 'Ver compras', description: 'Ver listado y resumen de compras', module: 'purchases', resource: 'purchases', action: 'view', type: 'action' },
   { code: 'purchases.create', name: 'Crear compras', description: 'Crear nuevas compras', module: 'purchases', resource: 'purchases', action: 'create', type: 'action' },
@@ -169,6 +173,8 @@ export const ROLE_PERMISSION_SEED: Record<string, string[]> = {
     'notifications.read',
     'notifications.manage',
     'notifications.labels.create',
+    'identity.lookup',
+    'pdf.generate',
   ],
   adviser: [
     'page.dashboard.view',
@@ -197,6 +203,8 @@ export const ROLE_PERMISSION_SEED: Record<string, string[]> = {
     'notifications.read',
     'notifications.manage',
     'notifications.labels.create',
+    'identity.lookup',
+    'pdf.generate',
   ],
   purchasing_manager: [
     'page.dashboard.view',
@@ -226,6 +234,8 @@ export const ROLE_PERMISSION_SEED: Record<string, string[]> = {
     'notifications.read',
     'notifications.manage',
     'notifications.labels.create',
+    'identity.lookup',
+    'pdf.generate',
   ],
 };
 

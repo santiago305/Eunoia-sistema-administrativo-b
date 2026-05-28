@@ -48,7 +48,7 @@ import { PurchaseOrderEntity } from "../../out/persistence/typeorm/entities/purc
 import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
 
 @Controller("purchases/orders")
-@UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
+@UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
 export class PurchaseOrdersController {
   constructor(
     private readonly createOrder: CreatePurchaseOrderUsecase,
@@ -339,6 +339,7 @@ export class PurchaseOrdersController {
   }
 
   @Post(":id/run-expected")
+  @RequirePermissions("purchases.process")
   runExpectedAt(@Param("id", ParseUUIDPipe) id: string) {
     return this.runExpected.execute(id);
   }
@@ -682,6 +683,7 @@ export class PurchaseOrdersController {
   }
 
   @Post(":id/confirm-reception")
+  @RequirePermissions("purchases.process")
   async confirmPurchaseReception(
     @Param("id", ParseUUIDPipe) id: string,
     @CurrentUser() user: { id: string },
@@ -717,11 +719,13 @@ export class PurchaseOrdersController {
   }
 
   @Get("search-state")
+  @RequirePermissions("purchases.view")
   getSearchStateForUser(@CurrentUser() user: { id: string }) {
     return this.getSearchState.execute(user.id);
   }
 
   @Post("search-metrics")
+  @RequirePermissions("purchases.view")
   saveMetric(
     @Body() dto: HttpCreatePurchaseSearchMetricDto,
     @CurrentUser() user: { id: string },
@@ -737,6 +741,7 @@ export class PurchaseOrdersController {
   }
 
   @Delete("search-metrics/:metricId")
+  @RequirePermissions("purchases.view")
   deleteMetric(
     @Param("metricId", ParseUUIDPipe) metricId: string,
     @CurrentUser() user: { id: string },
@@ -745,11 +750,13 @@ export class PurchaseOrdersController {
   }
 
   @Get("export-columns")
+  @RequirePermissions("purchases.view")
   getExportColumns() {
     return this.exportExcel.getAvailableColumns();
   }
 
   @Get("export-presets")
+  @RequirePermissions("purchases.view")
   async getExportPresets(@CurrentUser() user: { id: string }) {
     const state = await this.listingSearchStorage.listState({
       userId: user.id,
@@ -759,6 +766,7 @@ export class PurchaseOrdersController {
   }
 
   @Post("export-presets")
+  @RequirePermissions("purchases.view")
   saveExportPreset(
     @CurrentUser() user: { id: string },
     @Body() body: { name: string; columns: Array<{ key: string; label: string }>; useDateRange?: boolean },
@@ -776,6 +784,7 @@ export class PurchaseOrdersController {
   }
 
   @Delete("export-presets/:metricId")
+  @RequirePermissions("purchases.view")
   deleteExportPreset(
     @CurrentUser() user: { id: string },
     @Param("metricId", ParseUUIDPipe) metricId: string,
@@ -788,6 +797,7 @@ export class PurchaseOrdersController {
   }
 
   @Post("export-excel")
+  @RequirePermissions("purchases.view")
   async exportOrdersExcel(
     @Body() dto: HttpExportPurchaseOrdersDto,
     @Res() res: Response,
@@ -981,6 +991,7 @@ export class PurchaseOrdersController {
   }
 
   @Patch(":id/extra-time")
+  @RequirePermissions("purchases.process")
   async addExtraTime(
     @Param("id", ParseUUIDPipe) id: string,
     @Body() body: { days?: number; hours?: number; minutes?: number },
