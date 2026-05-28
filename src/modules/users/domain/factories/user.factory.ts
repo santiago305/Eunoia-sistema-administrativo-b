@@ -8,7 +8,7 @@ export class UserFactory {
     name: string;
     email: Email;
     password: Password;
-    roleId: RoleId;
+    roleId: RoleId | null;
     avatarUrl?: string;
     telefono?: string;
     preferredHomePath?: string | null;
@@ -38,7 +38,7 @@ export class UserFactory {
     name: string;
     email: Email;
     password: Password;
-    roleId: RoleId;
+    roleId: RoleId | null;
     deleted: boolean;
     avatarUrl?: string;
     createdAt?: Date;

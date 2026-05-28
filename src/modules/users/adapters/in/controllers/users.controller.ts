@@ -78,7 +78,7 @@ export class UsersController {
   @Post('create')
   @UseGuards(JwtAuthGuard, PermissionsGuard, CsrfGuard)
   @RequirePermissions('users.create')
-  create(@Body() dto: CreateUserDto, @CurrentUser() user: { role: RoleType; id: string }) {
+  create(@Body() dto: CreateUserDto, @CurrentUser() user: { role?: RoleType | null; id: string }) {
     return this.createUserUseCase.execute(dto, { role: user.role, userId: user.id });
   }
 
@@ -92,7 +92,7 @@ export class UsersController {
     @Query('sortBy') sortBy: string,
     @Query('order') order: 'ASC' | 'DESC',
     @Query('status') status: string,
-    @CurrentUser() user: { role: RoleType; id: string }
+    @CurrentUser() user: { role?: RoleType | null; id: string }
   ) {
     if (status && !USER_LIST_STATUSES.includes(status as UserListStatus)) {
       throw new BadRequestException(
@@ -122,7 +122,7 @@ export class UsersController {
     @Query('role') role: string,
     @Query('q') q: string,
     @Query('status') status: string,
-    @CurrentUser() user: { role: RoleType; id: string },
+    @CurrentUser() user: { role?: RoleType | null; id: string },
   ) {
     if (status && !USER_LIST_STATUSES.includes(status as UserListStatus)) {
       throw new BadRequestException(
@@ -169,7 +169,7 @@ export class UsersController {
   updateRole(
     @Param('id') id: string,
     @Body() dto: UpdateUserRoleDto,
-    @CurrentUser() user: { role: RoleType; id: string }
+    @CurrentUser() user: { role?: RoleType | null; id: string }
   ) {
     return this.updateUserRoleUseCase.execute(id, dto.roleId, { role: user.role, userId: user.id });
   }
@@ -185,14 +185,14 @@ export class UsersController {
   @Patch('delete/:id')
   @UseGuards(JwtAuthGuard, PermissionsGuard, CsrfGuard)
   @RequirePermissions('users.delete')
-  remove(@Param('id') id: string, @CurrentUser() user: { role: RoleType; id: string }) {
+  remove(@Param('id') id: string, @CurrentUser() user: { role?: RoleType | null; id: string }) {
     return this.deleteUserUseCase.execute(id, { role: user.role, userId: user.id });
   }
 
   @Patch('restore/:id')
   @UseGuards(JwtAuthGuard, PermissionsGuard, CsrfGuard)
   @RequirePermissions('users.restore')
-  restore(@Param('id') id: string, @CurrentUser() user: { role: RoleType; id: string }) {
+  restore(@Param('id') id: string, @CurrentUser() user: { role?: RoleType | null; id: string }) {
     return this.restoreUserUseCase.execute(id, { role: user.role, userId: user.id });
   }
 

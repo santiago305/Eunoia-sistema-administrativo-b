@@ -20,7 +20,7 @@ export class GetUserByEmailUseCase {
     return successResponse('Usuario encontrado', {
       id: user.id,
       email: user.email,
-      rol: user.roleDescription,
+      rol: user.roleDescription ?? null,
       deleted: user.deleted,
     });
   }

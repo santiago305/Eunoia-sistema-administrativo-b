@@ -36,7 +36,6 @@ import { ProductCatalogStockItemEntity } from './src/modules/product-catalog/ada
 import { ProductCatalogDocumentSerieEntity } from './src/modules/product-catalog/adapters/out/persistence/typeorm/entities/document-serie.entity';
 import { ProductCatalogUnitEntity } from './src/modules/product-catalog/adapters/out/persistence/typeorm/entities/unit.entity';
 import { ProductCatalogEquivalencesEntity } from './src/modules/product-catalog/adapters/out/persistence/typeorm/entities/equivalences.entity';
-import { seedRoles } from './src/modules/roles/infrastructure/seed/role.seeder';
 import { seedUser } from './src/modules/users/infrastructure/seed/user.seeder';
 import { seedSecurityReasonCatalog } from './src/modules/security/infrastructure/seed/security-reason-catalog.seeder';
 import { seedSecurityIpActivity } from './src/modules/security/infrastructure/seed/security-ip-activity.seeder';
@@ -127,7 +126,6 @@ dataSource
   .then(async () => {
     console.log('Iniciando seed...');
 
-    await seedRoles(dataSource);
     await seedUser(dataSource);
     await seedCompany(dataSource);
     await seedUbigeo(dataSource);

@@ -4,21 +4,17 @@ import { Email } from '../../../../../domain/value-objects/email.vo';
 import { Password } from '../../../../../domain/value-objects/password.vo';
 import { RoleId } from '../../../../../domain/value-objects/role.vo';
 import { User as OrmUser } from '../entities/user.entity';
-import { MissingRoleIdError } from '../../../../../domain/errors/missing-role-id.error';
 
 export class UserMapper {
   static toDomain(orm: OrmUser): DomainUser {
     const roleId = orm.role?.roleId ?? (orm as any).roleId;
-    if (!roleId) {
-      throw new MissingRoleIdError();
-    }
 
     return UserFactory.reconstitute({
       id: orm.id,
       name: orm.name,
       email: new Email(orm.email),
       password: new Password(orm.password),
-      roleId: new RoleId(roleId),
+      roleId: roleId ? new RoleId(roleId) : null,
       deleted: orm.deleted,
       avatarUrl: orm.avatarUrl,
       createdAt: orm.createdAt,
@@ -43,7 +39,7 @@ export class UserMapper {
       createdByUserId: domain.createdByUserId ?? null,
       manageableRoleDescriptions: domain.manageableRoleDescriptions ?? null,
       manageableUserIds: domain.manageableUserIds ?? null,
-      role: domain.roleId ? ({ roleId: domain.roleId.value } as OrmUser['role']) : undefined,
+      role: domain.roleId ? ({ roleId: domain.roleId.value } as OrmUser['role']) : null,
       createdAt: domain.createdAt,
     };
   }

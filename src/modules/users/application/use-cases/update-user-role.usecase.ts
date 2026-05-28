@@ -19,7 +19,7 @@ export class UpdateUserRoleUseCase {
     private readonly roleReadRepository: RoleReadRepository,
   ) {}
 
-  async execute(id: string, roleId: string, requester: { role: RoleType; userId: string }) {
+  async execute(id: string, roleId: string, requester: { role?: RoleType | null; userId: string }) {
     const requesterScope = await this.userReadRepository.findManagementScopeById(requester.userId);
     const isSuperAdmin = Boolean(requesterScope?.isSuperAdmin);
 
@@ -56,8 +56,9 @@ export class UpdateUserRoleUseCase {
         ? requesterScope.manageableUserIds
         : [];
 
+      const targetRoleDescription = target.role?.description ?? null;
       const canManageTarget =
-        allowedRoles.includes(target.role.description) || allowedUserIds.includes(target.id);
+        (targetRoleDescription ? allowedRoles.includes(targetRoleDescription) : false) || allowedUserIds.includes(target.id);
       const canAssignNextRole = allowedRoles.includes(nextRole.description);
 
       if (!canManageTarget || !canAssignNextRole) {
@@ -78,8 +79,8 @@ export class UpdateUserRoleUseCase {
     const updated = await this.userReadRepository.findManagementById(id);
     return successResponse('Rol actualizado correctamente', {
       id: updated?.id ?? id,
-      rol: updated?.role.description ?? nextRole.description,
-      roleId: updated?.role.id ?? nextRole.id,
+      rol: updated?.role?.description ?? nextRole.description,
+      roleId: updated?.role?.id ?? nextRole.id,
     });
   }
 }

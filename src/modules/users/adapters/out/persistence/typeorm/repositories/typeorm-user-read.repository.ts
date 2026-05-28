@@ -31,8 +31,8 @@ export class TypeormUserReadRepository implements UserReadRepository {
       name: string;
       email: string;
       telefono?: string;
-      rol: string;
-      roleId: string;
+      rol: string | null;
+      roleId: string | null;
       deleted: boolean;
       createdAt: Date;
       updatedAt?: Date;
@@ -222,7 +222,7 @@ export class TypeormUserReadRepository implements UserReadRepository {
   async findPublicByEmail(email: string): Promise<{
     id: string;
     email: string;
-    roleDescription: string;
+    roleDescription: string | null;
   } | null> {
     const user = await this.ormRepository
       .createQueryBuilder('user')
@@ -244,7 +244,7 @@ export class TypeormUserReadRepository implements UserReadRepository {
   async findManagementByEmail(email: string): Promise<{
     id: string;
     email: string;
-    roleDescription: string;
+    roleDescription: string | null;
     deleted: boolean;
   } | null> {
     const user = await this.ormRepository
@@ -272,7 +272,7 @@ export class TypeormUserReadRepository implements UserReadRepository {
     deleted: boolean;
     avatarUrl?: string;
     createdAt?: Date;
-    role: { id: string; description: string };
+    role: { id: string; description: string } | null;
   } | null> {
     const user = await this.ormRepository
       .createQueryBuilder('user')
@@ -292,7 +292,7 @@ export class TypeormUserReadRepository implements UserReadRepository {
       .andWhere('user.deleted = false')
       .getOne();
 
-    if (!user || !user.role) return null;
+    if (!user) return null;
 
     return {
       id: user.id,
@@ -302,10 +302,12 @@ export class TypeormUserReadRepository implements UserReadRepository {
       deleted: user.deleted,
       avatarUrl: this.normalizeAvatarUrl(user.avatarUrl),
       createdAt: user.createdAt,
-      role: {
-        id: user.role.roleId,
-        description: user.role.description,
-      },
+      role: user.role
+        ? {
+            id: user.role.roleId,
+            description: user.role.description,
+          }
+        : null,
     };
   }
 
@@ -317,7 +319,7 @@ export class TypeormUserReadRepository implements UserReadRepository {
     deleted: boolean;
     avatarUrl?: string;
     createdAt?: Date;
-    role: { id: string; description: string };
+    role: { id: string; description: string } | null;
     isSuperAdmin?: boolean;
     manageableRoleDescriptions?: string[] | null;
     manageableUserIds?: string[] | null;
@@ -342,7 +344,7 @@ export class TypeormUserReadRepository implements UserReadRepository {
       .where('user.id = :id', { id })
       .getOne();
 
-    if (!user || !user.role) return null;
+    if (!user) return null;
 
     return {
       id: user.id,
@@ -352,10 +354,12 @@ export class TypeormUserReadRepository implements UserReadRepository {
       deleted: user.deleted,
       avatarUrl: this.normalizeAvatarUrl(user.avatarUrl),
       createdAt: user.createdAt,
-      role: {
-        id: user.role.roleId,
-        description: user.role.description,
-      },
+      role: user.role
+        ? {
+            id: user.role.roleId,
+            description: user.role.description,
+          }
+        : null,
       isSuperAdmin: Boolean(user.isSuperAdmin),
       manageableRoleDescriptions: user.manageableRoleDescriptions ?? null,
       manageableUserIds: user.manageableUserIds ?? null,
@@ -364,7 +368,7 @@ export class TypeormUserReadRepository implements UserReadRepository {
 
   async findManagementScopeById(id: string): Promise<{
     id: string;
-    roleDescription: string;
+    roleDescription: string | null;
     isSuperAdmin: boolean;
     manageableRoleDescriptions: string[] | null;
     manageableUserIds: string[] | null;
@@ -385,7 +389,7 @@ export class TypeormUserReadRepository implements UserReadRepository {
         isSuperAdmin: boolean;
         manageableRoleDescriptions: string[] | null;
         manageableUserIds: string[] | null;
-        roleDescription: string;
+        roleDescription: string | null;
       }>();
 
     if (!row) return null;
@@ -403,7 +407,8 @@ export class TypeormUserReadRepository implements UserReadRepository {
     id: string;
     email: string;
     password: string;
-    roleDescription: string;
+    roleDescription: string | null;
+    isSuperAdmin: boolean;
     failedLoginAttempts: number;
     lockoutLevel: number;
     lockedUntil: Date | null;
@@ -420,19 +425,21 @@ export class TypeormUserReadRepository implements UserReadRepository {
         'user.lockoutLevel',
         'user.lockedUntil',
         'user.securityDisabledAt',
+        'user.isSuperAdmin',
         'role.description',
       ])
       .where('user.email = :email', { email })
       .andWhere('user.deleted = false')
       .getOne();
 
-    if (!user || !user.role) return null;
+    if (!user) return null;
 
     return {
       id: user.id,
       email: user.email,
       password: user.password,
-      roleDescription: user.role.description,
+      roleDescription: user.role?.description ?? null,
+      isSuperAdmin: Boolean(user.isSuperAdmin),
       failedLoginAttempts: user.failedLoginAttempts ?? 0,
       lockoutLevel: user.lockoutLevel ?? 0,
       lockedUntil: user.lockedUntil ?? null,

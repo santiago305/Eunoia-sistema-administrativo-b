@@ -22,8 +22,8 @@ export interface UserReadRepository {
       name: string;
       email: string;
       telefono?: string;
-      rol: string;
-      roleId: string;
+      rol: string | null;
+      roleId: string | null;
       deleted: boolean;
       createdAt: Date;
       updatedAt?: Date;
@@ -53,13 +53,13 @@ export interface UserReadRepository {
   findPublicByEmail(email: string): Promise<{
     id: string;
     email: string;
-    roleDescription: string;
+    roleDescription: string | null;
   } | null>;
 
   findManagementByEmail(email: string): Promise<{
     id: string;
     email: string;
-    roleDescription: string;
+    roleDescription: string | null;
     deleted: boolean;
   } | null>;
 
@@ -71,7 +71,7 @@ export interface UserReadRepository {
     deleted: boolean;
     avatarUrl?: string;
     createdAt?: Date;
-    role: { id: string; description: string };
+    role: { id: string; description: string } | null;
   } | null>;
 
   findManagementById(id: string): Promise<{
@@ -82,7 +82,7 @@ export interface UserReadRepository {
     deleted: boolean;
     avatarUrl?: string;
     createdAt?: Date;
-    role: { id: string; description: string };
+    role: { id: string; description: string } | null;
     isSuperAdmin?: boolean;
     manageableRoleDescriptions?: string[] | null;
     manageableUserIds?: string[] | null;
@@ -90,7 +90,7 @@ export interface UserReadRepository {
 
   findManagementScopeById(id: string): Promise<{
     id: string;
-    roleDescription: string;
+    roleDescription: string | null;
     isSuperAdmin: boolean;
     manageableRoleDescriptions: string[] | null;
     manageableUserIds: string[] | null;
@@ -100,7 +100,8 @@ export interface UserReadRepository {
     id: string;
     email: string;
     password: string;
-    roleDescription: string;
+    roleDescription: string | null;
+    isSuperAdmin: boolean;
     failedLoginAttempts: number;
     lockoutLevel: number;
     lockedUntil: Date | null;

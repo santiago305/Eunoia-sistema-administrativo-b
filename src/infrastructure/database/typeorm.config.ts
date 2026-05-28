@@ -10,6 +10,7 @@ import { CreatePacksCore20260519010000 } from "./migrations/20260519010000-creat
 import { AddClientsNoneDocType20260520020000 } from "./migrations/20260520020000-add-clients-none-doc-type";
 import { AddUserRoleManagementAudit20260526000000 } from "./migrations/20260526000000-add-user-role-management-audit";
 import { AddMasterSuperAdministratorRole20260527000000 } from "./migrations/20260527000000-add-master-super-administrator-role";
+import { AllowSuperAdminWithoutRole20260528000000 } from "./migrations/20260528000000-allow-super-admin-without-role";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -41,6 +42,7 @@ export const getMigrationDataSourceOptions = (): DataSourceOptions => ({
     AddClientsNoneDocType20260520020000,
     AddUserRoleManagementAudit20260526000000,
     AddMasterSuperAdministratorRole20260527000000,
+    AllowSuperAdminWithoutRole20260528000000,
   ],
 });
 

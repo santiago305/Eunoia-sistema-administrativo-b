@@ -12,7 +12,8 @@ export class GetUserWithPasswordByEmailUseCase {
     id: string;
     email: string;
     password: string;
-    role: { description: string };
+    role: { description: string | null };
+    isSuperAdmin: boolean;
     failedLoginAttempts: number;
     lockoutLevel: number;
     lockedUntil: Date | null;
@@ -26,6 +27,7 @@ export class GetUserWithPasswordByEmailUseCase {
       email: user.email,
       password: user.password,
       role: { description: user.roleDescription },
+      isSuperAdmin: user.isSuperAdmin,
       failedLoginAttempts: user.failedLoginAttempts,
       lockoutLevel: user.lockoutLevel,
       lockedUntil: user.lockedUntil,

@@ -73,9 +73,9 @@ export class User {
   /**
    * Rol asignado al usuario.
    */
-  @ManyToOne(() => Role, (role) => role.users)
+  @ManyToOne(() => Role, (role) => role.users, { nullable: true })
   @JoinColumn({ name: 'role_id' })
-  role: Role;
+  role: Role | null;
 
   @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;

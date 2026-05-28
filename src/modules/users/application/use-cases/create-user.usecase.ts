@@ -67,7 +67,7 @@ export class CreateUserUseCase {
     return 'Eunoia';
   }
 
-  async execute(dto: CreateUserDto, requester: { role: RoleType; userId: string }) {
+  async execute(dto: CreateUserDto, requester: { role?: RoleType | null; userId: string }) {
     const requesterScope = await this.userReadRepository.findManagementScopeById(requester.userId);
     const isSuperAdmin = Boolean(requesterScope?.isSuperAdmin);
 
@@ -80,17 +80,19 @@ export class CreateUserUseCase {
       type: argon2.argon2id,
     });
 
-    if (!dto.roleId) {
-      throw new BadRequestException('El rol es obligatorio');
-    }
+    let targetRoleId: string | null = null;
+    let targetRoleDescription: string | null = null;
 
-    const roleResult = await this.roleReadRepository.findById(dto.roleId);
-    if (!roleResult) {
-      throw new NotFoundException('Rol invalido');
+    if (dto.roleId) {
+      const roleResult = await this.roleReadRepository.findById(dto.roleId);
+      if (!roleResult) {
+        throw new NotFoundException('Rol invalido');
+      }
+      targetRoleId = roleResult.id;
+      targetRoleDescription = roleResult.description;
+    } else if (!isSuperAdmin) {
+      throw new BadRequestException('El rol es obligatorio para este usuario');
     }
-
-    const targetRoleId = roleResult.id;
-    const targetRoleDescription = roleResult.description;
 
     const allowedConfiguredRoles = Array.isArray(requesterScope?.manageableRoleDescriptions)
       ? requesterScope.manageableRoleDescriptions.filter((value) => value && value.trim().length > 0)
@@ -102,13 +104,13 @@ export class CreateUserUseCase {
         : [];
     const allowedRoles = allowedConfiguredRoles.length > 0 ? allowedConfiguredRoles : fallbackAllowedRoles;
 
-    if (!isSuperAdmin && !allowedRoles.includes(targetRoleDescription)) {
+    if (targetRoleDescription && !isSuperAdmin && !allowedRoles.includes(targetRoleDescription)) {
       throw new ForbiddenException(
         new UserForbiddenApplicationError('No autorizado para crear usuarios con ese rol').message,
       );
     }
 
-    if (String(targetRoleDescription ?? '').trim().toLowerCase() === MASTER_ROLE_DESCRIPTION) {
+    if (targetRoleDescription && String(targetRoleDescription).trim().toLowerCase() === MASTER_ROLE_DESCRIPTION) {
       throw new ForbiddenException(
         new UserForbiddenApplicationError('No autorizado para asignar el rol maestro').message,
       );
@@ -118,7 +120,7 @@ export class CreateUserUseCase {
       name: dto.name,
       email: new Email(dto.email),
       password: new Password(hashedPassword),
-      roleId: new RoleId(targetRoleId),
+      roleId: targetRoleId ? new RoleId(targetRoleId) : null,
       avatarUrl: dto.avatarUrl,
       telefono: dto.telefono,
       createdByUserId: requester.userId,

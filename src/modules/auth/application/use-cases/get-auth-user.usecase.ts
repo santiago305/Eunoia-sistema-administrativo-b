@@ -1,5 +1,4 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { RoleType } from 'src/shared/constantes/constants';
 import { AuthInvalidTokenError } from '../errors/auth-invalid-token.error';
 import { AccessControlService } from 'src/modules/access-control/application/services/access-control.service';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -28,9 +27,13 @@ export class GetAuthUserUseCase {
       select: ['id', 'isSuperAdmin'],
     });
 
+    const resolvedRole = typeof user?.role === 'string' && user.role.trim().length > 0
+      ? user.role
+      : (roles[0] ?? null);
+
     return {
       user_id: userId,
-      rol: user?.role || RoleType.ADVISER,
+      rol: resolvedRole,
       roles,
       permissions,
       preferredHomePath,

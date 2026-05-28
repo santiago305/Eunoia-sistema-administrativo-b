@@ -136,9 +136,11 @@ export class LoginAuthUseCase {
 
     const sessionId = uuidv4();
 
+    const payloadRole =
+      user.role?.description || (user.isSuperAdmin ? RoleType.SUPER_ADMINISTRATOR : null);
     const payload = {
       sub: user.id,
-      role: user.role?.description || RoleType.ADVISER,
+      role: payloadRole,
     };
 
     const access_token = this.tokenReadRepository.signAccessToken({

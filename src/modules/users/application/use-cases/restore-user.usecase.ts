@@ -15,7 +15,7 @@ export class RestoreUserUseCase {
     private readonly userReadRepository: UserReadRepository,
   ) {}
 
-  async execute(id: string, requester: { role: RoleType; userId: string }) {
+  async execute(id: string, requester: { role?: RoleType | null; userId: string }) {
     const requesterScope = await this.userReadRepository.findManagementScopeById(requester.userId);
     const isSuperAdmin = Boolean(requesterScope?.isSuperAdmin);
 
@@ -35,8 +35,10 @@ export class RestoreUserUseCase {
       const allowedUserIds = Array.isArray(requesterScope?.manageableUserIds)
         ? requesterScope.manageableUserIds
         : [];
+      const targetRoleDescription = target.role?.description ?? null;
+      const canManageByRole = targetRoleDescription ? allowedRoles.includes(targetRoleDescription) : false;
 
-      if (!allowedRoles.includes(target.role.description) && !allowedUserIds.includes(target.id)) {
+      if (!canManageByRole && !allowedUserIds.includes(target.id)) {
         throw new ForbiddenException(
           new UserForbiddenApplicationError('No autorizado para restaurar este usuario').message,
         );

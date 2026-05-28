@@ -23,7 +23,7 @@ export class GetUserUseCase {
       email: user.email,
       telefono: user.telefono,
       avatarUrl: user.avatarUrl,
-      rol: user.role.description,
+      rol: user.role?.description ?? null,
       deleted: user.deleted,
     });
   }

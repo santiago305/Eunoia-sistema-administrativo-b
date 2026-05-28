@@ -21,7 +21,7 @@ export class CountUsersByRoleUseCase {
       };
       status?: UserListStatus;
     },
-    requester: { role: RoleType; userId: string },
+    requester: { role?: RoleType | null; userId: string },
   ) {
     const requesterScope = await this.userReadRepository.findManagementScopeById(requester.userId);
     const scopedParams = this.applyRoleScope(params, requester.role, requesterScope);
@@ -51,10 +51,10 @@ export class CountUsersByRoleUseCase {
       };
       status?: UserListStatus;
     },
-    requesterRole: RoleType,
+    requesterRole: RoleType | null | undefined,
     requesterScope?: {
       id: string;
-      roleDescription: string;
+      roleDescription: string | null;
       isSuperAdmin: boolean;
       manageableRoleDescriptions: string[] | null;
       manageableUserIds: string[] | null;

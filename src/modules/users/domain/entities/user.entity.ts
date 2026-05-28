@@ -8,7 +8,7 @@ export class User {
     public name: string,
     public email: Email,
     public password: Password,
-    public roleId: RoleId,
+    public roleId: RoleId | null,
     public deleted: boolean = false,
     public avatarUrl?: string,
     public createdAt?: Date,

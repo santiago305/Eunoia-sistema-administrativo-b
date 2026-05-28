@@ -1,15 +1,12 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard';
-import { RolesGuard } from 'src/shared/utilidades/guards/roles.guard';
-import { Roles, User as CurrentUser } from 'src/shared/utilidades/decorators';
-import { RoleType } from 'src/shared/constantes/constants';
+import { User as CurrentUser } from 'src/shared/utilidades/decorators';
 import { AccessControlService } from '../../../application/services/access-control.service';
 import { SetUserPermissionOverrideDto } from '../dtos/set-user-permission-override.dto';
 import { SuperAdminGuard } from 'src/shared/utilidades/guards/super-admin.guard';
 
 @Controller('access-control')
-@UseGuards(JwtAuthGuard, RolesGuard, SuperAdminGuard)
-@Roles(RoleType.ADMIN, RoleType.SUPER_ADMINISTRATOR)
+@UseGuards(JwtAuthGuard, SuperAdminGuard)
 export class AccessControlController {
   constructor(private readonly accessControlService: AccessControlService) {}
 

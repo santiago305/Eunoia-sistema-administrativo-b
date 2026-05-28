@@ -64,6 +64,13 @@ export class AccessControlService {
       relations: ['role'],
     });
     if (!user) throw new NotFoundException('Usuario no encontrado');
+    if (user.isSuperAdmin) {
+      const all = await this.permissionRepository.find({
+        where: { isActive: true },
+        select: ['code'],
+      });
+      return all.map((permission) => permission.code).sort();
+    }
 
     const rolePermissions = await this.rolePermissionRepository.find({
       where: { roleId: user.role?.roleId },
