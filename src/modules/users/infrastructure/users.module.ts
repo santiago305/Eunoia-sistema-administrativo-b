@@ -11,9 +11,10 @@ import { usersModuleProviders } from '../composition/container';
 import { AccessControlModule } from 'src/modules/access-control/infrastructure/access-control.module';
 import { CompaniesModule } from 'src/modules/companies/companies.module';
 import { MailModule } from 'src/modules/mail/infrastructure/mail.module';
+import { UserManageableRole } from '../adapters/out/persistence/typeorm/entities/user-manageable-role.entity';
 
 @Module({
-  imports: [RolesModule, AccessControlModule, CompaniesModule, MailModule, TypeOrmModule.forFeature([User, Role])],
+  imports: [RolesModule, AccessControlModule, CompaniesModule, MailModule, TypeOrmModule.forFeature([User, Role, UserManageableRole])],
   controllers: [UsersController],
   providers: [...usersModuleProviders],
   exports: [USER_REPOSITORY, USER_READ_REPOSITORY, GetUserWithPasswordByEmailUseCase],

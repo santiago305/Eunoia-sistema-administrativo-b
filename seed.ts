@@ -116,7 +116,7 @@ const dataSource = new DataSource({
   username: envs.db.username,
   password: envs.db.password,
   database: envs.db.name,
-  synchronize: true,
+  synchronize: false,
   logging: false,
   entities,
 });

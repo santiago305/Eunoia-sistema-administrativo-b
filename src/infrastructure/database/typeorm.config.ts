@@ -12,6 +12,7 @@ import { AddUserRoleManagementAudit20260526000000 } from "./migrations/202605260
 import { AddMasterSuperAdministratorRole20260527000000 } from "./migrations/20260527000000-add-master-super-administrator-role";
 import { AllowSuperAdminWithoutRole20260528000000 } from "./migrations/20260528000000-allow-super-admin-without-role";
 import { CreateUserGrantablePermissions20260528010000 } from "./migrations/20260528010000-create-user-grantable-permissions";
+import { CreateUserManageableRoles20260528020000 } from "./migrations/20260528020000-create-user-manageable-roles";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -25,7 +26,8 @@ export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({
   ...getBaseTypeOrmOptions(),
-  synchronize: envs.nodeEnv === "development",
+  synchronize: false,
+  migrationsRun: envs.nodeEnv === "production",
   autoLoadEntities: true,
 });
 
@@ -45,6 +47,7 @@ export const getMigrationDataSourceOptions = (): DataSourceOptions => ({
     AddMasterSuperAdministratorRole20260527000000,
     AllowSuperAdminWithoutRole20260528000000,
     CreateUserGrantablePermissions20260528010000,
+    CreateUserManageableRoles20260528020000,
   ],
 });
 

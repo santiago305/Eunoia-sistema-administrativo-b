@@ -6,12 +6,15 @@ import {
   UserReadRepository
 } from '../../../../../application/ports/user-read.repository';
 import { User as OrmUser } from '../entities/user.entity';
+import { UserManageableRole } from '../entities/user-manageable-role.entity';
 
 @Injectable()
 export class TypeormUserReadRepository implements UserReadRepository {
   constructor(
     @InjectRepository(OrmUser)
-    private readonly ormRepository: Repository<OrmUser>
+    private readonly ormRepository: Repository<OrmUser>,
+    @InjectRepository(UserManageableRole)
+    private readonly userManageableRoleRepository: Repository<UserManageableRole>,
   ) {}
 
   async listUsers(params: {
@@ -143,6 +146,12 @@ export class TypeormUserReadRepository implements UserReadRepository {
       .limit(pageSize)
       .getRawMany();
 
+    const manageableRoleDescriptionsByUser = await this.loadManageableRoleDescriptionsByManagerIds(
+      rawItems
+        .map((item) => String((item as { id?: string }).id ?? ''))
+        .filter((value) => value.length > 0),
+    );
+
     const items = rawItems.map((item) => ({
       ...item,
       createdAt: (item as { createdAt?: Date; createdat?: Date }).createdAt
@@ -151,8 +160,11 @@ export class TypeormUserReadRepository implements UserReadRepository {
         ?? (item as { updatedAt?: Date; updatedat?: Date }).updatedat,
       createdByUserId: (item as { createdByUserId?: string | null }).createdByUserId ?? null,
       createdByUserName: (item as { createdByUserName?: string | null }).createdByUserName ?? null,
-      manageableRoleDescriptions:
+      manageableRoleDescriptions: this.resolveManageableRoleDescriptions(
+        String((item as { id?: string }).id ?? ''),
         (item as { manageableRoleDescriptions?: string[] | null }).manageableRoleDescriptions ?? null,
+        manageableRoleDescriptionsByUser,
+      ),
       manageableUserIds: (item as { manageableUserIds?: string[] | null }).manageableUserIds ?? null,
     }));
 
@@ -370,6 +382,8 @@ export class TypeormUserReadRepository implements UserReadRepository {
 
     if (!user) return null;
 
+    const manageableRoleDescriptionsByUser = await this.loadManageableRoleDescriptionsByManagerIds([id]);
+
     return {
       id: user.id,
       name: user.name,
@@ -385,7 +399,11 @@ export class TypeormUserReadRepository implements UserReadRepository {
           }
         : null,
       isSuperAdmin: Boolean(user.isSuperAdmin),
-      manageableRoleDescriptions: user.manageableRoleDescriptions ?? null,
+      manageableRoleDescriptions: this.resolveManageableRoleDescriptions(
+        user.id,
+        user.manageableRoleDescriptions ?? null,
+        manageableRoleDescriptionsByUser,
+      ),
       manageableUserIds: user.manageableUserIds ?? null,
     };
   }
@@ -418,11 +436,17 @@ export class TypeormUserReadRepository implements UserReadRepository {
 
     if (!row) return null;
 
+    const manageableRoleDescriptionsByUser = await this.loadManageableRoleDescriptionsByManagerIds([id]);
+
     return {
       id: row.id,
       roleDescription: row.roleDescription,
       isSuperAdmin: Boolean(row.isSuperAdmin),
-      manageableRoleDescriptions: row.manageableRoleDescriptions ?? null,
+      manageableRoleDescriptions: this.resolveManageableRoleDescriptions(
+        row.id,
+        row.manageableRoleDescriptions ?? null,
+        manageableRoleDescriptionsByUser,
+      ),
       manageableUserIds: row.manageableUserIds ?? null,
     };
   }
@@ -477,6 +501,50 @@ export class TypeormUserReadRepository implements UserReadRepository {
       return avatarUrl.replace(/^\/assets\//, '/api/assets/');
     }
     return avatarUrl;
+  }
+
+  private async loadManageableRoleDescriptionsByManagerIds(managerUserIds: string[]) {
+    const normalizedIds = [...new Set(managerUserIds.map((value) => String(value ?? '').trim()).filter(Boolean))];
+    const map = new Map<string, string[]>();
+    if (!normalizedIds.length) return map;
+
+    const rows = await this.userManageableRoleRepository
+      .createQueryBuilder('manageableRole')
+      .leftJoin('manageableRole.role', 'role')
+      .select([
+        'manageableRole.managerUserId AS "managerUserId"',
+        'LOWER(role.description) AS "roleDescription"',
+      ])
+      .where('manageableRole.managerUserId IN (:...managerUserIds)', { managerUserIds: normalizedIds })
+      .andWhere('role.deleted = false')
+      .orderBy('role.description', 'ASC')
+      .getRawMany<{ managerUserId: string; roleDescription: string | null }>();
+
+    for (const row of rows) {
+      const managerId = String(row.managerUserId ?? '').trim();
+      const roleDescription = String(row.roleDescription ?? '').trim().toLowerCase();
+      if (!managerId || !roleDescription) continue;
+      const current = map.get(managerId) ?? [];
+      if (!current.includes(roleDescription)) {
+        current.push(roleDescription);
+      }
+      map.set(managerId, current);
+    }
+
+    return map;
+  }
+
+  private resolveManageableRoleDescriptions(
+    managerUserId: string,
+    legacyManageableRoleDescriptions: string[] | null,
+    manageableRoleDescriptionsByUser: Map<string, string[]>,
+  ) {
+    const fromTable = manageableRoleDescriptionsByUser.get(managerUserId) ?? [];
+    if (fromTable.length) return fromTable;
+    if (Array.isArray(legacyManageableRoleDescriptions) && legacyManageableRoleDescriptions.length) {
+      return [...new Set(legacyManageableRoleDescriptions.map((value) => String(value ?? '').trim().toLowerCase()).filter(Boolean))];
+    }
+    return null;
   }
 }
 
