@@ -82,25 +82,28 @@ export class CreateUserUseCase {
 
     let targetRoleId: string | null = null;
     let targetRoleDescription: string | null = null;
+    const requestedRoleId = String(dto.roleId ?? '').trim();
 
-    if (dto.roleId) {
-      const roleResult = await this.roleReadRepository.findById(dto.roleId);
+    if (requestedRoleId) {
+      const roleResult = await this.roleReadRepository.findById(requestedRoleId);
       if (!roleResult) {
         throw new NotFoundException('Rol invalido');
       }
       targetRoleId = roleResult.id;
-      targetRoleDescription = roleResult.description;
+      targetRoleDescription = String(roleResult.description ?? '').trim().toLowerCase();
     } else if (!isSuperAdmin) {
       throw new BadRequestException('El rol es obligatorio para este usuario');
     }
 
     const allowedConfiguredRoles = Array.isArray(requesterScope?.manageableRoleDescriptions)
-      ? requesterScope.manageableRoleDescriptions.filter((value) => value && value.trim().length > 0)
+      ? requesterScope.manageableRoleDescriptions
+          .map((value) => String(value ?? '').trim().toLowerCase())
+          .filter((value) => value.length > 0)
       : [];
     const fallbackAllowedRoles = requesterScope?.roleDescription
-      ? [requesterScope.roleDescription]
+      ? [String(requesterScope.roleDescription).trim().toLowerCase()]
       : requester.role
-        ? [requester.role]
+        ? [String(requester.role).trim().toLowerCase()]
         : [];
     const allowedRoles = allowedConfiguredRoles.length > 0 ? allowedConfiguredRoles : fallbackAllowedRoles;
 

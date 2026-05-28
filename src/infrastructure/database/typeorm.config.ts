@@ -11,6 +11,7 @@ import { AddClientsNoneDocType20260520020000 } from "./migrations/20260520020000
 import { AddUserRoleManagementAudit20260526000000 } from "./migrations/20260526000000-add-user-role-management-audit";
 import { AddMasterSuperAdministratorRole20260527000000 } from "./migrations/20260527000000-add-master-super-administrator-role";
 import { AllowSuperAdminWithoutRole20260528000000 } from "./migrations/20260528000000-allow-super-admin-without-role";
+import { CreateUserGrantablePermissions20260528010000 } from "./migrations/20260528010000-create-user-grantable-permissions";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -43,6 +44,7 @@ export const getMigrationDataSourceOptions = (): DataSourceOptions => ({
     AddUserRoleManagementAudit20260526000000,
     AddMasterSuperAdministratorRole20260527000000,
     AllowSuperAdminWithoutRole20260528000000,
+    CreateUserGrantablePermissions20260528010000,
   ],
 });
 

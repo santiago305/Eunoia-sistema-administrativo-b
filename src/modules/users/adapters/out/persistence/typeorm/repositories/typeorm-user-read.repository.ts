@@ -21,6 +21,8 @@ export class TypeormUserReadRepository implements UserReadRepository {
       q?: string;
       allowedRoles?: string[];
       allowedUserIds?: string[];
+      excludeSuperAdmins?: boolean;
+      includeUserIdWhenExcludingSuperAdmins?: string;
     };
     sortBy?: string;
     order?: 'ASC' | 'DESC';
@@ -107,6 +109,16 @@ export class TypeormUserReadRepository implements UserReadRepository {
       });
     }
 
+    if (params.filters?.excludeSuperAdmins) {
+      if (params.filters?.includeUserIdWhenExcludingSuperAdmins) {
+        baseQuery.andWhere('(user.isSuperAdmin = false OR user.id = :includeSelfUserId)', {
+          includeSelfUserId: params.filters.includeUserIdWhenExcludingSuperAdmins,
+        });
+      } else {
+        baseQuery.andWhere('user.isSuperAdmin = false');
+      }
+    }
+
     const total = await baseQuery.clone().getCount();
 
     const rawItems = await baseQuery
@@ -158,6 +170,8 @@ export class TypeormUserReadRepository implements UserReadRepository {
       q?: string;
       allowedRoles?: string[];
       allowedUserIds?: string[];
+      excludeSuperAdmins?: boolean;
+      includeUserIdWhenExcludingSuperAdmins?: string;
     };
     status?: UserListStatus;
   }): Promise<{
@@ -207,6 +221,16 @@ export class TypeormUserReadRepository implements UserReadRepository {
       query.andWhere('(LOWER(user.name) LIKE :q OR LOWER(user.email) LIKE :q)', {
         q: `%${params.filters.q.toLowerCase()}%`,
       });
+    }
+
+    if (params.filters?.excludeSuperAdmins) {
+      if (params.filters?.includeUserIdWhenExcludingSuperAdmins) {
+        query.andWhere('(user.isSuperAdmin = false OR user.id = :includeSelfUserId)', {
+          includeSelfUserId: params.filters.includeUserIdWhenExcludingSuperAdmins,
+        });
+      } else {
+        query.andWhere('user.isSuperAdmin = false');
+      }
     }
 
     const rows = await query.groupBy('role.description').getRawMany<{ role: string; total: string }>();

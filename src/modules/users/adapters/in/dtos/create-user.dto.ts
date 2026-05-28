@@ -35,7 +35,7 @@ export class CreateUserDto {
    */
   @IsOptional()
   @IsUUID()
-  roleId?: string;
+  roleId?: string | null;
 
   /**URL de la imagen del usuario (opcional) */
   @IsOptional()

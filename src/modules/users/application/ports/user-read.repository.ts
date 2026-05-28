@@ -12,6 +12,8 @@ export interface UserReadRepository {
       q?: string;
       allowedRoles?: string[];
       allowedUserIds?: string[];
+      excludeSuperAdmins?: boolean;
+      includeUserIdWhenExcludingSuperAdmins?: string;
     };
     sortBy?: string;
     order?: 'ASC' | 'DESC';
@@ -43,6 +45,8 @@ export interface UserReadRepository {
       q?: string;
       allowedRoles?: string[];
       allowedUserIds?: string[];
+      excludeSuperAdmins?: boolean;
+      includeUserIdWhenExcludingSuperAdmins?: string;
     };
     status?: UserListStatus;
   }): Promise<{

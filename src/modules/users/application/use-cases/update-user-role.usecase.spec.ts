@@ -108,6 +108,38 @@ describe('UpdateUserRoleUseCase', () => {
     expect(result).toEqual(expect.objectContaining({ message: 'Rol actualizado correctamente' }));
   });
 
+  it('allows superadmin removing role', async () => {
+    const { useCase, userRepository } = makeUseCase({
+      userReadRepository: {
+        findManagementScopeById: jest.fn().mockResolvedValue({
+          id: 'req-1',
+          roleDescription: RoleType.ADMIN,
+          isSuperAdmin: true,
+          manageableRoleDescriptions: null,
+          manageableUserIds: null,
+        }),
+        findManagementById: jest.fn().mockResolvedValue({
+          id: 'user-1',
+          role: { id: 'role-1', description: RoleType.ADVISER },
+          isSuperAdmin: false,
+        }),
+      },
+    });
+
+    const result = await useCase.execute('user-1', null, { role: RoleType.ADMIN, userId: 'req-1' });
+
+    expect(userRepository.save).toHaveBeenCalledTimes(1);
+    expect(result).toEqual(expect.objectContaining({ message: 'Rol retirado correctamente' }));
+  });
+
+  it('rejects non-superadmin removing role', async () => {
+    const { useCase } = makeUseCase();
+
+    await expect(
+      useCase.execute('user-1', null, { role: RoleType.ADMIN, userId: 'req-1' }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
   it('rejects when target user does not exist', async () => {
     const { useCase } = makeUseCase({
       userReadRepository: {

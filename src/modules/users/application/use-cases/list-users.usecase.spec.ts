@@ -57,7 +57,7 @@ describe('ListUsersUseCase', () => {
     expect(result.hasNext).toBe(false);
     expect(userReadRepository.listUsers).toHaveBeenCalledWith({
       page: 1,
-      filters: { allowedRoles: [RoleType.ADMIN] },
+      filters: { allowedRoles: [RoleType.ADMIN], excludeSuperAdmins: true },
       sortBy: undefined,
       order: undefined,
       status: 'all',
@@ -81,7 +81,7 @@ describe('ListUsersUseCase', () => {
 
     expect(userReadRepository.listUsers).toHaveBeenCalledWith({
       page: 2,
-      filters: { allowedRoles: [RoleType.ADMIN] },
+      filters: { allowedRoles: [RoleType.ADMIN], excludeSuperAdmins: true },
       sortBy: undefined,
       order: undefined,
       status: 'active',
@@ -108,7 +108,7 @@ describe('ListUsersUseCase', () => {
 
     expect(userReadRepository.listUsers).toHaveBeenCalledWith({
       page: 1,
-      filters: { role: RoleType.ADMIN, allowedRoles: [RoleType.MODERATOR] },
+      filters: { role: RoleType.ADMIN, allowedRoles: [RoleType.MODERATOR], excludeSuperAdmins: true },
       sortBy: undefined,
       order: undefined,
       status: 'inactive',
@@ -135,7 +135,34 @@ describe('ListUsersUseCase', () => {
 
     expect(userReadRepository.listUsers).toHaveBeenCalledWith({
       page: 1,
-      filters: { role: '__none__', allowedRoles: [RoleType.ADVISER], allowedUserIds: ['u-2'] },
+      filters: { role: '__none__', allowedRoles: [RoleType.ADVISER], allowedUserIds: ['u-2'], excludeSuperAdmins: true },
+      sortBy: undefined,
+      order: undefined,
+      status: 'all',
+    });
+  });
+
+  it('allows superadmin but excludes other superadmins keeping self', async () => {
+    const userReadRepository = {
+      listUsers: jest.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 15 }),
+      findManagementScopeById: jest.fn().mockResolvedValue({
+        id: 'req-1',
+        roleDescription: null,
+        isSuperAdmin: true,
+        manageableRoleDescriptions: null,
+        manageableUserIds: null,
+      }),
+    };
+    const useCase = makeUseCase({ userReadRepository });
+
+    await useCase.execute({ page: 1 }, { role: null, userId: 'req-1' });
+
+    expect(userReadRepository.listUsers).toHaveBeenCalledWith({
+      page: 1,
+      filters: {
+        excludeSuperAdmins: true,
+        includeUserIdWhenExcludingSuperAdmins: 'req-1',
+      },
       sortBy: undefined,
       order: undefined,
       status: 'all',

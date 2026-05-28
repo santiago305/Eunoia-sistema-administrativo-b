@@ -19,7 +19,7 @@ export class UpdateUserRoleUseCase {
     private readonly roleReadRepository: RoleReadRepository,
   ) {}
 
-  async execute(id: string, roleId: string, requester: { role?: RoleType | null; userId: string }) {
+  async execute(id: string, roleId: string | null | undefined, requester: { role?: RoleType | null; userId: string }) {
     const requesterScope = await this.userReadRepository.findManagementScopeById(requester.userId);
     const isSuperAdmin = Boolean(requesterScope?.isSuperAdmin);
 
@@ -33,7 +33,31 @@ export class UpdateUserRoleUseCase {
       );
     }
 
-    const nextRole = await this.roleReadRepository.findById(roleId);
+    const requestedRoleId = String(roleId ?? '').trim();
+    if (!requestedRoleId) {
+      if (!isSuperAdmin) {
+        throw new ForbiddenException(
+          new UserForbiddenApplicationError('Solo super administrador puede quitar rol de usuario').message,
+        );
+      }
+
+      const userWithoutRole = await this.userRepository.findById(id);
+      if (!userWithoutRole) {
+        throw new NotFoundException(new UserNotFoundApplicationError().message);
+      }
+
+      userWithoutRole.roleId = null;
+      await this.userRepository.save(userWithoutRole);
+
+      const updatedWithoutRole = await this.userReadRepository.findManagementById(id);
+      return successResponse('Rol retirado correctamente', {
+        id: updatedWithoutRole?.id ?? id,
+        rol: updatedWithoutRole?.role?.description ?? null,
+        roleId: updatedWithoutRole?.role?.id ?? null,
+      });
+    }
+
+    const nextRole = await this.roleReadRepository.findById(requestedRoleId);
     if (!nextRole || nextRole.deleted) {
       throw new NotFoundException('Rol invalido');
     }
@@ -46,20 +70,24 @@ export class UpdateUserRoleUseCase {
 
     if (!isSuperAdmin) {
       const allowedRoles = Array.isArray(requesterScope?.manageableRoleDescriptions)
-        ? requesterScope.manageableRoleDescriptions.filter((value) => value && value.trim().length > 0)
+        ? requesterScope.manageableRoleDescriptions
+            .map((value) => String(value ?? '').trim().toLowerCase())
+            .filter((value) => value.length > 0)
         : requesterScope?.roleDescription
-          ? [requesterScope.roleDescription]
+          ? [String(requesterScope.roleDescription).trim().toLowerCase()]
           : requester.role
-            ? [requester.role]
+            ? [String(requester.role).trim().toLowerCase()]
             : [];
       const allowedUserIds = Array.isArray(requesterScope?.manageableUserIds)
         ? requesterScope.manageableUserIds
         : [];
 
-      const targetRoleDescription = target.role?.description ?? null;
+      const targetRoleDescription = target.role?.description
+        ? String(target.role.description).trim().toLowerCase()
+        : null;
       const canManageTarget =
         (targetRoleDescription ? allowedRoles.includes(targetRoleDescription) : false) || allowedUserIds.includes(target.id);
-      const canAssignNextRole = allowedRoles.includes(nextRole.description);
+      const canAssignNextRole = allowedRoles.includes(String(nextRole.description ?? '').trim().toLowerCase());
 
       if (!canManageTarget || !canAssignNextRole) {
         throw new ForbiddenException(

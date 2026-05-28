@@ -49,6 +49,7 @@ describe('CountUsersByRoleUseCase', () => {
     expect(userReadRepository.countUsersByRole).toHaveBeenCalledWith({
       filters: {
         allowedRoles: [RoleType.ADMIN],
+        excludeSuperAdmins: true,
       },
       status: 'all',
     });
@@ -90,6 +91,34 @@ describe('CountUsersByRoleUseCase', () => {
         role: '__none__',
         allowedRoles: [RoleType.ADVISER],
         allowedUserIds: ['u-2'],
+        excludeSuperAdmins: true,
+      },
+      status: 'all',
+    });
+  });
+
+  it('allows superadmin but excludes other superadmins keeping self', async () => {
+    const userReadRepository = {
+      countUsersByRole: jest.fn().mockResolvedValue({
+        total: 1,
+        byRole: {},
+      }),
+      findManagementScopeById: jest.fn().mockResolvedValue({
+        id: 'req-1',
+        roleDescription: null,
+        isSuperAdmin: true,
+        manageableRoleDescriptions: null,
+        manageableUserIds: null,
+      }),
+    };
+    const useCase = makeUseCase({ userReadRepository });
+
+    await useCase.execute({ status: 'all' }, { role: null, userId: 'req-1' });
+
+    expect(userReadRepository.countUsersByRole).toHaveBeenCalledWith({
+      filters: {
+        excludeSuperAdmins: true,
+        includeUserIdWhenExcludingSuperAdmins: 'req-1',
       },
       status: 'all',
     });

@@ -229,6 +229,37 @@ describe('CreateUserUseCase', () => {
     expect(result).toEqual(successResponse('Usuario creado correctamente', { id: 'u-2' }));
   });
 
+  it('allows superadmin to create user without role', async () => {
+    (argon2.hash as jest.Mock).mockResolvedValue('hashed');
+    const userReadRepository = {
+      findManagementScopeById: jest.fn().mockResolvedValue({
+        id: 'req-1',
+        roleDescription: RoleType.ADMIN,
+        isSuperAdmin: true,
+        manageableRoleDescriptions: null,
+        manageableUserIds: null,
+      }),
+    };
+    const userRepository = {
+      existsByEmail: jest.fn().mockResolvedValue(false),
+      save: jest.fn().mockResolvedValue({ id: 'u-3' }),
+    };
+
+    const useCase = makeUseCase({ userReadRepository, userRepository });
+
+    const result = await useCase.execute(
+      {
+        name: 'Ana',
+        email: 'ana@example.com',
+        password: 'secret',
+        roleId: null,
+      } as any,
+      { role: RoleType.ADMIN, userId: 'req-1' },
+    );
+
+    expect(result).toEqual(successResponse('Usuario creado correctamente', { id: 'u-3' }));
+  });
+
   it('creates welcome notification after creating user', async () => {
     (argon2.hash as jest.Mock).mockResolvedValue('hashed');
     const createNotificationForUsers = jest.fn().mockResolvedValue([]);

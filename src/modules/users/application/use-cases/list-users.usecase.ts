@@ -29,7 +29,7 @@ export class ListUsersUseCase {
     requester: { role?: RoleType | null; userId: string }
   ) {
     const requesterScope = await this.userReadRepository.findManagementScopeById(requester.userId);
-    const scopedParams = this.applyRoleScope(params, requester.role, requesterScope);
+    const scopedParams = this.applyRoleScope(params, requester.role, requester.userId, requesterScope);
     const result = await this.userReadRepository.listUsers({
       page: scopedParams.page,
       filters: scopedParams.filters,
@@ -80,6 +80,7 @@ export class ListUsersUseCase {
       status?: UserListStatus;
     },
     requesterRole: RoleType | null | undefined,
+    requesterUserId: string,
     requesterScope?: {
       id: string;
       roleDescription: string | null;
@@ -89,7 +90,14 @@ export class ListUsersUseCase {
     } | null,
   ) {
     if (requesterScope?.isSuperAdmin) {
-      return params;
+      return {
+        ...params,
+        filters: {
+          ...(params.filters || {}),
+          excludeSuperAdmins: true,
+          includeUserIdWhenExcludingSuperAdmins: requesterUserId,
+        },
+      };
     }
 
     const configuredAllowedRoles = Array.isArray(requesterScope?.manageableRoleDescriptions)
@@ -113,6 +121,7 @@ export class ListUsersUseCase {
           role: normalizedRequestedRole,
           allowedRoles: configuredAllowedRoles.length > 0 ? configuredAllowedRoles : undefined,
           allowedUserIds: configuredAllowedUserIds.length > 0 ? configuredAllowedUserIds : undefined,
+          excludeSuperAdmins: true,
         },
       };
     }
@@ -128,6 +137,7 @@ export class ListUsersUseCase {
       filters: {
         ...(params.filters || {}),
         allowedRoles: fallbackAllowedRoles.length > 0 ? fallbackAllowedRoles : undefined,
+        excludeSuperAdmins: true,
       },
     };
   }

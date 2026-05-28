@@ -6,6 +6,7 @@ import { User } from 'src/modules/users/adapters/out/persistence/typeorm/entitie
 import { Permission } from '../../adapters/out/persistence/typeorm/entities/permission.entity';
 import { RolePermission } from '../../adapters/out/persistence/typeorm/entities/role-permission.entity';
 import { PermissionEffect, UserPermissionOverride } from '../../adapters/out/persistence/typeorm/entities/user-permission-override.entity';
+import { UserGrantablePermission } from '../../adapters/out/persistence/typeorm/entities/user-grantable-permission.entity';
 import { MASTER_ROLE_DESCRIPTION } from 'src/shared/constantes/constants';
 
 @Injectable()
@@ -21,6 +22,8 @@ export class AccessControlService {
     private readonly rolePermissionRepository: Repository<RolePermission>,
     @InjectRepository(UserPermissionOverride)
     private readonly userPermissionOverrideRepository: Repository<UserPermissionOverride>,
+    @InjectRepository(UserGrantablePermission)
+    private readonly userGrantablePermissionRepository: Repository<UserGrantablePermission>,
   ) {}
 
   private async isUserSuperAdmin(userId?: string): Promise<boolean> {
@@ -30,6 +33,130 @@ export class AccessControlService {
       select: ['id', 'isSuperAdmin'],
     });
     return Boolean(user?.isSuperAdmin);
+  }
+
+  private normalizePermissionCodes(permissionCodes: string[]): string[] {
+    return Array.from(
+      new Set(
+        (permissionCodes ?? [])
+          .map((code) => String(code ?? '').trim().toLowerCase())
+          .filter(Boolean),
+      ),
+    );
+  }
+
+  async canGrantPermission(managerUserId: string, permissionCode: string): Promise<boolean> {
+    const normalizedCode = String(permissionCode ?? '').trim().toLowerCase();
+    if (!normalizedCode) return false;
+
+    const actorIsSuperAdmin = await this.isUserSuperAdmin(managerUserId);
+    if (actorIsSuperAdmin) return true;
+    if (normalizedCode === '*') return false;
+
+    const permission = await this.permissionRepository.findOne({
+      where: { code: normalizedCode },
+      select: ['id'],
+    });
+    if (!permission) return false;
+
+    const relation = await this.userGrantablePermissionRepository.findOne({
+      where: { managerUserId, permissionId: permission.id },
+      select: ['id'],
+    });
+    return Boolean(relation?.id);
+  }
+
+  async listGrantablePermissions(managerUserId: string): Promise<string[]> {
+    const manager = await this.userRepository.findOne({
+      where: { id: managerUserId },
+      select: ['id', 'isSuperAdmin'],
+    });
+    if (!manager) throw new NotFoundException('Usuario no encontrado');
+
+    if (manager.isSuperAdmin) {
+      const all = await this.permissionRepository.find({
+        where: { isActive: true },
+        select: ['code'],
+      });
+      return all.map((permission) => permission.code).sort();
+    }
+
+    const grantable = await this.userGrantablePermissionRepository.find({
+      where: { managerUserId },
+      relations: ['permission'],
+      order: { createdAt: 'ASC' },
+    });
+    return Array.from(
+      new Set(
+        grantable
+          .map((item) => item.permission?.code)
+          .filter((code): code is string => Boolean(code)),
+      ),
+    ).sort();
+  }
+
+  async replaceGrantablePermissions(params: {
+    targetUserId: string;
+    permissionCodes: string[];
+    performedBy?: string;
+  }) {
+    const target = await this.userRepository.findOne({
+      where: { id: params.targetUserId },
+      select: ['id', 'isSuperAdmin'],
+    });
+    if (!target) throw new NotFoundException('Usuario no encontrado');
+
+    const actorIsSuperAdmin = await this.isUserSuperAdmin(params.performedBy);
+    if (target.isSuperAdmin && !actorIsSuperAdmin) {
+      throw new ForbiddenException(
+        'Solo un super administrador puede modificar permisos delegables de otro super administrador',
+      );
+    }
+
+    const normalizedCodes = this.normalizePermissionCodes(params.permissionCodes);
+    if (normalizedCodes.includes('*') && !actorIsSuperAdmin) {
+      throw new ForbiddenException('Solo un super administrador puede delegar el permiso global (*)');
+    }
+
+    const permissions = normalizedCodes.length
+      ? await this.permissionRepository.find({
+          where: { code: In(normalizedCodes) },
+          select: ['id', 'code'],
+        })
+      : [];
+
+    if (normalizedCodes.length) {
+      const foundCodes = new Set(permissions.map((permission) => permission.code));
+      const missing = normalizedCodes.filter((code) => !foundCodes.has(code));
+      if (missing.length) {
+        throw new NotFoundException(`Permisos no encontrados: ${missing.join(', ')}`);
+      }
+    }
+
+    if (!actorIsSuperAdmin) {
+      const actorGrantableCodes = new Set(await this.listGrantablePermissions(params.performedBy ?? ''));
+      const forbiddenCodes = normalizedCodes.filter((code) => !actorGrantableCodes.has(code));
+      if (forbiddenCodes.length) {
+        throw new ForbiddenException(
+          `No puedes delegar permisos fuera de tu alcance: ${forbiddenCodes.join(', ')}`,
+        );
+      }
+    }
+
+    await this.userGrantablePermissionRepository.delete({ managerUserId: target.id });
+
+    if (permissions.length) {
+      const entities = permissions.map((permission) =>
+        this.userGrantablePermissionRepository.create({
+          managerUserId: target.id,
+          permissionId: permission.id,
+          createdByUserId: params.performedBy ?? null,
+        }),
+      );
+      await this.userGrantablePermissionRepository.save(entities);
+    }
+
+    return { userId: target.id, permissionCodes: normalizedCodes };
   }
 
   async listPermissions() {
@@ -182,6 +309,7 @@ export class AccessControlService {
     createdBy?: string;
     reason?: string;
   }) {
+    const normalizedPermissionCode = String(params.permissionCode ?? '').trim().toLowerCase();
     const targetIsSuperAdmin = await this.isUserSuperAdmin(params.userId);
     if (targetIsSuperAdmin) {
       const actorIsSuperAdmin = await this.isUserSuperAdmin(params.createdBy);
@@ -193,10 +321,20 @@ export class AccessControlService {
     }
 
     const permission = await this.permissionRepository.findOne({
-      where: { code: params.permissionCode },
+      where: { code: normalizedPermissionCode },
     });
     if (!permission) {
-      throw new NotFoundException(`Permiso no encontrado: ${params.permissionCode}`);
+      throw new NotFoundException(`Permiso no encontrado: ${normalizedPermissionCode}`);
+    }
+
+    const actorIsSuperAdmin = await this.isUserSuperAdmin(params.createdBy);
+    if (!actorIsSuperAdmin) {
+      const canGrant = await this.canGrantPermission(params.createdBy ?? '', permission.code);
+      if (!canGrant) {
+        throw new ForbiddenException(
+          `No puedes otorgar o denegar el permiso ${permission.code} porque no esta en tu alcance delegable`,
+        );
+      }
     }
 
     const existing = await this.userPermissionOverrideRepository.findOne({
@@ -269,14 +407,26 @@ export class AccessControlService {
       }
     }
 
+    const normalizedCodes = this.normalizePermissionCodes(permissionCodes);
     const permissions = await this.permissionRepository.find({
-      where: { code: In(permissionCodes) },
+      where: { code: In(normalizedCodes) },
       select: ['id', 'code'],
     });
     const foundCodes = new Set(permissions.map((permission) => permission.code));
-    const missing = permissionCodes.filter((code) => !foundCodes.has(code));
+    const missing = normalizedCodes.filter((code) => !foundCodes.has(code));
     if (missing.length) {
       throw new NotFoundException(`Permisos no encontrados: ${missing.join(', ')}`);
+    }
+
+    const actorIsSuperAdmin = await this.isUserSuperAdmin(performedBy);
+    if (!actorIsSuperAdmin) {
+      const actorGrantableCodes = new Set(await this.listGrantablePermissions(performedBy ?? ''));
+      const forbiddenCodes = normalizedCodes.filter((code) => !actorGrantableCodes.has(code));
+      if (forbiddenCodes.length) {
+        throw new ForbiddenException(
+          `No puedes asignar permisos fuera de tu alcance delegable: ${forbiddenCodes.join(', ')}`,
+        );
+      }
     }
 
     await this.rolePermissionRepository.delete({ roleId });

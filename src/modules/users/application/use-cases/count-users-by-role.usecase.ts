@@ -24,7 +24,7 @@ export class CountUsersByRoleUseCase {
     requester: { role?: RoleType | null; userId: string },
   ) {
     const requesterScope = await this.userReadRepository.findManagementScopeById(requester.userId);
-    const scopedParams = this.applyRoleScope(params, requester.role, requesterScope);
+    const scopedParams = this.applyRoleScope(params, requester.role, requester.userId, requesterScope);
     const summary = await this.userReadRepository.countUsersByRole({
       filters: scopedParams.filters,
       status: scopedParams.status ?? 'all',
@@ -52,6 +52,7 @@ export class CountUsersByRoleUseCase {
       status?: UserListStatus;
     },
     requesterRole: RoleType | null | undefined,
+    requesterUserId: string,
     requesterScope?: {
       id: string;
       roleDescription: string | null;
@@ -61,7 +62,14 @@ export class CountUsersByRoleUseCase {
     } | null,
   ) {
     if (requesterScope?.isSuperAdmin) {
-      return params;
+      return {
+        ...params,
+        filters: {
+          ...(params.filters || {}),
+          excludeSuperAdmins: true,
+          includeUserIdWhenExcludingSuperAdmins: requesterUserId,
+        },
+      };
     }
 
     const configuredAllowedRoles = Array.isArray(requesterScope?.manageableRoleDescriptions)
@@ -85,6 +93,7 @@ export class CountUsersByRoleUseCase {
           role: normalizedRequestedRole,
           allowedRoles: configuredAllowedRoles.length > 0 ? configuredAllowedRoles : undefined,
           allowedUserIds: configuredAllowedUserIds.length > 0 ? configuredAllowedUserIds : undefined,
+          excludeSuperAdmins: true,
         },
       };
     }
@@ -99,6 +108,7 @@ export class CountUsersByRoleUseCase {
       filters: {
         ...(params.filters || {}),
         allowedRoles: fallbackAllowedRoles.length > 0 ? fallbackAllowedRoles : undefined,
+        excludeSuperAdmins: true,
       },
     };
   }

@@ -36,6 +36,7 @@ export const PERMISSIONS_SEED: PermissionSeedItem[] = [
   { code: 'users.assign_roles', name: 'Asignar roles', description: 'Cambiar rol de usuarios', module: 'users', resource: 'users', action: 'assign_roles', type: 'action' },
   { code: 'users.assign_permissions', name: 'Asignar permisos', description: 'Asignar permisos directos por usuario', module: 'users', resource: 'users', action: 'assign_permissions', type: 'action' },
   { code: 'users.deny_permissions', name: 'Denegar permisos', description: 'Denegar permisos directos por usuario', module: 'users', resource: 'users', action: 'deny_permissions', type: 'action' },
+  { code: 'users.manage_grantable_permissions', name: 'Gestionar permisos delegables', description: 'Definir que permisos puede otorgar un usuario', module: 'users', resource: 'users', action: 'manage_grantable_permissions', type: 'action' },
   { code: 'users.view_effective_permissions', name: 'Ver permisos efectivos', description: 'Consultar permisos efectivos de usuario', module: 'users', resource: 'users', action: 'view_effective_permissions', type: 'action' },
   { code: 'roles.read', name: 'Listar roles', description: 'Ver listado de roles', module: 'roles', resource: 'roles', action: 'read', type: 'action' },
   { code: 'roles.create', name: 'Crear roles', description: 'Crear nuevos roles', module: 'roles', resource: 'roles', action: 'create', type: 'action' },
