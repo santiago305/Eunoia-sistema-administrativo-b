@@ -36,6 +36,8 @@ import { ClientsModule } from './modules/clients/clients.module';
 import { PacksModule } from './modules/packs/packs.module';
 import { AgenciesModule } from './modules/agencies/agencies.module';
 import { SourcesModule } from './modules/sources/sources.module';
+import { SaleOrdersModule } from './modules/sale-orders/sale-orders.module';
+import { BankAccountsModule } from './modules/bank-accounts/bank-accounts.module';
 
 const redisAuth = envs.redis.password ? `:${encodeURIComponent(envs.redis.password)}@` : '';
 const redisUrl = `redis://${redisAuth}${envs.redis.host}:${envs.redis.port}/${envs.redis.db}`;
@@ -75,6 +77,8 @@ const redisUrl = `redis://${redisAuth}${envs.redis.host}:${envs.redis.port}/${en
     AgenciesModule,
     SourcesModule,
     PacksModule,
+    SaleOrdersModule,
+    BankAccountsModule,
     PdfGeneratedModule,
     SecurityModule,
     MailModule,

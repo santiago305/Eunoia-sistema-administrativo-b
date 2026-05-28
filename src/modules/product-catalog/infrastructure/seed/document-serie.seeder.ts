@@ -10,6 +10,7 @@ export const seedDocumentSeries = async (dataSource: DataSource, warehouseId: st
     { code: "TRF", name: "Transferencia", docType: DocType.TRANSFER },
     { code: "ADJ", name: "Ajuste", docType: DocType.ADJUSTMENT },
     { code: "PRO", name: "Produccion", docType: DocType.PRODUCTION },
+    { code: "PED", name: "Pedido", docType: DocType.SALE_ORDER },
   ];
 
   for (const item of defaults) {

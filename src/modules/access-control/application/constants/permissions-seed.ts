@@ -104,6 +104,8 @@ export const PERMISSIONS_SEED: PermissionSeedItem[] = [
   { code: 'agencies.manage', name: 'Gestionar agencias', description: 'Crear/actualizar agencias y su estado', module: 'agencies', resource: 'agencies', action: 'manage', type: 'action' },
   { code: 'sources.read', name: 'Consultar fuentes', description: 'Consultar fuentes', module: 'sources', resource: 'sources', action: 'read', type: 'action' },
   { code: 'sources.manage', name: 'Gestionar fuentes', description: 'Crear/actualizar fuentes y su estado', module: 'sources', resource: 'sources', action: 'manage', type: 'action' },
+  { code: 'bank-accounts.read', name: 'Consultar cuentas bancarias', description: 'Consultar cuentas bancarias por empresa', module: 'bank_accounts', resource: 'bank_accounts', action: 'read', type: 'action' },
+  { code: 'bank-accounts.manage', name: 'Gestionar cuentas bancarias', description: 'Crear/actualizar cuentas bancarias y su estado', module: 'bank_accounts', resource: 'bank_accounts', action: 'manage', type: 'action' },
 ];
 
 export const ROLE_PERMISSION_SEED: Record<string, string[]> = {

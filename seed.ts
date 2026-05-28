@@ -63,6 +63,10 @@ import { MessageThread } from 'src/modules/mail/adapters/out/persistence/typeorm
 import { MessageUserStateEntity } from 'src/modules/mail/adapters/out/persistence/typeorm/entities/message-user-state.entity';
 import { MessageRecipientEntity } from 'src/modules/mail/adapters/out/persistence/typeorm/entities/message-recipient.entity';
 import { seedSystemNotificationsForUser } from 'src/modules/mail/infrastructure/seed/system-notifications.seeder';
+import { SaleOrderEntity } from 'src/modules/sale-orders/adapters/out/persistence/typeorm/entities/sale-order.entity';
+import { SaleOrderItemEntity } from 'src/modules/sale-orders/adapters/out/persistence/typeorm/entities/sale-order-item.entity';
+import { SaleOrderItemComponentEntity } from 'src/modules/sale-orders/adapters/out/persistence/typeorm/entities/sale-order-item-component.entity';
+import { SalePaymentEntity } from 'src/modules/sale-orders/adapters/out/persistence/typeorm/entities/sale-payment.entity';
 
 const entities = [
   Role,
@@ -108,6 +112,10 @@ const entities = [
   MessageThread,
   MessageUserStateEntity,
   MessageRecipientEntity,
+  SaleOrderEntity,
+  SaleOrderItemEntity,
+  SaleOrderItemComponentEntity,
+  SalePaymentEntity,
 ];
 
 const dataSource = new DataSource({
