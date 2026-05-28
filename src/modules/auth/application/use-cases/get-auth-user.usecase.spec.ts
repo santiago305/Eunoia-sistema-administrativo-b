@@ -40,13 +40,17 @@ describe('GetAuthUserUseCase', () => {
     );
   });
 
-  it('uses default role when role is missing', async () => {
+  it('uses first role from access control when role is missing in token', async () => {
     const { useCase } = makeUseCase();
 
     const result = await useCase.execute({ id: 'user-3' });
 
     expect(result).toEqual(
-      expect.objectContaining({ user_id: 'user-3', rol: RoleType.ADVISER }),
+      expect.objectContaining({
+        user_id: 'user-3',
+        rol: RoleType.ADMIN,
+        roles: [RoleType.ADMIN],
+      }),
     );
   });
 

@@ -83,7 +83,7 @@ describe('TypeormUserReadRepository', () => {
     });
   });
 
-  it('findPublicById returns null when role missing', async () => {
+  it('findPublicById returns user with null role when role is missing', async () => {
     const repo = makeRepo({
       createQueryBuilder: jest.fn().mockReturnValue({
         leftJoin: jest.fn().mockReturnThis(),
@@ -95,7 +95,12 @@ describe('TypeormUserReadRepository', () => {
     });
 
     const result = await repo.findPublicById('user-1');
-    expect(result).toBeNull();
+    expect(result).toEqual(
+      expect.objectContaining({
+        id: 'user-1',
+        role: null,
+      }),
+    );
   });
 
   it('findWithPasswordByEmail returns null when not found', async () => {
