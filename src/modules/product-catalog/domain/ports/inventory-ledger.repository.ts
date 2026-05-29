@@ -91,6 +91,7 @@ export interface ProductCatalogInventoryLedgerMovementListItem {
   warehouseName: string | null;
   sku: ProductCatalogInventoryLedgerSkuRef;
   product: ProductCatalogInventoryLedgerProductRef;
+  baseUnit: ProductCatalogInventoryLedgerUnitRef | null;
   user: ProductCatalogInventoryLedgerMovementUserRef | null;
 }
 
