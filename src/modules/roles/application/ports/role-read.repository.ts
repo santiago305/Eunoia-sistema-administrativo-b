@@ -13,6 +13,8 @@ export interface RoleReadRepository {
       description: string;
       deleted: boolean;
       createdAt: Date;
+      createdByUserId?: string | null;
+      createdByUserName?: string | null;
     }>
   >;
 
@@ -21,13 +23,17 @@ export interface RoleReadRepository {
     description: string;
     deleted: boolean;
     createdAt: Date;
+    createdByUserId?: string | null;
+    createdByUserName?: string | null;
   } | null>;
 
-  findByDescription(description: string): Promise<{
+  findByDescription(description: string, options?: { includeDeleted?: boolean }): Promise<{
     id: string;
     description: string;
     deleted: boolean;
     createdAt: Date;
+    createdByUserId?: string | null;
+    createdByUserName?: string | null;
   } | null>;
   
   existsByDescription(description: string): Promise<boolean>;

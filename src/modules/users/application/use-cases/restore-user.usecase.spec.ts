@@ -5,15 +5,24 @@ import { RoleType } from 'src/shared/constantes/constants';
 
 describe('RestoreUserUseCase', () => {
   const makeUseCase = (overrides?: { userRepository?: any; userReadRepository?: any }) => {
-    const userRepository = overrides?.userRepository ?? {
+    const userRepository = {
       existsByIdAndDeleted: jest.fn().mockResolvedValue(true),
       updateDeleted: jest.fn(),
+      ...overrides?.userRepository,
     };
-    const userReadRepository = overrides?.userReadRepository ?? {
+    const userReadRepository = {
+      findManagementScopeById: jest.fn().mockResolvedValue({
+        id: "req-1",
+        roleDescription: RoleType.ADMIN,
+        isSuperAdmin: false,
+        manageableRoleDescriptions: [RoleType.ADVISER],
+        manageableUserIds: null,
+      }),
       findManagementById: jest.fn().mockResolvedValue({
         id: 'user-1',
         role: { description: RoleType.ADVISER },
       }),
+      ...overrides?.userReadRepository,
     };
     return new RestoreUserUseCase(userRepository, userReadRepository);
   };
@@ -21,15 +30,31 @@ describe('RestoreUserUseCase', () => {
   it('restores user', async () => {
     const useCase = makeUseCase();
 
-    const result = await useCase.execute('user-1', RoleType.ADMIN);
+    const result = await useCase.execute('user-1', { role: RoleType.ADMIN, userId: 'req-1' });
 
     expect(result).toEqual(successResponse('El usuario ha sido restaurado'));
   });
 
-  it('rejects when requester role cannot restore users', async () => {
-    const useCase = makeUseCase();
+  it('rejects restoring outside configured scope', async () => {
+    const useCase = makeUseCase({
+      userReadRepository: {
+        findManagementScopeById: jest.fn().mockResolvedValue({
+          id: 'req-1',
+          roleDescription: RoleType.ADVISER,
+          isSuperAdmin: false,
+          manageableRoleDescriptions: [RoleType.ADVISER],
+          manageableUserIds: null,
+        }),
+        findManagementById: jest.fn().mockResolvedValue({
+          id: 'user-1',
+          role: { description: RoleType.ADMIN },
+        }),
+      },
+    });
 
-    await expect(useCase.execute('user-1', RoleType.ADVISER)).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(
+      useCase.execute('user-1', { role: RoleType.ADVISER, userId: 'req-1' }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('rejects when target user does not exist', async () => {
@@ -39,7 +64,9 @@ describe('RestoreUserUseCase', () => {
       },
     });
 
-    await expect(useCase.execute('user-1', RoleType.ADMIN)).rejects.toBeInstanceOf(NotFoundException);
+    await expect(
+      useCase.execute('user-1', { role: RoleType.ADMIN, userId: 'req-1' }),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('rejects when user is not deleted', async () => {
@@ -49,12 +76,21 @@ describe('RestoreUserUseCase', () => {
       },
     });
 
-    await expect(useCase.execute('user-1', RoleType.ADMIN)).rejects.toBeInstanceOf(NotFoundException);
+    await expect(
+      useCase.execute('user-1', { role: RoleType.ADMIN, userId: 'req-1' }),
+    ).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('rejects moderator restoring non-adviser', async () => {
+  it('allows superadmin restoring any role', async () => {
     const useCase = makeUseCase({
       userReadRepository: {
+        findManagementScopeById: jest.fn().mockResolvedValue({
+          id: "req-1",
+          roleDescription: RoleType.ADMIN,
+          isSuperAdmin: true,
+          manageableRoleDescriptions: null,
+          manageableUserIds: null,
+        }),
         findManagementById: jest.fn().mockResolvedValue({
           id: 'user-1',
           role: { description: RoleType.MODERATOR },
@@ -62,19 +98,8 @@ describe('RestoreUserUseCase', () => {
       },
     });
 
-    await expect(useCase.execute('user-1', RoleType.MODERATOR)).rejects.toBeInstanceOf(ForbiddenException);
-  });
-
-  it('rejects restoring admin users', async () => {
-    const useCase = makeUseCase({
-      userReadRepository: {
-        findManagementById: jest.fn().mockResolvedValue({
-          id: 'user-1',
-          role: { description: RoleType.ADMIN },
-        }),
-      },
-    });
-
-    await expect(useCase.execute('user-1', RoleType.ADMIN)).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(
+      useCase.execute('user-1', { role: RoleType.MODERATOR, userId: 'req-1' }),
+    ).resolves.toEqual(successResponse('El usuario ha sido restaurado'));
   });
 });

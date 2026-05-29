@@ -1,11 +1,12 @@
-import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import * as argon2 from 'argon2';
 import { CreateUserUseCase } from './create-user.usecase';
 import { RoleType } from 'src/shared/constantes/constants';
 import { successResponse } from 'src/shared/response-standard/response';
 import { Email } from 'src/modules/users/domain';
-import { RoleRepository} from 'src/modules/roles/application/ports/role.repository';
 import { RoleReadRepository } from 'src/modules/roles/application/ports/role-read.repository';
+import { CompanyRepository } from 'src/modules/companies/domain/ports/company.repository';
+import { envs } from 'src/infrastructure/config/envs';
 
 
 
@@ -18,20 +19,14 @@ jest.mock('argon2', () => ({
 describe('CreateUserUseCase', () => {
   const makeUseCase = (overrides?: {
     userRepository?: any;
-    roleRepository?: Partial<RoleRepository>;
     roleReadRepository?: Partial<RoleReadRepository>;
+    userReadRepository?: any;
+    companyRepository?: Partial<CompanyRepository>;
+    notificationsService?: any;
   }) => {
     const userRepository = overrides?.userRepository ?? {
       existsByEmail: jest.fn().mockResolvedValue(false),
       save: jest.fn().mockResolvedValue({}),
-    };
-
-    const roleRepository: RoleRepository = {
-      save: jest.fn(),
-      findById: jest.fn(),
-      updateDeleted: jest.fn(),
-      update: jest.fn(),
-      ...(overrides?.roleRepository ?? {}),
     };
 
     const roleReadRepository: RoleReadRepository = {
@@ -42,14 +37,38 @@ describe('CreateUserUseCase', () => {
       ...(overrides?.roleReadRepository ?? {}),
     };
 
-    return new CreateUserUseCase(userRepository,  roleReadRepository, roleRepository);
+    const userReadRepository = overrides?.userReadRepository ?? {
+      findManagementScopeById: jest.fn().mockResolvedValue({
+        id: 'req-1',
+        roleDescription: RoleType.ADMIN,
+        isSuperAdmin: false,
+        manageableRoleDescriptions: [RoleType.ADVISER, RoleType.MODERATOR],
+        manageableUserIds: null,
+      }),
+    };
+
+    const companyRepository: Partial<CompanyRepository> = overrides?.companyRepository ?? {
+      findSingle: jest.fn().mockResolvedValue({ name: 'Eunoia Test' }),
+    };
+
+    const notificationsService = overrides?.notificationsService ?? {
+      createNotificationForUsers: jest.fn().mockResolvedValue([]),
+    };
+
+    return new CreateUserUseCase(
+      userRepository,
+      roleReadRepository,
+      userReadRepository,
+      companyRepository as CompanyRepository,
+      notificationsService,
+    );
   };
 
   it('creates user for admin', async () => {
     (argon2.hash as jest.Mock).mockResolvedValue('hashed');
 
     const roleReadRepository: Partial<RoleReadRepository> = {
-      findByDescription: jest.fn().mockResolvedValue({
+      findById: jest.fn().mockResolvedValue({
         id: 'role-1',
         description: RoleType.ADVISER,
         deleted: false,
@@ -69,22 +88,31 @@ describe('CreateUserUseCase', () => {
         name: 'Ana',
         email: 'ana@example.com',
         password: 'secret',
+        roleId: 'role-1',
       } as any,
-      RoleType.ADMIN
+      { role: RoleType.ADMIN, userId: 'req-1' }
     );
 
     expect(userRepository.existsByEmail).toHaveBeenCalledWith(new Email('ana@example.com'));
-    expect(roleReadRepository.findByDescription).toHaveBeenCalledWith(RoleType.ADVISER);
-    expect((roleReadRepository.findById as jest.Mock | undefined)).toBeUndefined();
+    expect(roleReadRepository.findById).toHaveBeenCalledWith('role-1');
     expect(userRepository.save).toHaveBeenCalled();
-    expect(result).toEqual(successResponse('Usuario creado correctamente'));
+    expect(result).toEqual(successResponse('Usuario creado correctamente', { id: undefined }));
   });
 
-  it('rejects non admin/moderator', async () => {
-    const useCase = makeUseCase();
+  it('rejects when scope does not allow target role', async () => {
+    const useCase = makeUseCase({
+      roleReadRepository: {
+        findById: jest.fn().mockResolvedValue({
+          id: 'role-x',
+          description: RoleType.ADMIN,
+          deleted: false,
+          createdAt: new Date(),
+        }),
+      },
+    });
 
     await expect(
-      useCase.execute({ email: 'ana@example.com' } as any, RoleType.ADVISER)
+      useCase.execute({ email: 'ana@example.com', roleId: 'role-x' } as any, { role: RoleType.ADVISER, userId: 'req-1' })
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
@@ -96,15 +124,13 @@ describe('CreateUserUseCase', () => {
     });
 
     await expect(
-      useCase.execute({ email: 'ana@example.com' } as any, RoleType.ADMIN)
+      useCase.execute({ email: 'ana@example.com' } as any, { role: RoleType.ADMIN, userId: 'req-1' })
     ).rejects.toBeInstanceOf(ConflictException);
   });
 
-  it('rejects when default adviser role is missing', async () => {
+  it('rejects when role is missing', async () => {
     const useCase = makeUseCase({
-      roleReadRepository: {
-        findByDescription: jest.fn().mockResolvedValue(null),
-      },
+      roleReadRepository: {},
     });
 
     await expect(
@@ -114,12 +140,32 @@ describe('CreateUserUseCase', () => {
           email: 'ana@example.com',
           password: 'secret',
         } as any,
-        RoleType.ADMIN
+        { role: RoleType.ADMIN, userId: 'req-1' }
+      )
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('rejects when roleId does not exist', async () => {
+    const useCase = makeUseCase({
+      roleReadRepository: {
+        findById: jest.fn().mockResolvedValue(null),
+      },
+    });
+
+    await expect(
+      useCase.execute(
+        {
+          name: 'Ana',
+          email: 'ana@example.com',
+          password: 'secret',
+          roleId: 'role-x',
+        } as any,
+        { role: RoleType.ADMIN, userId: 'req-1' }
       )
     ).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('rejects moderator creating non adviser', async () => {
+  it('rejects creating role outside configured scope', async () => {
     const roleReadRepository: Partial<RoleReadRepository> = {
       findById: jest.fn().mockResolvedValue({
         id: 'role-1',
@@ -139,12 +185,13 @@ describe('CreateUserUseCase', () => {
           password: 'secret',
           roleId: 'role-1',
         } as any,
-        RoleType.MODERATOR
+        { role: RoleType.MODERATOR, userId: 'req-1' }
       )
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
-  it('rejects admin creating admin', async () => {
+  it('allows superadmin to create any role', async () => {
+    (argon2.hash as jest.Mock).mockResolvedValue('hashed');
     const roleReadRepository: Partial<RoleReadRepository> = {
       findById: jest.fn().mockResolvedValue({
         id: 'role-1',
@@ -153,19 +200,192 @@ describe('CreateUserUseCase', () => {
         createdAt: new Date(),
       }),
     };
+    const userReadRepository = {
+      findManagementScopeById: jest.fn().mockResolvedValue({
+        id: 'req-1',
+        roleDescription: RoleType.ADMIN,
+        isSuperAdmin: true,
+        manageableRoleDescriptions: null,
+        manageableUserIds: null,
+      }),
+    };
+    const userRepository = {
+      existsByEmail: jest.fn().mockResolvedValue(false),
+      save: jest.fn().mockResolvedValue({ id: 'u-2' }),
+    };
 
-    const useCase = makeUseCase({ roleReadRepository });
+    const useCase = makeUseCase({ roleReadRepository, userReadRepository, userRepository });
 
-    await expect(
-      useCase.execute(
+    const result = await useCase.execute(
+      {
+        name: 'Ana',
+        email: 'ana@example.com',
+        password: 'secret',
+        roleId: 'role-1',
+      } as any,
+      { role: RoleType.ADMIN, userId: 'req-1' }
+    );
+
+    expect(result).toEqual(successResponse('Usuario creado correctamente', { id: 'u-2' }));
+  });
+
+  it('allows superadmin to create user without role', async () => {
+    (argon2.hash as jest.Mock).mockResolvedValue('hashed');
+    const userReadRepository = {
+      findManagementScopeById: jest.fn().mockResolvedValue({
+        id: 'req-1',
+        roleDescription: RoleType.ADMIN,
+        isSuperAdmin: true,
+        manageableRoleDescriptions: null,
+        manageableUserIds: null,
+      }),
+    };
+    const userRepository = {
+      existsByEmail: jest.fn().mockResolvedValue(false),
+      save: jest.fn().mockResolvedValue({ id: 'u-3' }),
+    };
+
+    const useCase = makeUseCase({ userReadRepository, userRepository });
+
+    const result = await useCase.execute(
+      {
+        name: 'Ana',
+        email: 'ana@example.com',
+        password: 'secret',
+        roleId: null,
+      } as any,
+      { role: RoleType.ADMIN, userId: 'req-1' },
+    );
+
+    expect(result).toEqual(successResponse('Usuario creado correctamente', { id: 'u-3' }));
+  });
+
+  it('creates welcome notification after creating user', async () => {
+    (argon2.hash as jest.Mock).mockResolvedValue('hashed');
+    const createNotificationForUsers = jest.fn().mockResolvedValue([]);
+
+    const useCase = makeUseCase({
+      roleReadRepository: {
+        findById: jest.fn().mockResolvedValue({
+          id: 'role-1',
+          description: RoleType.ADVISER,
+          deleted: false,
+          createdAt: new Date(),
+        }),
+      },
+      userRepository: {
+        existsByEmail: jest.fn().mockResolvedValue(false),
+        save: jest.fn().mockResolvedValue({ id: 'u-100' }),
+      },
+      notificationsService: {
+        createNotificationForUsers,
+      },
+      companyRepository: {
+        findSingle: jest.fn().mockResolvedValue({ name: 'Empresa Demo' }),
+      },
+    });
+
+    await useCase.execute(
+      {
+        name: 'Ana',
+        email: 'ana@example.com',
+        password: 'secret',
+        roleId: 'role-1',
+      } as any,
+      { role: RoleType.ADMIN, userId: 'req-1' }
+    );
+
+    expect(createNotificationForUsers).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipientUserIds: ['u-100'],
+        type: 'USER_WELCOME',
+        category: 'onboarding',
+        title: 'Bienvenido a Empresa Demo',
+      }),
+    );
+  });
+
+  it('uses APP_COMPANY_NAME fallback when company is missing', async () => {
+    (argon2.hash as jest.Mock).mockResolvedValue('hashed');
+    const createNotificationForUsers = jest.fn().mockResolvedValue([]);
+    const previousCompanyName = envs.appCompanyName;
+    (envs as { appCompanyName?: string }).appCompanyName = 'Marca Entorno';
+    try {
+      const useCase = makeUseCase({
+        roleReadRepository: {
+          findById: jest.fn().mockResolvedValue({
+            id: 'role-1',
+            description: RoleType.ADVISER,
+            deleted: false,
+            createdAt: new Date(),
+          }),
+        },
+        userRepository: {
+          existsByEmail: jest.fn().mockResolvedValue(false),
+          save: jest.fn().mockResolvedValue({ id: 'u-101' }),
+        },
+        notificationsService: {
+          createNotificationForUsers,
+        },
+        companyRepository: {
+          findSingle: jest.fn().mockResolvedValue(null),
+        },
+      });
+
+      await useCase.execute(
         {
           name: 'Ana',
           email: 'ana@example.com',
           password: 'secret',
           roleId: 'role-1',
         } as any,
-        RoleType.ADMIN
-      )
-    ).rejects.toBeInstanceOf(ForbiddenException);
+        { role: RoleType.ADMIN, userId: 'req-1' }
+      );
+
+      expect(createNotificationForUsers).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Bienvenido a Marca Entorno',
+        }),
+      );
+    } finally {
+      (envs as { appCompanyName?: string }).appCompanyName = previousCompanyName;
+    }
+  });
+
+  it('does not fail user creation when welcome notification fails', async () => {
+    (argon2.hash as jest.Mock).mockResolvedValue('hashed');
+
+    const useCase = makeUseCase({
+      roleReadRepository: {
+        findById: jest.fn().mockResolvedValue({
+          id: 'role-1',
+          description: RoleType.ADVISER,
+          deleted: false,
+          createdAt: new Date(),
+        }),
+      },
+      userRepository: {
+        existsByEmail: jest.fn().mockResolvedValue(false),
+        save: jest.fn().mockResolvedValue({ id: 'u-102' }),
+      },
+      notificationsService: {
+        createNotificationForUsers: jest.fn().mockRejectedValue(new Error('mail unavailable')),
+      },
+      companyRepository: {
+        findSingle: jest.fn().mockResolvedValue({ name: 'Empresa Demo' }),
+      },
+    });
+
+    const result = await useCase.execute(
+      {
+        name: 'Ana',
+        email: 'ana@example.com',
+        password: 'secret',
+        roleId: 'role-1',
+      } as any,
+      { role: RoleType.ADMIN, userId: 'req-1' }
+    );
+
+    expect(result).toEqual(successResponse('Usuario creado correctamente', { id: 'u-102' }));
   });
 });

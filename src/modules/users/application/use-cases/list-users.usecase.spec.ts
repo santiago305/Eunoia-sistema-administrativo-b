@@ -1,4 +1,3 @@
-import { ForbiddenException } from '@nestjs/common';
 import { ListUsersUseCase } from './list-users.usecase';
 import { RoleType } from 'src/shared/constantes/constants';
 
@@ -6,6 +5,13 @@ describe('ListUsersUseCase', () => {
   const makeUseCase = (overrides?: { userReadRepository?: any }) => {
     const userReadRepository = overrides?.userReadRepository ?? {
       listUsers: jest.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 15 }),
+      findManagementScopeById: jest.fn().mockResolvedValue({
+        id: 'req-1',
+        roleDescription: RoleType.ADMIN,
+        isSuperAdmin: false,
+        manageableRoleDescriptions: null,
+        manageableUserIds: null,
+      }),
     };
     return new ListUsersUseCase(userReadRepository);
   };
@@ -20,10 +26,17 @@ describe('ListUsersUseCase', () => {
         page: 1,
         pageSize: 15,
       }),
+      findManagementScopeById: jest.fn().mockResolvedValue({
+        id: 'req-1',
+        roleDescription: RoleType.ADMIN,
+        isSuperAdmin: false,
+        manageableRoleDescriptions: null,
+        manageableUserIds: null,
+      }),
     };
     const useCase = makeUseCase({ userReadRepository });
 
-    const result = await useCase.execute({ page: 1 }, RoleType.ADMIN);
+    const result = await useCase.execute({ page: 1 }, { role: RoleType.ADMIN, userId: 'req-1' });
 
     expect(result.items).toEqual([
       expect.objectContaining({
@@ -44,7 +57,7 @@ describe('ListUsersUseCase', () => {
     expect(result.hasNext).toBe(false);
     expect(userReadRepository.listUsers).toHaveBeenCalledWith({
       page: 1,
-      filters: { allowedRoles: [RoleType.MODERATOR, RoleType.ADVISER], role: undefined },
+      filters: { allowedRoles: [RoleType.ADMIN], excludeSuperAdmins: true },
       sortBy: undefined,
       order: undefined,
       status: 'all',
@@ -54,65 +67,111 @@ describe('ListUsersUseCase', () => {
   it('passes active status when requested', async () => {
     const userReadRepository = {
       listUsers: jest.fn().mockResolvedValue({ items: [], total: 0, page: 2, pageSize: 15 }),
+      findManagementScopeById: jest.fn().mockResolvedValue({
+        id: 'req-1',
+        roleDescription: RoleType.ADMIN,
+        isSuperAdmin: false,
+        manageableRoleDescriptions: null,
+        manageableUserIds: null,
+      }),
     };
     const useCase = makeUseCase({ userReadRepository });
 
-    await useCase.execute({ page: 2, status: 'active' }, RoleType.ADMIN);
+    await useCase.execute({ page: 2, status: 'active' }, { role: RoleType.ADMIN, userId: 'req-1' });
 
     expect(userReadRepository.listUsers).toHaveBeenCalledWith({
       page: 2,
-      filters: { allowedRoles: [RoleType.MODERATOR, RoleType.ADVISER], role: undefined },
+      filters: { allowedRoles: [RoleType.ADMIN], excludeSuperAdmins: true },
       sortBy: undefined,
       order: undefined,
       status: 'active',
     });
   });
 
-  it('scopes moderator role to ADVISER and preserves requested status', async () => {
+  it('scopes by own role when no explicit scope configured', async () => {
     const userReadRepository = {
       listUsers: jest.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 15 }),
+      findManagementScopeById: jest.fn().mockResolvedValue({
+        id: 'req-1',
+        roleDescription: RoleType.MODERATOR,
+        isSuperAdmin: false,
+        manageableRoleDescriptions: null,
+        manageableUserIds: null,
+      }),
     };
     const useCase = makeUseCase({ userReadRepository });
 
     await useCase.execute(
       { page: 1, filters: { role: RoleType.ADMIN }, status: 'inactive' },
-      RoleType.MODERATOR
+      { role: RoleType.MODERATOR, userId: 'req-1' }
     );
 
     expect(userReadRepository.listUsers).toHaveBeenCalledWith({
       page: 1,
-      filters: { role: RoleType.ADVISER, allowedRoles: [RoleType.ADVISER] },
+      filters: { role: RoleType.ADMIN, allowedRoles: [RoleType.MODERATOR], excludeSuperAdmins: true },
       sortBy: undefined,
       order: undefined,
       status: 'inactive',
     });
   });
 
-  it('returns empty scope when admin requests admin role', async () => {
+  it('uses explicit configured scope when present', async () => {
     const userReadRepository = {
       listUsers: jest.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 15 }),
+      findManagementScopeById: jest.fn().mockResolvedValue({
+        id: 'req-1',
+        roleDescription: RoleType.ADMIN,
+        isSuperAdmin: false,
+        manageableRoleDescriptions: [RoleType.ADVISER],
+        manageableUserIds: ['u-2'],
+      }),
     };
     const useCase = makeUseCase({ userReadRepository });
 
     await useCase.execute(
       { page: 1, filters: { role: RoleType.ADMIN } },
-      RoleType.ADMIN,
+      { role: RoleType.ADMIN, userId: 'req-1' },
     );
 
     expect(userReadRepository.listUsers).toHaveBeenCalledWith({
       page: 1,
-      filters: { role: '__none__', allowedRoles: [RoleType.MODERATOR, RoleType.ADVISER] },
+      filters: { role: '__none__', allowedRoles: [RoleType.ADVISER], allowedUserIds: ['u-2'], excludeSuperAdmins: true },
       sortBy: undefined,
       order: undefined,
       status: 'all',
     });
   });
 
-  it('rejects non admin/moderator', async () => {
+  it('allows superadmin but excludes other superadmins keeping self', async () => {
+    const userReadRepository = {
+      listUsers: jest.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 15 }),
+      findManagementScopeById: jest.fn().mockResolvedValue({
+        id: 'req-1',
+        roleDescription: null,
+        isSuperAdmin: true,
+        manageableRoleDescriptions: null,
+        manageableUserIds: null,
+      }),
+    };
+    const useCase = makeUseCase({ userReadRepository });
+
+    await useCase.execute({ page: 1 }, { role: null, userId: 'req-1' });
+
+    expect(userReadRepository.listUsers).toHaveBeenCalledWith({
+      page: 1,
+      filters: {
+        excludeSuperAdmins: true,
+        includeUserIdWhenExcludingSuperAdmins: 'req-1',
+      },
+      sortBy: undefined,
+      order: undefined,
+      status: 'all',
+    });
+  });
+
+  it('allows non-admin roles and scopes to own role', async () => {
     const useCase = makeUseCase();
 
-    await expect(
-      useCase.execute({ page: 1 }, RoleType.ADVISER)
-    ).rejects.toBeInstanceOf(ForbiddenException);
+    await useCase.execute({ page: 1 }, { role: RoleType.ADVISER, userId: 'req-1' });
   });
 });

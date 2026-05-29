@@ -1,6 +1,7 @@
 import { Column, CreateDateColumn, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { RolePermission } from './role-permission.entity';
 import { UserPermissionOverride } from './user-permission-override.entity';
+import { UserGrantablePermission } from './user-grantable-permission.entity';
 
 @Entity('permissions')
 export class Permission {
@@ -39,6 +40,9 @@ export class Permission {
 
   @OneToMany(() => UserPermissionOverride, (override) => override.permission)
   userPermissionOverrides: UserPermissionOverride[];
+
+  @OneToMany(() => UserGrantablePermission, (grantablePermission) => grantablePermission.permission)
+  userGrantablePermissions: UserGrantablePermission[];
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;

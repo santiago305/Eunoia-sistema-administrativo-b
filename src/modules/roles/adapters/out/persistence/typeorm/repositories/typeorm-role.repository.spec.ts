@@ -36,6 +36,7 @@ describe('TypeormRoleRepository', () => {
       description: 'admin',
       deleted: false,
       createdAt: new Date('2024-01-01T00:00:00.000Z'),
+      createdByUserId: null,
     });
     expect(repo['ormRepository'].save).toHaveBeenCalled();
   });

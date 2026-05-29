@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { AccessControlModule } from "src/modules/access-control/infrastructure/access-control.module";
 import { PurchasesModule } from "src/modules/purchases/infrastructure/purchases.module";
 import { SuppliersModule } from "src/modules/suppliers/suppliers.module";
 import { CompaniesModule } from "src/modules/companies/companies.module";
@@ -15,6 +16,7 @@ import { pdfGeneratedModuleProviders } from "./composition/container";
 
 @Module({
   imports: [
+    AccessControlModule,
     PurchasesModule,
     SuppliersModule,
     CompaniesModule,

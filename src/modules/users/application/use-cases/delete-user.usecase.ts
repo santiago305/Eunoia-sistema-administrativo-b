@@ -15,20 +15,32 @@ export class DeleteUserUseCase {
     private readonly userReadRepository: UserReadRepository,
   ) {}
 
-  async execute(id: string, requesterRole: RoleType) {
-    if (requesterRole !== RoleType.ADMIN && requesterRole !== RoleType.MODERATOR) {
-      throw new ForbiddenException(new UserForbiddenApplicationError('No autorizado para eliminar usuarios').message);
-    }
+  async execute(id: string, requester: { role?: RoleType | null; userId: string }) {
+    const requesterScope = await this.userReadRepository.findManagementScopeById(requester.userId);
+    const isSuperAdmin = Boolean(requesterScope?.isSuperAdmin);
 
     const target = await this.userReadRepository.findPublicById(id);
     if (!target) throw new NotFoundException(new UserNotFoundApplicationError().message);
 
-    if (target.role.description === RoleType.ADMIN) {
-      throw new ForbiddenException(new UserForbiddenApplicationError('No puedes eliminar usuarios administradores').message);
-    }
+    if (!isSuperAdmin) {
+      const allowedRoles = Array.isArray(requesterScope?.manageableRoleDescriptions)
+        ? requesterScope.manageableRoleDescriptions.filter((value) => value && value.trim().length > 0)
+        : requesterScope?.roleDescription
+          ? [requesterScope.roleDescription]
+          : requester.role
+            ? [requester.role]
+            : [];
+      const allowedUserIds = Array.isArray(requesterScope?.manageableUserIds)
+        ? requesterScope.manageableUserIds
+        : [];
+      const targetRoleDescription = target.role?.description ?? null;
+      const canManageByRole = targetRoleDescription ? allowedRoles.includes(targetRoleDescription) : false;
 
-    if (requesterRole === RoleType.MODERATOR && target.role.description !== RoleType.ADVISER) {
-      throw new ForbiddenException(new UserForbiddenApplicationError('No estas autorizado para eliminar usuario').message);
+      if (!canManageByRole && !allowedUserIds.includes(target.id)) {
+        throw new ForbiddenException(
+          new UserForbiddenApplicationError('No autorizado para eliminar este usuario').message,
+        );
+      }
     }
 
     const isActive = await this.userRepository.existsByIdAndDeleted(id, false);

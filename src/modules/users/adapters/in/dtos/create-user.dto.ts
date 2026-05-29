@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsEmail, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import { IsEmail, IsInt, IsNotEmpty, IsOptional, IsString, IsUUID, Max, Min, MinLength } from 'class-validator';
 
 /**
  * DTO para la creaciAn de un nuevo usuario.
@@ -26,17 +26,16 @@ export class CreateUserDto {
    * Debe ser una cadena no vacAa. Se almacenarA de forma encriptada.
    */
   @IsString()
-  @IsNotEmpty()
+  @MinLength(12)
   password: string;
 
   /**
    * ID del rol asignado al usuario.
-   * No es obligatorio.
+   * Es obligatorio.
    */
   @IsOptional()
   @IsUUID()
-  @IsNotEmpty()
-  roleId?: string;
+  roleId?: string | null;
 
   /**URL de la imagen del usuario (opcional) */
   @IsOptional()

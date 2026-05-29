@@ -8,10 +8,13 @@ export class UserFactory {
     name: string;
     email: Email;
     password: Password;
-    roleId: RoleId;
+    roleId: RoleId | null;
     avatarUrl?: string;
     telefono?: string;
     preferredHomePath?: string | null;
+    createdByUserId?: string | null;
+    manageableRoleDescriptions?: string[] | null;
+    manageableUserIds?: string[] | null;
   }): User {
     return new User(
       undefined,
@@ -24,6 +27,9 @@ export class UserFactory {
       undefined,
       params.telefono,
       params.preferredHomePath,
+      params.createdByUserId ?? null,
+      params.manageableRoleDescriptions ?? null,
+      params.manageableUserIds ?? null,
     );
   }
 
@@ -32,12 +38,15 @@ export class UserFactory {
     name: string;
     email: Email;
     password: Password;
-    roleId: RoleId;
+    roleId: RoleId | null;
     deleted: boolean;
     avatarUrl?: string;
     createdAt?: Date;
     telefono?: string;
     preferredHomePath?: string | null;
+    createdByUserId?: string | null;
+    manageableRoleDescriptions?: string[] | null;
+    manageableUserIds?: string[] | null;
   }): User {
     return new User(
       params.id,
@@ -50,6 +59,9 @@ export class UserFactory {
       params.createdAt,
       params.telefono,
       params.preferredHomePath,
+      params.createdByUserId ?? null,
+      params.manageableRoleDescriptions ?? null,
+      params.manageableUserIds ?? null,
     );
   }
 }

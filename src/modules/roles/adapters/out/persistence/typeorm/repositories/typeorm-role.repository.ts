@@ -27,6 +27,13 @@ export class TypeormRoleRepository implements RoleRepository {
     return role ? RoleMapper.toDomain(role) : null;
   }
 
+  async findByDescription(description: string): Promise<DomainRole | null> {
+    const role = await this.ormRepository.findOne({
+      where: { description },
+    });
+    return role ? RoleMapper.toDomain(role) : null;
+  }
+
   async update(role: DomainRole): Promise<DomainRole> {
     return this.save(role);
   }

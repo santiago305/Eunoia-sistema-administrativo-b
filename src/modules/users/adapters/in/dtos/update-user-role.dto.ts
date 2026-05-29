@@ -1,8 +1,8 @@
-import { IsNotEmpty, IsUUID } from 'class-validator';
+import { IsOptional, IsUUID } from 'class-validator';
 
 export class UpdateUserRoleDto {
+  @IsOptional()
   @IsUUID()
-  @IsNotEmpty()
-  roleId: string;
+  roleId?: string | null;
 }
 

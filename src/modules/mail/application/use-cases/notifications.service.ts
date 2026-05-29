@@ -878,6 +878,15 @@ export class NotificationsService {
 
     const current = await this.notificationModuleLabelConfigRepository.findOne({ where: { moduleKey } });
     if (current) {
+      if ((current.labelId ?? null) === targetLabelId) {
+        return {
+          id: current.id,
+          moduleKey: current.moduleKey,
+          labelId: current.labelId,
+          updatedByUserId: current.updatedByUserId,
+          updatedAt: current.updatedAt,
+        };
+      }
       current.labelId = targetLabelId;
       current.updatedByUserId = userId;
       const saved = await this.notificationModuleLabelConfigRepository.save(current);

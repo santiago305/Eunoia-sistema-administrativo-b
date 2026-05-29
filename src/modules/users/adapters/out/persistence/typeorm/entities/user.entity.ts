@@ -60,13 +60,22 @@ export class User {
   @Column({ name: 'preferred_home_path', type: 'varchar', length: 255, nullable: true })
   preferredHomePath?: string | null;
 
+  @Column({ name: 'created_by_user_id', type: 'uuid', nullable: true })
+  createdByUserId?: string | null;
+
+  @Column({ name: 'manageable_role_descriptions', type: 'text', array: true, nullable: true })
+  manageableRoleDescriptions?: string[] | null;
+
+  @Column({ name: 'manageable_user_ids', type: 'uuid', array: true, nullable: true })
+  manageableUserIds?: string[] | null;
+
 
   /**
    * Rol asignado al usuario.
    */
-  @ManyToOne(() => Role, (role) => role.users)
+  @ManyToOne(() => Role, (role) => role.users, { nullable: true })
   @JoinColumn({ name: 'role_id' })
-  role: Role;
+  role: Role | null;
 
   @CreateDateColumn({ name: 'created_at' })
     createdAt: Date;

@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { CreateRoleDto } from 'src/modules/roles/adapters/in/dtos/create-role.dto';
 import { UpdateRoleDto } from 'src/modules/roles/adapters/in/dtos/update-role.dto';
+import { DeactivateRoleDto } from 'src/modules/roles/adapters/in/dtos/deactivate-role.dto';
 import { RoleType } from 'src/shared/constantes/constants';
 import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard';
 import { User as CurrentUser } from 'src/shared/utilidades/decorators/user.decorator';
@@ -27,13 +28,13 @@ import { ListRolesUseCase } from 'src/modules/roles/application/use-cases/list-r
 import { GetRoleByIdUseCase } from 'src/modules/roles/application/use-cases/get-role-by-id.usecase';
 import { UpdateRoleUseCase } from 'src/modules/roles/application/use-cases/update-role.usecase';
 import { DeleteRoleUseCase } from 'src/modules/roles/application/use-cases/delete-role.usecase';
+import { DeactivateRoleUseCase } from 'src/modules/roles/application/use-cases/deactivate-role.usecase';
 import { RestoreRoleUseCase } from 'src/modules/roles/application/use-cases/restore-role.usecase';
 import { PermissionsGuard } from 'src/modules/access-control/adapters/in/guards/permissions.guard';
 import { RequirePermissions } from 'src/modules/access-control/adapters/in/decorators/require-permissions.decorator';
-import { SuperAdminGuard } from 'src/shared/utilidades/guards/super-admin.guard';
 
 @Controller('roles')
-@UseGuards(JwtAuthGuard, SuperAdminGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class RolesController {
   constructor(
     private readonly createRoleUseCase: CreateRoleUseCase,
@@ -41,22 +42,22 @@ export class RolesController {
     private readonly getRoleByIdUseCase: GetRoleByIdUseCase,
     private readonly updateRoleUseCase: UpdateRoleUseCase,
     private readonly deleteRoleUseCase: DeleteRoleUseCase,
+    private readonly deactivateRoleUseCase: DeactivateRoleUseCase,
     private readonly restoreRoleUseCase: RestoreRoleUseCase,
   ) {}
 
   @Post('/create')
-  @UseGuards(PermissionsGuard, CsrfGuard)
+  @UseGuards(CsrfGuard)
   @RequirePermissions('roles.create')
-  create(@Body() dto: CreateRoleDto, @CurrentUser() user: { role: RoleType }) {
-    return this.createRoleUseCase.execute(dto, user.role);
+  create(@Body() dto: CreateRoleDto, @CurrentUser() user: { role?: RoleType | null; id: string }) {
+    return this.createRoleUseCase.execute(dto, { userId: user.id, role: user.role });
   }
 
   @Get('')
-  @UseGuards(PermissionsGuard)
   @RequirePermissions('roles.read')
   findAll(
     @Query('status') status?: string,
-    @CurrentUser() user?: { role: RoleType },
+    @CurrentUser() user?: { role?: RoleType | null; id: string },
   ) {
     if (status && !ROLE_LIST_STATUSES.includes(status as RoleListStatus)) {
       throw new BadRequestException(
@@ -65,36 +66,46 @@ export class RolesController {
     }
     return this.listRolesUseCase.execute(
       { status: status as RoleListStatus | undefined },
-      user?.role,
+      { userId: String(user?.id ?? ''), role: user?.role ?? null },
     );
   }
 
   @Get('/:id')
-  @UseGuards(PermissionsGuard)
   @RequirePermissions('roles.read')
-  findOne(@Param('id') id: string) {
-    return this.getRoleByIdUseCase.execute(id);
+  findOne(@Param('id') id: string, @CurrentUser() user: { role?: RoleType | null; id: string }) {
+    return this.getRoleByIdUseCase.execute(id, { userId: user.id, role: user.role });
   }
 
   @Patch('/:id')
-  @UseGuards(PermissionsGuard, CsrfGuard)
+  @UseGuards(CsrfGuard)
   @RequirePermissions('roles.update')
-  update(@Param('id') id: string, @Body() dto: UpdateRoleDto) {
-    return this.updateRoleUseCase.execute(id, dto);
+  update(@Param('id') id: string, @Body() dto: UpdateRoleDto, @CurrentUser() user: { role?: RoleType | null; id: string }) {
+    return this.updateRoleUseCase.execute(id, dto, { userId: user.id, role: user.role });
   }
 
   @Delete('/:id')
-  @UseGuards(PermissionsGuard, CsrfGuard)
+  @UseGuards(CsrfGuard)
   @RequirePermissions('roles.delete')
-  remove(@Param('id') id: string) {
-    return this.deleteRoleUseCase.execute(id);
+  remove(@Param('id') id: string, @CurrentUser() user: { role?: RoleType | null; id: string }) {
+    return this.deleteRoleUseCase.execute(id, { userId: user.id, role: user.role });
+  }
+
+  @Post('/:id/deactivate')
+  @UseGuards(CsrfGuard)
+  @RequirePermissions('roles.delete')
+  deactivate(
+    @Param('id') id: string,
+    @Body() dto: DeactivateRoleDto,
+    @CurrentUser() user: { role?: RoleType | null; id: string },
+  ) {
+    return this.deactivateRoleUseCase.execute(id, dto, { userId: user.id, role: user.role });
   }
 
   @Patch(':id/restore')
-  @UseGuards(PermissionsGuard, CsrfGuard)
+  @UseGuards(CsrfGuard)
   @RequirePermissions('roles.restore')
-  restore(@Param('id') id: string) {
-    return this.restoreRoleUseCase.execute(id);
+  restore(@Param('id') id: string, @CurrentUser() user: { role?: RoleType | null; id: string }) {
+    return this.restoreRoleUseCase.execute(id, { userId: user.id, role: user.role });
   }
 }
 

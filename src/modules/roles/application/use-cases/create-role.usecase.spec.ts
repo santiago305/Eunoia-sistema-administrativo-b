@@ -1,83 +1,100 @@
-import { BadRequestException, ConflictException, ForbiddenException, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { CreateRoleUseCase } from './create-role.usecase';
-import { RoleType } from 'src/shared/constantes/constants';
 import { successResponse } from 'src/shared/response-standard/response';
 
 describe('CreateRoleUseCase', () => {
-  const makeUseCase = (overrides?: {
-    roleReadRepository?: any;
-    roleRepository?: any;
-  }) => {
+  const makeUseCase = (overrides?: { roleReadRepository?: any; roleRepository?: any }) => {
     const roleReadRepository = {
-      existsByDescription: jest.fn().mockResolvedValue(false),
+      findByDescription: jest.fn().mockResolvedValue(null),
       ...overrides?.roleReadRepository,
     };
 
     const roleRepository = {
-      save: jest.fn().mockResolvedValue({}),
+      save: jest.fn().mockResolvedValue({ id: 'role-1', description: 'nuevo rol' }),
       findById: jest.fn(),
-      updateDeleted: jest.fn(),
-      update: jest.fn(),
       ...overrides?.roleRepository,
     };
 
     return new CreateRoleUseCase(roleReadRepository, roleRepository);
   };
 
-  it('rejects non-admin', async () => {
-    const useCase = makeUseCase();
-
-    await expect(
-      useCase.execute({ description: 'Admin' } as any, RoleType.MODERATOR)
-    ).rejects.toBeInstanceOf(ForbiddenException);
-  });
-
-  it('rejects duplicate role', async () => {
+  it('rejects duplicate active role', async () => {
     const useCase = makeUseCase({
       roleReadRepository: {
-        existsByDescription: jest.fn().mockResolvedValue(true),
+        findByDescription: jest.fn().mockResolvedValue({
+          id: 'r-1',
+          description: 'admin',
+          deleted: false,
+          createdAt: new Date(),
+        }),
       },
     });
 
-    await expect(
-      useCase.execute({ description: 'Admin' } as any, RoleType.ADMIN)
-    ).rejects.toBeInstanceOf(ConflictException);
+    await expect(useCase.execute({ description: 'Admin' } as any, { userId: 'u-1' })).rejects.toBeInstanceOf(
+      ConflictException,
+    );
   });
 
   it('normalizes description before duplicate check and save', async () => {
     const roleReadRepository = {
-      existsByDescription: jest.fn().mockResolvedValue(false),
+      findByDescription: jest.fn().mockResolvedValue(null),
     };
     const roleRepository = {
-      save: jest.fn().mockResolvedValue({}),
+      save: jest.fn().mockResolvedValue({ id: 'r-1', description: 'admin' }),
     };
     const useCase = makeUseCase({ roleReadRepository, roleRepository });
 
-    await useCase.execute({ description: '  AdMiN  ' } as any, RoleType.ADMIN);
+    await useCase.execute({ description: '  AdMiN  ' } as any, { userId: 'u-1' });
 
-    expect(roleReadRepository.existsByDescription).toHaveBeenCalledWith('admin');
+    expect(roleReadRepository.findByDescription).toHaveBeenCalledWith('admin', { includeDeleted: true });
     expect(roleRepository.save).toHaveBeenCalledWith(
-      expect.objectContaining({ description: 'admin' }),
+      expect.objectContaining({ description: 'admin', createdByUserId: 'u-1' }),
     );
   });
 
   it('rejects description that becomes empty after normalization', async () => {
     const useCase = makeUseCase();
 
-    await expect(
-      useCase.execute({ description: '   ' } as any, RoleType.ADMIN)
-    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(useCase.execute({ description: '   ' } as any, { userId: 'u-1' })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
   });
 
-  it('creates role for admin', async () => {
+  it('creates role', async () => {
     const useCase = makeUseCase();
 
-    const result = await useCase.execute(
-      { description: 'Nuevo Rol' } as any,
-      RoleType.ADMIN
-    );
+    const result = await useCase.execute({ description: 'Nuevo Rol' } as any, { userId: 'u-1' });
 
-    expect(result).toEqual(successResponse('Rol creado correctamente'));
+    expect(result).toEqual(successResponse('Rol creado correctamente', { id: 'role-1', description: 'nuevo rol' }));
+  });
+
+  it('reactivates deleted role when same description exists deleted', async () => {
+    const roleReadRepository = {
+      findByDescription: jest.fn().mockResolvedValue({
+        id: 'r-1',
+        description: 'nuevo rol',
+        deleted: true,
+        createdAt: new Date(),
+      }),
+    };
+    const roleRepository = {
+      findById: jest.fn().mockResolvedValue({
+        id: 'r-1',
+        description: 'nuevo rol',
+        deleted: true,
+      }),
+      save: jest.fn().mockResolvedValue({
+        id: 'r-1',
+        description: 'nuevo rol',
+        deleted: false,
+      }),
+    };
+    const useCase = makeUseCase({ roleReadRepository, roleRepository });
+
+    const result = await useCase.execute({ description: 'Nuevo Rol' } as any, { userId: 'u-1' });
+
+    expect(result).toEqual(successResponse('Rol reactivado correctamente', { id: 'r-1', description: 'nuevo rol' }));
+    expect(roleRepository.save).toHaveBeenCalledWith(expect.objectContaining({ deleted: false, createdByUserId: 'u-1' }));
   });
 
   it('throws when repository save fails', async () => {
@@ -87,8 +104,8 @@ describe('CreateRoleUseCase', () => {
       },
     });
 
-    await expect(
-      useCase.execute({ description: 'Nuevo Rol' } as any, RoleType.ADMIN)
-    ).rejects.toBeInstanceOf(InternalServerErrorException);
+    await expect(useCase.execute({ description: 'Nuevo Rol' } as any, { userId: 'u-1' })).rejects.toBeInstanceOf(
+      InternalServerErrorException,
+    );
   });
 });

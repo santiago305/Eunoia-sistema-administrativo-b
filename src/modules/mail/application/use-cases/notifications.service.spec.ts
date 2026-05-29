@@ -188,7 +188,7 @@ describe('NotificationsService forward preview', () => {
       {} as any,
       {} as any,
       {} as any,
-      {} as any,
+      { ensureAttachmentRefsForUsers: jest.fn() } as any,
     ) as any;
 
     service.ensureCanOpenMessageOrThrow = jest.fn();
@@ -302,7 +302,7 @@ describe('NotificationsService replies', () => {
       {} as any,
       {} as any,
       {} as any,
-      {} as any,
+      { ensureAttachmentRefsForUsers: jest.fn() } as any,
     ) as any;
 
     service.ensureCanOpenMessageOrThrow = jest.fn();
@@ -315,5 +315,71 @@ describe('NotificationsService replies', () => {
     });
 
     expect(savedMessage?.subject).toBe('Reporte original');
+  });
+});
+
+describe('NotificationsService module label configs', () => {
+  const createServiceForModuleConfig = () => {
+    const messageLabelRepository = {
+      findOne: jest.fn(),
+    };
+    const notificationModuleLabelConfigRepository = {
+      findOne: jest.fn(),
+      save: jest.fn(),
+      create: jest.fn((value) => value),
+    };
+
+    const service = new NotificationsService(
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      messageLabelRepository as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      notificationModuleLabelConfigRepository as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+    );
+
+    return { service, messageLabelRepository, notificationModuleLabelConfigRepository };
+  };
+
+  it('does not persist when module label config remains unchanged', async () => {
+    const { service, messageLabelRepository, notificationModuleLabelConfigRepository } =
+      createServiceForModuleConfig();
+
+    messageLabelRepository.findOne.mockResolvedValue({ id: 'label-1' });
+    notificationModuleLabelConfigRepository.findOne.mockResolvedValue({
+      id: 'config-1',
+      moduleKey: 'warehouse',
+      labelId: 'label-1',
+      updatedByUserId: 'user-prev',
+      updatedAt: new Date('2026-05-26T10:00:00.000Z'),
+    });
+
+    const result = await service.upsertModuleLabelConfig('user-1', 'warehouse', 'label-1');
+
+    expect(notificationModuleLabelConfigRepository.save).not.toHaveBeenCalled();
+    expect(result).toMatchObject({
+      id: 'config-1',
+      moduleKey: 'warehouse',
+      labelId: 'label-1',
+    });
   });
 });

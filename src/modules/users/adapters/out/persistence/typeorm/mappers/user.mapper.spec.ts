@@ -4,7 +4,6 @@ import { UserFactory } from '../../../../../domain/factories/user.factory';
 import { Email } from '../../../../../domain/value-objects/email.vo';
 import { Password } from '../../../../../domain/value-objects/password.vo';
 import { RoleId } from '../../../../../domain/value-objects/role.vo';
-import { MissingRoleIdError } from '../../../../../domain/errors/missing-role-id.error';
 
 describe('UserMapper', () => {
   it('maps orm user to domain user', () => {
@@ -25,7 +24,7 @@ describe('UserMapper', () => {
     expect(domain.roleId.value).toBe('role-1');
   });
 
-  it('throws when role id is missing', () => {
+  it('maps orm user with missing role id to domain user with null roleId', () => {
     const orm = new OrmUser();
     orm.id = 'user-1';
     orm.name = 'Ana';
@@ -33,7 +32,8 @@ describe('UserMapper', () => {
     orm.password = 'hash';
     orm.deleted = false;
 
-    expect(() => UserMapper.toDomain(orm)).toThrow(MissingRoleIdError);
+    const domain = UserMapper.toDomain(orm);
+    expect(domain.roleId).toBeNull();
   });
 
   it('maps domain user to persistence shape', () => {

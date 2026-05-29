@@ -7,7 +7,8 @@ export class RoleMapper {
       orm.roleId,
       orm.description,
       orm.deleted,
-      orm.createdAt
+      orm.createdAt,
+      orm.createdByUserId ?? null,
     );
   }
 
@@ -16,7 +17,8 @@ export class RoleMapper {
       roleId: domain.id,
       description: domain.description,
       deleted: domain.deleted,
-      createdAt: domain.createdAt,  
+      createdAt: domain.createdAt,
+      createdByUserId: domain.createdByUserId ?? null,
     };
   }
 }

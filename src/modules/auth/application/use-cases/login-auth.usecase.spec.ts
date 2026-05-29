@@ -91,11 +91,12 @@ describe('LoginAuthUseCase', () => {
     expect(result).toEqual({ access_token: 'access', refresh_token: 'refresh' });
   });
 
-  it('uses default role when user has no role', async () => {
+  it('uses null role when user has no role and is not super admin', async () => {
     const user = {
       id: 'user-1',
       email: 'ana@example.com',
       password: 'hashed',
+      isSuperAdmin: false,
     };
     const tokenReadRepository = {
       signAccessToken: jest.fn().mockReturnValue('access'),
@@ -113,7 +114,7 @@ describe('LoginAuthUseCase', () => {
 
     expect(tokenReadRepository.signAccessToken).toHaveBeenCalledWith({
       sub: 'user-1',
-      role: RoleType.ADVISER,
+      role: null,
       sessionId: expect.any(String),
     });
   });

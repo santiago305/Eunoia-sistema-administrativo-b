@@ -6,12 +6,18 @@ import { User } from '../../../../../domain/entities/user.entity';
 import { Email } from '../../../../../domain/value-objects/email.vo';
 import { User as OrmUser } from '../entities/user.entity';
 import { UserMapper } from '../mappers/user.mapper';
+import { UserManageableRole } from '../entities/user-manageable-role.entity';
+import { Role } from 'src/modules/roles/adapters/out/persistence/typeorm/entities/role.entity';
 
 @Injectable()
 export class TypeormUserRepository implements UserRepository {
   constructor(
     @InjectRepository(OrmUser)
-    private readonly ormRepository: Repository<OrmUser>
+    private readonly ormRepository: Repository<OrmUser>,
+    @InjectRepository(UserManageableRole)
+    private readonly userManageableRoleRepository: Repository<UserManageableRole>,
+    @InjectRepository(Role)
+    private readonly roleRepository: Repository<Role>,
   ) {}
 
   async findById(id: string): Promise<User | null> {
@@ -119,6 +125,55 @@ export class TypeormUserRepository implements UserRepository {
     const saved = await this.ormRepository.save(ormUser);
 
     return UserMapper.toDomain(saved);
+  }
+
+  async updateManagementScope(
+    id: string,
+    params: {
+      manageableRoleDescriptions: string[] | null;
+      manageableUserIds: string[] | null;
+    },
+  ): Promise<void> {
+    await this.ormRepository
+      .createQueryBuilder()
+      .update(OrmUser)
+      .set({
+        manageableRoleDescriptions: params.manageableRoleDescriptions,
+        manageableUserIds: params.manageableUserIds,
+      })
+      .where('user_id = :id', { id })
+      .execute();
+
+    const normalizedDescriptions = Array.isArray(params.manageableRoleDescriptions)
+      ? [...new Set(params.manageableRoleDescriptions.map((value) => String(value ?? '').trim().toLowerCase()).filter(Boolean))]
+      : [];
+
+    await this.userManageableRoleRepository.delete({ managerUserId: id });
+    if (!normalizedDescriptions.length) return;
+
+    const rows = await this.roleRepository
+      .createQueryBuilder('role')
+      .select(['role.roleId AS "roleId"', 'LOWER(role.description) AS description'])
+      .where('LOWER(role.description) IN (:...descriptions)', { descriptions: normalizedDescriptions })
+      .andWhere('role.deleted = false')
+      .getRawMany<{ roleId: string; description: string }>();
+
+    if (!rows.length) return;
+
+    const entities = rows.map((row) =>
+      this.userManageableRoleRepository.create({
+        managerUserId: id,
+        roleId: row.roleId,
+      }),
+    );
+    await this.userManageableRoleRepository.save(entities);
+  }
+
+  async reassignRole(fromRoleId: string, toRoleId: string): Promise<void> {
+    await this.ormRepository.query(
+      'UPDATE users SET role_id = $1 WHERE role_id = $2',
+      [toRoleId, fromRoleId],
+    );
   }
 }
 

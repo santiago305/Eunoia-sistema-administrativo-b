@@ -11,6 +11,9 @@ export interface UserReadRepository {
       role?: string;
       q?: string;
       allowedRoles?: string[];
+      allowedUserIds?: string[];
+      excludeSuperAdmins?: boolean;
+      includeUserIdWhenExcludingSuperAdmins?: string;
     };
     sortBy?: string;
     order?: 'ASC' | 'DESC';
@@ -21,11 +24,15 @@ export interface UserReadRepository {
       name: string;
       email: string;
       telefono?: string;
-      rol: string;
-      roleId: string;
+      rol: string | null;
+      roleId: string | null;
       deleted: boolean;
       createdAt: Date;
       updatedAt?: Date;
+      createdByUserId?: string | null;
+      createdByUserName?: string | null;
+      manageableRoleDescriptions?: string[] | null;
+      manageableUserIds?: string[] | null;
     }>;
     total: number;
     page: number;
@@ -37,6 +44,9 @@ export interface UserReadRepository {
       role?: string;
       q?: string;
       allowedRoles?: string[];
+      allowedUserIds?: string[];
+      excludeSuperAdmins?: boolean;
+      includeUserIdWhenExcludingSuperAdmins?: string;
     };
     status?: UserListStatus;
   }): Promise<{
@@ -47,13 +57,13 @@ export interface UserReadRepository {
   findPublicByEmail(email: string): Promise<{
     id: string;
     email: string;
-    roleDescription: string;
+    roleDescription: string | null;
   } | null>;
 
   findManagementByEmail(email: string): Promise<{
     id: string;
     email: string;
-    roleDescription: string;
+    roleDescription: string | null;
     deleted: boolean;
   } | null>;
 
@@ -65,7 +75,7 @@ export interface UserReadRepository {
     deleted: boolean;
     avatarUrl?: string;
     createdAt?: Date;
-    role: { id: string; description: string };
+    role: { id: string; description: string } | null;
   } | null>;
 
   findManagementById(id: string): Promise<{
@@ -76,14 +86,26 @@ export interface UserReadRepository {
     deleted: boolean;
     avatarUrl?: string;
     createdAt?: Date;
-    role: { id: string; description: string };
+    role: { id: string; description: string } | null;
+    isSuperAdmin?: boolean;
+    manageableRoleDescriptions?: string[] | null;
+    manageableUserIds?: string[] | null;
+  } | null>;
+
+  findManagementScopeById(id: string): Promise<{
+    id: string;
+    roleDescription: string | null;
+    isSuperAdmin: boolean;
+    manageableRoleDescriptions: string[] | null;
+    manageableUserIds: string[] | null;
   } | null>;
 
   findWithPasswordByEmail(email: string): Promise<{
     id: string;
     email: string;
     password: string;
-    roleDescription: string;
+    roleDescription: string | null;
+    isSuperAdmin: boolean;
     failedLoginAttempts: number;
     lockoutLevel: number;
     lockedUntil: Date | null;

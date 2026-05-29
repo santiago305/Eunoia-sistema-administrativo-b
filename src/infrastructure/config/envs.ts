@@ -38,6 +38,8 @@ interface EnvVars {
     IDENTITY_API_KEY?: string;
     IDENTITY_BASE_URL?: string;
     IDENTITY_TIMEOUT_MS?: number;
+    APP_COMPANY_NAME?: string;
+    MASTER_ADMIN_INITIAL_PASSWORD?: string;
     }
 
 const envsSchema = joi.object({
@@ -49,8 +51,8 @@ const envsSchema = joi.object({
     DB_USERNAME: joi.string().required(),
     DB_PASSWORD: joi.string().allow('').required(), 
     DB_NAME: joi.string().required(),
-    COOKIE_SECRET: joi.string().required(),
-    JWT_SECRET: joi.string().required(),
+    COOKIE_SECRET: joi.string().min(32).required(),
+    JWT_SECRET: joi.string().min(32).required(),
     JWT_EXPIRES_IN: joi.string().required(),
     JWT_ISSUER: joi.string().required(),
     JWT_REFRESH_EXPIRES_IN: joi.string().required(),
@@ -74,6 +76,8 @@ const envsSchema = joi.object({
     IDENTITY_BASE_URL: joi.string().optional(),
     IDENTITY_API_KEY: joi.string().optional(),
     IDENTITY_TIMEOUT_MS: joi.number().optional(),
+    APP_COMPANY_NAME: joi.string().optional(),
+    MASTER_ADMIN_INITIAL_PASSWORD: joi.string().min(12).optional(),
 })
 .unknown(true)
 
@@ -103,6 +107,8 @@ export const envs = {
         apiKey: envsVars.IDENTITY_API_KEY,
         timeoutMs: envsVars.IDENTITY_TIMEOUT_MS,
     },
+    appCompanyName: envsVars.APP_COMPANY_NAME,
+    masterAdminInitialPassword: envsVars.MASTER_ADMIN_INITIAL_PASSWORD,
     db: {
         host: envsVars.DB_HOST,
         port: envsVars.DB_PORT,

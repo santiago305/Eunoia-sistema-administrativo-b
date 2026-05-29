@@ -3,7 +3,7 @@ import { ROLE_READ_REPOSITORY, RoleReadRepository } from 'src/modules/roles/appl
 import { USER_READ_REPOSITORY, UserReadRepository } from 'src/modules/users/application/ports/user-read.repository';
 import { USER_REPOSITORY, UserRepository } from 'src/modules/users/application/ports/user.repository';
 import { RoleId } from 'src/modules/users/domain';
-import { RoleType } from 'src/shared/constantes/constants';
+import { MASTER_ROLE_DESCRIPTION, RoleType } from 'src/shared/constantes/constants';
 import { successResponse } from 'src/shared/response-standard/response';
 import { UserForbiddenApplicationError } from '../errors/user-forbidden.error';
 import { UserNotFoundApplicationError } from '../errors/user-not-found.error';
@@ -19,27 +19,81 @@ export class UpdateUserRoleUseCase {
     private readonly roleReadRepository: RoleReadRepository,
   ) {}
 
-  async execute(id: string, roleId: string, requesterRole: RoleType) {
-    if (requesterRole !== RoleType.ADMIN) {
-      throw new ForbiddenException(new UserForbiddenApplicationError('No autorizado para cambiar roles de usuario').message);
-    }
+  async execute(id: string, roleId: string | null | undefined, requester: { role?: RoleType | null; userId: string }) {
+    const requesterScope = await this.userReadRepository.findManagementScopeById(requester.userId);
+    const isSuperAdmin = Boolean(requesterScope?.isSuperAdmin);
 
     const target = await this.userReadRepository.findManagementById(id);
     if (!target) {
       throw new NotFoundException(new UserNotFoundApplicationError().message);
     }
-
-    if (target.role.description === RoleType.ADMIN) {
-      throw new ForbiddenException(new UserForbiddenApplicationError('No puedes cambiar el rol de un administrador').message);
+    if (target.isSuperAdmin) {
+      throw new ForbiddenException(
+        new UserForbiddenApplicationError('No autorizado para cambiar el rol de un super administrador').message,
+      );
     }
 
-    const nextRole = await this.roleReadRepository.findById(roleId);
+    const requestedRoleId = String(roleId ?? '').trim();
+    if (!requestedRoleId) {
+      if (!isSuperAdmin) {
+        throw new ForbiddenException(
+          new UserForbiddenApplicationError('Solo super administrador puede quitar rol de usuario').message,
+        );
+      }
+
+      const userWithoutRole = await this.userRepository.findById(id);
+      if (!userWithoutRole) {
+        throw new NotFoundException(new UserNotFoundApplicationError().message);
+      }
+
+      userWithoutRole.roleId = null;
+      await this.userRepository.save(userWithoutRole);
+
+      const updatedWithoutRole = await this.userReadRepository.findManagementById(id);
+      return successResponse('Rol retirado correctamente', {
+        id: updatedWithoutRole?.id ?? id,
+        rol: updatedWithoutRole?.role?.description ?? null,
+        roleId: updatedWithoutRole?.role?.id ?? null,
+      });
+    }
+
+    const nextRole = await this.roleReadRepository.findById(requestedRoleId);
     if (!nextRole || nextRole.deleted) {
       throw new NotFoundException('Rol invalido');
     }
 
-    if (nextRole.description === RoleType.ADMIN) {
-      throw new ForbiddenException(new UserForbiddenApplicationError('No puedes asignar rol administrador').message);
+    if (String(nextRole.description ?? '').trim().toLowerCase() === MASTER_ROLE_DESCRIPTION) {
+      throw new ForbiddenException(
+        new UserForbiddenApplicationError('No autorizado para asignar el rol maestro').message,
+      );
+    }
+
+    if (!isSuperAdmin) {
+      const allowedRoles = Array.isArray(requesterScope?.manageableRoleDescriptions)
+        ? requesterScope.manageableRoleDescriptions
+            .map((value) => String(value ?? '').trim().toLowerCase())
+            .filter((value) => value.length > 0)
+        : requesterScope?.roleDescription
+          ? [String(requesterScope.roleDescription).trim().toLowerCase()]
+          : requester.role
+            ? [String(requester.role).trim().toLowerCase()]
+            : [];
+      const allowedUserIds = Array.isArray(requesterScope?.manageableUserIds)
+        ? requesterScope.manageableUserIds
+        : [];
+
+      const targetRoleDescription = target.role?.description
+        ? String(target.role.description).trim().toLowerCase()
+        : null;
+      const canManageTarget =
+        (targetRoleDescription ? allowedRoles.includes(targetRoleDescription) : false) || allowedUserIds.includes(target.id);
+      const canAssignNextRole = allowedRoles.includes(String(nextRole.description ?? '').trim().toLowerCase());
+
+      if (!canManageTarget || !canAssignNextRole) {
+        throw new ForbiddenException(
+          new UserForbiddenApplicationError('No autorizado para cambiar el rol de este usuario').message,
+        );
+      }
     }
 
     const user = await this.userRepository.findById(id);
@@ -53,8 +107,8 @@ export class UpdateUserRoleUseCase {
     const updated = await this.userReadRepository.findManagementById(id);
     return successResponse('Rol actualizado correctamente', {
       id: updated?.id ?? id,
-      rol: updated?.role.description ?? nextRole.description,
-      roleId: updated?.role.id ?? nextRole.id,
+      rol: updated?.role?.description ?? nextRole.description,
+      roleId: updated?.role?.id ?? nextRole.id,
     });
   }
 }
