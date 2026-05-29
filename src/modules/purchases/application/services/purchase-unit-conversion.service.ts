@@ -41,6 +41,7 @@ export class PurchaseUnitConversionService {
         ? Number(params.factor)
         : 1;
 
+    // `unitBase` llega desde frontend como unidad comprada (ej: KGM).
     const sourceUnitRaw = params.unitBase?.trim();
     if (!sourceUnitRaw) {
       return { factor: fallbackFactor };
@@ -105,6 +106,9 @@ export class PurchaseUnitConversionService {
       (row) => row.fromUnitId === baseUnit.id && row.toUnitId === fromUnit!.id,
     );
     if (inverse && Number(inverse.factor) > 0) {
+      // Regla de negocio histórica:
+      // si la equivalencia se almacena como BASE -> COMPRA (ej: GRM -> KGM con factor 1000),
+      // al comprar en KGM debemos devolver 1000 para convertir a la unidad base GRM.
       return {
         factor: Number(inverse.factor),
         unitBase: fromUnit.code,
