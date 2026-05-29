@@ -49,5 +49,18 @@ export class SaleOrderItemTypeormRepository implements SaleOrderItemRepository {
     );
     return saved.map((row) => this.toDomain(row));
   }
-}
 
+  async listBySaleOrderId(saleOrderId: string, tx?: TransactionContext): Promise<SaleOrderItem[]> {
+    const manager = this.getManager(tx);
+    const rows = await manager.getRepository(SaleOrderItemEntity).find({
+      where: { saleOrderId },
+      order: { createdAt: "ASC" },
+    });
+    return rows.map((row) => this.toDomain(row));
+  }
+
+  async deleteBySaleOrderId(saleOrderId: string, tx?: TransactionContext): Promise<void> {
+    const manager = this.getManager(tx);
+    await manager.getRepository(SaleOrderItemEntity).delete({ saleOrderId });
+  }
+}

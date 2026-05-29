@@ -16,4 +16,16 @@ export interface SalePaymentRepository {
     }>,
     tx?: TransactionContext,
   ): Promise<SalePayment[]>;
+
+  deleteBySaleOrderId(saleOrderId: string, tx?: TransactionContext): Promise<void>;
+
+  deleteById(
+    input: { saleOrderId: string; paymentId: string },
+    tx?: TransactionContext,
+  ): Promise<boolean>;
+
+  listBySaleOrderIds(
+    saleOrderIds: string[],
+    tx?: TransactionContext,
+  ): Promise<SalePayment[]>;
 }

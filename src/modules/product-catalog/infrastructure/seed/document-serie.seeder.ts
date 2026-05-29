@@ -2,20 +2,40 @@ import { DataSource } from "typeorm";
 import { DocType } from "src/shared/domain/value-objects/doc-type";
 import { ProductCatalogDocumentSerieEntity } from "../../adapters/out/persistence/typeorm/entities/document-serie.entity";
 
+const buildSaleOrderSerieCode = (index: number) => {
+  return `PE${String(index).padStart(2, "0")}`;
+};
+
 export const seedDocumentSeries = async (dataSource: DataSource, warehouseId: string): Promise<void> => {
   const repo = dataSource.getRepository(ProductCatalogDocumentSerieEntity);
+
+  const saleOrderSeriesCount = await repo.count({
+    where: {
+      docType: DocType.SALE_ORDER,
+    },
+  });
+
+  const saleOrderCode = buildSaleOrderSerieCode(saleOrderSeriesCount + 1);
+
   const defaults = [
     { code: "IN", name: "Ingreso", docType: DocType.IN },
     { code: "OUT", name: "Salida", docType: DocType.OUT },
     { code: "TRF", name: "Transferencia", docType: DocType.TRANSFER },
     { code: "ADJ", name: "Ajuste", docType: DocType.ADJUSTMENT },
     { code: "PRO", name: "Produccion", docType: DocType.PRODUCTION },
-    { code: "PED", name: "Pedido", docType: DocType.SALE_ORDER },
+    { code: saleOrderCode, name: "Pedido", docType: DocType.SALE_ORDER },
   ];
 
   for (const item of defaults) {
-    const exists = await repo.findOne({ where: { warehouseId, code: item.code } });
+    const exists = await repo.findOne({
+      where: {
+        warehouseId,
+        docType: item.docType,
+      },
+    });
+
     if (exists) continue;
+
     await repo.save(
       repo.create({
         code: item.code,

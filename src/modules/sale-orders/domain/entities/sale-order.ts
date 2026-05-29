@@ -2,6 +2,17 @@ import { AgendaStatus } from "../value-objects/agenda-status";
 import { DeliveryStatus } from "../value-objects/delivery-status";
 import { DeliveryType } from "../value-objects/delivery-type";
 
+export type SaleOrderItem = {
+  id: string;
+  saleOrderId: string;
+  referencePackId: string | null;
+  description: string | null;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+  createdAt: Date;
+};
+
 export class SaleOrder {
   constructor(
     public readonly id: string,
@@ -24,5 +35,6 @@ export class SaleOrder {
     public readonly isActive: boolean,
     public readonly createdAt: Date,
     public readonly updatedAt: Date | null,
+    public readonly items: SaleOrderItem[] = [],
   ) {}
 }

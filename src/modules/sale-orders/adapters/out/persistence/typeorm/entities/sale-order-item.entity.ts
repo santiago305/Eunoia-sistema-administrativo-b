@@ -1,5 +1,6 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
-
+import { JoinColumn, ManyToOne } from "typeorm";
+import { SaleOrderEntity } from "./sale-order.entity";
 @Entity("sale_order_items")
 @Index("idx_sale_order_items_sale_order", ["saleOrderId"])
 export class SaleOrderItemEntity {
@@ -26,5 +27,9 @@ export class SaleOrderItemEntity {
 
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
+
+  @ManyToOne(() => SaleOrderEntity, (saleOrder) => saleOrder.items)
+  @JoinColumn({ name: "sale_order_id" })
+  saleOrder?: SaleOrderEntity;
 }
 

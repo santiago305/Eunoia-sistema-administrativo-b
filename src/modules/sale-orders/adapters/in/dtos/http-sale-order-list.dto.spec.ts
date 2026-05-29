@@ -1,0 +1,34 @@
+import "reflect-metadata";
+import { plainToInstance } from "class-transformer";
+import { validateSync } from "class-validator";
+import { HttpListSaleOrdersQueryDto } from "./http-sale-order-list.dto";
+
+describe("HttpListSaleOrdersQueryDto", () => {
+  it("parses smart-search filters from json query string", () => {
+    const dto = plainToInstance(HttpListSaleOrdersQueryDto, {
+      q: "S01",
+      filters: JSON.stringify([
+        { field: "paymentStatus", operator: "in", values: ["PAID"] },
+        { field: "scheduleDate", operator: "between", range: { start: "2026-05-01", end: "2026-05-31" } },
+      ]),
+    });
+
+    const errors = validateSync(dto);
+
+    expect(errors).toHaveLength(0);
+    expect(dto.filters).toEqual([
+      { field: "paymentStatus", operator: "in", values: ["PAID"] },
+      { field: "scheduleDate", operator: "between", range: { start: "2026-05-01", end: "2026-05-31" } },
+    ]);
+  });
+
+  it("rejects unknown smart-search fields", () => {
+    const dto = plainToInstance(HttpListSaleOrdersQueryDto, {
+      filters: JSON.stringify([{ field: "unknown", operator: "in", values: ["x"] }]),
+    });
+
+    const errors = validateSync(dto);
+    expect(errors).not.toHaveLength(0);
+  });
+});
+

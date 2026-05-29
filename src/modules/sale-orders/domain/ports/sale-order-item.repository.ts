@@ -15,5 +15,7 @@ export interface SaleOrderItemRepository {
     }>,
     tx?: TransactionContext,
   ): Promise<SaleOrderItem[]>;
-}
 
+  listBySaleOrderId(saleOrderId: string, tx?: TransactionContext): Promise<SaleOrderItem[]>;
+  deleteBySaleOrderId(saleOrderId: string, tx?: TransactionContext): Promise<void>;
+}

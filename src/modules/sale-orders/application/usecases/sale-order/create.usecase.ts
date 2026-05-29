@@ -96,6 +96,28 @@ export class CreateSaleOrderUsecase {
       const serie = series[0];
       const correlative = await this.serieRepo.reserveNextNumber(serie.id, tx);
 
+      const toDateKey = (value: Date) =>
+        new Intl.DateTimeFormat("en-CA", {
+          timeZone: "America/Lima",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).format(value);
+
+      const todayKey = toDateKey(new Date());
+      const deliveryDateKey = input.deliveryDate ? input.deliveryDate.slice(0, 10) : null;
+      const isDeliveryTodayOrPast = !!deliveryDateKey && deliveryDateKey <= todayKey;
+
+      const agendaStatus = isDeliveryTodayOrPast ? AgendaStatus.PROGRAMMED : AgendaStatus.COORDINATED;
+
+      const deliveryStatus = isDeliveryTodayOrPast
+        ? input.deliveryType === DeliveryType.ABONADO_ENVIO
+          ? DeliveryStatus.WAITING
+          : input.deliveryType === DeliveryType.CONTRA_ENTREGA
+            ? DeliveryStatus.IN_PROGRESS
+            : null
+        : null;
+
       const order = await this.saleOrderRepo.create(
         {
           serie: serie.code,
@@ -112,8 +134,8 @@ export class CreateSaleOrderUsecase {
           total: input.total ?? 0,
           note: input.note ?? null,
           createdBy,
-          agendaStatus: AgendaStatus.COORDINATED,
-          deliveryStatus: null,
+          agendaStatus,
+          deliveryStatus,
           isActive: true,
         },
         tx,

@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { EntityManager, Repository } from "typeorm";
+import { EntityManager, In, Repository } from "typeorm";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
 import { SalePaymentEntity } from "../entities/sale-payment.entity";
@@ -50,5 +50,32 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
       })),
     );
     return saved.map((row) => this.toDomain(row));
+  }
+
+  async deleteBySaleOrderId(saleOrderId: string, tx?: TransactionContext): Promise<void> {
+    const manager = this.getManager(tx);
+    await manager.getRepository(SalePaymentEntity).delete({ saleOrderId });
+  }
+
+  async deleteById(
+    input: { saleOrderId: string; paymentId: string },
+    tx?: TransactionContext,
+  ): Promise<boolean> {
+    const manager = this.getManager(tx);
+    const result = await manager.getRepository(SalePaymentEntity).delete({
+      id: input.paymentId,
+      saleOrderId: input.saleOrderId,
+    });
+    return (result.affected ?? 0) > 0;
+  }
+
+  async listBySaleOrderIds(saleOrderIds: string[], tx?: TransactionContext): Promise<SalePayment[]> {
+    if (!saleOrderIds.length) return [];
+    const manager = this.getManager(tx);
+    const rows = await manager.getRepository(SalePaymentEntity).find({
+      where: { saleOrderId: In(saleOrderIds) },
+      order: { saleOrderId: "ASC", createdAt: "ASC" },
+    });
+    return rows.map((row) => this.toDomain(row));
   }
 }

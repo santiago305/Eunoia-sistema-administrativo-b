@@ -2,6 +2,8 @@ import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, Update
 import { AgendaStatus } from "src/modules/sale-orders/domain/value-objects/agenda-status";
 import { DeliveryStatus } from "src/modules/sale-orders/domain/value-objects/delivery-status";
 import { DeliveryType } from "src/modules/sale-orders/domain/value-objects/delivery-type";
+import { OneToMany } from "typeorm";
+import { SaleOrderItemEntity } from "./sale-order-item.entity";
 
 @Entity("sale_orders")
 @Index("idx_sale_orders_client", ["clientId"])
@@ -69,4 +71,7 @@ export class SaleOrderEntity {
 
   @UpdateDateColumn({ name: "updated_at", type: "timestamptz", nullable: true })
   updatedAt?: Date | null;
+  
+  @OneToMany(() => SaleOrderItemEntity, (item) => item.saleOrder)
+  items?: SaleOrderItemEntity[];
 }

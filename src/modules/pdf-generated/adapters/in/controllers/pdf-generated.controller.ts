@@ -9,6 +9,7 @@ import { HttpGenerateInvoiceDto } from "../dtos/http-generate-invoice.dto";
 import { GeneratePurchaseOrderPdfUseCase } from "src/modules/pdf-generated/application/usecases/generate-purchase-order-pdf.usecase";
 import { GenerateProductionOrderPdfUseCase } from "src/modules/pdf-generated/application/usecases/generate-production-order-pdf.usecase";
 import { GenerateInventoryDocumentPdfUseCase } from "src/modules/pdf-generated/application/usecases/generate-inventory-document-pdf.usecase";
+import { GenerateSaleOrderPdfUseCase } from "src/modules/pdf-generated/application/usecases/generate-sale-order-pdf.usecase";
 import { PdfGeneratedHttpMapper } from "src/modules/pdf-generated/application/mappers/pdf-generated-http.mapper";
 
 @Controller("pdf-generated")
@@ -18,7 +19,8 @@ export class PdfGeneratedController {
     private readonly generateInvoicePdf: GenerateInvoicePdfUseCase,
     private readonly generatePurchasePdf: GeneratePurchaseOrderPdfUseCase,
     private readonly generateProductionPdf: GenerateProductionOrderPdfUseCase,
-    private readonly generateInventoryDocumentPdf: GenerateInventoryDocumentPdfUseCase
+    private readonly generateInventoryDocumentPdf: GenerateInventoryDocumentPdfUseCase,
+    private readonly generateSaleOrderPdf: GenerateSaleOrderPdfUseCase,
   ) {}
 
   @Post("invoice")
@@ -62,6 +64,16 @@ export class PdfGeneratedController {
     );
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", "inline; filename=inventory-document.pdf");
+    return res.status(200).send(buffer);
+  }
+
+  @Get("sale-orders/:id/pdf")
+  async getSaleOrderPdf(@Param("id", ParseUUIDPipe) id: string, @Res() res: Response) {
+    const buffer = await this.generateSaleOrderPdf.execute(
+      PdfGeneratedHttpMapper.toSaleOrderInput(id),
+    );
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", "inline; filename=sale-order.pdf");
     return res.status(200).send(buffer);
   }
 }
