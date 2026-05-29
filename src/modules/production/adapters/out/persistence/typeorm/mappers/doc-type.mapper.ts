@@ -14,6 +14,8 @@ export class DocTypeMapper {
         return ProductionDocType.ADJUSTMENT;
       case DocType.PRODUCTION:
         return ProductionDocType.PRODUCTION;
+      case DocType.SALE_ORDER:
+        throw new Error("SALE_ORDER is not a production inventory doc type");
       default: {
         const _exhaustive: never = value;
         throw new Error(`Unsupported DocType: ${_exhaustive}`);

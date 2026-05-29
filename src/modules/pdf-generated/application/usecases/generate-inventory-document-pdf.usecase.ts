@@ -63,6 +63,7 @@ const DOC_TYPE_LABEL: Record<DocType, string> = {
   [DocType.TRANSFER]: "TRANSFERENCIA DE INVENTARIO",
   [DocType.ADJUSTMENT]: "AJUSTE DE INVENTARIO",
   [DocType.PRODUCTION]: "PRODUCCION DE INVENTARIO",
+  [DocType.SALE_ORDER]: "PEDIDO",
 };
 
 const STATUS_LABEL: Record<DocStatus, string> = {

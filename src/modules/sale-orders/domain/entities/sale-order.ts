@@ -1,0 +1,40 @@
+import { AgendaStatus } from "../value-objects/agenda-status";
+import { DeliveryStatus } from "../value-objects/delivery-status";
+import { DeliveryType } from "../value-objects/delivery-type";
+
+export type SaleOrderItem = {
+  id: string;
+  saleOrderId: string;
+  referencePackId: string | null;
+  description: string | null;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+  createdAt: Date;
+};
+
+export class SaleOrder {
+  constructor(
+    public readonly id: string,
+    public readonly serie: string | null,
+    public readonly correlative: number | null,
+    public readonly warehouseId: string,
+    public readonly clientId: string,
+    public readonly agencyDetail: string | null,
+    public readonly sourceId: string | null,
+    public readonly scheduleDate: string | null,
+    public readonly deliveryDate: string | null,
+    public readonly deliveryType: DeliveryType | null,
+    public readonly subTotal: number,
+    public readonly deliveryCost: number,
+    public readonly total: number,
+    public readonly note: string | null,
+    public readonly createdBy: string,
+    public readonly agendaStatus: AgendaStatus,
+    public readonly deliveryStatus: DeliveryStatus | null,
+    public readonly isActive: boolean,
+    public readonly createdAt: Date,
+    public readonly updatedAt: Date | null,
+    public readonly items: SaleOrderItem[] = [],
+  ) {}
+}
