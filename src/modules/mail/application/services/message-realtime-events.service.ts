@@ -29,7 +29,7 @@ export class MessageRealtimeEventsService {
     message: MessageEntity,
     state: MessageUserStateEntity,
     recipient: MessageRecipientEntity,
-    sender: { id: string; name: string; email: string } | null,
+    sender: { id: string; name: string; email: string; avatarUrl?: string | null } | null,
     labels: MessageLabelEntity[],
   }) {
     const { message, state, recipient, sender, labels } = params;
@@ -105,7 +105,7 @@ export class MessageRealtimeEventsService {
     const [sender, states] = await Promise.all([
       this.userRepository.findOne({
         where: { id: senderUserId },
-        select: ['id', 'name', 'email'],
+        select: ['id', 'name', 'email', 'avatarUrl'],
       }),
       this.messageUserStateRepository.find({ where: { messageId: message.id } }),
     ]);
@@ -114,6 +114,7 @@ export class MessageRealtimeEventsService {
           id: sender.id,
           name: sender.name?.trim() || 'Usuario',
           email: sender.email,
+          avatarUrl: sender.avatarUrl ?? null,
         }
       : null;
     const stateByKey = new Map<string, MessageUserStateEntity>();

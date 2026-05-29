@@ -258,6 +258,32 @@ export class NotificationAttachmentsService {
     await fs.unlink(attachment.storageKey);
   }
 
+  async purgeDraftAttachments(
+    userId: string,
+    draftId: string,
+    manager?: EntityManager,
+  ) {
+    const attachmentRepo = manager ? manager.getRepository(MessageAttachmentEntity) : this.messageAttachmentRepository;
+    const attachments = await attachmentRepo.find({
+      where: { draftId, uploadedByUserId: userId },
+    });
+    if (!attachments.length) return { deleted: 0 };
+
+    for (const attachment of attachments) {
+      await this.moveAttachmentToDeletedArea(attachment);
+    }
+
+    const attachmentIds = attachments.map((attachment) => attachment.id);
+    await this.mailStorageQuotaService.releaseAttachmentRefs({
+      attachmentIds,
+      userId,
+      manager,
+    });
+    await attachmentRepo.delete(attachmentIds);
+
+    return { deleted: attachmentIds.length };
+  }
+
   async downloadAttachment(userId: string, attachmentId: string, modulePermissions: Record<string, string[]>) {
     const attachment = await this.messageAttachmentRepository.findOne({ where: { id: attachmentId } });
     if (!attachment) throw new NotFoundException('ATTACHMENT_NOT_FOUND');

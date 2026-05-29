@@ -68,6 +68,11 @@ export class CreateUserUseCase {
   }
 
   async execute(dto: CreateUserDto, requester: { role?: RoleType | null; userId: string }) {
+    const company = await this.companyRepository.findSingle();
+    if (!company) {
+      throw new ConflictException('Debe registrar la empresa antes de crear usuarios');
+    }
+
     const requesterScope = await this.userReadRepository.findManagementScopeById(requester.userId);
     const isSuperAdmin = Boolean(requesterScope?.isSuperAdmin);
 

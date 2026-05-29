@@ -103,6 +103,37 @@ export class NotificationQueriesService {
     `;
   }
 
+  private threadUnreadVisibilityCondition(
+    stateAlias: string,
+    messageAlias: string,
+    view: 'inbox' | 'sent' | 'scheduled' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'all',
+  ) {
+    if (view === 'sent' || view === 'all') {
+      return `${stateAlias}.permanently_hidden_at IS NULL AND ${messageAlias}.is_draft = false`;
+    }
+    return this.stateViewCondition(stateAlias, messageAlias, view);
+  }
+
+  private async getThreadUnreadCountMap(
+    userId: string,
+    threadIds: string[],
+    view: 'inbox' | 'sent' | 'scheduled' | 'trash' | 'starred' | 'archived' | 'snoozed' | 'all',
+  ) {
+    const uniqueThreadIds = Array.from(new Set(threadIds.filter(Boolean)));
+    if (!uniqueThreadIds.length) return new Map<string, number>();
+    const rows = await this.messageRepository
+      .createQueryBuilder('m')
+      .select('m.thread_id', 'threadId')
+      .addSelect('COUNT(*)', 'total')
+      .innerJoin(MessageUserStateEntity, 'mus_unread', 'mus_unread.message_id = m.id AND mus_unread.user_id = :userId', { userId })
+      .where('m.thread_id IN (:...threadIds)', { threadIds: uniqueThreadIds })
+      .andWhere('mus_unread.read_at IS NULL')
+      .andWhere(this.threadUnreadVisibilityCondition('mus_unread', 'm', view))
+      .groupBy('m.thread_id')
+      .getRawMany<{ threadId: string; total: string }>();
+    return new Map(rows.map((row) => [row.threadId, Number(row.total ?? 0)]));
+  }
+
   async countMessages(
     userId: string,
     query: {
@@ -343,7 +374,13 @@ export class NotificationQueriesService {
         .getRawMany<{ message_id: string }>();
       const messageIds = rows.map((row) => row.message_id);
       const items = messageIds.length ? await this.messageRepository.find({ where: messageIds.map((id) => ({ id })) }) : [];
-      return { page, limit, total, items };
+      const threadIds = Array.from(new Set(items.map((message) => message.threadId).filter(Boolean))) as string[];
+      const threadUnreadCountMap = await this.getThreadUnreadCountMap(userId, threadIds, 'sent');
+      const itemsWithThreadCounts = items.map((message) => ({
+        ...message,
+        threadUnreadCount: message.threadId ? threadUnreadCountMap.get(message.threadId) ?? 0 : 0,
+      }));
+      return { page, limit, total, items: itemsWithThreadCounts };
     }
 
     if (view === 'drafts') {
@@ -500,8 +537,10 @@ export class NotificationQueriesService {
           .getRawMany<{ threadId: string; total: string }>()
       : [];
     const threadCountMap = new Map(threadCountRows.map((row) => [row.threadId, Number(row.total ?? 0)]));
+    const threadIds = Array.from(new Set(messages.map((message) => message.threadId).filter(Boolean))) as string[];
+    const threadUnreadCountMap = await this.getThreadUnreadCountMap(userId, threadIds, view);
     const senderIds = Array.from(new Set(messages.map((m) => m.senderUserId).filter(Boolean))) as string[];
-    const senders = senderIds.length ? await this.userRepository.find({ where: senderIds.map((id) => ({ id })), select: ['id', 'name', 'email'] }) : [];
+    const senders = senderIds.length ? await this.userRepository.find({ where: senderIds.map((id) => ({ id })), select: ['id', 'name', 'email', 'avatarUrl'] }) : [];
     const senderMap = new Map(senders.map((sender) => [sender.id, sender]));
 
     const stateMap = new Map(states.map((state) => [state.id, state]));
@@ -544,14 +583,19 @@ export class NotificationQueriesService {
           message: (() => {
             const msg = messageMap.get(row.message_id);
             if (!msg) return null;
+            const state = stateMap.get(row.state_id);
             const threadMessageCount = msg.threadId ? threadCountMap.get(msg.threadId) ?? null : null;
-            if (!threadMessageCount) return msg;
+            const threadUnreadCount = msg.threadId
+              ? threadUnreadCountMap.get(msg.threadId) ?? 0
+              : state?.readAt ? 0 : 1;
+            if (!threadMessageCount && !threadUnreadCount) return msg;
             return {
               ...msg,
               latestMessageId: msg.id,
-              threadMessageCount,
-              threadLatestIndex: threadMessageCount,
-              threadLabel: `Sistema ${threadMessageCount} de ${threadMessageCount} mensajes`,
+              threadMessageCount: threadMessageCount ?? undefined,
+              threadLatestIndex: threadMessageCount ?? undefined,
+              threadLabel: threadMessageCount ? `Sistema ${threadMessageCount} de ${threadMessageCount} mensajes` : null,
+              threadUnreadCount,
             };
           })(),
           labels: labelsByState.get(row.state_id) ?? [],
@@ -560,7 +604,7 @@ export class NotificationQueriesService {
             if (!msg?.senderUserId) return null;
             const sender = senderMap.get(msg.senderUserId);
             if (!sender) return null;
-            return { id: sender.id, name: sender.name, email: sender.email };
+            return { id: sender.id, name: sender.name, email: sender.email, avatarUrl: sender.avatarUrl ?? null };
           })(),
         }))
         .filter((item) => item.recipient !== null),

@@ -369,6 +369,7 @@ export class ProductCatalogInventoryLedgerTypeormRepository implements ProductCa
       .innerJoin(ProductCatalogStockItemEntity, "si", "si.stock_item_id = l.stock_item_id")
       .innerJoin(ProductCatalogSkuEntity, "sku", "sku.sku_id = si.sku_id")
       .innerJoin(ProductCatalogProductEntity, "p", "p.product_id = sku.product_id")
+      .leftJoin(ProductCatalogUnitEntity, "bu", "bu.unit_id = p.base_unit_id")
       .innerJoin(ProductCatalogInventoryDocumentEntity, "d", "d.doc_id = l.doc_id")
       .leftJoin("warehouses", "w", "w.id = l.warehouse_id")
       .leftJoin("users", "u_created", "u_created.user_id = d.created_by")
@@ -444,6 +445,8 @@ export class ProductCatalogInventoryLedgerTypeormRepository implements ProductCa
       .addSelect("p.name", "productName")
       .addSelect("p.type", "productType")
       .addSelect("p.base_unit_id", "baseUnitId")
+      .addSelect("bu.name", "baseUnitName")
+      .addSelect("bu.code", "baseUnitCode")
       .addSelect("u_created.user_id", "createdById")
       .addSelect("u_created.name", "createdByName")
       .addSelect("u_created.email", "createdByEmail")
@@ -468,6 +471,8 @@ export class ProductCatalogInventoryLedgerTypeormRepository implements ProductCa
         productName: string;
         productType: ProductCatalogProductType;
         baseUnitId: string | null;
+        baseUnitName: string | null;
+        baseUnitCode: string | null;
         createdById: string | null;
         createdByName: string | null;
         createdByEmail: string | null;
@@ -501,6 +506,14 @@ export class ProductCatalogInventoryLedgerTypeormRepository implements ProductCa
           type: row.productType,
           baseUnitId: row.baseUnitId ?? null,
         },
+        baseUnit:
+          row.baseUnitId && row.baseUnitName && row.baseUnitCode
+            ? {
+                id: row.baseUnitId,
+                name: row.baseUnitName,
+                code: row.baseUnitCode,
+              }
+            : null,
         user: userId
           ? {
               id: userId,

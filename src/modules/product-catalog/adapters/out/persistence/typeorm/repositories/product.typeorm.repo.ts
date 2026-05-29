@@ -392,6 +392,9 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
           baseUnit: row.baseUnit
             ? row.baseUnit.name
             : null,
+          baseUnitCode: row.baseUnit
+            ? row.baseUnit.code
+            : null,
           isActive: product.isActive,
         };  
       }),

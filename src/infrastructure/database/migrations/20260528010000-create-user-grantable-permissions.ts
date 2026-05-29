@@ -15,6 +15,23 @@ export class CreateUserGrantablePermissions20260528010000 implements MigrationIn
     `);
 
     await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS permissions (
+        permission_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        code varchar NOT NULL UNIQUE,
+        name varchar NOT NULL,
+        description varchar NULL,
+        module varchar NULL,
+        resource varchar NULL,
+        action varchar NULL,
+        type varchar NOT NULL DEFAULT 'action',
+        is_system boolean NOT NULL DEFAULT true,
+        is_active boolean NOT NULL DEFAULT true,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+
+    await queryRunner.query(`
       DO $$
       BEGIN
         IF NOT EXISTS (

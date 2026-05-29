@@ -39,6 +39,7 @@ import { RemoveAvatarUseCase } from 'src/modules/users/application/use-cases/rem
 import { UpdateUserManagementScopeUseCase } from 'src/modules/users/application/use-cases/update-user-management-scope.usecase';
 import { PermissionsGuard } from 'src/modules/access-control/adapters/in/guards/permissions.guard';
 import { RequirePermissions } from 'src/modules/access-control/adapters/in/decorators/require-permissions.decorator';
+import { CompanyConfiguredGuard } from 'src/shared/utilidades/guards/company-configured.guard';
 import { IMAGE_PROCESSOR, ImageProcessor } from 'src/shared/application/ports/image-processor.port';
 import { FILE_STORAGE, FileStorage } from 'src/shared/application/ports/file-storage.port';
 import { ImageProcessingError } from 'src/shared/application/errors/image-processing.error';
@@ -76,7 +77,7 @@ export class UsersController {
   ) {}
 
   @Post('create')
-  @UseGuards(JwtAuthGuard, PermissionsGuard, CsrfGuard)
+  @UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard, CsrfGuard)
   @RequirePermissions('users.create')
   create(@Body() dto: CreateUserDto, @CurrentUser() user: { role?: RoleType | null; id: string }) {
     return this.createUserUseCase.execute(dto, { role: user.role, userId: user.id });
@@ -137,7 +138,7 @@ export class UsersController {
   }
 
   @Patch(':id/management-scope')
-  @UseGuards(JwtAuthGuard, PermissionsGuard, CsrfGuard)
+  @UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard, CsrfGuard)
   @RequirePermissions('users.assign_permissions')
   updateManagementScope(
     @Param('id') id: string,
@@ -164,7 +165,7 @@ export class UsersController {
   }
 
   @Patch(':id/role')
-  @UseGuards(JwtAuthGuard, PermissionsGuard, CsrfGuard)
+  @UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard, CsrfGuard)
   @RequirePermissions('users.assign_roles')
   updateRole(
     @Param('id') id: string,
@@ -183,14 +184,14 @@ export class UsersController {
   }
 
   @Patch('delete/:id')
-  @UseGuards(JwtAuthGuard, PermissionsGuard, CsrfGuard)
+  @UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard, CsrfGuard)
   @RequirePermissions('users.delete')
   remove(@Param('id') id: string, @CurrentUser() user: { role?: RoleType | null; id: string }) {
     return this.deleteUserUseCase.execute(id, { role: user.role, userId: user.id });
   }
 
   @Patch('restore/:id')
-  @UseGuards(JwtAuthGuard, PermissionsGuard, CsrfGuard)
+  @UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard, CsrfGuard)
   @RequirePermissions('users.restore')
   restore(@Param('id') id: string, @CurrentUser() user: { role?: RoleType | null; id: string }) {
     return this.restoreUserUseCase.execute(id, { role: user.role, userId: user.id });

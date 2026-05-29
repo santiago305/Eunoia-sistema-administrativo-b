@@ -1,4 +1,4 @@
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { MessageEntity } from '../../adapters/out/persistence/typeorm/entities/message.entity';
 import { MessageRecipientEntity } from '../../adapters/out/persistence/typeorm/entities/message-recipient.entity';
@@ -315,6 +315,261 @@ describe('NotificationsService replies', () => {
     });
 
     expect(savedMessage?.subject).toBe('Reporte original');
+  });
+});
+
+describe('NotificationsService drafts', () => {
+  const userId = '7dc2492a-6613-46db-8339-d213d5ea6dda';
+
+  const createDraftService = (overrides: {
+    messageRepository?: Record<string, unknown>;
+    messageThreadRepository?: Record<string, unknown>;
+    messageContentService?: Record<string, unknown>;
+    messageAuditService?: Record<string, unknown>;
+  } = {}) => {
+    const messageRepository = overrides.messageRepository ?? {
+      findOne: jest.fn(),
+      save: jest.fn((value) => Promise.resolve(value)),
+      create: jest.fn((value) => value),
+    };
+    const messageThreadRepository = overrides.messageThreadRepository ?? {
+      save: jest.fn((value) => Promise.resolve({ ...value, id: 'thread-1' })),
+      create: jest.fn((value) => value),
+    };
+    const messageContentService = overrides.messageContentService ?? {
+      normalizeHtmlBody: jest.fn((value) => value),
+      toBodyText: jest.fn((value) => String(value).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()),
+    };
+    const messageAuditService = overrides.messageAuditService ?? {
+      createAuditLog: jest.fn(),
+    };
+
+    const service = new NotificationsService(
+      {} as any,
+      messageRepository as any,
+      {} as any,
+      messageThreadRepository as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      { ensureCanAccessModule: jest.fn() } as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      messageContentService as any,
+      {} as any,
+      messageAuditService as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+    );
+
+    return { service, messageRepository, messageThreadRepository };
+  };
+
+  it('rejects creating an empty draft unless it is reserved for an attachment upload', async () => {
+    const { service, messageThreadRepository } = createDraftService();
+
+    await expect(
+      service.createDraft({
+        userId,
+        recipients: '',
+        subject: '',
+        bodyHtml: '<p></p>',
+        bodyJson: {},
+        originModule: 'corporate',
+      }),
+    ).rejects.toThrow(new BadRequestException('EMPTY_DRAFT_NOT_ALLOWED'));
+
+    expect((messageThreadRepository.save as jest.Mock)).not.toHaveBeenCalled();
+  });
+
+  it('replaces controlled draft metadata instead of keeping stale attachment and label ids', async () => {
+    const draft = {
+      id: 'draft-1',
+      createdByUserId: userId,
+      isDraft: true,
+      status: 'DRAFT',
+      subject: 'Viejo',
+      bodyHtml: '<p>Viejo</p>',
+      bodyText: 'Viejo',
+      bodyJson: {
+        custom: 'keep',
+        draftRecipients: 'old@example.com',
+        draftAttachmentIds: ['old-att'],
+        draftSelectedLabelIds: ['old-label'],
+        draftPendingAttachment: true,
+      },
+      draftExpiresAt: new Date(Date.now() + 60_000),
+      threadId: 'thread-1',
+    };
+    const messageRepository = {
+      findOne: jest.fn().mockResolvedValue(draft),
+      save: jest.fn(async (value) => value),
+    };
+    const { service } = createDraftService({ messageRepository });
+
+    const result = await service.updateDraft({
+      userId,
+      draftId: 'draft-1',
+      recipients: 'new@example.com',
+      subject: 'Nuevo',
+      bodyHtml: '<p>Nuevo</p>',
+      bodyJson: {
+        draftAttachmentIds: ['new-att'],
+        draftSelectedLabelIds: [],
+      },
+    });
+
+    expect(result.draft.bodyJson).toMatchObject({
+      custom: 'keep',
+      draftRecipients: 'new@example.com',
+      draftAttachmentIds: ['new-att'],
+      draftSelectedLabelIds: [],
+    });
+    expect((result.draft.bodyJson as Record<string, unknown>).draftPendingAttachment).toBeUndefined();
+    expect((result.draft.bodyJson as Record<string, unknown>).draftAttachmentIds).not.toContain('old-att');
+  });
+
+  it('hard deletes the draft inside a transaction and purges draft attachments', async () => {
+    const draft = {
+      id: 'draft-delete-1',
+      createdByUserId: userId,
+      isDraft: true,
+      status: 'DRAFT',
+      threadId: 'thread-1',
+    };
+    const messageRepoInTx = {
+      findOne: jest.fn().mockResolvedValue(draft),
+      delete: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
+    const manager = {
+      getRepository: jest.fn((entity: unknown) => {
+        if (entity === MessageEntity) return messageRepoInTx;
+        throw new Error('UNEXPECTED_REPOSITORY');
+      }),
+    };
+    const dataSource = {
+      transaction: jest.fn(async (callback: (txManager: unknown) => Promise<unknown>) => callback(manager)),
+    };
+    const notificationAttachmentsService = {
+      purgeDraftAttachments: jest.fn().mockResolvedValue({ deleted: 2 }),
+    };
+    const messageAuditService = {
+      createAuditLog: jest.fn(),
+    };
+
+    const service = new NotificationsService(
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      dataSource as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      notificationAttachmentsService as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      messageAuditService as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+    );
+
+    const result = await service.deleteDraft(userId, draft.id);
+
+    expect(dataSource.transaction).toHaveBeenCalledTimes(1);
+    expect(notificationAttachmentsService.purgeDraftAttachments).toHaveBeenCalledWith(
+      userId,
+      draft.id,
+      manager,
+    );
+    expect(messageRepoInTx.delete).toHaveBeenCalledWith({ id: draft.id });
+    expect(messageAuditService.createAuditLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'DRAFT_DISCARDED',
+        actorUserId: userId,
+        messageId: draft.id,
+        threadId: draft.threadId,
+      }),
+      manager,
+    );
+    expect(result).toEqual({
+      id: draft.id,
+      deleted: true,
+      purgedAttachmentCount: 2,
+    });
+  });
+
+  it('throws DRAFT_NOT_FOUND when transactional draft lookup fails', async () => {
+    const messageRepoInTx = {
+      findOne: jest.fn().mockResolvedValue(null),
+      delete: jest.fn(),
+    };
+    const manager = {
+      getRepository: jest.fn((entity: unknown) => {
+        if (entity === MessageEntity) return messageRepoInTx;
+        throw new Error('UNEXPECTED_REPOSITORY');
+      }),
+    };
+    const dataSource = {
+      transaction: jest.fn(async (callback: (txManager: unknown) => Promise<unknown>) => callback(manager)),
+    };
+    const notificationAttachmentsService = {
+      purgeDraftAttachments: jest.fn(),
+    };
+
+    const service = new NotificationsService(
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      dataSource as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      notificationAttachmentsService as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      { createAuditLog: jest.fn() } as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+    );
+
+    await expect(service.deleteDraft(userId, 'missing-draft')).rejects.toThrow(
+      new NotFoundException('DRAFT_NOT_FOUND'),
+    );
+    expect(notificationAttachmentsService.purgeDraftAttachments).not.toHaveBeenCalled();
   });
 });
 

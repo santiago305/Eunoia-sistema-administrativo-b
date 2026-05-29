@@ -10,6 +10,7 @@ export interface ProductCatalogProductListItem {
   brand: string | null;
   baseUnitId: string | null;
   baseUnit?: string | null;
+  baseUnitCode?: string | null;
   isActive: boolean;
   skuCount: number;
   inventoryTotal: number;

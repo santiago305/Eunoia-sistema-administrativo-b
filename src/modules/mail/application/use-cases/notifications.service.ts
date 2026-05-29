@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, EntityManager, IsNull, Repository } from 'typeorm';
 import { User } from 'src/modules/users/adapters/out/persistence/typeorm/entities/user.entity';
 import { MessageEntity } from '../../adapters/out/persistence/typeorm/entities/message.entity';
 import { MessageRecipientEntity } from '../../adapters/out/persistence/typeorm/entities/message-recipient.entity';
@@ -128,7 +128,7 @@ export class NotificationsService {
     const senders = senderIds.length
       ? await this.userRepository.find({
           where: senderIds.map((id) => ({ id })),
-          select: ['id', 'name', 'email'],
+          select: ['id', 'name', 'email', 'avatarUrl'],
         })
       : [];
     const recipients = messageIds.length
@@ -186,7 +186,46 @@ export class NotificationsService {
       threadMessageCount: threadMessages.length,
       threadLatestIndex: isGroupedSystemThread ? index + 1 : threadMessages.length,
       threadLabel: isGroupedSystemThread ? `Sistema ${index + 1} de ${threadMessages.length} mensajes` : null,
+      threadUnreadCount: (recipientsByMessage.get(threadMessage.id) ?? []).filter(
+        (state) => state.userId === userId && !state.readAt && !state.permanentlyHiddenAt,
+      ).length,
     }));
+  }
+
+  private async markThreadMessagesAsReadForUser(userId: string, message: MessageEntity) {
+    const threadMessages = message.threadId
+      ? await this.messageRepository.find({ where: { threadId: message.threadId } })
+      : [message];
+    const messageIds = threadMessages.map((item) => item.id);
+    if (!messageIds.length) return null;
+
+    const unreadStates = await this.messageUserStateRepository.find({
+      where: messageIds.map((messageId) => ({
+        messageId,
+        userId,
+        readAt: IsNull(),
+        permanentlyHiddenAt: IsNull(),
+      })),
+    });
+    if (!unreadStates.length) return null;
+
+    const readAt = new Date();
+    unreadStates.forEach((state) => {
+      state.readAt = readAt;
+      state.openedAt = readAt;
+    });
+    await this.messageUserStateRepository.save(unreadStates);
+    await Promise.all(
+      unreadStates.map((state) =>
+        this.messageAuditService.createAuditLog({
+          action: 'MESSAGE_READ',
+          actorUserId: userId,
+          messageId: state.messageId,
+          threadId: state.threadId,
+        }),
+      ),
+    );
+    return readAt;
   }
 
   async getAllowedNotificationModules(userId: string) {
@@ -1088,6 +1127,55 @@ export class NotificationsService {
     });
   }
 
+  private hasMeaningfulDraftBodyJson(node: unknown): boolean {
+    if (!node || typeof node !== 'object') return false;
+    const current = node as Record<string, unknown>;
+    if (current.draftPendingAttachment === true) return true;
+    if (Array.isArray(current.draftAttachmentIds) && current.draftAttachmentIds.some((item) => typeof item === 'string' && item.trim())) return true;
+    if (Array.isArray(current.draftSelectedLabelIds) && current.draftSelectedLabelIds.some((item) => typeof item === 'string' && item.trim())) return true;
+    if (typeof current.text === 'string' && current.text.trim()) return true;
+    if (current.type === 'image') return true;
+    if (Array.isArray(current.content)) return current.content.some((item) => this.hasMeaningfulDraftBodyJson(item));
+    return false;
+  }
+
+  private hasMeaningfulDraftPayload(input: {
+    recipients?: string;
+    subject?: string;
+    bodyHtml?: string;
+    bodyJson?: Record<string, unknown>;
+  }) {
+    if (input.recipients?.trim() || input.subject?.trim()) return true;
+    if (this.messageContentService.toBodyText(input.bodyHtml ?? '').trim()) return true;
+    return this.hasMeaningfulDraftBodyJson(input.bodyJson);
+  }
+
+  private buildDraftBodyJson(
+    inputBodyJson?: Record<string, unknown>,
+    recipients?: string,
+    previousBodyJson?: Record<string, unknown> | null,
+  ) {
+    const controlledKeys = [
+      'draftRecipients',
+      'draftCcRecipients',
+      'draftBccRecipients',
+      'draftAttachmentIds',
+      'draftSelectedLabelIds',
+      'draftPendingAttachment',
+    ];
+    const next: Record<string, unknown> = { ...(previousBodyJson ?? {}) };
+    if (inputBodyJson) {
+      controlledKeys.forEach((key) => {
+        delete next[key];
+      });
+      Object.assign(next, inputBodyJson);
+    }
+    if (typeof recipients === 'string') {
+      next.draftRecipients = recipients;
+    }
+    return next;
+  }
+
   async createDraft(input: {
     userId: string;
     recipients?: string;
@@ -1098,6 +1186,9 @@ export class NotificationsService {
   }) {
     const originModule = normalizeOriginModule(input.originModule, ORIGIN_MODULE.CORPORATE);
     await this.ensureCanAccessModule(input.userId, originModule);
+    if (!this.hasMeaningfulDraftPayload(input)) {
+      throw new BadRequestException('EMPTY_DRAFT_NOT_ALLOWED');
+    }
     const now = new Date();
     const draftExpiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
     const thread = await this.messageThreadRepository.save(
@@ -1124,7 +1215,7 @@ export class NotificationsService {
         subject: input.subject?.trim() || '(Sin asunto)',
         bodyHtml: this.messageContentService.normalizeHtmlBody(input.bodyHtml ?? ''),
         bodyText: this.messageContentService.toBodyText(input.bodyHtml ?? ''),
-        bodyJson: { ...(input.bodyJson ?? {}), draftRecipients: input.recipients ?? '' },
+        bodyJson: this.buildDraftBodyJson(input.bodyJson ?? {}, input.recipients),
         status: 'DRAFT',
         isDraft: true,
         draftExpiresAt,
@@ -1162,18 +1253,7 @@ export class NotificationsService {
       draft.bodyHtml = this.messageContentService.normalizeHtmlBody(input.bodyHtml);
       draft.bodyText = this.messageContentService.toBodyText(input.bodyHtml);
     }
-    if (typeof input.recipients === 'string') {
-      draft.bodyJson = {
-        ...(draft.bodyJson ?? {}),
-        draftRecipients: input.recipients,
-      };
-    }
-    if (input.bodyJson && typeof input.bodyJson === 'object') {
-      draft.bodyJson = {
-        ...(draft.bodyJson ?? {}),
-        ...input.bodyJson,
-      };
-    }
+    draft.bodyJson = this.buildDraftBodyJson(input.bodyJson, input.recipients, draft.bodyJson);
     const now = new Date();
     draft.updatedAt = now;
     draft.draftExpiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -1189,23 +1269,49 @@ export class NotificationsService {
   }
 
   async deleteDraft(userId: string, draftId: string) {
-    const draft = await this.messageRepository.findOne({
-      where: { id: draftId, createdByUserId: userId, isDraft: true, status: 'DRAFT' },
+    return this.dataSource.transaction(async (manager) => {
+      const messageRepo = manager.getRepository(MessageEntity);
+      const draft = await messageRepo.findOne({
+        where: { id: draftId, createdByUserId: userId, isDraft: true, status: 'DRAFT' },
+      });
+      if (!draft) throw new NotFoundException('DRAFT_NOT_FOUND');
+
+      const purgedAttachments = await this.notificationAttachmentsService.purgeDraftAttachments(
+        userId,
+        draft.id,
+        manager,
+      );
+      await messageRepo.delete({ id: draft.id });
+      await this.messageAuditService.createAuditLog(
+        {
+          action: 'DRAFT_DISCARDED',
+          actorUserId: userId,
+          messageId: draft.id,
+          threadId: draft.threadId,
+          metadata: {
+            draftDeleted: true,
+            purgedAttachmentCount: purgedAttachments.deleted,
+          },
+        },
+        manager,
+      );
+
+      return {
+        id: draft.id,
+        deleted: true,
+        purgedAttachmentCount: purgedAttachments.deleted,
+      };
     });
-    if (!draft) throw new NotFoundException('DRAFT_NOT_FOUND');
-    draft.isDraft = false;
-    draft.draftExpiresAt = null;
-    const saved = await this.messageRepository.save(draft);
-    await this.messageAuditService.createAuditLog({
-      action: 'DRAFT_DISCARDED',
-      actorUserId: userId,
-      messageId: saved.id,
-      threadId: saved.threadId,
-    });
-    return saved;
   }
 
-  async sendDraft(userId: string, draftId: string, recipientsRaw?: string, attachmentIds: string[] = []) {
+  async sendDraft(userId: string, draftId: string, input: {
+    recipientsRaw?: string;
+    to?: string[] | string;
+    cc?: string[] | string;
+    bcc?: string[] | string;
+    attachmentIds?: string[];
+    labelIds?: string[];
+  } = {}) {
     const draft = await this.messageRepository.findOne({
       where: { id: draftId, createdByUserId: userId, isDraft: true, status: 'DRAFT' },
     });
@@ -1213,9 +1319,20 @@ export class NotificationsService {
     if (draft.draftExpiresAt && draft.draftExpiresAt.getTime() < Date.now()) {
       throw new BadRequestException('DRAFT_EXPIRED');
     }
-    const draftRecipients = String((draft.bodyJson as Record<string, unknown> | null)?.draftRecipients ?? '').trim();
+    const draftBodyJson = (draft.bodyJson as Record<string, unknown> | null) ?? {};
+    const draftRecipients = String(draftBodyJson.draftRecipients ?? '').trim();
+    const draftCcRecipients = String(draftBodyJson.draftCcRecipients ?? '').trim();
+    const draftBccRecipients = String(draftBodyJson.draftBccRecipients ?? '').trim();
+    const draftSelectedLabelIds = Array.isArray(draftBodyJson.draftSelectedLabelIds)
+      ? draftBodyJson.draftSelectedLabelIds.filter((item): item is string => typeof item === 'string' && Boolean(item.trim()))
+      : [];
+    const labelIds = Array.from(new Set([...(input.labelIds ?? []), ...draftSelectedLabelIds].filter(Boolean)));
+    const attachmentIds = input.attachmentIds ?? [];
     const { recipients: resolvedRecipients } = await this.messageRecipientsResolverService.resolveRecipientsByBucketsOrFail({
-      recipients: (recipientsRaw ?? '').trim() || draftRecipients,
+      to: input.to,
+      cc: input.cc ?? draftCcRecipients,
+      bcc: input.bcc ?? draftBccRecipients,
+      recipients: (input.recipientsRaw ?? '').trim() || draftRecipients,
     });
     const txResult = await this.dataSource.transaction(async (manager) => {
       const messageRepo = manager.getRepository(MessageEntity);
@@ -1236,7 +1353,7 @@ export class NotificationsService {
         }),
       );
       const savedRecipients = await recipientRepo.save(recipients);
-      await this.messageUserStatesService.createMessageUserStates(
+      const states = await this.messageUserStatesService.createMessageUserStates(
         {
           message: sent,
           senderUserId: userId,
@@ -1244,6 +1361,10 @@ export class NotificationsService {
         },
         manager,
       );
+      const senderState = states.find((state) => state.userId === userId && state.relationType === 'SENDER');
+      if (senderState) {
+        await this.notificationLabelsService.assignLabelsToState(senderState.id, userId, labelIds, manager);
+      }
       await this.notificationAttachmentsService.linkAttachmentsToMessage(userId, sent.id, attachmentIds, draftId, manager);
       await this.mailStorageQuotaService.ensureAttachmentRefsForUsers({
         attachmentIds,
@@ -1339,7 +1460,7 @@ export class NotificationsService {
       const sender = ownMessage.senderUserId
         ? await this.userRepository.findOne({
             where: { id: ownMessage.senderUserId },
-            select: ['id', 'name', 'email'],
+            select: ['id', 'name', 'email', 'avatarUrl'],
           })
         : null;
       const recipients = await this.messageUserStateRepository.find({ where: { messageId: ownMessage.id } });
@@ -1359,6 +1480,11 @@ export class NotificationsService {
             where: labelAssignments.map((assignment) => ({ id: assignment.labelId })),
           })
         : [];
+      const threadReadAt = await this.markThreadMessagesAsReadForUser(userId, ownMessage);
+      if (threadReadAt && senderState && !senderState.readAt) {
+        senderState.readAt = threadReadAt;
+        senderState.openedAt = threadReadAt;
+      }
       const thread = await this.buildThreadItems(ownMessage, userId);
       return {
         recipient: senderState,
@@ -1396,7 +1522,7 @@ export class NotificationsService {
     const sender = message.senderUserId
       ? await this.userRepository.findOne({
           where: { id: message.senderUserId },
-          select: ['id', 'name', 'email'],
+          select: ['id', 'name', 'email', 'avatarUrl'],
         })
       : null;
     const recipients = await this.messageUserStateRepository.find({ where: { messageId: message.id } });
@@ -1412,16 +1538,10 @@ export class NotificationsService {
         })
       : [];
 
-    if (!recipient.readAt) {
-      recipient.readAt = new Date();
-      recipient.openedAt = new Date();
-      await this.messageUserStateRepository.save(recipient);
-      await this.messageAuditService.createAuditLog({
-        action: 'MESSAGE_READ',
-        actorUserId: userId,
-        messageId: message.id,
-        threadId: message.threadId,
-      });
+    const threadReadAt = await this.markThreadMessagesAsReadForUser(userId, message);
+    if (threadReadAt && !recipient.readAt) {
+      recipient.readAt = threadReadAt;
+      recipient.openedAt = threadReadAt;
     }
 
     const thread = await this.buildThreadItems(message, userId);
