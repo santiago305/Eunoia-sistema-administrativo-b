@@ -23,7 +23,12 @@ const createQueryBuilderMock = () => {
       calls.push({ method: 'addSelect', args });
       return qb;
     }),
+    groupBy: jest.fn((...args: unknown[]) => {
+      calls.push({ method: 'groupBy', args });
+      return qb;
+    }),
     getCount: jest.fn(async () => 0),
+    getRawMany: jest.fn(async () => []),
     getRawOne: jest.fn(async () => ({
       inbox: '0',
       starred: '0',
@@ -101,5 +106,34 @@ describe('NotificationQueriesService sent view', () => {
         status: 'SCHEDULED',
       },
     });
+  });
+
+  it('counts unread thread messages for the current user without sent-view filtering', async () => {
+    const { qb, calls } = createQueryBuilderMock();
+    const service = new NotificationQueriesService(
+      {} as any,
+      { createQueryBuilder: jest.fn(() => qb) } as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+    );
+
+    await (service as any).getThreadUnreadCountMap('user-1', ['thread-1'], 'sent');
+
+    const joinSql = calls
+      .filter((call) => call.method === 'innerJoin')
+      .map((call) => String(call.args[2]))
+      .join('\n');
+    const whereSql = calls
+      .filter((call) => call.method === 'andWhere')
+      .map((call) => String(call.args[0]))
+      .join('\n');
+
+    expect(joinSql).toContain('mus_unread.message_id = m.id AND mus_unread.user_id = :userId');
+    expect(whereSql).toContain('mus_unread.read_at IS NULL');
+    expect(whereSql).toContain('mus_unread.permanently_hidden_at IS NULL');
+    expect(whereSql).toContain('m.is_draft = false');
+    expect(whereSql).not.toContain('mus_unread.is_in_sent = true');
   });
 });

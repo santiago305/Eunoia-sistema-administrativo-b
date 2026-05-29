@@ -456,7 +456,14 @@ export class NotificationsController {
   @RequirePermissions('notifications.manage')
   @Post('drafts/:id/send')
   sendDraft(@CurrentUser() user: { id: string }, @Param('id') id: string, @Body() body: SendDraftDto) {
-    return this.notificationsService.sendDraft(user.id, id, body.recipients, body.attachmentIds ?? []);
+    return this.notificationsService.sendDraft(user.id, id, {
+      recipientsRaw: body.recipients,
+      to: body.to,
+      cc: body.cc,
+      bcc: body.bcc,
+      attachmentIds: body.attachmentIds ?? [],
+      labelIds: body.labelIds ?? [],
+    });
   }
 
   @Throttle({ default: { limit: 40, ttl: 60_000 } })

@@ -318,6 +318,128 @@ describe('NotificationsService replies', () => {
   });
 });
 
+describe('NotificationsService drafts', () => {
+  const userId = '7dc2492a-6613-46db-8339-d213d5ea6dda';
+
+  const createDraftService = (overrides: {
+    messageRepository?: Record<string, unknown>;
+    messageThreadRepository?: Record<string, unknown>;
+    messageContentService?: Record<string, unknown>;
+    messageAuditService?: Record<string, unknown>;
+  } = {}) => {
+    const messageRepository = overrides.messageRepository ?? {
+      findOne: jest.fn(),
+      save: jest.fn((value) => Promise.resolve(value)),
+      create: jest.fn((value) => value),
+    };
+    const messageThreadRepository = overrides.messageThreadRepository ?? {
+      save: jest.fn((value) => Promise.resolve({ ...value, id: 'thread-1' })),
+      create: jest.fn((value) => value),
+    };
+    const messageContentService = overrides.messageContentService ?? {
+      normalizeHtmlBody: jest.fn((value) => value),
+      toBodyText: jest.fn((value) => String(value).replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()),
+    };
+    const messageAuditService = overrides.messageAuditService ?? {
+      createAuditLog: jest.fn(),
+    };
+
+    const service = new NotificationsService(
+      {} as any,
+      messageRepository as any,
+      {} as any,
+      messageThreadRepository as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      { ensureCanAccessModule: jest.fn() } as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      messageContentService as any,
+      {} as any,
+      messageAuditService as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+    );
+
+    return { service, messageRepository, messageThreadRepository };
+  };
+
+  it('rejects creating an empty draft unless it is reserved for an attachment upload', async () => {
+    const { service, messageThreadRepository } = createDraftService();
+
+    await expect(
+      service.createDraft({
+        userId,
+        recipients: '',
+        subject: '',
+        bodyHtml: '<p></p>',
+        bodyJson: {},
+        originModule: 'corporate',
+      }),
+    ).rejects.toThrow(new BadRequestException('EMPTY_DRAFT_NOT_ALLOWED'));
+
+    expect((messageThreadRepository.save as jest.Mock)).not.toHaveBeenCalled();
+  });
+
+  it('replaces controlled draft metadata instead of keeping stale attachment and label ids', async () => {
+    const draft = {
+      id: 'draft-1',
+      createdByUserId: userId,
+      isDraft: true,
+      status: 'DRAFT',
+      subject: 'Viejo',
+      bodyHtml: '<p>Viejo</p>',
+      bodyText: 'Viejo',
+      bodyJson: {
+        custom: 'keep',
+        draftRecipients: 'old@example.com',
+        draftAttachmentIds: ['old-att'],
+        draftSelectedLabelIds: ['old-label'],
+        draftPendingAttachment: true,
+      },
+      draftExpiresAt: new Date(Date.now() + 60_000),
+      threadId: 'thread-1',
+    };
+    const messageRepository = {
+      findOne: jest.fn().mockResolvedValue(draft),
+      save: jest.fn(async (value) => value),
+    };
+    const { service } = createDraftService({ messageRepository });
+
+    const result = await service.updateDraft({
+      userId,
+      draftId: 'draft-1',
+      recipients: 'new@example.com',
+      subject: 'Nuevo',
+      bodyHtml: '<p>Nuevo</p>',
+      bodyJson: {
+        draftAttachmentIds: ['new-att'],
+        draftSelectedLabelIds: [],
+      },
+    });
+
+    expect(result.draft.bodyJson).toMatchObject({
+      custom: 'keep',
+      draftRecipients: 'new@example.com',
+      draftAttachmentIds: ['new-att'],
+      draftSelectedLabelIds: [],
+    });
+    expect((result.draft.bodyJson as Record<string, unknown>).draftPendingAttachment).toBeUndefined();
+    expect((result.draft.bodyJson as Record<string, unknown>).draftAttachmentIds).not.toContain('old-att');
+  });
+});
+
 describe('NotificationsService module label configs', () => {
   const createServiceForModuleConfig = () => {
     const messageLabelRepository = {
