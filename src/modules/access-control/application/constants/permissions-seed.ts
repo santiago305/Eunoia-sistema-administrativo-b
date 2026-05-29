@@ -10,8 +10,6 @@ type PermissionSeedItem = {
 
 export const PERMISSIONS_SEED: PermissionSeedItem[] = [
   { code: 'page.dashboard.view', name: 'Ver dashboard', description: 'Acceso a la vista principal', module: 'dashboard', resource: 'dashboard', action: 'view', type: 'page' },
-  { code: 'page.profile.view', name: 'Ver perfil', description: 'Acceso a pantalla de perfil', module: 'profile', resource: 'profile', action: 'view', type: 'page' },
-  { code: 'page.sessions.view', name: 'Ver sesiones', description: 'Acceso a pantalla de sesiones', module: 'sessions', resource: 'sessions', action: 'view', type: 'page' },
   { code: 'page.users.view', name: 'Ver usuarios', description: 'Acceso a pantalla de usuarios', module: 'users', resource: 'users', action: 'view', type: 'page' },
   { code: 'page.roles.view', name: 'Ver roles', description: 'Acceso a pantalla de roles', module: 'roles', resource: 'roles', action: 'view', type: 'page' },
   { code: 'page.company.view', name: 'Ver empresa', description: 'Acceso a pantalla de empresa', module: 'company', resource: 'company', action: 'view', type: 'page' },
@@ -118,8 +116,6 @@ export const ROLE_PERMISSION_SEED: Record<string, string[]> = {
   admin: ['*'],
   moderator: [
     'page.dashboard.view',
-    'page.profile.view',
-    'page.sessions.view',
     'page.users.view',
     'page.purchases.view',
     'page.catalog.view',
@@ -184,8 +180,6 @@ export const ROLE_PERMISSION_SEED: Record<string, string[]> = {
   ],
   adviser: [
     'page.dashboard.view',
-    'page.profile.view',
-    'page.sessions.view',
     'page.purchases.view',
     'catalog.read',
     'warehouses.read',
@@ -214,8 +208,6 @@ export const ROLE_PERMISSION_SEED: Record<string, string[]> = {
   ],
   purchasing_manager: [
     'page.dashboard.view',
-    'page.profile.view',
-    'page.sessions.view',
     'page.purchases.view',
     'page.notifications.view',
     'page.clients.view',
