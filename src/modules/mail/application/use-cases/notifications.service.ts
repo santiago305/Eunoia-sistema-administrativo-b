@@ -128,7 +128,7 @@ export class NotificationsService {
     const senders = senderIds.length
       ? await this.userRepository.find({
           where: senderIds.map((id) => ({ id })),
-          select: ['id', 'name', 'email'],
+          select: ['id', 'name', 'email', 'avatarUrl'],
         })
       : [];
     const recipients = messageIds.length
@@ -1339,7 +1339,7 @@ export class NotificationsService {
       const sender = ownMessage.senderUserId
         ? await this.userRepository.findOne({
             where: { id: ownMessage.senderUserId },
-            select: ['id', 'name', 'email'],
+            select: ['id', 'name', 'email', 'avatarUrl'],
           })
         : null;
       const recipients = await this.messageUserStateRepository.find({ where: { messageId: ownMessage.id } });
@@ -1396,7 +1396,7 @@ export class NotificationsService {
     const sender = message.senderUserId
       ? await this.userRepository.findOne({
           where: { id: message.senderUserId },
-          select: ['id', 'name', 'email'],
+          select: ['id', 'name', 'email', 'avatarUrl'],
         })
       : null;
     const recipients = await this.messageUserStateRepository.find({ where: { messageId: message.id } });

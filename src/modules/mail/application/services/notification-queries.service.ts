@@ -501,7 +501,7 @@ export class NotificationQueriesService {
       : [];
     const threadCountMap = new Map(threadCountRows.map((row) => [row.threadId, Number(row.total ?? 0)]));
     const senderIds = Array.from(new Set(messages.map((m) => m.senderUserId).filter(Boolean))) as string[];
-    const senders = senderIds.length ? await this.userRepository.find({ where: senderIds.map((id) => ({ id })), select: ['id', 'name', 'email'] }) : [];
+    const senders = senderIds.length ? await this.userRepository.find({ where: senderIds.map((id) => ({ id })), select: ['id', 'name', 'email', 'avatarUrl'] }) : [];
     const senderMap = new Map(senders.map((sender) => [sender.id, sender]));
 
     const stateMap = new Map(states.map((state) => [state.id, state]));
@@ -560,7 +560,7 @@ export class NotificationQueriesService {
             if (!msg?.senderUserId) return null;
             const sender = senderMap.get(msg.senderUserId);
             if (!sender) return null;
-            return { id: sender.id, name: sender.name, email: sender.email };
+            return { id: sender.id, name: sender.name, email: sender.email, avatarUrl: sender.avatarUrl ?? null };
           })(),
         }))
         .filter((item) => item.recipient !== null),
