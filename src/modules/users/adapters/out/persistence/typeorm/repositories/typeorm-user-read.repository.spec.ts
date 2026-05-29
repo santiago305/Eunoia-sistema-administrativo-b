@@ -3,8 +3,14 @@ import { TypeormUserReadRepository } from './typeorm-user-read.repository';
 import { User as OrmUser } from '../entities/user.entity';
 
 describe('TypeormUserReadRepository', () => {
-  const makeRepo = (overrides?: Partial<Repository<OrmUser>>) => {
-    return new TypeormUserReadRepository(overrides as Repository<OrmUser>);
+  const makeRepo = (
+    userOverrides?: Partial<Repository<OrmUser>>,
+    manageableRoleOverrides?: Partial<Repository<any>>,
+  ) => {
+    return new TypeormUserReadRepository(
+      userOverrides as Repository<OrmUser>,
+      manageableRoleOverrides as Repository<any>,
+    );
   };
 
   it('findPublicByEmail returns mapped shape', async () => {

@@ -5,8 +5,16 @@ import { Email } from '../../../../../domain/value-objects/email.vo';
 import { UserMapper } from '../mappers/user.mapper';
 
 describe('TypeormUserRepository', () => {
-  const makeRepo = (overrides?: Partial<Repository<OrmUser>>) => {
-    return new TypeormUserRepository(overrides as Repository<OrmUser>);
+  const makeRepo = (
+    userOverrides?: Partial<Repository<OrmUser>>,
+    manageableRoleOverrides?: Partial<Repository<any>>,
+    roleOverrides?: Partial<Repository<any>>,
+  ) => {
+    return new TypeormUserRepository(
+      userOverrides as Repository<OrmUser>,
+      manageableRoleOverrides as Repository<any>,
+      roleOverrides as Repository<any>,
+    );
   };
 
   it('findById returns domain user when found', async () => {
