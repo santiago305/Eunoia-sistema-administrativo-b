@@ -2,6 +2,7 @@ import { GenerateInventoryDocumentPdfInput } from "../dtos/inventory-document/in
 import { GenerateInvoiceInput } from "../dtos/invoice/input/generate-invoice.input";
 import { GenerateProductionOrderPdfInput } from "../dtos/production-order/input/generate-production-order.input";
 import { GeneratePurchaseOrderPdfInput } from "../dtos/purchase-order/input/generate-purchase-order.input";
+import { GenerateSaleOrderPdfInput } from "../dtos/sale-order/input/generate-sale-order.input";
 
 export class PdfGeneratedHttpMapper {
   static toInvoiceInput(dto: GenerateInvoiceInput): GenerateInvoiceInput {
@@ -18,5 +19,9 @@ export class PdfGeneratedHttpMapper {
 
   static toInventoryDocumentInput(docId: string): GenerateInventoryDocumentPdfInput {
     return { docId };
+  }
+
+  static toSaleOrderInput(saleOrderId: string): GenerateSaleOrderPdfInput {
+    return { saleOrderId };
   }
 }

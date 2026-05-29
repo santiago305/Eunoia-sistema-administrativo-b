@@ -4,12 +4,14 @@ import { InvoicePdf } from "./templates/invoice-pdf";
 import { PurchaseOrderPdf } from "./templates/purchase-order-pdf";
 import { ProductionOrderPdf } from "./templates/production-order-pdf";
 import { InventoryDocumentPdf } from "./templates/inventory-document-pdf";
+import { SaleOrderPdf } from "./templates/sale-order-pdf";
 import {
   InvoicePdfData,
   PdfRendererPort,
   PurchaseOrderPdfData,
   ProductionOrderPdfData,
   InventoryDocumentPdfData,
+  SaleOrderPdfData,
 } from "src/modules/pdf-generated/domain/ports/pdf-renderer.port";
 
 @Injectable()
@@ -28,6 +30,10 @@ export class ReactPdfRenderer implements PdfRendererPort {
 
   async renderInventoryDocument(data: InventoryDocumentPdfData): Promise<Buffer> {
     return renderToBuffer(InventoryDocumentPdf({ data }));
+  }
+
+  async renderSaleOrder(data: SaleOrderPdfData): Promise<Buffer> {
+    return renderToBuffer(SaleOrderPdf({ data }));
   }
 }
 

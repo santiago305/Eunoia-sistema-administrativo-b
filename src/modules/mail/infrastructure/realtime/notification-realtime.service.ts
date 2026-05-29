@@ -35,6 +35,12 @@ export class NotificationRealtimeService {
     });
   }
 
+  emitToAllConnected(event: string, payload: unknown) {
+    this.sockets.forEach((socket) => {
+      socket.emit(event, payload);
+    });
+  }
+
   connectedUsersCount() {
     return this.userSockets.size;
   }
