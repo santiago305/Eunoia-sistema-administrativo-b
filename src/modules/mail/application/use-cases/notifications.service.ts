@@ -1269,20 +1269,39 @@ export class NotificationsService {
   }
 
   async deleteDraft(userId: string, draftId: string) {
-    const draft = await this.messageRepository.findOne({
-      where: { id: draftId, createdByUserId: userId, isDraft: true, status: 'DRAFT' },
+    return this.dataSource.transaction(async (manager) => {
+      const messageRepo = manager.getRepository(MessageEntity);
+      const draft = await messageRepo.findOne({
+        where: { id: draftId, createdByUserId: userId, isDraft: true, status: 'DRAFT' },
+      });
+      if (!draft) throw new NotFoundException('DRAFT_NOT_FOUND');
+
+      const purgedAttachments = await this.notificationAttachmentsService.purgeDraftAttachments(
+        userId,
+        draft.id,
+        manager,
+      );
+      await messageRepo.delete({ id: draft.id });
+      await this.messageAuditService.createAuditLog(
+        {
+          action: 'DRAFT_DISCARDED',
+          actorUserId: userId,
+          messageId: draft.id,
+          threadId: draft.threadId,
+          metadata: {
+            draftDeleted: true,
+            purgedAttachmentCount: purgedAttachments.deleted,
+          },
+        },
+        manager,
+      );
+
+      return {
+        id: draft.id,
+        deleted: true,
+        purgedAttachmentCount: purgedAttachments.deleted,
+      };
     });
-    if (!draft) throw new NotFoundException('DRAFT_NOT_FOUND');
-    draft.isDraft = false;
-    draft.draftExpiresAt = null;
-    const saved = await this.messageRepository.save(draft);
-    await this.messageAuditService.createAuditLog({
-      action: 'DRAFT_DISCARDED',
-      actorUserId: userId,
-      messageId: saved.id,
-      threadId: saved.threadId,
-    });
-    return saved;
   }
 
   async sendDraft(userId: string, draftId: string, input: {

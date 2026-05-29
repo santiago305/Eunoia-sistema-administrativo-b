@@ -47,6 +47,7 @@ describe('NotificationAttachmentsService', () => {
         assertCanAddBytes: jest.fn(),
         trackAttachmentOwnership: jest.fn(),
         syncAttachmentRefsToMessage: jest.fn(),
+        releaseAttachmentRefs: jest.fn(),
       } as any,
     );
   });
@@ -108,5 +109,39 @@ describe('NotificationAttachmentsService', () => {
       }),
     ).rejects.toThrow(new BadRequestException('ATTACHMENT_SIGNATURE_MISMATCH'));
     expect(fs.writeFile).not.toHaveBeenCalled();
+  });
+
+  it('purges draft attachments by moving binaries, releasing refs and deleting rows', async () => {
+    const attachments = [
+      { id: 'att-1', draftId, uploadedByUserId: userId, storedName: 'one.pdf', storageKey: 'c:/tmp/one.pdf' },
+      { id: 'att-2', draftId, uploadedByUserId: userId, storedName: 'two.pdf', storageKey: 'c:/tmp/two.pdf' },
+    ];
+    attachmentRepository.find.mockResolvedValue(attachments);
+    attachmentRepository.delete.mockResolvedValue({ affected: 2 });
+
+    const moveSpy = jest
+      .spyOn(service as any, 'moveAttachmentToDeletedArea')
+      .mockResolvedValue(undefined);
+
+    const result = await service.purgeDraftAttachments(userId, draftId);
+
+    expect(moveSpy).toHaveBeenCalledTimes(2);
+    expect((service as any).mailStorageQuotaService.releaseAttachmentRefs).toHaveBeenCalledWith({
+      attachmentIds: ['att-1', 'att-2'],
+      userId,
+      manager: undefined,
+    });
+    expect(attachmentRepository.delete).toHaveBeenCalledWith(['att-1', 'att-2']);
+    expect(result).toEqual({ deleted: 2 });
+  });
+
+  it('does nothing when draft has no attachments to purge', async () => {
+    attachmentRepository.find.mockResolvedValue([]);
+
+    const result = await service.purgeDraftAttachments(userId, draftId);
+
+    expect((service as any).mailStorageQuotaService.releaseAttachmentRefs).not.toHaveBeenCalled();
+    expect(attachmentRepository.delete).not.toHaveBeenCalled();
+    expect(result).toEqual({ deleted: 0 });
   });
 });

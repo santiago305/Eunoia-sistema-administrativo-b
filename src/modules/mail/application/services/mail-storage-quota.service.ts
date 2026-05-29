@@ -220,6 +220,37 @@ export class MailStorageQuotaService {
       .execute();
   }
 
+  async releaseAttachmentRefs(input: {
+    attachmentIds: string[];
+    userId?: string;
+    manager?: EntityManager;
+  }) {
+    const refRepo = input.manager
+      ? input.manager.getRepository(MailAttachmentUserRefEntity)
+      : this.attachmentUserRefRepository;
+    const attachmentIds = Array.from(new Set((input.attachmentIds ?? []).filter(Boolean)));
+    if (!attachmentIds.length) return 0;
+
+    const now = new Date();
+    const query = refRepo
+      .createQueryBuilder()
+      .update(MailAttachmentUserRefEntity)
+      .set({
+        countsStorage: false,
+        deletedAt: now,
+        permanentlyDeletedAt: now,
+      })
+      .where('attachment_id IN (:...attachmentIds)', { attachmentIds })
+      .andWhere('permanently_deleted_at IS NULL');
+
+    if (input.userId) {
+      query.andWhere('user_id = :userId', { userId: input.userId });
+    }
+
+    const result = await query.execute();
+    return result.affected ?? 0;
+  }
+
   async getStorageSummary(userId: string, manager?: EntityManager) {
     const [quota, usedBytes] = await Promise.all([
       this.getQuota(userId, manager),
