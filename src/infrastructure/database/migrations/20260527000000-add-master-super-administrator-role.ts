@@ -4,22 +4,7 @@ export class AddMasterSuperAdministratorRole20260527000000 implements MigrationI
   name = 'AddMasterSuperAdministratorRole20260527000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`
-      INSERT INTO roles (description, deleted)
-      SELECT 'super_administrator', false
-      WHERE NOT EXISTS (
-        SELECT 1 FROM roles WHERE description = 'super_administrator'
-      );
-    `);
-
-    await queryRunner.query(`
-      UPDATE users
-      SET role_id = role_master.role_id
-      FROM roles role_master
-      WHERE role_master.description = 'super_administrator'
-        AND users.is_super_admin = true
-        AND users.role_id IS DISTINCT FROM role_master.role_id;
-    `);
+    // No-op: no se debe crear automaticamente el rol super_administrator.
   }
 
   public async down(): Promise<void> {

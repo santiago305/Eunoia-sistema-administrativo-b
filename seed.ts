@@ -61,7 +61,6 @@ import { MessageEntity } from 'src/modules/mail/adapters/out/persistence/typeorm
 import { MessageThread } from 'src/modules/mail/adapters/out/persistence/typeorm/entities/message-thread.entity';
 import { MessageUserStateEntity } from 'src/modules/mail/adapters/out/persistence/typeorm/entities/message-user-state.entity';
 import { MessageRecipientEntity } from 'src/modules/mail/adapters/out/persistence/typeorm/entities/message-recipient.entity';
-import { seedSystemNotificationsForUser } from 'src/modules/mail/infrastructure/seed/system-notifications.seeder';
 
 const entities = [
   Role,
@@ -173,8 +172,6 @@ dataSource
     await seedPaymentMethods(dataSource);
     await seedSuppliers(dataSource, 10);
     await seedSupplierSkus(dataSource);
-    await seedSystemNotificationsForUser(dataSource);
-
     await dataSource.destroy();
     console.log('Seeding completo!');
   })
