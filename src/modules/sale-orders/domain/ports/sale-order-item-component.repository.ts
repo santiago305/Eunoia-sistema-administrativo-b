@@ -19,6 +19,9 @@ export interface SaleOrderItemComponentRepository {
 
   listBySaleOrderItemIds(saleOrderItemIds: string[], tx?: TransactionContext): Promise<SaleOrderItemComponent[]>;
   deleteBySaleOrderItemIds(saleOrderItemIds: string[], tx?: TransactionContext): Promise<void>;
-
+  findComponentsBySaleOrderItemId(
+    saleOrderItemId: string,
+    tx?: TransactionContext,
+  ): Promise<SaleOrderComponentsOutput>;
   findComponentsBySaleOrderId(saleOrderId: string, tx?: TransactionContext): Promise<SaleOrderComponentsOutput>;
 }

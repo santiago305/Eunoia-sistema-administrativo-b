@@ -12,7 +12,7 @@ export class GetSaleOrderItemComponentsUsecase {
     private readonly componentRepo: SaleOrderItemComponentRepository,
   ) {}
 
-  async execute(input: { saleOrderId: string }): Promise<SaleOrderComponentsOutput> {
-    return this.componentRepo.findComponentsBySaleOrderId(input.saleOrderId);
+  async execute(input: { saleOrderItemId: string }): Promise<SaleOrderComponentsOutput> {
+    return this.componentRepo.findComponentsBySaleOrderItemId(input.saleOrderItemId);
   }
 }
