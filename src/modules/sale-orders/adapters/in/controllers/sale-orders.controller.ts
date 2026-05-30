@@ -211,7 +211,7 @@ export class SaleOrdersController {
 
   @Get("items/:itemId/components")
   listItemComponents(@Param("itemId", ParseUUIDPipe) saleOrderItemId: string) {
-    return this.getItemComponents.execute({ saleOrderId: saleOrderItemId });
+    return this.getItemComponents.execute({ saleOrderItemId: saleOrderItemId });
   }
 
   @Get("search-state")

@@ -32,6 +32,18 @@ export class HttpSaleOrderItemComponentDto {
   @IsOptional()
   @IsUUID()
   referencePackItemId?: string;
+  
+  @IsOptional()
+  @IsString()
+  skuLabel?: string;
+
+  @IsOptional()
+  @IsString()
+  skuCode?: string;
+
+  @IsOptional()
+  @IsString()
+  skuImage?: string;
 }
 
 export class HttpSaleOrderItemDto {
@@ -139,4 +151,5 @@ export class HttpSaleOrderCreateDto {
   @ValidateNested({ each: true })
   @Type(() => HttpSalePaymentDto)
   payments?: HttpSalePaymentDto[];
+  
 }

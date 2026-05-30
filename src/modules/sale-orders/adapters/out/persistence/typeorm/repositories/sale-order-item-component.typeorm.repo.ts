@@ -4,10 +4,11 @@ import { EntityManager, In, Repository } from "typeorm";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
 import { SaleOrderItemComponentEntity } from "../entities/sale-order-item-component.entity";
+import { SaleOrderItemEntity } from "../entities/sale-order-item.entity";
 import { SaleOrderItemComponentRepository } from "src/modules/sale-orders/domain/ports/sale-order-item-component.repository";
 import { SaleOrderItemComponent } from "src/modules/sale-orders/domain/entities/sale-order-item-component";
 import { ProductCatalogSkuEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku.entity";
-import { SaleOrderItemEntity } from "../entities/sale-order-item.entity";
+import { ProductCatalogSkuAttributeValueEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku-attribute-value.entity";
 import { SaleOrderComponentsOutput } from "src/modules/sale-orders/application/dtos/sale-order-search/output/sale-order-search-state.output";
 
 @Injectable()
@@ -21,6 +22,7 @@ export class SaleOrderItemComponentTypeormRepository implements SaleOrderItemCom
     if (tx && (tx as TypeormTransactionContext).manager) {
       return (tx as TypeormTransactionContext).manager;
     }
+
     return this.repo.manager;
   }
 
@@ -37,12 +39,113 @@ export class SaleOrderItemComponentTypeormRepository implements SaleOrderItemCom
     );
   }
 
+  private async getSkusWithAttributes(
+    manager: EntityManager,
+    skuIds: string[],
+  ): Promise<{
+    skuById: Map<string, ProductCatalogSkuEntity>;
+    attributesBySkuId: Map<
+      string,
+      Array<{
+        code: string;
+        name: string;
+        value: string;
+      }>
+    >;
+  }> {
+    const skus = skuIds.length
+      ? await manager.getRepository(ProductCatalogSkuEntity).find({
+          where: { id: In(skuIds) },
+        })
+      : [];
+
+    const attributeValues = skuIds.length
+      ? await manager.getRepository(ProductCatalogSkuAttributeValueEntity).find({
+          where: { skuId: In(skuIds) },
+          relations: {
+            attribute: true,
+          },
+          order: {
+            skuId: "ASC",
+          },
+        })
+      : [];
+
+    const skuById = new Map(skus.map((row) => [row.id, row]));
+
+    const attributesBySkuId = new Map<
+      string,
+      Array<{
+        code: string;
+        name: string;
+        value: string;
+      }>
+    >();
+
+    for (const attrValue of attributeValues) {
+      const current = attributesBySkuId.get(attrValue.skuId) ?? [];
+
+      current.push({
+        code: attrValue.attribute?.code ?? "",
+        name: attrValue.attribute?.name ?? "",
+        value: attrValue.value ?? "",
+      });
+
+      attributesBySkuId.set(attrValue.skuId, current);
+    }
+
+    return {
+      skuById,
+      attributesBySkuId,
+    };
+  }
+
+  private mapComponentOutput(
+    row: SaleOrderItemComponentEntity,
+    skuById: Map<string, ProductCatalogSkuEntity>,
+    attributesBySkuId: Map<
+      string,
+      Array<{
+        code: string;
+        name: string;
+        value: string;
+      }>
+    >,
+  ) {
+    const sku = skuById.get(row.skuId);
+
+    if (!sku) {
+      throw new BadRequestException("SKU no encontrado para componente");
+    }
+
+    return {
+      id: row.id,
+      saleOrderItemId: row.saleOrderItemId,
+      sku: {
+        id: sku.id,
+        name: sku.name,
+        backendSku: sku.backendSku,
+        customSku: sku.customSku,
+        barcode: sku.barcode,
+        image: sku.image,
+        attributes: attributesBySkuId.get(sku.id) ?? [],
+      },
+      referencePackItemId: row.referencePackItemId ?? null,
+      quantity: Number(row.quantity ?? 0),
+      unitPrice: Number(row.unitPrice ?? 0),
+      total: Number(row.total ?? 0),
+      createdAt: row.createdAt.toISOString(),
+    };
+  }
+
   async bulkCreate(
     input: Parameters<SaleOrderItemComponentRepository["bulkCreate"]>[0],
     tx?: TransactionContext,
   ): Promise<SaleOrderItemComponent[]> {
     if (!input.length) return [];
+
     const manager = this.getManager(tx);
+
     const saved = await manager.getRepository(SaleOrderItemComponentEntity).save(
       input.map((row) => ({
         saleOrderItemId: row.saleOrderItemId,
@@ -53,27 +156,67 @@ export class SaleOrderItemComponentTypeormRepository implements SaleOrderItemCom
         total: row.total,
       })),
     );
+
     return saved.map((row) => this.toDomain(row));
   }
 
-  async listBySaleOrderItemIds(saleOrderItemIds: string[], tx?: TransactionContext): Promise<SaleOrderItemComponent[]> {
+  async listBySaleOrderItemIds(
+    saleOrderItemIds: string[],
+    tx?: TransactionContext,
+  ): Promise<SaleOrderItemComponent[]> {
     if (!saleOrderItemIds.length) return [];
+
     const manager = this.getManager(tx);
+
     const rows = await manager.getRepository(SaleOrderItemComponentEntity).find({
       where: { saleOrderItemId: In(saleOrderItemIds) },
       order: { saleOrderItemId: "ASC", createdAt: "ASC" },
     });
+
     return rows.map((row) => this.toDomain(row));
   }
 
   async deleteBySaleOrderItemIds(saleOrderItemIds: string[], tx?: TransactionContext): Promise<void> {
     if (!saleOrderItemIds.length) return;
+
     const manager = this.getManager(tx);
-    await manager.getRepository(SaleOrderItemComponentEntity).delete({ saleOrderItemId: In(saleOrderItemIds) });
+
+    await manager.getRepository(SaleOrderItemComponentEntity).delete({
+      saleOrderItemId: In(saleOrderItemIds),
+    });
+  }
+
+  async findComponentsBySaleOrderItemId(
+    saleOrderItemId: string,
+    tx?: TransactionContext,
+  ): Promise<SaleOrderComponentsOutput> {
+    const manager = this.getManager(tx);
+
+    const components = await manager.getRepository(SaleOrderItemComponentEntity).find({
+      where: { saleOrderItemId },
+      order: { createdAt: "ASC" },
+    });
+
+    const skuIds = Array.from(new Set(components.map((row) => row.skuId).filter(Boolean)));
+
+    const { skuById, attributesBySkuId } = await this.getSkusWithAttributes(manager, skuIds);
+
+    const outputs = components.map((row) => this.mapComponentOutput(row, skuById, attributesBySkuId));
+
+    return {
+      saleOrderId: saleOrderItemId,
+      items: [
+        {
+          saleOrderItemId,
+          components: outputs,
+        },
+      ],
+    };
   }
 
   async findComponentsBySaleOrderId(saleOrderId: string, tx?: TransactionContext): Promise<SaleOrderComponentsOutput> {
     const manager = this.getManager(tx);
+
     const items = await manager.getRepository(SaleOrderItemEntity).find({
       where: { saleOrderId },
       order: { createdAt: "ASC" },
@@ -92,34 +235,9 @@ export class SaleOrderItemComponentTypeormRepository implements SaleOrderItemCom
 
     const skuIds = Array.from(new Set(components.map((row) => row.skuId).filter(Boolean)));
 
-    const skus = skuIds.length ? await manager.getRepository(ProductCatalogSkuEntity).find({ where: { id: In(skuIds) } }) : [];
+    const { skuById, attributesBySkuId } = await this.getSkusWithAttributes(manager, skuIds);
 
-    const skuById = new Map(skus.map((row) => [row.id, row]));
-
-    const outputs = components.map((row) => {
-      const sku = skuById.get(row.skuId);
-
-      if (!sku) {
-        throw new BadRequestException("SKU no encontrado para componente");
-      }
-
-      return {
-        id: row.id,
-        saleOrderItemId: row.saleOrderItemId,
-        sku: {
-          id: sku.id,
-          name: sku.name,
-          backendSku: sku.backendSku,
-          customSku: sku.customSku,
-          barcode: sku.barcode,
-        },
-        referencePackItemId: row.referencePackItemId ?? null,
-        quantity: Number(row.quantity ?? 0),
-        unitPrice: Number(row.unitPrice ?? 0),
-        total: Number(row.total ?? 0),
-        createdAt: row.createdAt.toISOString(),
-      };
-    });
+    const outputs = components.map((row) => this.mapComponentOutput(row, skuById, attributesBySkuId));
 
     const byItemId = new Map<string, typeof outputs>();
 
