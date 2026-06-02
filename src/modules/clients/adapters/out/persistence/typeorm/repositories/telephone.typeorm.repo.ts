@@ -41,6 +41,15 @@ export class TelephoneTypeormRepository implements TelephoneRepository {
     const row = await this.getRepo(tx).findOne({ where: { id: telephoneId } });
     return row ? this.toDomain(row) : null;
   }
+
+  async findByNumber(number: string, tx?: TransactionContext): Promise<Telephone | null> {
+    const normalizedNumber = number.trim();
+    if (!normalizedNumber) return null;
+
+    const row = await this.getRepo(tx).findOne({ where: { number: normalizedNumber } });
+    return row ? this.toDomain(row) : null;
+  }
+
   async deleteByClientId(clientId: string, tx?: TransactionContext): Promise<void> {
     await this.getRepo(tx).delete({ clientId });
   }

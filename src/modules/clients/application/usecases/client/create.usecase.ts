@@ -5,6 +5,7 @@ import {
   InternalServerErrorException,
 } from "@nestjs/common";
 import { CLOCK, ClockPort } from "src/shared/application/ports/clock.port";
+import { TransactionContext } from "src/shared/domain/ports/transaction-context.port";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { UBIGEO_REPOSITORY, UbigeoRepository } from "src/modules/ubigeo/domain/ports/ubigeo.repository";
 import { ClientFactory } from "src/modules/clients/domain/factories/client.factory";
@@ -38,6 +39,12 @@ export class CreateClientUsecase {
 
   async execute(input: CreateClientInput): Promise<{ message: string }> {
     return this.uow.runInTransaction(async (tx) => {
+      await this.executeInTransaction(input, tx);
+      return { message: "Cliente creado con exito" };
+    });
+  }
+
+  async executeInTransaction(input: CreateClientInput, tx: TransactionContext): Promise<string> {
       const docNumber = input.docNumber?.trim() ?? "";
       if (input.docType !== ClientDocType.NONE) {
         if (!docNumber) {
@@ -125,7 +132,6 @@ export class CreateClientUsecase {
         await this.telephoneRepo.create(tel, tx);
       }
 
-      return { message: "Cliente creado con exito" };
-    });
+      return client.clientId.value;
   }
 }

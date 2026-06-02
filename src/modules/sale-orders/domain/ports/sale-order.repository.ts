@@ -16,7 +16,7 @@ export interface SaleOrderRepository {
     input: {
       serie: string | null;
       correlative: number | null;
-      warehouseId: string;
+      warehouseId: string | null;
       clientId: string;
       agencyDetail?: string | null;
       sourceId?: string | null;
@@ -40,7 +40,7 @@ export interface SaleOrderRepository {
   update(
     input: {
       saleOrderId: string;
-      warehouseId: string;
+      warehouseId: string | null;
       clientId: string;
       agencyDetail?: string | null;
       sourceId?: string | null;

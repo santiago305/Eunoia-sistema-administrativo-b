@@ -13,6 +13,7 @@ export interface ClientRepository {
     docNumber: string,
     tx?: TransactionContext,
   ): Promise<Client | null>;
+  findByReference(reference: string, tx?: TransactionContext): Promise<Client | null>;
   create(client: Client, tx?: TransactionContext): Promise<Client>;
   update(
     params: {

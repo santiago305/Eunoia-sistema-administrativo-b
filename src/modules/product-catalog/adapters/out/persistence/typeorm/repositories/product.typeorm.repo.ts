@@ -229,6 +229,14 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
     return row ? this.toDomain(row) : null;
   }
 
+  async findByName(name: string): Promise<ProductCatalogProduct | null> {
+    const normalizedName = name.trim();
+    if (!normalizedName) return null;
+
+    const row = await this.repo.findOne({ where: { name: normalizedName } });
+    return row ? this.toDomain(row) : null;
+  }
+
   /**
    * This TypeScript function retrieves product details and associated SKUs from a database and returns
    * them in a structured format.

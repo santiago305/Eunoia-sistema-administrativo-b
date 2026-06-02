@@ -18,7 +18,7 @@ export class SaleOrder {
     public readonly id: string,
     public readonly serie: string | null,
     public readonly correlative: number | null,
-    public readonly warehouseId: string,
+    public readonly warehouseId: string | null,
     public readonly clientId: string,
     public readonly agencyDetail: string | null,
     public readonly sourceId: string | null,

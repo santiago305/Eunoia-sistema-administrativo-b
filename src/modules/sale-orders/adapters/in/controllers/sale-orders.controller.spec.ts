@@ -21,6 +21,7 @@ import { AddSaleOrderPaymentUsecase } from "src/modules/sale-orders/application/
 import { DeleteSaleOrderPaymentUsecase } from "src/modules/sale-orders/application/usecases/sale-order/delete-payment.usecase";
 import { ListSaleOrderPaymentsUsecase } from "src/modules/sale-orders/application/usecases/sale-order/list-payments.usecase";
 import { ConfirmSaleOrderDeliveryUsecase } from "src/modules/sale-orders/application/usecases/sale-order/confirm-delivery.usecase";
+import { CreateFromImportPreviewUseCase } from "src/modules/sale-orders/application/usecases/sale-order/create-from-import-preview.usecase";
 
 @Injectable()
 class TestJwtAuthGuard implements CanActivate {
@@ -51,6 +52,7 @@ describe("SaleOrdersController", () => {
   const addPayment = { execute: jest.fn() };
   const deletePayment = { execute: jest.fn() };
   const listPayments = { execute: jest.fn() };
+  const createFromImportPreview = { execute: jest.fn() };
   const realtimeService = { emitToAllConnected: jest.fn() };
 
   beforeEach(async () => {
@@ -65,6 +67,7 @@ describe("SaleOrdersController", () => {
     addPayment.execute.mockResolvedValue({ paymentId: "p1" });
     deletePayment.execute.mockResolvedValue({ deleted: true });
     listPayments.execute.mockResolvedValue([{ id: "p1" }]);
+    createFromImportPreview.execute.mockResolvedValue({ importedRows: 1, failedRows: 0, rows: [], errors: [] });
 
     const moduleRef = await Test.createTestingModule({
       controllers: [SaleOrdersController],
@@ -84,6 +87,7 @@ describe("SaleOrdersController", () => {
         { provide: AddSaleOrderPaymentUsecase, useValue: addPayment },
         { provide: DeleteSaleOrderPaymentUsecase, useValue: deletePayment },
         { provide: ListSaleOrderPaymentsUsecase, useValue: listPayments },
+        { provide: CreateFromImportPreviewUseCase, useValue: createFromImportPreview },
         { provide: NotificationRealtimeService, useValue: realtimeService },
       ],
     })
@@ -125,6 +129,30 @@ describe("SaleOrdersController", () => {
     );
   });
 
+  it("forwards import preview rows with current user", async () => {
+    await request(app.getHttpServer())
+      .post("/sale-orders/import-preview")
+      .send({ rows: [{ total: 120 }] })
+      .expect(201);
+
+    expect(createFromImportPreview.execute).toHaveBeenCalledWith({
+      rows: [{ total: 120 }],
+      userId: "user-1",
+    });
+  });
+
+  it("accepts import preview rows as direct array body", async () => {
+    await request(app.getHttpServer())
+      .post("/sale-orders/import-preview")
+      .send([{ total: 120 }])
+      .expect(201);
+
+    expect(createFromImportPreview.execute).toHaveBeenCalledWith({
+      rows: [{ total: 120 }],
+      userId: "user-1",
+    });
+  });
+
   it("returns search-state catalogs", async () => {
     const response = await request(app.getHttpServer()).get("/sale-orders/search-state").expect(200);
     expect(response.body).toHaveProperty("catalogs");
@@ -139,7 +167,7 @@ describe("SaleOrdersController", () => {
   it("forwards item id to item components usecase", async () => {
     const saleOrderItemId = "11111111-1111-4111-8111-111111111111";
     await request(app.getHttpServer()).get(`/sale-orders/items/${saleOrderItemId}/components`).expect(200);
-    expect(getItemComponents.execute).toHaveBeenCalledWith({ saleOrderId: saleOrderItemId });
+    expect(getItemComponents.execute).toHaveBeenCalledWith({ saleOrderItemId });
   });
 
   it("forwards payload to update usecase", async () => {

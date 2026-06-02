@@ -54,7 +54,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       row.id,
       row.serie ?? null,
       row.correlative ?? null,
-      row.warehouseId,
+      row.warehouseId ?? null,
       row.clientId,
       row.agencyDetail ?? null,
       row.sourceId ?? null,
@@ -89,7 +89,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     const saved = await manager.getRepository(SaleOrderEntity).save({
       serie: input.serie ?? null,
       correlative: input.correlative ?? null,
-      warehouseId: input.warehouseId,
+      warehouseId: input.warehouseId ?? null,
       clientId: input.clientId,
       agencyDetail: input.agencyDetail ?? null,
       sourceId: input.sourceId ?? null,
@@ -131,7 +131,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
 
     const saved = await repo.save({
       ...row,
-      warehouseId: input.warehouseId,
+      warehouseId: input.warehouseId ?? null,
       clientId: input.clientId,
       agencyDetail: input.agencyDetail ?? null,
       sourceId: input.sourceId ?? null,
@@ -573,7 +573,9 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         order: { createdAt: "ASC" },
       }),
       manager.getRepository(ClientEntity).findOne({ where: { id: row.clientId } }),
-      manager.getRepository(WarehouseEntity).findOne({ where: { id: row.warehouseId } }),
+      row.warehouseId
+        ? manager.getRepository(WarehouseEntity).findOne({ where: { id: row.warehouseId } })
+        : Promise.resolve(null),
       row.sourceId
         ? manager.getRepository(SourceEntity).findOne({ where: { id: row.sourceId } })
         : Promise.resolve(null),

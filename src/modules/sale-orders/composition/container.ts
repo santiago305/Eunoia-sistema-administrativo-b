@@ -30,6 +30,13 @@ import { ConfirmSaleOrderDeliveryUsecase } from "src/modules/sale-orders/applica
 import { ListSaleOrderPaymentsUsecase } from "src/modules/sale-orders/application/usecases/sale-order/list-payments.usecase";
 import { AddSaleOrderPaymentUsecase } from "src/modules/sale-orders/application/usecases/sale-order/add-payment.usecase";
 import { DeleteSaleOrderPaymentUsecase } from "src/modules/sale-orders/application/usecases/sale-order/delete-payment.usecase";
+import { CreateFromImportPreviewUseCase } from "src/modules/sale-orders/application/usecases/sale-order/create-from-import-preview.usecase";
+import { SaleOrderImportClientResolverService } from "src/modules/sale-orders/application/services/sale-order-import-client-resolver.service";
+import { SaleOrderImportRowNormalizerService } from "src/modules/sale-orders/application/services/sale-order-import-row-normalizer.service";
+import { SaleOrderImportSkuResolverService } from "src/modules/sale-orders/application/services/sale-order-import-sku-resolver.service";
+import { SaleOrderImportSourceResolverService } from "src/modules/sale-orders/application/services/sale-order-import-source-resolver.service";
+import { CreateClientUsecase } from "src/modules/clients/application/usecases/client/create.usecase";
+import { CreateSourceUsecase } from "src/modules/sources/application/usecases/source/create.usecase";
 
 export const saleOrdersModuleProviders = [
   { provide: SALE_ORDER_REPOSITORY, useClass: SaleOrderTypeormRepository },
@@ -50,6 +57,13 @@ export const saleOrdersModuleProviders = [
   ListSaleOrderPaymentsUsecase,
   AddSaleOrderPaymentUsecase,
   DeleteSaleOrderPaymentUsecase,
+  CreateFromImportPreviewUseCase,
+  SaleOrderImportClientResolverService,
+  SaleOrderImportRowNormalizerService,
+  SaleOrderImportSkuResolverService,
+  SaleOrderImportSourceResolverService,
+  CreateClientUsecase,
+  CreateSourceUsecase,
   GetSaleOrderComponentsUsecase,
   GetSaleOrderItemComponentsUsecase,
   GetSaleOrderSearchStateUsecase,
