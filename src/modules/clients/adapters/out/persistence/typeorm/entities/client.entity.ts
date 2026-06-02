@@ -20,7 +20,7 @@ export class ClientEntity {
   @Column({ name: "doc_number", type: "varchar", length: 60, nullable: true })
   docNumber?: string | null;
 
-  @Column({ type: "varchar", length: 120, nullable: true })
+  @Column({ type: "varchar", length: 120 , nullable: true })
   reference?: string | null;
 
   @Column({ type: "varchar", length: 300, nullable: true })
