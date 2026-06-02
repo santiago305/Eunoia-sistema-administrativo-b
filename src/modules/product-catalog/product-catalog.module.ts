@@ -38,6 +38,9 @@ import { PRODUCT_CATALOG_UNIT_REPOSITORY } from "./domain/ports/unit.repository"
 import { PRODUCT_CATALOG_EQUIVALENCE_REPOSITORY } from "./domain/ports/equivalence.repository";
 import { CreateProductCatalogDocumentSerieUseCase } from "./application/usecases/create-document-serie.usecase";
 import { GetActiveProductCatalogDocumentSerieUseCase } from "./application/usecases/get-active-document-series.usecase";
+import { CreateProductCatalogProduct } from "./application/usecases/create-product.usecase";
+import { CreateProductCatalogSku } from "./application/usecases/create-sku.usecase";
+import { CreateProductCatalogStockItem } from "./application/usecases/create-stock-item.usecase";
 import { SERIES_REPOSITORY } from "./integration/inventory/ports/document-series.repository.port";
 import { DOCUMENT_REPOSITORY } from "./integration/inventory/ports/document.repository.port";
 import { LEDGER_REPOSITORY } from "./integration/inventory/ports/ledger.repository.port";
@@ -142,6 +145,9 @@ import { AccessControlModule } from "src/modules/access-control/infrastructure/a
     STOCK_ITEM_REPOSITORY,
     RegisterProductCatalogInventoryMovement,
     ReserveProductCatalogMaterials,
+    CreateProductCatalogProduct,
+    CreateProductCatalogSku,
+    CreateProductCatalogStockItem,
     CreateProductCatalogDocumentSerieUseCase,
     GetActiveProductCatalogDocumentSerieUseCase,
   ],

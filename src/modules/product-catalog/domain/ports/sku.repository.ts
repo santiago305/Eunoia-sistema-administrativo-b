@@ -34,6 +34,7 @@ export interface ProductCatalogSkuRepository {
     productType?: ProductCatalogProductType;
     warehouseId?: string;
   }): Promise<{ items: ProductCatalogSkuWithAttributes[]; total: number }>;
+  findByCustomSku(customSku: string): Promise<ProductCatalogSkuWithAttributes | null>;
   findByProductId(productId: string): Promise<ProductCatalogSkuWithAttributes[]>;
   reserveNextBackendSku(): Promise<string>;
 }

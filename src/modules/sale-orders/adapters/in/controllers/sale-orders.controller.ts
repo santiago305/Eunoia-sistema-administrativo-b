@@ -25,6 +25,8 @@ import { DeleteSaleOrderPaymentUsecase } from "src/modules/sale-orders/applicati
 import { ListSaleOrderPaymentsUsecase } from "src/modules/sale-orders/application/usecases/sale-order/list-payments.usecase";
 import { AddSaleOrderPaymentDto } from "../dtos/add-sale-order-payment.dto";
 import { ConfirmSaleOrderDeliveryUsecase } from "src/modules/sale-orders/application/usecases/sale-order/confirm-delivery.usecase";
+import { CreateFromImportPreviewUseCase } from "src/modules/sale-orders/application/usecases/sale-order/create-from-import-preview.usecase";
+import { CreateSaleOrdersFromImportPreviewInput } from "src/modules/sale-orders/application/dtos/import-preview/create-sale-orders-from-preview.input";
 
 @Controller("sale-orders")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
@@ -45,6 +47,7 @@ export class SaleOrdersController {
     private readonly addPayment: AddSaleOrderPaymentUsecase,
     private readonly deletePayment: DeleteSaleOrderPaymentUsecase,
     private readonly listPayments: ListSaleOrderPaymentsUsecase,
+    private readonly createFromImportPreview: CreateFromImportPreviewUseCase,
     private readonly realtimeService: NotificationRealtimeService,
   ) {}
 
@@ -89,6 +92,20 @@ export class SaleOrdersController {
       user.id,
     );
   }
+
+  @Post("import-preview")
+  createFromPreview(
+    @Body() dto: CreateSaleOrdersFromImportPreviewInput | CreateSaleOrdersFromImportPreviewInput["rows"],
+    @CurrentUser() user: { id: string },
+  ) {
+    const rows = Array.isArray(dto) ? dto : dto.rows ?? [];
+
+    return this.createFromImportPreview.execute({
+      rows,
+      userId: user.id,
+    });
+  }
+
   @Patch(":saleOrderId/status")
   async updateStatus(
     @Param("saleOrderId") saleOrderId: string,

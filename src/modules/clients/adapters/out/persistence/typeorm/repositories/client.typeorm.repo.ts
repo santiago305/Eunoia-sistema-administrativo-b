@@ -74,6 +74,14 @@ export class ClientTypeormRepository implements ClientRepository {
     return row ? this.toDomain(row) : null;
   }
 
+  async findByReference(reference: string, tx?: TransactionContext): Promise<Client | null> {
+    const normalizedReference = reference.trim();
+    if (!normalizedReference) return null;
+
+    const row = await this.getRepo(tx).findOne({ where: { reference: normalizedReference } });
+    return row ? this.toDomain(row) : null;
+  }
+
   async create(client: Client, tx?: TransactionContext): Promise<Client> {
     const repo = this.getRepo(tx);
 

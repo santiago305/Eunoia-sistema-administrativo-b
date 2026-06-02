@@ -5,6 +5,7 @@ export const TELEPHONE_REPOSITORY = Symbol("TELEPHONE_REPOSITORY");
 
 export interface TelephoneRepository {
   findById(telephoneId: string, tx?: TransactionContext): Promise<Telephone | null>;
+  findByNumber(number: string, tx?: TransactionContext): Promise<Telephone | null>;
   listByClientId(clientId: string, tx?: TransactionContext): Promise<Telephone[]>;
   create(telephone: Telephone, tx?: TransactionContext): Promise<Telephone>;
   update(

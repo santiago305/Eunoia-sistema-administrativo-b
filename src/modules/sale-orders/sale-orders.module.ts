@@ -18,6 +18,8 @@ import { ProductCatalogSkuEntity } from "src/modules/product-catalog/adapters/ou
 import { saleOrdersModuleProviders } from "./composition/container";
 import { SaleOrdersController } from "./adapters/in/controllers/sale-orders.controller";
 import { ClientsModule } from "../clients/clients.module";
+import { SourcesModule } from "../sources/sources.module";
+import { UbigeoModule } from "../ubigeo/ubigeo.module";
 
 @Module({
   imports: [
@@ -39,6 +41,8 @@ import { ClientsModule } from "../clients/clients.module";
     ProductCatalogModule,
     MailModule,
     ClientsModule,
+    SourcesModule,
+    UbigeoModule,
   ],
   controllers: [SaleOrdersController],
   providers: [...saleOrdersModuleProviders],

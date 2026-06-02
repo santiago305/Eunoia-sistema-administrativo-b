@@ -215,6 +215,20 @@ export class ProductCatalogSkuTypeormRepository implements ProductCatalogSkuRepo
     return row ? this.toOutput(row) : null;
   }
 
+  async findByCustomSku(customSku: string): Promise<ProductCatalogSkuWithAttributes | null> {
+    const normalizedCustomSku = customSku.trim();
+    if (!normalizedCustomSku) return null;
+
+    const row = await this.repo
+      .createQueryBuilder("s")
+      .leftJoinAndSelect("s.product", "p")
+      .leftJoinAndSelect("p.baseUnit", "bu")
+      .where("s.custom_sku = :customSku", { customSku: normalizedCustomSku })
+      .getOne();
+
+    return row ? this.toOutput(row) : null;
+  }
+
   async list(params: {
     page?: number;
     limit?: number;

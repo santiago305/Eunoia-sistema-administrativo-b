@@ -51,8 +51,8 @@ export class SaleOrderEntity {
   @Column({ name: "source_id", type: "uuid", nullable: true })
   sourceId?: string | null;
 
-  @Column({ name: "warehouse_id", type: "uuid" })
-  warehouseId: string;
+  @Column({ name: "warehouse_id", type: "uuid", nullable: true })
+  warehouseId?: string | null;
 
   @Column({ name: "created_by", type: "uuid" })
   createdBy: string;
