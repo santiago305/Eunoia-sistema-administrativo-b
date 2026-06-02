@@ -15,6 +15,10 @@ import { DeliveryType } from "src/modules/sale-orders/domain/value-objects/deliv
 
 export class HttpSaleOrderItemComponentDto {
   @IsUUID()
+  @IsOptional()
+  id?: string;
+  
+  @IsUUID()
   skuId: string;
 
   @IsNumber()
@@ -47,6 +51,11 @@ export class HttpSaleOrderItemComponentDto {
 }
 
 export class HttpSaleOrderItemDto {
+
+  @IsUUID()
+  @IsOptional()
+  id?: string;
+
   @IsNumber()
   @Min(0.000001)
   quantity: number;
