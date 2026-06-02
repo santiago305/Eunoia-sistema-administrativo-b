@@ -11,6 +11,8 @@ import {
 } from "src/modules/product-catalog/domain/ports/inventory.repository";
 import { INVENTORY_LOCK, InventoryLock } from "src/modules/product-catalog/integration/inventory/ports/inventory-lock.port";
 import { DeliveryType } from "src/modules/sale-orders/domain/value-objects/delivery-type";
+import { AgendaStatus } from "src/modules/sale-orders/domain/value-objects/agenda-status";
+import { DeliveryStatus } from "src/modules/sale-orders/domain/value-objects/delivery-status";
 import { SALE_ORDER_REPOSITORY, SaleOrderRepository } from "src/modules/sale-orders/domain/ports/sale-order.repository";
 import { SALE_ORDER_ITEM_REPOSITORY, SaleOrderItemRepository } from "src/modules/sale-orders/domain/ports/sale-order-item.repository";
 import {
@@ -58,6 +60,9 @@ type UpdateSaleOrderInput = {
 
 type RequiredStockKey = `${string}:${string}`; // `${warehouseId}:${stockItemId}`
 
+const hasWarehouseId = (value: string | null | undefined): value is string =>
+  typeof value === "string" && value.trim().length > 0 && value !== "null";
+
 @Injectable()
 export class UpdateSaleOrderUsecase {
   constructor(
@@ -104,10 +109,12 @@ export class UpdateSaleOrderUsecase {
       };
 
       const oldRequiredByKey = new Map<RequiredStockKey, number>();
-      for (const c of existingComponents) {
-        const stockItemId = await getStockItemId(c.skuId);
-        const key = `${oldWarehouseId}:${stockItemId}` as RequiredStockKey;
-        oldRequiredByKey.set(key, (oldRequiredByKey.get(key) ?? 0) + Number(c.quantity ?? 0));
+      if (hasWarehouseId(oldWarehouseId)) {
+        for (const c of existingComponents) {
+          const stockItemId = await getStockItemId(c.skuId);
+          const key = `${oldWarehouseId}:${stockItemId}` as RequiredStockKey;
+          oldRequiredByKey.set(key, (oldRequiredByKey.get(key) ?? 0) + Number(c.quantity ?? 0));
+        }
       }
 
       if (!input.items?.length) throw new BadRequestException("Items requeridos");
@@ -315,12 +322,38 @@ export class UpdateSaleOrderUsecase {
         throw error;
       }
 
+      const toDateKey = (value: Date) =>
+        new Intl.DateTimeFormat("en-CA", {
+          timeZone: "America/Lima",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).format(value);
+
+      const todayKey = toDateKey(new Date());
+      const deliveryDateKey = input.deliveryDate ? input.deliveryDate.slice(0, 10) : null;
+      const isDeliveryTodayOrPast = !!deliveryDateKey && deliveryDateKey <= todayKey;
+
+      const agendaStatus = isDeliveryTodayOrPast ? AgendaStatus.PROGRAMMED : AgendaStatus.COORDINATED;
+      const deliveryStatus = isDeliveryTodayOrPast
+        ? input.deliveryType === DeliveryType.ABONADO_ENVIO
+          ? DeliveryStatus.WAITING
+          : input.deliveryType === DeliveryType.CONTRA_ENTREGA
+            ? DeliveryStatus.IN_PROGRESS
+            : null
+        : null;
+
+      const updatedWithStatuses = await this.saleOrderRepo.updateStatuses(
+        { saleOrderId: updated.id, agendaStatus, deliveryStatus },
+        tx,
+      );
+
       return {
-        orderId: updated.id,
-        serie: updated.serie ?? null,
-        correlative: updated.correlative ?? null,
-        agendaStatus: updated.agendaStatus,
-        deliveryStatus: updated.deliveryStatus ?? null,
+        orderId: updatedWithStatuses.id,
+        serie: updatedWithStatuses.serie ?? null,
+        correlative: updatedWithStatuses.correlative ?? null,
+        agendaStatus: updatedWithStatuses.agendaStatus,
+        deliveryStatus: updatedWithStatuses.deliveryStatus ?? null,
       };
     });
   }
