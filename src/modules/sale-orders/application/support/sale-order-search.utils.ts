@@ -14,9 +14,8 @@ import {
 type SearchCatalogMaps = {
   clients?: Map<string, string>;
   warehouses?: Map<string, string>;
-  agendaStatuses?: Map<string, string>;
-  deliveryStatuses?: Map<string, string>;
-  deliveryTypes?: Map<string, string>;
+  workflows?: Map<string, string>;
+  states?: Map<string, string>;
   paymentStatuses?: Map<string, string>;
 };
 
@@ -27,9 +26,8 @@ const FILTER_FIELD_ORDER: SaleOrderSearchField[] = [
   SaleOrderSearchFields.NUMBER,
   SaleOrderSearchFields.CLIENT_ID,
   SaleOrderSearchFields.WAREHOUSE_ID,
-  SaleOrderSearchFields.AGENDA_STATUS,
-  SaleOrderSearchFields.DELIVERY_STATUS,
-  SaleOrderSearchFields.DELIVERY_TYPE,
+  SaleOrderSearchFields.WORKFLOW_ID,
+  SaleOrderSearchFields.SALE_ORDER_STATE_ID,
   SaleOrderSearchFields.PAYMENT_STATUS,
   SaleOrderSearchFields.SCHEDULE_DATE,
   SaleOrderSearchFields.DELIVERY_DATE,
@@ -38,9 +36,8 @@ const FILTER_FIELD_ORDER: SaleOrderSearchField[] = [
 const CATALOG_FIELDS = new Set<SaleOrderSearchField>([
   SaleOrderSearchFields.CLIENT_ID,
   SaleOrderSearchFields.WAREHOUSE_ID,
-  SaleOrderSearchFields.AGENDA_STATUS,
-  SaleOrderSearchFields.DELIVERY_STATUS,
-  SaleOrderSearchFields.DELIVERY_TYPE,
+  SaleOrderSearchFields.WORKFLOW_ID,
+  SaleOrderSearchFields.SALE_ORDER_STATE_ID,
   SaleOrderSearchFields.PAYMENT_STATUS,
 ]);
 
@@ -69,9 +66,8 @@ const SEARCH_FIELD_LABELS: Record<SaleOrderSearchField, string> = {
   [SaleOrderSearchFields.NUMBER]: "Numero",
   [SaleOrderSearchFields.CLIENT_ID]: "Cliente",
   [SaleOrderSearchFields.WAREHOUSE_ID]: "Almacen",
-  [SaleOrderSearchFields.AGENDA_STATUS]: "Agenda",
-  [SaleOrderSearchFields.DELIVERY_STATUS]: "Entrega",
-  [SaleOrderSearchFields.DELIVERY_TYPE]: "Tipo entrega",
+  [SaleOrderSearchFields.WORKFLOW_ID]: "Flujo",
+  [SaleOrderSearchFields.SALE_ORDER_STATE_ID]: "Estado",
   [SaleOrderSearchFields.PAYMENT_STATUS]: "Pago",
   [SaleOrderSearchFields.SCHEDULE_DATE]: "F. Programada",
   [SaleOrderSearchFields.DELIVERY_DATE]: "F. Entrega",
@@ -92,24 +88,6 @@ const SEARCH_OPERATOR_LABELS: Record<SaleOrderSearchOperator, string> = {
 export const SALE_ORDER_PAYMENT_STATUS_SEARCH_OPTIONS: ListingSearchOptionOutput[] = [
   { id: SaleOrderPaymentStatusValues.PAID, label: "Pagado", keywords: ["pagado", "cancelado"] },
   { id: SaleOrderPaymentStatusValues.PENDING, label: "Pendiente", keywords: ["pendiente", "deuda"] },
-];
-
-export const SALE_ORDER_AGENDA_STATUS_SEARCH_OPTIONS: ListingSearchOptionOutput[] = [
-  { id: "COORDINATED", label: "Coordinado", keywords: ["coordinado", "coordinada"] },
-  { id: "PROGRAMMED", label: "Programado", keywords: ["programado", "programada"] },
-  { id: "CANCELED", label: "Cancelado", keywords: ["cancelado", "cancelada", "anulado"] },
-];
-
-export const SALE_ORDER_DELIVERY_STATUS_SEARCH_OPTIONS: ListingSearchOptionOutput[] = [
-  { id: "WAITING", label: "En espera", keywords: ["espera", "waiting"] },
-  { id: "IN_PROGRESS", label: "En progreso", keywords: ["progreso", "in progress"] },
-  { id: "DELIVERED", label: "Entregado", keywords: ["entregado", "delivered"] },
-  { id: "CANCELED", label: "Cancelado", keywords: ["cancelado", "cancelada", "anulado"] },
-];
-
-export const SALE_ORDER_DELIVERY_TYPE_SEARCH_OPTIONS: ListingSearchOptionOutput[] = [
-  { id: "CONTRA_ENTREGA", label: "Contra entrega", keywords: ["contra entrega"] },
-  { id: "ABONADO_ENVIO", label: "Abonado envio", keywords: ["abonado", "envio", "abono envio"] },
 ];
 
 export function normalizeSearchText(value: string | undefined | null) {
@@ -169,27 +147,6 @@ function sanitizeSearchRule(rule?: Partial<SaleOrderSearchRule> | null): SaleOrd
     const values = uniqueStrings(rule.values ?? (rule.value ? [rule.value] : undefined));
     if (!values.length) return null;
     const mode = normalizeRuleMode(rule.mode);
-
-    if (field === SaleOrderSearchFields.AGENDA_STATUS) {
-      const allowed = new Set(SALE_ORDER_AGENDA_STATUS_SEARCH_OPTIONS.map((item) => item.id));
-      const normalizedValues = values.filter((value) => allowed.has(value));
-      if (!normalizedValues.length) return null;
-      return { field, operator, mode, values: normalizedValues };
-    }
-
-    if (field === SaleOrderSearchFields.DELIVERY_STATUS) {
-      const allowed = new Set(SALE_ORDER_DELIVERY_STATUS_SEARCH_OPTIONS.map((item) => item.id));
-      const normalizedValues = values.filter((value) => allowed.has(value));
-      if (!normalizedValues.length) return null;
-      return { field, operator, mode, values: normalizedValues };
-    }
-
-    if (field === SaleOrderSearchFields.DELIVERY_TYPE) {
-      const allowed = new Set(SALE_ORDER_DELIVERY_TYPE_SEARCH_OPTIONS.map((item) => item.id));
-      const normalizedValues = values.filter((value) => allowed.has(value));
-      if (!normalizedValues.length) return null;
-      return { field, operator, mode, values: normalizedValues };
-    }
 
     if (field === SaleOrderSearchFields.PAYMENT_STATUS) {
       const allowed = new Set(Object.values(SaleOrderPaymentStatusValues));
@@ -276,12 +233,10 @@ function getCatalogMap(field: SaleOrderSearchField, maps: SearchCatalogMaps) {
       return maps.clients;
     case SaleOrderSearchFields.WAREHOUSE_ID:
       return maps.warehouses;
-    case SaleOrderSearchFields.AGENDA_STATUS:
-      return maps.agendaStatuses;
-    case SaleOrderSearchFields.DELIVERY_STATUS:
-      return maps.deliveryStatuses;
-    case SaleOrderSearchFields.DELIVERY_TYPE:
-      return maps.deliveryTypes;
+    case SaleOrderSearchFields.WORKFLOW_ID:
+      return maps.workflows;
+    case SaleOrderSearchFields.SALE_ORDER_STATE_ID:
+      return maps.states;
     case SaleOrderSearchFields.PAYMENT_STATUS:
       return maps.paymentStatuses;
     default:

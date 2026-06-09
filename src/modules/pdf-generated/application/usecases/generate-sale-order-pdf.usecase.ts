@@ -140,7 +140,6 @@ export class GenerateSaleOrderPdfUseCase {
         issuedAt: order.createdAt ?? undefined,
         scheduleDate: order.scheduleDate ?? null,
         deliveryDate: order.deliveryDate ?? null,
-        deliveryType: order.deliveryType ?? null,
         note: order.note ?? undefined,
       },
       items: items.map((row) => ({

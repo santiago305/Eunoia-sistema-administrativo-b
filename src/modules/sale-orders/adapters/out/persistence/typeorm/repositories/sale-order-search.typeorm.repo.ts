@@ -12,6 +12,9 @@ import {
   SaleOrderSearchStateRecord,
 } from "src/modules/sale-orders/domain/ports/sale-order-search.repository";
 import { SaleOrderSearchSnapshot } from "src/modules/sale-orders/application/dtos/sale-order-search/sale-order-search-snapshot";
+import { WorkflowEntity } from "src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow.entity";
+import { SaleOrderStatesEntity } from "src/modules/workflow/adapters/out/persistence/typeorm/entities/sale-order-states.entity";
+import { WorkflowStateEntity } from "src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow-state.entity";
 
 @Injectable()
 export class SaleOrderSearchTypeormRepository implements SaleOrderSearchRepository {
@@ -22,6 +25,10 @@ export class SaleOrderSearchTypeormRepository implements SaleOrderSearchReposito
     private readonly clientRepo: Repository<ClientEntity>,
     @InjectRepository(WarehouseEntity)
     private readonly warehouseRepo: Repository<WarehouseEntity>,
+    @InjectRepository(WorkflowEntity)
+    private readonly workflowRepo: Repository<WorkflowEntity>,
+    @InjectRepository(WorkflowStateEntity)
+    private readonly stateRepo: Repository<SaleOrderStatesEntity>,
   ) {}
 
   async touchRecentSearch(params: Parameters<SaleOrderSearchRepository["touchRecentSearch"]>[0]): Promise<void> {
@@ -29,10 +36,12 @@ export class SaleOrderSearchTypeormRepository implements SaleOrderSearchReposito
   }
 
   async listState(params: { userId: string; tableKey: string }): Promise<SaleOrderSearchStateRecord> {
-    const [state, clients, warehouses] = await Promise.all([
+    const [state, clients, warehouses, workflows, workflowStates] = await Promise.all([
       this.storage.listState(params),
       this.clientRepo.find({ where: { isActive: true } }),
       this.warehouseRepo.find({ where: { isActive: true } }),
+      this.workflowRepo.find({ where: { isActive: true } }),
+      this.stateRepo.find(),
     ]);
 
     const orderedClients = [...clients].sort((left, right) =>
@@ -66,6 +75,8 @@ export class SaleOrderSearchTypeormRepository implements SaleOrderSearchReposito
         warehouseId: row.id,
         label: row.name,
       })),
+      workflows: workflows.map((row) => ({ workflowId: row.id, label: row.name })),
+      states: workflowStates.map((row) => ({ saleOrderStateId: row.id, label: row.name })),
     };
   }
 

@@ -2,8 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { CLOCK, ClockPort } from "src/shared/application/ports/clock.port";
 import { Inject } from "@nestjs/common";
 import { SALE_ORDER_REPOSITORY, SaleOrderRepository } from "src/modules/sale-orders/domain/ports/sale-order.repository";
-import { AgendaStatus } from "src/modules/sale-orders/domain/value-objects/agenda-status";
-import { UpdateSaleOrderStatusUsecase } from "../usecases/sale-order/update-status.usecase";
+import { AdvanceSaleOrderStateUseCase } from "src/modules/workflow/application/usecases/advance-sale-order-state.usecase";
 
 function toDateOnlyIso(date: Date, timeZone: string) {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -27,7 +26,7 @@ export class UpdateSaleOrdersDeliveryDateTodayJob {
     private readonly clock: ClockPort,
     @Inject(SALE_ORDER_REPOSITORY)
     private readonly saleOrderRepo: SaleOrderRepository,
-    private readonly updateSaleOrderStatusUsecase: UpdateSaleOrderStatusUsecase,
+    private readonly advanceSaleOrderState: AdvanceSaleOrderStateUseCase,
   ) {}
 
   async run(input?: { limit?: number; timeZone?: string }) {
@@ -43,9 +42,11 @@ export class UpdateSaleOrdersDeliveryDateTodayJob {
     let updated = 0;
 
     for (const saleOrderId of ids) {
-      await this.updateSaleOrderStatusUsecase.execute({
+      await this.advanceSaleOrderState.execute({
         saleOrderId,
-        agendaStatus: AgendaStatus.PROGRAMMED,
+        transitionCode: "DELIVERY_DATE_REACHED",
+        executedBy: "00000000-0000-0000-0000-000000000001",
+        metadata: { source: "delivery-date-job" },
       });
 
       updated += 1;

@@ -14,7 +14,6 @@ import { GetSaleOrderUsecase } from "src/modules/sale-orders/application/usecase
 import { GetSaleOrderSearchStateUsecase } from "src/modules/sale-orders/application/usecases/sale-order-search/get-state.usecase";
 import { SaveSaleOrderSearchMetricUsecase } from "src/modules/sale-orders/application/usecases/sale-order-search/save-metric.usecase";
 import { DeleteSaleOrderSearchMetricUsecase } from "src/modules/sale-orders/application/usecases/sale-order-search/delete-metric.usecase";
-import { UpdateSaleOrderStatusUsecase } from "src/modules/sale-orders/application/usecases/sale-order/update-status.usecase";
 import { CancelSaleOrderUsecase } from "src/modules/sale-orders/application/usecases/sale-order/cancel.usecase";
 import { NotificationRealtimeService } from "src/modules/mail/infrastructure/realtime/notification-realtime.service";
 import { AddSaleOrderPaymentUsecase } from "src/modules/sale-orders/application/usecases/sale-order/add-payment.usecase";
@@ -22,6 +21,11 @@ import { DeleteSaleOrderPaymentUsecase } from "src/modules/sale-orders/applicati
 import { ListSaleOrderPaymentsUsecase } from "src/modules/sale-orders/application/usecases/sale-order/list-payments.usecase";
 import { ConfirmSaleOrderDeliveryUsecase } from "src/modules/sale-orders/application/usecases/sale-order/confirm-delivery.usecase";
 import { CreateFromImportPreviewUseCase } from "src/modules/sale-orders/application/usecases/sale-order/create-from-import-preview.usecase";
+import { AdvanceSaleOrderStateUseCase } from "src/modules/workflow/application/usecases/advance-sale-order-state.usecase";
+import { AssignSaleOrderWorkflowUseCase } from "src/modules/workflow/application/usecases/assign-sale-order-workflow.usecase";
+import { GetAvailableTransitionsUseCase } from "src/modules/workflow/application/usecases/get-available-transitions.usecase";
+import { GetOrderTimelineUseCase } from "src/modules/workflow/application/usecases/get-order-timeline.usecase";
+import { GetSaleOrderStatisticsUsecase } from "src/modules/sale-orders/application/usecases/sale-order/get-statistics.usecase";
 
 @Injectable()
 class TestJwtAuthGuard implements CanActivate {
@@ -42,6 +46,7 @@ class AllowGuard implements CanActivate {
 describe("SaleOrdersController", () => {
   let app: INestApplication;
   const listSaleOrders = { execute: jest.fn() };
+  const getStatistics = { execute: jest.fn() };
   const getSearchState = { execute: jest.fn() };
   const getComponents = { execute: jest.fn() };
   const getItemComponents = { execute: jest.fn() };
@@ -53,27 +58,37 @@ describe("SaleOrdersController", () => {
   const deletePayment = { execute: jest.fn() };
   const listPayments = { execute: jest.fn() };
   const createFromImportPreview = { execute: jest.fn() };
+  const advanceSaleOrderState = { execute: jest.fn() };
+  const assignWorkflow = { execute: jest.fn() };
+  const getAvailableTransitions = { execute: jest.fn() };
+  const getOrderTimeline = { execute: jest.fn() };
   const realtimeService = { emitToAllConnected: jest.fn() };
 
   beforeEach(async () => {
     listSaleOrders.execute.mockResolvedValue({ items: [], total: 0, page: 1, limit: 10 });
+    getStatistics.execute.mockResolvedValue({ byWorkflow: [], byState: [], byClientType: [], totals: {} });
     getSearchState.execute.mockResolvedValue({ recent: [], saved: [], catalogs: { paymentStatuses: [] } });
     getComponents.execute.mockResolvedValue({ saleOrderId: "x", items: [] });
     getItemComponents.execute.mockResolvedValue({ saleOrderItemId: "x", components: [] });
     updateSaleOrder.execute.mockResolvedValue({ orderId: "x" });
     getSaleOrder.execute.mockResolvedValue({ id: "x", items: [], payments: [], totalPaid: 0, pendingAmount: 0, paymentStatus: "PENDING" });
-    cancelSaleOrder.execute.mockResolvedValue({ saleOrderId: "x", agendaStatus: "CANCELED", deliveryStatus: "CANCELED" });
-    confirmDelivery.execute.mockResolvedValue({ saleOrderId: "x", deliveryStatus: "DELIVERED" });
+    cancelSaleOrder.execute.mockResolvedValue({ saleOrderId: "x", currentStateId: "state-cancelled" });
+    confirmDelivery.execute.mockResolvedValue({ saleOrderId: "x", currentStateId: "state-delivered" });
     addPayment.execute.mockResolvedValue({ paymentId: "p1" });
     deletePayment.execute.mockResolvedValue({ deleted: true });
     listPayments.execute.mockResolvedValue([{ id: "p1" }]);
     createFromImportPreview.execute.mockResolvedValue({ importedRows: 1, failedRows: 0, rows: [], errors: [] });
+    advanceSaleOrderState.execute.mockResolvedValue({ id: "x", currentStateId: "state-2" });
+    assignWorkflow.execute.mockResolvedValue({ id: "x", workflowId: "workflow-1", currentStateId: "state-1" });
+    getAvailableTransitions.execute.mockResolvedValue([]);
+    getOrderTimeline.execute.mockResolvedValue([]);
 
     const moduleRef = await Test.createTestingModule({
       controllers: [SaleOrdersController],
       providers: [
         { provide: CreateSaleOrderUsecase, useValue: { execute: jest.fn() } },
         { provide: ListSaleOrdersUsecase, useValue: listSaleOrders },
+        { provide: GetSaleOrderStatisticsUsecase, useValue: getStatistics },
         { provide: GetSaleOrderUsecase, useValue: getSaleOrder },
         { provide: GetSaleOrderComponentsUsecase, useValue: getComponents },
         { provide: GetSaleOrderItemComponentsUsecase, useValue: getItemComponents },
@@ -81,7 +96,10 @@ describe("SaleOrdersController", () => {
         { provide: GetSaleOrderSearchStateUsecase, useValue: getSearchState },
         { provide: SaveSaleOrderSearchMetricUsecase, useValue: { execute: jest.fn() } },
         { provide: DeleteSaleOrderSearchMetricUsecase, useValue: { execute: jest.fn() } },
-        { provide: UpdateSaleOrderStatusUsecase, useValue: { execute: jest.fn() } },
+        { provide: AdvanceSaleOrderStateUseCase, useValue: advanceSaleOrderState },
+        { provide: AssignSaleOrderWorkflowUseCase, useValue: assignWorkflow },
+        { provide: GetAvailableTransitionsUseCase, useValue: getAvailableTransitions },
+        { provide: GetOrderTimelineUseCase, useValue: getOrderTimeline },
         { provide: CancelSaleOrderUsecase, useValue: cancelSaleOrder },
         { provide: ConfirmSaleOrderDeliveryUsecase, useValue: confirmDelivery },
         { provide: AddSaleOrderPaymentUsecase, useValue: addPayment },
@@ -141,6 +159,23 @@ describe("SaleOrdersController", () => {
     });
   });
 
+  it("forwards one filtered statistics query", async () => {
+    await request(app.getHttpServer())
+      .get("/sale-orders/statistics")
+      .query({
+        q: "S01",
+        includeCancelled: "true",
+        filters: JSON.stringify([{ field: "workflowId", operator: "in", values: ["workflow-1"] }]),
+      })
+      .expect(200);
+
+    expect(getStatistics.execute).toHaveBeenCalledWith({
+      q: "S01",
+      includeCancelled: true,
+      filters: [{ field: "workflowId", operator: "in", values: ["workflow-1"] }],
+    });
+  });
+
   it("accepts import preview rows as direct array body", async () => {
     await request(app.getHttpServer())
       .post("/sale-orders/import-preview")
@@ -188,6 +223,55 @@ describe("SaleOrdersController", () => {
     const saleOrderId = "11111111-1111-4111-8111-111111111111";
     await request(app.getHttpServer()).get(`/sale-orders/${saleOrderId}`).expect(200);
     expect(getSaleOrder.execute).toHaveBeenCalledWith({ saleOrderId });
+  });
+
+  it("advances state through a workflow transition", async () => {
+    const saleOrderId = "11111111-1111-4111-8111-111111111111";
+    const transitionId = "22222222-2222-4222-8222-222222222222";
+
+    await request(app.getHttpServer())
+      .post(`/sale-orders/${saleOrderId}/change-state`)
+      .send({ transitionId, metadata: { source: "ux" } })
+      .expect(201);
+
+    expect(advanceSaleOrderState.execute).toHaveBeenCalledWith({
+      saleOrderId,
+      transitionId,
+      metadata: { source: "ux" },
+      executedBy: "user-1",
+    });
+  });
+
+  it("assigns a workflow to an order without workflow", async () => {
+    const saleOrderId = "11111111-1111-4111-8111-111111111111";
+    const workflowId = "22222222-2222-4222-8222-222222222222";
+
+    await request(app.getHttpServer())
+      .post(`/sale-orders/${saleOrderId}/assign-workflow`)
+      .send({ workflowId })
+      .expect(201);
+
+    expect(assignWorkflow.execute).toHaveBeenCalledWith({
+      saleOrderId,
+      workflowId,
+      executedBy: "user-1",
+    });
+  });
+
+  it("returns evaluated available transitions", async () => {
+    const saleOrderId = "11111111-1111-4111-8111-111111111111";
+
+    await request(app.getHttpServer()).get(`/sale-orders/${saleOrderId}/available-transitions`).expect(200);
+
+    expect(getAvailableTransitions.execute).toHaveBeenCalledWith({ saleOrderId });
+  });
+
+  it("returns the workflow history timeline", async () => {
+    const saleOrderId = "11111111-1111-4111-8111-111111111111";
+
+    await request(app.getHttpServer()).get(`/sale-orders/${saleOrderId}/history`).expect(200);
+
+    expect(getOrderTimeline.execute).toHaveBeenCalledWith({ saleOrderId });
   });
 
   it("forwards order id to cancel usecase", async () => {

@@ -1,18 +1,6 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
-import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
+import { TransactionContext, UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { PACK_REPOSITORY, PackRepository } from "src/modules/packs/domain/ports/pack.repository";
-import {
-  PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY,
-  ProductCatalogStockItemRepository,
-} from "src/modules/product-catalog/domain/ports/stock-item.repository";
-import {
-  PRODUCT_CATALOG_INVENTORY_REPOSITORY,
-  ProductCatalogInventoryRepository,
-} from "src/modules/product-catalog/domain/ports/inventory.repository";
-import { INVENTORY_LOCK, InventoryLock } from "src/modules/product-catalog/integration/inventory/ports/inventory-lock.port";
-import { DeliveryType } from "src/modules/sale-orders/domain/value-objects/delivery-type";
-import { AgendaStatus } from "src/modules/sale-orders/domain/value-objects/agenda-status";
-import { DeliveryStatus } from "src/modules/sale-orders/domain/value-objects/delivery-status";
 import { SALE_ORDER_REPOSITORY, SaleOrderRepository } from "src/modules/sale-orders/domain/ports/sale-order.repository";
 import { SALE_ORDER_ITEM_REPOSITORY, SaleOrderItemRepository } from "src/modules/sale-orders/domain/ports/sale-order-item.repository";
 import {
@@ -20,16 +8,20 @@ import {
   SaleOrderItemComponentRepository,
 } from "src/modules/sale-orders/domain/ports/sale-order-item-component.repository";
 import { SALE_PAYMENT_REPOSITORY, SalePaymentRepository } from "src/modules/sale-orders/domain/ports/sale-payment.repository";
+import { WORKFLOW_REPOSITORY, WorkflowRepository } from "src/modules/workflow/domain/ports/workflow.repository";
+import { SALE_ORDER_STATE_HISTORY_REPOSITORY, SaleOrderStateHistoryRepository } from "src/modules/workflow/domain/ports/sale-order-state-history.repository";
+import { WORKFLOW_TRANSITION_REPOSITORY, WorkflowTransitionRepository } from "src/modules/workflow/domain/ports/workflow-transition.repository";
+import { ACTIONS } from "src/modules/workflow/domain/constants/workflow-action.constants";
 
 type UpdateSaleOrderInput = {
   saleOrderId: string;
+  workflowId?: string | null;
   warehouseId: string;
   clientId: string;
   agencyDetail?: string;
   sourceId?: string;
   scheduleDate?: string;
   deliveryDate?: string;
-  deliveryType?: DeliveryType;
   note?: string;
   subTotal?: number;
   deliveryCost?: number;
@@ -58,66 +50,129 @@ type UpdateSaleOrderInput = {
   }>;
 };
 
-type RequiredStockKey = `${string}:${string}`; // `${warehouseId}:${stockItemId}`
-
-const hasWarehouseId = (value: string | null | undefined): value is string =>
-  typeof value === "string" && value.trim().length > 0 && value !== "null";
-
 @Injectable()
 export class UpdateSaleOrderUsecase {
   constructor(
     @Inject(UNIT_OF_WORK)
     private readonly uow: UnitOfWork,
+
     @Inject(PACK_REPOSITORY)
     private readonly packRepo: PackRepository,
-    @Inject(PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY)
-    private readonly stockItemRepo: ProductCatalogStockItemRepository,
-    @Inject(PRODUCT_CATALOG_INVENTORY_REPOSITORY)
-    private readonly inventoryRepo: ProductCatalogInventoryRepository,
-    @Inject(INVENTORY_LOCK)
-    private readonly inventoryLock: InventoryLock,
+
     @Inject(SALE_ORDER_REPOSITORY)
     private readonly saleOrderRepo: SaleOrderRepository,
+
     @Inject(SALE_ORDER_ITEM_REPOSITORY)
     private readonly saleOrderItemRepo: SaleOrderItemRepository,
+
     @Inject(SALE_ORDER_ITEM_COMPONENT_REPOSITORY)
     private readonly componentRepo: SaleOrderItemComponentRepository,
+
     @Inject(SALE_PAYMENT_REPOSITORY)
     private readonly paymentRepo: SalePaymentRepository,
+
+    @Inject(WORKFLOW_REPOSITORY)
+    private readonly workflowRepo: WorkflowRepository,
+    @Inject(SALE_ORDER_STATE_HISTORY_REPOSITORY)
+    private readonly historyRepo: SaleOrderStateHistoryRepository,
+
+    @Inject(WORKFLOW_TRANSITION_REPOSITORY)
+    private readonly transitionRepo: WorkflowTransitionRepository,
+
   ) {}
+
+  private buildComponentSignature(
+    components: Array<{ skuId: string; quantity: number }>,
+  ): string {
+    const quantityBySku = new Map<string, number>();
+    for (const component of components) {
+      quantityBySku.set(
+        component.skuId,
+        (quantityBySku.get(component.skuId) ?? 0) + Number(component.quantity ?? 0),
+      );
+    }
+    return [...quantityBySku.entries()]
+      .sort(([skuA], [skuB]) => skuA.localeCompare(skuB))
+      .map(([skuId, quantity]) => `${skuId}:${quantity}`)
+      .join("|");
+  }
+
+  private async hasActiveStockReservation(
+    saleOrderId: string,
+    tx: TransactionContext,
+  ): Promise<boolean> {
+    const history = await this.historyRepo.listBySaleOrderId(saleOrderId, tx);
+    let hasActiveReservation = false;
+    for (const item of history) {
+      if (!item.transitionId) continue;
+      const detailed = await this.transitionRepo.findDetailedById(item.transitionId, tx);
+      const actions = [...(detailed?.actions ?? [])].sort(
+        (a, b) => a.position - b.position,
+      );
+      for (const action of actions) {
+        if (action.type === ACTIONS.RESERVE_STOCK) {
+          hasActiveReservation = true;
+        }
+        if (
+          action.type === ACTIONS.REVERT_STOCK ||
+          action.type === ACTIONS.CONSUME_STOCK
+        ) {
+          hasActiveReservation = false;
+        }
+      }
+    }
+    return hasActiveReservation;
+  }
 
   async execute(input: UpdateSaleOrderInput) {
     return this.uow.runInTransaction(async (tx) => {
       const order = await this.saleOrderRepo.findByIdForUpdate(input.saleOrderId, tx);
-      if (!order) throw new BadRequestException("Pedido no encontrado");
 
-      const oldWarehouseId = order.warehouseId;
-      const newWarehouseId = input.warehouseId;
+      if (!order) {
+        throw new BadRequestException("Pedido no encontrado");
+      }
 
-      const existingItems = await this.saleOrderItemRepo.listBySaleOrderId(input.saleOrderId, tx);
-      const existingItemIds = existingItems.map((row) => row.id);
-      const existingComponents = await this.componentRepo.listBySaleOrderItemIds(existingItemIds, tx);
+      const selectedWorkflowId = input.workflowId?.trim() || null;
 
-      const stockItemIdBySkuId = new Map<string, string>();
-      const getStockItemId = async (skuId: string) => {
-        const cached = stockItemIdBySkuId.get(skuId);
-        if (cached) return cached;
-        const stockItem = await this.stockItemRepo.findBySkuId(skuId, tx);
-        if (!stockItem) throw new BadRequestException("Stock item no encontrado para el SKU");
-        stockItemIdBySkuId.set(skuId, stockItem.id);
-        return stockItem.id;
-      };
+      let workflowIdToSave = order.workflowId ?? null;
+      let currentStateIdToSave = order.currentStateId ?? null;
 
-      const oldRequiredByKey = new Map<RequiredStockKey, number>();
-      if (hasWarehouseId(oldWarehouseId)) {
-        for (const c of existingComponents) {
-          const stockItemId = await getStockItemId(c.skuId);
-          const key = `${oldWarehouseId}:${stockItemId}` as RequiredStockKey;
-          oldRequiredByKey.set(key, (oldRequiredByKey.get(key) ?? 0) + Number(c.quantity ?? 0));
+      if (selectedWorkflowId) {
+        const orderHasWorkflow = Boolean(order.workflowId || order.currentStateId);
+
+        if (orderHasWorkflow && selectedWorkflowId !== order.workflowId) {
+          throw new BadRequestException(
+            "El pedido ya tiene workflow asignado. Cambia el estado desde las transiciones del workflow.",
+          );
+        }
+
+        if (!orderHasWorkflow) {
+          const resolved = await this.workflowRepo.findDetailedById(selectedWorkflowId, tx);
+          const initialStates = resolved?.states.filter(
+            (state) => state.isActive && state.isInitial,
+          ) ?? [];
+
+          if (!resolved?.workflow.isActive || initialStates.length !== 1) {
+            throw new BadRequestException("Workflow inválido para asignar al pedido");
+          }
+
+          const initialState = initialStates[0];
+
+          workflowIdToSave = resolved.workflow.id;
+          currentStateIdToSave = initialState.id;
         }
       }
 
-      if (!input.items?.length) throw new BadRequestException("Items requeridos");
+      const existingItems = await this.saleOrderItemRepo.listBySaleOrderId(
+        input.saleOrderId,
+        tx,
+      );
+
+      const existingItemIds = existingItems.map((row) => row.id);
+
+      if (!input.items?.length) {
+        throw new BadRequestException("Items requeridos");
+      }
 
       const componentPlansByItemIndex: Array<
         Array<{
@@ -139,29 +194,32 @@ export class UpdateSaleOrderUsecase {
 
         if (!referencePackId) {
           componentPlansByItemIndex.push(
-            requestedComponents.map((c) => ({
-              skuId: c.skuId,
-              referencePackItemId: c.referencePackItemId ?? null,
-              quantity: c.quantity,
-              unitPrice: c.unitPrice,
-              total: c.total,
+            requestedComponents.map((component) => ({
+              skuId: component.skuId,
+              referencePackItemId: component.referencePackItemId ?? null,
+              quantity: component.quantity,
+              unitPrice: component.unitPrice,
+              total: component.total,
             })),
           );
           continue;
         }
 
         const pack = await this.packRepo.findByIdWithItems(referencePackId, tx);
-        if (!pack) throw new BadRequestException("Pack inválido");
+
+        if (!pack) {
+          throw new BadRequestException("Pack inválido");
+        }
 
         const overridesBySkuId = new Map(
-          requestedComponents.map((c) => [
-            c.skuId,
+          requestedComponents.map((component) => [
+            component.skuId,
             {
-              skuId: c.skuId,
-              referencePackItemId: c.referencePackItemId ?? null,
-              quantity: c.quantity,
-              unitPrice: c.unitPrice,
-              total: c.total,
+              skuId: component.skuId,
+              referencePackItemId: component.referencePackItemId ?? null,
+              quantity: component.quantity,
+              unitPrice: component.unitPrice,
+              total: component.total,
             },
           ]),
         );
@@ -176,6 +234,7 @@ export class UpdateSaleOrderUsecase {
 
         for (const packItem of pack.items) {
           const override = overridesBySkuId.get(packItem.skuId);
+
           if (override) {
             plans.push({
               skuId: override.skuId,
@@ -184,6 +243,7 @@ export class UpdateSaleOrderUsecase {
               unitPrice: override.unitPrice,
               total: override.total,
             });
+
             overridesBySkuId.delete(packItem.skuId);
             continue;
           }
@@ -204,52 +264,35 @@ export class UpdateSaleOrderUsecase {
         componentPlansByItemIndex.push(plans);
       }
 
-      const newRequiredByKey = new Map<RequiredStockKey, number>();
-      for (const plans of componentPlansByItemIndex) {
-        for (const c of plans) {
-          const stockItemId = await getStockItemId(c.skuId);
-          const key = `${newWarehouseId}:${stockItemId}` as RequiredStockKey;
-          newRequiredByKey.set(key, (newRequiredByKey.get(key) ?? 0) + Number(c.quantity ?? 0));
-        }
-      }
-
-      const keysUnion = new Set<RequiredStockKey>([...oldRequiredByKey.keys(), ...newRequiredByKey.keys()]);
-      const lockKeys = Array.from(keysUnion).map((key) => {
-        const [warehouseId, stockItemId] = key.split(":");
-        return { warehouseId, stockItemId };
-      });
-      if (lockKeys.length) {
-        await this.inventoryLock.lockSnapshots(lockKeys, tx);
-      }
-
-      for (const key of keysUnion) {
-        const [warehouseId, stockItemId] = key.split(":");
-        const snapshot = await this.inventoryRepo.getSnapshot({ warehouseId, stockItemId, locationId: null }, tx);
-        const availableNow = snapshot?.available ?? 0;
-
-        const oldQty = oldRequiredByKey.get(key) ?? 0;
-        const newQty = newRequiredByKey.get(key) ?? 0;
-
-        const availableForUpdate = availableNow + oldQty;
-        if (!snapshot || availableForUpdate < newQty) {
-          throw new BadRequestException("Stock insuficiente");
-        }
-      }
-
-      for (const key of keysUnion) {
-        const [warehouseId, stockItemId] = key.split(":");
-        const oldQty = oldRequiredByKey.get(key) ?? 0;
-        const newQty = newRequiredByKey.get(key) ?? 0;
-        const delta = newQty - oldQty;
-        if (!delta) continue;
-
-        await this.inventoryRepo.incrementReserved(
-          { warehouseId, stockItemId, locationId: null, delta },
+      const hasActiveReservation = await this.hasActiveStockReservation(
+        input.saleOrderId,
+        tx,
+      );
+      if (hasActiveReservation) {
+        const existingComponents = await this.componentRepo.listBySaleOrderItemIds(
+          existingItemIds,
           tx,
         );
+        const currentSignature = this.buildComponentSignature(
+          existingComponents.map((component) => ({
+            skuId: component.skuId,
+            quantity: Number(component.quantity ?? 0),
+          })),
+        );
+        const nextComponents = componentPlansByItemIndex.flat();
+        const nextSignature = this.buildComponentSignature(
+          nextComponents.map((component) => ({
+            skuId: component.skuId,
+            quantity: Number(component.quantity ?? 0),
+          })),
+        );
+        if (currentSignature !== nextSignature) {
+          throw new BadRequestException(
+            "Este pedido ya tiene stock reservado. Para cambiar productos o cantidades, primero debes liberar la reserva del flujo.",
+          );
+        }
       }
 
-      // Persist changes
       await this.componentRepo.deleteBySaleOrderItemIds(existingItemIds, tx);
       await this.saleOrderItemRepo.deleteBySaleOrderId(input.saleOrderId, tx);
       await this.paymentRepo.deleteBySaleOrderId(input.saleOrderId, tx);
@@ -257,13 +300,16 @@ export class UpdateSaleOrderUsecase {
       const updated = await this.saleOrderRepo.update(
         {
           saleOrderId: input.saleOrderId,
+
+          workflowId: workflowIdToSave,
+          currentStateId: currentStateIdToSave,
+
           warehouseId: input.warehouseId,
           clientId: input.clientId,
           agencyDetail: input.agencyDetail?.trim() ? input.agencyDetail.trim() : null,
           sourceId: input.sourceId?.trim() ? input.sourceId.trim() : null,
           scheduleDate: input.scheduleDate ?? null,
           deliveryDate: input.deliveryDate ?? null,
-          deliveryType: input.deliveryType ?? null,
           subTotal: input.subTotal ?? 0,
           deliveryCost: input.deliveryCost ?? 0,
           total: input.total ?? 0,
@@ -275,8 +321,12 @@ export class UpdateSaleOrderUsecase {
       const savedItems = await this.saleOrderItemRepo.bulkCreate(
         input.items.map((row) => ({
           saleOrderId: updated.id,
-          referencePackId: row.referencePackId?.trim() ? row.referencePackId.trim() : null,
-          description: row.description?.trim() ? row.description.trim() : null,
+          referencePackId: row.referencePackId?.trim()
+            ? row.referencePackId.trim()
+            : null,
+          description: row.description?.trim()
+            ? row.description.trim()
+            : null,
           quantity: row.quantity,
           unitPrice: row.unitPrice,
           total: row.total,
@@ -285,75 +335,58 @@ export class UpdateSaleOrderUsecase {
       );
 
       const componentsToSave = savedItems.flatMap((savedItem, index) =>
-        (componentPlansByItemIndex[index] ?? []).map((c) => ({
+        (componentPlansByItemIndex[index] ?? []).map((component) => ({
           saleOrderItemId: savedItem.id,
-          skuId: c.skuId,
-          referencePackItemId: c.referencePackItemId ?? null,
-          quantity: c.quantity,
-          unitPrice: c.unitPrice,
-          total: c.total,
+          skuId: component.skuId,
+          referencePackItemId: component.referencePackItemId ?? null,
+          quantity: component.quantity,
+          unitPrice: component.unitPrice,
+          total: component.total,
         })),
       );
+
       if (componentsToSave.length) {
         await this.componentRepo.bulkCreate(componentsToSave, tx);
       }
 
-      const paymentsInput = (input.payments ?? []).map((p) => {
-        const date = p.date ? new Date(p.date) : new Date();
+      const paymentsInput = (input.payments ?? []).map((payment) => {
+        const date = payment.date ? new Date(payment.date) : new Date();
+
         if (Number.isNaN(date.getTime())) {
           throw new BadRequestException("Fecha de pago inválida");
         }
+
         return {
           saleOrderId: updated.id,
-          bankAccountId: p.bankAccountId?.trim() ? p.bankAccountId.trim() : null,
+          bankAccountId: payment.bankAccountId?.trim()
+            ? payment.bankAccountId.trim()
+            : null,
           date,
-          method: p.method,
-          operationNumber: p.operationNumber ?? null,
-          amount: p.amount,
-          note: p.note ?? null,
+          method: payment.method,
+          operationNumber: payment.operationNumber ?? null,
+          amount: payment.amount,
+          note: payment.note ?? null,
         };
       });
+
       try {
-        if (paymentsInput.length) await this.paymentRepo.bulkCreate(paymentsInput, tx);
+        if (paymentsInput.length) {
+          await this.paymentRepo.bulkCreate(paymentsInput, tx);
+        }
       } catch (error: any) {
         if (error?.code === "23503") {
           throw new BadRequestException("Cuenta bancaria inválida");
         }
+
         throw error;
       }
 
-      const toDateKey = (value: Date) =>
-        new Intl.DateTimeFormat("en-CA", {
-          timeZone: "America/Lima",
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-        }).format(value);
-
-      const todayKey = toDateKey(new Date());
-      const deliveryDateKey = input.deliveryDate ? input.deliveryDate.slice(0, 10) : null;
-      const isDeliveryTodayOrPast = !!deliveryDateKey && deliveryDateKey <= todayKey;
-
-      const agendaStatus = isDeliveryTodayOrPast ? AgendaStatus.PROGRAMMED : AgendaStatus.COORDINATED;
-      const deliveryStatus = isDeliveryTodayOrPast
-        ? input.deliveryType === DeliveryType.ABONADO_ENVIO
-          ? DeliveryStatus.WAITING
-          : input.deliveryType === DeliveryType.CONTRA_ENTREGA
-            ? DeliveryStatus.IN_PROGRESS
-            : null
-        : null;
-
-      const updatedWithStatuses = await this.saleOrderRepo.updateStatuses(
-        { saleOrderId: updated.id, agendaStatus, deliveryStatus },
-        tx,
-      );
-
       return {
-        orderId: updatedWithStatuses.id,
-        serie: updatedWithStatuses.serie ?? null,
-        correlative: updatedWithStatuses.correlative ?? null,
-        agendaStatus: updatedWithStatuses.agendaStatus,
-        deliveryStatus: updatedWithStatuses.deliveryStatus ?? null,
+        orderId: updated.id,
+        serie: updated.serie ?? null,
+        correlative: updated.correlative ?? null,
+        workflowId: updated.workflowId ?? null,
+        currentStateId: updated.currentStateId ?? null,
       };
     });
   }

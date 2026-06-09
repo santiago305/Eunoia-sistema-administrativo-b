@@ -30,6 +30,8 @@ export interface SaleOrderSearchStateRecord {
   metrics: SaleOrderSearchMetricRecord[];
   clients: SaleOrderSearchClientCatalogRecord[];
   warehouses: SaleOrderSearchWarehouseCatalogRecord[];
+  workflows: Array<{ workflowId: string; label: string }>;
+  states: Array<{ saleOrderStateId: string; label: string }>;
 }
 
 export interface SaleOrderSearchRepository {

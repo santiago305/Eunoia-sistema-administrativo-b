@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, Repository } from "typeorm";
 import { ProductCatalogInventoryBalance } from "src/modules/product-catalog/domain/entities/inventory-balance";
@@ -14,6 +14,12 @@ import { TypeormTransactionContext } from "src/shared/infrastructure/typeorm/typ
 import { ProductCatalogSkuEntity } from "../entities/sku.entity";
 import { ProductCatalogProductEntity } from "../entities/product.entity";
 import { ProductCatalogProductType } from "src/modules/product-catalog/domain/value-objects/product-type";
+
+export function validateInventoryBalance(input: { onHand: number; reserved: number }): void {
+  if (input.onHand < 0 || input.reserved < 0 || input.reserved > input.onHand) {
+    throw new BadRequestException("Balance de inventario invalido");
+  }
+}
 
 @Injectable()
 export class ProductCatalogInventoryTypeormRepository implements ProductCatalogInventoryRepository {
@@ -425,6 +431,7 @@ export class ProductCatalogInventoryTypeormRepository implements ProductCatalogI
 
     const reserved = current.reserved + input.delta;
     const onHand = current.onHand;
+    validateInventoryBalance({ onHand, reserved });
     return this.upsert(
       new ProductCatalogInventoryBalance(
         input.warehouseId,
@@ -460,6 +467,7 @@ export class ProductCatalogInventoryTypeormRepository implements ProductCatalogI
       );
 
     const onHand = current.onHand + input.delta;
+    validateInventoryBalance({ onHand, reserved: current.reserved });
     return this.upsert(
       new ProductCatalogInventoryBalance(
         input.warehouseId,

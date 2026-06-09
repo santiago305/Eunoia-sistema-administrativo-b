@@ -1,5 +1,6 @@
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { Agency } from "../entities/agency";
+import { Subsidiary } from "../entities/subsidiary";
 import { AgencySearchRule } from "src/modules/agencies/application/dtos/agency-search/agency-search-snapshot";
 
 export const AGENCY_REPOSITORY = Symbol("AGENCY_REPOSITORY");
@@ -11,11 +12,6 @@ export interface AgencyRepository {
     params: {
       agencyId: string;
       name?: string;
-      reference?: string;
-      address?: string;
-      departmentId?: string;
-      provinceId?: string;
-      districtId?: string;
       isActive?: boolean;
       updatedAt?: Date;
     },
@@ -32,5 +28,29 @@ export interface AgencyRepository {
     },
     tx?: TransactionContext,
   ): Promise<{ items: Agency[]; total: number }>;
+  createWithSubsidiaries(
+    agency: Agency,
+    subsidiaries: Subsidiary[],
+    tx?: TransactionContext,
+  ): Promise<Agency>;
+  updateWithSubsidiaries(
+    params: {
+      agencyId: string;
+      name?: string;
+      isActive?: boolean;
+      updatedAt?: Date;
+      subsidiaries?: Subsidiary[];
+    },
+    tx?: TransactionContext,
+  ): Promise<Agency | null>;
+  findByIdWithSubsidiaries(
+    agencyId: string,
+    params?: { includeInactiveSubsidiaries?: boolean },
+    tx?: TransactionContext,
+  ): Promise<{ agency: Agency; subsidiaries: Subsidiary[] } | null>;
+  listSubsidiaries(
+    params: { q?: string; agencyId?: string; isActive?: boolean },
+    tx?: TransactionContext,
+  ): Promise<Subsidiary[]>;
 }
 

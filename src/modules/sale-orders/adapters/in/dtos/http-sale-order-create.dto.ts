@@ -11,7 +11,6 @@ import {
   Min,
   ValidateNested,
 } from "class-validator";
-import { DeliveryType } from "src/modules/sale-orders/domain/value-objects/delivery-type";
 
 export class HttpSaleOrderItemComponentDto {
   @IsUUID()
@@ -143,11 +142,10 @@ export class HttpSaleOrderCreateDto {
 
   @IsOptional()
   @IsString()
-  deliveryType?: DeliveryType;
-
-  @IsOptional()
-  @IsString()
   note?: string;
+
+  @IsUUID()
+  workflowId: string;
 
   @IsArray()
   @ArrayMinSize(1)

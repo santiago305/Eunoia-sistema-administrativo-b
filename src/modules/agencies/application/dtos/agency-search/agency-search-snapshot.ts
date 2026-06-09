@@ -1,7 +1,7 @@
 export const AgencySearchFields = {
   NAME: "name",
+  ALIAS: "alias",
   ADDRESS: "address",
-  REFERENCE: "reference",
   DEPARTMENT_ID: "departmentId",
   PROVINCE_ID: "provinceId",
   DISTRICT_ID: "districtId",

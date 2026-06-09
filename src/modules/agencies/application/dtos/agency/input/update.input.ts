@@ -1,10 +1,9 @@
+import { SubsidiaryInput } from "./create.input";
+
 export interface UpdateAgencyInput {
   agencyId: string;
   name?: string;
-  reference?: string;
-  address?: string;
-  departmentId?: string;
-  provinceId?: string;
-  districtId?: string;
+  isActive?: boolean;
+  subsidiaries?: SubsidiaryInput[];
 }
 

@@ -1,7 +1,4 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
-import { AgendaStatus } from "src/modules/sale-orders/domain/value-objects/agenda-status";
-import { DeliveryStatus } from "src/modules/sale-orders/domain/value-objects/delivery-status";
-import { DeliveryType } from "src/modules/sale-orders/domain/value-objects/delivery-type";
 import { OneToMany } from "typeorm";
 import { SaleOrderItemEntity } from "./sale-order-item.entity";
 
@@ -11,6 +8,8 @@ import { SaleOrderItemEntity } from "./sale-order-item.entity";
 @Index("idx_sale_orders_created_by", ["createdBy"])
 @Index("idx_sale_orders_schedule_date", ["scheduleDate"])
 @Index("idx_sale_orders_warehouse", ["warehouseId"])
+@Index("idx_sale_orders_workflow", ["workflowId"])
+@Index("idx_sale_orders_current_state", ["currentStateId"])
 export class SaleOrderEntity {
   @PrimaryGeneratedColumn("uuid")
   id: string;
@@ -27,8 +26,6 @@ export class SaleOrderEntity {
   @Column({ name: "delivery_date", type: "date", nullable: true })
   deliveryDate?: string | null;
 
-  @Column({ name: "delivery_type", type: "enum", enum: DeliveryType, enumName: "delivery_type", nullable: true })
-  deliveryType?: DeliveryType | null;
 
   @Column({ name: "sub_total", type: "numeric", precision: 12, scale: 2, default: 0 })
   subTotal: number;
@@ -57,11 +54,14 @@ export class SaleOrderEntity {
   @Column({ name: "created_by", type: "uuid" })
   createdBy: string;
 
-  @Column({ name: "agenda_status", type: "enum", enum: AgendaStatus, enumName: "agenda_status", default: AgendaStatus.COORDINATED })
-  agendaStatus: AgendaStatus;
+  @Column({ name: "workflow_id", type: "uuid", nullable: true })
+  workflowId?: string | null;
 
-  @Column({ name: "delivery_status", type: "enum", enum: DeliveryStatus, enumName: "delivery_status", nullable: true })
-  deliveryStatus?: DeliveryStatus | null;
+  @Column({ name: "current_state_id", type: "uuid", nullable: true })
+  currentStateId?: string | null;
+
+  @Column({ name: "invoice_send", type: "boolean", default: false })
+  invoiceSend: boolean;
 
   @Column({ name: "is_active", type: "boolean", default: true })
   isActive: boolean;

@@ -20,6 +20,10 @@ import { SaleOrdersController } from "./adapters/in/controllers/sale-orders.cont
 import { ClientsModule } from "../clients/clients.module";
 import { SourcesModule } from "../sources/sources.module";
 import { UbigeoModule } from "../ubigeo/ubigeo.module";
+import { WorkflowModule } from "../workflow/workflow.module";
+import { WorkflowEntity } from "../workflow/adapters/out/persistence/typeorm/entities/workflow.entity";
+import { WorkflowStateEntity } from "../workflow/adapters/out/persistence/typeorm/entities/workflow-state.entity";
+import { SaleOrderStatesEntity } from "../workflow/adapters/out/persistence/typeorm/entities/sale-order-states.entity";
 
 @Module({
   imports: [
@@ -36,6 +40,9 @@ import { UbigeoModule } from "../ubigeo/ubigeo.module";
       User,
       BankAccountEntity,
       ProductCatalogSkuEntity,
+      WorkflowEntity,
+      WorkflowStateEntity,
+      SaleOrderStatesEntity,
     ]),
     PacksModule,
     ProductCatalogModule,
@@ -43,6 +50,7 @@ import { UbigeoModule } from "../ubigeo/ubigeo.module";
     ClientsModule,
     SourcesModule,
     UbigeoModule,
+    WorkflowModule,
   ],
   controllers: [SaleOrdersController],
   providers: [...saleOrdersModuleProviders],

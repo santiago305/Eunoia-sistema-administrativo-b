@@ -3,7 +3,11 @@ import {
   ListingSearchOptionOutput,
   ListingSearchRecentOutput,
 } from "src/shared/listing-search/application/dtos/listing-search-state.output";
-import { SaleOrderSearchSnapshot } from "../sale-order-search-snapshot";
+import {
+  SaleOrderSearchSnapshot,
+  SaleOrderWorkflowOutput,
+  SaleOrderWorkflowStateOutput,
+} from "../sale-order-search-snapshot";
 import { SaleOrderPaymentStatus } from "../input/save-sale-order-search-metric.input";
 import { ClientType } from "src/modules/clients/domain/object-values/client-type";
 
@@ -13,10 +17,9 @@ export interface SaleOrderSearchStateOutput {
   catalogs: {
     clients: ListingSearchOptionOutput[];
     warehouses: ListingSearchOptionOutput[];
-    agendaStatuses: ListingSearchOptionOutput[];
-    deliveryStatuses: ListingSearchOptionOutput[];
-    deliveryTypes: ListingSearchOptionOutput[];
     paymentStatuses: ListingSearchOptionOutput[];
+    workflows: ListingSearchOptionOutput[];
+    states: ListingSearchOptionOutput[];
   };
 }
 export type SaleOrderItemComponentOutput = {
@@ -42,19 +45,48 @@ export type SaleOrderGetOutput = {
   serie: string | null;
   correlative: number | null;
   warehouse: { id: string; name: string } | null;
-  client: { id: string; type?: ClientType | null; fullName: string; docNumber?: string | null; reference?: string | null } | null;
+  client: {
+    id: string;
+    type: ClientType;
+    fullName: string;
+    docNumber: string | null;
+
+    departmentId: string | null;
+    provinceId: string | null;
+    districtId: string | null;
+
+    department: {
+      id: string;
+      name: string;
+    } | null;
+
+    province: {
+      id: string;
+      name: string;
+      departmentId: string;
+    } | null;
+
+    district: {
+      id: string;
+      name: string;
+      provinceId: string;
+    } | null;
+
+    reference: string | null;
+    mainPhone: string | null;
+  } | null;
   agencyDetail: string | null;
   source: { id: string; name: string; detail?: string | null } | null;
   scheduleDate: string | null;
   deliveryDate: string | null;
-  deliveryType: string | null;
   subTotal: number;
   deliveryCost: number;
   total: number;
   note: string | null;
   createdBy: { id: string; name: string; email: string } | null;
-  agendaStatus: string;
-  deliveryStatus: string | null;
+  workflow: SaleOrderWorkflowOutput | null;
+  currentState: SaleOrderWorkflowStateOutput | null;
+  invoiceSend: boolean;
   isActive: boolean;
   createdAt: string;
   updatedAt: string | null;

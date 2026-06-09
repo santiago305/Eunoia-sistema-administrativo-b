@@ -1,36 +1,26 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { DocType } from "src/shared/domain/value-objects/doc-type";
-import { AgendaStatus } from "src/modules/sale-orders/domain/value-objects/agenda-status";
-import { DeliveryStatus } from "src/modules/sale-orders/domain/value-objects/delivery-status";
 import { PACK_REPOSITORY, PackRepository } from "src/modules/packs/domain/ports/pack.repository";
 import {
   PRODUCT_CATALOG_DOCUMENT_SERIE_REPOSITORY,
   ProductCatalogDocumentSerieRepository,
 } from "src/modules/product-catalog/domain/ports/document-serie.repository";
-import {
-  PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY,
-  ProductCatalogStockItemRepository,
-} from "src/modules/product-catalog/domain/ports/stock-item.repository";
-import {
-  PRODUCT_CATALOG_INVENTORY_REPOSITORY,
-  ProductCatalogInventoryRepository,
-} from "src/modules/product-catalog/domain/ports/inventory.repository";
-import { INVENTORY_LOCK, InventoryLock } from "src/modules/product-catalog/integration/inventory/ports/inventory-lock.port";
 import { SALE_ORDER_REPOSITORY, SaleOrderRepository } from "src/modules/sale-orders/domain/ports/sale-order.repository";
 import { SALE_ORDER_ITEM_REPOSITORY, SaleOrderItemRepository } from "src/modules/sale-orders/domain/ports/sale-order-item.repository";
 import { SALE_ORDER_ITEM_COMPONENT_REPOSITORY, SaleOrderItemComponentRepository } from "src/modules/sale-orders/domain/ports/sale-order-item-component.repository";
 import { SALE_PAYMENT_REPOSITORY, SalePaymentRepository } from "src/modules/sale-orders/domain/ports/sale-payment.repository";
-import { DeliveryType } from "src/modules/sale-orders/domain/value-objects/delivery-type";
+import { WORKFLOW_REPOSITORY, WorkflowRepository } from "src/modules/workflow/domain/ports/workflow.repository";
+import { WORKFLOW_STATE_REPOSITORY, WorkflowStateRepository } from "src/modules/workflow/domain/ports/workflow-state.repository";
 
 type CreateSaleOrderInput = {
   warehouseId: string;
   clientId: string;
+  workflowId: string;
   agencyDetail?: string;
   sourceId?: string;
   scheduleDate?: string;
   deliveryDate?: string;
-  deliveryType?: DeliveryType;
   note?: string;
   subTotal?: number;
   deliveryCost?: number;
@@ -68,12 +58,6 @@ export class CreateSaleOrderUsecase {
     private readonly packRepo: PackRepository,
     @Inject(PRODUCT_CATALOG_DOCUMENT_SERIE_REPOSITORY)
     private readonly serieRepo: ProductCatalogDocumentSerieRepository,
-    @Inject(PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY)
-    private readonly stockItemRepo: ProductCatalogStockItemRepository,
-    @Inject(PRODUCT_CATALOG_INVENTORY_REPOSITORY)
-    private readonly inventoryRepo: ProductCatalogInventoryRepository,
-    @Inject(INVENTORY_LOCK)
-    private readonly inventoryLock: InventoryLock,
     @Inject(SALE_ORDER_REPOSITORY)
     private readonly saleOrderRepo: SaleOrderRepository,
     @Inject(SALE_ORDER_ITEM_REPOSITORY)
@@ -82,10 +66,18 @@ export class CreateSaleOrderUsecase {
     private readonly componentRepo: SaleOrderItemComponentRepository,
     @Inject(SALE_PAYMENT_REPOSITORY)
     private readonly paymentRepo: SalePaymentRepository,
+    @Inject(WORKFLOW_REPOSITORY)
+    private readonly workflowRepo: WorkflowRepository,
+    @Inject(WORKFLOW_STATE_REPOSITORY)
+    private readonly workflowStateRepo: WorkflowStateRepository,
   ) {}
 
   async execute(input: CreateSaleOrderInput, createdBy: string) {
     return this.uow.runInTransaction(async (tx) => {
+      if (!input.workflowId) {
+        throw new BadRequestException("workflowId es obligatorio");
+      }
+
       const series = await this.serieRepo.findActiveFor(
         { docType: DocType.SALE_ORDER, warehouseId: input.warehouseId, isActive: true },
         tx,
@@ -95,28 +87,11 @@ export class CreateSaleOrderUsecase {
       }
       const serie = series[0];
       const correlative = await this.serieRepo.reserveNextNumber(serie.id, tx);
-
-      const toDateKey = (value: Date) =>
-        new Intl.DateTimeFormat("en-CA", {
-          timeZone: "America/Lima",
-          year: "numeric",
-          month: "2-digit",
-          day: "2-digit",
-        }).format(value);
-
-      const todayKey = toDateKey(new Date());
-      const deliveryDateKey = input.deliveryDate ? input.deliveryDate.slice(0, 10) : null;
-      const isDeliveryTodayOrPast = !!deliveryDateKey && deliveryDateKey <= todayKey;
-
-      const agendaStatus = isDeliveryTodayOrPast ? AgendaStatus.PROGRAMMED : AgendaStatus.COORDINATED;
-
-      const deliveryStatus = isDeliveryTodayOrPast
-        ? input.deliveryType === DeliveryType.ABONADO_ENVIO
-          ? DeliveryStatus.WAITING
-          : input.deliveryType === DeliveryType.CONTRA_ENTREGA
-            ? DeliveryStatus.IN_PROGRESS
-            : null
-        : null;
+      const workflow = await this.workflowRepo.findById(input.workflowId, tx);
+      const initialState = await this.workflowStateRepo.findInitialByWorkflowId(input.workflowId, tx);
+      if (!workflow?.isActive || !initialState) {
+        throw new BadRequestException("Workflow invalido para crear pedido");
+      }
 
       const order = await this.saleOrderRepo.create(
         {
@@ -128,14 +103,13 @@ export class CreateSaleOrderUsecase {
           sourceId: input.sourceId ?? null,
           scheduleDate: input.scheduleDate ?? null,
           deliveryDate: input.deliveryDate ?? null,
-          deliveryType: input.deliveryType ?? null,
           subTotal: input.subTotal ?? 0,
           deliveryCost: input.deliveryCost ?? 0,
           total: input.total ?? 0,
           note: input.note ?? null,
           createdBy,
-          agendaStatus,
-          deliveryStatus,
+          workflowId: workflow.id,
+          currentStateId: initialState.id,
           isActive: true,
         },
         tx,
@@ -235,53 +209,7 @@ export class CreateSaleOrderUsecase {
         }
       }
 
-      const savedComponents = await this.componentRepo.bulkCreate(componentsInput, tx);
-
-      const stockItemIdBySkuId = new Map<string, string>();
-      for (const component of savedComponents) {
-        if (stockItemIdBySkuId.has(component.skuId)) continue;
-        const stockItem = await this.stockItemRepo.findBySkuId(component.skuId, tx);
-        if (!stockItem) {
-          throw new BadRequestException("Stock item no encontrado para el SKU");
-        }
-        stockItemIdBySkuId.set(component.skuId, stockItem.id);
-      }
-
-      const requiredByStockItemId = new Map<string, number>();
-      for (const component of savedComponents) {
-        const stockItemId = stockItemIdBySkuId.get(component.skuId);
-        if (!stockItemId) continue;
-        requiredByStockItemId.set(
-          stockItemId,
-          (requiredByStockItemId.get(stockItemId) ?? 0) + Number(component.quantity ?? 0),
-        );
-      }
-
-      const lockKeys = Array.from(requiredByStockItemId.keys()).map((stockItemId) => ({
-        warehouseId: input.warehouseId,
-        stockItemId,
-      }));
-      if (lockKeys.length) {
-        await this.inventoryLock.lockSnapshots(lockKeys, tx);
-      }
-
-      for (const [stockItemId, qty] of requiredByStockItemId.entries()) {
-        const snapshot = await this.inventoryRepo.getSnapshot(
-          { warehouseId: input.warehouseId, stockItemId, locationId: null },
-          tx,
-        );
-        const available = snapshot?.available ?? 0;
-        if (!snapshot || available < qty) {
-          throw new BadRequestException("Stock insuficiente");
-        }
-      }
-
-      for (const [stockItemId, qty] of requiredByStockItemId.entries()) {
-        await this.inventoryRepo.incrementReserved(
-          { warehouseId: input.warehouseId, stockItemId, locationId: null, delta: qty },
-          tx,
-        );
-      }
+      await this.componentRepo.bulkCreate(componentsInput, tx);
 
       const paymentsInput = (input.payments ?? []).map((p) => {
         const date = p.date ? new Date(p.date) : new Date();
@@ -311,8 +239,8 @@ export class CreateSaleOrderUsecase {
         orderId: order.id,
         serie: order.serie,
         correlative: order.correlative,
-        agendaStatus: order.agendaStatus,
-        deliveryStatus: order.deliveryStatus,
+        workflowId: order.workflowId,
+        currentStateId: order.currentStateId,
       };
     });
   }

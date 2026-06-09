@@ -16,8 +16,6 @@ import { SaveSaleOrderSearchMetricUsecase } from "src/modules/sale-orders/applic
 import { DeleteSaleOrderSearchMetricUsecase } from "src/modules/sale-orders/application/usecases/sale-order-search/delete-metric.usecase";
 import { HttpCreateSaleOrderSearchMetricDto } from "src/modules/sale-orders/adapters/in/dtos/http-sale-order-search-metric-create.dto";
 import { sanitizeSaleOrderSearchSnapshot } from "src/modules/sale-orders/application/support/sale-order-search.utils";
-import { UpdateSaleOrderStatusUsecase } from "src/modules/sale-orders/application/usecases/sale-order/update-status.usecase";
-import { UpdateSaleOrderStatusDto } from "../dtos/update-sale-order-status.dto";
 import { CancelSaleOrderUsecase } from "src/modules/sale-orders/application/usecases/sale-order/cancel.usecase";
 import { NotificationRealtimeService } from "src/modules/mail/infrastructure/realtime/notification-realtime.service";
 import { AddSaleOrderPaymentUsecase } from "src/modules/sale-orders/application/usecases/sale-order/add-payment.usecase";
@@ -27,6 +25,14 @@ import { AddSaleOrderPaymentDto } from "../dtos/add-sale-order-payment.dto";
 import { ConfirmSaleOrderDeliveryUsecase } from "src/modules/sale-orders/application/usecases/sale-order/confirm-delivery.usecase";
 import { CreateFromImportPreviewUseCase } from "src/modules/sale-orders/application/usecases/sale-order/create-from-import-preview.usecase";
 import { CreateSaleOrdersFromImportPreviewInput } from "src/modules/sale-orders/application/dtos/import-preview/create-sale-orders-from-preview.input";
+import { AdvanceSaleOrderStateUseCase } from "src/modules/workflow/application/usecases/advance-sale-order-state.usecase";
+import { ChangeSaleOrderStateDto } from "../dtos/change-sale-order-state.dto";
+import { AssignSaleOrderWorkflowUseCase } from "src/modules/workflow/application/usecases/assign-sale-order-workflow.usecase";
+import { GetAvailableTransitionsUseCase } from "src/modules/workflow/application/usecases/get-available-transitions.usecase";
+import { GetOrderTimelineUseCase } from "src/modules/workflow/application/usecases/get-order-timeline.usecase";
+import { AssignWorkflowDto } from "../dtos/assign-workflow.dto";
+import { GetSaleOrderStatisticsUsecase } from "src/modules/sale-orders/application/usecases/sale-order/get-statistics.usecase";
+import { HttpSaleOrderStatisticsQueryDto } from "../dtos/http-sale-order-statistics.dto";
 
 @Controller("sale-orders")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
@@ -34,6 +40,7 @@ export class SaleOrdersController {
   constructor(
     private readonly createSaleOrder: CreateSaleOrderUsecase,
     private readonly listSaleOrders: ListSaleOrdersUsecase,
+    private readonly getSaleOrderStatistics: GetSaleOrderStatisticsUsecase,
     private readonly getSaleOrder: GetSaleOrderUsecase,
     private readonly getComponents: GetSaleOrderComponentsUsecase,
     private readonly getItemComponents: GetSaleOrderItemComponentsUsecase,
@@ -41,7 +48,10 @@ export class SaleOrdersController {
     private readonly getSearchState: GetSaleOrderSearchStateUsecase,
     private readonly saveSearchMetric: SaveSaleOrderSearchMetricUsecase,
     private readonly deleteSearchMetric: DeleteSaleOrderSearchMetricUsecase,
-    private readonly updateSaleOrderStatusUsecase: UpdateSaleOrderStatusUsecase,
+    private readonly advanceSaleOrderState: AdvanceSaleOrderStateUseCase,
+    private readonly assignWorkflow: AssignSaleOrderWorkflowUseCase,
+    private readonly getAvailableTransitions: GetAvailableTransitionsUseCase,
+    private readonly getOrderTimeline: GetOrderTimelineUseCase,
     private readonly cancelSaleOrder: CancelSaleOrderUsecase,
     private readonly confirmDelivery: ConfirmSaleOrderDeliveryUsecase,
     private readonly addPayment: AddSaleOrderPaymentUsecase,
@@ -57,6 +67,7 @@ export class SaleOrdersController {
       {
         warehouseId: dto.warehouseId,
         clientId: dto.clientId,
+        workflowId: dto.workflowId,
         agencyDetail: dto.agencyDetail,
         sourceId: dto.sourceId,
         scheduleDate: dto.scheduleDate,
@@ -64,7 +75,6 @@ export class SaleOrdersController {
         deliveryCost: dto.deliveryCost,
         subTotal: dto.subTotal,
         total: dto.total,
-        deliveryType: dto.deliveryType,
         note: dto.note,
         items: (dto.items ?? []).map((item) => ({
           quantity: item.quantity,
@@ -106,22 +116,47 @@ export class SaleOrdersController {
     });
   }
 
-  @Patch(":saleOrderId/status")
-  async updateStatus(
-    @Param("saleOrderId") saleOrderId: string,
-    @Body() body: UpdateSaleOrderStatusDto,
+  @Post(":saleOrderId/change-state")
+  async changeState(
+    @Param("saleOrderId", ParseUUIDPipe) saleOrderId: string,
+    @Body() body: ChangeSaleOrderStateDto,
+    @CurrentUser() user: { id: string },
   ) {
-    const order = await this.updateSaleOrderStatusUsecase.execute({
+    const order = await this.advanceSaleOrderState.execute({
       saleOrderId,
-      agendaStatus: body.agendaStatus,
-      deliveryStatus: body.deliveryStatus,
+      transitionId: body.transitionId,
+      metadata: body.metadata,
+      executedBy: user.id,
     });
 
     return {
       type: "success",
-      message: "Estado del pedido actualizado correctamente.",
+      message: "Estado del pedido actualizado correctamente mediante workflow.",
       data: order,
     };
+  }
+
+  @Post(":saleOrderId/assign-workflow")
+  assignSaleOrderWorkflow(
+    @Param("saleOrderId", ParseUUIDPipe) saleOrderId: string,
+    @Body() body: AssignWorkflowDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.assignWorkflow.execute({
+      saleOrderId,
+      workflowId: body.workflowId,
+      executedBy: user.id,
+    });
+  }
+
+  @Get(":saleOrderId/available-transitions")
+  availableTransitions(@Param("saleOrderId", ParseUUIDPipe) saleOrderId: string) {
+    return this.getAvailableTransitions.execute({ saleOrderId });
+  }
+
+  @Get(":saleOrderId/history")
+  history(@Param("saleOrderId", ParseUUIDPipe) saleOrderId: string) {
+    return this.getOrderTimeline.execute({ saleOrderId });
   }
 
   @Patch(":saleOrderId/cancel")
@@ -179,6 +214,7 @@ export class SaleOrdersController {
       {
         saleOrderId,
         warehouseId: dto.warehouseId,
+        workflowId: dto.workflowId,
         clientId: dto.clientId,
         agencyDetail: dto.agencyDetail,
         sourceId: dto.sourceId,
@@ -187,7 +223,6 @@ export class SaleOrdersController {
         deliveryCost: dto.deliveryCost,
         subTotal: dto.subTotal,
         total: dto.total,
-        deliveryType: dto.deliveryType,
         note: dto.note,
         items: (dto.items ?? []).map((item) => ({
           quantity: item.quantity,
@@ -223,6 +258,15 @@ export class SaleOrdersController {
       page: query.page,
       limit: query.limit,
       requestedBy: user?.id,
+    });
+  }
+
+  @Get("statistics")
+  statistics(@Query() query: HttpSaleOrderStatisticsQueryDto) {
+    return this.getSaleOrderStatistics.execute({
+      q: query.q,
+      filters: query.filters,
+      includeCancelled: query.includeCancelled,
     });
   }
 

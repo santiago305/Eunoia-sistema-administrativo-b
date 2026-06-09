@@ -21,7 +21,6 @@ export interface SaleOrderPdfData {
     issuedAt?: Date;
     scheduleDate?: string | null;
     deliveryDate?: string | null;
-    deliveryType?: string | null;
     note?: string;
   };
   items: Array<{

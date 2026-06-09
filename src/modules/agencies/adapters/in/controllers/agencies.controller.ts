@@ -6,7 +6,9 @@ import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-con
 import { User as CurrentUser } from "src/shared/utilidades/decorators/user.decorator";
 import { CreateAgencyUsecase } from "src/modules/agencies/application/usecases/agency/create.usecase";
 import { GetAgencyUsecase } from "src/modules/agencies/application/usecases/agency/get-by-id.usecase";
+import { GetAgencyWithSubsidiariesUsecase } from "src/modules/agencies/application/usecases/agency/get-with-subsidiaries.usecase";
 import { ListAgenciesUsecase } from "src/modules/agencies/application/usecases/agency/list.usecase";
+import { ListSubsidiariesUsecase } from "src/modules/agencies/application/usecases/agency/list-subsidiaries.usecase";
 import { SetAgencyActiveUsecase } from "src/modules/agencies/application/usecases/agency/set-active.usecase";
 import { UpdateAgencyUsecase } from "src/modules/agencies/application/usecases/agency/update.usecase";
 import { GetAgencySearchStateUsecase } from "src/modules/agencies/application/usecases/agency-search/get-state.usecase";
@@ -17,6 +19,7 @@ import { HttpCreateAgencyDto } from "../dtos/http-agency-create.dto";
 import { HttpUpdateAgencyDto } from "../dtos/http-agency-update.dto";
 import { HttpSetAgencyActiveDto } from "../dtos/http-agency-set-active.dto";
 import { ListAgenciesQueryDto } from "../dtos/list-agencies.query.dto";
+import { ListSubsidiariesQueryDto } from "../dtos/list-subsidiaries.query.dto";
 import { HttpCreateAgencySearchMetricDto } from "../dtos/http-agency-search-metric-create.dto";
 
 @Controller("agencies")
@@ -25,7 +28,9 @@ export class AgenciesController {
   constructor(
     private readonly createAgency: CreateAgencyUsecase,
     private readonly listAgencies: ListAgenciesUsecase,
+    private readonly listSubsidiariesUsecase: ListSubsidiariesUsecase,
     private readonly getAgency: GetAgencyUsecase,
+    private readonly getAgencyWithSubsidiariesUsecase: GetAgencyWithSubsidiariesUsecase,
     private readonly updateAgency: UpdateAgencyUsecase,
     private readonly setAgencyActive: SetAgencyActiveUsecase,
     private readonly getSearchState: GetAgencySearchStateUsecase,
@@ -38,12 +43,8 @@ export class AgenciesController {
   create(@Body() dto: HttpCreateAgencyDto) {
     return this.createAgency.execute({
       name: dto.name,
-      reference: dto.reference,
-      address: dto.address,
-      departmentId: dto.departmentId,
-      provinceId: dto.provinceId,
-      districtId: dto.districtId,
       isActive: dto.isActive,
+      subsidiaries: dto.subsidiaries,
     });
   }
 
@@ -88,6 +89,23 @@ export class AgenciesController {
   }
 
   @RequirePermissions("agencies.read")
+  @Get("subsidiaries")
+  listSubsidiaries(@Query() query: ListSubsidiariesQueryDto) {
+    const isActive = query.isActive === undefined ? undefined : query.isActive === "true";
+    return this.listSubsidiariesUsecase.execute({
+      q: query.q,
+      agencyId: query.agencyId,
+      isActive,
+    });
+  }
+
+  @RequirePermissions("agencies.read")
+  @Get(":id/with-subsidiaries")
+  getAgencyWithSubsidiaries(@Param("id", ParseUUIDPipe) id: string) {
+    return this.getAgencyWithSubsidiariesUsecase.execute({ agencyId: id });
+  }
+
+  @RequirePermissions("agencies.read")
   @Get(":id")
   getById(@Param("id", ParseUUIDPipe) id: string) {
     return this.getAgency.execute({ agencyId: id });
@@ -99,11 +117,8 @@ export class AgenciesController {
     return this.updateAgency.execute({
       agencyId: id,
       name: dto.name,
-      reference: dto.reference,
-      address: dto.address,
-      departmentId: dto.departmentId,
-      provinceId: dto.provinceId,
-      districtId: dto.districtId,
+      isActive: dto.isActive,
+      subsidiaries: dto.subsidiaries,
     });
   }
 

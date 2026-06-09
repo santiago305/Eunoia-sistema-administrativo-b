@@ -1,20 +1,11 @@
-import { IsBoolean, IsNotEmpty, IsOptional, IsString, Length, MaxLength } from "class-validator";
+import { Type } from "class-transformer";
+import { ArrayMinSize, IsArray, IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString, Length, MaxLength, Min, ValidateNested } from "class-validator";
 
-export class HttpCreateAgencyDto {
+class HttpCreateAgencySubsidiaryDto {
   @IsString()
   @IsNotEmpty()
-  @MaxLength(255)
-  name: string;
-
-  @IsOptional()
-  @IsString()
   @MaxLength(120)
-  reference?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(300)
-  address?: string;
+  alias: string;
 
   @IsString()
   @Length(2, 2)
@@ -27,6 +18,37 @@ export class HttpCreateAgencyDto {
   @IsString()
   @Length(6, 6)
   districtId: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  address?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  basePrice?: number;
+
+  @IsOptional()
+  @IsString()
+  note?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
+
+export class HttpCreateAgencyDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(255)
+  name: string;
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({ each: true })
+  @Type(() => HttpCreateAgencySubsidiaryDto)
+  subsidiaries: HttpCreateAgencySubsidiaryDto[];
 
   @IsOptional()
   @IsBoolean()

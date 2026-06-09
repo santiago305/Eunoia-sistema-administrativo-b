@@ -10,15 +10,19 @@ import {
   Min,
   ValidateNested,
 } from "class-validator";
-import { DeliveryType } from "src/modules/sale-orders/domain/value-objects/delivery-type";
 import { HttpSaleOrderItemComponentDto, HttpSaleOrderItemDto, HttpSalePaymentDto } from "./http-sale-order-create.dto";
 
 export class HttpSaleOrderUpdateDto {
+  
   @IsUUID()
   warehouseId: string;
 
   @IsUUID()
   clientId: string;
+  
+  @IsUUID()
+  @IsOptional()
+  workflowId: string;
 
   @IsOptional()
   @IsString()
@@ -50,10 +54,6 @@ export class HttpSaleOrderUpdateDto {
   @IsNumber()
   @Min(0)
   total?: number;
-
-  @IsOptional()
-  @IsString()
-  deliveryType?: DeliveryType;
 
   @IsOptional()
   @IsString()

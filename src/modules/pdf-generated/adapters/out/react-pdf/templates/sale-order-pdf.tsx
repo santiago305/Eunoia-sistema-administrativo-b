@@ -169,11 +169,6 @@ export const SaleOrderPdf = ({ data }: { data: SaleOrderPdfData }): React.ReactE
             <Text style={styles.label}>ENTREGA:</Text> {data.order.deliveryDate}
           </Text>
         ) : null}
-        {data.order.deliveryType ? (
-          <Text>
-            <Text style={styles.label}>TIPO:</Text> {data.order.deliveryType}
-          </Text>
-        ) : null}
       </View>
 
       <View style={styles.tableHeader}>

@@ -13,6 +13,8 @@ import { AddMasterSuperAdministratorRole20260527000000 } from "./migrations/2026
 import { AllowSuperAdminWithoutRole20260528000000 } from "./migrations/20260528000000-allow-super-admin-without-role";
 import { CreateUserGrantablePermissions20260528010000 } from "./migrations/20260528010000-create-user-grantable-permissions";
 import { CreateUserManageableRoles20260528020000 } from "./migrations/20260528020000-create-user-manageable-roles";
+import { CreateAgencySubsidiaries20260603000000 } from "./migrations/20260603000000-create-agency-subsidiaries";
+import { CreateSaleOrderStates20260608000000 } from "./migrations/20260608000000-create-sale-order-states";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -48,6 +50,8 @@ export const getMigrationDataSourceOptions = (): DataSourceOptions => ({
     AllowSuperAdminWithoutRole20260528000000,
     CreateUserGrantablePermissions20260528010000,
     CreateUserManageableRoles20260528020000,
+    CreateAgencySubsidiaries20260603000000,
+    CreateSaleOrderStates20260608000000,
   ],
 });
 

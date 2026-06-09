@@ -63,9 +63,6 @@ import {
   SALE_PAYMENT_REPOSITORY,
   SalePaymentRepository,
 } from "src/modules/sale-orders/domain/ports/sale-payment.repository";
-import { DeliveryType } from "src/modules/sale-orders/domain/value-objects/delivery-type";
-import { AgendaStatus } from "src/modules/sale-orders/domain/value-objects/agenda-status";
-import { DeliveryStatus } from "src/modules/sale-orders/domain/value-objects/delivery-status";
 import { ExcelRowAccessor } from "src/modules/excel/application/orders-import/excel-row-accessor";
 import { fixMojibake, normalizePhone, normalizeTextForMatch, parseNumber } from "src/modules/excel/application/orders-import/normalization";
 import { parseProductCodes } from "src/modules/excel/application/orders-import/product-codes";
@@ -196,7 +193,7 @@ export class PreviewOrdersImportUseCase {
         errors: row.errors,
         recipientName: row.recipientName,
         sourceName: row.sourceName,
-        deliveryType: row.deliveryType,
+        workflowName: row.workflowName,
         productCodes: row.productCodes,
         parsedProducts: row.parsedProducts,
       });
@@ -322,7 +319,7 @@ export class PreviewOrdersImportUseCase {
       skus: input.skus,
       totalRaw: input.row.total,
       advanceRaw: input.row.advance,
-      deliveryTypeRaw: input.row.deliveryType,
+      workflowNameRaw: input.row.workflowName,
       deliveryDateRaw: input.row.deliveryDate,
     });
 
@@ -333,30 +330,10 @@ export class PreviewOrdersImportUseCase {
 
     const deliveryCost = 0;
     const subTotal = Math.max(total - deliveryCost, 0);
-    const resolvedDeliveryType = this.resolveDeliveryType(input.row.deliveryType);
     const serie = "PE";
     const correlative = await this.reserveNextSaleOrderCorrelative(input.tx);
 
-    const toDateKey = (value: Date) =>
-      new Intl.DateTimeFormat("en-CA", {
-        timeZone: "America/Lima",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      }).format(value);
-
-    const todayKey = toDateKey(new Date());
     const deliveryDate = this.toDateOnly(input.row.deliveryDate);
-    const isDeliveryTodayOrPast = !!deliveryDate && deliveryDate <= todayKey;
-
-    const agendaStatus = isDeliveryTodayOrPast ? AgendaStatus.PROGRAMMED : AgendaStatus.COORDINATED;
-    const deliveryStatus = isDeliveryTodayOrPast
-      ? resolvedDeliveryType === DeliveryType.ABONADO_ENVIO
-        ? DeliveryStatus.WAITING
-        : resolvedDeliveryType === DeliveryType.CONTRA_ENTREGA
-          ? DeliveryStatus.IN_PROGRESS
-          : null
-      : null;
 
     const saleOrderInput = {
       serie,
@@ -367,14 +344,11 @@ export class PreviewOrdersImportUseCase {
       sourceId: input.sourceId,
       scheduleDate: deliveryDate,
       deliveryDate,
-      deliveryType: resolvedDeliveryType,
       subTotal,
       deliveryCost,
       total,
       note: this.toText(input.row.internalNote),
       createdBy: input.userId,
-      agendaStatus,
-      deliveryStatus,
       isActive: true,
     };
 
@@ -492,36 +466,6 @@ export class PreviewOrdersImportUseCase {
     return saleOrderId;
   }
 
-  private resolveDeliveryType(value: unknown) {
-    const text = this.normalizeText(value);
-
-    this.debug("RESOLVE_DELIVERY_TYPE", {
-      raw: value,
-      normalized: text,
-    });
-
-    if (
-      text.includes("abonado ce") ||
-      text.includes("contra entrega") ||
-      text.includes("contra") ||
-      text.includes("cod") ||
-      text.includes("ce")
-    ) {
-      return DeliveryType.CONTRA_ENTREGA as any;
-    }
-
-    if (
-      text.includes("abonado envio") ||
-      text.includes("abonado envío") ||
-      text.includes("envio") ||
-      text.includes("envío")
-    ) {
-      return DeliveryType.ABONADO_ENVIO as any;
-    }
-
-    return DeliveryType.ABONADO_ENVIO as any;
-  }
-
   private async resolveOrCreateClient(
     row: Awaited<ReturnType<PreviewOrdersImportUseCase["buildPreviewRow"]>>,
     tx: TransactionContext,
@@ -580,7 +524,7 @@ export class PreviewOrdersImportUseCase {
     const productName = r.get(["Nombre del producto"]);
     const orderDate = r.get(["Día de creación", "Dia de creación", "Dia de creacion"]);
     const deliveryDate = r.get(["Fecha de entrega esperada", "Fecha entrega esperada"]);
-    const deliveryType = r.get(["Etiqueta"]);
+    const workflowName = r.get(["Etiqueta"]);
 
     const departmentNameFromExcel = r.get(["Provincia/Ciudad", "Provincia / Ciudad"]);
     const provinceNameFromExcel = r.get(["Distrito"]);
@@ -647,7 +591,7 @@ export class PreviewOrdersImportUseCase {
       productName,
       orderDate,
       deliveryDate,
-      deliveryType,
+      workflowName,
       departmentNameFromExcel,
       provinceNameFromExcel,
       districtNameFromExcel,

@@ -24,4 +24,5 @@ export interface SaleOrderItemComponentRepository {
     tx?: TransactionContext,
   ): Promise<SaleOrderComponentsOutput>;
   findComponentsBySaleOrderId(saleOrderId: string, tx?: TransactionContext): Promise<SaleOrderComponentsOutput>;
+  
 }

@@ -47,7 +47,7 @@ export class ListAgenciesUsecase {
     }
 
     return {
-      items: items.map((agency) => AgencyOutputMapper.toOutput(agency)),
+      items: items.map((agency) => AgencyOutputMapper.toOutput(agency, (agency as any).__subsidiaries)),
       total,
       page,
       limit,
