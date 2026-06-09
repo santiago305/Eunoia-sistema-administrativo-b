@@ -9,6 +9,7 @@ describe("HttpListSaleOrdersQueryDto", () => {
       q: "S01",
       filters: JSON.stringify([
         { field: "paymentStatus", operator: "in", values: ["PAID"] },
+        { field: "workflowId", operator: "in", values: ["workflow-1"] },
         { field: "scheduleDate", operator: "between", range: { start: "2026-05-01", end: "2026-05-31" } },
       ]),
     });
@@ -18,6 +19,7 @@ describe("HttpListSaleOrdersQueryDto", () => {
     expect(errors).toHaveLength(0);
     expect(dto.filters).toEqual([
       { field: "paymentStatus", operator: "in", values: ["PAID"] },
+      { field: "workflowId", operator: "in", values: ["workflow-1"] },
       { field: "scheduleDate", operator: "between", range: { start: "2026-05-01", end: "2026-05-31" } },
     ]);
   });

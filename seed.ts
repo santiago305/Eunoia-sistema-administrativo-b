@@ -65,6 +65,8 @@ import { SaleOrderEntity } from 'src/modules/sale-orders/adapters/out/persistenc
 import { SaleOrderItemEntity } from 'src/modules/sale-orders/adapters/out/persistence/typeorm/entities/sale-order-item.entity';
 import { SaleOrderItemComponentEntity } from 'src/modules/sale-orders/adapters/out/persistence/typeorm/entities/sale-order-item-component.entity';
 import { SalePaymentEntity } from 'src/modules/sale-orders/adapters/out/persistence/typeorm/entities/sale-payment.entity';
+import { SaleOrderStatesEntity } from 'src/modules/workflow/adapters/out/persistence/typeorm/entities/sale-order-states.entity';
+import { seedSaleOrderStates } from 'src/modules/sale-orders/infrastructure/jobs/sale-order-states.seeder';
 
 const entities = [
   Role,
@@ -111,6 +113,7 @@ const entities = [
   MessageUserStateEntity,
   MessageRecipientEntity,
   SaleOrderEntity,
+  SaleOrderStatesEntity,
   SaleOrderItemEntity,
   SaleOrderItemComponentEntity,
   SalePaymentEntity,
@@ -142,6 +145,7 @@ dataSource
     await seedProductCatalog(dataSource);
     await seedProductCatalogEquivalences(dataSource);
     await seedProductCatalogRecipes(dataSource);
+    await seedSaleOrderStates(dataSource);
 
     const warehouses = await seedWarehouses(dataSource);
     await seedProductCatalogInventory(dataSource);

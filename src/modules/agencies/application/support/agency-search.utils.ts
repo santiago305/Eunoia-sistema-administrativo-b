@@ -27,7 +27,7 @@ const FILTER_FIELD_ORDER: AgencySearchField[] = [
   AgencySearchFields.PROVINCE_ID,
   AgencySearchFields.DISTRICT_ID,
   AgencySearchFields.NAME,
-  AgencySearchFields.REFERENCE,
+  AgencySearchFields.ALIAS,
   AgencySearchFields.ADDRESS,
 ];
 
@@ -40,8 +40,8 @@ const CATALOG_FIELDS = new Set<AgencySearchField>([
 
 const TEXT_FIELDS = new Set<AgencySearchField>([
   AgencySearchFields.NAME,
+  AgencySearchFields.ALIAS,
   AgencySearchFields.ADDRESS,
-  AgencySearchFields.REFERENCE,
 ]);
 
 const TEXT_OPERATORS = new Set<AgencySearchOperator>([
@@ -55,7 +55,7 @@ const SEARCH_FIELD_LABELS: Record<AgencySearchField, string> = {
   [AgencySearchFields.PROVINCE_ID]: "Provincia",
   [AgencySearchFields.DISTRICT_ID]: "Distrito",
   [AgencySearchFields.NAME]: "Nombre",
-  [AgencySearchFields.REFERENCE]: "Referencia",
+  [AgencySearchFields.ALIAS]: "Alias",
   [AgencySearchFields.ADDRESS]: "Direccion",
 };
 
@@ -85,7 +85,7 @@ function normalizeRuleMode(mode?: AgencySearchRuleMode | null): AgencySearchRule
 function sanitizeSearchRule(rule?: Partial<AgencySearchRule> | null): AgencySearchRule | null {
   if (!rule?.field || !rule.operator) return null;
 
-  const field = rule.field;
+  const field = (rule.field as string) === "reference" ? AgencySearchFields.ALIAS : rule.field;
   const operator = rule.operator;
 
   if (!Object.values(AgencySearchFields).includes(field)) return null;

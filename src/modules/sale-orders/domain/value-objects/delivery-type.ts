@@ -1,5 +1,0 @@
-export enum DeliveryType {
-  CONTRA_ENTREGA = "CONTRA_ENTREGA",
-  ABONADO_ENVIO = "ABONADO_ENVIO",
-}
-

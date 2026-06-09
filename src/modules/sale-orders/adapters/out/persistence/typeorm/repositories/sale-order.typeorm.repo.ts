@@ -20,9 +20,6 @@ import {
 } from "src/modules/sale-orders/application/dtos/sale-order-search/sale-order-search-snapshot";
 import {
   matchSearchOptionIds,
-  SALE_ORDER_AGENDA_STATUS_SEARCH_OPTIONS,
-  SALE_ORDER_DELIVERY_STATUS_SEARCH_OPTIONS,
-  SALE_ORDER_DELIVERY_TYPE_SEARCH_OPTIONS,
   SALE_ORDER_PAYMENT_STATUS_SEARCH_OPTIONS,
   sanitizeSaleOrderSearchFilters,
 } from "src/modules/sale-orders/application/support/sale-order-search.utils";
@@ -32,8 +29,15 @@ import { SaleOrderGetOutput } from "src/modules/sale-orders/application/dtos/sal
 import { SaleOrderItemComponentEntity } from "../entities/sale-order-item-component.entity";
 import { SaleOrderItemEntity } from "../entities/sale-order-item.entity";
 import { SalePaymentEntity } from "../entities/sale-payment.entity";
-import { AgendaStatus } from "src/modules/sale-orders/domain/value-objects/agenda-status";
-import { DeliveryStatus } from "src/modules/sale-orders/domain/value-objects/delivery-status";
+import { WorkflowEntity } from "src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow.entity";
+import { WorkflowStateEntity } from "src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow-state.entity";
+import { TelephoneEntity } from "src/modules/clients/adapters/out/persistence/typeorm/entities/telephone.entity";
+import { SaleOrderStatisticsOutput } from "src/modules/sale-orders/application/dtos/sale-order-statistics.output";
+import { ClientType } from "src/modules/clients/domain/object-values/client-type";
+import { SaleOrderStatesEntity } from "src/modules/workflow/adapters/out/persistence/typeorm/entities/sale-order-states.entity";
+import { UbigeoDepartmentEntity } from "src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-department.entity";
+import { UbigeoDistrictEntity } from "src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-district.entity";
+import { UbigeoProvinceEntity } from "src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-province.entity";
 
 @Injectable()
 export class SaleOrderTypeormRepository implements SaleOrderRepository {
@@ -60,14 +64,13 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       row.sourceId ?? null,
       row.scheduleDate ?? null,
       row.deliveryDate ?? null,
-      row.deliveryType ?? null,
       Number(row.subTotal ?? 0),
       Number(row.deliveryCost ?? 0),
       Number(row.total ?? 0),
       row.note ?? null,
       row.createdBy,
-      row.agendaStatus,
-      row.deliveryStatus ?? null,
+      row.workflowId ?? null,
+      row.currentStateId ?? null,
       Boolean(row.isActive),
       row.createdAt,
       row.updatedAt ?? null,
@@ -81,6 +84,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         total: Number(item.total ?? 0),
         createdAt: item.createdAt,
       })) ?? [],
+      Boolean(row.invoiceSend),
     );
   }
 
@@ -95,14 +99,13 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       sourceId: input.sourceId ?? null,
       scheduleDate: input.scheduleDate ?? null,
       deliveryDate: input.deliveryDate ?? null,
-      deliveryType: input.deliveryType ?? null,
       subTotal: input.subTotal,
       deliveryCost: input.deliveryCost,
       total: input.total,
       note: input.note ?? null,
       createdBy: input.createdBy,
-      agendaStatus: input.agendaStatus,
-      deliveryStatus: input.deliveryStatus ?? null,
+      workflowId: input.workflowId ?? null,
+      currentStateId: input.currentStateId ?? null,
       isActive: input.isActive ?? true,
     });
     return this.toDomain(saved);
@@ -137,11 +140,12 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       sourceId: input.sourceId ?? null,
       scheduleDate: input.scheduleDate ?? null,
       deliveryDate: input.deliveryDate ?? null,
-      deliveryType: input.deliveryType ?? null,
       subTotal: input.subTotal,
       deliveryCost: input.deliveryCost,
       total: input.total,
       note: input.note ?? null,
+      workflowId: input.workflowId ?? row.workflowId ?? null,
+      currentStateId: input.currentStateId ?? row.currentStateId ?? null,
     });
 
     return this.toDomain(saved);
@@ -151,13 +155,26 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     tx?: TransactionContext,
   ): Promise<number> {
     const manager = this.getManager(tx);
-    return manager.getRepository(SaleOrderEntity).count({
-      where: {
-        clientId,
-        deliveryStatus: DeliveryStatus.DELIVERED,
-        isActive: true,
-      },
-    });
+    return manager
+      .getRepository(SaleOrderEntity)
+      .createQueryBuilder("saleOrder")
+      .innerJoin(
+        WorkflowStateEntity,
+        "state",
+        "state.id = saleOrder.currentStateId",
+      )
+      .where("saleOrder.clientId = :clientId", { clientId })
+      .andWhere("saleOrder.isActive = true")
+      .andWhere("state.isFinal = true")
+      .getCount();
+  }
+
+  async markInvoiceSent(saleOrderId: string, tx?: TransactionContext): Promise<void> {
+    const manager = this.getManager(tx);
+    await manager.getRepository(SaleOrderEntity).update(
+      { id: saleOrderId },
+      { invoiceSend: true },
+    );
   }
 
   private applyPaymentStatusFilter(
@@ -225,11 +242,11 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         return;
     }
   }
-  async updateStatuses(
+  async updateWorkflowState(
   input: {
     saleOrderId: string;
-    agendaStatus?: AgendaStatus;
-    deliveryStatus?: DeliveryStatus | null;
+    workflowId?: string | null;
+    currentStateId?: string | null;
   },
     tx?: TransactionContext,
   ): Promise<SaleOrder> {
@@ -241,11 +258,11 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     if (!row) {
       throw new Error("Pedido no encontrado");
     }
-    if (input.agendaStatus !== undefined) {
-      row.agendaStatus = input.agendaStatus;
+    if (input.workflowId !== undefined) {
+      row.workflowId = input.workflowId;
     }
-    if (input.deliveryStatus !== undefined) {
-      row.deliveryStatus = input.deliveryStatus;
+    if (input.currentStateId !== undefined) {
+      row.currentStateId = input.currentStateId;
     }
     const saved = await repo.save(row);
     return this.toDomain(saved);
@@ -261,14 +278,8 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       .createQueryBuilder("so")
       .select("so.id", "id")
       .where("so.deliveryDate <= :deliveryDate", { deliveryDate: input.deliveryDate })
-      .andWhere("so.agendaStatus != :agendaCanceled", { agendaCanceled: AgendaStatus.CANCELED })
-      .andWhere("(so.deliveryStatus IS NULL OR so.deliveryStatus NOT IN (:...blocked))", {
-        blocked: [DeliveryStatus.DELIVERED, DeliveryStatus.CANCELED],
-      })
-      .andWhere("NOT (so.agendaStatus = :programmed AND so.deliveryStatus = :inProgress)", {
-        programmed: AgendaStatus.PROGRAMMED,
-        inProgress: DeliveryStatus.IN_PROGRESS,
-      })
+      .andWhere("so.workflowId IS NOT NULL")
+      .andWhere("so.currentStateId IS NOT NULL")
       .orderBy("so.deliveryDate", "ASC")
       .addOrderBy("so.createdAt", "ASC")
       .limit(input.limit ?? 500);
@@ -295,9 +306,6 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         .leftJoin(User, "creator", "creator.id = so.createdBy")
 
       const matchedPaymentStatuses = matchSearchOptionIds(q, SALE_ORDER_PAYMENT_STATUS_SEARCH_OPTIONS);
-      const matchedAgendaStatuses = matchSearchOptionIds(q, SALE_ORDER_AGENDA_STATUS_SEARCH_OPTIONS);
-      const matchedDeliveryStatuses = matchSearchOptionIds(q, SALE_ORDER_DELIVERY_STATUS_SEARCH_OPTIONS);
-      const matchedDeliveryTypes = matchSearchOptionIds(q, SALE_ORDER_DELIVERY_TYPE_SEARCH_OPTIONS);
 
       qb.andWhere(
         new Brackets((searchQb) => {
@@ -313,26 +321,12 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
             .orWhere("unaccent(coalesce(source.name, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
             .orWhere("unaccent(coalesce(source.detail, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
             .orWhere("unaccent(coalesce(creator.name, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
-            .orWhere("unaccent(coalesce(creator.email, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
-            .orWhere("so.agendaStatus::text ILIKE :q", { q: `%${q}%` })
-            .orWhere("so.deliveryStatus::text ILIKE :q", { q: `%${q}%` })
-            .orWhere("so.deliveryType::text ILIKE :q", { q: `%${q}%` });
+            .orWhere("unaccent(coalesce(creator.email, '')) ILIKE unaccent(:q)", { q: `%${q}%` });
 
           if (matchedPaymentStatuses.length) {
             searchQb.orWhere(`${this.paymentStatusSql()} IN (:...matchedPaymentStatuses)`, { matchedPaymentStatuses });
           }
 
-          if (matchedAgendaStatuses.length) {
-            searchQb.orWhere("so.agendaStatus IN (:...matchedAgendaStatuses)", { matchedAgendaStatuses });
-          }
-
-          if (matchedDeliveryStatuses.length) {
-            searchQb.orWhere("so.deliveryStatus IN (:...matchedDeliveryStatuses)", { matchedDeliveryStatuses });
-          }
-
-          if (matchedDeliveryTypes.length) {
-            searchQb.orWhere("so.deliveryType IN (:...matchedDeliveryTypes)", { matchedDeliveryTypes });
-          }
         }),
       );
     }
@@ -393,23 +387,17 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
             });
           }
           break;
-        case SaleOrderSearchFields.AGENDA_STATUS:
+        case SaleOrderSearchFields.WORKFLOW_ID:
           if (filter.values?.length) {
-            qb.andWhere(`so.agendaStatus ${filter.mode === "exclude" ? "NOT IN" : "IN"} (:...${valueParam})`, {
+            qb.andWhere(`so.workflowId ${filter.mode === "exclude" ? "NOT IN" : "IN"} (:...${valueParam})`, {
               [valueParam]: filter.values,
             });
           }
           break;
-        case SaleOrderSearchFields.DELIVERY_STATUS:
+        case SaleOrderSearchFields.SALE_ORDER_STATE_ID:
           if (filter.values?.length) {
-            qb.andWhere(`so.deliveryStatus ${filter.mode === "exclude" ? "NOT IN" : "IN"} (:...${valueParam})`, {
-              [valueParam]: filter.values,
-            });
-          }
-          break;
-        case SaleOrderSearchFields.DELIVERY_TYPE:
-          if (filter.values?.length) {
-            qb.andWhere(`so.deliveryType ${filter.mode === "exclude" ? "NOT IN" : "IN"} (:...${valueParam})`, {
+            qb.leftJoin(WorkflowStateEntity, "filterState", "filterState.id = so.currentStateId");
+            qb.andWhere(`filterState.saleOrderStateId ${filter.mode === "exclude" ? "NOT IN" : "IN"} (:...${valueParam})`, {
               [valueParam]: filter.values,
             });
           }
@@ -440,14 +428,21 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     const warehouseIds = Array.from(new Set(rows.map((row) => row.warehouseId).filter(Boolean))) as string[];
     const sourceIds = Array.from(new Set(rows.map((row) => row.sourceId).filter(Boolean))) as string[];
     const userIds = Array.from(new Set(rows.map((row) => row.createdBy).filter(Boolean))) as string[];
+    const workflowIds = Array.from(new Set(rows.map((row) => row.workflowId).filter(Boolean))) as string[];
+    const stateIds = Array.from(new Set(rows.map((row) => row.currentStateId).filter(Boolean))) as string[];
 
-    const [payments, clients, warehouses, sources, users] = await Promise.all([
+    const [payments, clients, mainTelephones, warehouses, sources, users, workflows, states] = await Promise.all([
       manager.getRepository(SalePaymentEntity).find({
         where: { saleOrderId: In(saleOrderIds) },
         order: { createdAt: "ASC" },
       }),
       clientIds.length
         ? manager.getRepository(ClientEntity).find({ where: { id: In(clientIds) } })
+        : Promise.resolve([]),
+      clientIds.length
+        ? manager.getRepository(TelephoneEntity).find({
+            where: { clientId: In(clientIds), isMain: true, isActive: true },
+          })
         : Promise.resolve([]),
       warehouseIds.length
         ? manager.getRepository(WarehouseEntity).find({ where: { id: In(warehouseIds) } })
@@ -458,6 +453,15 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       userIds.length
         ? manager.getRepository(User).find({ where: { id: In(userIds) } })
         : Promise.resolve([]),
+      workflowIds.length
+        ? manager.getRepository(WorkflowEntity).find({ where: { id: In(workflowIds) } })
+        : Promise.resolve([]),
+      stateIds.length
+        ? manager.getRepository(WorkflowStateEntity).find({
+            where: { id: In(stateIds) },
+            relations: { saleOrderState: true },
+          })
+        : Promise.resolve([]),
     ]);
 
     const bankAccountIds = Array.from(new Set(payments.map((p) => p.bankAccountId).filter(Boolean))) as string[];
@@ -466,10 +470,13 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       : [];
 
     const clientById = new Map(clients.map((row) => [row.id, row]));
+    const mainTelephoneByClientId = new Map(mainTelephones.map((row) => [row.clientId, row.number]));
     const warehouseById = new Map(warehouses.map((row) => [row.id, row]));
     const sourceById = new Map(sources.map((row) => [row.id, row]));
     const userById = new Map(users.map((row) => [row.id, row]));
     const bankAccountById = new Map(bankAccounts.map((row) => [row.id, row]));
+    const workflowById = new Map(workflows.map((row) => [row.id, row]));
+    const stateById = new Map(states.map((row) => [row.id, row]));
 
     const paymentsByOrderId = new Map<string, SalePaymentEntity[]>();
     for (const payment of payments) {
@@ -492,6 +499,8 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       const warehouse = warehouseById.get(row.warehouseId);
       const source = row.sourceId ? sourceById.get(row.sourceId) : undefined;
       const creator = userById.get(row.createdBy);
+      const workflow = row.workflowId ? workflowById.get(row.workflowId) : undefined;
+      const currentState = row.currentStateId ? stateById.get(row.currentStateId) : undefined;
 
       return {
         id: row.id,
@@ -505,6 +514,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
               fullName: client.fullName,
               docNumber: client.docNumber ?? null,
               reference: client.reference ?? null,
+              mainPhone: mainTelephoneByClientId.get(client.id) ?? null,
               count: await this.countSaleOrdersByClientId(client.id, tx),
             }
           : null,
@@ -512,14 +522,31 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         source: source ? { id: source.id, name: source.name, detail: source.detail ?? null } : null,
         scheduleDate: row.scheduleDate ?? null,
         deliveryDate: row.deliveryDate ?? null,
-        deliveryType: row.deliveryType ?? null,
         subTotal: Number(row.subTotal ?? 0),
         deliveryCost: Number(row.deliveryCost ?? 0),
         total: totalOrder,
         note: row.note ?? null,
         createdBy: creator ? { id: creator.id, name: creator.name, email: creator.email } : null,
-        agendaStatus: row.agendaStatus,
-        deliveryStatus: row.deliveryStatus ?? null,
+        workflow: workflow
+          ? {
+              id: workflow.id,
+              name: workflow.name,
+              description: workflow.description ?? null,
+              isActive: workflow.isActive,
+            }
+          : null,
+        currentState: currentState
+          ? {
+              id: currentState.id,
+              code: currentState.saleOrderState?.code ?? "",
+              name: currentState.saleOrderState?.name ?? "",
+              color: currentState.saleOrderState?.color ?? "",
+              isInitial: currentState.isInitial,
+              isFinal: currentState.isFinal,
+              isActive: currentState.isActive,
+            }
+          : null,
+        invoiceSend: Boolean(row.invoiceSend),
         isActive: Boolean(row.isActive),
         createdAt: toIso(row.createdAt),
         updatedAt: row.updatedAt ? toIso(row.updatedAt) : null,
@@ -556,146 +583,472 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
 
   return { items, total };
   }
-  async findById(saleOrderId: string, tx?: TransactionContext): Promise<SaleOrderGetOutput | null> {
-    const manager = this.getManager(tx);
 
-    const row = await manager.getRepository(SaleOrderEntity).findOne({
-      where: { id: saleOrderId },
+  async statistics(
+    params: { q?: string; filters?: SaleOrderSearchRule[]; includeCancelled?: boolean },
+    tx?: TransactionContext,
+  ): Promise<SaleOrderStatisticsOutput> {
+    const manager = this.getManager(tx);
+    const base = manager
+      .getRepository(SaleOrderEntity)
+      .createQueryBuilder("so")
+      .leftJoin(ClientEntity, "client", "client.id = so.clientId")
+      .leftJoin(WarehouseEntity, "warehouse", "warehouse.id = so.warehouseId")
+      .leftJoin(SourceEntity, "source", "source.id = so.sourceId")
+      .leftJoin(User, "creator", "creator.id = so.createdBy")
+      .leftJoin(WorkflowEntity, "workflow", "workflow.id = so.workflowId")
+      .leftJoin(WorkflowStateEntity, "state", "state.id = so.currentStateId")
+      .leftJoin(SaleOrderStatesEntity, "globalState", "globalState.id = state.saleOrderStateId")
+      .leftJoin(
+        "(SELECT sale_order_id, SUM(amount) AS collected FROM sale_payments GROUP BY sale_order_id)",
+        "payment_sum",
+        "payment_sum.sale_order_id = so.id",
+      );
+
+    const q = params.q?.trim();
+    if (q) {
+      const matchedPaymentStatuses = matchSearchOptionIds(q, SALE_ORDER_PAYMENT_STATUS_SEARCH_OPTIONS);
+      base.andWhere(
+        new Brackets((searchQb) => {
+          searchQb
+            .where("concat(coalesce(so.serie, ''), '-', coalesce(so.correlative::text, '')) ILIKE :q", {
+              q: `%${q}%`,
+            })
+            .orWhere("unaccent(coalesce(so.agencyDetail, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
+            .orWhere("unaccent(coalesce(so.note, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
+            .orWhere("unaccent(coalesce(client.fullName, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
+            .orWhere("unaccent(coalesce(client.docNumber, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
+            .orWhere("unaccent(coalesce(warehouse.name, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
+            .orWhere("unaccent(coalesce(source.name, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
+            .orWhere("unaccent(coalesce(source.detail, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
+            .orWhere("unaccent(coalesce(creator.name, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
+            .orWhere("unaccent(coalesce(creator.email, '')) ILIKE unaccent(:q)", { q: `%${q}%` });
+          if (matchedPaymentStatuses.length) {
+            searchQb.orWhere(`${this.paymentStatusSql()} IN (:...matchedPaymentStatuses)`, {
+              matchedPaymentStatuses,
+            });
+          }
+        }),
+      );
+    }
+
+    const filters = sanitizeSaleOrderSearchFilters(params.filters ?? []);
+    filters.forEach((filter, index) => {
+      const valueParam = `stats_filter_${index}_value`;
+      if (filter.field === SaleOrderSearchFields.CLIENT_ID && filter.values?.length) {
+        base.andWhere(`so.clientId ${filter.mode === "exclude" ? "NOT IN" : "IN"} (:...${valueParam})`, {
+          [valueParam]: filter.values,
+        });
+      } else if (filter.field === SaleOrderSearchFields.WAREHOUSE_ID && filter.values?.length) {
+        base.andWhere(`so.warehouseId ${filter.mode === "exclude" ? "NOT IN" : "IN"} (:...${valueParam})`, {
+          [valueParam]: filter.values,
+        });
+      } else if (filter.field === SaleOrderSearchFields.WORKFLOW_ID && filter.values?.length) {
+        base.andWhere(`so.workflowId ${filter.mode === "exclude" ? "NOT IN" : "IN"} (:...${valueParam})`, {
+          [valueParam]: filter.values,
+        });
+      } else if (filter.field === SaleOrderSearchFields.SALE_ORDER_STATE_ID && filter.values?.length) {
+        base.andWhere(`state.saleOrderStateId ${filter.mode === "exclude" ? "NOT IN" : "IN"} (:...${valueParam})`, {
+          [valueParam]: filter.values,
+        });
+      } else if (filter.field === SaleOrderSearchFields.PAYMENT_STATUS) {
+        this.applyPaymentStatusFilter(base, filter, valueParam);
+      } else if (
+        filter.field === SaleOrderSearchFields.SCHEDULE_DATE ||
+        filter.field === SaleOrderSearchFields.DELIVERY_DATE
+      ) {
+        this.applyDateFilter(
+          base,
+          filter,
+          valueParam,
+          `${valueParam}_start`,
+          `${valueParam}_end`,
+        );
+      } else if (filter.field === SaleOrderSearchFields.NUMBER && filter.value) {
+        const value = `%${filter.value}%`;
+        base.andWhere(
+          filter.operator === SaleOrderSearchOperators.EQ
+            ? "concat(coalesce(so.serie, ''), '-', coalesce(so.correlative::text, '')) = :statsNumber"
+            : "concat(coalesce(so.serie, ''), '-', coalesce(so.correlative::text, '')) ILIKE :statsNumber",
+          { statsNumber: filter.operator === SaleOrderSearchOperators.EQ ? filter.value : value },
+        );
+      }
     });
-    if (!row) return null;
-    const [items, payments, client, warehouse, source, creator] = await Promise.all([
-      manager.getRepository(SaleOrderItemEntity).find({
-        where: { saleOrderId: row.id },
-        order: { createdAt: "ASC" },
-      }),
-      manager.getRepository(SalePaymentEntity).find({
-        where: { saleOrderId: row.id },
-        order: { createdAt: "ASC" },
-      }),
-      manager.getRepository(ClientEntity).findOne({ where: { id: row.clientId } }),
-      row.warehouseId
-        ? manager.getRepository(WarehouseEntity).findOne({ where: { id: row.warehouseId } })
-        : Promise.resolve(null),
-      row.sourceId
-        ? manager.getRepository(SourceEntity).findOne({ where: { id: row.sourceId } })
-        : Promise.resolve(null),
-      manager.getRepository(User).findOne({ where: { id: row.createdBy } }),
+
+    if (!params.includeCancelled) {
+      base.andWhere("(globalState.code IS NULL OR upper(globalState.code) <> :cancelCode)", {
+        cancelCode: "CANCELLED",
+      });
+    }
+
+    const [workflowRows, stateRows, clientTypeRows, totalsRow] = await Promise.all([
+      base
+        .clone()
+        .select("workflow.id", "id")
+        .addSelect("COALESCE(workflow.name, 'Sin flujo')", "label")
+        .addSelect("COUNT(so.id)", "count")
+        .groupBy("workflow.id")
+        .addGroupBy("workflow.name")
+        .orderBy("count", "DESC")
+        .getRawMany<{ id: string | null; label: string; count: string }>(),
+      base
+        .clone()
+        .select("globalState.id", "id")
+        .addSelect("COALESCE(globalState.name, 'Sin estado')", "label")
+        .addSelect("globalState.color", "color")
+        .addSelect("COUNT(so.id)", "count")
+        .groupBy("globalState.id")
+        .addGroupBy("globalState.name")
+        .addGroupBy("globalState.color")
+        .orderBy("count", "DESC")
+        .getRawMany<{ id: string | null; label: string; color: string | null; count: string }>(),
+      base
+        .clone()
+        .select("client.type", "type")
+        .addSelect("COUNT(so.id)", "count")
+        .groupBy("client.type")
+        .orderBy("count", "DESC")
+        .getRawMany<{ type: ClientType; count: string }>(),
+      base
+        .clone()
+        .select("COUNT(so.id)", "orders")
+        .addSelect("COALESCE(SUM(so.total), 0)", "total")
+        .addSelect("COALESCE(SUM(COALESCE(payment_sum.collected, 0)), 0)", "collected")
+        .addSelect(
+          "COALESCE(SUM(GREATEST(so.total - COALESCE(payment_sum.collected, 0), 0)), 0)",
+          "pending",
+        )
+        .getRawOne<{ orders: string; total: string; collected: string; pending: string }>(),
     ]);
 
-    const itemIds = items.map((item) => item.id);
-    const components = itemIds.length
-      ? await manager.getRepository(SaleOrderItemComponentEntity).find({
-          where: { saleOrderItemId: In(itemIds) },
-          order: { createdAt: "ASC" },
-        })
-      : [];
-
-    const skuIds = Array.from(new Set(components.map((component) => component.skuId).filter(Boolean)));
-
-    const skus = skuIds.length
-      ? await manager.getRepository(ProductCatalogSkuEntity).find({
-          where: { id: In(skuIds) },
-        })
-      : [];
-    const skuById = new Map(skus.map((sku) => [sku.id, sku]));
-    const bankAccountIds = Array.from(
-      new Set(payments.map((payment) => payment.bankAccountId).filter(Boolean)),
-    ) as string[];
-    const bankAccounts = bankAccountIds.length
-      ? await manager.getRepository(BankAccountEntity).find({
-          where: { id: In(bankAccountIds) },
-        })
-      : [];
-    const bankAccountById = new Map(bankAccounts.map((account) => [account.id, account]));
-    const toIso = (date: Date) => date.toISOString();
-    const compsByItemId = new Map<string, SaleOrderGetOutput["items"][number]["components"]>();
-    for (const component of components) {
-      const sku = skuById.get(component.skuId);
-      if (!sku) {
-        throw new BadRequestException("SKU no encontrado para componente");
-      }
-      const list = compsByItemId.get(component.saleOrderItemId) ?? [];
-      list.push({
-        id: component.id,
-        saleOrderItemId: component.saleOrderItemId,
-        sku: {
-          id: sku.id,
-          name: sku.name,
-          backendSku: sku.backendSku,
-          customSku: sku.customSku ?? null,
-          barcode: sku.barcode ?? null,
-        },
-        referencePackItemId: component.referencePackItemId ?? null,
-        quantity: Number(component.quantity ?? 0),
-        unitPrice: Number(component.unitPrice ?? 0),
-        total: Number(component.total ?? 0),
-        createdAt: toIso(component.createdAt),
-      });
-      compsByItemId.set(component.saleOrderItemId, list);
-    }
-    const totalPaid = payments.reduce((acc, payment) => acc + Number(payment.amount ?? 0), 0);
-    const totalOrder = Number(row.total ?? 0);
-    const pendingAmount = Math.max(totalOrder - totalPaid, 0);
-    const paymentStatus: SaleOrderPaymentStatus = totalPaid >= totalOrder ? "PAID" : "PENDING";
+    const clientTypeLabels: Record<ClientType, string> = {
+      [ClientType.NEW]: "Nuevo",
+      [ClientType.LAGGING]: "Rezagado",
+      [ClientType.REPURCHASE]: "Recompra",
+      [ClientType.UNDEFINED]: "Sin definir",
+    };
 
     return {
-      id: row.id,
-      serie: row.serie ?? null,
-      correlative: row.correlative ?? null,
-      warehouse: warehouse ? { id: warehouse.id, name: warehouse.name } : null,
-      client: client
-        ? {
-            id: client.id,
-            type: client.type,
-            fullName: client.fullName,
-            docNumber: client.docNumber ?? null,
-            reference: client.reference ?? null,
-          }
-        : null,
-      agencyDetail: row.agencyDetail ?? null,
-      source: source ? { id: source.id, name: source.name, detail: source.detail ?? null } : null,
-      scheduleDate: row.scheduleDate ?? null,
-      deliveryDate: row.deliveryDate ?? null,
-      deliveryType: row.deliveryType ?? null,
-      subTotal: Number(row.subTotal ?? 0),
-      deliveryCost: Number(row.deliveryCost ?? 0),
-      total: totalOrder,
-      note: row.note ?? null,
-      createdBy: creator ? { id: creator.id, name: creator.name, email: creator.email } : null,
-      agendaStatus: row.agendaStatus,
-      deliveryStatus: row.deliveryStatus ?? null,
-      isActive: Boolean(row.isActive),
-      createdAt: toIso(row.createdAt),
-      updatedAt: row.updatedAt ? toIso(row.updatedAt) : null,
-      items: items.map((item) => ({
-        id: item.id,
-        referencePackId: item.referencePackId ?? null,
-        description: item.description ?? null,
-        quantity: Number(item.quantity ?? 0),
-        unitPrice: Number(item.unitPrice ?? 0),
-        total: Number(item.total ?? 0),
-        createdAt: toIso(item.createdAt),
-        components: compsByItemId.get(item.id) ?? [],
+      byWorkflow: workflowRows.map((row) => ({ ...row, count: Number(row.count) })),
+      byState: stateRows.map((row) => ({ ...row, count: Number(row.count) })),
+      byClientType: clientTypeRows.map((row) => ({
+        type: row.type,
+        label: clientTypeLabels[row.type] ?? row.type,
+        count: Number(row.count),
       })),
-      payments: payments.map((payment) => ({
-        id: payment.id,
-        bankAccount: payment.bankAccountId
-          ? (() => {
-              const account = bankAccountById.get(payment.bankAccountId);
-              return account ? { id: account.id, name: account.name, number: account.number ?? null } : null;
-            })()
-          : null,
-        date: toIso(payment.date),
-        method: payment.method,
-        operationNumber: payment.operationNumber ?? null,
-        amount: Number(payment.amount ?? 0),
-        note: payment.note ?? null,
-        createdAt: toIso(payment.createdAt),
-      })),
-      totalPaid,
-      pendingAmount,
-      paymentStatus,
+      totals: {
+        orders: Number(totalsRow?.orders ?? 0),
+        total: Number(totalsRow?.total ?? 0),
+        collected: Number(totalsRow?.collected ?? 0),
+        pending: Number(totalsRow?.pending ?? 0),
+      },
     };
   }
-  
+
+  async findById(saleOrderId: string, tx?: TransactionContext): Promise<SaleOrderGetOutput | null> {
+  const manager = this.getManager(tx);
+
+  const row = await manager.getRepository(SaleOrderEntity).findOne({
+    where: { id: saleOrderId },
+  });
+
+  if (!row) return null;
+
+  const [
+    items,
+    payments,
+    client,
+    mainTelephone,
+    warehouse,
+    source,
+    creator,
+    workflow,
+    currentState,
+  ] = await Promise.all([
+    manager.getRepository(SaleOrderItemEntity).find({
+      where: { saleOrderId: row.id },
+      order: { createdAt: "ASC" },
+    }),
+
+    manager.getRepository(SalePaymentEntity).find({
+      where: { saleOrderId: row.id },
+      order: { createdAt: "ASC" },
+    }),
+
+    manager.getRepository(ClientEntity).findOne({
+      where: { id: row.clientId },
+    }),
+
+    manager.getRepository(TelephoneEntity).findOne({
+      where: {
+        clientId: row.clientId,
+        isMain: true,
+        isActive: true,
+      },
+    }),
+
+    row.warehouseId
+      ? manager.getRepository(WarehouseEntity).findOne({
+          where: { id: row.warehouseId },
+        })
+      : Promise.resolve(null),
+
+    row.sourceId
+      ? manager.getRepository(SourceEntity).findOne({
+          where: { id: row.sourceId },
+        })
+      : Promise.resolve(null),
+
+    manager.getRepository(User).findOne({
+      where: { id: row.createdBy },
+    }),
+
+    row.workflowId
+      ? manager.getRepository(WorkflowEntity).findOne({
+          where: { id: row.workflowId },
+        })
+      : Promise.resolve(null),
+
+    row.currentStateId
+      ? manager.getRepository(WorkflowStateEntity).findOne({
+          where: { id: row.currentStateId },
+          relations: { saleOrderState: true },
+        })
+      : Promise.resolve(null),
+  ]);
+
+  const [department, province, district] = client
+    ? await Promise.all([
+        client.departmentId
+          ? manager.getRepository(UbigeoDepartmentEntity).findOne({
+              where: { id: client.departmentId },
+            })
+          : Promise.resolve(null),
+
+        client.provinceId
+          ? manager.getRepository(UbigeoProvinceEntity).findOne({
+              where: { id: client.provinceId },
+            })
+          : Promise.resolve(null),
+
+        client.districtId
+          ? manager.getRepository(UbigeoDistrictEntity).findOne({
+              where: { id: client.districtId },
+            })
+          : Promise.resolve(null),
+      ])
+    : [null, null, null];
+
+  const itemIds = items.map((item) => item.id);
+
+  const components = itemIds.length
+    ? await manager.getRepository(SaleOrderItemComponentEntity).find({
+        where: { saleOrderItemId: In(itemIds) },
+        order: { createdAt: "ASC" },
+      })
+    : [];
+
+  const skuIds = Array.from(
+    new Set(components.map((component) => component.skuId).filter(Boolean)),
+  ) as string[];
+
+  const skus = skuIds.length
+    ? await manager.getRepository(ProductCatalogSkuEntity).find({
+        where: { id: In(skuIds) },
+      })
+    : [];
+
+  const skuById = new Map(skus.map((sku) => [sku.id, sku]));
+
+  const bankAccountIds = Array.from(
+    new Set(payments.map((payment) => payment.bankAccountId).filter(Boolean)),
+  ) as string[];
+
+  const bankAccounts = bankAccountIds.length
+    ? await manager.getRepository(BankAccountEntity).find({
+        where: { id: In(bankAccountIds) },
+      })
+    : [];
+
+  const bankAccountById = new Map(bankAccounts.map((account) => [account.id, account]));
+
+  const toIso = (date: Date) => date.toISOString();
+
+  const compsByItemId = new Map<string, SaleOrderGetOutput["items"][number]["components"]>();
+
+  for (const component of components) {
+    const sku = skuById.get(component.skuId);
+
+    if (!sku) {
+      throw new BadRequestException("SKU no encontrado para componente");
+    }
+
+    const list = compsByItemId.get(component.saleOrderItemId) ?? [];
+
+    list.push({
+      id: component.id,
+      saleOrderItemId: component.saleOrderItemId,
+      sku: {
+        id: sku.id,
+        name: sku.name,
+        backendSku: sku.backendSku,
+        customSku: sku.customSku ?? null,
+        barcode: sku.barcode ?? null,
+      },
+      referencePackItemId: component.referencePackItemId ?? null,
+      quantity: Number(component.quantity ?? 0),
+      unitPrice: Number(component.unitPrice ?? 0),
+      total: Number(component.total ?? 0),
+      createdAt: toIso(component.createdAt),
+    });
+
+    compsByItemId.set(component.saleOrderItemId, list);
+  }
+
+  const totalPaid = payments.reduce((acc, payment) => acc + Number(payment.amount ?? 0), 0);
+  const totalOrder = Number(row.total ?? 0);
+  const pendingAmount = Math.max(totalOrder - totalPaid, 0);
+  const paymentStatus: SaleOrderPaymentStatus = totalPaid >= totalOrder ? "PAID" : "PENDING";
+
+  return {
+    id: row.id,
+    serie: row.serie ?? null,
+    correlative: row.correlative ?? null,
+
+    warehouse: warehouse
+      ? {
+          id: warehouse.id,
+          name: warehouse.name,
+        }
+      : null,
+
+    client: client
+      ? {
+          id: client.id,
+          type: client.type,
+          fullName: client.fullName,
+          docNumber: client.docNumber ?? null,
+
+          departmentId: client.departmentId ?? null,
+          provinceId: client.provinceId ?? null,
+          districtId: client.districtId ?? null,
+
+          department: department
+            ? {
+                id: department.id,
+                name: department.name,
+              }
+            : null,
+
+          province: province
+            ? {
+                id: province.id,
+                name: province.name,
+                departmentId: province.departmentId,
+              }
+            : null,
+
+          district: district
+            ? {
+                id: district.id,
+                name: district.name,
+                provinceId: district.provinceId,
+              }
+            : null,
+
+          reference: client.reference ?? null,
+          mainPhone: mainTelephone?.number ?? null,
+        }
+      : null,
+
+    agencyDetail: row.agencyDetail ?? null,
+
+    source: source
+      ? {
+          id: source.id,
+          name: source.name,
+          detail: source.detail ?? null,
+        }
+      : null,
+
+    scheduleDate: row.scheduleDate ?? null,
+    deliveryDate: row.deliveryDate ?? null,
+    subTotal: Number(row.subTotal ?? 0),
+    deliveryCost: Number(row.deliveryCost ?? 0),
+    total: totalOrder,
+    note: row.note ?? null,
+
+    createdBy: creator
+      ? {
+          id: creator.id,
+          name: creator.name,
+          email: creator.email,
+        }
+      : null,
+
+    workflow: workflow
+      ? {
+          id: workflow.id,
+          name: workflow.name,
+          description: workflow.description ?? null,
+          isActive: workflow.isActive,
+        }
+      : null,
+
+    currentState: currentState
+      ? {
+          id: currentState.id,
+          code: currentState.saleOrderState?.code ?? "",
+          name: currentState.saleOrderState?.name ?? "",
+          color: currentState.saleOrderState?.color ?? "",
+          isInitial: currentState.isInitial,
+          isFinal: currentState.isFinal,
+          isActive: currentState.isActive,
+        }
+      : null,
+
+    invoiceSend: Boolean(row.invoiceSend),
+    isActive: Boolean(row.isActive),
+    createdAt: toIso(row.createdAt),
+    updatedAt: row.updatedAt ? toIso(row.updatedAt) : null,
+
+    items: items.map((item) => ({
+      id: item.id,
+      referencePackId: item.referencePackId ?? null,
+      description: item.description ?? null,
+      quantity: Number(item.quantity ?? 0),
+      unitPrice: Number(item.unitPrice ?? 0),
+      total: Number(item.total ?? 0),
+      createdAt: toIso(item.createdAt),
+      components: compsByItemId.get(item.id) ?? [],
+    })),
+
+    payments: payments.map((payment) => ({
+      id: payment.id,
+      bankAccount: payment.bankAccountId
+        ? (() => {
+            const account = bankAccountById.get(payment.bankAccountId);
+
+            return account
+              ? {
+                  id: account.id,
+                  name: account.name,
+                  number: account.number ?? null,
+                }
+              : null;
+          })()
+        : null,
+      date: toIso(payment.date),
+      method: payment.method,
+      operationNumber: payment.operationNumber ?? null,
+      amount: Number(payment.amount ?? 0),
+      note: payment.note ?? null,
+      createdAt: toIso(payment.createdAt),
+    })),
+
+    totalPaid,
+    pendingAmount,
+    paymentStatus,
+  };
+}
 }

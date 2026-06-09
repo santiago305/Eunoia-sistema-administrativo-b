@@ -13,7 +13,7 @@ const SaleOrderSearchRuleModes = {
   EXCLUDE: "exclude",
 } as const;
 
-const toFiltersArray = (value: unknown) => {
+export const toSaleOrderFiltersArray = (value: unknown) => {
   if (value === undefined || value === null || value === "") return undefined;
   if (Array.isArray(value)) {
     return value.map((item) => plainToInstance(HttpSaleOrderSearchRuleDto, item));
@@ -38,7 +38,7 @@ class HttpSaleOrderSearchRangeDto {
   end?: string;
 }
 
-class HttpSaleOrderSearchRuleDto {
+export class HttpSaleOrderSearchRuleDto {
   @IsEnum(SaleOrderSearchFields)
   field: SaleOrderSearchField;
 
@@ -70,7 +70,7 @@ export class HttpListSaleOrdersQueryDto {
   q?: string;
 
   @IsOptional()
-  @Transform(({ value }) => toFiltersArray(value))
+  @Transform(({ value }) => toSaleOrderFiltersArray(value))
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => HttpSaleOrderSearchRuleDto)

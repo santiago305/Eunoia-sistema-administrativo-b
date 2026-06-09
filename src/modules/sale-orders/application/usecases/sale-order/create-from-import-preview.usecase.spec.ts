@@ -10,6 +10,7 @@ import { SaleOrderImportRowNormalizerService } from "src/modules/sale-orders/app
 import { SaleOrderImportSkuResolverService } from "src/modules/sale-orders/application/services/sale-order-import-sku-resolver.service";
 import { SaleOrderImportSourceResolverService } from "src/modules/sale-orders/application/services/sale-order-import-source-resolver.service";
 import { CreateFromImportPreviewUseCase } from "./create-from-import-preview.usecase";
+import { WORKFLOW_REPOSITORY } from "src/modules/workflow/domain/ports/workflow.repository";
 
 describe("CreateFromImportPreviewUseCase", () => {
   it("imports a single valid row", async () => {
@@ -18,6 +19,12 @@ describe("CreateFromImportPreviewUseCase", () => {
     const saleOrderItemRepo = { bulkCreate: jest.fn() };
     const componentRepo = { bulkCreate: jest.fn() };
     const paymentRepo = { bulkCreate: jest.fn() };
+    const workflowRepo = {
+      findActiveByNormalizedName: jest.fn().mockResolvedValue({
+        workflow: { id: "workflow-1" },
+        initialState: { id: "state-1" },
+      }),
+    };
 
     const normalizer = { normalize: jest.fn() };
     const clientResolver = { resolveOrCreate: jest.fn() };
@@ -28,7 +35,7 @@ describe("CreateFromImportPreviewUseCase", () => {
       ok: true,
       row: {
         deliveryDate: "2026-05-20",
-        deliveryType: "ABONADO_ENVIO",
+        workflowName: "ABONADO ENVIO",
         address: "Av",
         internalNote: "facebook",
         total: 120,
@@ -59,6 +66,7 @@ describe("CreateFromImportPreviewUseCase", () => {
         { provide: SaleOrderImportClientResolverService, useValue: clientResolver },
         { provide: SaleOrderImportSourceResolverService, useValue: sourceResolver },
         { provide: SaleOrderImportSkuResolverService, useValue: skuResolver },
+        { provide: WORKFLOW_REPOSITORY, useValue: workflowRepo },
       ],
     }).compile();
 
@@ -70,6 +78,13 @@ describe("CreateFromImportPreviewUseCase", () => {
       expect(result.importedRows).toBe(1);
       expect(result.failedRows).toBe(0);
       expect(result.rows[0].saleOrderId).toBe("order-1");
+      expect(saleOrderRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          workflowId: "workflow-1",
+          currentStateId: "state-1",
+        }),
+        expect.anything(),
+      );
     } finally {
       await moduleRef.close();
     }
@@ -91,6 +106,7 @@ describe("CreateFromImportPreviewUseCase", () => {
         { provide: SaleOrderImportClientResolverService, useValue: { resolveOrCreate: jest.fn() } },
         { provide: SaleOrderImportSourceResolverService, useValue: { resolveOrCreate: jest.fn() } },
         { provide: SaleOrderImportSkuResolverService, useValue: { resolveOrCreateSkus: jest.fn() } },
+        { provide: WORKFLOW_REPOSITORY, useValue: { findActiveByNormalizedName: jest.fn() } },
       ],
     }).compile();
 

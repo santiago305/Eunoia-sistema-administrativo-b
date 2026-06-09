@@ -3,7 +3,6 @@ import { ClientDocType } from "src/modules/clients/domain/object-values/client-d
 import { ClientType } from "src/modules/clients/domain/object-values/client-type";
 import { CLIENT_REPOSITORY, ClientRepository } from "src/modules/clients/domain/ports/client.repository";
 import { TELEPHONE_REPOSITORY, TelephoneRepository } from "src/modules/clients/domain/ports/telephone.repository";
-import { DeliveryType } from "src/modules/sale-orders/domain/value-objects/delivery-type";
 import { UBIGEO_REPOSITORY, UbigeoRepository } from "src/modules/ubigeo/domain/ports/ubigeo.repository";
 import { SaleOrderImportPreviewCleanRow } from "src/modules/sale-orders/application/dtos/import-preview/create-sale-orders-from-preview.input";
 import {
@@ -19,7 +18,7 @@ export type NormalizedSaleOrderImportPreviewRow = {
   productName: string | null;
   orderDate: string | null;
   deliveryDate: string | null;
-  deliveryType: DeliveryType;
+  workflowName: string | null;
   departmentName: string;
   provinceName: string;
   districtName: string;
@@ -92,7 +91,7 @@ export class SaleOrderImportRowNormalizerService {
 
     const orderDate = this.toDateOnly(cleanRow.orderDate);
     const deliveryDate = this.toDateOnly(cleanRow.deliveryDate);
-    const deliveryType = this.resolveDeliveryType(cleanRow.deliveryType);
+    const workflowName = this.toText(cleanRow.workflowName) || null;
     const address = this.toText(cleanRow.address) || null;
     const deliveryNote = this.toText(cleanRow.deliveryNote) || null;
     const couponCode = this.toText(cleanRow.couponCode) || null;
@@ -123,7 +122,7 @@ export class SaleOrderImportRowNormalizerService {
         productName,
         orderDate,
         deliveryDate,
-        deliveryType,
+        workflowName,
         departmentName,
         provinceName,
         districtName,
@@ -180,31 +179,6 @@ export class SaleOrderImportRowNormalizerService {
     if (dmyMatch) return `${dmyMatch[3]}-${dmyMatch[2].padStart(2, "0")}-${dmyMatch[1].padStart(2, "0")}`;
 
     return null;
-  }
-
-  private resolveDeliveryType(value: unknown) {
-    const text = this.normalizeText(value);
-
-    if (
-      text.includes("abonado ce") ||
-      text.includes("contra entrega") ||
-      text.includes("contra") ||
-      text.includes("cod") ||
-      text.includes("ce")
-    ) {
-      return DeliveryType.CONTRA_ENTREGA as any;
-    }
-
-    if (
-      text.includes("abonado envio") ||
-      text.includes("abonado envío") ||
-      text.includes("envio") ||
-      text.includes("envío")
-    ) {
-      return DeliveryType.ABONADO_ENVIO as any;
-    }
-
-    return DeliveryType.ABONADO_ENVIO as any;
   }
 
   private async resolveClient(input: {

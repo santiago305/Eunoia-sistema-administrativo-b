@@ -15,7 +15,7 @@ export class HttpSaleOrderImportPreviewRowDto {
 
   @IsOptional()
   @IsString()
-  deliveryType?: string;
+  workflowName?: string;
 
   @IsString()
   @IsNotEmpty()

@@ -24,7 +24,6 @@ import { DeleteSaleOrderSearchMetricUsecase } from "src/modules/sale-orders/appl
 import { CLOCK } from "src/shared/application/ports/clock.port";
 import { UpdateSaleOrdersDeliveryDateTodayJob } from "src/modules/sale-orders/application/jobs/update-sale-orders-deliverydate-today.job";
 import { SaleOrdersJobsScheduler } from "src/modules/sale-orders/infrastructure/jobs/sale-orders-jobs.scheduler";
-import { UpdateSaleOrderStatusUsecase } from "src/modules/sale-orders/application/usecases/sale-order/update-status.usecase";
 import { CancelSaleOrderUsecase } from "src/modules/sale-orders/application/usecases/sale-order/cancel.usecase";
 import { ConfirmSaleOrderDeliveryUsecase } from "src/modules/sale-orders/application/usecases/sale-order/confirm-delivery.usecase";
 import { ListSaleOrderPaymentsUsecase } from "src/modules/sale-orders/application/usecases/sale-order/list-payments.usecase";
@@ -37,6 +36,15 @@ import { SaleOrderImportSkuResolverService } from "src/modules/sale-orders/appli
 import { SaleOrderImportSourceResolverService } from "src/modules/sale-orders/application/services/sale-order-import-source-resolver.service";
 import { CreateClientUsecase } from "src/modules/clients/application/usecases/client/create.usecase";
 import { CreateSourceUsecase } from "src/modules/sources/application/usecases/source/create.usecase";
+import { SaleOrderWorkflowTransitionService } from "src/modules/workflow/application/services/sale-order-workflow-transition.service";
+import { SaleOrderWorkflowContextService } from "src/modules/workflow/application/services/sale-order-workflow-context.service";
+import { AdvanceSaleOrderStateUseCase } from "src/modules/workflow/application/usecases/advance-sale-order-state.usecase";
+import { AssignSaleOrderWorkflowUseCase } from "src/modules/workflow/application/usecases/assign-sale-order-workflow.usecase";
+import { GetAvailableTransitionsUseCase } from "src/modules/workflow/application/usecases/get-available-transitions.usecase";
+import { GetOrderTimelineUseCase } from "src/modules/workflow/application/usecases/get-order-timeline.usecase";
+import { SaleOrderStockRequirementsService } from "src/modules/workflow/application/services/sale-order-stock-requirements.service";
+import { SaleOrderWorkflowActionRunnerService } from "src/modules/workflow/application/services/sale-order-workflow-action-runner.service";
+import { GetSaleOrderStatisticsUsecase } from "../application/usecases/sale-order/get-statistics.usecase";
 
 export const saleOrdersModuleProviders = [
   { provide: SALE_ORDER_REPOSITORY, useClass: SaleOrderTypeormRepository },
@@ -51,13 +59,21 @@ export const saleOrdersModuleProviders = [
   GetSaleOrderUsecase,
   UpdateSaleOrderUsecase,
   ListSaleOrdersUsecase,
-  UpdateSaleOrderStatusUsecase,
+  GetSaleOrderStatisticsUsecase,
   CancelSaleOrderUsecase,
   ConfirmSaleOrderDeliveryUsecase,
   ListSaleOrderPaymentsUsecase,
   AddSaleOrderPaymentUsecase,
   DeleteSaleOrderPaymentUsecase,
   CreateFromImportPreviewUseCase,
+  SaleOrderWorkflowContextService,
+  SaleOrderWorkflowTransitionService,
+  AdvanceSaleOrderStateUseCase,
+  AssignSaleOrderWorkflowUseCase,
+  GetAvailableTransitionsUseCase,
+  GetOrderTimelineUseCase,
+  SaleOrderStockRequirementsService,
+  SaleOrderWorkflowActionRunnerService,
   SaleOrderImportClientResolverService,
   SaleOrderImportRowNormalizerService,
   SaleOrderImportSkuResolverService,

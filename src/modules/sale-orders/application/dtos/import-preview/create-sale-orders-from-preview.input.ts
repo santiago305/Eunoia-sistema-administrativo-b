@@ -2,7 +2,7 @@ export type SaleOrderImportPreviewCleanRow = {
   productName?: unknown;
   orderDate?: unknown;
   deliveryDate?: unknown;
-  deliveryType?: unknown;
+  workflowName?: unknown;
   departmentName?: unknown;
   provinceName?: unknown;
   districtName?: unknown;

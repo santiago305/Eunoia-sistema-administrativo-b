@@ -2,9 +2,8 @@ export const SaleOrderSearchFields = {
   NUMBER: "number",
   CLIENT_ID: "clientId",
   WAREHOUSE_ID: "warehouseId",
-  AGENDA_STATUS: "agendaStatus",
-  DELIVERY_STATUS: "deliveryStatus",
-  DELIVERY_TYPE: "deliveryType",
+  WORKFLOW_ID: "workflowId",
+  SALE_ORDER_STATE_ID: "saleOrderStateId",
   PAYMENT_STATUS: "paymentStatus",
   SCHEDULE_DATE: "scheduleDate",
   DELIVERY_DATE: "deliveryDate",
@@ -56,6 +55,23 @@ export interface SaleOrderSearchSnapshot {
 
 export type SaleOrderPaymentStatus = "PAID" | "PENDING";
 
+export type SaleOrderWorkflowOutput = {
+  id: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+};
+
+export type SaleOrderWorkflowStateOutput = {
+  id: string;
+  code: string;
+  name: string;
+  color: string;
+  isInitial: boolean;
+  isFinal: boolean;
+  isActive: boolean;
+};
+
 export type SaleOrderPaymentOutput = {
   id: string;
   bankAccount: { id: string; name: string; number?: string | null } | null;
@@ -72,19 +88,25 @@ export type SaleOrderListItemOutput = {
   serie: string | null;
   correlative: number | null;
   warehouse: { id: string; name: string } | null;
-  client: { id: string; fullName: string; docNumber?: string | null; reference?: string | null } | null;
+  client: {
+    id: string;
+    fullName: string;
+    docNumber?: string | null;
+    reference?: string | null;
+    mainPhone: string | null;
+  } | null;
   agencyDetail: string | null;
   source: { id: string; name: string; detail?: string | null } | null;
   scheduleDate: string | null;
   deliveryDate: string | null;
-  deliveryType: string | null;
   subTotal: number;
   deliveryCost: number;
   total: number;
   note: string | null;
   createdBy: { id: string; name: string; email: string } | null;
-  agendaStatus: string;
-  deliveryStatus: string | null;
+  workflow: SaleOrderWorkflowOutput | null;
+  currentState: SaleOrderWorkflowStateOutput | null;
+  invoiceSend: boolean;
   isActive: boolean;
   createdAt: string;
   updatedAt: string | null;

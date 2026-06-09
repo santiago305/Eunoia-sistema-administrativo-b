@@ -1,6 +1,0 @@
-export enum AgendaStatus {
-  COORDINATED = "COORDINATED",
-  PROGRAMMED = "PROGRAMMED",
-  CANCELED = "CANCELED",
-}
-

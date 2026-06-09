@@ -3,9 +3,6 @@ import { SALE_ORDER_ITEM_COMPONENT_REPOSITORY, SaleOrderItemComponentRepository 
 import { SALE_ORDER_ITEM_REPOSITORY, SaleOrderItemRepository } from "src/modules/sale-orders/domain/ports/sale-order-item.repository";
 import { SALE_ORDER_REPOSITORY, SaleOrderRepository } from "src/modules/sale-orders/domain/ports/sale-order.repository";
 import { SALE_PAYMENT_REPOSITORY, SalePaymentRepository } from "src/modules/sale-orders/domain/ports/sale-payment.repository";
-import { AgendaStatus } from "src/modules/sale-orders/domain/value-objects/agenda-status";
-import { DeliveryStatus } from "src/modules/sale-orders/domain/value-objects/delivery-status";
-import { DeliveryType } from "src/modules/sale-orders/domain/value-objects/delivery-type";
 import { SaleOrderImportPreviewCleanRow, CreateSaleOrdersFromImportPreviewOutput } from "src/modules/sale-orders/application/dtos/import-preview/create-sale-orders-from-preview.input";
 import { SaleOrderImportClientResolverService } from "src/modules/sale-orders/application/services/sale-order-import-client-resolver.service";
 import { SaleOrderImportRowNormalizerService } from "src/modules/sale-orders/application/services/sale-order-import-row-normalizer.service";
@@ -13,6 +10,7 @@ import { SaleOrderImportSkuResolverService } from "src/modules/sale-orders/appli
 import { SaleOrderImportSourceResolverService } from "src/modules/sale-orders/application/services/sale-order-import-source-resolver.service";
 import { TransactionContext, UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
+import { WORKFLOW_REPOSITORY, WorkflowRepository } from "src/modules/workflow/domain/ports/workflow.repository";
 
 @Injectable()
 export class CreateFromImportPreviewUseCase {
@@ -26,6 +24,8 @@ export class CreateFromImportPreviewUseCase {
     private readonly clientResolver: SaleOrderImportClientResolverService,
     private readonly sourceResolver: SaleOrderImportSourceResolverService,
     private readonly skuResolver: SaleOrderImportSkuResolverService,
+    @Inject(WORKFLOW_REPOSITORY)
+    private readonly workflowRepo: WorkflowRepository,
   ) {}
 
   async execute(input: { rows: SaleOrderImportPreviewCleanRow[]; userId: string }): Promise<CreateSaleOrdersFromImportPreviewOutput> {
@@ -86,7 +86,7 @@ export class CreateFromImportPreviewUseCase {
   private async createSaleOrderFromImportRow(input: {
     row: {
       deliveryDate: string | null;
-      deliveryType: DeliveryType;
+      workflowName: string | null;
       address: string | null;
       internalNote: string | null;
       total: number;
@@ -105,29 +105,12 @@ export class CreateFromImportPreviewUseCase {
     const deliveryCost = 0;
     const subTotal = Math.max(total - deliveryCost, 0);
 
-    const resolvedDeliveryType = input.row.deliveryType ?? (DeliveryType.ABONADO_ENVIO as any);
     const serie = "PE";
     const correlative = await this.reserveNextSaleOrderCorrelative(input.tx);
-
-    const toDateKey = (value: Date) =>
-      new Intl.DateTimeFormat("en-CA", {
-        timeZone: "America/Lima",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      }).format(value);
-
-    const todayKey = toDateKey(new Date());
     const deliveryDate = input.row.deliveryDate;
-    const isDeliveryTodayOrPast = !!deliveryDate && deliveryDate <= todayKey;
-
-    const agendaStatus = isDeliveryTodayOrPast ? AgendaStatus.PROGRAMMED : AgendaStatus.COORDINATED;
-    const deliveryStatus = isDeliveryTodayOrPast
-      ? resolvedDeliveryType === DeliveryType.ABONADO_ENVIO
-        ? DeliveryStatus.WAITING
-        : resolvedDeliveryType === DeliveryType.CONTRA_ENTREGA
-          ? DeliveryStatus.IN_PROGRESS
-          : null
+    const normalizedWorkflowName = this.normalizeWorkflowName(input.row.workflowName);
+    const resolvedWorkflow = normalizedWorkflowName
+      ? await this.workflowRepo.findActiveByNormalizedName(normalizedWorkflowName, input.tx)
       : null;
 
     const saleOrder = await this.saleOrderRepo.create(
@@ -140,14 +123,13 @@ export class CreateFromImportPreviewUseCase {
         sourceId: input.sourceId,
         scheduleDate: deliveryDate,
         deliveryDate,
-        deliveryType: resolvedDeliveryType,
         subTotal,
         deliveryCost,
         total,
         note: input.row.internalNote ?? null,
         createdBy: input.userId,
-        agendaStatus,
-        deliveryStatus,
+        workflowId: resolvedWorkflow?.workflow.id ?? null,
+        currentStateId: resolvedWorkflow?.initialState.id ?? null,
         isActive: true,
       },
       input.tx,
@@ -232,5 +214,10 @@ export class CreateFromImportPreviewUseCase {
     if (value?.value) return value.value;
     if (value?.id) return value.id;
     throw new BadRequestException("No se pudo resolver el ID de entidad");
+  }
+
+  private normalizeWorkflowName(value: string | null | undefined): string | null {
+    const trimmed = String(value ?? "").trim().replace(/\s+/g, " ");
+    return trimmed ? trimmed.toLocaleUpperCase("es-PE") : null;
   }
 }
