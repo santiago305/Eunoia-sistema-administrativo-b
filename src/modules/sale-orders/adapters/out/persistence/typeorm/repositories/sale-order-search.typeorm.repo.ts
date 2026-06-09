@@ -14,20 +14,23 @@ import {
 import { SaleOrderSearchSnapshot } from "src/modules/sale-orders/application/dtos/sale-order-search/sale-order-search-snapshot";
 import { WorkflowEntity } from "src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow.entity";
 import { SaleOrderStatesEntity } from "src/modules/workflow/adapters/out/persistence/typeorm/entities/sale-order-states.entity";
-import { WorkflowStateEntity } from "src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow-state.entity";
 
 @Injectable()
 export class SaleOrderSearchTypeormRepository implements SaleOrderSearchRepository {
   constructor(
     @Inject(LISTING_SEARCH_STORAGE)
     private readonly storage: ListingSearchStorageRepository,
+
     @InjectRepository(ClientEntity)
     private readonly clientRepo: Repository<ClientEntity>,
+
     @InjectRepository(WarehouseEntity)
     private readonly warehouseRepo: Repository<WarehouseEntity>,
+
     @InjectRepository(WorkflowEntity)
     private readonly workflowRepo: Repository<WorkflowEntity>,
-    @InjectRepository(WorkflowStateEntity)
+
+    @InjectRepository(SaleOrderStatesEntity)
     private readonly stateRepo: Repository<SaleOrderStatesEntity>,
   ) {}
 
@@ -36,12 +39,16 @@ export class SaleOrderSearchTypeormRepository implements SaleOrderSearchReposito
   }
 
   async listState(params: { userId: string; tableKey: string }): Promise<SaleOrderSearchStateRecord> {
-    const [state, clients, warehouses, workflows, workflowStates] = await Promise.all([
+    const [state, clients, warehouses, workflows, saleOrderStates] = await Promise.all([
       this.storage.listState(params),
       this.clientRepo.find({ where: { isActive: true } }),
       this.warehouseRepo.find({ where: { isActive: true } }),
       this.workflowRepo.find({ where: { isActive: true } }),
-      this.stateRepo.find(),
+      this.stateRepo.find({
+        order: {
+          name: "ASC",
+        },
+      }),
     ]);
 
     const orderedClients = [...clients].sort((left, right) =>
@@ -58,25 +65,37 @@ export class SaleOrderSearchTypeormRepository implements SaleOrderSearchReposito
         snapshot: item.snapshot as SaleOrderSearchSnapshot,
         lastUsedAt: item.lastUsedAt,
       })),
+
       metrics: state.metrics.map((item) => ({
         metricId: item.metricId,
         name: item.name,
         snapshot: item.snapshot as SaleOrderSearchSnapshot,
         updatedAt: item.updatedAt,
       })),
+
       clients: orderedClients.map((row) => {
         const doc = row.docNumber ? ` (${row.docNumber})` : "";
+
         return {
           clientId: row.id,
           label: `${row.fullName}${doc}`.trim(),
         };
       }),
+
       warehouses: orderedWarehouses.map((row) => ({
         warehouseId: row.id,
         label: row.name,
       })),
-      workflows: workflows.map((row) => ({ workflowId: row.id, label: row.name })),
-      states: workflowStates.map((row) => ({ saleOrderStateId: row.id, label: row.name })),
+
+      workflows: workflows.map((row) => ({
+        workflowId: row.id,
+        label: row.name,
+      })),
+
+      states: saleOrderStates.map((row) => ({
+        saleOrderStateId: row.id,
+        label: row.name,
+      })),
     };
   }
 
@@ -87,6 +106,7 @@ export class SaleOrderSearchTypeormRepository implements SaleOrderSearchReposito
     snapshot: Parameters<SaleOrderSearchRepository["createMetric"]>[0]["snapshot"];
   }) {
     const metric = await this.storage.createMetric(params);
+
     return {
       metricId: metric.metricId,
       name: metric.name,
@@ -99,4 +119,3 @@ export class SaleOrderSearchTypeormRepository implements SaleOrderSearchReposito
     return this.storage.deleteMetric(params);
   }
 }
-
