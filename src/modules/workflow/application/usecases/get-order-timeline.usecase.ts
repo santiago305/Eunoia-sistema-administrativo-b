@@ -5,6 +5,7 @@ import {
   SALE_ORDER_STATE_HISTORY_REPOSITORY,
   SaleOrderStateHistoryRepository,
 } from "../../domain/ports/sale-order-state-history.repository";
+import { USER_REPOSITORY, UserRepository } from "src/modules/users/application/ports/user.repository";
 
 @Injectable()
 export class GetOrderTimelineUseCase {
@@ -15,6 +16,8 @@ export class GetOrderTimelineUseCase {
     private readonly workflowRepo: WorkflowRepository,
     @Inject(SALE_ORDER_STATE_HISTORY_REPOSITORY)
     private readonly historyRepo: SaleOrderStateHistoryRepository,
+    @Inject(USER_REPOSITORY)
+    private readonly userRepo: UserRepository,
   ) {}
 
   async execute(input: { saleOrderId: string }) {
@@ -32,16 +35,29 @@ export class GetOrderTimelineUseCase {
     const transitions = new Map(
       aggregates.flatMap((aggregate) => aggregate?.transitions ?? []).map((transition) => [transition.id, transition]),
     );
+    const executedByIds = Array.from(new Set(history.map((entry) => entry.executedBy)));
+    const users = await Promise.all(executedByIds.map((userId) => this.userRepo.findById(userId)));
+    const usersById = new Map(users.filter((user) => user !== null).map((user) => [user.id, user]));
 
-    return history.map((entry) => ({
-      id: entry.id,
-      workflowId: entry.workflowId,
-      transition: entry.transitionId ? transitions.get(entry.transitionId) ?? null : null,
-      fromState: entry.fromStateId ? states.get(entry.fromStateId) ?? null : null,
-      toState: states.get(entry.toStateId) ?? { id: entry.toStateId },
-      executedBy: entry.executedBy,
-      executedAt: entry.executedAt,
-      metadata: entry.metadata,
-    }));
+    return history.map((entry) => {
+      const executedByUser = usersById.get(entry.executedBy);
+
+      return {
+        id: entry.id,
+        workflowId: entry.workflowId,
+        transition: entry.transitionId ? transitions.get(entry.transitionId) ?? null : null,
+        fromState: entry.fromStateId ? states.get(entry.fromStateId) ?? null : null,
+        toState: states.get(entry.toStateId) ?? { id: entry.toStateId },
+        executedBy: entry.executedBy,
+        executedByUser: executedByUser
+          ? {
+              id: executedByUser.id,
+              email: executedByUser.email.value,
+            }
+          : null,
+        executedAt: entry.executedAt,
+        metadata: entry.metadata,
+      };
+    });
   }
 }

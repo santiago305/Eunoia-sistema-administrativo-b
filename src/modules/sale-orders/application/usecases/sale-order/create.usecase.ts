@@ -1,17 +1,13 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
-import { DocType } from "src/shared/domain/value-objects/doc-type";
 import { PACK_REPOSITORY, PackRepository } from "src/modules/packs/domain/ports/pack.repository";
-import {
-  PRODUCT_CATALOG_DOCUMENT_SERIE_REPOSITORY,
-  ProductCatalogDocumentSerieRepository,
-} from "src/modules/product-catalog/domain/ports/document-serie.repository";
 import { SALE_ORDER_REPOSITORY, SaleOrderRepository } from "src/modules/sale-orders/domain/ports/sale-order.repository";
 import { SALE_ORDER_ITEM_REPOSITORY, SaleOrderItemRepository } from "src/modules/sale-orders/domain/ports/sale-order-item.repository";
 import { SALE_ORDER_ITEM_COMPONENT_REPOSITORY, SaleOrderItemComponentRepository } from "src/modules/sale-orders/domain/ports/sale-order-item-component.repository";
 import { SALE_PAYMENT_REPOSITORY, SalePaymentRepository } from "src/modules/sale-orders/domain/ports/sale-payment.repository";
 import { WORKFLOW_REPOSITORY, WorkflowRepository } from "src/modules/workflow/domain/ports/workflow.repository";
 import { WORKFLOW_STATE_REPOSITORY, WorkflowStateRepository } from "src/modules/workflow/domain/ports/workflow-state.repository";
+import { SaleOrderNumberingService } from "../../services/sale-order-numbering.service";
 
 type CreateSaleOrderInput = {
   warehouseId: string;
@@ -56,8 +52,7 @@ export class CreateSaleOrderUsecase {
     private readonly uow: UnitOfWork,
     @Inject(PACK_REPOSITORY)
     private readonly packRepo: PackRepository,
-    @Inject(PRODUCT_CATALOG_DOCUMENT_SERIE_REPOSITORY)
-    private readonly serieRepo: ProductCatalogDocumentSerieRepository,
+    private readonly numbering: SaleOrderNumberingService,
     @Inject(SALE_ORDER_REPOSITORY)
     private readonly saleOrderRepo: SaleOrderRepository,
     @Inject(SALE_ORDER_ITEM_REPOSITORY)
@@ -78,15 +73,7 @@ export class CreateSaleOrderUsecase {
         throw new BadRequestException("workflowId es obligatorio");
       }
 
-      const series = await this.serieRepo.findActiveFor(
-        { docType: DocType.SALE_ORDER, warehouseId: input.warehouseId, isActive: true },
-        tx,
-      );
-      if (!series.length) {
-        throw new BadRequestException("No hay serie activa para pedidos en este almacén");
-      }
-      const serie = series[0];
-      const correlative = await this.serieRepo.reserveNextNumber(serie.id, tx);
+      const { serie, correlative } = await this.numbering.reserveNext(tx);
       const workflow = await this.workflowRepo.findById(input.workflowId, tx);
       const initialState = await this.workflowStateRepo.findInitialByWorkflowId(input.workflowId, tx);
       if (!workflow?.isActive || !initialState) {
@@ -95,7 +82,7 @@ export class CreateSaleOrderUsecase {
 
       const order = await this.saleOrderRepo.create(
         {
-          serie: serie.code,
+          serie,
           correlative,
           warehouseId: input.warehouseId,
           clientId: input.clientId,

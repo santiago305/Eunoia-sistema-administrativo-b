@@ -11,6 +11,7 @@ import { SaleOrderImportSkuResolverService } from "src/modules/sale-orders/appli
 import { SaleOrderImportSourceResolverService } from "src/modules/sale-orders/application/services/sale-order-import-source-resolver.service";
 import { CreateFromImportPreviewUseCase } from "./create-from-import-preview.usecase";
 import { WORKFLOW_REPOSITORY } from "src/modules/workflow/domain/ports/workflow.repository";
+import { SaleOrderNumberingService } from "../../services/sale-order-numbering.service";
 
 describe("CreateFromImportPreviewUseCase", () => {
   it("imports a single valid row", async () => {
@@ -24,6 +25,9 @@ describe("CreateFromImportPreviewUseCase", () => {
         workflow: { id: "workflow-1" },
         initialState: { id: "state-1" },
       }),
+    };
+    const numbering = {
+      reserveNext: jest.fn().mockResolvedValue({ serie: "PE", correlative: 7 }),
     };
 
     const normalizer = { normalize: jest.fn() };
@@ -67,12 +71,12 @@ describe("CreateFromImportPreviewUseCase", () => {
         { provide: SaleOrderImportSourceResolverService, useValue: sourceResolver },
         { provide: SaleOrderImportSkuResolverService, useValue: skuResolver },
         { provide: WORKFLOW_REPOSITORY, useValue: workflowRepo },
+        { provide: SaleOrderNumberingService, useValue: numbering },
       ],
     }).compile();
 
     try {
       const usecase = moduleRef.get(CreateFromImportPreviewUseCase);
-      jest.spyOn(usecase as any, "reserveNextSaleOrderCorrelative").mockResolvedValue(1);
 
       const result = await usecase.execute({ rows: [{ total: 120 } as any], userId: "user-1" });
       expect(result.importedRows).toBe(1);
@@ -82,6 +86,8 @@ describe("CreateFromImportPreviewUseCase", () => {
         expect.objectContaining({
           workflowId: "workflow-1",
           currentStateId: "state-1",
+          serie: "PE",
+          correlative: 7,
         }),
         expect.anything(),
       );
@@ -107,6 +113,10 @@ describe("CreateFromImportPreviewUseCase", () => {
         { provide: SaleOrderImportSourceResolverService, useValue: { resolveOrCreate: jest.fn() } },
         { provide: SaleOrderImportSkuResolverService, useValue: { resolveOrCreateSkus: jest.fn() } },
         { provide: WORKFLOW_REPOSITORY, useValue: { findActiveByNormalizedName: jest.fn() } },
+        {
+          provide: SaleOrderNumberingService,
+          useValue: { reserveNext: jest.fn() },
+        },
       ],
     }).compile();
 

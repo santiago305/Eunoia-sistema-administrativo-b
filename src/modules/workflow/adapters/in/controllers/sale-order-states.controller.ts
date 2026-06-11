@@ -35,6 +35,6 @@ export class SaleOrderStatesController {
 
   @Patch(":id")
   update(@Param("id", ParseUUIDPipe) saleOrderStateId: string, @Body() dto: UpdateSaleOrderStateDto) {
-    return this.updateSaleOrderState.execute({ saleOrderStateId, name: dto.name, color: dto.color });
+    return this.updateSaleOrderState.execute({ saleOrderStateId, name: dto.name, color: dto.color, code: dto.code });
   }
 }

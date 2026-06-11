@@ -2,7 +2,6 @@ import "reflect-metadata";
 import { Test } from "@nestjs/testing";
 import { UNIT_OF_WORK } from "src/shared/domain/ports/unit-of-work.port";
 import { PACK_REPOSITORY } from "src/modules/packs/domain/ports/pack.repository";
-import { PRODUCT_CATALOG_DOCUMENT_SERIE_REPOSITORY } from "src/modules/product-catalog/domain/ports/document-serie.repository";
 import { SALE_ORDER_REPOSITORY } from "src/modules/sale-orders/domain/ports/sale-order.repository";
 import { SALE_ORDER_ITEM_REPOSITORY } from "src/modules/sale-orders/domain/ports/sale-order-item.repository";
 import { SALE_ORDER_ITEM_COMPONENT_REPOSITORY } from "src/modules/sale-orders/domain/ports/sale-order-item-component.repository";
@@ -10,6 +9,7 @@ import { SALE_PAYMENT_REPOSITORY } from "src/modules/sale-orders/domain/ports/sa
 import { WORKFLOW_REPOSITORY } from "src/modules/workflow/domain/ports/workflow.repository";
 import { WORKFLOW_STATE_REPOSITORY } from "src/modules/workflow/domain/ports/workflow-state.repository";
 import { CreateSaleOrderUsecase } from "./create.usecase";
+import { SaleOrderNumberingService } from "../../services/sale-order-numbering.service";
 
 describe("CreateSaleOrderUsecase", () => {
   it("persists components without reserving stock", async () => {
@@ -19,20 +19,14 @@ describe("CreateSaleOrderUsecase", () => {
         CreateSaleOrderUsecase,
         { provide: UNIT_OF_WORK, useValue: { runInTransaction: (work: any) => work({}) } },
         { provide: PACK_REPOSITORY, useValue: { findByIdWithItems: jest.fn() } },
-        {
-          provide: PRODUCT_CATALOG_DOCUMENT_SERIE_REPOSITORY,
-          useValue: {
-            findActiveFor: jest.fn().mockResolvedValue([{ id: "series-1", code: "PED" }]),
-            reserveNextNumber: jest.fn().mockResolvedValue(1),
-          },
-        },
+        { provide: SaleOrderNumberingService, useValue: { reserveNext: jest.fn().mockResolvedValue({ serie: "PE", correlative: 7 }) } },
         {
           provide: SALE_ORDER_REPOSITORY,
           useValue: {
             create: jest.fn().mockResolvedValue({
               id: "order-1",
-              serie: "PED",
-              correlative: 1,
+              serie: "PE",
+              correlative: 7,
               workflowId: "workflow-1",
               currentStateId: "state-1",
             }),

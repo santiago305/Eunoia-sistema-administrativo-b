@@ -5,7 +5,10 @@ describe("SaleOrderWorkflowActionRunnerService", () => {
   const order = { id: "order-1", warehouseId: "warehouse-1" } as any;
   const tx = {} as any;
 
-  function setup(snapshot = { available: 10, reserved: 10, onHand: 10 }) {
+  function setup(
+    snapshot = { available: 10, reserved: 10, onHand: 10 },
+    options: { hasActiveReservation?: boolean } = {},
+  ) {
     const requirements = {
       resolve: jest.fn().mockResolvedValue([{ stockItemId: "stock-1", quantity: 3 }]),
     };
@@ -16,23 +19,41 @@ describe("SaleOrderWorkflowActionRunnerService", () => {
     };
     const lock = { lockSnapshots: jest.fn().mockResolvedValue(undefined) };
     const saleOrders = { markInvoiceSent: jest.fn().mockResolvedValue(undefined) };
+    const history = {
+      listBySaleOrderId: jest.fn().mockResolvedValue(
+        options.hasActiveReservation === false
+          ? []
+          : [{ transitionId: "reserve-transition" }],
+      ),
+    };
+    const transitions = {
+      findDetailedById: jest.fn().mockResolvedValue({
+        actions: [{ type: "RESERVE_STOCK", position: 0 }],
+      }),
+    };
+    const consumption = { consume: jest.fn().mockResolvedValue(undefined) };
     return {
       runner: new SaleOrderWorkflowActionRunnerService(
         requirements as any,
         inventory as any,
         lock as any,
         saleOrders as any,
+        history as any,
+        transitions as any,
+        consumption as any,
       ),
       requirements,
       inventory,
       lock,
       saleOrders,
+      history,
+      transitions,
+      consumption,
     };
   }
 
   it.each([
     ["RESERVE_STOCK", 3, 0],
-    ["CONSUME_STOCK", -3, -3],
     ["REVERT_STOCK", -3, 0],
   ] as const)("executes %s with the expected inventory deltas", async (type, reservedDelta, onHandDelta) => {
     const { runner, inventory } = setup();
@@ -125,6 +146,40 @@ describe("SaleOrderWorkflowActionRunnerService", () => {
       tx,
     );
 
+    expect(inventory.incrementReserved).not.toHaveBeenCalled();
+  });
+
+  it("delegates stock consumption to one inventory document operation", async () => {
+    const { runner, consumption, inventory } = setup();
+
+    await runner.run(
+      order,
+      [{ id: "a1", transitionId: "t1", type: "CONSUME_STOCK", config: {}, position: 0 } as any],
+      tx,
+    );
+
+    expect(consumption.consume).toHaveBeenCalledWith(
+      order,
+      [{ stockItemId: "stock-1", quantity: 3 }],
+      tx,
+    );
+    expect(inventory.incrementReserved).not.toHaveBeenCalled();
+    expect(inventory.incrementOnHand).not.toHaveBeenCalled();
+  });
+
+  it("does not revert reservations owned by other orders when this order never reserved stock", async () => {
+    const { runner, inventory, requirements } = setup(
+      { available: 0, reserved: 10, onHand: 10 },
+      { hasActiveReservation: false },
+    );
+
+    await runner.run(
+      order,
+      [{ id: "a1", transitionId: "t1", type: "REVERT_STOCK", config: {}, position: 0 } as any],
+      tx,
+    );
+
+    expect(requirements.resolve).not.toHaveBeenCalled();
     expect(inventory.incrementReserved).not.toHaveBeenCalled();
   });
 });

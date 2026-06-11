@@ -9,8 +9,8 @@ import { SaleOrderImportRowNormalizerService } from "src/modules/sale-orders/app
 import { SaleOrderImportSkuResolverService } from "src/modules/sale-orders/application/services/sale-order-import-sku-resolver.service";
 import { SaleOrderImportSourceResolverService } from "src/modules/sale-orders/application/services/sale-order-import-source-resolver.service";
 import { TransactionContext, UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
-import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
 import { WORKFLOW_REPOSITORY, WorkflowRepository } from "src/modules/workflow/domain/ports/workflow.repository";
+import { SaleOrderNumberingService } from "src/modules/sale-orders/application/services/sale-order-numbering.service";
 
 @Injectable()
 export class CreateFromImportPreviewUseCase {
@@ -26,6 +26,7 @@ export class CreateFromImportPreviewUseCase {
     private readonly skuResolver: SaleOrderImportSkuResolverService,
     @Inject(WORKFLOW_REPOSITORY)
     private readonly workflowRepo: WorkflowRepository,
+    private readonly numbering: SaleOrderNumberingService,
   ) {}
 
   async execute(input: { rows: SaleOrderImportPreviewCleanRow[]; userId: string }): Promise<CreateSaleOrdersFromImportPreviewOutput> {
@@ -105,8 +106,7 @@ export class CreateFromImportPreviewUseCase {
     const deliveryCost = 0;
     const subTotal = Math.max(total - deliveryCost, 0);
 
-    const serie = "PE";
-    const correlative = await this.reserveNextSaleOrderCorrelative(input.tx);
+    const { serie, correlative } = await this.numbering.reserveNext(input.tx);
     const deliveryDate = input.row.deliveryDate;
     const normalizedWorkflowName = this.normalizeWorkflowName(input.row.workflowName);
     const resolvedWorkflow = normalizedWorkflowName
@@ -187,26 +187,6 @@ export class CreateFromImportPreviewUseCase {
     }
 
     return saleOrderId;
-  }
-
-  private async reserveNextSaleOrderCorrelative(tx: TransactionContext): Promise<number> {
-    const manager = (tx as TypeormTransactionContext).manager;
-
-    await manager.query(`
-      SELECT pg_advisory_xact_lock(hashtext('sale_orders_pe_correlative'))
-    `);
-
-    const rows = await manager.query(`
-      SELECT correlative
-      FROM sale_orders
-      WHERE serie = 'PE'
-        AND correlative IS NOT NULL
-      ORDER BY correlative DESC, created_at DESC
-      LIMIT 1
-    `);
-
-    const lastCorrelative = Number(rows?.[0]?.correlative ?? 0);
-    return lastCorrelative + 1;
   }
 
   private getEntityId(value: any): string {
