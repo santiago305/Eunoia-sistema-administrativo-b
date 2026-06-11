@@ -155,7 +155,10 @@ export class SaleOrdersController {
   }
 
   @Get(":saleOrderId/history")
-  history(@Param("saleOrderId", ParseUUIDPipe) saleOrderId: string) {
+  history(
+    @Param("saleOrderId", ParseUUIDPipe) saleOrderId: string,
+    @CurrentUser() user: { id: string },
+  ) {
     return this.getOrderTimeline.execute({ saleOrderId });
   }
 

@@ -45,6 +45,8 @@ import { GetOrderTimelineUseCase } from "src/modules/workflow/application/usecas
 import { SaleOrderStockRequirementsService } from "src/modules/workflow/application/services/sale-order-stock-requirements.service";
 import { SaleOrderWorkflowActionRunnerService } from "src/modules/workflow/application/services/sale-order-workflow-action-runner.service";
 import { GetSaleOrderStatisticsUsecase } from "../application/usecases/sale-order/get-statistics.usecase";
+import { SaleOrderNumberingService } from "../application/services/sale-order-numbering.service";
+import { SaleOrderStockConsumptionService } from "src/modules/workflow/application/services/sale-order-stock-consumption.service";
 
 export const saleOrdersModuleProviders = [
   { provide: SALE_ORDER_REPOSITORY, useClass: SaleOrderTypeormRepository },
@@ -56,6 +58,7 @@ export const saleOrdersModuleProviders = [
   { provide: UNIT_OF_WORK, useClass: TypeormUnitOfWork },
   { provide: CLOCK, useValue: { now: () => new Date() } },
   CreateSaleOrderUsecase,
+  SaleOrderNumberingService,
   GetSaleOrderUsecase,
   UpdateSaleOrderUsecase,
   ListSaleOrdersUsecase,
@@ -74,6 +77,7 @@ export const saleOrdersModuleProviders = [
   GetOrderTimelineUseCase,
   SaleOrderStockRequirementsService,
   SaleOrderWorkflowActionRunnerService,
+  SaleOrderStockConsumptionService,
   SaleOrderImportClientResolverService,
   SaleOrderImportRowNormalizerService,
   SaleOrderImportSkuResolverService,

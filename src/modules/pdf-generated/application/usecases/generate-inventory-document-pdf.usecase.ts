@@ -75,6 +75,7 @@ const STATUS_LABEL: Record<DocStatus, string> = {
 const REFERENCE_LABEL: Record<ReferenceType, string> = {
   [ReferenceType.PURCHASE]: "COMPRA",
   [ReferenceType.PRODUCTION]: "PRODUCCION",
+  [ReferenceType.SALE_ORDER]: "PEDIDO DE VENTA",
 };
 
 const resolveReference = (referenceType?: ReferenceType, referenceId?: string) => {

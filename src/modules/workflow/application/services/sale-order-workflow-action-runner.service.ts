@@ -16,6 +16,15 @@ import {
   SaleOrderRepository,
 } from "src/modules/sale-orders/domain/ports/sale-order.repository";
 import { ACTIONS } from "../../domain/constants/workflow-action.constants";
+import {
+  SALE_ORDER_STATE_HISTORY_REPOSITORY,
+  SaleOrderStateHistoryRepository,
+} from "../../domain/ports/sale-order-state-history.repository";
+import {
+  WORKFLOW_TRANSITION_REPOSITORY,
+  WorkflowTransitionRepository,
+} from "../../domain/ports/workflow-transition.repository";
+import { SaleOrderStockConsumptionService } from "./sale-order-stock-consumption.service";
 
 @Injectable()
 export class SaleOrderWorkflowActionRunnerService {
@@ -27,7 +36,35 @@ export class SaleOrderWorkflowActionRunnerService {
     private readonly inventoryLock: InventoryLock,
     @Inject(SALE_ORDER_REPOSITORY)
     private readonly saleOrderRepo: SaleOrderRepository,
+    @Inject(SALE_ORDER_STATE_HISTORY_REPOSITORY)
+    private readonly historyRepo: SaleOrderStateHistoryRepository,
+    @Inject(WORKFLOW_TRANSITION_REPOSITORY)
+    private readonly transitionRepo: WorkflowTransitionRepository,
+    private readonly stockConsumption: SaleOrderStockConsumptionService,
   ) {}
+
+  private async hasActiveReservation(saleOrderId: string, tx: TransactionContext): Promise<boolean> {
+    const history = await this.historyRepo.listBySaleOrderId(saleOrderId, tx);
+    let active = false;
+
+    for (const entry of history) {
+      if (!entry.transitionId) continue;
+      const transition = await this.transitionRepo.findDetailedById(entry.transitionId, tx);
+      const actions = [...(transition?.actions ?? [])].sort((a, b) => a.position - b.position);
+      for (const action of actions) {
+        if (action.type === ACTIONS.RESERVE_STOCK) {
+          active = true;
+        } else if (
+          action.type === ACTIONS.CONSUME_STOCK ||
+          action.type === ACTIONS.REVERT_STOCK
+        ) {
+          active = false;
+        }
+      }
+    }
+
+    return active;
+  }
 
   async run(order: SaleOrder, actions: WorkflowAction[], tx: TransactionContext): Promise<void> {
     if (!actions.length) return;
@@ -50,6 +87,9 @@ export class SaleOrderWorkflowActionRunnerService {
     }
 
     const onlyRevertsStock = stockActions.every((action) => action.type === ACTIONS.REVERT_STOCK);
+    if (onlyRevertsStock && !(await this.hasActiveReservation(order.id, tx))) {
+      return;
+    }
     if (!order.warehouseId && onlyRevertsStock) {
       return;
     }
@@ -125,6 +165,10 @@ export class SaleOrderWorkflowActionRunnerService {
         await this.saleOrderRepo.markInvoiceSent(order.id, tx);
         continue;
       }
+      if (action.type === ACTIONS.CONSUME_STOCK) {
+        await this.stockConsumption.consume(order, requirements, tx);
+        continue;
+      }
       for (const { stockItemId, quantity } of requirements) {
         const quantityToApply = quantitiesByAction.get(action)?.get(stockItemId) ?? quantity;
         if (quantityToApply === 0) {
@@ -133,9 +177,6 @@ export class SaleOrderWorkflowActionRunnerService {
         const base = { warehouseId: order.warehouseId, stockItemId, locationId: null };
         const reservedDelta = action.type === ACTIONS.RESERVE_STOCK ? quantityToApply : -quantityToApply;
         await this.inventoryRepo.incrementReserved({ ...base, delta: reservedDelta }, tx);
-        if (action.type === ACTIONS.CONSUME_STOCK) {
-          await this.inventoryRepo.incrementOnHand({ ...base, delta: -quantityToApply }, tx);
-        }
       }
     }
   }
