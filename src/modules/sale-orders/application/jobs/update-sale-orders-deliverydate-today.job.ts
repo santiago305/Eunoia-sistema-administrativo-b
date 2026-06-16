@@ -40,16 +40,21 @@ export class UpdateSaleOrdersDeliveryDateTodayJob {
     });
 
     let updated = 0;
+    let failed = 0;
 
     for (const saleOrderId of ids) {
-      await this.advanceSaleOrderState.execute({
-        saleOrderId,
-        transitionCode: "DELIVERY_DATE_REACHED",
-        executedBy: "00000000-0000-0000-0000-000000000001",
-        metadata: { source: "delivery-date-job" },
-      });
-
-      updated += 1;
+      try {
+        await this.advanceSaleOrderState.execute({
+          saleOrderId,
+          transitionCode: "DELIVERY_DATE_REACHED",
+          executedBy: "00000000-0000-0000-0000-000000000001",
+          metadata: { source: "delivery-date-job" },
+        });
+        updated += 1;
+      } catch (error) {
+        failed += 1;
+        this.logger.warn(`deliveryDateToday failed saleOrderId=${saleOrderId}: ${(error as Error).message}`);
+      }
     }
 
     this.logger.debug(`deliveryDateToday updated=${updated} date=${todayIso}`);
@@ -58,6 +63,7 @@ export class UpdateSaleOrdersDeliveryDateTodayJob {
       date: todayIso,
       found: ids.length,
       updated,
+      failed,
       saleOrderIds: ids,
     };
   }

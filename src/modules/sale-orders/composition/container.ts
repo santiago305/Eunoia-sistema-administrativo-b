@@ -47,6 +47,7 @@ import { SaleOrderWorkflowActionRunnerService } from "src/modules/workflow/appli
 import { GetSaleOrderStatisticsUsecase } from "../application/usecases/sale-order/get-statistics.usecase";
 import { SaleOrderNumberingService } from "../application/services/sale-order-numbering.service";
 import { SaleOrderStockConsumptionService } from "src/modules/workflow/application/services/sale-order-stock-consumption.service";
+import { RunAutomaticWorkflowTransitionsJob } from "src/modules/workflow/application/jobs/run-automatic-workflow-transitions.job";
 
 export const saleOrdersModuleProviders = [
   { provide: SALE_ORDER_REPOSITORY, useClass: SaleOrderTypeormRepository },
@@ -90,5 +91,6 @@ export const saleOrdersModuleProviders = [
   SaveSaleOrderSearchMetricUsecase,
   DeleteSaleOrderSearchMetricUsecase,
   UpdateSaleOrdersDeliveryDateTodayJob,
+  RunAutomaticWorkflowTransitionsJob,
   SaleOrdersJobsScheduler,
 ];

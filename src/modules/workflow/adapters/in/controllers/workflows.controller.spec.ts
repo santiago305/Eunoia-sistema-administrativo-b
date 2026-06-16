@@ -100,6 +100,13 @@ describe("WorkflowsController", () => {
       { type: "DATE_AFTER", configSchema: { date: { type: "date", required: true } } },
       { type: "DATE_BEFORE", configSchema: { date: { type: "date", required: true } } },
       { type: "INVOICE_SENT", configSchema: {} },
+      {
+        type: "SCHEDULE_DELIVERY_WINDOW",
+        configSchema: {
+          minDaysBefore: { type: "integer", required: true, min: 0 },
+          maxDaysBefore: { type: "integer", required: true, min: 0 },
+        },
+      },
     ]);
   });
 

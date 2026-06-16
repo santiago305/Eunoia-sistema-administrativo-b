@@ -127,4 +127,65 @@ export class SaleOrderWorkflowTransitionService {
 
     return updated;
   }
+
+  async advanceAutomatic(saleOrderId: string, executedBy: string, tx: TransactionContext) {
+    const order = await this.saleOrderRepo.findByIdForUpdate(saleOrderId, tx);
+    if (!order?.workflowId || !order.currentStateId) {
+      return null;
+    }
+    const aggregate = await this.workflowRepo.findDetailedById(order.workflowId, tx);
+    const currentState = aggregate?.states.find((state) => state.id === order.currentStateId);
+    if (!aggregate || !currentState) {
+      return null;
+    }
+
+    const context = await this.contextService.build(order, currentState, tx);
+    const bundles = (await this.workflowTransitionRepo.listFromState(order.workflowId, order.currentStateId, tx))
+      .filter(({ transition }) => transition.autoTrigger && transition.isActive)
+      .sort((a, b) => a.transition.priority - b.transition.priority || a.transition.id.localeCompare(b.transition.id));
+
+    for (const bundle of bundles) {
+      const evaluations = this.engine.evaluateConditions(
+        bundle.conditions.map((condition) => ConditionFactory.create(condition)),
+        context,
+      );
+      const passed = evaluations.every((evaluation) => evaluation.passed);
+      const effect = passed ? bundle.transition.effect : bundle.transition.elseEffect;
+      const toStateId = passed ? bundle.transition.toStateId : bundle.transition.elseToStateId;
+      const actions = bundle.actions.filter((action) => action.branch === (passed ? "THEN" : "ELSE"));
+
+      if (!passed && !effect) {
+        continue;
+      }
+      if (effect === TRANSITION_EFFECTS.MOVE_STATE && !toStateId) {
+        throw new BadRequestException("Estado destino automatico invalido");
+      }
+      if (effect === TRANSITION_EFFECTS.RUN_ACTIONS && !actions.length) {
+        throw new BadRequestException("Rama automatica de acciones sin acciones");
+      }
+
+      await this.actionRunner.run(order, actions, tx);
+      const updated =
+        effect === TRANSITION_EFFECTS.RUN_ACTIONS
+          ? order
+          : await this.saleOrderRepo.updateWorkflowState({ saleOrderId: order.id, currentStateId: toStateId }, tx);
+      await this.historyRepo.append(
+        new SaleOrderStateHistory({
+          id: crypto.randomUUID(),
+          saleOrderId: order.id,
+          workflowId: order.workflowId,
+          transitionId: bundle.transition.id,
+          fromStateId: order.currentStateId,
+          toStateId: toStateId ?? order.currentStateId,
+          executedBy,
+          executedAt: this.clock.now(),
+          metadata: { source: "automatic-workflow", branch: passed ? "THEN" : "ELSE" },
+        }),
+        tx,
+      );
+      return updated;
+    }
+
+    return null;
+  }
 }

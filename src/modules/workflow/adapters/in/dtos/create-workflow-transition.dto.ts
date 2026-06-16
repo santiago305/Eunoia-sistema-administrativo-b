@@ -80,6 +80,23 @@ export class CreateWorkflowTransitionDto {
   isActive?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  autoTrigger?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  priority?: number;
+
+  @IsOptional()
+  @IsIn(Object.values(TRANSITION_EFFECTS))
+  elseEffect?: WorkflowTransitionEffect | null;
+
+  @IsOptional()
+  @IsUUID()
+  elseToStateId?: string | null;
+
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateWorkflowTransitionConditionDto)
@@ -90,4 +107,10 @@ export class CreateWorkflowTransitionDto {
   @ValidateNested({ each: true })
   @Type(() => CreateWorkflowTransitionActionDto)
   actions?: CreateWorkflowTransitionActionDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => CreateWorkflowTransitionActionDto)
+  elseActions?: CreateWorkflowTransitionActionDto[];
 }

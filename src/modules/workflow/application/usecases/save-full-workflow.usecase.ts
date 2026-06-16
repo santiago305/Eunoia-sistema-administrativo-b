@@ -138,6 +138,7 @@ export class SaveFullWorkflowUseCase {
 
       const fromState = transition.fromStateRef ? stateReferences.get(transition.fromStateRef) : null;
       const toState = transition.toStateRef ? stateReferences.get(transition.toStateRef) : null;
+      const elseToState = transition.elseToStateRef ? stateReferences.get(transition.elseToStateRef) : null;
       if (!isGlobal && !fromState) {
         throw new BadRequestException(`Transicion ${transition.code} referencia estados inexistentes`);
       }
@@ -154,6 +155,15 @@ export class SaveFullWorkflowUseCase {
       }
       if (isGlobal && transition.fromStateRef) {
         throw new BadRequestException(`Transicion global ${transition.code} no debe tener estado origen`);
+      }
+      if (transition.autoTrigger && !transition.conditions?.length) {
+        throw new BadRequestException(`Transicion automatica ${transition.code} requiere condiciones`);
+      }
+      if (transition.elseEffect === TRANSITION_EFFECTS.MOVE_STATE && !elseToState) {
+        throw new BadRequestException(`Rama else de ${transition.code} requiere estado destino`);
+      }
+      if (transition.elseEffect === TRANSITION_EFFECTS.RUN_ACTIONS && !transition.elseActions?.length) {
+        throw new BadRequestException(`Rama else de ${transition.code} requiere acciones`);
       }
 
       const excludedStateIds = (transition.excludedStateRefs ?? []).map((reference) => {
@@ -186,6 +196,20 @@ export class SaveFullWorkflowUseCase {
             type: action.type,
             config: action.config ?? {},
             position: action.position ?? index,
+            branch: "THEN",
+          }),
+        );
+      });
+      (transition.elseActions ?? []).forEach((action, index) => {
+        ActionFactory.validate({ type: action.type, config: action.config ?? {} } as WorkflowAction);
+        actions.push(
+          new WorkflowAction({
+            id: crypto.randomUUID(),
+            transitionId,
+            type: action.type,
+            config: action.config ?? {},
+            position: action.position ?? index,
+            branch: "ELSE",
           }),
         );
       });
@@ -207,6 +231,11 @@ export class SaveFullWorkflowUseCase {
         sourceHandle: transition.sourceHandle ?? null,
         targetHandle: transition.targetHandle ?? null,
         isActive: transition.isActive ?? true,
+        autoTrigger: transition.autoTrigger ?? false,
+        priority: transition.priority ?? 0,
+        elseEffect: transition.elseEffect ?? null,
+        elseToStateId:
+          transition.elseEffect === TRANSITION_EFFECTS.MOVE_STATE ? elseToState?.id ?? null : null,
       });
     });
 

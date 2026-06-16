@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import { UpdateSaleOrdersDeliveryDateTodayJob } from "src/modules/sale-orders/application/jobs/update-sale-orders-deliverydate-today.job";
 import { NotificationRealtimeService } from "src/modules/mail/infrastructure/realtime/notification-realtime.service";
+import { RunAutomaticWorkflowTransitionsJob } from "src/modules/workflow/application/jobs/run-automatic-workflow-transitions.job";
 
 @Injectable()
 export class SaleOrdersJobsScheduler implements OnModuleInit, OnModuleDestroy {
@@ -11,6 +12,7 @@ export class SaleOrdersJobsScheduler implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly updateTodayJob: UpdateSaleOrdersDeliveryDateTodayJob,
     private readonly realtimeService: NotificationRealtimeService,
+    private readonly automaticWorkflowJob: RunAutomaticWorkflowTransitionsJob,
   ) {}
 
   onModuleInit() {
@@ -29,6 +31,17 @@ export class SaleOrdersJobsScheduler implements OnModuleInit, OnModuleDestroy {
         return result;
       },
     );
+    this.schedule("automatic-workflow", 5_000, async () => {
+      const result = await this.automaticWorkflowJob.run({ limit: 500 });
+      if (result.updated) {
+        this.realtimeService.emitToAllConnected("sale-orders.updated", {
+          updated: result.updated,
+          saleOrderIds: result.saleOrderIds,
+          source: "automatic-workflow",
+        });
+      }
+      return result;
+    });
   }
 
   onModuleDestroy() {

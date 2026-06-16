@@ -7,6 +7,7 @@ import { NotCancelledCondition } from "../conditions/not-cancelled.condition";
 import { WorkflowCondition } from "../entities/workflow-condition";
 import { CONDITIONS } from "../constants/workflow-condition.constants";
 import { InvoiceSentCondition } from "../conditions/invoice-sent.condition";
+import { ScheduleDeliveryWindowCondition } from "../conditions/schedule-delivery-window.condition";
 
 export class ConditionFactory {
   static create(condition: Pick<WorkflowCondition, "type" | "config">): Condition {
@@ -23,6 +24,11 @@ export class ConditionFactory {
         return new DateBeforeCondition(this.parseDateConfig(condition.config));
       case CONDITIONS.INVOICE_SENT:
         return new InvoiceSentCondition();
+      case CONDITIONS.SCHEDULE_DELIVERY_WINDOW:
+        return new ScheduleDeliveryWindowCondition(
+          this.parseNonNegativeInteger(condition.config.minDaysBefore, "minDaysBefore"),
+          this.parseNonNegativeInteger(condition.config.maxDaysBefore, "maxDaysBefore"),
+        );
       default:
         throw new Error("Condicion de workflow no soportada");
     }
@@ -40,5 +46,12 @@ export class ConditionFactory {
     }
 
     return date;
+  }
+
+  private static parseNonNegativeInteger(value: unknown, field: string) {
+    if (!Number.isInteger(value) || Number(value) < 0) {
+      throw new Error(`Config ${field} invalida`);
+    }
+    return Number(value);
   }
 }

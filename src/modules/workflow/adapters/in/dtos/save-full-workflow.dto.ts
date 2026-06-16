@@ -87,6 +87,7 @@ class FullWorkflowStateDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
 }
 
 class FullWorkflowTransitionDto {
@@ -141,6 +142,23 @@ class FullWorkflowTransitionDto {
   isActive?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  autoTrigger?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  priority?: number;
+
+  @IsOptional()
+  @IsIn(Object.values(TRANSITION_EFFECTS))
+  elseEffect?: WorkflowTransitionEffect | null;
+
+  @IsOptional()
+  @IsString()
+  elseToStateRef?: string | null;
+
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => FullWorkflowConditionDto)
@@ -151,6 +169,12 @@ class FullWorkflowTransitionDto {
   @ValidateNested({ each: true })
   @Type(() => FullWorkflowActionDto)
   actions?: FullWorkflowActionDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => FullWorkflowActionDto)
+  elseActions?: FullWorkflowActionDto[];
 }
 
 export class SaveFullWorkflowDto {
