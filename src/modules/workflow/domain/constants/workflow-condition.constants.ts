@@ -5,6 +5,7 @@ export const CONDITIONS = {
   DATE_AFTER: "DATE_AFTER",
   DATE_BEFORE: "DATE_BEFORE",
   INVOICE_SENT: "INVOICE_SENT",
+  SCHEDULE_DELIVERY_WINDOW: "SCHEDULE_DELIVERY_WINDOW",
 } as const;
 
 export type WorkflowConditionType = typeof CONDITIONS[keyof typeof CONDITIONS];

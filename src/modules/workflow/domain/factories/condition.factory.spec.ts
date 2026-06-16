@@ -68,4 +68,33 @@ describe("ConditionFactory", () => {
       ).toBe(true);
     },
   );
+
+  it.each([
+    ["2026-06-12T15:00:00.000Z", "2026-06-12", true],
+    ["2026-06-11T15:00:00.000Z", "2026-06-12", true],
+    ["2026-06-10T15:00:00.000Z", "2026-06-12", false],
+    ["2026-06-13T15:00:00.000Z", "2026-06-12", false],
+    ["2026-06-12T04:30:00.000Z", "2026-06-12", true],
+    ["2026-06-11T15:00:00.000Z", null, false],
+  ])(
+    "evaluates current date %s against delivery %s",
+    (currentDate, deliveryDate, passed) => {
+      const condition = ConditionFactory.create({
+        type: "SCHEDULE_DELIVERY_WINDOW" as any,
+        config: { minDaysBefore: 0, maxDaysBefore: 1 },
+      });
+
+      expect(
+        condition.evaluate({
+          orderId: "order-1",
+          isPaid: false,
+          hasStock: false,
+          isCancelled: false,
+          invoiceSent: false,
+          currentDate: new Date(currentDate),
+          variables: { scheduleDate: "2026-06-05", deliveryDate },
+        }).passed,
+      ).toBe(passed);
+    },
+  );
 });

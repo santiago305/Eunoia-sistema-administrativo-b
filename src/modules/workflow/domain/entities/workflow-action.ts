@@ -7,6 +7,7 @@ export type WorkflowActionProps = {
   type: WorkflowActionType;
   config: Readonly<Record<string, unknown>>;
   position: number;
+  branch?: "THEN" | "ELSE";
 };
 
 export class WorkflowAction {
@@ -15,6 +16,7 @@ export class WorkflowAction {
   readonly type: WorkflowActionType;
   readonly config: Readonly<Record<string, unknown>>;
   readonly position: number;
+  readonly branch: "THEN" | "ELSE";
 
   constructor(props: WorkflowActionProps) {
     this.id = props.id;
@@ -22,5 +24,6 @@ export class WorkflowAction {
     this.type = props.type;
     this.config = props.config;
     this.position = props.position;
+    this.branch = props.branch ?? "THEN";
   }
 }

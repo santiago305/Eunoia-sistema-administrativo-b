@@ -77,6 +77,18 @@ export class CreateWorkflowTransitionUseCase {
       if (excludedStateIds.some((id) => !aggregate.states.some((state) => state.id === id))) {
         throw new BadRequestException("La transicion excluye estados inexistentes");
       }
+      if (input.autoTrigger && !input.conditions?.length) {
+        throw new BadRequestException("Una transicion automatica requiere condiciones");
+      }
+      if (
+        input.elseEffect === TRANSITION_EFFECTS.MOVE_STATE &&
+        (!input.elseToStateId || !aggregate.states.some((state) => state.id === input.elseToStateId))
+      ) {
+        throw new BadRequestException("La rama else requiere un estado destino valido");
+      }
+      if (input.elseEffect === TRANSITION_EFFECTS.RUN_ACTIONS && !input.elseActions?.length) {
+        throw new BadRequestException("La rama else de acciones requiere al menos una accion");
+      }
 
       const transition = new WorkflowTransition({
         id: crypto.randomUUID(),
@@ -92,6 +104,11 @@ export class CreateWorkflowTransitionUseCase {
         sourceHandle: input.sourceHandle ?? null,
         targetHandle: input.targetHandle ?? null,
         isActive: input.isActive ?? true,
+        autoTrigger: input.autoTrigger ?? false,
+        priority: input.priority ?? 0,
+        elseEffect: input.elseEffect ?? null,
+        elseToStateId:
+          input.elseEffect === TRANSITION_EFFECTS.MOVE_STATE ? input.elseToStateId ?? null : null,
       });
 
       const conditions = (input.conditions ?? []).map(
@@ -114,14 +131,27 @@ export class CreateWorkflowTransitionUseCase {
             type: action.type,
             config: action.config ?? {},
             position: action.position ?? index,
+            branch: "THEN",
+          }),
+      );
+      const elseActions = (input.elseActions ?? []).map(
+        (action, index) =>
+          new WorkflowAction({
+            id: crypto.randomUUID(),
+            transitionId: transition.id,
+            type: action.type,
+            config: action.config ?? {},
+            position: action.position ?? index,
+            branch: "ELSE",
           }),
       );
       if (effect === TRANSITION_EFFECTS.RUN_ACTIONS && actions.length === 0) {
         throw new BadRequestException("Una transicion de acciones requiere al menos una accion");
       }
       actions.forEach((action) => ActionFactory.validate(action));
+      elseActions.forEach((action) => ActionFactory.validate(action));
 
-      await this.workflowTransitionRepo.create(transition, conditions, actions, tx);
+      await this.workflowTransitionRepo.create(transition, conditions, [...actions, ...elseActions], tx);
       return this.workflowTransitionRepo.findDetailedById(transition.id, tx);
     });
   }

@@ -46,6 +46,18 @@ export class WorkflowTransitionEntity {
   @Column({ name: "is_active", type: "boolean", default: true })
   isActive: boolean;
 
+  @Column({ name: "auto_trigger", type: "boolean", default: false })
+  autoTrigger: boolean;
+
+  @Column({ type: "int", default: 0 })
+  priority: number;
+
+  @Column({ name: "else_effect", type: "varchar", length: 20, nullable: true })
+  elseEffect?: WorkflowTransitionEffect | null;
+
+  @Column({ name: "else_to_state_id", type: "uuid", nullable: true })
+  elseToStateId?: string | null;
+
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
 

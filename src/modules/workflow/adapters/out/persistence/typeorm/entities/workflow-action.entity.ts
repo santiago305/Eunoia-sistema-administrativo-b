@@ -19,6 +19,9 @@ export class WorkflowActionEntity {
   @Column({ type: "int", default: 0 })
   position: number;
 
+  @Column({ type: "varchar", length: 10, default: "THEN" })
+  branch: "THEN" | "ELSE";
+
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
 

@@ -40,6 +40,7 @@ export interface SaleOrderRepository {
     input: { deliveryDate: string; limit?: number },
     tx?: TransactionContext,
   ): Promise<string[]>;
+  listIdsForAutomaticWorkflow(limit?: number, tx?: TransactionContext): Promise<string[]>;
   list(
     params: { q?: string; filters?: SaleOrderSearchRule[]; page?: number; limit?: number },
     tx?: TransactionContext,

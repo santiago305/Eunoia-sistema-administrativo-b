@@ -89,6 +89,13 @@ export class WorkflowsController {
       { type: CONDITIONS.DATE_AFTER, configSchema: { date: { type: "date", required: true } } },
       { type: CONDITIONS.DATE_BEFORE, configSchema: { date: { type: "date", required: true } } },
       { type: CONDITIONS.INVOICE_SENT, configSchema: {} },
+      {
+        type: CONDITIONS.SCHEDULE_DELIVERY_WINDOW,
+        configSchema: {
+          minDaysBefore: { type: "integer", required: true, min: 0 },
+          maxDaysBefore: { type: "integer", required: true, min: 0 },
+        },
+      },
     ];
   }
 
@@ -166,11 +173,20 @@ export class WorkflowsController {
       sourceHandle: dto.sourceHandle,
       targetHandle: dto.targetHandle,
       isActive: dto.isActive,
+      autoTrigger: dto.autoTrigger,
+      priority: dto.priority,
+      elseEffect: dto.elseEffect,
+      elseToStateId: dto.elseToStateId,
       conditions: dto.conditions?.map((condition) => ({
         type: condition.type as any,
         config: condition.config ?? {},
       })),
       actions: dto.actions?.map((action) => ({
+        type: action.type,
+        config: action.config ?? {},
+        position: action.position,
+      })),
+      elseActions: dto.elseActions?.map((action) => ({
         type: action.type,
         config: action.config ?? {},
         position: action.position,

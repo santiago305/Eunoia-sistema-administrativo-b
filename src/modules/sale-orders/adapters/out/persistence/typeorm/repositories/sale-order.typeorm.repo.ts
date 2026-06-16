@@ -268,7 +268,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     return this.toDomain(saved);
   }
 
- async listIdsToProgramForDeliveryDate(
+  async listIdsToProgramForDeliveryDate(
     input: { deliveryDate: string; limit?: number },
     tx?: TransactionContext,
   ): Promise<string[]> {
@@ -285,6 +285,30 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       .limit(input.limit ?? 500);
 
     const rows = await qb.getRawMany<{ id: string }>();
+
+    return rows.map((row) => row.id);
+  }
+
+  async listIdsForAutomaticWorkflow(limit = 500, tx?: TransactionContext): Promise<string[]> {
+    const manager = this.getManager(tx);
+    const rows = await manager
+      .getRepository(SaleOrderEntity)
+      .createQueryBuilder("so")
+      .select("so.id", "id")
+      .addSelect("so.createdAt", "createdAt")
+      .innerJoin(
+        "workflow_transitions",
+        "wt",
+        "wt.workflow_id = so.workflow_id AND (wt.is_global = true OR wt.from_state_id = so.current_state_id)",
+      )
+      .where("so.workflow_id IS NOT NULL")
+      .andWhere("so.current_state_id IS NOT NULL")
+      .andWhere("wt.auto_trigger = true")
+      .andWhere("wt.is_active = true")
+      .distinct(true)
+      .orderBy("so.created_at", "ASC")
+      .limit(limit)
+      .getRawMany<{ id: string }>();
 
     return rows.map((row) => row.id);
   }
@@ -712,13 +736,20 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       base
         .clone()
         .select("COUNT(so.id)", "orders")
+        .addSelect("COALESCE(SUM(so.deliveryCost), 0)", "deliveryCostSum")
         .addSelect("COALESCE(SUM(so.total), 0)", "total")
         .addSelect("COALESCE(SUM(COALESCE(payment_sum.collected, 0)), 0)", "collected")
         .addSelect(
           "COALESCE(SUM(GREATEST(so.total - COALESCE(payment_sum.collected, 0), 0)), 0)",
           "pending",
         )
-        .getRawOne<{ orders: string; total: string; collected: string; pending: string }>(),
+        .getRawOne<{ 
+          orders: string;
+          total: string;
+          collected: string;
+          pending: string; 
+          deliveryCostSum: string;
+        }>(),
     ]);
 
     const clientTypeLabels: Record<ClientType, string> = {
@@ -741,6 +772,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         total: Number(totalsRow?.total ?? 0),
         collected: Number(totalsRow?.collected ?? 0),
         pending: Number(totalsRow?.pending ?? 0),
+        deliveryCostSum: Number(totalsRow?.deliveryCostSum ?? 0),
       },
     };
   }

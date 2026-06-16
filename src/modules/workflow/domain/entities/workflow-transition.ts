@@ -21,6 +21,10 @@ export type WorkflowTransitionProps = {
   sourceHandle?: string | null;
   targetHandle?: string | null;
   isActive: boolean;
+  autoTrigger?: boolean;
+  priority?: number;
+  elseEffect?: WorkflowTransitionEffect | null;
+  elseToStateId?: string | null;
 };
 
 export class WorkflowTransition {
@@ -37,6 +41,10 @@ export class WorkflowTransition {
   readonly sourceHandle: string | null;
   readonly targetHandle: string | null;
   readonly isActive: boolean;
+  readonly autoTrigger: boolean;
+  readonly priority: number;
+  readonly elseEffect: WorkflowTransitionEffect | null;
+  readonly elseToStateId: string | null;
 
   constructor(props: WorkflowTransitionProps) {
     this.id = props.id;
@@ -52,5 +60,9 @@ export class WorkflowTransition {
     this.sourceHandle = props.sourceHandle ?? null;
     this.targetHandle = props.targetHandle ?? null;
     this.isActive = props.isActive;
+    this.autoTrigger = props.autoTrigger ?? false;
+    this.priority = props.priority ?? 0;
+    this.elseEffect = props.elseEffect ?? null;
+    this.elseToStateId = props.elseToStateId ?? null;
   }
 }

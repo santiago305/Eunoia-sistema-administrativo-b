@@ -35,12 +35,21 @@ export type FullWorkflowTransitionInput = {
   sourceHandle?: string | null;
   targetHandle?: string | null;
   isActive?: boolean;
+  autoTrigger?: boolean;
+  priority?: number;
+  elseEffect?: WorkflowTransitionEffect | null;
+  elseToStateRef?: string | null;
   conditions?: Array<{
     type: WorkflowConditionType;
     config?: Record<string, unknown>;
     position?: number;
   }>;
   actions?: Array<{
+    type: WorkflowActionType;
+    config?: Record<string, unknown>;
+    position?: number;
+  }>;
+  elseActions?: Array<{
     type: WorkflowActionType;
     config?: Record<string, unknown>;
     position?: number;

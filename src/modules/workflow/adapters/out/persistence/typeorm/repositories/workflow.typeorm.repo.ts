@@ -79,6 +79,10 @@ export class WorkflowTypeormRepository implements WorkflowRepository {
       sourceHandle: row.sourceHandle ?? null,
       targetHandle: row.targetHandle ?? null,
       isActive: row.isActive,
+      autoTrigger: row.autoTrigger,
+      priority: row.priority,
+      elseEffect: row.elseEffect ?? null,
+      elseToStateId: row.elseToStateId ?? null,
     });
   }
 
@@ -89,6 +93,7 @@ export class WorkflowTypeormRepository implements WorkflowRepository {
       type: row.type,
       config: row.config ?? {},
       position: row.position,
+      branch: row.branch,
     });
   }
 
@@ -326,6 +331,10 @@ export class WorkflowTypeormRepository implements WorkflowRepository {
           sourceHandle: transition.sourceHandle,
           targetHandle: transition.targetHandle,
           isActive: transition.isActive,
+          autoTrigger: transition.autoTrigger,
+          priority: transition.priority,
+          elseEffect: transition.elseEffect,
+          elseToStateId: transition.elseToStateId,
         })),
       );
     }
@@ -348,6 +357,7 @@ export class WorkflowTypeormRepository implements WorkflowRepository {
           type: action.type,
           config: action.config,
           position: action.position,
+          branch: action.branch,
         })),
       );
     }
