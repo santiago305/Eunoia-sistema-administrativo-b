@@ -159,4 +159,6 @@ export class HttpSaleOrderCreateDto {
   @Type(() => HttpSalePaymentDto)
   payments?: HttpSalePaymentDto[];
   
+  @IsOptional()
+  currentState?:string;
 }

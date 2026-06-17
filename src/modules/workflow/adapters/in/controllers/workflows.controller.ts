@@ -14,6 +14,7 @@ import { CreateWorkflowStateDto } from "../dtos/create-workflow-state.dto";
 import { CreateWorkflowTransitionDto } from "../dtos/create-workflow-transition.dto";
 import { CONDITIONS } from "../../../domain/constants/workflow-condition.constants";
 import { ACTIONS } from "../../../domain/constants/workflow-action.constants";
+import { SALE_ORDER_FIELD_OPTIONS } from "../../../domain/conditions/sale-order-field-options";
 import { UpdateWorkflowStateUseCase } from "../../../application/usecases/update-workflow-state.usecase";
 import { UpdateWorkflowStatePositionsUseCase } from "../../../application/usecases/update-workflow-state-positions.usecase";
 import { UpdateWorkflowStateDto } from "../dtos/update-workflow-state.dto";
@@ -94,6 +95,16 @@ export class WorkflowsController {
         configSchema: {
           minDaysBefore: { type: "integer", required: true, min: 0 },
           maxDaysBefore: { type: "integer", required: true, min: 0 },
+        },
+      },
+      {
+        type: CONDITIONS.SALE_ORDER_FIELD_REQUIRED,
+        configSchema: {
+          field: {
+            type: "select",
+            required: true,
+            options: SALE_ORDER_FIELD_OPTIONS,
+          },
         },
       },
     ];
