@@ -107,6 +107,19 @@ describe("WorkflowsController", () => {
           maxDaysBefore: { type: "integer", required: true, min: 0 },
         },
       },
+      {
+        type: "SALE_ORDER_FIELD_REQUIRED",
+        configSchema: {
+          field: {
+            type: "select",
+            required: true,
+            options: expect.arrayContaining([
+              { label: "Cliente tiene DNI", value: "client.docNumber" },
+              { label: "Cliente tiene direccion", value: "client.address" },
+            ]),
+          },
+        },
+      },
     ]);
   });
 

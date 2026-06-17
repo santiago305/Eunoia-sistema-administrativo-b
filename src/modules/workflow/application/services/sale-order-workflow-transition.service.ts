@@ -50,12 +50,12 @@ export class SaleOrderWorkflowTransitionService {
       throw new BadRequestException("Pedido no encontrado");
     }
     if (!order.workflowId || !order.currentStateId) {
-      throw new BadRequestException("El pedido no tiene workflow asignado");
+      throw new BadRequestException("El pedido no tiene flujo asignado");
     }
 
     const workflowAggregate = await this.workflowRepo.findDetailedById(order.workflowId, tx);
     if (!workflowAggregate) {
-      throw new BadRequestException("Workflow no encontrado");
+      throw new BadRequestException("Flujo no encontrado");
     }
 
     const currentState = workflowAggregate.states.find((state) => state.id === order.currentStateId);

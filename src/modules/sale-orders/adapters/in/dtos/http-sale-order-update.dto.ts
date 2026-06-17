@@ -70,6 +70,9 @@ export class HttpSaleOrderUpdateDto {
   @ValidateNested({ each: true })
   @Type(() => HttpSalePaymentDto)
   payments?: HttpSalePaymentDto[];
+  
+  @IsOptional()
+  currentState?:string;
 }
 
 export { HttpSaleOrderItemComponentDto, HttpSaleOrderItemDto, HttpSalePaymentDto };

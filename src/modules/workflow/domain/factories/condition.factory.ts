@@ -8,6 +8,8 @@ import { WorkflowCondition } from "../entities/workflow-condition";
 import { CONDITIONS } from "../constants/workflow-condition.constants";
 import { InvoiceSentCondition } from "../conditions/invoice-sent.condition";
 import { ScheduleDeliveryWindowCondition } from "../conditions/schedule-delivery-window.condition";
+import { SaleOrderFieldRequiredCondition } from "../conditions/sale-order-field-required.condition";
+import { isSaleOrderFieldValue } from "../conditions/sale-order-field-options";
 
 export class ConditionFactory {
   static create(condition: Pick<WorkflowCondition, "type" | "config">): Condition {
@@ -29,6 +31,9 @@ export class ConditionFactory {
           this.parseNonNegativeInteger(condition.config.minDaysBefore, "minDaysBefore"),
           this.parseNonNegativeInteger(condition.config.maxDaysBefore, "maxDaysBefore"),
         );
+      case CONDITIONS.SALE_ORDER_FIELD_REQUIRED:
+        return new SaleOrderFieldRequiredCondition(
+          this.parseSaleOrderField(condition.config.field));
       default:
         throw new Error("Condicion de workflow no soportada");
     }
@@ -53,5 +58,12 @@ export class ConditionFactory {
       throw new Error(`Config ${field} invalida`);
     }
     return Number(value);
+  }
+
+  private static parseSaleOrderField(value: unknown) {
+    if (!isSaleOrderFieldValue(value)) {
+      throw new Error("Config field invalida");
+    }
+    return value;
   }
 }

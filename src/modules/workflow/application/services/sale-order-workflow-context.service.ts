@@ -7,6 +7,7 @@ import {
   PRODUCT_CATALOG_INVENTORY_REPOSITORY,
   ProductCatalogInventoryRepository,
 } from "src/modules/product-catalog/domain/ports/inventory.repository";
+import { CLIENT_REPOSITORY, ClientRepository } from "src/modules/clients/domain/ports/client.repository";
 import { WorkflowContext } from "../../domain/conditions/condition";
 import { WorkflowState } from "../../domain/entities/workflow-state";
 import { SaleOrderStockRequirementsService } from "./sale-order-stock-requirements.service";
@@ -21,11 +22,14 @@ export class SaleOrderWorkflowContextService {
     @Inject(CLOCK)
     private readonly clock: ClockPort,
     private readonly stockRequirements: SaleOrderStockRequirementsService,
+    @Inject(CLIENT_REPOSITORY)
+    private readonly clientRepo: ClientRepository,
   ) {}
 
   async build(order: SaleOrder, currentState: WorkflowState, tx?: TransactionContext): Promise<WorkflowContext> {
     const payments = await this.paymentRepo.listBySaleOrderIds([order.id], tx);
     const totalPaid = payments.reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0);
+    const client = await this.clientRepo.findById(order.clientId, tx);
 
     return {
       orderId: order.id,
@@ -42,6 +46,13 @@ export class SaleOrderWorkflowContextService {
         totalPaid,
         deliveryDate: order.deliveryDate,
         scheduleDate: order.scheduleDate,
+        sourceId: order.sourceId,
+        agencyDetail: order.agencyDetail,
+        note: order.note,
+        "client.docNumber": client?.docNumber ?? null,
+        "client.address": client?.address ?? null,
+        "client.reference": client?.reference ?? null,
+        "client.docType": client?.docType ?? null,
       },
     };
   }
