@@ -535,11 +535,13 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
           ? {
               id: client.id,
               type: client.type,
+              docType: client.docType,
               fullName: client.fullName,
               docNumber: client.docNumber ?? null,
               reference: client.reference ?? null,
               mainPhone: mainTelephoneByClientId.get(client.id) ?? null,
               count: await this.countSaleOrdersByClientId(client.id, tx),
+              isActive: client.isActive
             }
           : null,
         agencyDetail: row.agencyDetail ?? null,
