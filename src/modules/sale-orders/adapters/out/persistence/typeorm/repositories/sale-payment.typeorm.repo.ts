@@ -6,6 +6,7 @@ import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-trans
 import { SalePaymentEntity } from "../entities/sale-payment.entity";
 import { SalePaymentRepository } from "src/modules/sale-orders/domain/ports/sale-payment.repository";
 import { SalePayment } from "src/modules/sale-orders/domain/entities/sale-payment";
+import { BankAccountEntity } from "src/modules/bank-accounts/adapters/out/persistence/typeorm/entities/bank-account.entity";
 
 @Injectable()
 export class SalePaymentTypeormRepository implements SalePaymentRepository {
@@ -21,7 +22,10 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
     return this.repo.manager;
   }
 
-  private toDomain(row: SalePaymentEntity): SalePayment {
+  private toDomain(
+    row: SalePaymentEntity,
+    bankAccount?: BankAccountEntity | null,
+  ): SalePayment {
     return new SalePayment(
       row.id,
       row.saleOrderId,
@@ -32,6 +36,13 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
       Number(row.amount ?? 0),
       row.note ?? null,
       row.createdAt,
+      bankAccount
+        ? {
+            id: bankAccount.id,
+            name: bankAccount.name,
+            number: bankAccount.number ?? null,
+          }
+        : null,
     );
   }
 
@@ -76,6 +87,21 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
       where: { saleOrderId: In(saleOrderIds) },
       order: { saleOrderId: "ASC", createdAt: "ASC" },
     });
-    return rows.map((row) => this.toDomain(row));
+    const bankAccountIds = Array.from(
+      new Set(rows.map((row) => row.bankAccountId).filter(Boolean)),
+    ) as string[];
+    const bankAccounts = bankAccountIds.length
+      ? await manager.getRepository(BankAccountEntity).find({
+          where: { id: In(bankAccountIds) },
+        })
+      : [];
+    const bankAccountById = new Map(bankAccounts.map((row) => [row.id, row]));
+
+    return rows.map((row) =>
+      this.toDomain(
+        row,
+        row.bankAccountId ? bankAccountById.get(row.bankAccountId) ?? null : null,
+      ),
+    );
   }
 }

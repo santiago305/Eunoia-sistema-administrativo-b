@@ -1,6 +1,20 @@
 import { SaleOrderTypeormRepository } from "./sale-order.typeorm.repo";
 import { TelephoneEntity } from "src/modules/clients/adapters/out/persistence/typeorm/entities/telephone.entity";
 
+const createStatsQueryBuilder = (rawMany: unknown[] = [], rawOne: unknown = {}) => ({
+  leftJoin: jest.fn().mockReturnThis(),
+  innerJoin: jest.fn().mockReturnThis(),
+  select: jest.fn().mockReturnThis(),
+  addSelect: jest.fn().mockReturnThis(),
+  groupBy: jest.fn().mockReturnThis(),
+  addGroupBy: jest.fn().mockReturnThis(),
+  orderBy: jest.fn().mockReturnThis(),
+  andWhere: jest.fn().mockReturnThis(),
+  clone: jest.fn(),
+  getRawMany: jest.fn().mockResolvedValue(rawMany),
+  getRawOne: jest.fn().mockResolvedValue(rawOne),
+});
+
 describe("SaleOrderTypeormRepository", () => {
   it("marks invoiceSend true idempotently", async () => {
     const update = jest.fn().mockResolvedValue({ affected: 1 });
@@ -96,5 +110,87 @@ describe("SaleOrderTypeormRepository", () => {
       where: { clientId: "client-1", isMain: true, isActive: true },
     });
     expect(result?.client?.mainPhone).toBe("999999999");
+  });
+
+  it("returns statistics grouped by bank account payment amounts", async () => {
+    const baseQb = createStatsQueryBuilder();
+    const workflowQb = createStatsQueryBuilder([]);
+    const stateQb = createStatsQueryBuilder([]);
+    const clientTypeQb = createStatsQueryBuilder([]);
+    const totalsQb = createStatsQueryBuilder([], {
+      orders: "1",
+      total: "120",
+      collected: "80",
+      pending: "40",
+      deliveryCostSum: "10",
+    });
+    const bankAccountQb = createStatsQueryBuilder([
+      {
+        id: "bank-1",
+        label: "BCP Soles",
+        number: "001",
+        payments: "2",
+        collected: "80",
+      },
+    ]);
+
+    baseQb.clone
+      .mockReturnValueOnce(workflowQb)
+      .mockReturnValueOnce(stateQb)
+      .mockReturnValueOnce(clientTypeQb)
+      .mockReturnValueOnce(totalsQb)
+      .mockReturnValueOnce(bankAccountQb);
+
+    const entityRepo = { createQueryBuilder: jest.fn().mockReturnValue(baseQb) };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue(entityRepo) },
+    } as any);
+
+    const result = await repository.statistics({});
+
+    expect(result.byBankAccount).toEqual([
+      {
+        id: "bank-1",
+        label: "BCP Soles",
+        number: "001",
+        payments: 2,
+        collected: 80,
+      },
+    ]);
+    expect(bankAccountQb.innerJoin).toHaveBeenCalledWith(
+      expect.anything(),
+      "payment",
+      "payment.saleOrderId = so.id",
+    );
+  });
+
+  it("applies bank account and client type filters to statistics", async () => {
+    const baseQb = createStatsQueryBuilder();
+    baseQb.clone
+      .mockReturnValueOnce(createStatsQueryBuilder([]))
+      .mockReturnValueOnce(createStatsQueryBuilder([]))
+      .mockReturnValueOnce(createStatsQueryBuilder([]))
+      .mockReturnValueOnce(createStatsQueryBuilder([], {}))
+      .mockReturnValueOnce(createStatsQueryBuilder([]));
+
+    const entityRepo = { createQueryBuilder: jest.fn().mockReturnValue(baseQb) };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue(entityRepo) },
+    } as any);
+
+    await repository.statistics({
+      filters: [
+        { field: "bankAccountId", operator: "in", values: ["bank-1"] },
+        { field: "clientType", operator: "in", values: ["NEW"] },
+      ] as any,
+    });
+
+    expect(baseQb.andWhere).toHaveBeenCalledWith(
+      expect.stringContaining("filter_payment.bank_account_id IN"),
+      { stats_filter_0_value: ["bank-1"] },
+    );
+    expect(baseQb.andWhere).toHaveBeenCalledWith("client.type IN (:...stats_filter_1_value)", {
+      stats_filter_1_value: ["NEW"],
+    });
   });
 });

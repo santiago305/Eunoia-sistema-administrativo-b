@@ -20,6 +20,8 @@ export interface SaleOrderSearchStateOutput {
     paymentStatuses: ListingSearchOptionOutput[];
     workflows: ListingSearchOptionOutput[];
     states: ListingSearchOptionOutput[];
+    bankAccounts: ListingSearchOptionOutput[];
+    clientTypes: ListingSearchOptionOutput[];
   };
 }
 export type SaleOrderItemComponentOutput = {

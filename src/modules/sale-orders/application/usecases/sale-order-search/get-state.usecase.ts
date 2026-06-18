@@ -3,6 +3,7 @@ import { SaleOrderSearchStateOutput } from "src/modules/sale-orders/application/
 import { SaleOrderSearchSnapshot } from "src/modules/sale-orders/application/dtos/sale-order-search/sale-order-search-snapshot";
 import {
   buildSaleOrderSearchLabel,
+  SALE_ORDER_CLIENT_TYPE_SEARCH_OPTIONS,
   SALE_ORDER_PAYMENT_STATUS_SEARCH_OPTIONS,
   sanitizeSaleOrderSearchSnapshot,
 } from "src/modules/sale-orders/application/support/sale-order-search.utils";
@@ -25,6 +26,8 @@ export class GetSaleOrderSearchStateUsecase {
       warehouses: new Map(state.warehouses.map((item) => [item.warehouseId, item.label])),
       workflows: new Map(state.workflows.map((item) => [item.workflowId, item.label])),
       states: new Map(state.states.map((item) => [item.saleOrderStateId, item.label])),
+      bankAccounts: new Map(state.bankAccounts.map((item) => [item.bankAccountId, item.label])),
+      clientTypes: new Map(SALE_ORDER_CLIENT_TYPE_SEARCH_OPTIONS.map((item) => [item.id, item.label])),
     };
 
     return {
@@ -53,6 +56,8 @@ export class GetSaleOrderSearchStateUsecase {
         paymentStatuses: SALE_ORDER_PAYMENT_STATUS_SEARCH_OPTIONS,
         workflows: state.workflows.map((item) => ({ id: item.workflowId, label: item.label })),
         states: state.states.map((item) => ({ id: item.saleOrderStateId, label: item.label })),
+        bankAccounts: state.bankAccounts.map((item) => ({ id: item.bankAccountId, label: item.label })),
+        clientTypes: SALE_ORDER_CLIENT_TYPE_SEARCH_OPTIONS,
       },
     };
   }

@@ -25,6 +25,11 @@ export interface SaleOrderSearchWarehouseCatalogRecord {
   label: string;
 }
 
+export interface SaleOrderSearchBankAccountCatalogRecord {
+  bankAccountId: string;
+  label: string;
+}
+
 export interface SaleOrderSearchStateRecord {
   recent: SaleOrderSearchRecentRecord[];
   metrics: SaleOrderSearchMetricRecord[];
@@ -32,6 +37,7 @@ export interface SaleOrderSearchStateRecord {
   warehouses: SaleOrderSearchWarehouseCatalogRecord[];
   workflows: Array<{ workflowId: string; label: string }>;
   states: Array<{ saleOrderStateId: string; label: string }>;
+  bankAccounts: SaleOrderSearchBankAccountCatalogRecord[];
 }
 
 export interface SaleOrderSearchRepository {
