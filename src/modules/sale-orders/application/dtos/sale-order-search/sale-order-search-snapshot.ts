@@ -4,6 +4,8 @@ export const SaleOrderSearchFields = {
   WAREHOUSE_ID: "warehouseId",
   WORKFLOW_ID: "workflowId",
   SALE_ORDER_STATE_ID: "saleOrderStateId",
+  BANK_ACCOUNT_ID: "bankAccountId",
+  CLIENT_TYPE: "clientType",
   PAYMENT_STATUS: "paymentStatus",
   SCHEDULE_DATE: "scheduleDate",
   DELIVERY_DATE: "deliveryDate",

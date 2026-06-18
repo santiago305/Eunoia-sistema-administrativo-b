@@ -1,4 +1,5 @@
 import { ListingSearchOptionOutput } from "src/shared/listing-search/application/dtos/listing-search-state.output";
+import { ClientType } from "src/modules/clients/domain/object-values/client-type";
 import {
   SaleOrderPaymentStatusValue,
   SaleOrderPaymentStatusValues,
@@ -16,6 +17,8 @@ type SearchCatalogMaps = {
   warehouses?: Map<string, string>;
   workflows?: Map<string, string>;
   states?: Map<string, string>;
+  bankAccounts?: Map<string, string>;
+  clientTypes?: Map<string, string>;
   paymentStatuses?: Map<string, string>;
 };
 
@@ -28,6 +31,8 @@ const FILTER_FIELD_ORDER: SaleOrderSearchField[] = [
   SaleOrderSearchFields.WAREHOUSE_ID,
   SaleOrderSearchFields.WORKFLOW_ID,
   SaleOrderSearchFields.SALE_ORDER_STATE_ID,
+  SaleOrderSearchFields.BANK_ACCOUNT_ID,
+  SaleOrderSearchFields.CLIENT_TYPE,
   SaleOrderSearchFields.PAYMENT_STATUS,
   SaleOrderSearchFields.SCHEDULE_DATE,
   SaleOrderSearchFields.DELIVERY_DATE,
@@ -38,6 +43,8 @@ const CATALOG_FIELDS = new Set<SaleOrderSearchField>([
   SaleOrderSearchFields.WAREHOUSE_ID,
   SaleOrderSearchFields.WORKFLOW_ID,
   SaleOrderSearchFields.SALE_ORDER_STATE_ID,
+  SaleOrderSearchFields.BANK_ACCOUNT_ID,
+  SaleOrderSearchFields.CLIENT_TYPE,
   SaleOrderSearchFields.PAYMENT_STATUS,
 ]);
 
@@ -68,6 +75,8 @@ const SEARCH_FIELD_LABELS: Record<SaleOrderSearchField, string> = {
   [SaleOrderSearchFields.WAREHOUSE_ID]: "Almacen",
   [SaleOrderSearchFields.WORKFLOW_ID]: "Flujo",
   [SaleOrderSearchFields.SALE_ORDER_STATE_ID]: "Estado",
+  [SaleOrderSearchFields.BANK_ACCOUNT_ID]: "Cuenta",
+  [SaleOrderSearchFields.CLIENT_TYPE]: "Tipo cliente",
   [SaleOrderSearchFields.PAYMENT_STATUS]: "Pago",
   [SaleOrderSearchFields.SCHEDULE_DATE]: "F. Programada",
   [SaleOrderSearchFields.DELIVERY_DATE]: "F. Entrega",
@@ -88,6 +97,13 @@ const SEARCH_OPERATOR_LABELS: Record<SaleOrderSearchOperator, string> = {
 export const SALE_ORDER_PAYMENT_STATUS_SEARCH_OPTIONS: ListingSearchOptionOutput[] = [
   { id: SaleOrderPaymentStatusValues.PAID, label: "Pagado", keywords: ["pagado", "cancelado"] },
   { id: SaleOrderPaymentStatusValues.PENDING, label: "Pendiente", keywords: ["pendiente", "deuda"] },
+];
+
+export const SALE_ORDER_CLIENT_TYPE_SEARCH_OPTIONS: ListingSearchOptionOutput[] = [
+  { id: ClientType.NEW, label: "Nuevo", keywords: ["nuevo"] },
+  { id: ClientType.LAGGING, label: "Rezagado", keywords: ["rezagado"] },
+  { id: ClientType.REPURCHASE, label: "Recompra", keywords: ["recompra"] },
+  { id: ClientType.UNDEFINED, label: "Sin definir", keywords: ["sin definir"] },
 ];
 
 export function normalizeSearchText(value: string | undefined | null) {
@@ -151,6 +167,13 @@ function sanitizeSearchRule(rule?: Partial<SaleOrderSearchRule> | null): SaleOrd
     if (field === SaleOrderSearchFields.PAYMENT_STATUS) {
       const allowed = new Set(Object.values(SaleOrderPaymentStatusValues));
       const normalizedValues = values.filter((value) => allowed.has(value as SaleOrderPaymentStatusValue));
+      if (!normalizedValues.length) return null;
+      return { field, operator, mode, values: normalizedValues };
+    }
+
+    if (field === SaleOrderSearchFields.CLIENT_TYPE) {
+      const allowed = new Set(Object.values(ClientType));
+      const normalizedValues = values.filter((value) => allowed.has(value as ClientType));
       if (!normalizedValues.length) return null;
       return { field, operator, mode, values: normalizedValues };
     }
@@ -237,6 +260,10 @@ function getCatalogMap(field: SaleOrderSearchField, maps: SearchCatalogMaps) {
       return maps.workflows;
     case SaleOrderSearchFields.SALE_ORDER_STATE_ID:
       return maps.states;
+    case SaleOrderSearchFields.BANK_ACCOUNT_ID:
+      return maps.bankAccounts;
+    case SaleOrderSearchFields.CLIENT_TYPE:
+      return maps.clientTypes;
     case SaleOrderSearchFields.PAYMENT_STATUS:
       return maps.paymentStatuses;
     default:

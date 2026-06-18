@@ -9,5 +9,6 @@ export class SalePayment {
     public readonly amount: number,
     public readonly note: string | null,
     public readonly createdAt: Date,
+    public readonly bankAccount: { id: string; name: string; number: string | null } | null = null,
   ) {}
 }

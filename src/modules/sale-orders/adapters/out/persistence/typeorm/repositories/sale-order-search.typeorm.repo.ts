@@ -14,6 +14,7 @@ import {
 import { SaleOrderSearchSnapshot } from "src/modules/sale-orders/application/dtos/sale-order-search/sale-order-search-snapshot";
 import { WorkflowEntity } from "src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow.entity";
 import { SaleOrderStatesEntity } from "src/modules/workflow/adapters/out/persistence/typeorm/entities/sale-order-states.entity";
+import { BankAccountEntity } from "src/modules/bank-accounts/adapters/out/persistence/typeorm/entities/bank-account.entity";
 
 @Injectable()
 export class SaleOrderSearchTypeormRepository implements SaleOrderSearchRepository {
@@ -32,6 +33,9 @@ export class SaleOrderSearchTypeormRepository implements SaleOrderSearchReposito
 
     @InjectRepository(SaleOrderStatesEntity)
     private readonly stateRepo: Repository<SaleOrderStatesEntity>,
+
+    @InjectRepository(BankAccountEntity)
+    private readonly bankAccountRepo: Repository<BankAccountEntity>,
   ) {}
 
   async touchRecentSearch(params: Parameters<SaleOrderSearchRepository["touchRecentSearch"]>[0]): Promise<void> {
@@ -39,7 +43,7 @@ export class SaleOrderSearchTypeormRepository implements SaleOrderSearchReposito
   }
 
   async listState(params: { userId: string; tableKey: string }): Promise<SaleOrderSearchStateRecord> {
-    const [state, clients, warehouses, workflows, saleOrderStates] = await Promise.all([
+    const [state, clients, warehouses, workflows, saleOrderStates, bankAccounts] = await Promise.all([
       this.storage.listState(params),
       this.clientRepo.find({ where: { isActive: true } }),
       this.warehouseRepo.find({ where: { isActive: true } }),
@@ -49,6 +53,7 @@ export class SaleOrderSearchTypeormRepository implements SaleOrderSearchReposito
           name: "ASC",
         },
       }),
+      this.bankAccountRepo.find({ where: { isActive: true } }),
     ]);
 
     const orderedClients = [...clients].sort((left, right) =>
@@ -56,6 +61,10 @@ export class SaleOrderSearchTypeormRepository implements SaleOrderSearchReposito
     );
 
     const orderedWarehouses = [...warehouses].sort((left, right) =>
+      left.name.localeCompare(right.name, "es", { sensitivity: "base" }),
+    );
+
+    const orderedBankAccounts = [...bankAccounts].sort((left, right) =>
       left.name.localeCompare(right.name, "es", { sensitivity: "base" }),
     );
 
@@ -96,6 +105,15 @@ export class SaleOrderSearchTypeormRepository implements SaleOrderSearchReposito
         saleOrderStateId: row.id,
         label: row.name,
       })),
+
+      bankAccounts: orderedBankAccounts.map((row) => {
+        const number = row.number ? ` (${row.number})` : "";
+
+        return {
+          bankAccountId: row.id,
+          label: `${row.name}${number}`.trim(),
+        };
+      }),
     };
   }
 

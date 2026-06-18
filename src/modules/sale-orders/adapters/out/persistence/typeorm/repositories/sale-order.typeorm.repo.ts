@@ -426,6 +426,22 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
             });
           }
           break;
+        case SaleOrderSearchFields.BANK_ACCOUNT_ID:
+          if (filter.values?.length) {
+            qb.leftJoin(SalePaymentEntity, "filterPayment", "filterPayment.saleOrderId = so.id");
+            qb.andWhere(`filterPayment.bankAccountId ${filter.mode === "exclude" ? "NOT IN" : "IN"} (:...${valueParam})`, {
+              [valueParam]: filter.values,
+            });
+          }
+          break;
+        case SaleOrderSearchFields.CLIENT_TYPE:
+          if (filter.values?.length) {
+            qb.leftJoin(ClientEntity, "filterClient", "filterClient.id = so.clientId");
+            qb.andWhere(`filterClient.type ${filter.mode === "exclude" ? "NOT IN" : "IN"} (:...${valueParam})`, {
+              [valueParam]: filter.values,
+            });
+          }
+          break;
         case SaleOrderSearchFields.PAYMENT_STATUS:
           this.applyPaymentStatusFilter(qb, filter, valueParam);
           break;
@@ -677,6 +693,20 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         base.andWhere(`state.saleOrderStateId ${filter.mode === "exclude" ? "NOT IN" : "IN"} (:...${valueParam})`, {
           [valueParam]: filter.values,
         });
+      } else if (filter.field === SaleOrderSearchFields.BANK_ACCOUNT_ID && filter.values?.length) {
+        base.andWhere(
+          `EXISTS (
+            SELECT 1
+            FROM sale_payments filter_payment
+            WHERE filter_payment.sale_order_id = so.id
+            AND filter_payment.bank_account_id ${filter.mode === "exclude" ? "NOT IN" : "IN"} (:...${valueParam})
+          )`,
+          { [valueParam]: filter.values },
+        );
+      } else if (filter.field === SaleOrderSearchFields.CLIENT_TYPE && filter.values?.length) {
+        base.andWhere(`client.type ${filter.mode === "exclude" ? "NOT IN" : "IN"} (:...${valueParam})`, {
+          [valueParam]: filter.values,
+        });
       } else if (filter.field === SaleOrderSearchFields.PAYMENT_STATUS) {
         this.applyPaymentStatusFilter(base, filter, valueParam);
       } else if (
@@ -707,7 +737,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       });
     }
 
-    const [workflowRows, stateRows, clientTypeRows, totalsRow] = await Promise.all([
+    const [workflowRows, stateRows, clientTypeRows, totalsRow, bankAccountRows] = await Promise.all([
       base
         .clone()
         .select("workflow.id", "id")
@@ -752,6 +782,26 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
           pending: string; 
           deliveryCostSum: string;
         }>(),
+      base
+        .clone()
+        .innerJoin(SalePaymentEntity, "payment", "payment.saleOrderId = so.id")
+        .leftJoin(BankAccountEntity, "bankAccount", "bankAccount.id = payment.bankAccountId")
+        .select("bankAccount.id", "id")
+        .addSelect("COALESCE(bankAccount.name, 'Sin cuenta')", "label")
+        .addSelect("bankAccount.number", "number")
+        .addSelect("COUNT(payment.id)", "payments")
+        .addSelect("COALESCE(SUM(payment.amount), 0)", "collected")
+        .groupBy("bankAccount.id")
+        .addGroupBy("bankAccount.name")
+        .addGroupBy("bankAccount.number")
+        .orderBy("collected", "DESC")
+        .getRawMany<{
+          id: string | null;
+          label: string;
+          number: string | null;
+          payments: string;
+          collected: string;
+        }>(),
     ]);
 
     const clientTypeLabels: Record<ClientType, string> = {
@@ -768,6 +818,13 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         type: row.type,
         label: clientTypeLabels[row.type] ?? row.type,
         count: Number(row.count),
+      })),
+      byBankAccount: bankAccountRows.map((row) => ({
+        id: row.id,
+        label: row.label,
+        number: row.number ?? null,
+        payments: Number(row.payments),
+        collected: Number(row.collected),
       })),
       totals: {
         orders: Number(totalsRow?.orders ?? 0),
