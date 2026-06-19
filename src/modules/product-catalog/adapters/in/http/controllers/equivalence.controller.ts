@@ -19,7 +19,7 @@ export class ProductCatalogEquivalenceController {
     private readonly listByProduct: ListProductCatalogEquivalencesByProduct,
   ) {}
 
-  @RequireAnyPermissionGroups(["products.equivalences.manage", "materials.equivalences.manage", "catalog.manage"])
+  @RequireAnyPermissionGroups(["products.equivalences.manage", "materials.equivalences.manage"])
   @Post("products/:id/equivalences")
   create(@Param("id", ParseUUIDPipe) productId: string, @Body() dto: CreateProductCatalogEquivalenceDto) {
     return this.createEquivalence.execute({ productId, ...dto });
@@ -37,7 +37,7 @@ export class ProductCatalogEquivalenceController {
     return this.getEquivalence.execute(id);
   }
 
-  @RequireAnyPermissionGroups(["products.equivalences.manage", "materials.equivalences.manage", "catalog.manage"])
+  @RequireAnyPermissionGroups(["products.equivalences.manage", "materials.equivalences.manage"])
   @Delete("equivalences/:id")
   delete(@Param("id", ParseUUIDPipe) id: string) {
     return this.deleteEquivalence.execute(id);

@@ -23,17 +23,11 @@ type DocumentAction = "view" | "create" | "process" | "cancel" | "export";
 const PRODUCT_TYPE_PRODUCT_VALUES = new Set(["PRODUCT", "FINISHED"]);
 const PRODUCT_TYPE_MATERIAL_VALUES = new Set(["MATERIAL", "PRIMA", "RAW_MATERIAL"]);
 
-export const legacyReadGroup = (permission: string): PermissionGroup => [permission, "catalog.read"];
-export const legacyManageGroup = (permission: string): PermissionGroup => [permission, "catalog.manage"];
-export const legacyExportGroup = (permission: string): PermissionGroup => [permission, "catalog.export"];
-export const legacyPackReadGroup = (permission: string): PermissionGroup => [permission, "packs.read"];
-export const legacyPackManageGroup = (permission: string): PermissionGroup => [permission, "packs.manage"];
-
-export function productCatalogPermissionGroups(action: ProductScopedAction, legacyPermission: string): PermissionGroup[] {
+export function productCatalogPermissionGroups(action: ProductScopedAction, legacyPermission?: string): PermissionGroup[] {
   return resolveByProductType(action, legacyPermission, "products", "materials");
 }
 
-export function productCatalogPermissionGroupsFromRequest(action: ProductScopedAction, legacyPermission: string) {
+export function productCatalogPermissionGroupsFromRequest(action: ProductScopedAction, legacyPermission?: string) {
   return (request: RequestLike) =>
     resolveByProductType(action, legacyPermission, "products", "materials", getProductTypeFromRequest(request, "type"));
 }
@@ -45,7 +39,7 @@ export function inventoryPermissionGroupsFromRequest(action: InventoryAction) {
 
 export function inventoryExportPermissionGroupsFromRequest() {
   return (request: RequestLike) =>
-    resolveByProductType("export", "catalog.export", "inventory.products", "inventory.materials", getProductTypeFromRequest(request));
+    resolveByProductType("export", undefined, "inventory.products", "inventory.materials", getProductTypeFromRequest(request));
 }
 
 export function ledgerPermissionGroupsFromRequest(action: LedgerAction) {
@@ -55,7 +49,7 @@ export function ledgerPermissionGroupsFromRequest(action: LedgerAction) {
 
 export function ledgerExportPermissionGroupsFromRequest() {
   return (request: RequestLike) =>
-    resolveByProductType("export", "catalog.export", "inventory-ledger.products", "inventory-ledger.materials", getProductTypeFromRequest(request));
+    resolveByProductType("export", undefined, "inventory-ledger.products", "inventory-ledger.materials", getProductTypeFromRequest(request));
 }
 
 export function documentPermissionGroupsFromRequest(action: DocumentAction) {
@@ -64,13 +58,13 @@ export function documentPermissionGroupsFromRequest(action: DocumentAction) {
     const docType = normalizeDocType(getString(request.body?.docType) ?? getString(request.query?.docType));
 
     if (docType === DocType.TRANSFER) {
-      return resolveByProductType(action, "catalog.manage", "transfers.products", "transfers.materials", productType);
+      return resolveByProductType(action, undefined, "transfers.products", "transfers.materials", productType);
     }
     if (docType === DocType.ADJUSTMENT) {
-      return resolveByProductType(action, "catalog.manage", "adjustments.products", "adjustments.materials", productType);
+      return resolveByProductType(action, undefined, "adjustments.products", "adjustments.materials", productType);
     }
 
-    return [[`transfers.products.${action}`, `transfers.materials.${action}`, `adjustments.products.${action}`, `adjustments.materials.${action}`, "catalog.manage"]];
+    return [[`transfers.products.${action}`, `transfers.materials.${action}`, `adjustments.products.${action}`, `adjustments.materials.${action}`]];
   };
 }
 
@@ -102,10 +96,10 @@ export function documentExportPermissionGroupsFromRequest() {
     const docType = normalizeDocType(getString(request.body?.docType) ?? getString(request.query?.docType));
 
     if (docType === DocType.TRANSFER) {
-      return resolveByProductType("export", "catalog.export", "transfers.products", "transfers.materials", productType);
+      return resolveByProductType("export", undefined, "transfers.products", "transfers.materials", productType);
     }
     if (docType === DocType.ADJUSTMENT) {
-      return resolveByProductType("export", "catalog.export", "adjustments.products", "adjustments.materials", productType);
+      return resolveByProductType("export", undefined, "adjustments.products", "adjustments.materials", productType);
     }
 
     return [[
@@ -113,28 +107,30 @@ export function documentExportPermissionGroupsFromRequest() {
       "transfers.materials.export",
       "adjustments.products.export",
       "adjustments.materials.export",
-      "catalog.export",
     ]];
   };
 }
 
 function resolveByProductType(
   action: string,
-  legacyPermission: string,
+  legacyPermission: string | undefined,
   productPrefix: string,
   materialPrefix: string,
   productType?: ProductCatalogProductType,
 ): PermissionGroup[] {
+  const group = (permission: string): PermissionGroup =>
+    legacyPermission ? [permission, legacyPermission] : [permission];
+
   if (productType === ProductCatalogProductType.MATERIAL) {
-    return [[`${materialPrefix}.${action}`, legacyPermission]];
+    return [group(`${materialPrefix}.${action}`)];
   }
   if (productType === ProductCatalogProductType.PRODUCT) {
-    return [[`${productPrefix}.${action}`, legacyPermission]];
+    return [group(`${productPrefix}.${action}`)];
   }
 
   return [
-    [`${productPrefix}.${action}`, legacyPermission],
-    [`${materialPrefix}.${action}`, legacyPermission],
+    group(`${productPrefix}.${action}`),
+    group(`${materialPrefix}.${action}`),
   ];
 }
 

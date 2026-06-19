@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { CanActivate, ExecutionContext, INestApplication, Injectable, ValidationPipe } from "@nestjs/common";
+import { CanActivate, ExecutionContext, ForbiddenException, INestApplication, Injectable, ValidationPipe } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
@@ -16,6 +16,7 @@ import { SaveProductCatalogProductSearchMetricUsecase } from "src/modules/produc
 import { DeleteProductCatalogProductSearchMetricUsecase } from "src/modules/product-catalog/application/usecases/product-search/delete-metric.usecase";
 import { LISTING_SEARCH_STORAGE } from "src/shared/listing-search/domain/listing-search.repository";
 import { ProductCatalogProductType } from "src/modules/product-catalog/domain/value-objects/product-type";
+import { AccessControlService } from "src/modules/access-control/application/services/access-control.service";
 
 @Injectable()
 class TestJwtAuthGuard implements CanActivate {
@@ -36,6 +37,9 @@ class AllowGuard implements CanActivate {
 describe("ProductCatalogProductController export", () => {
   let app: INestApplication;
   const listProducts = { execute: jest.fn() };
+  const getProduct = { execute: jest.fn() };
+  const updateProduct = { execute: jest.fn() };
+  const accessControlService = { userHasAllPermissions: jest.fn() };
   const listingSearchStorage = {
     listState: jest.fn(),
     createMetric: jest.fn(),
@@ -52,18 +56,24 @@ describe("ProductCatalogProductController export", () => {
     listingSearchStorage.listState.mockResolvedValue({ metrics: [] });
     listingSearchStorage.createMetric.mockResolvedValue({ type: "success", message: "Preset guardado" });
     listingSearchStorage.deleteMetric.mockResolvedValue({ type: "success", message: "Preset eliminado" });
+    getProduct.execute.mockResolvedValue({
+      product: { id: "product-1", type: ProductCatalogProductType.PRODUCT },
+    });
+    updateProduct.execute.mockResolvedValue({ id: "product-1" });
+    accessControlService.userHasAllPermissions.mockResolvedValue(true);
 
     const moduleRef = await Test.createTestingModule({
       controllers: [ProductCatalogProductController],
       providers: [
         { provide: CreateProductCatalogProduct, useValue: { execute: jest.fn() } },
-        { provide: UpdateProductCatalogProduct, useValue: { execute: jest.fn() } },
+        { provide: UpdateProductCatalogProduct, useValue: updateProduct },
         { provide: ListProductCatalogProducts, useValue: listProducts },
-        { provide: GetProductCatalogProduct, useValue: { execute: jest.fn() } },
+        { provide: GetProductCatalogProduct, useValue: getProduct },
         { provide: GetProductCatalogProductDetail, useValue: { execute: jest.fn() } },
         { provide: GetProductCatalogProductSearchStateUsecase, useValue: { execute: jest.fn() } },
         { provide: SaveProductCatalogProductSearchMetricUsecase, useValue: { execute: jest.fn() } },
         { provide: DeleteProductCatalogProductSearchMetricUsecase, useValue: { execute: jest.fn() } },
+        { provide: AccessControlService, useValue: accessControlService },
         { provide: LISTING_SEARCH_STORAGE, useValue: listingSearchStorage },
       ],
     })
@@ -120,5 +130,41 @@ describe("ProductCatalogProductController export", () => {
         { key: "isActive", label: "Activo" },
       ]),
     );
+  });
+
+  it("checks the exact product type permission before updating", async () => {
+    getProduct.execute.mockResolvedValueOnce({
+      product: { id: "material-1", type: ProductCatalogProductType.MATERIAL },
+    });
+
+    await request(app.getHttpServer())
+      .patch("/products/11111111-1111-4111-8111-111111111111")
+      .send({ name: "Materia editada" })
+      .expect(200);
+
+    expect(accessControlService.userHasAllPermissions).toHaveBeenCalledWith("user-1", ["materials.update"]);
+    expect(updateProduct.execute).toHaveBeenCalledWith("11111111-1111-4111-8111-111111111111", expect.any(Object));
+  });
+
+  it("rejects update when the exact product type permission is denied", async () => {
+    accessControlService.userHasAllPermissions.mockResolvedValueOnce(false);
+
+    await request(app.getHttpServer())
+      .patch("/products/11111111-1111-4111-8111-111111111111")
+      .send({ name: "Producto editado" })
+      .expect(403);
+
+    expect(accessControlService.userHasAllPermissions).toHaveBeenCalledWith("user-1", ["products.update"]);
+    expect(updateProduct.execute).not.toHaveBeenCalled();
+  });
+
+  it("throws ForbiddenException from the type-aware permission check", async () => {
+    const controller = app.get(ProductCatalogProductController);
+    accessControlService.userHasAllPermissions.mockResolvedValueOnce(false);
+
+    await expect(
+      controller.update("11111111-1111-4111-8111-111111111111", { name: "Producto editado" } as any, { id: "user-1" }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(updateProduct.execute).not.toHaveBeenCalled();
   });
 });

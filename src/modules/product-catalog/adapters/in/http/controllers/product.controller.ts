@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Inject, Param, ParseUUIDPipe, Patch, Post, Query, Res, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, ForbiddenException, Get, Inject, Param, ParseUUIDPipe, Patch, Post, Query, Res, UseGuards } from "@nestjs/common";
 import { Response } from "express";
   import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
   import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
@@ -23,6 +23,7 @@ import { Response } from "express";
   import { productCatalogPermissionGroupsFromRequest } from "./catalog-permission-groups";
   import { LISTING_SEARCH_STORAGE, ListingSearchStorageRepository } from "src/shared/listing-search/domain/listing-search.repository";
   import { XlsxBuilderService } from "src/shared/application/services/xlsx-builder.service";
+  import { AccessControlService } from "src/modules/access-control/application/services/access-control.service";
 
 const PRODUCT_EXPORT_LABELS: Record<string, string> = {
   name: "Nombre",
@@ -49,11 +50,12 @@ const PRODUCT_EXPORT_LABELS: Record<string, string> = {
       private readonly getSearchState: GetProductCatalogProductSearchStateUsecase,
       private readonly saveSearchMetric: SaveProductCatalogProductSearchMetricUsecase,
       private readonly deleteSearchMetric: DeleteProductCatalogProductSearchMetricUsecase,
+      private readonly accessControlService: AccessControlService,
       @Inject(LISTING_SEARCH_STORAGE)
       private readonly listingSearchStorage: ListingSearchStorageRepository,
     ) {}
 
-    @RequireDynamicPermissionGroups(productCatalogPermissionGroupsFromRequest("create", "catalog.manage"))
+    @RequireDynamicPermissionGroups(productCatalogPermissionGroupsFromRequest("create"))
     @Post()
     create(@Body() dto: CreateProductCatalogProductDto) {
       return this.createProduct.execute(dto);
@@ -107,7 +109,7 @@ const PRODUCT_EXPORT_LABELS: Record<string, string> = {
       return this.deleteSearchMetric.execute(user.id, metricId, type);
     }
 
-    @RequireDynamicPermissionGroups(productCatalogPermissionGroupsFromRequest("export", "catalog.export"))
+    @RequireDynamicPermissionGroups(productCatalogPermissionGroupsFromRequest("export"))
     @Get("export-columns")
     async listExportColumns(@Query() query: ListProductCatalogProductsDto, @CurrentUser() user: { id: string }) {
       const data = await this.list(query, user);
@@ -115,7 +117,7 @@ const PRODUCT_EXPORT_LABELS: Record<string, string> = {
       return this.buildExportColumnsFromFirstRow(rows[0] ?? {}, PRODUCT_EXPORT_LABELS);
     }
 
-    @RequireDynamicPermissionGroups(productCatalogPermissionGroupsFromRequest("export", "catalog.export"))
+    @RequireDynamicPermissionGroups(productCatalogPermissionGroupsFromRequest("export"))
     @Get("export-presets")
     getExportPresets(@CurrentUser() user: { id: string }, @Query("type") type?: ProductCatalogProductType) {
       return this.listingSearchStorage.listState({
@@ -124,7 +126,7 @@ const PRODUCT_EXPORT_LABELS: Record<string, string> = {
       }).then((state) => state.metrics);
     }
 
-    @RequireDynamicPermissionGroups(productCatalogPermissionGroupsFromRequest("export", "catalog.export"))
+    @RequireDynamicPermissionGroups(productCatalogPermissionGroupsFromRequest("export"))
     @Post("export-presets")
     saveExportPreset(
       @CurrentUser() user: { id: string },
@@ -138,7 +140,7 @@ const PRODUCT_EXPORT_LABELS: Record<string, string> = {
       });
     }
 
-    @RequireDynamicPermissionGroups(productCatalogPermissionGroupsFromRequest("export", "catalog.export"))
+    @RequireDynamicPermissionGroups(productCatalogPermissionGroupsFromRequest("export"))
     @Delete("export-presets/:metricId")
     deleteExportPreset(
       @CurrentUser() user: { id: string },
@@ -152,7 +154,7 @@ const PRODUCT_EXPORT_LABELS: Record<string, string> = {
       });
     }
 
-    @RequireDynamicPermissionGroups(productCatalogPermissionGroupsFromRequest("export", "catalog.export"))
+    @RequireDynamicPermissionGroups(productCatalogPermissionGroupsFromRequest("export"))
     @Post("export-excel")
     async exportExcel(
       @Body() body: ListProductCatalogProductsDto & { columns: Array<{ key: string; label: string }> },
@@ -189,10 +191,22 @@ const PRODUCT_EXPORT_LABELS: Record<string, string> = {
       return this.getProductDetail.execute(id, warehouseId);
     }
 
-    @RequireAnyPermissionGroups(["products.update", "materials.update", "catalog.manage"])
+    @RequireAnyPermissionGroups(["products.update", "materials.update"])
     @Patch(":id")
-    update(@Param("id", ParseUUIDPipe) id: string, @Body() dto: UpdateProductCatalogProductDto) {
+    async update(
+      @Param("id", ParseUUIDPipe) id: string,
+      @Body() dto: UpdateProductCatalogProductDto,
+      @CurrentUser() user: { id: string },
+    ) {
+      await this.ensureProductPermission(user.id, id, "update");
       return this.updateProduct.execute(id, dto);
+    }
+
+    private async ensureProductPermission(userId: string, productId: string, action: "update") {
+      const { product } = await this.getProduct.execute(productId);
+      const prefix = product.type === ProductCatalogProductType.MATERIAL ? "materials" : "products";
+      const allowed = await this.accessControlService.userHasAllPermissions(userId, [`${prefix}.${action}`]);
+      if (!allowed) throw new ForbiddenException("Acceso denegado: permisos insuficientes");
     }
 
     private parseFilters(raw?: string): ProductCatalogProductSearchRule[] | undefined {

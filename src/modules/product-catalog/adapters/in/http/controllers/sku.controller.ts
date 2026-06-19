@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
 import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
 import { RequireAnyPermissionGroups, RequireDynamicPermissionGroups } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
@@ -17,6 +17,10 @@ import { ListSkuStockSnapshotsDto } from "../dtos/list-sku-stock-snapshots.dto";
 import { ListSkuStockSnapshotsSearchDto } from "../dtos/list-sku-stock-snapshots-search.dto";
 import { ListAvailableStockUsecase } from "src/modules/product-catalog/application/usecases/list-available-stock";
 import { inventoryPermissionGroupsFromRequest, productCatalogPermissionGroupsFromRequest } from "./catalog-permission-groups";
+import { GetProductCatalogProduct } from "src/modules/product-catalog/application/usecases/get-product.usecase";
+import { ProductCatalogProductType } from "src/modules/product-catalog/domain/value-objects/product-type";
+import { AccessControlService } from "src/modules/access-control/application/services/access-control.service";
+import { User as CurrentUser } from "src/shared/utilidades/decorators/user.decorator";
 
 @Controller()
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
@@ -29,11 +33,18 @@ export class ProductCatalogSkuController {
     private readonly getStock: GetSnapshotInventory,
     private readonly listSnapshots: ListProductCatalogInventorySnapshotsBySku,
     private readonly listAvailable: ListAvailableStockUsecase,
+    private readonly getProduct: GetProductCatalogProduct,
+    private readonly accessControlService: AccessControlService,
   ) {}
 
-  @RequireAnyPermissionGroups(["products.skus.create", "materials.skus.create", "catalog.manage"])
+  @RequireAnyPermissionGroups(["products.skus.create", "materials.skus.create"])
   @Post("products/:id/skus")
-  create(@Param("id", ParseUUIDPipe) productId: string, @Body() dto: CreateProductCatalogSkuDto) {
+  async create(
+    @Param("id", ParseUUIDPipe) productId: string,
+    @Body() dto: CreateProductCatalogSkuDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    await this.ensureProductPermission(user.id, productId, "skus.create");
     return this.createSku.execute({ productId, ...dto });
   }
 
@@ -109,9 +120,22 @@ export class ProductCatalogSkuController {
   }
   
 
-  @RequireAnyPermissionGroups(["products.skus.update", "materials.skus.update", "catalog.manage"])
+  @RequireAnyPermissionGroups(["products.skus.update", "materials.skus.update"])
   @Patch("skus/:id")
-  update(@Param("id", ParseUUIDPipe) id: string, @Body() dto: UpdateProductCatalogSkuDto) {
+  async update(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: UpdateProductCatalogSkuDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    const sku = await this.getSku.execute(id);
+    await this.ensureProductPermission(user.id, sku.sku.productId, "skus.update");
     return this.updateSku.execute(id, dto);
+  }
+
+  private async ensureProductPermission(userId: string, productId: string, action: "skus.create" | "skus.update") {
+    const { product } = await this.getProduct.execute(productId);
+    const prefix = product.type === ProductCatalogProductType.MATERIAL ? "materials" : "products";
+    const allowed = await this.accessControlService.userHasAllPermissions(userId, [`${prefix}.${action}`]);
+    if (!allowed) throw new ForbiddenException("Acceso denegado: permisos insuficientes");
   }
 }

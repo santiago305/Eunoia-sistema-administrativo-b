@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Inject, Param, ParseUUIDPipe, Post, Query, Res, Sse, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, ForbiddenException, Get, Inject, NotFoundException, Param, ParseUUIDPipe, Post, Query, Res, Sse, UseGuards } from "@nestjs/common";
 import { Response } from "express";
 import { filter, map } from "rxjs/operators";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
@@ -53,6 +53,13 @@ import { ProductCatalogProductType } from "src/modules/product-catalog/domain/va
 import { LISTING_SEARCH_STORAGE, ListingSearchStorageRepository } from "src/shared/listing-search/domain/listing-search.repository";
 import { XlsxBuilderService } from "src/shared/application/services/xlsx-builder.service";
 import { INVENTORY_REALTIME, InventoryRealtime, StockUpdatedEvent } from "src/modules/product-catalog/integration/inventory/ports/inventory-realtime.port";
+import { GetProductCatalogSku } from "src/modules/product-catalog/application/usecases/get-sku.usecase";
+import { GetProductCatalogProduct } from "src/modules/product-catalog/application/usecases/get-product.usecase";
+import { AccessControlService } from "src/modules/access-control/application/services/access-control.service";
+import {
+  PRODUCT_CATALOG_INVENTORY_DOCUMENT_REPOSITORY,
+  ProductCatalogInventoryDocumentRepository,
+} from "src/modules/product-catalog/domain/ports/inventory-document.repository";
 import {
   documentExportPermissionGroupsFromRequest,
   documentPermissionGroupsFromRequest,
@@ -118,15 +125,26 @@ export class ProductCatalogStockController {
     private readonly getInventoryLedgerSearchStateUc: GetInventoryLedgerSearchStateUsecase,
     private readonly saveInventoryLedgerSearchMetricUc: SaveInventoryLedgerSearchMetricUsecase,
     private readonly deleteInventoryLedgerSearchMetricUc: DeleteInventoryLedgerSearchMetricUsecase,
+    private readonly getSku: GetProductCatalogSku,
+    private readonly getProduct: GetProductCatalogProduct,
+    private readonly accessControlService: AccessControlService,
     @Inject(LISTING_SEARCH_STORAGE)
     private readonly listingSearchStorage: ListingSearchStorageRepository,
     @Inject(INVENTORY_REALTIME)
     private readonly inventoryRealtime: InventoryRealtime,
+    @Inject(PRODUCT_CATALOG_INVENTORY_DOCUMENT_REPOSITORY)
+    private readonly documentRepo: ProductCatalogInventoryDocumentRepository,
   ) {}
 
-  @RequireAnyPermissionGroups(["products.skus.create", "materials.skus.create", "catalog.manage"])
+  @RequireAnyPermissionGroups(["products.skus.create", "materials.skus.create"])
   @Post("skus/:id/stock-item")
-  createForSku(@Param("id", ParseUUIDPipe) skuId: string, @Body() dto: CreateProductCatalogStockItemDto) {
+  async createForSku(
+    @Param("id", ParseUUIDPipe) skuId: string,
+    @Body() dto: CreateProductCatalogStockItemDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    const sku = await this.getSku.execute(skuId);
+    await this.ensureProductPermission(user.id, sku.sku.productId, "skus.create");
     return this.createStockItem.execute({ skuId, ...dto });
   }
 
@@ -148,7 +166,7 @@ export class ProductCatalogStockController {
     return this.listInventoryBySku.execute(skuId);
   }
 
-  @RequireAnyPermissionGroups(["adjustments.products.create", "adjustments.materials.create", "catalog.manage"])
+  @RequireAnyPermissionGroups(["adjustments.products.create", "adjustments.materials.create"])
   @Post("stock-items/:id/balances")
   upsertBalance(@Param("id", ParseUUIDPipe) stockItemId: string, @Body() dto: UpsertProductCatalogInventoryBalanceDto) {
     return this.upsertInventoryBalance.execute({ stockItemId, ...dto });
@@ -176,13 +194,32 @@ export class ProductCatalogStockController {
     return this.transferBetweenWarehouses.execute({ ...dto, createdBy: user.id, autoPost: false });
   }
 
-  @RequireAnyPermissionGroups(["transfers.products.process", "transfers.materials.process", "adjustments.products.process", "adjustments.materials.process", "catalog.manage"])
+  @RequireAnyPermissionGroups(["transfers.products.process", "transfers.materials.process", "adjustments.products.process", "adjustments.materials.process"])
   @Post("inventory-documents/:id/process")
   processInventoryDocument(
     @Param("id", ParseUUIDPipe) docId: string,
     @CurrentUser() user: { id: string },
   ) {
-    return this.processDocument.execute({ docId, postedBy: user.id });
+    return this.ensureDocumentProcessPermission(user.id, docId).then(() =>
+      this.processDocument.execute({ docId, postedBy: user.id }),
+    );
+  }
+
+  private async ensureProductPermission(userId: string, productId: string, action: "skus.create") {
+    const { product } = await this.getProduct.execute(productId);
+    const prefix = product.type === ProductCatalogProductType.MATERIAL ? "materials" : "products";
+    const allowed = await this.accessControlService.userHasAllPermissions(userId, [`${prefix}.${action}`]);
+    if (!allowed) throw new ForbiddenException("Acceso denegado: permisos insuficientes");
+  }
+
+  private async ensureDocumentProcessPermission(userId: string, docId: string) {
+    const document = await this.documentRepo.findById(docId);
+    if (!document) throw new NotFoundException("Documento de inventario no encontrado");
+    const productTypePrefix = document.productType === ProductCatalogProductType.MATERIAL ? "materials" : "products";
+    const documentPrefix = document.docType === DocType.ADJUSTMENT ? "adjustments" : "transfers";
+    const permission = `${documentPrefix}.${productTypePrefix}.process`;
+    const allowed = await this.accessControlService.userHasAllPermissions(userId, [permission]);
+    if (!allowed) throw new ForbiddenException("Acceso denegado: permisos insuficientes");
   }
   
   @RequireDynamicPermissionGroups(ledgerPermissionGroupsFromRequest("view"))

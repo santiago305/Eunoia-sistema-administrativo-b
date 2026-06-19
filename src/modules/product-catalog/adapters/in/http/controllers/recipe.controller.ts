@@ -26,19 +26,19 @@ export class ProductCatalogRecipeController {
     return this.getRecipe.execute(skuId);
   }
 
-  @RequireAnyPermissionGroups(["products.recipes.manage", "catalog.manage"])
+  @RequireAnyPermissionGroups(["products.recipes.manage"])
   @Post()
   create(@Param("id", ParseUUIDPipe) skuId: string, @Body() dto: CreateProductCatalogRecipeDto) {
     return this.createRecipe.execute({ skuId, ...dto });
   }
 
-  @RequireAnyPermissionGroups(["products.recipes.manage", "catalog.manage"])
+  @RequireAnyPermissionGroups(["products.recipes.manage"])
   @Patch()
   update(@Param("id", ParseUUIDPipe) skuId: string, @Body() dto: UpdateProductCatalogRecipeDto) {
     return this.updateRecipe.execute({ skuId, ...dto });
   }
 
-  @RequireAnyPermissionGroups(["products.recipes.manage", "catalog.manage"])
+  @RequireAnyPermissionGroups(["products.recipes.manage"])
   @Delete("items/:itemId")
   deleteItem(
     @Param("id", ParseUUIDPipe) skuId: string,

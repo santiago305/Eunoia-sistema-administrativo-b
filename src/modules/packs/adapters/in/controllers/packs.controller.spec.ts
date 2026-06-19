@@ -4,6 +4,7 @@ import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
 import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
+import { PERMISSION_GROUPS_KEY } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
 import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { PacksController } from "./packs.controller";
 import { CreatePackUsecase } from "src/modules/packs/application/usecases/pack/create.usecase";
@@ -206,5 +207,16 @@ describe("PacksController", () => {
         { key: "itemsCount", label: "Items" },
       ]),
     );
+  });
+
+  it("uses exact pack action permissions without packs.manage fallback", () => {
+    expect(Reflect.getMetadata(PERMISSION_GROUPS_KEY, PacksController.prototype.create)).toEqual([["packs.create"]]);
+    expect(Reflect.getMetadata(PERMISSION_GROUPS_KEY, PacksController.prototype.update)).toEqual([["packs.update"]]);
+    expect(Reflect.getMetadata(PERMISSION_GROUPS_KEY, PacksController.prototype.listExportColumns)).toEqual([
+      ["packs.export"],
+    ]);
+    expect(Reflect.getMetadata(PERMISSION_GROUPS_KEY, PacksController.prototype.setActive)).toEqual([
+      ["packs.update", "packs.delete", "packs.restore"],
+    ]);
   });
 });

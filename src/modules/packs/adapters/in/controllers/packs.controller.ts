@@ -48,7 +48,7 @@ export class PacksController {
     private readonly listingSearchStorage: ListingSearchStorageRepository,
   ) {}
 
-  @RequireAnyPermissionGroups(["packs.create", "packs.manage"])
+  @RequireAnyPermissionGroups(["packs.create"])
   @Post()
   create(@Body() dto: HttpCreatePackDto) {
     return this.createPack.execute({
@@ -98,7 +98,7 @@ export class PacksController {
     return this.deleteSearchMetric.execute(user.id, metricId);
   }
 
-  @RequireAnyPermissionGroups(["packs.export", "packs.manage"])
+  @RequireAnyPermissionGroups(["packs.export"])
   @Get("export-columns")
   async listExportColumns(@Query() query: ListPacksQueryDto, @CurrentUser() user: { id: string }) {
     const data = await this.list(query, user);
@@ -106,7 +106,7 @@ export class PacksController {
     return this.buildExportColumnsFromFirstRow(rows[0] ?? {}, PACK_EXPORT_LABELS);
   }
 
-  @RequireAnyPermissionGroups(["packs.export", "packs.manage"])
+  @RequireAnyPermissionGroups(["packs.export"])
   @Get("export-presets")
   getExportPresets(@CurrentUser() user: { id: string }) {
     return this.listingSearchStorage.listState({
@@ -115,7 +115,7 @@ export class PacksController {
     }).then((state) => state.metrics);
   }
 
-  @RequireAnyPermissionGroups(["packs.export", "packs.manage"])
+  @RequireAnyPermissionGroups(["packs.export"])
   @Post("export-presets")
   saveExportPreset(
     @CurrentUser() user: { id: string },
@@ -129,7 +129,7 @@ export class PacksController {
     });
   }
 
-  @RequireAnyPermissionGroups(["packs.export", "packs.manage"])
+  @RequireAnyPermissionGroups(["packs.export"])
   @Delete("export-presets/:metricId")
   deleteExportPreset(
     @CurrentUser() user: { id: string },
@@ -142,7 +142,7 @@ export class PacksController {
     });
   }
 
-  @RequireAnyPermissionGroups(["packs.export", "packs.manage"])
+  @RequireAnyPermissionGroups(["packs.export"])
   @Post("export-excel")
   async exportExcel(
     @Body() body: ListPacksQueryDto & { columns: Array<{ key: string; label: string }> },
@@ -171,13 +171,13 @@ export class PacksController {
     return this.getPack.execute({ packId: id });
   }
 
-  @RequireAnyPermissionGroups(["packs.update", "packs.delete", "packs.restore", "packs.manage"])
+  @RequireAnyPermissionGroups(["packs.update", "packs.delete", "packs.restore"])
   @Patch(":id/active")
   setActive(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpSetPackActiveDto) {
     return this.setPackActive.execute({ packId: id, isActive: dto.isActive });
   }
 
-  @RequireAnyPermissionGroups(["packs.update", "packs.manage"])
+  @RequireAnyPermissionGroups(["packs.update"])
   @Patch(":id")
   update(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpUpdatePackDto) {
     return this.updatePack.execute({
