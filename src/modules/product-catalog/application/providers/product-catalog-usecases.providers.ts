@@ -39,6 +39,11 @@ import { GetProductCatalogEquivalence } from "../usecases/get-equivalence.usecas
 import { ListProductCatalogEquivalencesByProduct } from "../usecases/list-equivalences-by-product.usecase";
 import { GetProductCatalogProductDetail } from "../usecases/get-product-detail.usecase";
 import { ProcessProductCatalogInventoryDocument } from "../usecases/process-inventory-document.usecase";
+import {
+  GetInventoryAlertSettingUsecase,
+  ListInventoryAlertSettingsUsecase,
+  UpsertInventoryAlertSettingUsecase,
+} from "../usecases/inventory-alert-settings.usecase";
 
 export const productCatalogUsecasesProviders: Provider[] = [
   CreateProductCatalogProduct,
@@ -81,4 +86,7 @@ export const productCatalogUsecasesProviders: Provider[] = [
   GetProductCatalogEquivalence,
   ListProductCatalogEquivalencesByProduct,
   ProcessProductCatalogInventoryDocument,
+  ListInventoryAlertSettingsUsecase,
+  GetInventoryAlertSettingUsecase,
+  UpsertInventoryAlertSettingUsecase,
 ];

@@ -7,12 +7,14 @@ import { ProductCatalogSkuController } from "./adapters/in/http/controllers/sku.
 import { ProductCatalogStockController } from "./adapters/in/http/controllers/stock.controller";
 import { ProductCatalogUnitController } from "./adapters/in/http/controllers/unit.controller";
 import { ProductCatalogEquivalenceController } from "./adapters/in/http/controllers/equivalence.controller";
+import { InventoryAlertSettingsController } from "./adapters/in/http/controllers/inventory-alert-settings.controller";
 import { ProductCatalogAttributeEntity } from "./adapters/out/persistence/typeorm/entities/attribute.entity";
 import { ProductCatalogPublicationEntity } from "./adapters/out/persistence/typeorm/entities/catalog-publication.entity";
 import { ProductCatalogInventoryEntity } from "./adapters/out/persistence/typeorm/entities/inventory.entity";
 import { ProductCatalogInventoryDocumentItemEntity } from "./adapters/out/persistence/typeorm/entities/inventory-document-item.entity";
 import { ProductCatalogInventoryDocumentEntity } from "./adapters/out/persistence/typeorm/entities/inventory-document.entity";
 import { ProductCatalogInventoryLedgerEntity } from "./adapters/out/persistence/typeorm/entities/inventory-ledger.entity";
+import { ProductCatalogInventoryAlertSettingEntity } from "./adapters/out/persistence/typeorm/entities/inventory-alert-setting.entity";
 import { ProductCatalogProductEntity } from "./adapters/out/persistence/typeorm/entities/product.entity";
 import { ProductCatalogRecipeItemEntity } from "./adapters/out/persistence/typeorm/entities/recipe-item.entity";
 import { ProductCatalogRecipeEntity } from "./adapters/out/persistence/typeorm/entities/recipe.entity";
@@ -28,6 +30,7 @@ import { productCatalogModuleProviders } from "./composition/container";
 import { PRODUCT_CATALOG_INVENTORY_REPOSITORY } from "./domain/ports/inventory.repository";
 import { PRODUCT_CATALOG_INVENTORY_DOCUMENT_REPOSITORY } from "./domain/ports/inventory-document.repository";
 import { PRODUCT_CATALOG_INVENTORY_LEDGER_REPOSITORY } from "./domain/ports/inventory-ledger.repository";
+import { PRODUCT_CATALOG_INVENTORY_ALERT_SETTING_REPOSITORY } from "./domain/ports/inventory-alert-setting.repository";
 import { PRODUCT_CATALOG_PRODUCT_REPOSITORY } from "./domain/ports/product.repository";
 import { PRODUCT_CATALOG_PUBLICATION_REPOSITORY } from "./domain/ports/publication.repository";
 import { PRODUCT_CATALOG_RECIPE_REPOSITORY } from "./domain/ports/recipe.repository";
@@ -85,6 +88,7 @@ import { AccessControlModule } from "src/modules/access-control/infrastructure/a
       ProductCatalogInventoryDocumentEntity,
       ProductCatalogInventoryDocumentItemEntity,
       ProductCatalogInventoryLedgerEntity,
+      ProductCatalogInventoryAlertSettingEntity,
       ProductCatalogDocumentSerieEntity,
       ProductCatalogUnitEntity,
       ProductCatalogEquivalencesEntity,
@@ -103,7 +107,8 @@ import { AccessControlModule } from "src/modules/access-control/infrastructure/a
     ProductCatalogStockController,
     ProductCatalogUnitController,
     ProductCatalogEquivalenceController,
-    ProductCatalogDocumentSerieController
+    ProductCatalogDocumentSerieController,
+    InventoryAlertSettingsController,
   ],
   providers: [
     ...productCatalogModuleProviders,
@@ -133,6 +138,7 @@ import { AccessControlModule } from "src/modules/access-control/infrastructure/a
     PRODUCT_CATALOG_INVENTORY_REPOSITORY,
     PRODUCT_CATALOG_INVENTORY_DOCUMENT_REPOSITORY,
     PRODUCT_CATALOG_INVENTORY_LEDGER_REPOSITORY,
+    PRODUCT_CATALOG_INVENTORY_ALERT_SETTING_REPOSITORY,
     PRODUCT_CATALOG_DOCUMENT_SERIE_REPOSITORY,
     PRODUCT_CATALOG_UNIT_REPOSITORY,
     PRODUCT_CATALOG_EQUIVALENCE_REPOSITORY,

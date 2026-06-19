@@ -3,7 +3,7 @@ import { Response } from "express";
 import { filter, map } from "rxjs/operators";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
 import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
-import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
+import { RequireAnyPermissionGroups, RequireDynamicPermissionGroups } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
 import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreateProductCatalogStockItem } from "src/modules/product-catalog/application/usecases/create-stock-item.usecase";
 import { GetProductCatalogStockItem } from "src/modules/product-catalog/application/usecases/get-stock-item.usecase";
@@ -53,6 +53,15 @@ import { ProductCatalogProductType } from "src/modules/product-catalog/domain/va
 import { LISTING_SEARCH_STORAGE, ListingSearchStorageRepository } from "src/shared/listing-search/domain/listing-search.repository";
 import { XlsxBuilderService } from "src/shared/application/services/xlsx-builder.service";
 import { INVENTORY_REALTIME, InventoryRealtime, StockUpdatedEvent } from "src/modules/product-catalog/integration/inventory/ports/inventory-realtime.port";
+import {
+  documentExportPermissionGroupsFromRequest,
+  documentPermissionGroupsFromRequest,
+  documentReadPermissionGroupsFromRequest,
+  inventoryExportPermissionGroupsFromRequest,
+  inventoryPermissionGroupsFromRequest,
+  ledgerExportPermissionGroupsFromRequest,
+  ledgerPermissionGroupsFromRequest,
+} from "./catalog-permission-groups";
 
 const INVENTORY_LEDGER_EXPORT_LABELS: Record<string, string> = {
   createdAt: "Fecha",
@@ -115,37 +124,37 @@ export class ProductCatalogStockController {
     private readonly inventoryRealtime: InventoryRealtime,
   ) {}
 
-  @RequirePermissions("catalog.manage")
+  @RequireAnyPermissionGroups(["products.skus.create", "materials.skus.create", "catalog.manage"])
   @Post("skus/:id/stock-item")
   createForSku(@Param("id", ParseUUIDPipe) skuId: string, @Body() dto: CreateProductCatalogStockItemDto) {
     return this.createStockItem.execute({ skuId, ...dto });
   }
 
-  @RequirePermissions("catalog.read")
+  @RequireAnyPermissionGroups(["inventory.products.view", "inventory.materials.view", "catalog.read"])
   @Get("skus/:id/stock-item")
   getBySku(@Param("id", ParseUUIDPipe) skuId: string) {
     return this.getSkuStockItem.execute(skuId);
   }
 
-  @RequirePermissions("catalog.read")
+  @RequireAnyPermissionGroups(["inventory.products.view", "inventory.materials.view", "catalog.read"])
   @Get("stock-items/:id")
   getById(@Param("id", ParseUUIDPipe) id: string) {
     return this.getStockItem.execute(id);
   }
 
-  @RequirePermissions("catalog.read")
+  @RequireAnyPermissionGroups(["inventory.products.view", "inventory.materials.view", "catalog.read"])
   @Get("skus/:id/stock")
   listBySku(@Param("id", ParseUUIDPipe) skuId: string) {
     return this.listInventoryBySku.execute(skuId);
   }
 
-  @RequirePermissions("catalog.manage")
+  @RequireAnyPermissionGroups(["adjustments.products.create", "adjustments.materials.create", "catalog.manage"])
   @Post("stock-items/:id/balances")
   upsertBalance(@Param("id", ParseUUIDPipe) stockItemId: string, @Body() dto: UpsertProductCatalogInventoryBalanceDto) {
     return this.upsertInventoryBalance.execute({ stockItemId, ...dto });
   }
 
-  @RequirePermissions("catalog.manage")
+  @RequireDynamicPermissionGroups(documentPermissionGroupsFromRequest("create"))
   @Post("stock-items/movements/create")
   registerInventoryMovement(
     @CurrentUser() user: { id: string },
@@ -158,7 +167,7 @@ export class ProductCatalogStockController {
     });
   }
 
-  @RequirePermissions("catalog.manage")
+  @RequireDynamicPermissionGroups(documentPermissionGroupsFromRequest("create"))
   @Post("stock-items/movements/transfer")
   transferInventoryBetweenWarehouses(
     @CurrentUser() user: { id: string },
@@ -167,7 +176,7 @@ export class ProductCatalogStockController {
     return this.transferBetweenWarehouses.execute({ ...dto, createdBy: user.id, autoPost: false });
   }
 
-  @RequirePermissions("catalog.manage")
+  @RequireAnyPermissionGroups(["transfers.products.process", "transfers.materials.process", "adjustments.products.process", "adjustments.materials.process", "catalog.manage"])
   @Post("inventory-documents/:id/process")
   processInventoryDocument(
     @Param("id", ParseUUIDPipe) docId: string,
@@ -176,26 +185,26 @@ export class ProductCatalogStockController {
     return this.processDocument.execute({ docId, postedBy: user.id });
   }
   
-  @RequirePermissions("catalog.read")
+  @RequireDynamicPermissionGroups(ledgerPermissionGroupsFromRequest("view"))
   @Get("stock-items/ledger/by-sku")
   ledgerBySku(@Query() query: ListProductCatalogInventoryLedgerDto) {
     return this.listLedger.execute(query);
   }
 
-  @RequirePermissions("catalog.read")
+  @RequireDynamicPermissionGroups(ledgerPermissionGroupsFromRequest("view"))
   @Get("stock-items/ledger/daily-totals/by-sku")
   dailyTotalsBySku(@Query() query: ListDailyMovementBySkuDto) {
     return this.listDailyMovementBySku.execute(query);
   }
 
-  @RequirePermissions("catalog.read")
+  @RequireAnyPermissionGroups(["inventory-ledger.products.view", "inventory-ledger.materials.view", "catalog.read"])
   @Get("stock-items/:id/ledger")
   ledger(@Param("id", ParseUUIDPipe) stockItemId: string, @Query() query: ListProductCatalogInventoryLedgerDto) {
     return this.listLedger.execute({ stockItemId, ...query });
   }
 
 
-  @RequirePermissions("catalog.read")
+  @RequireDynamicPermissionGroups(documentReadPermissionGroupsFromRequest())
   @Get("inventory-documents/search-state")
   getInventoryDocumentsSearchState(
     @CurrentUser() user: { id: string },
@@ -205,7 +214,7 @@ export class ProductCatalogStockController {
     return this.getInventoryDocsSearchState.execute({ userId: user.id, docType, productType });
   }
 
-  @RequirePermissions("catalog.read")
+  @RequireDynamicPermissionGroups(inventoryPermissionGroupsFromRequest("view"))
   @Get("inventory/search-state")
   getInventorySearchState(
     @CurrentUser() user: { id: string },
@@ -214,7 +223,7 @@ export class ProductCatalogStockController {
     return this.getInventorySearchStateUc.execute({ userId: user.id, productType });
   }
 
-  @RequirePermissions("catalog.read")
+  @RequireDynamicPermissionGroups(inventoryPermissionGroupsFromRequest("view"))
   @Post("inventory/search-metrics")
   saveInventorySearchMetric(
     @Body() dto: HttpCreateInventorySearchMetricDto,
@@ -231,7 +240,7 @@ export class ProductCatalogStockController {
     });
   }
 
-  @RequirePermissions("catalog.read")
+  @RequireDynamicPermissionGroups(inventoryPermissionGroupsFromRequest("view"))
   @Delete("inventory/search-metrics/:metricId")
   deleteInventorySearchMetric(
     @Param("metricId", ParseUUIDPipe) metricId: string,
@@ -245,7 +254,7 @@ export class ProductCatalogStockController {
     });
   }
 
-  @RequirePermissions("catalog.read")
+  @RequireDynamicPermissionGroups(documentReadPermissionGroupsFromRequest())
   @Post("inventory-documents/search-metrics")
   saveInventoryDocumentsSearchMetric(
     @Body() dto: HttpCreateInventoryDocumentsSearchMetricDto,
@@ -263,7 +272,7 @@ export class ProductCatalogStockController {
     });
   }
 
-  @RequirePermissions("catalog.read")
+  @RequireDynamicPermissionGroups(documentReadPermissionGroupsFromRequest())
   @Delete("inventory-documents/search-metrics/:metricId")
   deleteInventoryDocumentsSearchMetric(
     @Param("metricId", ParseUUIDPipe) metricId: string,
@@ -279,7 +288,7 @@ export class ProductCatalogStockController {
     });
   }
 
-  @RequirePermissions("catalog.read")
+  @RequireDynamicPermissionGroups(ledgerPermissionGroupsFromRequest("view"))
   @Get("inventory-ledger/search-state")
   getInventoryLedgerSearchState(
     @CurrentUser() user: { id: string },
@@ -288,7 +297,7 @@ export class ProductCatalogStockController {
     return this.getInventoryLedgerSearchStateUc.execute({ userId: user.id, productType });
   }
 
-  @RequirePermissions("catalog.read")
+  @RequireDynamicPermissionGroups(ledgerPermissionGroupsFromRequest("view"))
   @Post("inventory-ledger/search-metrics")
   saveInventoryLedgerSearchMetric(
     @Body() dto: HttpCreateInventoryLedgerSearchMetricDto,
@@ -305,7 +314,7 @@ export class ProductCatalogStockController {
     });
   }
 
-  @RequirePermissions("catalog.read")
+  @RequireDynamicPermissionGroups(ledgerPermissionGroupsFromRequest("view"))
   @Delete("inventory-ledger/search-metrics/:metricId")
   deleteInventoryLedgerSearchMetric(
     @Param("metricId", ParseUUIDPipe) metricId: string,
@@ -319,7 +328,7 @@ export class ProductCatalogStockController {
     });
   }
 
-  @RequirePermissions("catalog.read")
+  @RequireDynamicPermissionGroups(ledgerPermissionGroupsFromRequest("view"))
   @Get("inventory-ledger")
   listInventoryLedgerMovements(
     @Query() query: ListProductCatalogInventoryLedgerMovementsDto,
@@ -343,7 +352,7 @@ export class ProductCatalogStockController {
     });
   }
 
-  @RequirePermissions("catalog.export")
+  @RequireDynamicPermissionGroups(ledgerExportPermissionGroupsFromRequest())
   @Get("inventory-ledger/export-columns")
   async listInventoryLedgerExportColumns(
     @Query() query: ListProductCatalogInventoryLedgerMovementsDto,
@@ -355,7 +364,7 @@ export class ProductCatalogStockController {
     return this.buildExportColumnsFromFirstRow(first, INVENTORY_LEDGER_EXPORT_LABELS);
   }
 
-  @RequirePermissions("catalog.export")
+  @RequireDynamicPermissionGroups(ledgerExportPermissionGroupsFromRequest())
   @Get("inventory-ledger/export-presets")
   getInventoryLedgerExportPresets(
     @CurrentUser() user: { id: string },
@@ -367,7 +376,7 @@ export class ProductCatalogStockController {
     }).then((state) => state.metrics);
   }
 
-  @RequirePermissions("catalog.export")
+  @RequireDynamicPermissionGroups(ledgerExportPermissionGroupsFromRequest())
   @Post("inventory-ledger/export-presets")
   saveInventoryLedgerExportPreset(
     @CurrentUser() user: { id: string },
@@ -381,7 +390,7 @@ export class ProductCatalogStockController {
     });
   }
 
-  @RequirePermissions("catalog.export")
+  @RequireDynamicPermissionGroups(ledgerExportPermissionGroupsFromRequest())
   @Delete("inventory-ledger/export-presets/:metricId")
   deleteInventoryLedgerExportPreset(
     @CurrentUser() user: { id: string },
@@ -395,7 +404,7 @@ export class ProductCatalogStockController {
     });
   }
 
-  @RequirePermissions("catalog.export")
+  @RequireDynamicPermissionGroups(ledgerExportPermissionGroupsFromRequest())
   @Post("inventory-ledger/export-excel")
   async exportInventoryLedgerExcel(
     @Body() body: ListProductCatalogInventoryLedgerMovementsDto & { columns: Array<{ key: string; label: string }> },
@@ -418,7 +427,7 @@ export class ProductCatalogStockController {
     return res.status(200).send(buffer);
   }
 
-  @RequirePermissions("catalog.read")
+  @RequireDynamicPermissionGroups(documentReadPermissionGroupsFromRequest())
   @Get("inventory-documents")
   listInventoryDocuments(@Query() query: ListProductCatalogInventoryDocumentsDto, @CurrentUser() user: { id: string }) {
     const filters = this.parseInventoryDocumentFilters(query.filters);
@@ -481,7 +490,7 @@ export class ProductCatalogStockController {
     });
   }
 
-  @RequirePermissions("catalog.export")
+  @RequireDynamicPermissionGroups(documentExportPermissionGroupsFromRequest())
   @Get("inventory-documents/export-columns")
   async listInventoryDocumentsExportColumns(
     @Query() query: ListProductCatalogInventoryDocumentsDto,
@@ -493,7 +502,7 @@ export class ProductCatalogStockController {
     return this.buildExportColumnsFromFirstRow(first, INVENTORY_DOCUMENTS_EXPORT_LABELS);
   }
 
-  @RequirePermissions("catalog.export")
+  @RequireDynamicPermissionGroups(documentExportPermissionGroupsFromRequest())
   @Get("inventory-documents/export-presets")
   getInventoryDocumentsExportPresets(
     @CurrentUser() user: { id: string },
@@ -506,7 +515,7 @@ export class ProductCatalogStockController {
     }).then((state) => state.metrics);
   }
 
-  @RequirePermissions("catalog.export")
+  @RequireDynamicPermissionGroups(documentExportPermissionGroupsFromRequest())
   @Post("inventory-documents/export-presets")
   saveInventoryDocumentsExportPreset(
     @CurrentUser() user: { id: string },
@@ -520,7 +529,7 @@ export class ProductCatalogStockController {
     });
   }
 
-  @RequirePermissions("catalog.export")
+  @RequireDynamicPermissionGroups(documentExportPermissionGroupsFromRequest())
   @Delete("inventory-documents/export-presets/:metricId")
   deleteInventoryDocumentsExportPreset(
     @CurrentUser() user: { id: string },
@@ -535,7 +544,7 @@ export class ProductCatalogStockController {
     });
   }
 
-  @RequirePermissions("catalog.export")
+  @RequireDynamicPermissionGroups(documentExportPermissionGroupsFromRequest())
   @Post("inventory-documents/export-excel")
   async exportInventoryDocumentsExcel(
     @Body() body: ListProductCatalogInventoryDocumentsDto & { columns: Array<{ key: string; label: string }> },
@@ -558,7 +567,7 @@ export class ProductCatalogStockController {
     return res.status(200).send(buffer);
   }
 
-  @RequirePermissions("catalog.read")
+  @RequireDynamicPermissionGroups(inventoryPermissionGroupsFromRequest("view"))
   @Get("inventory")
   listInventoryRows(
     @Query() query: ListProductCatalogInventoryDto,
@@ -591,7 +600,7 @@ export class ProductCatalogStockController {
     }
   }
 
-  @RequirePermissions("catalog.export")
+  @RequireDynamicPermissionGroups(inventoryExportPermissionGroupsFromRequest())
   @Get("inventory/export-columns")
   async listInventoryExportColumns(
     @Query() query: ListProductCatalogInventoryDto,
@@ -603,7 +612,7 @@ export class ProductCatalogStockController {
     return this.buildExportColumnsFromFirstRow(first, INVENTORY_EXPORT_LABELS);
   }
 
-  @RequirePermissions("catalog.export")
+  @RequireDynamicPermissionGroups(inventoryExportPermissionGroupsFromRequest())
   @Get("inventory/export-presets")
   getInventoryExportPresets(
     @CurrentUser() user: { id: string },
@@ -615,7 +624,7 @@ export class ProductCatalogStockController {
     }).then((state) => state.metrics);
   }
 
-  @RequirePermissions("catalog.export")
+  @RequireDynamicPermissionGroups(inventoryExportPermissionGroupsFromRequest())
   @Post("inventory/export-presets")
   saveInventoryExportPreset(
     @CurrentUser() user: { id: string },
@@ -629,7 +638,7 @@ export class ProductCatalogStockController {
     });
   }
 
-  @RequirePermissions("catalog.read")
+  @RequireAnyPermissionGroups(["inventory.realtime.view", "catalog.read"])
   @Sse("inventory/stream")
   streamInventory(
     @Query("warehouseId") warehouseId?: string,
@@ -655,7 +664,7 @@ export class ProductCatalogStockController {
     );
   }
 
-  @RequirePermissions("catalog.export")
+  @RequireDynamicPermissionGroups(inventoryExportPermissionGroupsFromRequest())
   @Delete("inventory/export-presets/:metricId")
   deleteInventoryExportPreset(
     @CurrentUser() user: { id: string },
@@ -669,7 +678,7 @@ export class ProductCatalogStockController {
     });
   }
 
-  @RequirePermissions("catalog.export")
+  @RequireDynamicPermissionGroups(inventoryExportPermissionGroupsFromRequest())
   @Post("inventory/export-excel")
   async exportInventoryExcel(
     @Body() body: ListProductCatalogInventoryDto & { columns: Array<{ key: string; label: string }> },

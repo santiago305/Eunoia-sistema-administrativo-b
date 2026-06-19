@@ -9,6 +9,7 @@ import { PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY } from "../domain/ports/stock-ite
 import { PRODUCT_CATALOG_INVENTORY_REPOSITORY } from "../domain/ports/inventory.repository";
 import { PRODUCT_CATALOG_INVENTORY_DOCUMENT_REPOSITORY } from "../domain/ports/inventory-document.repository";
 import { PRODUCT_CATALOG_INVENTORY_LEDGER_REPOSITORY } from "../domain/ports/inventory-ledger.repository";
+import { PRODUCT_CATALOG_INVENTORY_ALERT_SETTING_REPOSITORY } from "../domain/ports/inventory-alert-setting.repository";
 import { PRODUCT_CATALOG_DOCUMENT_SERIE_REPOSITORY } from "../domain/ports/document-serie.repository";
 import { PRODUCT_CATALOG_UNIT_REPOSITORY } from "../domain/ports/unit.repository";
 import { PRODUCT_CATALOG_EQUIVALENCE_REPOSITORY } from "../domain/ports/equivalence.repository";
@@ -21,6 +22,7 @@ import { ProductCatalogStockItemTypeormRepository } from "../adapters/out/persis
 import { ProductCatalogInventoryTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/inventory.typeorm.repo";
 import { ProductCatalogInventoryDocumentTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/inventory-document.typeorm.repo";
 import { ProductCatalogInventoryLedgerTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/inventory-ledger.typeorm.repo";
+import { ProductCatalogInventoryAlertSettingTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/inventory-alert-setting.typeorm.repo";
 import { ProductCatalogDocumentSerieTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/document-serie.typeorm.repo";
 import { ProductCatalogUnitTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/unit.typeorm.repo";
 import { ProductCatalogEquivalenceTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/equivalence.typeorm.repo";
@@ -50,6 +52,7 @@ export const productCatalogModuleProviders: Provider[] = [
   { provide: PRODUCT_CATALOG_INVENTORY_REPOSITORY, useClass: ProductCatalogInventoryTypeormRepository },
   { provide: PRODUCT_CATALOG_INVENTORY_DOCUMENT_REPOSITORY, useClass: ProductCatalogInventoryDocumentTypeormRepository },
   { provide: PRODUCT_CATALOG_INVENTORY_LEDGER_REPOSITORY, useClass: ProductCatalogInventoryLedgerTypeormRepository },
+  { provide: PRODUCT_CATALOG_INVENTORY_ALERT_SETTING_REPOSITORY, useClass: ProductCatalogInventoryAlertSettingTypeormRepository },
   { provide: PRODUCT_CATALOG_DOCUMENT_SERIE_REPOSITORY, useClass: ProductCatalogDocumentSerieTypeormRepository },
   { provide: PRODUCT_CATALOG_UNIT_REPOSITORY, useClass: ProductCatalogUnitTypeormRepository },
   { provide: PRODUCT_CATALOG_EQUIVALENCE_REPOSITORY, useClass: ProductCatalogEquivalenceTypeormRepository },

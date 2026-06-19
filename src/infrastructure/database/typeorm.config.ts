@@ -29,6 +29,7 @@ import { AddSaleOrderInvoiceSend20260606070000 } from "./migrations/202606060700
 import { AddWorkflowTransitionPurpose20260606080000 } from "./migrations/20260606080000-add-workflow-transition-purpose";
 import { CreateSaleOrderStates20260608000000 } from "./migrations/20260608000000-create-sale-order-states";
 import { AddSaleOrderStatisticsIndexes20260609000000 } from "./migrations/20260609000000-add-sale-order-statistics-indexes";
+import { CreateInventoryAlertSettings20260619000000 } from "./migrations/20260619000000-create-inventory-alert-settings";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -42,7 +43,7 @@ export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({
   ...getBaseTypeOrmOptions(),
-  synchronize: true,
+  synchronize: envs.nodeEnv === "development",
   migrationsRun: envs.nodeEnv === "production",
   autoLoadEntities: true,
 });
@@ -80,6 +81,7 @@ export const getMigrationDataSourceOptions = (): DataSourceOptions => ({
     AddWorkflowTransitionPurpose20260606080000,
     CreateSaleOrderStates20260608000000,
     AddSaleOrderStatisticsIndexes20260609000000,
+    CreateInventoryAlertSettings20260619000000,
   ],
 });
 

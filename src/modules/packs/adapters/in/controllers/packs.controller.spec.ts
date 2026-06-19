@@ -14,6 +14,7 @@ import { GetPackSearchStateUsecase } from "src/modules/packs/application/usecase
 import { SavePackSearchMetricUsecase } from "src/modules/packs/application/usecases/pack-search/save-metric.usecase";
 import { DeletePackSearchMetricUsecase } from "src/modules/packs/application/usecases/pack-search/delete-metric.usecase";
 import { UpdatePackUsecase } from "src/modules/packs/application/usecases/pack/update.usecase";
+import { LISTING_SEARCH_STORAGE } from "src/shared/listing-search/domain/listing-search.repository";
 
 @Injectable()
 class TestJwtAuthGuard implements CanActivate {
@@ -36,6 +37,11 @@ describe("PacksController", () => {
   const listPacks = { execute: jest.fn() };
   const getSearchState = { execute: jest.fn() };
   const updatePack = { execute: jest.fn() };
+  const listingSearchStorage = {
+    listState: jest.fn(),
+    createMetric: jest.fn(),
+    deleteMetric: jest.fn(),
+  };
 
   beforeEach(async () => {
     listPacks.execute.mockResolvedValue({ items: [], total: 0, page: 1, limit: 10 });
@@ -47,6 +53,11 @@ describe("PacksController", () => {
       },
     });
     updatePack.execute.mockResolvedValue({ message: "Pack actualizado con exito" });
+    listingSearchStorage.listState.mockResolvedValue({
+      metrics: [{ metricId: "metric-1", name: "Basico", snapshot: { columns: [{ key: "description", label: "Descripcion" }] } }],
+    });
+    listingSearchStorage.createMetric.mockResolvedValue({ type: "success", message: "Preset guardado" });
+    listingSearchStorage.deleteMetric.mockResolvedValue({ type: "success", message: "Preset eliminado" });
 
     const moduleRef = await Test.createTestingModule({
       controllers: [PacksController],
@@ -59,6 +70,7 @@ describe("PacksController", () => {
         { provide: SavePackSearchMetricUsecase, useValue: { execute: jest.fn() } },
         { provide: DeletePackSearchMetricUsecase, useValue: { execute: jest.fn() } },
         { provide: UpdatePackUsecase, useValue: updatePack },
+        { provide: LISTING_SEARCH_STORAGE, useValue: listingSearchStorage },
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -167,6 +179,32 @@ describe("PacksController", () => {
         total: 10,
         itemsReplace: payload.itemsReplace,
       }),
+    );
+  });
+
+  it("lists export columns from pack rows", async () => {
+    listPacks.execute.mockResolvedValueOnce({
+      items: [
+        {
+          pack: { description: "Pack A", total: 20, isActive: true },
+          items: [{ sku: { name: "SKU A" }, quantity: 2 }],
+        },
+      ],
+      total: 1,
+      page: 1,
+      limit: 10,
+    });
+
+    const response = await request(app.getHttpServer())
+      .get("/packs/export-columns")
+      .expect(200);
+
+    expect(response.body).toEqual(
+      expect.arrayContaining([
+        { key: "description", label: "Descripcion" },
+        { key: "total", label: "Total" },
+        { key: "itemsCount", label: "Items" },
+      ]),
     );
   });
 });

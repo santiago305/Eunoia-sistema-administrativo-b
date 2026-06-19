@@ -1,7 +1,8 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Inject, Param, ParseUUIDPipe, Patch, Post, Query, Res, UseGuards } from "@nestjs/common";
+import { Response } from "express";
   import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
   import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
-  import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
+  import { RequireAnyPermissionGroups, RequireDynamicPermissionGroups } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
   import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
   import { CreateProductCatalogProduct } from "src/modules/product-catalog/application/usecases/create-product.usecase";
   import { GetProductCatalogProduct } from "src/modules/product-catalog/application/usecases/get-product.usecase";
@@ -19,6 +20,22 @@ import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query
   import { HttpCreateProductSearchMetricDto } from "../dtos/http-product-search-metric-create.dto";
   import { sanitizeProductCatalogProductSearchSnapshot } from "src/modules/product-catalog/application/support/product-search.utils";
   import { ProductCatalogProductType } from "src/modules/product-catalog/domain/value-objects/product-type";
+  import { productCatalogPermissionGroupsFromRequest } from "./catalog-permission-groups";
+  import { LISTING_SEARCH_STORAGE, ListingSearchStorageRepository } from "src/shared/listing-search/domain/listing-search.repository";
+  import { XlsxBuilderService } from "src/shared/application/services/xlsx-builder.service";
+
+const PRODUCT_EXPORT_LABELS: Record<string, string> = {
+  name: "Nombre",
+  description: "Descripcion",
+  brand: "Marca",
+  skuCount: "Variantes",
+  inventoryTotal: "Stock",
+  baseUnitName: "Unidad",
+  baseUnitCode: "Codigo unidad",
+  isActive: "Activo",
+  createdAt: "Creado",
+  updatedAt: "Actualizado",
+};
 
   @Controller("products")
   @UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
@@ -32,15 +49,17 @@ import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query
       private readonly getSearchState: GetProductCatalogProductSearchStateUsecase,
       private readonly saveSearchMetric: SaveProductCatalogProductSearchMetricUsecase,
       private readonly deleteSearchMetric: DeleteProductCatalogProductSearchMetricUsecase,
+      @Inject(LISTING_SEARCH_STORAGE)
+      private readonly listingSearchStorage: ListingSearchStorageRepository,
     ) {}
 
-    @RequirePermissions("catalog.manage")
+    @RequireDynamicPermissionGroups(productCatalogPermissionGroupsFromRequest("create", "catalog.manage"))
     @Post()
     create(@Body() dto: CreateProductCatalogProductDto) {
       return this.createProduct.execute(dto);
     }
 
-    @RequirePermissions("catalog.read")
+    @RequireDynamicPermissionGroups(productCatalogPermissionGroupsFromRequest("view", "catalog.read"))
     @Get()
     list(@Query() query: ListProductCatalogProductsDto, @CurrentUser() user: { id: string }) {
       return this.listProducts.execute({
@@ -54,13 +73,13 @@ import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query
       });
     }
 
-    @RequirePermissions("catalog.read")
+    @RequireDynamicPermissionGroups(productCatalogPermissionGroupsFromRequest("view", "catalog.read"))
     @Get("search-state")
     getSearchStateForUser(@CurrentUser() user: { id: string }, @Query("type") type?: ProductCatalogProductType) {
       return this.getSearchState.execute(user.id, type);
     }
 
-    @RequirePermissions("catalog.read")
+    @RequireDynamicPermissionGroups(productCatalogPermissionGroupsFromRequest("view", "catalog.read"))
     @Post("search-metrics")
     saveMetric(
       @Body() dto: HttpCreateProductSearchMetricDto,
@@ -78,7 +97,7 @@ import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query
       });
     }
 
-    @RequirePermissions("catalog.read")
+    @RequireDynamicPermissionGroups(productCatalogPermissionGroupsFromRequest("view", "catalog.read"))
     @Delete("search-metrics/:metricId")
     deleteMetric(
       @Param("metricId", ParseUUIDPipe) metricId: string,
@@ -88,19 +107,89 @@ import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query
       return this.deleteSearchMetric.execute(user.id, metricId, type);
     }
 
-    @RequirePermissions("catalog.read")
+    @RequireDynamicPermissionGroups(productCatalogPermissionGroupsFromRequest("export", "catalog.export"))
+    @Get("export-columns")
+    async listExportColumns(@Query() query: ListProductCatalogProductsDto, @CurrentUser() user: { id: string }) {
+      const data = await this.list(query, user);
+      const rows = this.toExportRows(data?.items);
+      return this.buildExportColumnsFromFirstRow(rows[0] ?? {}, PRODUCT_EXPORT_LABELS);
+    }
+
+    @RequireDynamicPermissionGroups(productCatalogPermissionGroupsFromRequest("export", "catalog.export"))
+    @Get("export-presets")
+    getExportPresets(@CurrentUser() user: { id: string }, @Query("type") type?: ProductCatalogProductType) {
+      return this.listingSearchStorage.listState({
+        userId: user.id,
+        tableKey: `products:export:${type ?? "ALL"}`,
+      }).then((state) => state.metrics);
+    }
+
+    @RequireDynamicPermissionGroups(productCatalogPermissionGroupsFromRequest("export", "catalog.export"))
+    @Post("export-presets")
+    saveExportPreset(
+      @CurrentUser() user: { id: string },
+      @Body() body: { name: string; type?: ProductCatalogProductType; columns: Array<{ key: string; label: string }> },
+    ) {
+      return this.listingSearchStorage.createMetric({
+        userId: user.id,
+        tableKey: `products:export:${body.type ?? "ALL"}`,
+        name: body.name,
+        snapshot: { q: "", filters: [], ...(body as any) } as any,
+      });
+    }
+
+    @RequireDynamicPermissionGroups(productCatalogPermissionGroupsFromRequest("export", "catalog.export"))
+    @Delete("export-presets/:metricId")
+    deleteExportPreset(
+      @CurrentUser() user: { id: string },
+      @Param("metricId", ParseUUIDPipe) metricId: string,
+      @Query("type") type?: ProductCatalogProductType,
+    ) {
+      return this.listingSearchStorage.deleteMetric({
+        userId: user.id,
+        tableKey: `products:export:${type ?? "ALL"}`,
+        metricId,
+      });
+    }
+
+    @RequireDynamicPermissionGroups(productCatalogPermissionGroupsFromRequest("export", "catalog.export"))
+    @Post("export-excel")
+    async exportExcel(
+      @Body() body: ListProductCatalogProductsDto & { columns: Array<{ key: string; label: string }> },
+      @CurrentUser() user: { id: string },
+      @Res() res: Response,
+    ) {
+      const payload = await this.list(body, user);
+      const rows = this.toExportRows(payload?.items);
+      const columns = (body.columns?.length
+        ? body.columns
+        : this.buildExportColumnsFromFirstRow(rows[0] ?? {}, PRODUCT_EXPORT_LABELS))
+        .map((column) => ({ key: column.key, header: column.label }));
+      const sheetName = body.type === ProductCatalogProductType.MATERIAL ? "Materia prima" : "Productos";
+      const fileNamePrefix = body.type === ProductCatalogProductType.MATERIAL ? "materia-prima" : "productos";
+      const buffer = await new XlsxBuilderService().build({
+        sheetName,
+        columns,
+        rows,
+      });
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader("Content-Disposition", `attachment; filename="${fileNamePrefix}-${new Date().toISOString().slice(0, 10)}.xlsx"`);
+      return res.status(200).send(buffer);
+    }
+
+    @RequireAnyPermissionGroups(["products.view_detail", "materials.view_detail", "catalog.read"])
     @Get(":id")
     getById(@Param("id", ParseUUIDPipe) id: string) {
       return this.getProduct.execute(id);
     }
 
-    @RequirePermissions("catalog.read")
+    @RequireAnyPermissionGroups(["products.view_detail", "materials.view_detail", "catalog.read"])
     @Get(":id/detail")
     getDetail(@Param("id", ParseUUIDPipe) id: string, @Query("warehouseId") warehouseId?: string) {
       return this.getProductDetail.execute(id, warehouseId);
     }
 
-    @RequirePermissions("catalog.manage")
+    @RequireAnyPermissionGroups(["products.update", "materials.update", "catalog.manage"])
     @Patch(":id")
     update(@Param("id", ParseUUIDPipe) id: string, @Body() dto: UpdateProductCatalogProductDto) {
       return this.updateProduct.execute(id, dto);
@@ -114,5 +203,28 @@ import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query
       } catch {
         return undefined;
       }
+    }
+
+    private toExportRows(items: unknown): Record<string, unknown>[] {
+      if (!Array.isArray(items)) return [];
+      return items.map((item: any) => ({
+        name: item?.name ?? "",
+        description: item?.description ?? "",
+        brand: item?.brand ?? "",
+        skuCount: item?.skuCount ?? 0,
+        inventoryTotal: item?.inventoryTotal ?? 0,
+        baseUnitName: item?.baseUnitName ?? item?.baseUnit?.name ?? item?.baseUnit ?? "",
+        baseUnitCode: item?.baseUnitCode ?? item?.baseUnit?.code ?? "",
+        isActive: item?.isActive ? "Activo" : "Inactivo",
+        createdAt: item?.createdAt ?? "",
+        updatedAt: item?.updatedAt ?? "",
+      }));
+    }
+
+    private buildExportColumnsFromFirstRow(row: Record<string, unknown>, labels: Record<string, string>) {
+      return Object.keys(row).map((key) => ({
+        key,
+        label: labels[key] ?? key,
+      }));
     }
   }

@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
 import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
-import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
+import { RequireAnyPermissionGroups } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
 import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreateProductCatalogRecipe } from "src/modules/product-catalog/application/usecases/create-recipe.usecase";
 import { DeleteProductCatalogRecipeItem } from "src/modules/product-catalog/application/usecases/delete-recipe-item.usecase";
@@ -20,25 +20,25 @@ export class ProductCatalogRecipeController {
     private readonly deleteRecipeItem: DeleteProductCatalogRecipeItem,
   ) {}
 
-  @RequirePermissions("catalog.read")
+  @RequireAnyPermissionGroups(["products.view_detail", "catalog.read"])
   @Get()
   get(@Param("id", ParseUUIDPipe) skuId: string) {
     return this.getRecipe.execute(skuId);
   }
 
-  @RequirePermissions("catalog.manage")
+  @RequireAnyPermissionGroups(["products.recipes.manage", "catalog.manage"])
   @Post()
   create(@Param("id", ParseUUIDPipe) skuId: string, @Body() dto: CreateProductCatalogRecipeDto) {
     return this.createRecipe.execute({ skuId, ...dto });
   }
 
-  @RequirePermissions("catalog.manage")
+  @RequireAnyPermissionGroups(["products.recipes.manage", "catalog.manage"])
   @Patch()
   update(@Param("id", ParseUUIDPipe) skuId: string, @Body() dto: UpdateProductCatalogRecipeDto) {
     return this.updateRecipe.execute({ skuId, ...dto });
   }
 
-  @RequirePermissions("catalog.manage")
+  @RequireAnyPermissionGroups(["products.recipes.manage", "catalog.manage"])
   @Delete("items/:itemId")
   deleteItem(
     @Param("id", ParseUUIDPipe) skuId: string,
