@@ -92,6 +92,8 @@ export class CreateFromImportPreviewUseCase {
       internalNote: string | null;
       total: number;
       advance: number;
+      deliveryCost?:number;
+      couponCode: string | null;
     };
     clientId: string;
     sourceId: string;
@@ -103,7 +105,7 @@ export class CreateFromImportPreviewUseCase {
 
     const total = Number(input.row.total ?? 0);
     const advance = Number(input.row.advance ?? 0);
-    const deliveryCost = 0;
+    const deliveryCost = Number(input.row.deliveryCost ?? 0);
     const subTotal = Math.max(total - deliveryCost, 0);
 
     const { serie, correlative } = await this.numbering.reserveNext(input.tx);
@@ -137,7 +139,10 @@ export class CreateFromImportPreviewUseCase {
 
     const saleOrderId = this.getEntityId((saleOrder as any).saleOrderId ?? (saleOrder as any).id);
 
-    const itemDescription = input.skus.map((item) => `${item.skuName} x ${item.quantity}`).join(", ");
+    const itemDescription =
+    input.row.couponCode ? input.row.couponCode :
+    input.skus.map((item) => `${item.skuName} x ${item.quantity}`).join(", ");
+    
     const items = await this.saleOrderItemRepo.bulkCreate(
       [
         {

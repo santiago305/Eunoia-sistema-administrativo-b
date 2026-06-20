@@ -17,18 +17,18 @@ export class HttpSaleOrderImportPreviewRowDto {
   @IsString()
   workflowName?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   departmentName: string;
-
+  
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   provinceName: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   districtName: string;
-
+  
   @IsString()
   @IsNotEmpty()
   recipientName: string;
@@ -40,7 +40,7 @@ export class HttpSaleOrderImportPreviewRowDto {
   @IsOptional()
   @IsString()
   deliveryNote?: string;
-
+  
   @IsString()
   @IsNotEmpty()
   phone: string;
@@ -49,8 +49,8 @@ export class HttpSaleOrderImportPreviewRowDto {
   @IsString()
   couponCode?: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   productCodes: string;
 
   @IsOptional()
@@ -61,12 +61,12 @@ export class HttpSaleOrderImportPreviewRowDto {
   @IsNumber()
   @Min(0)
   total: number;
-
+  
   @IsOptional()
   @IsNumber()
   @Min(0)
   advance?: number;
-
+  
   @IsOptional()
   @IsNumber()
   @Min(0)
@@ -75,9 +75,14 @@ export class HttpSaleOrderImportPreviewRowDto {
   @IsOptional()
   @IsString()
   internalNote?: string;
-
+  
   @IsOptional()
   @IsString()
   confirmedBy?: string;
+  
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  deliveryCost: number;
 }
 

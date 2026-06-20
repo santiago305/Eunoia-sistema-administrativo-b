@@ -26,14 +26,13 @@ export class HttpUpdateClientDto {
   @IsEnum(ClientDocType)
   docType?: ClientDocType;
 
-  @ValidateIf((o: HttpUpdateClientDto) => o.docType !== undefined && o.docType !== ClientDocType.NONE)
+  @ValidateIf((o: HttpUpdateClientDto) => o.docType !== ClientDocType.NONE)
   @IsString()
   @IsNotEmpty()
   docNumber?: string;
 
-  @ValidateIf((o: HttpUpdateClientDto) => o.docType === ClientDocType.NONE)
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   reference?: string;
 
   @IsOptional()

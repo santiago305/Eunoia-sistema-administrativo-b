@@ -18,6 +18,7 @@ export type SaleOrderImportPreviewCleanRow = {
   codAmount?: unknown;
   internalNote?: unknown;
   confirmedBy?: unknown;
+  deliveryCost?:unknown;
 };
 
 export type SaleOrderImportPreviewNormalizedSku = {
