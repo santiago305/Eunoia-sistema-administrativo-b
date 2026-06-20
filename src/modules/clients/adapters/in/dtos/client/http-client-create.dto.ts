@@ -29,9 +29,8 @@ export class HttpCreateClientDto {
   @IsNotEmpty()
   docNumber?: string;
 
-  @ValidateIf((o: HttpCreateClientDto) => o.docType === ClientDocType.NONE)
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   reference?: string;
 
   @IsOptional()

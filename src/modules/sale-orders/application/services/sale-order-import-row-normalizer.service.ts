@@ -50,6 +50,7 @@ export type NormalizedSaleOrderImportPreviewRow = {
     districtId: string;
   } | null;
   parsedSkus: ReturnType<typeof parseProductCodes>;
+  deliveryCost?: number;
 };
 
 export type RowNormalizationResult =
@@ -101,6 +102,7 @@ export class SaleOrderImportRowNormalizerService {
     const internalNote = this.toText(cleanRow.internalNote) || null;
     const confirmedBy = this.toText(cleanRow.confirmedBy) || null;
     const productName = this.toText(cleanRow.productName) || null;
+    const deliveryCost = this.toNumber(cleanRow.deliveryCost) || 0;
 
     const ubigeo = await this.resolveUbigeo(departmentName, provinceName, districtName);
     const parsedDocument = this.parseDocumentFromDeliveryNote(deliveryNote);
@@ -145,6 +147,7 @@ export class SaleOrderImportRowNormalizerService {
           ? { departmentId: ubigeo.department.id, provinceId: ubigeo.province.id, districtId: ubigeo.district.id }
           : null,
         parsedSkus,
+        deliveryCost
       },
     };
   }

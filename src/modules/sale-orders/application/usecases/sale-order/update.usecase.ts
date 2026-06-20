@@ -50,6 +50,8 @@ type UpdateSaleOrderInput = {
   }>;
 };
 
+type StockLifecycleStatus = "NONE" | "RESERVED" | "REVERTED" | "CONSUMED";
+
 @Injectable()
 export class UpdateSaleOrderUsecase {
   constructor(
@@ -97,12 +99,12 @@ export class UpdateSaleOrderUsecase {
       .join("|");
   }
 
-  private async hasActiveStockReservation(
+  private async resolveStockLifecycleStatus(
     saleOrderId: string,
     tx: TransactionContext,
-  ): Promise<boolean> {
+  ): Promise<StockLifecycleStatus> {
     const history = await this.historyRepo.listBySaleOrderId(saleOrderId, tx);
-    let hasActiveReservation = false;
+    let status: StockLifecycleStatus = "NONE";
     for (const item of history) {
       if (!item.transitionId) continue;
       const detailed = await this.transitionRepo.findDetailedById(item.transitionId, tx);
@@ -111,17 +113,15 @@ export class UpdateSaleOrderUsecase {
       );
       for (const action of actions) {
         if (action.type === ACTIONS.RESERVE_STOCK) {
-          hasActiveReservation = true;
-        }
-        if (
-          action.type === ACTIONS.REVERT_STOCK ||
-          action.type === ACTIONS.CONSUME_STOCK
-        ) {
-          hasActiveReservation = false;
+          status = "RESERVED";
+        } else if (action.type === ACTIONS.REVERT_STOCK) {
+          status = "REVERTED";
+        } else if (action.type === ACTIONS.CONSUME_STOCK) {
+          status = "CONSUMED";
         }
       }
     }
-    return hasActiveReservation;
+    return status;
   }
 
   async execute(input: UpdateSaleOrderInput) {
@@ -142,7 +142,7 @@ export class UpdateSaleOrderUsecase {
 
         if (orderHasWorkflow && selectedWorkflowId !== order.workflowId) {
           throw new BadRequestException(
-            "El pedido ya tiene workflow asignado. Cambia el estado desde las transiciones del workflow.",
+            "El pedido ya tiene flujo asignado. No debe cambiarlo",
           );
         }
 
@@ -153,7 +153,7 @@ export class UpdateSaleOrderUsecase {
           ) ?? [];
 
           if (!resolved?.workflow.isActive || initialStates.length !== 1) {
-            throw new BadRequestException("Workflow inválido para asignar al pedido");
+            throw new BadRequestException("flujo inválido para asignar al pedido");
           }
 
           const initialState = initialStates[0];
@@ -264,11 +264,22 @@ export class UpdateSaleOrderUsecase {
         componentPlansByItemIndex.push(plans);
       }
 
-      const hasActiveReservation = await this.hasActiveStockReservation(
+      const stockLifecycleStatus = await this.resolveStockLifecycleStatus(
         input.saleOrderId,
         tx,
       );
-      if (hasActiveReservation) {
+      const warehouseChanged = input.warehouseId !== order.warehouseId;
+      if (warehouseChanged && stockLifecycleStatus === "RESERVED") {
+        throw new BadRequestException(
+          "No se puede cambiar el almacén porque el pedido tiene stock reservado.",
+        );
+      }
+      if (warehouseChanged && stockLifecycleStatus === "CONSUMED") {
+        throw new BadRequestException(
+          "No se puede cambiar el almacén porque el pedido ya consumió stock.",
+        );
+      }
+      if (stockLifecycleStatus === "RESERVED") {
         const existingComponents = await this.componentRepo.listBySaleOrderItemIds(
           existingItemIds,
           tx,
