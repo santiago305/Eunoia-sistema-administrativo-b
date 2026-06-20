@@ -48,15 +48,11 @@ export class Client {
       throw new InvalidClientError("El nombre completo es invalido");
     }
 
-    if (params.docType === ClientDocType.NONE) {
-      if (!reference) {
-        throw new InvalidClientError("La referencia es invalida");
-      }
-    } else {
+    if (params.docType != ClientDocType.NONE) {
       if (!docNumber) {
         throw new InvalidClientError("El numero de documento es invalido");
       }
-    }
+    } 
 
     return new Client(
       params.clientId ?? new ClientId(randomUUID()),

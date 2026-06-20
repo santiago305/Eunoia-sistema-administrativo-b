@@ -1,6 +1,6 @@
 export const SALE_ORDER_FIELD_OPTIONS = [
   { label: "Cliente tiene DNI", value: "client.docNumber", reason: "DNI requerido" },
-  { label: "Cliente tiene direccion", value: "client.address", reason: "Direccion requerida" },
+  { label: "Cliente tiene direccion", value: "client.address", reason: "Dirección de cliente requerida" },
   { label: "Cliente tiene departamento", value: "client.deparmentId",reason:"Departamento requerido" },
   { label: "Cliente tiene provincia", value: "client.provinceId",reason:"Provincia requerido"},
   { label: "Cliente tiene distrito", value: "client.districtId",reason:"Distrito requerido" },
