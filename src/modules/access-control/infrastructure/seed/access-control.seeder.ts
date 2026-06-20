@@ -6,6 +6,13 @@ import { Permission } from '../../adapters/out/persistence/typeorm/entities/perm
 import { RolePermission } from '../../adapters/out/persistence/typeorm/entities/role-permission.entity';
 import { PERMISSIONS_SEED, ROLE_PERMISSION_SEED } from '../../application/constants/permissions-seed';
 
+const DEPRECATED_PERMISSION_CODES = [
+  'products.skus.create',
+  'products.skus.update',
+  'materials.skus.create',
+  'materials.skus.update',
+];
+
 @Injectable()
 export class AccessControlSeeder implements OnModuleInit {
   private readonly logger = new Logger(AccessControlSeeder.name);
@@ -115,6 +122,13 @@ export class AccessControlSeeder implements OnModuleInit {
   }
 
   private async seedPermissions() {
+    await this.permissionRepository
+      .createQueryBuilder()
+      .update(Permission)
+      .set({ isActive: false })
+      .where('code IN (:...codes)', { codes: DEPRECATED_PERMISSION_CODES })
+      .execute();
+
     for (const permissionSeed of PERMISSIONS_SEED) {
       const exists = await this.permissionRepository.findOne({
         where: { code: permissionSeed.code },

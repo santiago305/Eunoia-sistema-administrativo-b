@@ -33,12 +33,12 @@ describe("ProductCatalogSkuController permissions", () => {
     getSku.execute.mockResolvedValue({ sku: { id: "sku-1", productId: "product-1" } });
   });
 
-  it("requires the exact product SKU create permission before creating a SKU", async () => {
+  it("requires the product create permission before creating a SKU", async () => {
     accessControlService.userHasAllPermissions.mockResolvedValueOnce(true);
 
     await controller.create("11111111-1111-4111-8111-111111111111", { name: "SKU A" } as any, { id: "user-1" });
 
-    expect(accessControlService.userHasAllPermissions).toHaveBeenCalledWith("user-1", ["products.skus.create"]);
+    expect(accessControlService.userHasAllPermissions).toHaveBeenCalledWith("user-1", ["products.create"]);
     expect(createSku.execute).toHaveBeenCalledWith(
       expect.objectContaining({
         productId: "11111111-1111-4111-8111-111111111111",
@@ -47,7 +47,7 @@ describe("ProductCatalogSkuController permissions", () => {
     );
   });
 
-  it("rejects SKU creation when the exact material SKU create permission is denied", async () => {
+  it("rejects SKU creation when the material create permission is denied", async () => {
     getProduct.execute.mockResolvedValueOnce({ product: { id: "material-1", type: ProductCatalogProductType.MATERIAL } });
     accessControlService.userHasAllPermissions.mockResolvedValueOnce(false);
 
@@ -55,7 +55,7 @@ describe("ProductCatalogSkuController permissions", () => {
       controller.create("22222222-2222-4222-8222-222222222222", { name: "SKU materia" } as any, { id: "user-1" }),
     ).rejects.toBeInstanceOf(ForbiddenException);
 
-    expect(accessControlService.userHasAllPermissions).toHaveBeenCalledWith("user-1", ["materials.skus.create"]);
+    expect(accessControlService.userHasAllPermissions).toHaveBeenCalledWith("user-1", ["materials.create"]);
     expect(createSku.execute).not.toHaveBeenCalled();
   });
 
@@ -67,7 +67,7 @@ describe("ProductCatalogSkuController permissions", () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
 
     expect(getSku.execute).toHaveBeenCalledWith("33333333-3333-4333-8333-333333333333");
-    expect(accessControlService.userHasAllPermissions).toHaveBeenCalledWith("user-1", ["products.skus.update"]);
+    expect(accessControlService.userHasAllPermissions).toHaveBeenCalledWith("user-1", ["products.update"]);
     expect(updateSku.execute).not.toHaveBeenCalled();
   });
 });

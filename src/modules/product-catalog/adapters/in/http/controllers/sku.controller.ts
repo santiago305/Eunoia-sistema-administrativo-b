@@ -37,14 +37,14 @@ export class ProductCatalogSkuController {
     private readonly accessControlService: AccessControlService,
   ) {}
 
-  @RequireAnyPermissionGroups(["products.skus.create", "materials.skus.create"])
+  @RequireAnyPermissionGroups(["products.create", "materials.create"])
   @Post("products/:id/skus")
   async create(
     @Param("id", ParseUUIDPipe) productId: string,
     @Body() dto: CreateProductCatalogSkuDto,
     @CurrentUser() user: { id: string },
   ) {
-    await this.ensureProductPermission(user.id, productId, "skus.create");
+    await this.ensureProductPermission(user.id, productId, "create");
     return this.createSku.execute({ productId, ...dto });
   }
 
@@ -120,7 +120,7 @@ export class ProductCatalogSkuController {
   }
   
 
-  @RequireAnyPermissionGroups(["products.skus.update", "materials.skus.update"])
+  @RequireAnyPermissionGroups(["products.update", "materials.update"])
   @Patch("skus/:id")
   async update(
     @Param("id", ParseUUIDPipe) id: string,
@@ -128,11 +128,11 @@ export class ProductCatalogSkuController {
     @CurrentUser() user: { id: string },
   ) {
     const sku = await this.getSku.execute(id);
-    await this.ensureProductPermission(user.id, sku.sku.productId, "skus.update");
+    await this.ensureProductPermission(user.id, sku.sku.productId, "update");
     return this.updateSku.execute(id, dto);
   }
 
-  private async ensureProductPermission(userId: string, productId: string, action: "skus.create" | "skus.update") {
+  private async ensureProductPermission(userId: string, productId: string, action: "create" | "update") {
     const { product } = await this.getProduct.execute(productId);
     const prefix = product.type === ProductCatalogProductType.MATERIAL ? "materials" : "products";
     const allowed = await this.accessControlService.userHasAllPermissions(userId, [`${prefix}.${action}`]);

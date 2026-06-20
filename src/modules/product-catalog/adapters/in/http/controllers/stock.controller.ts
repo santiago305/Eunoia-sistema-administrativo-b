@@ -136,7 +136,7 @@ export class ProductCatalogStockController {
     private readonly documentRepo: ProductCatalogInventoryDocumentRepository,
   ) {}
 
-  @RequireAnyPermissionGroups(["products.skus.create", "materials.skus.create"])
+  @RequireAnyPermissionGroups(["products.create", "materials.create"])
   @Post("skus/:id/stock-item")
   async createForSku(
     @Param("id", ParseUUIDPipe) skuId: string,
@@ -144,7 +144,7 @@ export class ProductCatalogStockController {
     @CurrentUser() user: { id: string },
   ) {
     const sku = await this.getSku.execute(skuId);
-    await this.ensureProductPermission(user.id, sku.sku.productId, "skus.create");
+    await this.ensureProductPermission(user.id, sku.sku.productId, "create");
     return this.createStockItem.execute({ skuId, ...dto });
   }
 
@@ -205,7 +205,7 @@ export class ProductCatalogStockController {
     );
   }
 
-  private async ensureProductPermission(userId: string, productId: string, action: "skus.create") {
+  private async ensureProductPermission(userId: string, productId: string, action: "create") {
     const { product } = await this.getProduct.execute(productId);
     const prefix = product.type === ProductCatalogProductType.MATERIAL ? "materials" : "products";
     const allowed = await this.accessControlService.userHasAllPermissions(userId, [`${prefix}.${action}`]);

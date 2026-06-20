@@ -57,7 +57,7 @@ describe("ProductCatalogStockController permissions", () => {
     });
   });
 
-  it("requires the exact product SKU create permission before creating stock items", async () => {
+  it("requires the product create permission before creating stock items", async () => {
     accessControlService.userHasAllPermissions.mockResolvedValueOnce(true);
 
     await controller.createForSku(
@@ -66,7 +66,7 @@ describe("ProductCatalogStockController permissions", () => {
       { id: "user-1" },
     );
 
-    expect(accessControlService.userHasAllPermissions).toHaveBeenCalledWith("user-1", ["products.skus.create"]);
+    expect(accessControlService.userHasAllPermissions).toHaveBeenCalledWith("user-1", ["products.create"]);
     expect(createStockItem.execute).toHaveBeenCalledWith(
       expect.objectContaining({
         skuId: "11111111-1111-4111-8111-111111111111",
@@ -74,7 +74,7 @@ describe("ProductCatalogStockController permissions", () => {
     );
   });
 
-  it("rejects stock item creation when the exact material SKU create permission is denied", async () => {
+  it("rejects stock item creation when the material create permission is denied", async () => {
     getProduct.execute.mockResolvedValueOnce({ product: { id: "material-1", type: ProductCatalogProductType.MATERIAL } });
     accessControlService.userHasAllPermissions.mockResolvedValueOnce(false);
 
@@ -82,7 +82,7 @@ describe("ProductCatalogStockController permissions", () => {
       controller.createForSku("22222222-2222-4222-8222-222222222222", { initialQuantity: 0 } as any, { id: "user-1" }),
     ).rejects.toBeInstanceOf(ForbiddenException);
 
-    expect(accessControlService.userHasAllPermissions).toHaveBeenCalledWith("user-1", ["materials.skus.create"]);
+    expect(accessControlService.userHasAllPermissions).toHaveBeenCalledWith("user-1", ["materials.create"]);
     expect(createStockItem.execute).not.toHaveBeenCalled();
   });
 

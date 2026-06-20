@@ -31,6 +31,10 @@ describe("permissions seed", () => {
     expect(codes.has("page.materials.view")).toBe(true);
     expect(codes.has("products.create")).toBe(true);
     expect(codes.has("materials.create")).toBe(true);
+    expect(codes.has("products.skus.create")).toBe(false);
+    expect(codes.has("products.skus.update")).toBe(false);
+    expect(codes.has("materials.skus.create")).toBe(false);
+    expect(codes.has("materials.skus.update")).toBe(false);
     expect(codes.has("transfers.products.process")).toBe(true);
     expect(codes.has("adjustments.materials.process")).toBe(true);
     expect(codes.has("inventory-alerts.receive_mail")).toBe(true);
