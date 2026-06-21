@@ -48,8 +48,8 @@ export class ScheduleDeliveryWindowCondition implements Condition {
     }
 
     const daysBefore = (deliveryDate - scheduleDate) / DAY_MS;
-    const passed = daysBefore >= this.minDaysBefore && daysBefore <= this.maxDaysBefore;
-
+    // const passed = daysBefore >= this.minDaysBefore && daysBefore <= this.maxDaysBefore;
+    const passed = daysBefore <= this.maxDaysBefore;
     return passed
       ? { passed: true, type: CONDITIONS.SCHEDULE_DELIVERY_WINDOW }
       : {

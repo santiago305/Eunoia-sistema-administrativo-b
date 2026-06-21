@@ -87,8 +87,6 @@ export class WorkflowsController {
       { type: CONDITIONS.IS_PAID, configSchema: {} },
       { type: CONDITIONS.HAS_STOCK, configSchema: {} },
       { type: CONDITIONS.NOT_CANCELLED, configSchema: {} },
-      { type: CONDITIONS.DATE_AFTER, configSchema: { date: { type: "date", required: true } } },
-      { type: CONDITIONS.DATE_BEFORE, configSchema: { date: { type: "date", required: true } } },
       { type: CONDITIONS.INVOICE_SENT, configSchema: {} },
       {
         type: CONDITIONS.SCHEDULE_DELIVERY_WINDOW,
