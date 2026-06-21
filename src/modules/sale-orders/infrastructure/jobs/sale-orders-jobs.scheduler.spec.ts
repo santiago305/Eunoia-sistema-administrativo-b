@@ -1,8 +1,11 @@
 import { SaleOrdersJobsScheduler } from "./sale-orders-jobs.scheduler";
+import { envs } from "src/infrastructure/config/envs";
 
 describe("SaleOrdersJobsScheduler", () => {
   beforeEach(() => {
     jest.useFakeTimers();
+    envs.saleOrderJobs.automaticWorkflowIntervalMs = 60_000;
+    envs.saleOrderJobs.automaticWorkflowRunOnStart = false;
   });
 
   afterEach(() => {
@@ -26,6 +29,9 @@ describe("SaleOrdersJobsScheduler", () => {
     );
 
     scheduler.onModuleInit();
+    expect(automaticWorkflowJob.run).not.toHaveBeenCalled();
+
+    jest.advanceTimersByTime(60_000);
     await Promise.resolve();
     await Promise.resolve();
 
@@ -53,6 +59,7 @@ describe("SaleOrdersJobsScheduler", () => {
     );
 
     scheduler.onModuleInit();
+    jest.advanceTimersByTime(60_000);
     await Promise.resolve();
     await Promise.resolve();
 

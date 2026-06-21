@@ -10,8 +10,11 @@ describe('TypeormUserReadRepository', () => {
     const manageableRoleRepository = manageableRoleOverrides ?? {
       createQueryBuilder: jest.fn().mockReturnValue({
         innerJoin: jest.fn().mockReturnThis(),
+        leftJoin: jest.fn().mockReturnThis(),
         select: jest.fn().mockReturnThis(),
         where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        orderBy: jest.fn().mockReturnThis(),
         getRawMany: jest.fn().mockResolvedValue([]),
       }),
     };

@@ -10,6 +10,7 @@ import { LISTING_SEARCH_STORAGE } from "src/shared/listing-search/domain/listing
 import request from "supertest";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
 import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
+import { AccessControlService } from "src/modules/access-control/application/services/access-control.service";
 import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreateProductionOrder } from "src/modules/production/application/usecases/production-order/create.usecase";
 import { ListProductionOrders } from "src/modules/production/application/usecases/production-order/list-orders.usecase";
@@ -81,6 +82,7 @@ describe("ProductionOrdersController", () => {
         { provide: FILE_STORAGE, useValue: { save: jest.fn(), delete: jest.fn() } },
         { provide: ExportProductionOrdersExcelUsecase, useValue: { execute: jest.fn(), getAvailableColumns: jest.fn().mockReturnValue([]) } },
         { provide: LISTING_SEARCH_STORAGE, useValue: { listState: jest.fn().mockResolvedValue({ metrics: [] }), createMetric: jest.fn(), deleteMetric: jest.fn() } },
+        { provide: AccessControlService, useValue: { getEffectivePermissions: jest.fn().mockResolvedValue(["*"]) } },
       ],
     })
       .overrideGuard(JwtAuthGuard)

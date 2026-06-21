@@ -22,6 +22,8 @@ interface EnvVars {
     REDIS_PASSWORD?: string;
     REDIS_DB?: number;
     REDIS_TTL_MS?: number;
+    SALE_ORDER_AUTOMATIC_WORKFLOW_INTERVAL_MS?: number;
+    SALE_ORDER_AUTOMATIC_WORKFLOW_RUN_ON_START?: boolean;
     MAIL_DEFAULT_USER_STORAGE_GB?: number;
     MAIL_ATTACHMENTS_DIR?: string;
     MAIL_ATTACHMENTS_DELETED_DIR?: string;
@@ -61,6 +63,8 @@ const envsSchema = joi.object({
     REDIS_PASSWORD: joi.string().allow('').optional(),
     REDIS_DB: joi.number().optional(),
     REDIS_TTL_MS: joi.number().optional(),
+    SALE_ORDER_AUTOMATIC_WORKFLOW_INTERVAL_MS: joi.number().min(10_000).optional(),
+    SALE_ORDER_AUTOMATIC_WORKFLOW_RUN_ON_START: joi.boolean().optional(),
     MAIL_DEFAULT_USER_STORAGE_GB: joi.number().min(1).max(5).optional(),
     MAIL_ATTACHMENTS_DIR: joi.string().optional(),
     MAIL_ATTACHMENTS_DELETED_DIR: joi.string().optional(),
@@ -122,6 +126,10 @@ export const envs = {
         password: envsVars.REDIS_PASSWORD,
         db: envsVars.REDIS_DB ?? 0,
         ttlMs: envsVars.REDIS_TTL_MS ?? 60_000,
+    },
+    saleOrderJobs: {
+        automaticWorkflowIntervalMs: envsVars.SALE_ORDER_AUTOMATIC_WORKFLOW_INTERVAL_MS ?? 60_000,
+        automaticWorkflowRunOnStart: envsVars.SALE_ORDER_AUTOMATIC_WORKFLOW_RUN_ON_START ?? false,
     },
     mail: {
         defaultUserStorageGb: envsVars.MAIL_DEFAULT_USER_STORAGE_GB ?? 1,

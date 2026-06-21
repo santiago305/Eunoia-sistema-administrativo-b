@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/commo
 import { UpdateSaleOrdersDeliveryDateTodayJob } from "src/modules/sale-orders/application/jobs/update-sale-orders-deliverydate-today.job";
 import { NotificationRealtimeService } from "src/modules/mail/infrastructure/realtime/notification-realtime.service";
 import { RunAutomaticWorkflowTransitionsJob } from "src/modules/workflow/application/jobs/run-automatic-workflow-transitions.job";
+import { envs } from "src/infrastructure/config/envs";
 
 @Injectable()
 export class SaleOrdersJobsScheduler implements OnModuleInit, OnModuleDestroy {
@@ -41,6 +42,10 @@ export class SaleOrdersJobsScheduler implements OnModuleInit, OnModuleDestroy {
         });
       }
       return result;
+    }, {
+      everyMs: envs.saleOrderJobs.automaticWorkflowIntervalMs,
+      runOnStart: envs.saleOrderJobs.automaticWorkflowRunOnStart,
+      logEmptyResult: false,
     });
   }
 
@@ -49,7 +54,15 @@ export class SaleOrdersJobsScheduler implements OnModuleInit, OnModuleDestroy {
     this.timers.length = 0;
   }
 
-  private schedule(name: string, everyMs: number, runner: () => Promise<unknown>) {
+  private schedule(
+    name: string,
+    everyMs: number,
+    runner: () => Promise<unknown>,
+    options?: { everyMs?: number; runOnStart?: boolean; logEmptyResult?: boolean },
+  ) {
+    const intervalMs = options?.everyMs ?? everyMs;
+    const runOnStart = options?.runOnStart ?? true;
+    const logEmptyResult = options?.logEmptyResult ?? true;
     const runSafely = async () => {
       if (this.runningJobs.has(name)) {
         this.logger.debug(`${name} skipped: previous run still in progress`);
@@ -59,20 +72,30 @@ export class SaleOrdersJobsScheduler implements OnModuleInit, OnModuleDestroy {
       const startedAt = Date.now();
       try {
         const result = await runner();
-        this.logger.debug(`${name} completed in ${Date.now() - startedAt}ms result=${JSON.stringify(result)}`);
+        if (logEmptyResult || this.hasWorkResult(result)) {
+          this.logger.debug(`${name} completed in ${Date.now() - startedAt}ms result=${JSON.stringify(result)}`);
+        }
       } finally {
         this.runningJobs.delete(name);
       }
     };
 
-    void runSafely().catch((error) => {
-      this.logger.warn(`${name} initial run failed: ${(error as Error)?.message ?? "unknown"}`);
-    });
+    if (runOnStart) {
+      void runSafely().catch((error) => {
+        this.logger.warn(`${name} initial run failed: ${(error as Error)?.message ?? "unknown"}`);
+      });
+    }
     const timer = setInterval(() => {
       void runSafely().catch((error) => {
         this.logger.warn(`${name} run failed: ${(error as Error)?.message ?? "unknown"}`);
       });
-    }, everyMs);
+    }, intervalMs);
     this.timers.push(timer);
+  }
+
+  private hasWorkResult(result: unknown) {
+    if (!result || typeof result !== "object") return true;
+    const record = result as Record<string, unknown>;
+    return Number(record.found ?? 0) > 0 || Number(record.updated ?? 0) > 0 || Number(record.failed ?? 0) > 0;
   }
 }
