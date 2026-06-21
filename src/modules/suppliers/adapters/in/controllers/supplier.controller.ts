@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
 import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
-import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
+import { RequireAnyPermissionGroups, RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
 import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreateSupplierUsecase } from "src/modules/suppliers/application/usecases/supplier/create.usecase";
 import { UpdateSupplierUsecase } from "src/modules/suppliers/application/usecases/supplier/update.usecase";
@@ -34,7 +34,7 @@ export class SuppliersController {
     private readonly deleteSearchMetric: DeleteSupplierSearchMetricUsecase,
   ) {}
 
-  @RequirePermissions("suppliers.manage")
+  @RequireAnyPermissionGroups(["suppliers.create"], ["suppliers.manage"])
   @Post()
   create(@Body() dto: HttpCreateSupplierDto) {
     return this.createSupplier.execute(SupplierHttpMapper.toCreateSupplierInput(dto));
@@ -98,13 +98,13 @@ export class SuppliersController {
     return this.getSupplier.execute({ supplierId: id });
   }
 
-  @RequirePermissions("suppliers.manage")
+  @RequireAnyPermissionGroups(["suppliers.update"], ["suppliers.manage"])
   @Patch(":id")
   update(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpUpdateSupplierDto) {
     return this.updateSupplier.execute(SupplierHttpMapper.toUpdateSupplierInput(id, dto));
   }
 
-  @RequirePermissions("suppliers.manage")
+  @RequireAnyPermissionGroups(["suppliers.delete"], ["suppliers.manage"])
   @Patch(":id/active")
   setActive(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpSetSupplierActiveDto) {
     return this.setSupplierActive.execute(SupplierHttpMapper.toSetActiveInput(id, dto.isActive));

@@ -26,7 +26,7 @@ export class LocationsController {
     private readonly getLocation: GetLocationUsecase,
   ) {}
 
-  @RequirePermissions("warehouses.manage")
+  @RequirePermissions("warehouses.locations.manage")
   @Post()
   create(@Body() dto: HttpCreateLocationDto) {
     return this.createLocation.execute(WarehouseHttpMapper.toCreateLocationInput(dto));
@@ -53,13 +53,13 @@ export class LocationsController {
     return this.getLocation.execute({ locationId: new LocationId(id) });
   }
 
-  @RequirePermissions("warehouses.manage")
+  @RequirePermissions("warehouses.locations.manage")
   @Patch(":id")
   update(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpUpdateLocationDto) {
     return this.updateLocation.execute(WarehouseHttpMapper.toUpdateLocationInput(id, dto));
   }
 
-  @RequirePermissions("warehouses.manage")
+  @RequirePermissions("warehouses.locations.manage")
   @Patch(":id/active")
   setActive(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpSetLocationActiveDto) {
     return this.setLocationActive.execute(

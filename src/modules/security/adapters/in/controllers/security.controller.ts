@@ -181,7 +181,7 @@ export class SecurityController {
   }
 
   @Get('audit-export')
-  @RequirePermissions('security.export')
+  @RequirePermissions('security.read')
   async getAuditExport(
     @Query('hours') hours: string | undefined,
     @Query('reason') reason: string | undefined,
@@ -200,7 +200,7 @@ export class SecurityController {
   }
 
   @Patch('blacklist')
-  @RequirePermissions('security.blacklist.manage')
+  @RequirePermissions('security.read')
   setManualBlacklist(
     @Body() dto: ManualBanDto,
     @CurrentUser() user: { id: string; email?: string },
@@ -214,7 +214,7 @@ export class SecurityController {
   }
 
   @Patch('blacklist/remove/:ip')
-  @RequirePermissions('security.blacklist.manage')
+  @RequirePermissions('security.read')
   removeManualBlacklist(
     @Param('ip') ip: string,
     @CurrentUser() user: { id: string; email?: string },

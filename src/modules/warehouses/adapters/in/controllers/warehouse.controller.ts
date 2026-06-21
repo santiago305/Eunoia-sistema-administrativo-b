@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
 import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
-import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
+import { RequireAnyPermissionGroups, RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
 import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreateWarehouseUsecase } from "src/modules/warehouses/application/usecases/warehouse/create.usecase";
 import { GetWarehouseUsecase } from "src/modules/warehouses/application/usecases/warehouse/get-by-id.usecase";
@@ -37,7 +37,7 @@ export class WarehousesController {
     private readonly deleteSearchMetric: DeleteWarehouseSearchMetricUsecase,
   ) {}
 
-  @RequirePermissions("warehouses.manage")
+  @RequireAnyPermissionGroups(["warehouses.create"], ["warehouses.manage"])
   @Post()
   create(@Body() dto: HttpCreateWarehouseDto) {
     return this.createWarehouse.execute(WarehouseHttpMapper.toCreateWarehouseInput(dto));
@@ -105,13 +105,13 @@ export class WarehousesController {
     return this.getWarehouse.execute({ warehouseId: new WarehouseId(id) });
   }
 
-  @RequirePermissions("warehouses.manage")
+  @RequireAnyPermissionGroups(["warehouses.update"], ["warehouses.manage"])
   @Patch(":id")
   update(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpUpdateWarehouseDto) {
     return this.updateWarehouse.execute(WarehouseHttpMapper.toUpdateWarehouseInput(id, dto));
   }
 
-  @RequirePermissions("warehouses.manage")
+  @RequireAnyPermissionGroups(["warehouses.delete"], ["warehouses.manage"])
   @Patch(":id/active")
   setActive(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpSetWarehouseActiveDto) {
     return this.setWarehouseActive.execute(

@@ -6,7 +6,6 @@ import { successResponse } from 'src/shared/response-standard/response';
 import { Email } from 'src/modules/users/domain';
 import { RoleReadRepository } from 'src/modules/roles/application/ports/role-read.repository';
 import { CompanyRepository } from 'src/modules/companies/domain/ports/company.repository';
-import { envs } from 'src/infrastructure/config/envs';
 
 
 
@@ -305,34 +304,33 @@ describe('CreateUserUseCase', () => {
     );
   });
 
-  it('uses APP_COMPANY_NAME fallback when company is missing', async () => {
+  it('rejects user creation when company is missing', async () => {
     (argon2.hash as jest.Mock).mockResolvedValue('hashed');
     const createNotificationForUsers = jest.fn().mockResolvedValue([]);
-    const previousCompanyName = envs.appCompanyName;
-    (envs as { appCompanyName?: string }).appCompanyName = 'Marca Entorno';
-    try {
-      const useCase = makeUseCase({
-        roleReadRepository: {
-          findById: jest.fn().mockResolvedValue({
-            id: 'role-1',
-            description: RoleType.ADVISER,
-            deleted: false,
-            createdAt: new Date(),
-          }),
-        },
-        userRepository: {
-          existsByEmail: jest.fn().mockResolvedValue(false),
-          save: jest.fn().mockResolvedValue({ id: 'u-101' }),
-        },
-        notificationsService: {
-          createNotificationForUsers,
-        },
-        companyRepository: {
-          findSingle: jest.fn().mockResolvedValue(null),
-        },
-      });
 
-      await useCase.execute(
+    const useCase = makeUseCase({
+      roleReadRepository: {
+        findById: jest.fn().mockResolvedValue({
+          id: 'role-1',
+          description: RoleType.ADVISER,
+          deleted: false,
+          createdAt: new Date(),
+        }),
+      },
+      userRepository: {
+        existsByEmail: jest.fn().mockResolvedValue(false),
+        save: jest.fn().mockResolvedValue({ id: 'u-101' }),
+      },
+      notificationsService: {
+        createNotificationForUsers,
+      },
+      companyRepository: {
+        findSingle: jest.fn().mockResolvedValue(null),
+      },
+    });
+
+    await expect(
+      useCase.execute(
         {
           name: 'Ana',
           email: 'ana@example.com',
@@ -340,16 +338,9 @@ describe('CreateUserUseCase', () => {
           roleId: 'role-1',
         } as any,
         { role: RoleType.ADMIN, userId: 'req-1' }
-      );
-
-      expect(createNotificationForUsers).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: 'Bienvenido a Marca Entorno',
-        }),
-      );
-    } finally {
-      (envs as { appCompanyName?: string }).appCompanyName = previousCompanyName;
-    }
+      ),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(createNotificationForUsers).not.toHaveBeenCalled();
   });
 
   it('does not fail user creation when welcome notification fails', async () => {

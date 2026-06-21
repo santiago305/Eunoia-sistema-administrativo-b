@@ -12,4 +12,7 @@ export interface ListProductionOrdersInput {
   page?: number;
   limit?: number;
   requestedBy?: string;
+  visibleToUserId?: string;
+  canViewAll?: boolean;
+  canViewCreatedByOthers?: boolean;
 }

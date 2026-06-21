@@ -1,4 +1,4 @@
-import { BadRequestException, Body, ConflictException, Controller, Delete, Get, Inject, Param, ParseUUIDPipe, Patch, Post, Query, Res, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
+import { BadRequestException, Body, ConflictException, Controller, Delete, ForbiddenException, Get, Inject, Param, ParseUUIDPipe, Patch, Post, Query, Res, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
 import { Response } from "express";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { memoryStorage } from "multer";
@@ -28,14 +28,18 @@ import { IMAGE_PROCESSOR, ImageProcessor } from "src/shared/application/ports/im
 import { FILE_STORAGE, FileStorage } from "src/shared/application/ports/file-storage.port";
 import { ImageProcessingError } from "src/shared/application/errors/image-processing.error";
 import { FileStorageConflictError, InvalidFileStoragePathError } from "src/shared/application/errors/file-storage.errors";
-import { RoleType } from "src/shared/constantes/constants";
 import { ExportProductionOrdersExcelUsecase } from "src/modules/production/application/usecases/production-order/export-excel.usecase";
 import { LISTING_SEARCH_STORAGE, ListingSearchStorageRepository } from "src/shared/listing-search/domain/listing-search.repository";
 import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
 import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
+import { AccessControlService } from "src/modules/access-control/application/services/access-control.service";
+
+type ProductionControllerUser = {
+  id: string;
+};
 
 @Controller("production-orders")
-@UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
+@UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
 export class ProductionOrdersController {
   constructor(
     private readonly createOrder: CreateProductionOrder,
@@ -58,20 +62,36 @@ export class ProductionOrdersController {
     private readonly exportExcel: ExportProductionOrdersExcelUsecase,
     @Inject(LISTING_SEARCH_STORAGE)
     private readonly listingSearchStorage: ListingSearchStorageRepository,
+    private readonly accessControlService: AccessControlService,
   ) {}
 
+  private async getPermissionSet(user?: ProductionControllerUser) {
+    if (!user?.id) return new Set<string>();
+    const effectivePermissions = await this.accessControlService.getEffectivePermissions(user.id);
+    return new Set(effectivePermissions);
+  }
+
+  private async canViewOrderCreatedBy(user: ProductionControllerUser, createdBy?: string | null) {
+    const permissions = await this.getPermissionSet(user);
+    return (
+      permissions.has("*") ||
+      permissions.has("production.view_all") ||
+      permissions.has("production.view_created_by_others") ||
+      Boolean(createdBy && createdBy === user.id)
+    );
+  }
+
   @Post()
-  @UseGuards(PermissionsGuard)
   @RequirePermissions("production.create")
   create(@Body() dto: HttpCreateProductionOrderDto, @CurrentUser() user: { id: string } ) {
     return this.createOrder.execute(ProductionOrderHttpMapper.toCreateInput(dto), user.id);
   }
 
   @Get()
-  @UseGuards(PermissionsGuard)
   @RequirePermissions("production.read")
-  list(@Query() query: HttpListProductionOrdersQueryDto, @CurrentUser() user: { id: string }) {
-    return this.listOrders.execute(ProductionOrderHttpMapper.toListInput({
+  async list(@Query() query: HttpListProductionOrdersQueryDto, @CurrentUser() user: ProductionControllerUser) {
+    const permissions = await this.getPermissionSet(user);
+    const input = ProductionOrderHttpMapper.toListInput({
       q: query.q,
       filters: query.filters,
       status: query.status,
@@ -82,18 +102,23 @@ export class ProductionOrdersController {
       page: query.page,
       limit: query.limit,
       requestedBy: user?.id,
-    }));
+    });
+
+    return this.listOrders.execute({
+      ...input,
+      visibleToUserId: user?.id,
+      canViewAll: permissions.has("*") || permissions.has("production.view_all"),
+      canViewCreatedByOthers: permissions.has("production.view_created_by_others"),
+    });
   }
 
   @Get("search-state")
-  @UseGuards(PermissionsGuard)
   @RequirePermissions("production.read")
   getSearchStateForUser(@CurrentUser() user: { id: string }) {
     return this.getSearchState.execute(user.id);
   }
 
   @Post("search-metrics")
-  @UseGuards(PermissionsGuard)
   @RequirePermissions("production.read")
   saveMetric(
     @Body() dto: HttpCreateProductionSearchMetricDto,
@@ -110,7 +135,6 @@ export class ProductionOrdersController {
   }
 
   @Delete("search-metrics/:metricId")
-  @UseGuards(PermissionsGuard)
   @RequirePermissions("production.read")
   deleteMetric(
     @Param("metricId", ParseUUIDPipe) metricId: string,
@@ -120,14 +144,12 @@ export class ProductionOrdersController {
   }
 
   @Get("export-columns")
-  @UseGuards(PermissionsGuard)
   @RequirePermissions("production.export")
   getExportColumns() {
     return this.exportExcel.getAvailableColumns();
   }
 
   @Get("export-presets")
-  @UseGuards(PermissionsGuard)
   @RequirePermissions("production.export")
   getExportPresets(@CurrentUser() user: { id: string }) {
     return this.listingSearchStorage.listState({
@@ -137,7 +159,6 @@ export class ProductionOrdersController {
   }
 
   @Post("export-presets")
-  @UseGuards(PermissionsGuard)
   @RequirePermissions("production.export")
   saveExportPreset(
     @CurrentUser() user: { id: string },
@@ -152,7 +173,6 @@ export class ProductionOrdersController {
   }
 
   @Delete("export-presets/:metricId")
-  @UseGuards(PermissionsGuard)
   @RequirePermissions("production.export")
   deleteExportPreset(
     @CurrentUser() user: { id: string },
@@ -166,7 +186,6 @@ export class ProductionOrdersController {
   }
 
   @Post("export-excel")
-  @UseGuards(PermissionsGuard)
   @RequirePermissions("production.export")
   async exportOrdersExcel(
     @Body() body: { columns: Array<{ key: string; label: string }>; q?: string; filters?: Record<string, unknown>[]; from?: string; to?: string; useDateRange?: boolean },
@@ -179,15 +198,17 @@ export class ProductionOrdersController {
   }
 
   @Get(":id")
-  @UseGuards(PermissionsGuard)
-  @RequirePermissions("production.read")
-  get(@Param("id", ParseUUIDPipe) id: string) {
+  @RequirePermissions("production.view_detail")
+  async get(@Param("id", ParseUUIDPipe) id: string, @CurrentUser() user: ProductionControllerUser) {
+    const order = await this.orderRepo.findById(id);
+    if (order && !(await this.canViewOrderCreatedBy(user, order.createdBy))) {
+      throw new ForbiddenException("No tienes permiso para ver esta orden de produccion");
+    }
     return this.getOrder.execute({ productionId: id });
   }
 
   @Patch(":id")
-  @UseGuards(PermissionsGuard)
-  @RequirePermissions("production.update")
+  @RequirePermissions("production.edit_draft")
   update(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpUpdateProductionOrderDto
   ,@CurrentUser() user: { id: string } 
 ) {
@@ -195,28 +216,24 @@ export class ProductionOrdersController {
   }
 
   @Post(":id/start")
-  @UseGuards(PermissionsGuard)
   @RequirePermissions("production.start")
   start(@Param("id", ParseUUIDPipe) id: string ) {
     return this.startOrder.execute({ productionId: id});
   }
 
   @Post(":id/close")
-  @UseGuards(PermissionsGuard)
   @RequirePermissions("production.close")
   close(@Param("id", ParseUUIDPipe) id: string,  @CurrentUser() user: { id: string } ) {
     return this.closeOrder.execute({ productionId: id, postedBy: user.id });
   }
 
   @Post(":id/cancel")
-  @UseGuards(PermissionsGuard)
   @RequirePermissions("production.cancel")
   cancel(@Param("id", ParseUUIDPipe) id: string, @CurrentUser() user: { id: string }) {
     return this.cancelOrder.execute({ productionId: id }, user.id);
   }
 
   @Patch(":id/extra-time")
-  @UseGuards(PermissionsGuard)
   @RequirePermissions("production.extra-time")
   async addExtraTime(
     @Param("id", ParseUUIDPipe) id: string,
@@ -263,7 +280,6 @@ export class ProductionOrdersController {
   }
 
   @Patch(":id/image-prodution")
-  @UseGuards(PermissionsGuard)
   @RequirePermissions("production.image.upload")
   @UseInterceptors(
     FileInterceptor("file", {
@@ -281,7 +297,7 @@ export class ProductionOrdersController {
   async uploadProductionImage(
     @Param("id", ParseUUIDPipe) id: string,
     @UploadedFile() file: Express.Multer.File,
-    @CurrentUser() user: { role?: string },
+    @CurrentUser() user: ProductionControllerUser,
   ) {
     if (!file?.buffer) {
       throw new BadRequestException("Debes enviar una imagen");
@@ -292,9 +308,11 @@ export class ProductionOrdersController {
       throw new BadRequestException("Orden de producción no encontrada");
     }
 
-    const isAdmin = (user?.role ?? "").toLowerCase() === RoleType.ADMIN;
-    if ((order.imageProdution?.length ?? 0) > 0 && !isAdmin) {
-      throw new BadRequestException("Solo un administrador puede agregar más fotos en esta orden");
+    const userPermissions = await this.getPermissionSet(user);
+    const canUploadExtraImage =
+      userPermissions.has("*") || userPermissions.has("production.image.upload_extra");
+    if ((order.imageProdution?.length ?? 0) > 0 && !canUploadExtraImage) {
+      throw new BadRequestException("No tienes permiso para agregar fotos adicionales en esta orden");
     }
 
     let savedRelativePath = "";

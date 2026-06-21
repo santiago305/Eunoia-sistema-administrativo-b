@@ -1,4 +1,5 @@
-import { PERMISSIONS_SEED, ROLE_PERMISSION_SEED } from "./permissions-seed";
+import { PERMISSIONS_SEED } from "./permissions-seed";
+import { DEPRECATED_PERMISSION_CODES } from "../../infrastructure/seed/access-control.seeder";
 
 describe("permissions seed", () => {
   it("includes page.payments.view", () => {
@@ -12,9 +13,35 @@ describe("permissions seed", () => {
     expect(codes.has("payments.manage")).toBe(true);
   });
 
-  it("assigns payments page permission to moderator and adviser", () => {
-    expect(ROLE_PERMISSION_SEED.moderator).toContain("page.payments.view");
-    expect(ROLE_PERMISSION_SEED.adviser).toContain("page.payments.view");
+  it("includes fine warehouse and supplier permissions", () => {
+    const codes = new Set(PERMISSIONS_SEED.map((item) => item.code));
+
+    expect(codes.has("warehouses.create")).toBe(true);
+    expect(codes.has("warehouses.update")).toBe(true);
+    expect(codes.has("warehouses.delete")).toBe(true);
+    expect(codes.has("warehouses.locations.manage")).toBe(true);
+    expect(codes.has("suppliers.create")).toBe(true);
+    expect(codes.has("suppliers.update")).toBe(true);
+    expect(codes.has("suppliers.delete")).toBe(true);
+    expect(codes.has("suppliers.payment_methods.manage")).toBe(true);
+  });
+
+  it("defines suppliers page permission with supplier permissions", () => {
+    const codes = new Set(PERMISSIONS_SEED.map((item) => item.code));
+    const pageSuppliers = PERMISSIONS_SEED.find((item) => item.code === "page.suppliers.view");
+
+    expect(codes.has("page.providers.view")).toBe(false);
+    expect(pageSuppliers).toEqual(
+      expect.objectContaining({
+        code: "page.suppliers.view",
+        module: "suppliers",
+        resource: "suppliers",
+      }),
+    );
+  });
+
+  it("deprecates old providers page permission code", () => {
+    expect(DEPRECATED_PERMISSION_CODES).toContain("page.providers.view");
   });
 
   it("does not define duplicated permission codes", () => {
@@ -40,14 +67,8 @@ describe("permissions seed", () => {
     expect(codes.has("inventory-alerts.receive_mail")).toBe(true);
   });
 
-  it("assigns seeded role permissions that exist in the permission catalog", () => {
-    const codes = new Set(PERMISSIONS_SEED.map((item) => item.code));
-
-    for (const roleCodes of Object.values(ROLE_PERMISSION_SEED)) {
-      for (const code of roleCodes) {
-        expect(code === "*" || codes.has(code)).toBe(true);
-      }
-    }
+  it("does not export predefined role permission assignments", () => {
+    expect(PERMISSIONS_SEED.some((item) => item.code === "*")).toBe(false);
   });
 });
 

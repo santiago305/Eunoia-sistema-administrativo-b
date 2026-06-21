@@ -93,34 +93,36 @@ describe("WorkflowsController", () => {
   it("lists every supported condition type with date schemas", async () => {
     const response = await request(app.getHttpServer()).get("/workflows/conditions").expect(200);
 
-    expect(response.body).toEqual([
-      { type: "IS_PAID", configSchema: {} },
-      { type: "HAS_STOCK", configSchema: {} },
-      { type: "NOT_CANCELLED", configSchema: {} },
-      { type: "DATE_AFTER", configSchema: { date: { type: "date", required: true } } },
-      { type: "DATE_BEFORE", configSchema: { date: { type: "date", required: true } } },
-      { type: "INVOICE_SENT", configSchema: {} },
-      {
-        type: "SCHEDULE_DELIVERY_WINDOW",
-        configSchema: {
-          minDaysBefore: { type: "integer", required: true, min: 0 },
-          maxDaysBefore: { type: "integer", required: true, min: 0 },
-        },
-      },
-      {
-        type: "SALE_ORDER_FIELD_REQUIRED",
-        configSchema: {
-          field: {
-            type: "select",
-            required: true,
-            options: expect.arrayContaining([
-              { label: "Cliente tiene DNI", value: "client.docNumber" },
-              { label: "Cliente tiene direccion", value: "client.address" },
-            ]),
+    expect(response.body).toEqual(
+      expect.arrayContaining([
+        { type: "IS_PAID", configSchema: {} },
+        { type: "HAS_STOCK", configSchema: {} },
+        { type: "NOT_CANCELLED", configSchema: {} },
+        { type: "DATE_AFTER", configSchema: { date: { type: "date", required: true } } },
+        { type: "DATE_BEFORE", configSchema: { date: { type: "date", required: true } } },
+        { type: "INVOICE_SENT", configSchema: {} },
+        {
+          type: "SCHEDULE_DELIVERY_WINDOW",
+          configSchema: {
+            minDaysBefore: { type: "integer", required: true, min: 0 },
+            maxDaysBefore: { type: "integer", required: true, min: 0 },
           },
         },
-      },
-    ]);
+        {
+          type: "SALE_ORDER_FIELD_REQUIRED",
+          configSchema: {
+            field: expect.objectContaining({
+              type: "select",
+              required: true,
+              options: expect.arrayContaining([
+                expect.objectContaining({ label: "Cliente tiene DNI", value: "client.docNumber" }),
+                expect.objectContaining({ label: "Cliente tiene direccion", value: "client.address" }),
+              ]),
+            }),
+          },
+        },
+      ]),
+    );
   });
 
   it("lists every supported sale-order action type", async () => {

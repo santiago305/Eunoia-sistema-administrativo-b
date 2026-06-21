@@ -39,14 +39,16 @@ describe("Client", () => {
     expect(client.reference).toBe("Cliente sin documento - feria");
   });
 
-  it("rejects docType=NONE with empty reference", () => {
-    expect(() =>
-      Client.create({
-        ...base,
-        docType: ClientDocType.NONE,
-        docNumber: "",
-        reference: "   ",
-      }),
-    ).toThrow(InvalidClientError);
+  it("accepts docType=NONE with empty reference", () => {
+    const client = Client.create({
+      ...base,
+      docType: ClientDocType.NONE,
+      docNumber: "",
+      reference: "   ",
+    });
+
+    expect(client.docType).toBe(ClientDocType.NONE);
+    expect(client.docNumber).toBe("");
+    expect(client.reference).toBeUndefined();
   });
 });

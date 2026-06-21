@@ -30,7 +30,7 @@ describe("SaleOrderFieldRequiredCondition", () => {
     expect(result).toEqual({
       passed: false,
       type: CONDITIONS.SALE_ORDER_FIELD_REQUIRED,
-      reason: "El campo requerido del pedido no esta completo",
+      reason: "Nota requerida",
     });
   });
 

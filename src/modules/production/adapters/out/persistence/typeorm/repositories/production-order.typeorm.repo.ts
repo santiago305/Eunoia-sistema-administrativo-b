@@ -166,6 +166,9 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
       to?: Date;
       page?: number;
       limit?: number;
+      visibleToUserId?: string;
+      canViewAll?: boolean;
+      canViewCreatedByOthers?: boolean;
     },
     tx?: TransactionContext,
   ): Promise<{
@@ -184,6 +187,14 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
       .leftJoin(User, "creator", "creator.user_id = p.created_by")
       .addSelect("creator.name", "creator_name")
       .distinct(true);
+
+    if (!params.canViewAll && !params.canViewCreatedByOthers) {
+      if (params.visibleToUserId) {
+        qb.andWhere(`"p"."created_by" = :visibleToUserId`, { visibleToUserId: params.visibleToUserId });
+      } else {
+        qb.andWhere("1 = 0");
+      }
+    }
 
     const filters = sanitizeProductionSearchFilters(params.filters);
     const needsSkuJoin = Boolean(

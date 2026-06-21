@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
 import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
-import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
+import { RequireAnyPermissionGroups, RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
 import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { CreatePaymentMethodUsecase } from "src/modules/payment-methods/application/usecases/payment-method/create.usecase";
 import { UpdatePaymentMethodUsecase } from "src/modules/payment-methods/application/usecases/payment-method/update.usecase";
@@ -49,7 +49,7 @@ export class PaymentMethodsController {
     }));
   }
 
-  @RequirePermissions("payment-methods.read")
+  @RequireAnyPermissionGroups(["payment-methods.read"], ["suppliers.payment_methods.manage"])
   @Get("records")
   getRecords() {
     return this.getPaymentMethodsRecords.execute();

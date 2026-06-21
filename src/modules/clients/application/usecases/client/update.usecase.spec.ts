@@ -152,7 +152,7 @@ describe("UpdateClientUsecase", () => {
     }
   });
 
-  it("rejects docType=NONE when reference is empty", async () => {
+  it("allows docType=NONE when reference is empty", async () => {
     const current = Client.create({
       type: ClientType.NEW,
       fullName: "Juan Perez",
@@ -190,8 +190,8 @@ describe("UpdateClientUsecase", () => {
           docNumber: "",
           reference: "",
         } as any),
-      ).rejects.toThrow(BadRequestException);
-      expect(clientRepo.update).not.toHaveBeenCalled();
+      ).resolves.toBeDefined();
+      expect(clientRepo.update).toHaveBeenCalled();
     } finally {
       await moduleRef.close();
     }

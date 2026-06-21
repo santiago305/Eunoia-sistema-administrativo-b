@@ -7,9 +7,18 @@ describe('TypeormUserReadRepository', () => {
     userOverrides?: Partial<Repository<OrmUser>>,
     manageableRoleOverrides?: Partial<Repository<any>>,
   ) => {
+    const manageableRoleRepository = manageableRoleOverrides ?? {
+      createQueryBuilder: jest.fn().mockReturnValue({
+        innerJoin: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([]),
+      }),
+    };
+
     return new TypeormUserReadRepository(
       userOverrides as Repository<OrmUser>,
-      manageableRoleOverrides as Repository<any>,
+      manageableRoleRepository as Repository<any>,
     );
   };
 

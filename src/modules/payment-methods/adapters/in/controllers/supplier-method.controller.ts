@@ -23,7 +23,7 @@ export class SupplierMethodsController {
     private readonly getSupplierMethodById: GetSupplierMethodByIdUsecase,
   ) {}
 
-  @RequirePermissions("payment-methods.manage")
+  @RequirePermissions("suppliers.payment_methods.manage")
   @Post()
   create(@Body() dto: HttpSupplierMethodCreateDto) {
     return this.createSupplierMethod.execute(
@@ -31,13 +31,13 @@ export class SupplierMethodsController {
     );
   }
 
-  @RequirePermissions("payment-methods.read")
+  @RequirePermissions("suppliers.payment_methods.manage")
   @Get("by-supplier/:supplierId")
   listBySupplier(@Param("supplierId", ParseUUIDPipe) supplierId: string) {
     return this.listSupplierMethods.execute({ supplierId });
   }
 
-  @RequirePermissions("payment-methods.read")
+  @RequirePermissions("suppliers.payment_methods.manage")
   @Get(":supplierMethodId")
   getById(
     @Param("supplierMethodId", ParseUUIDPipe) supplierMethodId: string,
@@ -45,7 +45,7 @@ export class SupplierMethodsController {
     return this.getSupplierMethodById.execute({ supplierMethodId });
   }
 
-  @RequirePermissions("payment-methods.manage")
+  @RequirePermissions("suppliers.payment_methods.manage")
   @Patch(":supplierMethodId")
   update(
     @Param("supplierMethodId", ParseUUIDPipe) supplierMethodId: string,
@@ -56,7 +56,7 @@ export class SupplierMethodsController {
     );
   }
 
-  @RequirePermissions("payment-methods.manage")
+  @RequirePermissions("suppliers.payment_methods.manage")
   @Delete(":supplierMethodId")
   remove(
     @Param("supplierMethodId", ParseUUIDPipe) supplierMethodId: string,

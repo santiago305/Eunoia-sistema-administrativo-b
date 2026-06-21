@@ -88,6 +88,7 @@ describe("SaleOrderState use cases", () => {
 
     const result = await useCase.execute({
       saleOrderStateId: "state-1",
+      code: "PREPARING",
       name: "  Preparando  ",
       color: "  #f97316  ",
     });
@@ -111,7 +112,7 @@ describe("SaleOrderState use cases", () => {
     repo.findById.mockResolvedValueOnce(null);
     const useCase = new UpdateSaleOrderStateUseCase(uow as any, repo as any, clock);
 
-    await expect(useCase.execute({ saleOrderStateId: "missing", name: "Preparando" })).rejects.toBeInstanceOf(
+    await expect(useCase.execute({ saleOrderStateId: "missing", code: "PREPARING", name: "Preparando" })).rejects.toBeInstanceOf(
       NotFoundException,
     );
   });

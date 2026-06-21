@@ -39,11 +39,20 @@ export class ListProductionOrders {
       ],
     });
 
-    const result = await this.orderRepo.list({
+    const listInput: Parameters<ProductionOrderRepository["list"]>[0] & {
+      visibleToUserId?: string;
+      canViewAll?: boolean;
+      canViewCreatedByOthers?: boolean;
+    } = {
       ...input,
       q: input.q,
       filters: snapshot.filters,
-    });
+      visibleToUserId: input.visibleToUserId,
+      canViewAll: input.canViewAll,
+      canViewCreatedByOthers: input.canViewCreatedByOthers,
+    };
+
+    const result = await this.orderRepo.list(listInput);
 
     if (input.requestedBy && hasProductionSearchCriteria(snapshot)) {
       await this.searchStorage.touchRecentSearch({
