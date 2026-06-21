@@ -169,6 +169,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
       visibleToUserId?: string;
       canViewAll?: boolean;
       canViewCreatedByOthers?: boolean;
+      productionIdsWhitelist?: string[];
     },
     tx?: TransactionContext,
   ): Promise<{
@@ -194,6 +195,14 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
       } else {
         qb.andWhere("1 = 0");
       }
+    }
+
+    if (params.productionIdsWhitelist && params.productionIdsWhitelist.length > 0) {
+      qb.andWhere(`"p"."production_id" IN (:...productionIdsWhitelist)`, {
+        productionIdsWhitelist: params.productionIdsWhitelist,
+      });
+    } else if (params.productionIdsWhitelist && params.productionIdsWhitelist.length === 0) {
+      qb.andWhere("1 = 0");
     }
 
     const filters = sanitizeProductionSearchFilters(params.filters);

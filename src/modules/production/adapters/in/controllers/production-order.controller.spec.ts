@@ -26,6 +26,11 @@ import { DeleteProductionOrderSearchMetricUsecase } from "src/modules/production
 import { GetProductionOrderSearchStateUsecase } from "src/modules/production/application/usecases/production-search/get-state.usecase";
 import { SaveProductionOrderSearchMetricUsecase } from "src/modules/production/application/usecases/production-search/save-metric.usecase";
 import { ProductionOrdersController } from "./production-order.controller";
+import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
+import { getEntityManagerToken, getRepositoryToken } from "@nestjs/typeorm";
+import { ProductionHistoryEventEntity } from "../../out/persistence/typeorm/entities/production-history-event.entity";
+import { ApprovalRequestEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/approval-request.entity";
+import { NotificationsService } from "src/modules/mail/application/use-cases/notifications.service";
 
 @Injectable()
 class TestJwtAuthGuard implements CanActivate {
@@ -47,6 +52,9 @@ describe("ProductionOrdersController", () => {
   let app: INestApplication;
   const listOrders = { execute: jest.fn() };
   const getSearchState = { execute: jest.fn() };
+  const cancelOrder = { execute: jest.fn() };
+  const orderRepo = { findById: jest.fn(), update: jest.fn() };
+  const accessControlService = { getEffectivePermissions: jest.fn() };
 
   beforeEach(async () => {
     listOrders.execute.mockResolvedValue({ items: [], total: 0, page: 1, limit: 20 });
@@ -59,6 +67,10 @@ describe("ProductionOrdersController", () => {
         products: [],
       },
     });
+    cancelOrder.execute.mockResolvedValue({ message: "Orden cancelada con exito" });
+    orderRepo.findById.mockResolvedValue(null);
+    orderRepo.update.mockResolvedValue(null);
+    accessControlService.getEffectivePermissions.mockResolvedValue(["*"]);
 
     const moduleRef = await Test.createTestingModule({
       controllers: [ProductionOrdersController],
@@ -69,20 +81,24 @@ describe("ProductionOrdersController", () => {
         { provide: UpdateProductionOrder, useValue: { execute: jest.fn() } },
         { provide: StartProductionOrder, useValue: { execute: jest.fn() } },
         { provide: CloseProductionOrder, useValue: { execute: jest.fn() } },
-        { provide: CancelProductionOrder, useValue: { execute: jest.fn() } },
+        { provide: CancelProductionOrder, useValue: cancelOrder },
         { provide: AddProductionOrderItem, useValue: { execute: jest.fn() } },
         { provide: RemoveProductionOrderItem, useValue: { execute: jest.fn() } },
         { provide: UpdateProductionWaste, useValue: { execute: jest.fn() } },
         { provide: GetProductionOrderSearchStateUsecase, useValue: getSearchState },
         { provide: SaveProductionOrderSearchMetricUsecase, useValue: { execute: jest.fn() } },
         { provide: DeleteProductionOrderSearchMetricUsecase, useValue: { execute: jest.fn() } },
-        { provide: PRODUCTION_ORDER_REPOSITORY, useValue: { findById: jest.fn(), update: jest.fn() } },
+        { provide: PRODUCTION_ORDER_REPOSITORY, useValue: orderRepo },
         { provide: ProductionOrderExpectedScheduler, useValue: { schedule: jest.fn() } },
         { provide: IMAGE_PROCESSOR, useValue: { toWebp: jest.fn() } },
         { provide: FILE_STORAGE, useValue: { save: jest.fn(), delete: jest.fn() } },
         { provide: ExportProductionOrdersExcelUsecase, useValue: { execute: jest.fn(), getAvailableColumns: jest.fn().mockReturnValue([]) } },
         { provide: LISTING_SEARCH_STORAGE, useValue: { listState: jest.fn().mockResolvedValue({ metrics: [] }), createMetric: jest.fn(), deleteMetric: jest.fn() } },
-        { provide: AccessControlService, useValue: { getEffectivePermissions: jest.fn().mockResolvedValue(["*"]) } },
+        { provide: getRepositoryToken(ProductionHistoryEventEntity), useValue: { create: jest.fn((value) => value), save: jest.fn(), createQueryBuilder: jest.fn() } },
+        { provide: getRepositoryToken(ApprovalRequestEntity), useValue: { create: jest.fn((value) => value), save: jest.fn(), find: jest.fn().mockResolvedValue([]), findOne: jest.fn() } },
+        { provide: getEntityManagerToken(), useValue: { getRepository: jest.fn() } },
+        { provide: AccessControlService, useValue: accessControlService },
+        { provide: NotificationsService, useValue: { createNotificationForUsers: jest.fn() } },
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -136,5 +152,56 @@ describe("ProductionOrdersController", () => {
         ],
       }),
     );
+  });
+
+  it("rejects cancelling a draft production order without production.cancel_draft", async () => {
+    orderRepo.findById.mockResolvedValue({
+      productionId: "11111111-1111-4111-8111-111111111111",
+      status: ProductionStatus.DRAFT,
+    });
+    accessControlService.getEffectivePermissions.mockResolvedValue(["production.cancel"]);
+
+    await request(app.getHttpServer())
+      .post("/production-orders/11111111-1111-4111-8111-111111111111/cancel")
+      .expect(403);
+
+    expect(cancelOrder.execute).not.toHaveBeenCalled();
+  });
+
+  it("allows cancelling an in-progress production order with production.cancel_in_progress", async () => {
+    orderRepo.findById.mockResolvedValue({
+      productionId: "22222222-2222-4222-8222-222222222222",
+      status: ProductionStatus.IN_PROGRESS,
+    });
+    accessControlService.getEffectivePermissions.mockResolvedValue([
+      "production.cancel",
+      "production.cancel_in_progress",
+    ]);
+
+    await request(app.getHttpServer())
+      .post("/production-orders/22222222-2222-4222-8222-222222222222/cancel")
+      .expect(201);
+
+    expect(cancelOrder.execute).toHaveBeenCalledWith(
+      { productionId: "22222222-2222-4222-8222-222222222222" },
+      "user-1",
+    );
+  });
+
+  it("rejects reverting a completed production order without production.delete_completed", async () => {
+    orderRepo.findById.mockResolvedValue({
+      productionId: "33333333-3333-4333-8333-333333333333",
+      status: ProductionStatus.COMPLETED,
+    });
+    accessControlService.getEffectivePermissions.mockResolvedValue([
+      "production.cancel",
+      "production.cancel_in_progress",
+    ]);
+
+    await request(app.getHttpServer())
+      .post("/production-orders/33333333-3333-4333-8333-333333333333/cancel")
+      .expect(403);
+
+    expect(cancelOrder.execute).not.toHaveBeenCalled();
   });
 });

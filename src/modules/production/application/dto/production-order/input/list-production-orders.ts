@@ -15,4 +15,5 @@ export interface ListProductionOrdersInput {
   visibleToUserId?: string;
   canViewAll?: boolean;
   canViewCreatedByOthers?: boolean;
+  productionIdsWhitelist?: string[];
 }

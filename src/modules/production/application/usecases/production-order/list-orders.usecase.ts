@@ -43,6 +43,7 @@ export class ListProductionOrders {
       visibleToUserId?: string;
       canViewAll?: boolean;
       canViewCreatedByOthers?: boolean;
+      productionIdsWhitelist?: string[];
     } = {
       ...input,
       q: input.q,
@@ -50,6 +51,7 @@ export class ListProductionOrders {
       visibleToUserId: input.visibleToUserId,
       canViewAll: input.canViewAll,
       canViewCreatedByOthers: input.canViewCreatedByOthers,
+      productionIdsWhitelist: input.productionIdsWhitelist,
     };
 
     const result = await this.orderRepo.list(listInput);

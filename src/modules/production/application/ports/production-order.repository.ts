@@ -22,6 +22,10 @@ export interface ProductionOrderRepository {
       to?: Date;
       page?: number;
       limit?: number;
+      visibleToUserId?: string;
+      canViewAll?: boolean;
+      canViewCreatedByOthers?: boolean;
+      productionIdsWhitelist?: string[];
     },
     tx?: TransactionContext,
   ): Promise<{

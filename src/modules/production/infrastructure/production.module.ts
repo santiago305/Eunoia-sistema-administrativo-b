@@ -2,6 +2,8 @@ import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { ProductionOrderEntity } from "../adapters/out/persistence/typeorm/entities/production_order.entity";
 import { ProductionOrderItemEntity } from "../adapters/out/persistence/typeorm/entities/production_order_item.entity";
+import { ProductionHistoryEventEntity } from "../adapters/out/persistence/typeorm/entities/production-history-event.entity";
+import { ApprovalRequestEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/approval-request.entity";
 import { ProductionOrdersController } from "../adapters/in/controllers/production-order.controller";
 import { PRODUCTION_ORDER_REPOSITORY } from "../application/ports/production-order.repository";
 import { ListingSearchMetricEntity } from "src/shared/listing-search/adapters/out/persistence/typeorm/entities/listing-search-metric.entity";
@@ -16,12 +18,15 @@ import { WarehouseEntity } from "src/modules/warehouses/adapters/out/persistence
 import { ProductCatalogDocumentSerieEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/document-serie.entity";
 import { productionModuleProviders } from "../composition/container";
 import { AccessControlModule } from "src/modules/access-control/infrastructure/access-control.module";
+import { MailModule } from "src/modules/mail/infrastructure/mail.module";
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       ProductionOrderEntity,
       ProductionOrderItemEntity,
+      ProductionHistoryEventEntity,
+      ApprovalRequestEntity,
       WarehouseEntity,
       ProductCatalogDocumentSerieEntity,
       ProductCatalogProductEntity,
@@ -34,6 +39,7 @@ import { AccessControlModule } from "src/modules/access-control/infrastructure/a
     ProductCatalogModule,
     UsersModule,
     AccessControlModule,
+    MailModule,
   ],
   controllers: [ProductionOrdersController],
   providers: [...productionModuleProviders],

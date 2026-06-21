@@ -30,6 +30,9 @@ import { AddWorkflowTransitionPurpose20260606080000 } from "./migrations/2026060
 import { CreateSaleOrderStates20260608000000 } from "./migrations/20260608000000-create-sale-order-states";
 import { AddSaleOrderStatisticsIndexes20260609000000 } from "./migrations/20260609000000-add-sale-order-statistics-indexes";
 import { CreateInventoryAlertSettings20260619000000 } from "./migrations/20260619000000-create-inventory-alert-settings";
+import { RemoveOutOrdersPagePermission20260620000000 } from "./migrations/20260620000000-remove-out-orders-page-permission";
+import { CreateProductionHistoryEvents20260621000000 } from "./migrations/20260621000000-create-production-history-events";
+import { MapProductionLegacyPermissions20260621010000 } from "./migrations/20260621010000-map-production-legacy-permissions";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -82,6 +85,9 @@ export const getMigrationDataSourceOptions = (): DataSourceOptions => ({
     CreateSaleOrderStates20260608000000,
     AddSaleOrderStatisticsIndexes20260609000000,
     CreateInventoryAlertSettings20260619000000,
+    RemoveOutOrdersPagePermission20260620000000,
+    CreateProductionHistoryEvents20260621000000,
+    MapProductionLegacyPermissions20260621010000,
   ],
 });
 

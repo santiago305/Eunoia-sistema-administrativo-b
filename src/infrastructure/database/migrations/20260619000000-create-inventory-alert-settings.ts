@@ -5,7 +5,7 @@ export class CreateInventoryAlertSettings20260619000000 implements MigrationInte
 
   async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
-      CREATE TABLE "pc_inventory_alert_settings" (
+      CREATE TABLE IF NOT EXISTS "pc_inventory_alert_settings" (
         "setting_id" uuid NOT NULL DEFAULT uuid_generate_v4(),
         "stock_item_id" uuid NOT NULL,
         "warehouse_id" uuid,
@@ -26,20 +26,20 @@ export class CreateInventoryAlertSettings20260619000000 implements MigrationInte
       )
     `);
     await queryRunner.query(`
-      CREATE UNIQUE INDEX "ux_pc_inventory_alert_settings_global"
+      CREATE UNIQUE INDEX IF NOT EXISTS "ux_pc_inventory_alert_settings_global"
       ON "pc_inventory_alert_settings" ("stock_item_id")
       WHERE "warehouse_id" IS NULL
     `);
     await queryRunner.query(`
-      CREATE UNIQUE INDEX "ux_pc_inventory_alert_settings_warehouse"
+      CREATE UNIQUE INDEX IF NOT EXISTS "ux_pc_inventory_alert_settings_warehouse"
       ON "pc_inventory_alert_settings" ("stock_item_id", "warehouse_id")
       WHERE "warehouse_id" IS NOT NULL
     `);
   }
 
   async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX "ux_pc_inventory_alert_settings_warehouse"`);
-    await queryRunner.query(`DROP INDEX "ux_pc_inventory_alert_settings_global"`);
-    await queryRunner.query(`DROP TABLE "pc_inventory_alert_settings"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "ux_pc_inventory_alert_settings_warehouse"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "ux_pc_inventory_alert_settings_global"`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "pc_inventory_alert_settings"`);
   }
 }
