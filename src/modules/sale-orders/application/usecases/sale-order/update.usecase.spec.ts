@@ -15,7 +15,11 @@ describe("UpdateSaleOrderUsecase", () => {
     }],
   };
 
-  const createFixture = (stockActions: string[] = []) => {
+  const createFixture = (
+    stockActions: Array<
+      string | { type: string; actionBranch?: "THEN" | "ELSE"; executedBranch?: "THEN" | "ELSE" }
+    > = [],
+  ) => {
     const saleOrderRepo = {
       findByIdForUpdate: jest.fn().mockResolvedValue({
         id: "order-1",
@@ -49,14 +53,24 @@ describe("UpdateSaleOrderUsecase", () => {
     };
     const historyRepo = {
       listBySaleOrderId: jest.fn().mockResolvedValue(
-        stockActions.map((_, index) => ({ transitionId: `transition-${index}` })),
+        stockActions.map((action, index) => ({
+          transitionId: `transition-${index}`,
+          metadata: typeof action === "string" || !action.executedBranch
+            ? null
+            : { branch: action.executedBranch },
+        })),
       ),
     };
     const transitionRepo = {
       findDetailedById: jest.fn().mockImplementation((transitionId: string) => {
         const index = Number(transitionId.split("-")[1]);
+        const action = stockActions[index];
         return Promise.resolve({
-          actions: [{ type: stockActions[index], position: 0 }],
+          actions: [{
+            type: typeof action === "string" ? action : action.type,
+            branch: typeof action === "string" ? "THEN" : action.actionBranch ?? "THEN",
+            position: 0,
+          }],
         });
       }),
     };
@@ -124,6 +138,21 @@ describe("UpdateSaleOrderUsecase", () => {
       ACTIONS.RESERVE_STOCK,
       ACTIONS.REVERT_STOCK,
     ]);
+
+    await usecase.execute({ ...input, warehouseId: "warehouse-2" });
+
+    expect(saleOrderRepo.update).toHaveBeenCalledWith(
+      expect.objectContaining({ warehouseId: "warehouse-2" }),
+      expect.anything(),
+    );
+  });
+
+  it("ignores THEN stock actions when the automatic transition executed ELSE", async () => {
+    const { usecase, saleOrderRepo } = createFixture([{
+      type: ACTIONS.RESERVE_STOCK,
+      actionBranch: "THEN",
+      executedBranch: "ELSE",
+    }]);
 
     await usecase.execute({ ...input, warehouseId: "warehouse-2" });
 

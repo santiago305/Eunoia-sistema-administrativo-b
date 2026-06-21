@@ -53,6 +53,9 @@ export class SaleOrderWorkflowContextService {
         "client.address": client?.address ?? null,
         "client.reference": client?.reference ?? null,
         "client.docType": client?.docType ?? null,
+        "client.departmentId": client?.departmentId ?? null,
+        "client.provinceId": client?.provinceId ?? null,
+        "client.districtId": client?.districtId ?? null,
       },
     };
   }

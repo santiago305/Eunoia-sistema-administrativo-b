@@ -67,6 +67,14 @@ import { SaleOrderItemComponentEntity } from 'src/modules/sale-orders/adapters/o
 import { SalePaymentEntity } from 'src/modules/sale-orders/adapters/out/persistence/typeorm/entities/sale-payment.entity';
 import { SaleOrderStatesEntity } from 'src/modules/workflow/adapters/out/persistence/typeorm/entities/sale-order-states.entity';
 import { seedSaleOrderStates } from 'src/modules/sale-orders/infrastructure/jobs/sale-order-states.seeder';
+import { WorkflowEntity } from 'src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow.entity';
+import { WorkflowStateEntity } from 'src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow-state.entity';
+import { WorkflowTransitionEntity } from 'src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow-transition.entity';
+import { WorkflowConditionEntity } from 'src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow-condition.entity';
+import { WorkflowActionEntity } from 'src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow-action.entity';
+import { seedWorkflows } from 'src/modules/workflow/infrastructure/seed/workflow.seeder';
+import { BankAccountEntity } from 'src/modules/bank-accounts/adapters/out/persistence/typeorm/entities/bank-account.entity';
+import { seedBankAccounts } from 'src/modules/bank-accounts/infrastructure/seed/bank-account.seeder';
 
 const entities = [
   Role,
@@ -117,6 +125,12 @@ const entities = [
   SaleOrderItemEntity,
   SaleOrderItemComponentEntity,
   SalePaymentEntity,
+  WorkflowEntity,
+  WorkflowStateEntity,
+  WorkflowTransitionEntity,
+  WorkflowConditionEntity,
+  WorkflowActionEntity,
+  BankAccountEntity,
 ];
 
 const dataSource = new DataSource({
@@ -138,6 +152,7 @@ dataSource
 
     await seedUser(dataSource);
     await seedCompany(dataSource);
+    await seedBankAccounts(dataSource);
     await seedUbigeo(dataSource);
     await seedSecurityReasonCatalog(dataSource);
     await seedSecurityIpActivity(dataSource);
@@ -146,6 +161,7 @@ dataSource
     await seedProductCatalogEquivalences(dataSource);
     await seedProductCatalogRecipes(dataSource);
     await seedSaleOrderStates(dataSource);
+    await seedWorkflows(dataSource);
 
     const warehouses = await seedWarehouses(dataSource);
     await seedProductCatalogInventory(dataSource);
