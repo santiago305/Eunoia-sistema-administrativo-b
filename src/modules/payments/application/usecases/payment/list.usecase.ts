@@ -18,6 +18,7 @@ export class ListPaymentsUsecase {
     const { items, total } = await this.paymentDocRepo.list({
       poId: input.poId,
       quotaId: input.quotaId,
+      status: input.status,
       page,
       limit,
     });

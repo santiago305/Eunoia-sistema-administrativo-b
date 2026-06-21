@@ -302,6 +302,7 @@ export class PaymentsController {
     return this.listPayments.execute(PaymentsHttpMapper.toListPaymentsInput({
       poId: query.poId,
       quotaId: query.quotaId,
+      status: query.status,
       page: query.page,
       limit: query.limit,
     }));

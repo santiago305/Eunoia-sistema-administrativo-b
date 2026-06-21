@@ -129,7 +129,13 @@ export class PaymentDocumentTypeormRepository implements PaymentDocumentReposito
   }
 
   async list(
-    params: { poId?: string; quotaId?: string; page?: number; limit?: number },
+    params: {
+      poId?: string;
+      quotaId?: string;
+      status?: "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
+      page?: number;
+      limit?: number;
+    },
     tx?: TransactionContext,
   ): Promise<{ items: PaymentDocument[]; total: number }> {
     const repo = this.getRepo(tx);
@@ -137,6 +143,7 @@ export class PaymentDocumentTypeormRepository implements PaymentDocumentReposito
 
     if (params.poId) qb.andWhere("pd.poId = :poId", { poId: params.poId });
     if (params.quotaId) qb.andWhere("pd.quotaId = :quotaId", { quotaId: params.quotaId });
+    if (params.status) qb.andWhere("pd.status = :status", { status: params.status });
 
     const page = params.page ?? 1;
     const limit = params.limit ?? 20;

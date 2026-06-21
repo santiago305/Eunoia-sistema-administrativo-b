@@ -15,7 +15,13 @@ export interface PaymentDocumentRepository {
   update(document: PaymentDocument, tx?: TransactionContext): Promise<PaymentDocument>;
   deleteById(payDocId: string, tx?: TransactionContext): Promise<void>;
   list(
-    params: { poId?: string; quotaId?: string; page?: number; limit?: number },
+    params: {
+      poId?: string;
+      quotaId?: string;
+      status?: "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
+      page?: number;
+      limit?: number;
+    },
     tx?: TransactionContext,
   ): Promise<{ items: PaymentDocument[]; total: number }>;
 }
