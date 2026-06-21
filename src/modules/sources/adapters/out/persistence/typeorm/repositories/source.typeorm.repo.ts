@@ -53,6 +53,20 @@ export class SourceTypeormRepository implements SourceRepository {
     return row ? this.toDomain(row) : null;
   }
 
+  async findByNormalizedName(name: string, tx?: TransactionContext): Promise<Source | null> {
+    const normalizedNameSql = (value: string) =>
+      `unaccent(upper(regexp_replace(trim(${value}), '\\s+', ' ', 'g')))`;
+
+    const row = await this.getRepo(tx)
+      .createQueryBuilder('s')
+      .where(`${normalizedNameSql('s.name')} = ${normalizedNameSql(':name')}`, { name })
+      .orderBy('s.createdAt', 'ASC')
+      .addOrderBy('s.id', 'ASC')
+      .getOne();
+
+    return row ? this.toDomain(row) : null;
+  }
+
   async create(source: Source, tx?: TransactionContext): Promise<Source> {
     const repo = this.getRepo(tx);
     const row = repo.create({

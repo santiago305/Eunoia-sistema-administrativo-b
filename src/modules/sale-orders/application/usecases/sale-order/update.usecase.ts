@@ -108,9 +108,10 @@ export class UpdateSaleOrderUsecase {
     for (const item of history) {
       if (!item.transitionId) continue;
       const detailed = await this.transitionRepo.findDetailedById(item.transitionId, tx);
-      const actions = [...(detailed?.actions ?? [])].sort(
-        (a, b) => a.position - b.position,
-      );
+      const executedBranch = item.metadata?.branch === "ELSE" ? "ELSE" : "THEN";
+      const actions = [...(detailed?.actions ?? [])]
+        .filter((action) => action.branch === executedBranch)
+        .sort((a, b) => a.position - b.position);
       for (const action of actions) {
         if (action.type === ACTIONS.RESERVE_STOCK) {
           status = "RESERVED";

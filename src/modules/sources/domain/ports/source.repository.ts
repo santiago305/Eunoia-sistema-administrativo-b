@@ -6,6 +6,7 @@ export const SOURCE_REPOSITORY = Symbol("SOURCE_REPOSITORY");
 
 export interface SourceRepository {
   findById(sourceId: string, tx?: TransactionContext): Promise<Source | null>;
+  findByNormalizedName(name: string, tx?: TransactionContext): Promise<Source | null>;
   create(source: Source, tx?: TransactionContext): Promise<Source>;
   update(
     params: {

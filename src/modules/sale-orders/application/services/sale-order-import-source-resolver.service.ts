@@ -1,21 +1,26 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { CreateSourceUsecase } from "src/modules/sources/application/usecases/source/create.usecase";
+import { SOURCE_REPOSITORY, SourceRepository } from "src/modules/sources/domain/ports/source.repository";
 import { normalizeTextForMatch } from "src/modules/excel/application/orders-import/normalization";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 
 @Injectable()
 export class SaleOrderImportSourceResolverService {
-  constructor(private readonly createSourceUsecase: CreateSourceUsecase) {}
+  constructor(
+    @Inject(SOURCE_REPOSITORY)
+    private readonly sourceRepo: SourceRepository,
+    private readonly createSourceUsecase: CreateSourceUsecase,
+  ) {}
 
   async resolveOrCreate(internalNote: string | null | undefined, tx: TransactionContext): Promise<string> {
     const sourceName = this.getSourceName(internalNote);
-    return this.createSourceUsecase.executeInTransaction(
-      { name: sourceName, detail: sourceName, isActive: true },
-      tx,
-    );
+    return this.resolveOrCreateByName(sourceName, tx);
   }
 
   async resolveOrCreateByName(sourceName: string, tx: TransactionContext): Promise<string> {
+    const existing = await this.sourceRepo.findByNormalizedName(sourceName, tx);
+    if (existing) return existing.sourceId.value;
+
     return this.createSourceUsecase.executeInTransaction(
       { name: sourceName, detail: sourceName, isActive: true },
       tx,
