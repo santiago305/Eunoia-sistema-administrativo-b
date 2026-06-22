@@ -32,9 +32,11 @@ describe("PostInventoryFromPurchaseUsecase", () => {
     purchaseItemRepo = {
       getByPurchaseId: jest.fn().mockResolvedValue([
         {
+          poItemId: "po-item-1",
           stockItemId: "stock-item-1",
           quantity: 1,
           factor: 1000,
+          affectsStock: true,
           unitPrice: { getAmount: () => 12.5 },
         },
       ]),

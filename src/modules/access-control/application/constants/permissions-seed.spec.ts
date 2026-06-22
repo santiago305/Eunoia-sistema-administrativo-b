@@ -13,6 +13,14 @@ describe("permissions seed", () => {
     expect(codes.has("payments.manage")).toBe(true);
   });
 
+  it("includes purchase attachment permissions", () => {
+    const codes = new Set(PERMISSIONS_SEED.map((item) => item.code));
+
+    expect(codes.has("purchases.attachments.view")).toBe(true);
+    expect(codes.has("purchases.attachments.upload")).toBe(true);
+    expect(codes.has("purchases.attachments.delete")).toBe(true);
+  });
+
   it("includes fine warehouse and supplier permissions", () => {
     const codes = new Set(PERMISSIONS_SEED.map((item) => item.code));
 
