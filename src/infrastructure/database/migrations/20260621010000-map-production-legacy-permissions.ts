@@ -64,28 +64,33 @@ export class MapProductionLegacyPermissions20260621010000 implements MigrationIn
     `);
 
     await queryRunner.query(`
-      WITH permission_map (legacy_code, fine_code) AS (
-        VALUES
-          ('production.update', 'production.edit_draft'),
-          ('production.update', 'production.edit_processed'),
-          ('production.cancel', 'production.cancel_draft'),
-          ('production.cancel', 'production.cancel_in_progress')
-      )
-      INSERT INTO role_permissions (role_id, permission_id)
-      SELECT DISTINCT legacy_role.role_id, fine_permission.permission_id
-      FROM role_permissions legacy_role
-      INNER JOIN permissions legacy_permission
-        ON legacy_permission.permission_id = legacy_role.permission_id
-      INNER JOIN permission_map
-        ON permission_map.legacy_code = legacy_permission.code
-      INNER JOIN permissions fine_permission
-        ON fine_permission.code = permission_map.fine_code
-      WHERE NOT EXISTS (
-        SELECT 1
-        FROM role_permissions existing
-        WHERE existing.role_id = legacy_role.role_id
-          AND existing.permission_id = fine_permission.permission_id
-      );
+      DO $$
+      BEGIN
+        IF to_regclass('public.role_permissions') IS NOT NULL THEN
+          WITH permission_map (legacy_code, fine_code) AS (
+            VALUES
+              ('production.update', 'production.edit_draft'),
+              ('production.update', 'production.edit_processed'),
+              ('production.cancel', 'production.cancel_draft'),
+              ('production.cancel', 'production.cancel_in_progress')
+          )
+          INSERT INTO role_permissions (role_id, permission_id)
+          SELECT DISTINCT legacy_role.role_id, fine_permission.permission_id
+          FROM role_permissions legacy_role
+          INNER JOIN permissions legacy_permission
+            ON legacy_permission.permission_id = legacy_role.permission_id
+          INNER JOIN permission_map
+            ON permission_map.legacy_code = legacy_permission.code
+          INNER JOIN permissions fine_permission
+            ON fine_permission.code = permission_map.fine_code
+          WHERE NOT EXISTS (
+            SELECT 1
+            FROM role_permissions existing
+            WHERE existing.role_id = legacy_role.role_id
+              AND existing.permission_id = fine_permission.permission_id
+          );
+        END IF;
+      END $$;
     `);
 
     await queryRunner.query(`

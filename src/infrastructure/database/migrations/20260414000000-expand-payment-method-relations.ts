@@ -22,12 +22,31 @@ export class ExpandPaymentMethodRelations20260414000000 implements MigrationInte
       ALTER COLUMN supplier_method_id SET NOT NULL
     `);
     await queryRunner.query(`
-      ALTER TABLE supplier_methods
-      DROP CONSTRAINT IF EXISTS supplier_methods_pkey
-    `);
-    await queryRunner.query(`
-      ALTER TABLE supplier_methods
-      ADD CONSTRAINT supplier_methods_pkey PRIMARY KEY (supplier_method_id)
+      DO $$
+      DECLARE
+        current_pk text;
+        current_pk_columns text[];
+      BEGIN
+        SELECT c.conname, array_agg(a.attname ORDER BY keys.ordinality)
+        INTO current_pk, current_pk_columns
+        FROM pg_constraint c
+        JOIN LATERAL unnest(c.conkey) WITH ORDINALITY AS keys(attnum, ordinality) ON true
+        JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = keys.attnum
+        WHERE c.conrelid = 'supplier_methods'::regclass
+          AND c.contype = 'p'
+        GROUP BY c.conname;
+
+        IF current_pk IS NOT NULL
+           AND current_pk_columns <> ARRAY['supplier_method_id'] THEN
+          EXECUTE format('ALTER TABLE supplier_methods DROP CONSTRAINT %I', current_pk);
+          current_pk := NULL;
+        END IF;
+
+        IF current_pk IS NULL THEN
+          ALTER TABLE supplier_methods
+          ADD CONSTRAINT supplier_methods_pkey PRIMARY KEY (supplier_method_id);
+        END IF;
+      END $$;
     `);
     await queryRunner.query(`
       CREATE UNIQUE INDEX IF NOT EXISTS ux_supplier_methods_owner_method_number
@@ -60,12 +79,31 @@ export class ExpandPaymentMethodRelations20260414000000 implements MigrationInte
       ALTER COLUMN company_method_id SET NOT NULL
     `);
     await queryRunner.query(`
-      ALTER TABLE company_methods
-      DROP CONSTRAINT IF EXISTS company_methods_pkey
-    `);
-    await queryRunner.query(`
-      ALTER TABLE company_methods
-      ADD CONSTRAINT company_methods_pkey PRIMARY KEY (company_method_id)
+      DO $$
+      DECLARE
+        current_pk text;
+        current_pk_columns text[];
+      BEGIN
+        SELECT c.conname, array_agg(a.attname ORDER BY keys.ordinality)
+        INTO current_pk, current_pk_columns
+        FROM pg_constraint c
+        JOIN LATERAL unnest(c.conkey) WITH ORDINALITY AS keys(attnum, ordinality) ON true
+        JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = keys.attnum
+        WHERE c.conrelid = 'company_methods'::regclass
+          AND c.contype = 'p'
+        GROUP BY c.conname;
+
+        IF current_pk IS NOT NULL
+           AND current_pk_columns <> ARRAY['company_method_id'] THEN
+          EXECUTE format('ALTER TABLE company_methods DROP CONSTRAINT %I', current_pk);
+          current_pk := NULL;
+        END IF;
+
+        IF current_pk IS NULL THEN
+          ALTER TABLE company_methods
+          ADD CONSTRAINT company_methods_pkey PRIMARY KEY (company_method_id);
+        END IF;
+      END $$;
     `);
     await queryRunner.query(`
       CREATE UNIQUE INDEX IF NOT EXISTS ux_company_methods_owner_method_number

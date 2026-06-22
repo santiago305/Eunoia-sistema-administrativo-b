@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { UNIT_OF_WORK } from "src/shared/domain/ports/unit-of-work.port";
 import { TypeormUnitOfWork } from "src/shared/infrastructure/typeorm/typeorm.unit-of-work";
+import { AccessControlModule } from "src/modules/access-control/infrastructure/access-control.module";
 import { PurchasesModule } from "src/modules/purchases/infrastructure/purchases.module";
 import { ProductCatalogModule } from "src/modules/product-catalog/product-catalog.module";
 import { PurchaseHistoryEventEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-history-event.entity";
@@ -21,6 +22,7 @@ import { PurchaseReceptionsController } from "./adapters/in/controllers/purchase
       PurchaseReceptionItemEntity,
       PurchaseHistoryEventEntity,
     ]),
+    AccessControlModule,
     PurchasesModule,
     ProductCatalogModule,
   ],

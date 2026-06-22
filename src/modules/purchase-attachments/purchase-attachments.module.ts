@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { AccessControlModule } from "src/modules/access-control/infrastructure/access-control.module";
 import { FILE_STORAGE } from "src/shared/application/ports/file-storage.port";
 import { LocalFileStorageService } from "src/shared/utilidades/services/local-file-storage.service";
 import { PaymentDocumentEntity } from "src/modules/payments/adapters/out/persistence/typeorm/entities/payment-document.entity";
@@ -21,6 +22,7 @@ import { PURCHASE_ATTACHMENT_REPOSITORY } from "./domain/ports/purchase-attachme
       PaymentDocumentEntity,
       PurchaseHistoryEventEntity,
     ]),
+    AccessControlModule,
   ],
   controllers: [PurchaseAttachmentsController],
   providers: [
