@@ -41,6 +41,7 @@ export class PostInventoryFromPurchaseUsecase {
     createdBy?: string;
     postedBy: string;
     note?: string;
+    items?: Array<{ purchaseItemId: string; quantity: number }>;
     tx?: TransactionContext;
   }) {
     const { tx } = params;
@@ -58,6 +59,7 @@ export class PostInventoryFromPurchaseUsecase {
       createdBy?: string;
       postedBy: string;
       note?: string;
+      items?: Array<{ purchaseItemId: string; quantity: number }>;
       tx?: TransactionContext;
     },
     tx: TransactionContext,
@@ -72,7 +74,12 @@ export class PostInventoryFromPurchaseUsecase {
       order.currency ?? CurrencyType.PEN,
       tx,
     );
-    const stockItems = items.filter((item) => item.affectsStock && item.stockItemId);
+    const requestedQuantityByItem = new Map(
+      (params.items ?? []).map((item) => [item.purchaseItemId, item.quantity]),
+    );
+    const stockItems = items
+      .filter((item) => item.affectsStock && item.stockItemId)
+      .filter((item) => !requestedQuantityByItem.size || requestedQuantityByItem.has(item.poItemId));
     if (stockItems.length === 0) {
       throw new BadRequestException("La orden no tiene items que afecten stock");
     }
@@ -106,6 +113,10 @@ export class PostInventoryFromPurchaseUsecase {
     );
 
     for (const item of stockItems) {
+      const quantity = requestedQuantityByItem.get(item.poItemId) ?? item.quantity;
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        throw new BadRequestException("La cantidad a ingresar a stock debe ser mayor a cero");
+      }
       const skuStockItem = await this.productCatalogStockItemRepo.findById(item.stockItemId!, tx);
       if (!skuStockItem) {
         throw new NotFoundException("Stock item de catalogo no encontrado");
@@ -116,7 +127,7 @@ export class PostInventoryFromPurchaseUsecase {
           undefined,
           doc.id!,
           skuStockItem.id!,
-          item.quantity * item.factor,
+          quantity * item.factor,
           0,
           undefined,
           params.toLocationId,
@@ -137,7 +148,7 @@ export class PostInventoryFromPurchaseUsecase {
           items: [
             {
               skuId: skuStockItem.skuId,
-              quantity: item.quantity * item.factor,
+              quantity: quantity * item.factor,
               unitCost: item.unitPrice.getAmount(),
               locationId: params.toLocationId ?? null,
             },

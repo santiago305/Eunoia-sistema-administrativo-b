@@ -6,6 +6,7 @@ import { PostInventoryFromPurchaseUsecase } from "./Inventory-purchase.usecase";
 import { errorResponse } from "src/shared/response-standard/response";
 import { NotificationsService } from "src/modules/mail/application/use-cases/notifications.service";
 import { PURCHASE_NOTIFICATION_TYPES } from "src/modules/mail/domain/constants/purchase-notification-types";
+import { ReceptionStatus } from "src/modules/purchases/domain/value-objects/reception-status";
 
 export class ConfirmPurchaseReceptionUsecase {
   constructor(
@@ -30,17 +31,30 @@ export class ConfirmPurchaseReceptionUsecase {
         );
       }
 
-      await this.inventoryPurchase.execute({
-        poId: order.poId,
-        toWarehouseId: order.warehouseId,
-        postedBy: order.createdBy,
-        createdBy: order.createdBy,
-        note: "Ingreso por compra confirmada",
-        tx,
-      });
+      if (order.requiresStockEntry) {
+        try {
+          await this.inventoryPurchase.execute({
+            poId: order.poId,
+            toWarehouseId: order.warehouseId,
+            postedBy: order.createdBy,
+            createdBy: order.createdBy,
+            note: "Ingreso por compra confirmada",
+            tx,
+          });
+        } catch (error: any) {
+          const message = String(error?.message ?? "");
+          if (!message.includes("no tiene items que afecten stock")) {
+            throw error;
+          }
+        }
+      }
 
       await this.purchaseRepo.update(
-        { poId: order.poId, status: PurchaseOrderStatus.RECEIVED },
+        {
+          poId: order.poId,
+          status: PurchaseOrderStatus.RECEIVED,
+          receptionStatus: ReceptionStatus.RECEIVED,
+        },
         tx,
       );
 

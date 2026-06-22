@@ -130,6 +130,7 @@ export class PurchaseOrderOutputMapper {
 
     return {
       ...base,
+      warehouseId: base.warehouseId ?? params.order.warehouseId,
       total: totalPurchase,
       totalPaid,
       totalToPay: totalPurchase - totalPaid,

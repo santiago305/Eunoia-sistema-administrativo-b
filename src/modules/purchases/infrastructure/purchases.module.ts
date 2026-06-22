@@ -21,6 +21,7 @@ import { PurchaseHistoryEventEntity } from "../adapters/out/persistence/typeorm/
 import { AccessControlModule } from "src/modules/access-control/infrastructure/access-control.module";
 import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
 import { AccountsPayableModule } from "src/modules/accounts-payable";
+import { PostInventoryFromPurchaseUsecase } from "../application/usecases/purchase-order/Inventory-purchase.usecase";
 
 @Module({
   imports: [
@@ -45,6 +46,6 @@ import { AccountsPayableModule } from "src/modules/accounts-payable";
   ],
   controllers: [PurchaseOrdersController],
   providers: [...purchasesModuleProviders],
-  exports: [PURCHASE_ORDER, PURCHASE_ORDER_ITEM, PURCHASE_SEARCH],
+  exports: [PURCHASE_ORDER, PURCHASE_ORDER_ITEM, PURCHASE_SEARCH, PostInventoryFromPurchaseUsecase],
 })
 export class PurchasesModule {}
