@@ -23,6 +23,7 @@ import { PurchaseHistoryEventEntity } from "src/modules/purchases/adapters/out/p
 import { PurchaseOrderEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-order.entity";
 import { CREDIT_QUOTA_REPOSITORY, CreditQuotaRepository } from "src/modules/payments/domain/ports/credit-quota.repository";
 import { Inject } from "@nestjs/common";
+import { RecalculateAccountPayableUsecase } from "src/modules/accounts-payable";
 
 @Controller("payments")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
@@ -45,6 +46,7 @@ export class PaymentsController {
     private readonly purchaseOrderRepo: Repository<PurchaseOrderEntity>,
     @Inject(CREDIT_QUOTA_REPOSITORY)
     private readonly creditQuotaRepo: CreditQuotaRepository,
+    private readonly recalculateAccountPayable: RecalculateAccountPayableUsecase,
   ) {}
 
   @RequirePermissions("payments.manage")
@@ -87,6 +89,10 @@ export class PaymentsController {
         approvedAt: canApprovePayment ? new Date() : undefined,
       },
     );
+
+    if (canApprovePayment && input.accountPayableId) {
+      await this.recalculateAccountPayable.execute({ accountPayableId: input.accountPayableId });
+    }
 
     if (!canApprovePayment && input.poId) {
       const approval = await this.approvalRequestRepo.save(
@@ -178,6 +184,10 @@ export class PaymentsController {
         await this.creditQuotaRepo.updateTotalPaid(quota.quotaId, quota.totalPaid + Number(existing.amount));
         await this.creditQuotaRepo.updatePaymentDate(quota.quotaId, existing.date);
       }
+    }
+
+    if (existing.accountPayableId) {
+      await this.recalculateAccountPayable.execute({ accountPayableId: existing.accountPayableId });
     }
 
     if (existing.poId) {

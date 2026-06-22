@@ -20,6 +20,7 @@ import { ApprovalRequestEntity } from "../adapters/out/persistence/typeorm/entit
 import { PurchaseHistoryEventEntity } from "../adapters/out/persistence/typeorm/entities/purchase-history-event.entity";
 import { AccessControlModule } from "src/modules/access-control/infrastructure/access-control.module";
 import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
+import { AccountsPayableModule } from "src/modules/accounts-payable";
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { User } from "src/modules/users/adapters/out/persistence/typeorm/entitie
     UsersModule,
     MailModule,
     AccessControlModule,
+    AccountsPayableModule,
   ],
   controllers: [PurchaseOrdersController],
   providers: [...purchasesModuleProviders],

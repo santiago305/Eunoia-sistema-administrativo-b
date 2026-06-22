@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, NotFoundException, Optional } from "@nestjs/common";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { PurchaseOrder } from "src/modules/purchases/domain/entities/purchase-order";
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
@@ -19,6 +19,8 @@ import { PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY, ProductCatalogStockItemRepositor
 import { PurchaseUnitConversionService } from "../../services/purchase-unit-conversion.service";
 import { NotificationsService } from "src/modules/mail/application/use-cases/notifications.service";
 import { PURCHASE_NOTIFICATION_TYPES } from "src/modules/mail/domain/constants/purchase-notification-types";
+import { CreateAccountPayableUsecase } from "src/modules/accounts-payable";
+import { PurchaseItemType } from "src/modules/purchases/domain/value-objects/purchase-item-type";
 
 export class CreatePurchaseOrderUsecase {
   constructor(
@@ -39,6 +41,8 @@ export class CreatePurchaseOrderUsecase {
     private readonly createStockItem: CreateProductCatalogStockItem,
     private readonly purchaseUnitConversionService: PurchaseUnitConversionService,
     private readonly notificationsService: NotificationsService,
+    @Optional()
+    private readonly createAccountPayable?: CreateAccountPayableUsecase,
   ) {}
 
   async execute(
@@ -75,6 +79,14 @@ export class CreatePurchaseOrderUsecase {
           dateIssue: input.dateIssue,
           dateExpiration: input.dateExpiration,
           createdBy,
+          purchaseType: input.purchaseType,
+          receptionStatus: input.receptionStatus,
+          paymentStatus: input.paymentStatus,
+          isRecurringSource: input.isRecurringSource,
+          recurringTemplateId: input.recurringTemplateId,
+          requiresReceipt: input.requiresReceipt,
+          requiresStockEntry: input.requiresStockEntry,
+          requiresAssetCreation: input.requiresAssetCreation,
         });
       } catch (err) {
         if (err instanceof DomainError || (err as any)?.name === "InvalidMoneyError") {
@@ -93,29 +105,63 @@ export class CreatePurchaseOrderUsecase {
       if (input.items && input.items.length > 0) {
         for (const item of input.items) {
           let orderItem;
-          let stockItem = await this.stockItemRepo.findBySkuId(item.skuId, tx);
-          if(!stockItem){
-            stockItem = await this.createStockItem.execute(
-            {
-              skuId: item.skuId,
-              isActive: true,
-            },
-            tx,
-          );
+          const itemType = item.itemType ?? PurchaseItemType.PRODUCT;
+          const affectsStock = item.affectsStock ?? ![PurchaseItemType.SERVICE, PurchaseItemType.SUBSCRIPTION].includes(itemType);
+          let stockItemId: string | undefined;
+          let unitBase = item.unitBase ?? "";
+          let equivalence = item.equivalence ?? "";
+          let factor = item.factor ?? 1;
+
+          if (affectsStock) {
+            if (!item.skuId && !item.stockItemId) {
+              throw new BadRequestException("Debe enviar skuId o stockItemId en items que afectan stock");
+            }
+
+            if (item.stockItemId) {
+              const stockItem = await this.stockItemRepo.findById(item.stockItemId, tx);
+              if (!stockItem?.skuId) {
+                throw new BadRequestException("No se pudo resolver sku para el stockItem indicado");
+              }
+              stockItemId = stockItem.id;
+              const conversion = await this.purchaseUnitConversionService.resolveFactor({
+                skuId: stockItem.skuId,
+                unitBase: item.unitBase,
+                factor: item.factor,
+                tx,
+              });
+              unitBase = conversion.unitBase ?? unitBase;
+              equivalence = conversion.equivalence ?? equivalence;
+              factor = conversion.factor;
+            } else {
+              let stockItem = await this.stockItemRepo.findBySkuId(item.skuId!, tx);
+              if(!stockItem){
+                stockItem = await this.createStockItem.execute(
+                {
+                  skuId: item.skuId!,
+                  isActive: true,
+                },
+                tx,
+              );
+              }
+              stockItemId = stockItem.id;
+              const conversion = await this.purchaseUnitConversionService.resolveFactor({
+                skuId: item.skuId!,
+                unitBase: item.unitBase,
+                factor: item.factor,
+                tx,
+              });
+              unitBase = conversion.unitBase ?? unitBase;
+              equivalence = conversion.equivalence ?? equivalence;
+              factor = conversion.factor;
+            }
           }
-          const conversion = await this.purchaseUnitConversionService.resolveFactor({
-            skuId: item.skuId,
-            unitBase: item.unitBase,
-            factor: item.factor,
-            tx,
-          });
           try {
             orderItem = PurchaseOrderItemFactory.createNew({
               poId: po.poId,
-              stockItemId: stockItem.id,
-              unitBase: conversion.unitBase ?? item.unitBase,
-              equivalence: conversion.equivalence ?? item.equivalence,
-              factor: conversion.factor,
+              stockItemId,
+              unitBase,
+              equivalence,
+              factor,
               afectType: item.afectType,
               quantity: item.quantity,
               porcentageIgv: item.porcentageIgv ?? 0,
@@ -124,6 +170,16 @@ export class CreatePurchaseOrderUsecase {
               unitValue: item.unitValue ?? 0,
               unitPrice: item.unitPrice ?? 0,
               purchaseValue: item.purchaseValue ?? 0,
+              itemType,
+              internalMaterialId: item.internalMaterialId,
+              assetCategoryId: item.assetCategoryId,
+              serviceName: item.serviceName,
+              description: item.description,
+              warehouseId: item.warehouseId ?? input.warehouseId,
+              affectsStock,
+              generatesAsset: item.generatesAsset ?? itemType === PurchaseItemType.FIXED_ASSET,
+              isService: item.isService ?? itemType === PurchaseItemType.SERVICE,
+              isSubscription: item.isSubscription ?? itemType === PurchaseItemType.SUBSCRIPTION,
               currency: currency as any,
             });
           } catch (err) {
@@ -257,7 +313,22 @@ export class CreatePurchaseOrderUsecase {
           });
 
           try {
-            await this.creditQuotaRepo.create(quota, tx);
+            const createdQuota = await this.creditQuotaRepo.create(quota, tx);
+            if (this.createAccountPayable) {
+              await this.createAccountPayable.execute(
+                {
+                  purchaseId: po.poId,
+                  quotaId: createdQuota.quotaId,
+                  supplierId: po.supplierId,
+                  description: `Cuota ${quotaInput.number}`,
+                  currency: currency as any,
+                  amountTotal: quotaInput.totalToPay,
+                  dueDate: expirationDate,
+                  createdByUserId: createdBy,
+                },
+                tx,
+              );
+            }
             quotasCreated += 1;
             if ((quotaInput.totalPaid ?? 0) > 0) {
               paidQuotas += 1;

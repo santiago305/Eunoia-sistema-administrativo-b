@@ -13,13 +13,16 @@ import { PurchaseOrderDocument } from "../value-objects/purchase-order-document.
 import { PurchaseExpectedAt } from "../value-objects/expected-at.vo";
 import { PurchaseIssueDate } from "../value-objects/issue-date.vo";
 import { PurchaseExpirationDate } from "../value-objects/expiration-date.vo";
+import { PurchasePaymentStatus } from "../value-objects/purchase-payment-status";
+import { PurchaseType } from "../value-objects/purchase-type";
+import { ReceptionStatus } from "../value-objects/reception-status";
 
 type DateInput = Date | string | undefined | null;
 
 export class PurchaseOrderFactory {
   static createNew(params: {
     supplierId: string;
-    warehouseId: string;
+    warehouseId?: string;
     creditDays?: number;
     numQuotas?: number;
     totalTaxed?: number | Money;
@@ -34,6 +37,20 @@ export class PurchaseOrderFactory {
     paymentForm?: PaymentFormType;
     note?: string;
     status?: PurchaseOrderStatus;
+    purchaseType?: PurchaseType;
+    receptionStatus?: ReceptionStatus;
+    paymentStatus?: PurchasePaymentStatus;
+    requestedByUserId?: string;
+    approvedByUserId?: string;
+    approvedAt?: Date;
+    rejectedByUserId?: string;
+    rejectedAt?: Date;
+    rejectionReason?: string;
+    isRecurringSource?: boolean;
+    recurringTemplateId?: string;
+    requiresReceipt?: boolean;
+    requiresStockEntry?: boolean;
+    requiresAssetCreation?: boolean;
     isActive?: boolean;
     expectedAt?: DateInput;
     dateIssue?: DateInput;
@@ -44,7 +61,7 @@ export class PurchaseOrderFactory {
   }): PurchaseOrder {
     const currency = params.currency ?? CurrencyType.PEN;
     const supplierId = new PurchaseSupplierId(params.supplierId).value;
-    const warehouseId = new PurchaseWarehouseId(params.warehouseId).value;
+    const warehouseId = params.warehouseId ? new PurchaseWarehouseId(params.warehouseId).value : undefined;
     const creditDays = PurchaseCreditDays.create(params.creditDays ?? 0).value;
     const numQuotas = PurchaseNumQuotas.create(params.numQuotas ?? 0).value;
     const document = PurchaseOrderDocument.create({
@@ -74,6 +91,20 @@ export class PurchaseOrderFactory {
       params.paymentForm,
       params.note,
       params.status ?? PurchaseOrderStatus.DRAFT,
+      params.purchaseType ?? PurchaseType.INVENTORY,
+      params.receptionStatus ?? ReceptionStatus.PENDING,
+      params.paymentStatus ?? PurchasePaymentStatus.PENDING,
+      params.requestedByUserId,
+      params.approvedByUserId,
+      params.approvedAt,
+      params.rejectedByUserId,
+      params.rejectedAt,
+      params.rejectionReason,
+      params.isRecurringSource ?? false,
+      params.recurringTemplateId,
+      params.requiresReceipt ?? true,
+      params.requiresStockEntry ?? true,
+      params.requiresAssetCreation ?? false,
       params.isActive ?? true,
       expectedAt,
       dateIssue,
@@ -87,7 +118,7 @@ export class PurchaseOrderFactory {
   static reconstitute(params: {
     poId: string;
     supplierId: string;
-    warehouseId: string;
+    warehouseId?: string;
     creditDays?: number;
     numQuotas?: number;
     totalTaxed: number | Money;
@@ -102,6 +133,20 @@ export class PurchaseOrderFactory {
     paymentForm?: PaymentFormType;
     note?: string;
     status: PurchaseOrderStatus;
+    purchaseType?: PurchaseType;
+    receptionStatus?: ReceptionStatus;
+    paymentStatus?: PurchasePaymentStatus;
+    requestedByUserId?: string;
+    approvedByUserId?: string;
+    approvedAt?: Date;
+    rejectedByUserId?: string;
+    rejectedAt?: Date;
+    rejectionReason?: string;
+    isRecurringSource?: boolean;
+    recurringTemplateId?: string;
+    requiresReceipt?: boolean;
+    requiresStockEntry?: boolean;
+    requiresAssetCreation?: boolean;
     isActive?: boolean;
     expectedAt?: DateInput;
     dateIssue?: DateInput;
@@ -113,7 +158,7 @@ export class PurchaseOrderFactory {
     const currency = params.currency ?? CurrencyType.PEN;
     const poId = new PurchaseOrderId(params.poId).value;
     const supplierId = new PurchaseSupplierId(params.supplierId).value;
-    const warehouseId = new PurchaseWarehouseId(params.warehouseId).value;
+    const warehouseId = params.warehouseId ? new PurchaseWarehouseId(params.warehouseId).value : undefined;
     const creditDays = PurchaseCreditDays.create(params.creditDays ?? 0).value;
     const numQuotas = PurchaseNumQuotas.create(params.numQuotas ?? 0).value;
     const document = PurchaseOrderDocument.create({
@@ -143,6 +188,20 @@ export class PurchaseOrderFactory {
       params.paymentForm,
       params.note,
       params.status,
+      params.purchaseType ?? PurchaseType.INVENTORY,
+      params.receptionStatus ?? ReceptionStatus.PENDING,
+      params.paymentStatus ?? PurchasePaymentStatus.PENDING,
+      params.requestedByUserId,
+      params.approvedByUserId,
+      params.approvedAt,
+      params.rejectedByUserId,
+      params.rejectedAt,
+      params.rejectionReason,
+      params.isRecurringSource ?? false,
+      params.recurringTemplateId,
+      params.requiresReceipt ?? true,
+      params.requiresStockEntry ?? true,
+      params.requiresAssetCreation ?? false,
       params.isActive ?? true,
       expectedAt,
       dateIssue,

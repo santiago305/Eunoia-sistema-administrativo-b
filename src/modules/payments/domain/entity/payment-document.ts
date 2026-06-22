@@ -14,6 +14,7 @@ export class PaymentDocument {
     public readonly note?: string,
     public readonly poId?: string,
     public readonly quotaId?: string,
+    public readonly accountPayableId?: string,
     public readonly status: "PENDING_APPROVAL" | "APPROVED" | "REJECTED" = "APPROVED",
     public readonly requestedByUserId?: string,
     public readonly approvedByUserId?: string,
@@ -34,6 +35,7 @@ export class PaymentDocument {
     note?: string;
     poId?: string;
     quotaId?: string;
+    accountPayableId?: string;
     status?: "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
     requestedByUserId?: string;
     approvedByUserId?: string;
@@ -58,6 +60,7 @@ export class PaymentDocument {
       params.note?.trim() || undefined,
       params.poId,
       params.quotaId,
+      params.accountPayableId,
       params.status ?? "APPROVED",
       params.requestedByUserId,
       params.approvedByUserId,

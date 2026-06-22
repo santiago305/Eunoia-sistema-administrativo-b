@@ -12,6 +12,7 @@ export interface PaymentOutput {
   fromDocumentType: PayDocType;
   poId: string;
   quotaId?: string | null;
+  accountPayableId?: string | null;
   status: "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
   requestedByUserId?: string | null;
   approvedByUserId?: string | null;

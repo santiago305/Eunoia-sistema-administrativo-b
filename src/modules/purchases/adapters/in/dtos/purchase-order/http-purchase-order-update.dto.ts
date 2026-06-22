@@ -1,8 +1,11 @@
-import { IsArray, IsDateString, IsEnum, IsInt, IsNumber, IsOptional, IsString, IsUUID, Min, ValidateNested } from "class-validator";
+import { IsArray, IsBoolean, IsDateString, IsEnum, IsInt, IsNumber, IsOptional, IsString, IsUUID, Min, ValidateNested } from "class-validator";
 import { Type } from "class-transformer";
 import { CurrencyType } from "src/modules/purchases/domain/value-objects/currency-type";
 import { PaymentFormType } from "src/modules/purchases/domain/value-objects/payment-form-type";
 import { PurchaseOrderStatus } from "src/modules/purchases/domain/value-objects/po-status";
+import { PurchasePaymentStatus } from "src/modules/purchases/domain/value-objects/purchase-payment-status";
+import { PurchaseType } from "src/modules/purchases/domain/value-objects/purchase-type";
+import { ReceptionStatus } from "src/modules/purchases/domain/value-objects/reception-status";
 import { VoucherDocType } from "src/modules/purchases/domain/value-objects/voucher-doc-type";
 import { HttpCreatePaymentDto } from "src/modules/payments/adapters/in/dtos/payment/http-payment-create.dto";
 import { HttpCreateCreditQuotaDto } from "src/modules/payments/adapters/in/dtos/credit-quota/http-credit-quota-create.dto";
@@ -82,6 +85,38 @@ export class HttpUpdatePurchaseOrderDto {
   @IsOptional()
   @IsEnum(PurchaseOrderStatus)
   status?: PurchaseOrderStatus;
+
+  @IsOptional()
+  @IsEnum(PurchaseType)
+  purchaseType?: PurchaseType;
+
+  @IsOptional()
+  @IsEnum(ReceptionStatus)
+  receptionStatus?: ReceptionStatus;
+
+  @IsOptional()
+  @IsEnum(PurchasePaymentStatus)
+  paymentStatus?: PurchasePaymentStatus;
+
+  @IsOptional()
+  @IsBoolean()
+  isRecurringSource?: boolean;
+
+  @IsOptional()
+  @IsUUID()
+  recurringTemplateId?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  requiresReceipt?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  requiresStockEntry?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  requiresAssetCreation?: boolean;
 
   @IsOptional()
   @IsDateString()

@@ -1,6 +1,7 @@
 import { StockItemType } from "src/shared/domain/value-objects/stock-item-type";
 import { ProductCatalogSkuWithAttributes, SkuAttributeInput } from "src/modules/product-catalog/domain/ports/sku.repository";
 import { AfectIgvType } from "src/modules/purchases/domain/value-objects/afect-igv-type";
+import { PurchaseItemType } from "src/modules/purchases/domain/value-objects/purchase-item-type";
 
 export interface PurchaseOrderLegacyProductOutput {
   id: string;
@@ -44,5 +45,15 @@ export interface PurchaseOrderItemOutput {
   unitValue?: number;
   unitPrice: number;
   purchaseValue?: number;
+  itemType?: PurchaseItemType;
+  internalMaterialId?: string;
+  assetCategoryId?: string;
+  serviceName?: string;
+  description?: string;
+  warehouseId?: string;
+  affectsStock?: boolean;
+  generatesAsset?: boolean;
+  isService?: boolean;
+  isSubscription?: boolean;
 }
 

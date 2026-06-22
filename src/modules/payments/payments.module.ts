@@ -16,6 +16,7 @@ import { ApprovalRequestEntity } from "src/modules/purchases/adapters/out/persis
 import { PurchaseHistoryEventEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-history-event.entity";
 import { PurchaseOrderEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-order.entity";
 import { MailModule } from "src/modules/mail";
+import { AccountsPayableModule } from "src/modules/accounts-payable";
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { MailModule } from "src/modules/mail";
     ]),
     AccessControlModule,
     MailModule,
+    AccountsPayableModule,
   ],
   controllers: [PaymentsController, CreditQuotasController],
   providers: [...paymentsModuleProviders],

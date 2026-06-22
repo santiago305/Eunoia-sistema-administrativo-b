@@ -15,6 +15,7 @@ export class PaymentsFactory {
     note?: string;
     poId?: string;
     quotaId?: string;
+    accountPayableId?: string;
     status?: "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
     requestedByUserId?: string;
     approvedByUserId?: string;

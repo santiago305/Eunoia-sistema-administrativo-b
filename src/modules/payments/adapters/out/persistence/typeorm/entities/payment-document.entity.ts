@@ -7,6 +7,7 @@ import { CreditQuotaEntity } from "./credit-quota.entity";
 @Entity("payment_documents")
 @Index("idx_payment_documents_po", ["poId"])
 @Index("idx_payment_documents_quota", ["quotaId"])
+@Index("idx_payment_documents_account_payable", ["accountPayableId"])
 export class PaymentDocumentEntity {
   @PrimaryGeneratedColumn("uuid", { name: "pay_doc_id" })
   id: string;
@@ -41,6 +42,9 @@ export class PaymentDocumentEntity {
 
   @Column({ name: "quota_id", type: "uuid", nullable: true })
   quotaId?: string | null;
+
+  @Column({ name: "account_payable_id", type: "uuid", nullable: true })
+  accountPayableId?: string | null;
 
   @Column({ name: "status", type: "varchar", length: 30, default: "APPROVED" })
   status: "PENDING_APPROVAL" | "APPROVED" | "REJECTED";

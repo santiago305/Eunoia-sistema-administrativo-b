@@ -8,6 +8,7 @@ import { PurchaseStockItemId } from "../value-objects/purchase-stock-item-id.vo"
 import { PurchaseQuantity } from "../value-objects/quantity.vo";
 import { PurchaseFactor } from "../value-objects/factor.vo";
 import { PurchaseIgvPercentage } from "../value-objects/igv-percentage.vo";
+import { PurchaseItemType } from "../value-objects/purchase-item-type";
 
 export class PurchaseOrderItemFactory {
   private static toNumber(value: number | Money | undefined | null): number {
@@ -17,7 +18,7 @@ export class PurchaseOrderItemFactory {
 
   static createNew(params: {
     poId: string;
-    stockItemId: string;
+    stockItemId?: string;
     unitBase: string;
     equivalence: string;
     factor: number;
@@ -29,11 +30,21 @@ export class PurchaseOrderItemFactory {
     unitValue?: number | Money;
     unitPrice?: number | Money;
     purchaseValue?: number | Money;
+    itemType?: PurchaseItemType;
+    internalMaterialId?: string;
+    assetCategoryId?: string;
+    serviceName?: string;
+    description?: string;
+    warehouseId?: string;
+    affectsStock?: boolean;
+    generatesAsset?: boolean;
+    isService?: boolean;
+    isSubscription?: boolean;
     currency?: CurrencyType;
   }): PurchaseOrderItem {
     const currency = params.currency ?? CurrencyType.PEN;
     const poId = new PurchaseOrderId(params.poId).value;
-    const stockItemId = new PurchaseStockItemId(params.stockItemId).value;
+    const stockItemId = params.stockItemId ? new PurchaseStockItemId(params.stockItemId).value : undefined;
     const quantity = PurchaseQuantity.create(params.quantity).value;
     const factor =
     params.factor === undefined || params.factor === null
@@ -58,13 +69,23 @@ export class PurchaseOrderItemFactory {
       Money.create(params.unitValue ?? 0, currency),
       Money.create(params.unitPrice ?? 0, currency),
       Money.create(params.purchaseValue ?? 0, currency),
+      params.itemType ?? PurchaseItemType.PRODUCT,
+      params.internalMaterialId,
+      params.assetCategoryId,
+      params.serviceName,
+      params.description,
+      params.warehouseId,
+      params.affectsStock ?? true,
+      params.generatesAsset ?? false,
+      params.isService ?? false,
+      params.isSubscription ?? false,
     );
   }
 
   static reconstitute(params: {
     poItemId: string;
     poId: string;
-    stockItemId: string;
+    stockItemId?: string;
     unitBase: string;
     equivalence: string;
     factor: number;
@@ -76,12 +97,22 @@ export class PurchaseOrderItemFactory {
     unitValue: number | Money;
     unitPrice: number | Money;
     purchaseValue: number | Money;
+    itemType?: PurchaseItemType;
+    internalMaterialId?: string;
+    assetCategoryId?: string;
+    serviceName?: string;
+    description?: string;
+    warehouseId?: string;
+    affectsStock?: boolean;
+    generatesAsset?: boolean;
+    isService?: boolean;
+    isSubscription?: boolean;
     currency?: CurrencyType;
   }): PurchaseOrderItem {
     const currency = params.currency ?? CurrencyType.PEN;
     const poItemId = new PurchaseOrderItemId(params.poItemId).value;
     const poId = new PurchaseOrderId(params.poId).value;
-    const stockItemId = new PurchaseStockItemId(params.stockItemId).value;
+    const stockItemId = params.stockItemId ? new PurchaseStockItemId(params.stockItemId).value : undefined;
     const quantity = PurchaseQuantity.create(params.quantity).value;
     const factor =
     params.factor === undefined || params.factor === null
@@ -107,6 +138,16 @@ export class PurchaseOrderItemFactory {
       Money.create(params.unitValue ?? 0, currency),
       Money.create(params.unitPrice ?? 0, currency),
       Money.create(params.purchaseValue ?? 0, currency),
+      params.itemType ?? PurchaseItemType.PRODUCT,
+      params.internalMaterialId,
+      params.assetCategoryId,
+      params.serviceName,
+      params.description,
+      params.warehouseId,
+      params.affectsStock ?? true,
+      params.generatesAsset ?? false,
+      params.isService ?? false,
+      params.isSubscription ?? false,
     );
   }
 }

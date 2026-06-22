@@ -30,4 +30,8 @@ export class HttpCreatePaymentDto {
   @IsOptional()
   @IsUUID()
   poId: string;
+
+  @IsOptional()
+  @IsUUID()
+  accountPayableId?: string;
 }

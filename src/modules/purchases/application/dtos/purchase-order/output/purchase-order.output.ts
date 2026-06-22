@@ -1,6 +1,9 @@
 import { CurrencyType } from "src/modules/purchases/domain/value-objects/currency-type";
 import { PaymentFormType } from "src/modules/purchases/domain/value-objects/payment-form-type";
 import { PurchaseOrderStatus } from "src/modules/purchases/domain/value-objects/po-status";
+import { PurchasePaymentStatus } from "src/modules/purchases/domain/value-objects/purchase-payment-status";
+import { PurchaseType } from "src/modules/purchases/domain/value-objects/purchase-type";
+import { ReceptionStatus } from "src/modules/purchases/domain/value-objects/reception-status";
 import { VoucherDocType } from "src/modules/purchases/domain/value-objects/voucher-doc-type";
 import { PaymentOutput } from "src/modules/payments/application/dtos/payment/output/payment.output";
 
@@ -9,7 +12,7 @@ export interface PurchaseOrderOutput {
   supplierId: string;
   supplierName?: string;
   supplierDocumentNumber?: string;
-  warehouseId: string;
+  warehouseId?: string;
   warehouseName?: string;
   documentType?: VoucherDocType;
   serie?: string;
@@ -28,6 +31,14 @@ export interface PurchaseOrderOutput {
   payments?: PaymentOutput[];
   note?: string;
   status: PurchaseOrderStatus;
+  purchaseType?: PurchaseType;
+  receptionStatus?: ReceptionStatus;
+  paymentStatus?: PurchasePaymentStatus;
+  isRecurringSource?: boolean;
+  recurringTemplateId?: string;
+  requiresReceipt?: boolean;
+  requiresStockEntry?: boolean;
+  requiresAssetCreation?: boolean;
   isActive: boolean;
   expectedAt?: Date;
   dateIssue?: Date;

@@ -47,27 +47,21 @@ export class GetPurchaseOrderUsecase {
 
     const itemOutputs: PurchaseOrderItemOutput[] = await Promise.all(
       items.map(async (row) => {
+        if (!row.stockItemId) {
+          return PurchaseOrderOutputMapper.toItemOutput(row);
+        }
+
         const skuStockItem = await this.productCatalogStockItemRepo.findById(row.stockItemId);
-        if (!skuStockItem) throw new BadRequestException("Item no es SKU o no existe en catálogo");
+        if (!skuStockItem) return PurchaseOrderOutputMapper.toItemOutput(row);
 
         let sku = await this.productCatalogSkuRepo.findById(skuStockItem.skuId);
         if (!sku) throw new BadRequestException("Sku no encontrado");
 
         return {
+          ...PurchaseOrderOutputMapper.toItemOutput(row),
           poItemId: row.poItemId,
           poId: row.poId,
           sku,
-          unitBase: row.unitBase,
-          equivalence: row.equivalence,
-          factor: row.factor,
-          afectType: row.afectType,
-          quantity: row.quantity,
-          porcentageIgv: row.porcentageIgv.getAmount(),
-          baseWithoutIgv: row.baseWithoutIgv.getAmount(),
-          amountIgv: row.amountIgv.getAmount(),
-          unitValue: row.unitValue.getAmount(),
-          unitPrice: row.unitPrice.getAmount(),
-          purchaseValue: row.purchaseValue.getAmount(),
         };
       }),
     );

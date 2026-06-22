@@ -37,6 +37,7 @@ export class PaymentDocumentTypeormRepository implements PaymentDocumentReposito
       note: row.note ?? undefined,
       poId: row.poId ?? undefined,
       quotaId: row.quotaId ?? undefined,
+      accountPayableId: row.accountPayableId ?? undefined,
       status: row.status,
       requestedByUserId: row.requestedByUserId ?? undefined,
       approvedByUserId: row.approvedByUserId ?? undefined,
@@ -54,6 +55,14 @@ export class PaymentDocumentTypeormRepository implements PaymentDocumentReposito
 
   async findByPoId(poId: string, tx?: TransactionContext): Promise<PaymentDocument[]> {
     const rows = await this.getRepo(tx).find({ where: { poId } });
+    return rows.map((r) => this.toDomain(r));
+  }
+
+  async findApprovedByAccountPayableId(
+    accountPayableId: string,
+    tx?: TransactionContext,
+  ): Promise<PaymentDocument[]> {
+    const rows = await this.getRepo(tx).find({ where: { accountPayableId, status: "APPROVED" } });
     return rows.map((r) => this.toDomain(r));
   }
 
@@ -87,6 +96,7 @@ export class PaymentDocumentTypeormRepository implements PaymentDocumentReposito
       fromDocumentType: document.fromDocumentType,
       poId: document.poId ?? null,
       quotaId: document.quotaId ?? null,
+      accountPayableId: document.accountPayableId ?? null,
       status: document.status,
       requestedByUserId: document.requestedByUserId ?? null,
       approvedByUserId: document.approvedByUserId ?? null,
@@ -112,6 +122,7 @@ export class PaymentDocumentTypeormRepository implements PaymentDocumentReposito
       fromDocumentType: document.fromDocumentType,
       poId: document.poId ?? null,
       quotaId: document.quotaId ?? null,
+      accountPayableId: document.accountPayableId ?? null,
       status: document.status,
       requestedByUserId: document.requestedByUserId ?? null,
       approvedByUserId: document.approvedByUserId ?? null,

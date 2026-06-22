@@ -30,6 +30,7 @@ import { PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY, ProductCatalogStockItemRepositor
 import { CreateProductCatalogStockItem } from "src/modules/product-catalog/application/usecases/create-stock-item.usecase";
 import { errorResponse } from "src/shared/response-standard/response";
 import { PurchaseUnitConversionService } from "../../services/purchase-unit-conversion.service";
+import { PurchaseItemType } from "src/modules/purchases/domain/value-objects/purchase-item-type";
 
 export class UpdatePurchaseOrderUsecase {
   constructor(
@@ -134,6 +135,14 @@ export class UpdatePurchaseOrderUsecase {
           total,
           note: input.note,
           status: input.status,
+          purchaseType: input.purchaseType,
+          receptionStatus: input.receptionStatus,
+          paymentStatus: input.paymentStatus,
+          isRecurringSource: input.isRecurringSource,
+          recurringTemplateId: input.recurringTemplateId,
+          requiresReceipt: input.requiresReceipt,
+          requiresStockEntry: input.requiresStockEntry,
+          requiresAssetCreation: input.requiresAssetCreation,
           expectedAt,
           dateIssue,
           dateExpiration,
@@ -164,48 +173,59 @@ export class UpdatePurchaseOrderUsecase {
 
         if (input.items.length > 0) {
           for (const item of input.items) {
-            if (!item.skuId && !item.stockItemId) {
-              throw new BadRequestException(errorResponse("Debe enviar skuId o stockItemId en el item"));
-            }
+            const itemType = item.itemType ?? PurchaseItemType.PRODUCT;
+            const affectsStock = item.affectsStock ?? ![PurchaseItemType.SERVICE, PurchaseItemType.SUBSCRIPTION].includes(itemType);
+            let stockItemId: string | undefined;
+            let unitBase = item.unitBase ?? "";
+            let equivalence = item.equivalence ?? "";
+            let factor = item.factor ?? 1;
 
-            let stockItemId: string;
-            let skuIdForConversion: string;
-            if (item.stockItemId) {
-              stockItemId = item.stockItemId;
-              const stockItem = await this.stockItemRepo.findById(item.stockItemId, tx);
-              if (!stockItem?.skuId) {
-                throw new BadRequestException(errorResponse("No se pudo resolver sku para el stockItem indicado"));
+            if (affectsStock) {
+              if (!item.skuId && !item.stockItemId) {
+                throw new BadRequestException(errorResponse("Debe enviar skuId o stockItemId en items que afectan stock"));
               }
-              skuIdForConversion = stockItem.skuId;
-            } else {
-              let stockItem = await this.stockItemRepo.findBySkuId(item.skuId!, tx);
-              if (!stockItem) {
-                stockItem = await this.createStockItem.execute(
-                  { skuId: item.skuId!, isActive: true },
-                  tx,
-                );
+
+              let skuIdForConversion: string;
+              if (item.stockItemId) {
+                const stockItem = await this.stockItemRepo.findById(item.stockItemId, tx);
+                if (!stockItem?.skuId) {
+                  throw new BadRequestException(errorResponse("No se pudo resolver sku para el stockItem indicado"));
+                }
+                stockItemId = stockItem.id;
+                skuIdForConversion = stockItem.skuId;
+              } else {
+                let stockItem = await this.stockItemRepo.findBySkuId(item.skuId!, tx);
+                if (!stockItem) {
+                  stockItem = await this.createStockItem.execute(
+                    { skuId: item.skuId!, isActive: true },
+                    tx,
+                  );
+                }
+                if (!stockItem.id) {
+                  throw new BadRequestException(errorResponse("No se pudo resolver el stockItemId para el skuId indicado"));
+                }
+                stockItemId = stockItem.id;
+                skuIdForConversion = item.skuId!;
               }
-              if (!stockItem.id) {
-                throw new BadRequestException(errorResponse("No se pudo resolver el stockItemId para el skuId indicado"));
-              }
-              stockItemId = stockItem.id;
-              skuIdForConversion = item.skuId!;
+              const conversion = await this.purchaseUnitConversionService.resolveFactor({
+                skuId: skuIdForConversion,
+                unitBase: item.unitBase,
+                factor: item.factor,
+                tx,
+              });
+              unitBase = conversion.unitBase ?? unitBase;
+              equivalence = conversion.equivalence ?? equivalence;
+              factor = conversion.factor;
             }
-            const conversion = await this.purchaseUnitConversionService.resolveFactor({
-              skuId: skuIdForConversion,
-              unitBase: item.unitBase,
-              factor: item.factor,
-              tx,
-            });
 
             let orderItem;
             try {
               orderItem = PurchaseOrderItemFactory.createNew({
                 poId: updated.poId,
                 stockItemId,
-                unitBase: conversion.unitBase ?? item.unitBase,
-                equivalence: conversion.equivalence ?? item.equivalence,
-                factor: conversion.factor,
+                unitBase,
+                equivalence,
+                factor,
                 afectType: item.afectType     ,
                 quantity: item.quantity,
                 porcentageIgv: item.porcentageIgv ?? 0,
@@ -214,6 +234,16 @@ export class UpdatePurchaseOrderUsecase {
                 unitValue: item.unitValue ?? 0,
                 unitPrice: item.unitPrice ?? 0,
                 purchaseValue: item.purchaseValue ?? 0,
+                itemType,
+                internalMaterialId: item.internalMaterialId,
+                assetCategoryId: item.assetCategoryId,
+                serviceName: item.serviceName,
+                description: item.description,
+                warehouseId: item.warehouseId ?? input.warehouseId ?? current.warehouseId,
+                affectsStock,
+                generatesAsset: item.generatesAsset ?? itemType === PurchaseItemType.FIXED_ASSET,
+                isService: item.isService ?? itemType === PurchaseItemType.SERVICE,
+                isSubscription: item.isSubscription ?? itemType === PurchaseItemType.SUBSCRIPTION,
                 currency: itemCurrency as any,
               });
 

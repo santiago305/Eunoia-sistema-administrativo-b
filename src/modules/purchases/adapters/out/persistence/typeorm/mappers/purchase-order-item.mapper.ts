@@ -12,7 +12,7 @@ export class PurchaseOrderItemMapper {
     return PurchaseOrderItemFactory.reconstitute({
       poItemId: orm.id,
       poId: orm.poId,
-      stockItemId: orm.stockItemId,
+      stockItemId: orm.stockItemId ?? undefined,
       unitBase: orm.unitBase ?? "",
       equivalence: orm.equivalencia ?? "",
       factor: safeFactor,
@@ -24,6 +24,16 @@ export class PurchaseOrderItemMapper {
       unitValue: Number(orm.unitValue ?? 0),
       unitPrice: Number(orm.unitPrice ?? 0),
       purchaseValue: Number(orm.purchaseValue ?? 0),
+      itemType: orm.itemType,
+      internalMaterialId: orm.internalMaterialId ?? undefined,
+      assetCategoryId: orm.assetCategoryId ?? undefined,
+      serviceName: orm.serviceName ?? undefined,
+      description: orm.description ?? undefined,
+      warehouseId: orm.warehouseId ?? undefined,
+      affectsStock: orm.affectsStock,
+      generatesAsset: orm.generatesAsset,
+      isService: orm.isService,
+      isSubscription: orm.isSubscription,
       currency,
     });
   }
@@ -32,7 +42,7 @@ export class PurchaseOrderItemMapper {
     return {
       id: domain.poItemId,
       poId: domain.poId,
-      stockItemId: domain.stockItemId,
+      stockItemId: domain.stockItemId ?? null,
       unitBase: domain.unitBase ?? null,
       equivalencia: domain.equivalence ?? null,
       factor: domain.factor ?? 1,
@@ -44,6 +54,16 @@ export class PurchaseOrderItemMapper {
       unitValue: domain.unitValue.getAmount(),
       unitPrice: domain.unitPrice.getAmount(),
       purchaseValue: domain.purchaseValue.getAmount(),
+      itemType: domain.itemType,
+      internalMaterialId: domain.internalMaterialId ?? null,
+      assetCategoryId: domain.assetCategoryId ?? null,
+      serviceName: domain.serviceName ?? null,
+      description: domain.description ?? null,
+      warehouseId: domain.warehouseId ?? null,
+      affectsStock: domain.affectsStock,
+      generatesAsset: domain.generatesAsset,
+      isService: domain.isService,
+      isSubscription: domain.isSubscription,
     };
   }
 }

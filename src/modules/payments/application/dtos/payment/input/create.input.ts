@@ -8,4 +8,5 @@ export interface CreatePaymentInput {
   note?: string;
   quotaId?: string;
   poId?:string;
+  accountPayableId?: string;
 }

@@ -14,6 +14,7 @@ export class PaymentOutputMapper {
       fromDocumentType: row.fromDocumentType,
       poId: row.poId ?? "",
       quotaId: row.quotaId ?? null,
+      accountPayableId: row.accountPayableId ?? null,
       status: row.status,
       requestedByUserId: row.requestedByUserId ?? null,
       approvedByUserId: row.approvedByUserId ?? null,

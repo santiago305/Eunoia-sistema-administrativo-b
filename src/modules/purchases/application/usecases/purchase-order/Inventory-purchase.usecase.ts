@@ -72,8 +72,9 @@ export class PostInventoryFromPurchaseUsecase {
       order.currency ?? CurrencyType.PEN,
       tx,
     );
-    if (items.length === 0) {
-      throw new BadRequestException("La orden no tiene items");
+    const stockItems = items.filter((item) => item.affectsStock && item.stockItemId);
+    if (stockItems.length === 0) {
+      throw new BadRequestException("La orden no tiene items que afecten stock");
     }
 
     const series = await this.seriesRepo.findActiveFor(
@@ -104,8 +105,8 @@ export class PostInventoryFromPurchaseUsecase {
       tx,
     );
 
-    for (const item of items) {
-      const skuStockItem = await this.productCatalogStockItemRepo.findById(item.stockItemId, tx);
+    for (const item of stockItems) {
+      const skuStockItem = await this.productCatalogStockItemRepo.findById(item.stockItemId!, tx);
       if (!skuStockItem) {
         throw new NotFoundException("Stock item de catalogo no encontrado");
       }

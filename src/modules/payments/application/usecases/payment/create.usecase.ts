@@ -70,6 +70,7 @@ export class CreatePaymentUsecase {
         note: input.note,
         poId: paymentPoId,
         quotaId: input.quotaId,
+        accountPayableId: input.accountPayableId,
         status: options?.status ?? "APPROVED",
         requestedByUserId: options?.requestedByUserId,
         approvedByUserId: options?.approvedByUserId,
