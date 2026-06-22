@@ -46,8 +46,14 @@ export class PaymentDocumentEntity {
   @Column({ name: "account_payable_id", type: "uuid", nullable: true })
   accountPayableId?: string | null;
 
+  @Column({ name: "company_payment_account_id", type: "uuid", nullable: true })
+  companyPaymentAccountId?: string | null;
+
+  @Column({ name: "payment_method_id", type: "uuid", nullable: true })
+  paymentMethodId?: string | null;
+
   @Column({ name: "status", type: "varchar", length: 30, default: "APPROVED" })
-  status: "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
+  status: "SCHEDULED" | "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
 
   @Column({ name: "requested_by_user_id", type: "uuid", nullable: true })
   requestedByUserId?: string | null;
@@ -66,6 +72,33 @@ export class PaymentDocumentEntity {
 
   @Column({ name: "rejection_reason", type: "text", nullable: true })
   rejectionReason?: string | null;
+
+  @Column({ name: "paid_by_user_id", type: "uuid", nullable: true })
+  paidByUserId?: string | null;
+
+  @Column({ name: "scheduled_by_user_id", type: "uuid", nullable: true })
+  scheduledByUserId?: string | null;
+
+  @Column({ name: "scheduled_at", type: "timestamptz", nullable: true })
+  scheduledAt?: Date | null;
+
+  @Column({ name: "paid_at", type: "timestamptz", nullable: true })
+  paidAt?: Date | null;
+
+  @Column({ name: "payment_evidence_file_id", type: "uuid", nullable: true })
+  paymentEvidenceFileId?: string | null;
+
+  @Column({ name: "bank_name", type: "varchar", length: 120, nullable: true })
+  bankName?: string | null;
+
+  @Column({ name: "card_last_four", type: "varchar", length: 4, nullable: true })
+  cardLastFour?: string | null;
+
+  @Column({ name: "operation_code", type: "varchar", length: 80, nullable: true })
+  operationCode?: string | null;
+
+  @Column({ name: "is_partial", type: "boolean", default: false })
+  isPartial: boolean;
 
   @ManyToOne(() => CreditQuotaEntity, { nullable: true, onDelete: "SET NULL" })
   @JoinColumn({ name: "quota_id" })

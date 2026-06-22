@@ -41,6 +41,7 @@ import { BankAccountsModule } from './modules/bank-accounts/bank-accounts.module
 import { AccountsPayableModule } from './modules/accounts-payable';
 import { PurchaseReceptionsModule } from './modules/purchase-receptions';
 import { PurchaseAttachmentsModule } from './modules/purchase-attachments';
+import { CompanyPaymentAccountsModule } from './modules/company-payment-accounts';
 
 const redisAuth = envs.redis.password ? `:${encodeURIComponent(envs.redis.password)}@` : '';
 const redisUrl = `redis://${redisAuth}${envs.redis.host}:${envs.redis.port}/${envs.redis.db}`;
@@ -85,6 +86,7 @@ const redisUrl = `redis://${redisAuth}${envs.redis.host}:${envs.redis.port}/${en
     AccountsPayableModule,
     PurchaseReceptionsModule,
     PurchaseAttachmentsModule,
+    CompanyPaymentAccountsModule,
     PdfGeneratedModule,
     SecurityModule,
     MailModule,

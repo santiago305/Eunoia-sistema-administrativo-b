@@ -79,12 +79,14 @@ export class PaymentsController {
       }
     }
 
+    const isScheduled = !!input.scheduledAt && !input.paidAt;
     const result = await this.createPayment.execute(
       input,
       undefined,
       {
-        status: canApprovePayment ? "APPROVED" : "PENDING_APPROVAL",
+        status: isScheduled ? "SCHEDULED" : canApprovePayment ? "APPROVED" : "PENDING_APPROVAL",
         requestedByUserId: user.id,
+        scheduledByUserId: isScheduled ? user.id : undefined,
         approvedByUserId: canApprovePayment ? user.id : undefined,
         approvedAt: canApprovePayment ? new Date() : undefined,
       },
@@ -169,13 +171,15 @@ export class PaymentsController {
     if (!existing) {
       return { type: "error", message: "Pago no encontrado" };
     }
-    if (existing.status !== "PENDING_APPROVAL") {
+    if (existing.status !== "PENDING_APPROVAL" && existing.status !== "SCHEDULED") {
       return { type: "error", message: "El pago no está pendiente de aprobación" };
     }
 
     existing.status = "APPROVED";
     existing.approvedByUserId = user.id;
     existing.approvedAt = new Date();
+    existing.paidByUserId = user.id;
+    existing.paidAt = existing.paidAt ?? new Date();
     await this.paymentEntityRepo.save(existing);
 
     if (existing.quotaId) {

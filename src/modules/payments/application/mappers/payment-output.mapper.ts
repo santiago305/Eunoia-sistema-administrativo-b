@@ -15,6 +15,8 @@ export class PaymentOutputMapper {
       poId: row.poId ?? "",
       quotaId: row.quotaId ?? null,
       accountPayableId: row.accountPayableId ?? null,
+      companyPaymentAccountId: row.companyPaymentAccountId ?? null,
+      paymentMethodId: row.paymentMethodId ?? null,
       status: row.status,
       requestedByUserId: row.requestedByUserId ?? null,
       approvedByUserId: row.approvedByUserId ?? null,
@@ -22,6 +24,16 @@ export class PaymentOutputMapper {
       approvedAt: row.approvedAt ?? null,
       rejectedAt: row.rejectedAt ?? null,
       rejectionReason: row.rejectionReason ?? null,
+      paidByUserId: row.paidByUserId ?? null,
+      scheduledByUserId: row.scheduledByUserId ?? null,
+      scheduledAt: row.scheduledAt ?? null,
+      paidAt: row.paidAt ?? null,
+      paymentEvidenceFileId: row.paymentEvidenceFileId ?? null,
+      bankName: row.bankName ?? null,
+      cardLastFour: row.cardLastFour ?? null,
+      operationCode: row.operationCode ?? null,
+      isPartial: row.isPartial,
+      companyPaymentAccountMaskedLabel: row.companyPaymentAccountMaskedLabel ?? null,
     };
   }
 }

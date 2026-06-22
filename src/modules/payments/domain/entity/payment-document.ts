@@ -15,13 +15,25 @@ export class PaymentDocument {
     public readonly poId?: string,
     public readonly quotaId?: string,
     public readonly accountPayableId?: string,
-    public readonly status: "PENDING_APPROVAL" | "APPROVED" | "REJECTED" = "APPROVED",
+    public readonly status: "SCHEDULED" | "PENDING_APPROVAL" | "APPROVED" | "REJECTED" = "APPROVED",
     public readonly requestedByUserId?: string,
     public readonly approvedByUserId?: string,
     public readonly rejectedByUserId?: string,
     public readonly approvedAt?: Date,
     public readonly rejectedAt?: Date,
     public readonly rejectionReason?: string,
+    public readonly companyPaymentAccountId?: string,
+    public readonly paymentMethodId?: string,
+    public readonly paidByUserId?: string,
+    public readonly scheduledByUserId?: string,
+    public readonly scheduledAt?: Date,
+    public readonly paidAt?: Date,
+    public readonly paymentEvidenceFileId?: string,
+    public readonly bankName?: string,
+    public readonly cardLastFour?: string,
+    public readonly operationCode?: string,
+    public readonly isPartial: boolean = false,
+    public readonly companyPaymentAccountMaskedLabel?: string,
   ) {}
 
   static create(params: {
@@ -36,13 +48,25 @@ export class PaymentDocument {
     poId?: string;
     quotaId?: string;
     accountPayableId?: string;
-    status?: "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
+    status?: "SCHEDULED" | "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
     requestedByUserId?: string;
     approvedByUserId?: string;
     rejectedByUserId?: string;
     approvedAt?: Date;
     rejectedAt?: Date;
     rejectionReason?: string;
+    companyPaymentAccountId?: string;
+    paymentMethodId?: string;
+    paidByUserId?: string;
+    scheduledByUserId?: string;
+    scheduledAt?: Date;
+    paidAt?: Date;
+    paymentEvidenceFileId?: string;
+    bankName?: string;
+    cardLastFour?: string;
+    operationCode?: string;
+    isPartial?: boolean;
+    companyPaymentAccountMaskedLabel?: string;
   }) {
     const method = PaymentsDomainService.normalizeMethod(params.method);
     if (!method || Number.isNaN(params.date.getTime()) || !PaymentsDomainService.isPositiveAmount(params.amount)) {
@@ -68,6 +92,18 @@ export class PaymentDocument {
       params.approvedAt,
       params.rejectedAt,
       params.rejectionReason?.trim() || undefined,
+      params.companyPaymentAccountId,
+      params.paymentMethodId,
+      params.paidByUserId,
+      params.scheduledByUserId,
+      params.scheduledAt,
+      params.paidAt,
+      params.paymentEvidenceFileId,
+      params.bankName?.trim() || undefined,
+      params.cardLastFour?.replace(/\D/g, "").slice(-4) || undefined,
+      params.operationCode?.trim() || undefined,
+      params.isPartial ?? false,
+      params.companyPaymentAccountMaskedLabel?.trim() || undefined,
     );
   }
 }

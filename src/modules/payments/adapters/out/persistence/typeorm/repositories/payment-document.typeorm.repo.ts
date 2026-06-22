@@ -38,6 +38,8 @@ export class PaymentDocumentTypeormRepository implements PaymentDocumentReposito
       poId: row.poId ?? undefined,
       quotaId: row.quotaId ?? undefined,
       accountPayableId: row.accountPayableId ?? undefined,
+      companyPaymentAccountId: row.companyPaymentAccountId ?? undefined,
+      paymentMethodId: row.paymentMethodId ?? undefined,
       status: row.status,
       requestedByUserId: row.requestedByUserId ?? undefined,
       approvedByUserId: row.approvedByUserId ?? undefined,
@@ -45,6 +47,16 @@ export class PaymentDocumentTypeormRepository implements PaymentDocumentReposito
       approvedAt: row.approvedAt ?? undefined,
       rejectedAt: row.rejectedAt ?? undefined,
       rejectionReason: row.rejectionReason ?? undefined,
+      paidByUserId: row.paidByUserId ?? undefined,
+      scheduledByUserId: row.scheduledByUserId ?? undefined,
+      scheduledAt: row.scheduledAt ?? undefined,
+      paidAt: row.paidAt ?? undefined,
+      paymentEvidenceFileId: row.paymentEvidenceFileId ?? undefined,
+      bankName: row.bankName ?? undefined,
+      cardLastFour: row.cardLastFour ?? undefined,
+      operationCode: row.operationCode ?? undefined,
+      isPartial: row.isPartial,
+      companyPaymentAccountMaskedLabel: row.bankName && row.cardLastFour ? `${row.bankName} ****${row.cardLastFour}` : undefined,
     });
   }
 
@@ -97,6 +109,8 @@ export class PaymentDocumentTypeormRepository implements PaymentDocumentReposito
       poId: document.poId ?? null,
       quotaId: document.quotaId ?? null,
       accountPayableId: document.accountPayableId ?? null,
+      companyPaymentAccountId: document.companyPaymentAccountId ?? null,
+      paymentMethodId: document.paymentMethodId ?? null,
       status: document.status,
       requestedByUserId: document.requestedByUserId ?? null,
       approvedByUserId: document.approvedByUserId ?? null,
@@ -104,6 +118,15 @@ export class PaymentDocumentTypeormRepository implements PaymentDocumentReposito
       approvedAt: document.approvedAt ?? null,
       rejectedAt: document.rejectedAt ?? null,
       rejectionReason: document.rejectionReason ?? null,
+      paidByUserId: document.paidByUserId ?? null,
+      scheduledByUserId: document.scheduledByUserId ?? null,
+      scheduledAt: document.scheduledAt ?? null,
+      paidAt: document.paidAt ?? null,
+      paymentEvidenceFileId: document.paymentEvidenceFileId ?? null,
+      bankName: document.bankName ?? null,
+      cardLastFour: document.cardLastFour ?? null,
+      operationCode: document.operationCode ?? null,
+      isPartial: document.isPartial,
     });
     const saved = await repo.save(row);
     return this.toDomain(saved);
@@ -123,6 +146,8 @@ export class PaymentDocumentTypeormRepository implements PaymentDocumentReposito
       poId: document.poId ?? null,
       quotaId: document.quotaId ?? null,
       accountPayableId: document.accountPayableId ?? null,
+      companyPaymentAccountId: document.companyPaymentAccountId ?? null,
+      paymentMethodId: document.paymentMethodId ?? null,
       status: document.status,
       requestedByUserId: document.requestedByUserId ?? null,
       approvedByUserId: document.approvedByUserId ?? null,
@@ -130,6 +155,15 @@ export class PaymentDocumentTypeormRepository implements PaymentDocumentReposito
       approvedAt: document.approvedAt ?? null,
       rejectedAt: document.rejectedAt ?? null,
       rejectionReason: document.rejectionReason ?? null,
+      paidByUserId: document.paidByUserId ?? null,
+      scheduledByUserId: document.scheduledByUserId ?? null,
+      scheduledAt: document.scheduledAt ?? null,
+      paidAt: document.paidAt ?? null,
+      paymentEvidenceFileId: document.paymentEvidenceFileId ?? null,
+      bankName: document.bankName ?? null,
+      cardLastFour: document.cardLastFour ?? null,
+      operationCode: document.operationCode ?? null,
+      isPartial: document.isPartial,
     });
     const saved = await repo.save(row);
     return this.toDomain(saved);

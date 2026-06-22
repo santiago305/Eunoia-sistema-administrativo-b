@@ -9,4 +9,15 @@ export interface CreatePaymentInput {
   quotaId?: string;
   poId?:string;
   accountPayableId?: string;
+  companyPaymentAccountId?: string;
+  paymentMethodId?: string;
+  paidByUserId?: string;
+  scheduledByUserId?: string;
+  scheduledAt?: string;
+  paidAt?: string;
+  paymentEvidenceFileId?: string;
+  bankName?: string;
+  cardLastFour?: string;
+  operationCode?: string;
+  isPartial?: boolean;
 }

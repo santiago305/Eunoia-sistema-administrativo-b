@@ -16,13 +16,25 @@ export class PaymentsFactory {
     poId?: string;
     quotaId?: string;
     accountPayableId?: string;
-    status?: "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
+    status?: "SCHEDULED" | "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
     requestedByUserId?: string;
     approvedByUserId?: string;
     rejectedByUserId?: string;
     approvedAt?: Date;
     rejectedAt?: Date;
     rejectionReason?: string;
+    companyPaymentAccountId?: string;
+    paymentMethodId?: string;
+    paidByUserId?: string;
+    scheduledByUserId?: string;
+    scheduledAt?: Date;
+    paidAt?: Date;
+    paymentEvidenceFileId?: string;
+    bankName?: string;
+    cardLastFour?: string;
+    operationCode?: string;
+    isPartial?: boolean;
+    companyPaymentAccountMaskedLabel?: string;
   }) {
     return PaymentDocument.create(params);
   }

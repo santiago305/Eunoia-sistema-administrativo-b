@@ -10,6 +10,9 @@ export class PaymentsHttpMapper {
       method: dto.method.trim(),
       operationNumber: dto.operationNumber?.trim() || undefined,
       note: dto.note?.trim() || undefined,
+      bankName: dto.bankName?.trim() || undefined,
+      cardLastFour: dto.cardLastFour?.replace(/\D/g, "").slice(-4) || undefined,
+      operationCode: dto.operationCode?.trim() || undefined,
     };
   }
 

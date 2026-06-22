@@ -11,8 +11,8 @@ export class HttpListPaymentsQueryDto {
   quotaId?: string;
 
   @IsOptional()
-  @IsIn(["PENDING_APPROVAL", "APPROVED", "REJECTED"])
-  status?: "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
+  @IsIn(["SCHEDULED", "PENDING_APPROVAL", "APPROVED", "REJECTED"])
+  status?: "SCHEDULED" | "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
 
   @IsOptional()
   @Type(() => Number)

@@ -22,10 +22,11 @@ export class CreatePaymentUsecase {
     input: CreatePaymentInput,
     poId?: string,
     options?: {
-      status?: "PENDING_APPROVAL" | "APPROVED";
+      status?: "SCHEDULED" | "PENDING_APPROVAL" | "APPROVED";
       requestedByUserId?: string;
       approvedByUserId?: string;
       approvedAt?: Date;
+      scheduledByUserId?: string;
     },
   ): Promise<{ message: string; paymentId?: string }> {
     return this.uow.runInTransaction(async (tx) => {
@@ -42,6 +43,14 @@ export class CreatePaymentUsecase {
       const date = new Date(input.date);
       if (Number.isNaN(date.getTime())) {
         throw new BadRequestException("Fecha invalida");
+      }
+      const scheduledAt = input.scheduledAt ? new Date(input.scheduledAt) : undefined;
+      if (scheduledAt && Number.isNaN(scheduledAt.getTime())) {
+        throw new BadRequestException("Fecha programada invalida");
+      }
+      const paidAt = input.paidAt ? new Date(input.paidAt) : undefined;
+      if (paidAt && Number.isNaN(paidAt.getTime())) {
+        throw new BadRequestException("Fecha de pago invalida");
       }
 
       if (input.quotaId) {
@@ -71,10 +80,21 @@ export class CreatePaymentUsecase {
         poId: paymentPoId,
         quotaId: input.quotaId,
         accountPayableId: input.accountPayableId,
+        companyPaymentAccountId: input.companyPaymentAccountId,
+        paymentMethodId: input.paymentMethodId,
         status: options?.status ?? "APPROVED",
         requestedByUserId: options?.requestedByUserId,
         approvedByUserId: options?.approvedByUserId,
         approvedAt: options?.approvedAt,
+        paidByUserId: input.paidByUserId,
+        scheduledByUserId: input.scheduledByUserId ?? options?.scheduledByUserId,
+        scheduledAt,
+        paidAt,
+        paymentEvidenceFileId: input.paymentEvidenceFileId,
+        bankName: input.bankName,
+        cardLastFour: input.cardLastFour,
+        operationCode: input.operationCode,
+        isPartial: input.isPartial,
       });
 
       let createdPaymentId: string | undefined;
