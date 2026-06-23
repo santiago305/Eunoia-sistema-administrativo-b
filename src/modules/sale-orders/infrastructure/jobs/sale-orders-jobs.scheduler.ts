@@ -17,21 +17,6 @@ export class SaleOrdersJobsScheduler implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit() {
-    // this.schedule(
-    //   "deliverydate-today",
-    //   60_000,
-    //   async () => {
-    //     const result = await this.updateTodayJob.run({ limit: 500, timeZone: "America/Lima" });
-    //     if (result?.updated) {
-    //       this.realtimeService.emitToAllConnected("sale-orders.updated", {
-    //         date: result.date,
-    //         updated: result.updated,
-    //         saleOrderIds: result.saleOrderIds ?? [],
-    //       });
-    //     }
-    //     return result;
-    //   },
-    // );
     this.schedule("automatic-workflow", 10_000, async () => {
       const result = await this.automaticWorkflowJob.run({ limit: 500 });
       if (result.updated) {
