@@ -297,12 +297,26 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       .select("so.id", "id")
       .addSelect("so.createdAt", "createdAt")
       .innerJoin(
+        WorkflowStateEntity,
+        "currentState",
+        "currentState.id = so.currentStateId",
+      )
+      .innerJoin(
+        SaleOrderStatesEntity,
+        "globalState",
+        "globalState.id = currentState.saleOrderStateId",
+      )
+      .innerJoin(
         "workflow_transitions",
         "wt",
         "wt.workflow_id = so.workflow_id AND (wt.is_global = true OR wt.from_state_id = so.current_state_id)",
       )
       .where("so.workflow_id IS NOT NULL")
       .andWhere("so.current_state_id IS NOT NULL")
+      .andWhere("currentState.isFinal = false")
+      .andWhere("globalState.code <> :cancelledCode", {
+        cancelledCode: "CANCELLED",
+      })
       .andWhere("wt.auto_trigger = true")
       .andWhere("wt.is_active = true")
       .distinct(true)
