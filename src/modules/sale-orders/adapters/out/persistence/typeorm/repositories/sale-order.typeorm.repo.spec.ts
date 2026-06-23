@@ -55,6 +55,43 @@ describe("SaleOrderTypeormRepository", () => {
     expect(qb.andWhere).toHaveBeenCalledWith("state.isFinal = true");
   });
 
+  it("excludes final and cancelled states from automatic workflow candidates", async () => {
+    const qb = {
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      innerJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      distinct: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue([{ id: "order-1" }]),
+    };
+    const entityRepo = {
+      createQueryBuilder: jest.fn().mockReturnValue(qb),
+    };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue(entityRepo) },
+    } as any);
+
+    await expect(repository.listIdsForAutomaticWorkflow()).resolves.toEqual(["order-1"]);
+
+    expect(qb.innerJoin).toHaveBeenCalledWith(
+      expect.anything(),
+      "currentState",
+      "currentState.id = so.currentStateId",
+    );
+    expect(qb.innerJoin).toHaveBeenCalledWith(
+      expect.anything(),
+      "globalState",
+      "globalState.id = currentState.saleOrderStateId",
+    );
+    expect(qb.andWhere).toHaveBeenCalledWith("currentState.isFinal = false");
+    expect(qb.andWhere).toHaveBeenCalledWith("globalState.code <> :cancelledCode", {
+      cancelledCode: "CANCELLED",
+    });
+  });
+
   it("loads the active main telephone when getting a sale order", async () => {
     const telephoneRepo = {
       findOne: jest.fn().mockResolvedValue({ number: "999999999" }),
