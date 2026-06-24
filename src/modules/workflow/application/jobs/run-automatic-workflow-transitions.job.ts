@@ -4,6 +4,7 @@ import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.p
 import { SaleOrderWorkflowTransitionService } from "../services/sale-order-workflow-transition.service";
 
 const SYSTEM_USER_ID = "00000000-0000-0000-0000-000000000001";
+const MAX_AUTOMATIC_STEPS_PER_ORDER = 20;
 
 @Injectable()
 export class RunAutomaticWorkflowTransitionsJob {
@@ -23,9 +24,7 @@ export class RunAutomaticWorkflowTransitionsJob {
 
     for (const saleOrderId of ids) {
       try {
-        const result = await this.uow.runInTransaction((tx) =>
-          this.transitionService.advanceAutomatic(saleOrderId, SYSTEM_USER_ID, tx),
-        );
+        const result = await this.advanceSaleOrderUntilIdle(saleOrderId);
         if (result) {
           updated += 1;
           saleOrderIds.push(saleOrderId);
@@ -37,5 +36,42 @@ export class RunAutomaticWorkflowTransitionsJob {
     }
 
     return { found: ids.length, updated, failed, saleOrderIds };
+  }
+
+  async runForSaleOrder(input: { saleOrderId: string }) {
+    try {
+      const result = await this.advanceSaleOrderUntilIdle(input.saleOrderId);
+
+      return {
+        updated: result ? 1 : 0,
+        failed: 0,
+        saleOrderIds: result ? [input.saleOrderId] : [],
+      };
+    } catch (error) {
+      this.logger.warn(`automatic workflow failed saleOrderId=${input.saleOrderId}: ${(error as Error).message}`);
+      return {
+        updated: 0,
+        failed: 1,
+        saleOrderIds: [],
+      };
+    }
+  }
+
+  private async advanceSaleOrderUntilIdle(saleOrderId: string) {
+    let updated = false;
+
+    for (let step = 0; step < MAX_AUTOMATIC_STEPS_PER_ORDER; step += 1) {
+      const result = await this.uow.runInTransaction((tx) =>
+        this.transitionService.advanceAutomatic(saleOrderId, SYSTEM_USER_ID, tx),
+      );
+
+      if (!result) {
+        return updated;
+      }
+
+      updated = true;
+    }
+
+    throw new Error(`automatic workflow exceeded ${MAX_AUTOMATIC_STEPS_PER_ORDER} steps`);
   }
 }

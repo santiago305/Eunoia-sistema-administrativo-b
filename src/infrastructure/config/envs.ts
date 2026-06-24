@@ -129,7 +129,7 @@ export const envs = {
     },
     saleOrderJobs: {
         automaticWorkflowIntervalMs: envsVars.SALE_ORDER_AUTOMATIC_WORKFLOW_INTERVAL_MS ?? 60_000,
-        automaticWorkflowRunOnStart: envsVars.SALE_ORDER_AUTOMATIC_WORKFLOW_RUN_ON_START ?? false,
+        automaticWorkflowRunOnStart: envsVars.SALE_ORDER_AUTOMATIC_WORKFLOW_RUN_ON_START ?? true,
     },
     mail: {
         defaultUserStorageGb: envsVars.MAIL_DEFAULT_USER_STORAGE_GB ?? 1,

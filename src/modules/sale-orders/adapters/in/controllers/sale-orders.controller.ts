@@ -17,7 +17,7 @@ import { DeleteSaleOrderSearchMetricUsecase } from "src/modules/sale-orders/appl
 import { HttpCreateSaleOrderSearchMetricDto } from "src/modules/sale-orders/adapters/in/dtos/http-sale-order-search-metric-create.dto";
 import { sanitizeSaleOrderSearchSnapshot } from "src/modules/sale-orders/application/support/sale-order-search.utils";
 import { CancelSaleOrderUsecase } from "src/modules/sale-orders/application/usecases/sale-order/cancel.usecase";
-import { NotificationRealtimeService } from "src/modules/mail/infrastructure/realtime/notification-realtime.service";
+import { SaleOrdersRealtimeService } from "src/modules/sale-orders/infrastructure/realtime/sale-orders-realtime.service";
 import { AddSaleOrderPaymentUsecase } from "src/modules/sale-orders/application/usecases/sale-order/add-payment.usecase";
 import { DeleteSaleOrderPaymentUsecase } from "src/modules/sale-orders/application/usecases/sale-order/delete-payment.usecase";
 import { ListSaleOrderPaymentsUsecase } from "src/modules/sale-orders/application/usecases/sale-order/list-payments.usecase";
@@ -33,6 +33,10 @@ import { GetOrderTimelineUseCase } from "src/modules/workflow/application/usecas
 import { AssignWorkflowDto } from "../dtos/assign-workflow.dto";
 import { GetSaleOrderStatisticsUsecase } from "src/modules/sale-orders/application/usecases/sale-order/get-statistics.usecase";
 import { HttpSaleOrderStatisticsQueryDto } from "../dtos/http-sale-order-statistics.dto";
+import {
+  SaleOrderAutomaticWorkflowService,
+  SaleOrderAutomaticWorkflowTriggerEnum,
+} from "src/modules/sale-orders/application/services/sale-order-automatic-workflow.service";
 
 @Controller("sale-orders")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
@@ -58,12 +62,13 @@ export class SaleOrdersController {
     private readonly deletePayment: DeleteSaleOrderPaymentUsecase,
     private readonly listPayments: ListSaleOrderPaymentsUsecase,
     private readonly createFromImportPreview: CreateFromImportPreviewUseCase,
-    private readonly realtimeService: NotificationRealtimeService,
+    private readonly realtimeService: SaleOrdersRealtimeService,
+    private readonly automaticWorkflow: SaleOrderAutomaticWorkflowService,
   ) {}
 
   @Post()
-  create(@Body() dto: HttpSaleOrderCreateDto, @CurrentUser() user: { id: string }) {
-    return this.createSaleOrder.execute(
+  async create(@Body() dto: HttpSaleOrderCreateDto, @CurrentUser() user: { id: string }) {
+    const result = await this.createSaleOrder.execute(
       {
         warehouseId: dto.warehouseId,
         clientId: dto.clientId,
@@ -101,19 +106,41 @@ export class SaleOrdersController {
       },
       user.id,
     );
+
+    if (result?.orderId) {
+      await this.automaticWorkflow.evaluateAndNotify(
+        result.orderId,
+        SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_CREATED,
+      );
+    }
+
+    return result;
   }
 
   @Post("import-preview")
-  createFromPreview(
+  async createFromPreview(
     @Body() dto: CreateSaleOrdersFromImportPreviewInput | CreateSaleOrdersFromImportPreviewInput["rows"],
     @CurrentUser() user: { id: string },
   ) {
     const rows = Array.isArray(dto) ? dto : dto.rows ?? [];
 
-    return this.createFromImportPreview.execute({
+    const result = await this.createFromImportPreview.execute({
       rows,
       userId: user.id,
     });
+
+    const importedSaleOrderIds = (result.rows ?? [])
+      .map((row: { saleOrderId?: string; id?: string }) => row.saleOrderId ?? row.id)
+      .filter((id): id is string => Boolean(id));
+
+    for (const saleOrderId of importedSaleOrderIds) {
+      await this.automaticWorkflow.evaluateAndNotify(
+        saleOrderId,
+        SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_IMPORTED,
+      );
+    }
+
+    return result;
   }
 
   @Post(":saleOrderId/change-state")
@@ -129,6 +156,11 @@ export class SaleOrdersController {
       executedBy: user.id,
     });
 
+    await this.automaticWorkflow.evaluateAndNotify(
+      saleOrderId,
+      SaleOrderAutomaticWorkflowTriggerEnum.WORKFLOW_STATE_CHANGED,
+    );
+
     return {
       type: "success",
       message: "Estado del pedido actualizado correctamente mediante workflow.",
@@ -137,16 +169,21 @@ export class SaleOrdersController {
   }
 
   @Post(":saleOrderId/assign-workflow")
-  assignSaleOrderWorkflow(
+  async assignSaleOrderWorkflow(
     @Param("saleOrderId", ParseUUIDPipe) saleOrderId: string,
     @Body() body: AssignWorkflowDto,
     @CurrentUser() user: { id: string },
   ) {
-    return this.assignWorkflow.execute({
+    const result = await this.assignWorkflow.execute({
       saleOrderId,
       workflowId: body.workflowId,
       executedBy: user.id,
     });
+    await this.automaticWorkflow.evaluateAndNotify(
+      saleOrderId,
+      SaleOrderAutomaticWorkflowTriggerEnum.WORKFLOW_ASSIGNED,
+    );
+    return result;
   }
 
   @Get(":saleOrderId/available-transitions")
@@ -166,12 +203,21 @@ export class SaleOrdersController {
   async cancel(@Param("saleOrderId", ParseUUIDPipe) saleOrderId: string) {
     const result = await this.cancelSaleOrder.execute({ saleOrderId });
     this.realtimeService.emitToAllConnected("sale-orders.updated", { updated: 1, saleOrderIds: [saleOrderId] });
+    await this.automaticWorkflow.evaluateAndNotify(
+      saleOrderId,
+      SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_CANCELLED,
+    );
     return result;
   }
 
   @Patch(":saleOrderId/confirm-delivery")
-  confirmDeliveryForSaleOrder(@Param("saleOrderId", ParseUUIDPipe) saleOrderId: string) {
-    return this.confirmDelivery.execute({ saleOrderId });
+  async confirmDeliveryForSaleOrder(@Param("saleOrderId", ParseUUIDPipe) saleOrderId: string) {
+    const result = await this.confirmDelivery.execute({ saleOrderId });
+    await this.automaticWorkflow.evaluateAndNotify(
+      saleOrderId,
+      SaleOrderAutomaticWorkflowTriggerEnum.DELIVERY_CONFIRMED,
+    );
+    return result;
   }
 
   @Get(":saleOrderId/payments")
@@ -195,6 +241,10 @@ export class SaleOrdersController {
     });
 
     this.realtimeService.emitToAllConnected("sale-orders.updated", { updated: 1, saleOrderIds: [saleOrderId] });
+    await this.automaticWorkflow.evaluateAndNotify(
+      saleOrderId,
+      SaleOrderAutomaticWorkflowTriggerEnum.PAYMENT_CREATED,
+    );
     return result;
   }
 
@@ -205,15 +255,19 @@ export class SaleOrdersController {
   ) {
     const result = await this.deletePayment.execute({ saleOrderId, paymentId });
     this.realtimeService.emitToAllConnected("sale-orders.updated", { updated: 1, saleOrderIds: [saleOrderId] });
+    await this.automaticWorkflow.evaluateAndNotify(
+      saleOrderId,
+      SaleOrderAutomaticWorkflowTriggerEnum.PAYMENT_DELETED,
+    );
     return result;
   }
 
   @Patch(":id")
-  update(
+  async update(
     @Param("id", ParseUUIDPipe) saleOrderId: string,
     @Body() dto: HttpSaleOrderUpdateDto,
   ) {
-    return this.updateSaleOrder.execute(
+    const result = await this.updateSaleOrder.execute(
       {
         saleOrderId,
         warehouseId: dto.warehouseId,
@@ -251,6 +305,11 @@ export class SaleOrdersController {
         })),
       },
     );
+    await this.automaticWorkflow.evaluateAndNotify(
+      saleOrderId,
+      SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_UPDATED,
+    );
+    return result;
   }
 
   @Get()

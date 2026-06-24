@@ -66,4 +66,32 @@ describe("SaleOrdersJobsScheduler", () => {
     expect(realtimeService.emitToAllConnected).not.toHaveBeenCalled();
     scheduler.onModuleDestroy();
   });
+
+  it("uses daily automatic workflow fallback when no env interval overrides it", async () => {
+    const originalInterval = envs.saleOrderJobs.automaticWorkflowIntervalMs;
+    envs.saleOrderJobs.automaticWorkflowIntervalMs = undefined as unknown as number;
+    envs.saleOrderJobs.automaticWorkflowRunOnStart = false;
+    const setIntervalSpy = jest.spyOn(global, "setInterval");
+
+    const automaticWorkflowJob = {
+      run: jest.fn().mockResolvedValue({
+        found: 0,
+        updated: 0,
+        failed: 0,
+        saleOrderIds: [],
+      }),
+    };
+    const scheduler = new SaleOrdersJobsScheduler(
+      { run: jest.fn().mockResolvedValue({ updated: 0, saleOrderIds: [] }) } as any,
+      { emitToAllConnected: jest.fn() } as any,
+      automaticWorkflowJob as any,
+    );
+
+    scheduler.onModuleInit();
+    expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 24 * 60 * 60_000);
+
+    scheduler.onModuleDestroy();
+    setIntervalSpy.mockRestore();
+    envs.saleOrderJobs.automaticWorkflowIntervalMs = originalInterval;
+  });
 });
