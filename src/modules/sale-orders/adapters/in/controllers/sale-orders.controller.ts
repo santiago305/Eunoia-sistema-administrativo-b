@@ -66,6 +66,14 @@ export class SaleOrdersController {
     private readonly automaticWorkflow: SaleOrderAutomaticWorkflowService,
   ) {}
 
+  private notifySaleOrderUpdated(saleOrderId: string, source: string) {
+    this.realtimeService.emitToAllConnected("sale-orders.updated", {
+      updated: 1,
+      saleOrderIds: [saleOrderId],
+      source,
+    });
+  }
+
   @Post()
   async create(@Body() dto: HttpSaleOrderCreateDto, @CurrentUser() user: { id: string }) {
     const result = await this.createSaleOrder.execute(
@@ -108,6 +116,7 @@ export class SaleOrdersController {
     );
 
     if (result?.orderId) {
+      this.notifySaleOrderUpdated(result.orderId, SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_CREATED);
       await this.automaticWorkflow.evaluateAndNotify(
         result.orderId,
         SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_CREATED,
@@ -133,6 +142,14 @@ export class SaleOrdersController {
       .map((row: { saleOrderId?: string; id?: string }) => row.saleOrderId ?? row.id)
       .filter((id): id is string => Boolean(id));
 
+    if (importedSaleOrderIds.length) {
+      this.realtimeService.emitToAllConnected("sale-orders.updated", {
+        updated: importedSaleOrderIds.length,
+        saleOrderIds: importedSaleOrderIds,
+        source: SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_IMPORTED,
+      });
+    }
+
     for (const saleOrderId of importedSaleOrderIds) {
       await this.automaticWorkflow.evaluateAndNotify(
         saleOrderId,
@@ -156,6 +173,7 @@ export class SaleOrdersController {
       executedBy: user.id,
     });
 
+    this.notifySaleOrderUpdated(saleOrderId, SaleOrderAutomaticWorkflowTriggerEnum.WORKFLOW_STATE_CHANGED);
     await this.automaticWorkflow.evaluateAndNotify(
       saleOrderId,
       SaleOrderAutomaticWorkflowTriggerEnum.WORKFLOW_STATE_CHANGED,
@@ -179,6 +197,7 @@ export class SaleOrdersController {
       workflowId: body.workflowId,
       executedBy: user.id,
     });
+    this.notifySaleOrderUpdated(saleOrderId, SaleOrderAutomaticWorkflowTriggerEnum.WORKFLOW_ASSIGNED);
     await this.automaticWorkflow.evaluateAndNotify(
       saleOrderId,
       SaleOrderAutomaticWorkflowTriggerEnum.WORKFLOW_ASSIGNED,
@@ -202,7 +221,7 @@ export class SaleOrdersController {
   @Patch(":saleOrderId/cancel")
   async cancel(@Param("saleOrderId", ParseUUIDPipe) saleOrderId: string) {
     const result = await this.cancelSaleOrder.execute({ saleOrderId });
-    this.realtimeService.emitToAllConnected("sale-orders.updated", { updated: 1, saleOrderIds: [saleOrderId] });
+    this.notifySaleOrderUpdated(saleOrderId, SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_CANCELLED);
     await this.automaticWorkflow.evaluateAndNotify(
       saleOrderId,
       SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_CANCELLED,
@@ -213,6 +232,7 @@ export class SaleOrdersController {
   @Patch(":saleOrderId/confirm-delivery")
   async confirmDeliveryForSaleOrder(@Param("saleOrderId", ParseUUIDPipe) saleOrderId: string) {
     const result = await this.confirmDelivery.execute({ saleOrderId });
+    this.notifySaleOrderUpdated(saleOrderId, SaleOrderAutomaticWorkflowTriggerEnum.DELIVERY_CONFIRMED);
     await this.automaticWorkflow.evaluateAndNotify(
       saleOrderId,
       SaleOrderAutomaticWorkflowTriggerEnum.DELIVERY_CONFIRMED,
@@ -240,7 +260,7 @@ export class SaleOrdersController {
       note: dto.note,
     });
 
-    this.realtimeService.emitToAllConnected("sale-orders.updated", { updated: 1, saleOrderIds: [saleOrderId] });
+    this.notifySaleOrderUpdated(saleOrderId, SaleOrderAutomaticWorkflowTriggerEnum.PAYMENT_CREATED);
     await this.automaticWorkflow.evaluateAndNotify(
       saleOrderId,
       SaleOrderAutomaticWorkflowTriggerEnum.PAYMENT_CREATED,
@@ -254,7 +274,7 @@ export class SaleOrdersController {
     @Param("paymentId", ParseUUIDPipe) paymentId: string,
   ) {
     const result = await this.deletePayment.execute({ saleOrderId, paymentId });
-    this.realtimeService.emitToAllConnected("sale-orders.updated", { updated: 1, saleOrderIds: [saleOrderId] });
+    this.notifySaleOrderUpdated(saleOrderId, SaleOrderAutomaticWorkflowTriggerEnum.PAYMENT_DELETED);
     await this.automaticWorkflow.evaluateAndNotify(
       saleOrderId,
       SaleOrderAutomaticWorkflowTriggerEnum.PAYMENT_DELETED,
@@ -305,6 +325,7 @@ export class SaleOrdersController {
         })),
       },
     );
+    this.notifySaleOrderUpdated(saleOrderId, SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_UPDATED);
     await this.automaticWorkflow.evaluateAndNotify(
       saleOrderId,
       SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_UPDATED,

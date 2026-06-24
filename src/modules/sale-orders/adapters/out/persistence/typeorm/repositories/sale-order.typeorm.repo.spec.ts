@@ -87,7 +87,7 @@ describe("SaleOrderTypeormRepository", () => {
       "globalState.id = currentState.saleOrderStateId",
     );
     expect(qb.andWhere).toHaveBeenCalledWith("currentState.isFinal = false");
-    expect(qb.andWhere).toHaveBeenCalledWith("globalState.code <> :cancelledCode", {
+    expect(qb.andWhere).toHaveBeenCalledWith("upper(globalState.code) <> :cancelledCode", {
       cancelledCode: "CANCELLED",
     });
   });

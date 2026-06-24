@@ -23,7 +23,6 @@ describe("SaleOrdersJobsScheduler", () => {
       }),
     };
     const scheduler = new SaleOrdersJobsScheduler(
-      { run: jest.fn().mockResolvedValue({ updated: 0, saleOrderIds: [] }) } as any,
       realtimeService as any,
       automaticWorkflowJob as any,
     );
@@ -46,7 +45,6 @@ describe("SaleOrdersJobsScheduler", () => {
   it("does not emit automatic event when no order changed", async () => {
     const realtimeService = { emitToAllConnected: jest.fn() };
     const scheduler = new SaleOrdersJobsScheduler(
-      { run: jest.fn().mockResolvedValue({ updated: 0, saleOrderIds: [] }) } as any,
       realtimeService as any,
       {
         run: jest.fn().mockResolvedValue({
@@ -67,7 +65,34 @@ describe("SaleOrdersJobsScheduler", () => {
     scheduler.onModuleDestroy();
   });
 
-  it("uses daily automatic workflow fallback when no env interval overrides it", async () => {
+  it("uses configured automatic workflow interval", async () => {
+    const originalInterval = envs.saleOrderJobs.automaticWorkflowIntervalMs;
+    envs.saleOrderJobs.automaticWorkflowIntervalMs = 12_000;
+    envs.saleOrderJobs.automaticWorkflowRunOnStart = false;
+    const setIntervalSpy = jest.spyOn(global, "setInterval");
+
+    const automaticWorkflowJob = {
+      run: jest.fn().mockResolvedValue({
+        found: 0,
+        updated: 0,
+        failed: 0,
+        saleOrderIds: [],
+      }),
+    };
+    const scheduler = new SaleOrdersJobsScheduler(
+      { emitToAllConnected: jest.fn() } as any,
+      automaticWorkflowJob as any,
+    );
+
+    scheduler.onModuleInit();
+    expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 12_000);
+
+    scheduler.onModuleDestroy();
+    setIntervalSpy.mockRestore();
+    envs.saleOrderJobs.automaticWorkflowIntervalMs = originalInterval;
+  });
+
+  it("uses automatic workflow fallback when no env interval overrides it", async () => {
     const originalInterval = envs.saleOrderJobs.automaticWorkflowIntervalMs;
     envs.saleOrderJobs.automaticWorkflowIntervalMs = undefined as unknown as number;
     envs.saleOrderJobs.automaticWorkflowRunOnStart = false;
@@ -82,13 +107,12 @@ describe("SaleOrdersJobsScheduler", () => {
       }),
     };
     const scheduler = new SaleOrdersJobsScheduler(
-      { run: jest.fn().mockResolvedValue({ updated: 0, saleOrderIds: [] }) } as any,
       { emitToAllConnected: jest.fn() } as any,
       automaticWorkflowJob as any,
     );
 
     scheduler.onModuleInit();
-    expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 24 * 60 * 60_000);
+    expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 60_000);
 
     scheduler.onModuleDestroy();
     setIntervalSpy.mockRestore();

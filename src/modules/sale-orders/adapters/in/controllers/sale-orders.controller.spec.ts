@@ -166,7 +166,7 @@ describe("SaleOrdersController", () => {
     });
   });
 
-  it("evaluates automatic workflow after creating a sale order", async () => {
+  it("emits realtime and evaluates automatic workflow after creating a sale order", async () => {
     const createSaleOrder = app.get(CreateSaleOrderUsecase) as { execute: jest.Mock };
     createSaleOrder.execute.mockResolvedValueOnce({ orderId: "11111111-1111-4111-8111-111111111111" });
 
@@ -192,6 +192,13 @@ describe("SaleOrdersController", () => {
       })
       .expect(201);
 
+    expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
+      "sale-orders.updated",
+      expect.objectContaining({
+        saleOrderIds: ["11111111-1111-4111-8111-111111111111"],
+        source: "sale-order-created",
+      }),
+    );
     expect(automaticWorkflow.evaluateAndNotify).toHaveBeenCalledWith(
       "11111111-1111-4111-8111-111111111111",
       SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_CREATED,
@@ -258,7 +265,7 @@ describe("SaleOrdersController", () => {
     expect(updateSaleOrder.execute).toHaveBeenCalledWith(expect.objectContaining({ saleOrderId }));
   });
 
-  it("evaluates automatic workflow after updating a sale order", async () => {
+  it("emits realtime and evaluates automatic workflow after updating a sale order", async () => {
     const saleOrderId = "11111111-1111-4111-8111-111111111111";
     updateSaleOrder.execute.mockResolvedValueOnce({ orderId: saleOrderId });
 
@@ -281,6 +288,13 @@ describe("SaleOrdersController", () => {
       })
       .expect(200);
 
+    expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
+      "sale-orders.updated",
+      expect.objectContaining({
+        saleOrderIds: [saleOrderId],
+        source: "sale-order-updated",
+      }),
+    );
     expect(automaticWorkflow.evaluateAndNotify).toHaveBeenCalledWith(
       saleOrderId,
       SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_UPDATED,
