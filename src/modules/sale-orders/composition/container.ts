@@ -22,7 +22,6 @@ import { GetSaleOrderSearchStateUsecase } from "src/modules/sale-orders/applicat
 import { SaveSaleOrderSearchMetricUsecase } from "src/modules/sale-orders/application/usecases/sale-order-search/save-metric.usecase";
 import { DeleteSaleOrderSearchMetricUsecase } from "src/modules/sale-orders/application/usecases/sale-order-search/delete-metric.usecase";
 import { CLOCK } from "src/shared/application/ports/clock.port";
-import { UpdateSaleOrdersDeliveryDateTodayJob } from "src/modules/sale-orders/application/jobs/update-sale-orders-deliverydate-today.job";
 import { SaleOrdersJobsScheduler } from "src/modules/sale-orders/infrastructure/jobs/sale-orders-jobs.scheduler";
 import { CancelSaleOrderUsecase } from "src/modules/sale-orders/application/usecases/sale-order/cancel.usecase";
 import { ConfirmSaleOrderDeliveryUsecase } from "src/modules/sale-orders/application/usecases/sale-order/confirm-delivery.usecase";
@@ -48,6 +47,9 @@ import { GetSaleOrderStatisticsUsecase } from "../application/usecases/sale-orde
 import { SaleOrderNumberingService } from "../application/services/sale-order-numbering.service";
 import { SaleOrderStockConsumptionService } from "src/modules/workflow/application/services/sale-order-stock-consumption.service";
 import { RunAutomaticWorkflowTransitionsJob } from "src/modules/workflow/application/jobs/run-automatic-workflow-transitions.job";
+import { SaleOrdersGateway } from "src/modules/sale-orders/adapters/in/websocket/sale-orders.gateway";
+import { SaleOrdersRealtimeService } from "src/modules/sale-orders/infrastructure/realtime/sale-orders-realtime.service";
+import { SaleOrderAutomaticWorkflowService } from "src/modules/sale-orders/application/services/sale-order-automatic-workflow.service";
 
 export const saleOrdersModuleProviders = [
   { provide: SALE_ORDER_REPOSITORY, useClass: SaleOrderTypeormRepository },
@@ -90,7 +92,9 @@ export const saleOrdersModuleProviders = [
   GetSaleOrderSearchStateUsecase,
   SaveSaleOrderSearchMetricUsecase,
   DeleteSaleOrderSearchMetricUsecase,
-  UpdateSaleOrdersDeliveryDateTodayJob,
   RunAutomaticWorkflowTransitionsJob,
+  SaleOrdersRealtimeService,
+  SaleOrdersGateway,
+  SaleOrderAutomaticWorkflowService,
   SaleOrdersJobsScheduler,
 ];

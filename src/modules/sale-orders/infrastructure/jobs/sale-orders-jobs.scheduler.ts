@@ -1,8 +1,9 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
-import { UpdateSaleOrdersDeliveryDateTodayJob } from "src/modules/sale-orders/application/jobs/update-sale-orders-deliverydate-today.job";
-import { NotificationRealtimeService } from "src/modules/mail/infrastructure/realtime/notification-realtime.service";
+import { SaleOrdersRealtimeService } from "src/modules/sale-orders/infrastructure/realtime/sale-orders-realtime.service";
 import { RunAutomaticWorkflowTransitionsJob } from "src/modules/workflow/application/jobs/run-automatic-workflow-transitions.job";
 import { envs } from "src/infrastructure/config/envs";
+
+const DAILY_AUTOMATIC_WORKFLOW_FALLBACK_MS = 60_000;
 
 @Injectable()
 export class SaleOrdersJobsScheduler implements OnModuleInit, OnModuleDestroy {
@@ -11,13 +12,12 @@ export class SaleOrdersJobsScheduler implements OnModuleInit, OnModuleDestroy {
   private readonly runningJobs = new Set<string>();
 
   constructor(
-    private readonly updateTodayJob: UpdateSaleOrdersDeliveryDateTodayJob,
-    private readonly realtimeService: NotificationRealtimeService,
+    private readonly realtimeService: SaleOrdersRealtimeService,
     private readonly automaticWorkflowJob: RunAutomaticWorkflowTransitionsJob,
   ) {}
 
   onModuleInit() {
-    this.schedule("automatic-workflow", 10_000, async () => {
+    this.schedule("automatic-workflow", DAILY_AUTOMATIC_WORKFLOW_FALLBACK_MS, async () => {
       const result = await this.automaticWorkflowJob.run({ limit: 500 });
       if (result.updated) {
         this.realtimeService.emitToAllConnected("sale-orders.updated", {
@@ -28,7 +28,7 @@ export class SaleOrdersJobsScheduler implements OnModuleInit, OnModuleDestroy {
       }
       return result;
     }, {
-      everyMs: envs.saleOrderJobs.automaticWorkflowIntervalMs,
+      everyMs: DAILY_AUTOMATIC_WORKFLOW_FALLBACK_MS,
       runOnStart: envs.saleOrderJobs.automaticWorkflowRunOnStart,
       logEmptyResult: false,
     });

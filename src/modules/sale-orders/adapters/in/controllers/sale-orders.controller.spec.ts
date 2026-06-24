@@ -15,7 +15,7 @@ import { GetSaleOrderSearchStateUsecase } from "src/modules/sale-orders/applicat
 import { SaveSaleOrderSearchMetricUsecase } from "src/modules/sale-orders/application/usecases/sale-order-search/save-metric.usecase";
 import { DeleteSaleOrderSearchMetricUsecase } from "src/modules/sale-orders/application/usecases/sale-order-search/delete-metric.usecase";
 import { CancelSaleOrderUsecase } from "src/modules/sale-orders/application/usecases/sale-order/cancel.usecase";
-import { NotificationRealtimeService } from "src/modules/mail/infrastructure/realtime/notification-realtime.service";
+import { SaleOrdersRealtimeService } from "src/modules/sale-orders/infrastructure/realtime/sale-orders-realtime.service";
 import { AddSaleOrderPaymentUsecase } from "src/modules/sale-orders/application/usecases/sale-order/add-payment.usecase";
 import { DeleteSaleOrderPaymentUsecase } from "src/modules/sale-orders/application/usecases/sale-order/delete-payment.usecase";
 import { ListSaleOrderPaymentsUsecase } from "src/modules/sale-orders/application/usecases/sale-order/list-payments.usecase";
@@ -26,6 +26,10 @@ import { AssignSaleOrderWorkflowUseCase } from "src/modules/workflow/application
 import { GetAvailableTransitionsUseCase } from "src/modules/workflow/application/usecases/get-available-transitions.usecase";
 import { GetOrderTimelineUseCase } from "src/modules/workflow/application/usecases/get-order-timeline.usecase";
 import { GetSaleOrderStatisticsUsecase } from "src/modules/sale-orders/application/usecases/sale-order/get-statistics.usecase";
+import {
+  SaleOrderAutomaticWorkflowService,
+  SaleOrderAutomaticWorkflowTriggerEnum,
+} from "src/modules/sale-orders/application/services/sale-order-automatic-workflow.service";
 
 @Injectable()
 class TestJwtAuthGuard implements CanActivate {
@@ -63,6 +67,7 @@ describe("SaleOrdersController", () => {
   const getAvailableTransitions = { execute: jest.fn() };
   const getOrderTimeline = { execute: jest.fn() };
   const realtimeService = { emitToAllConnected: jest.fn() };
+  const automaticWorkflow = { evaluateAndNotify: jest.fn() };
 
   beforeEach(async () => {
     listSaleOrders.execute.mockResolvedValue({ items: [], total: 0, page: 1, limit: 10 });
@@ -82,6 +87,7 @@ describe("SaleOrdersController", () => {
     assignWorkflow.execute.mockResolvedValue({ id: "x", workflowId: "workflow-1", currentStateId: "state-1" });
     getAvailableTransitions.execute.mockResolvedValue([]);
     getOrderTimeline.execute.mockResolvedValue([]);
+    automaticWorkflow.evaluateAndNotify.mockResolvedValue({ updated: 0, failed: 0, saleOrderIds: [] });
 
     const moduleRef = await Test.createTestingModule({
       controllers: [SaleOrdersController],
@@ -106,7 +112,8 @@ describe("SaleOrdersController", () => {
         { provide: DeleteSaleOrderPaymentUsecase, useValue: deletePayment },
         { provide: ListSaleOrderPaymentsUsecase, useValue: listPayments },
         { provide: CreateFromImportPreviewUseCase, useValue: createFromImportPreview },
-        { provide: NotificationRealtimeService, useValue: realtimeService },
+        { provide: SaleOrdersRealtimeService, useValue: realtimeService },
+        { provide: SaleOrderAutomaticWorkflowService, useValue: automaticWorkflow },
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -157,6 +164,38 @@ describe("SaleOrdersController", () => {
       rows: [{ total: 120 }],
       userId: "user-1",
     });
+  });
+
+  it("evaluates automatic workflow after creating a sale order", async () => {
+    const createSaleOrder = app.get(CreateSaleOrderUsecase) as { execute: jest.Mock };
+    createSaleOrder.execute.mockResolvedValueOnce({ orderId: "11111111-1111-4111-8111-111111111111" });
+
+    await request(app.getHttpServer())
+      .post("/sale-orders")
+      .send({
+        warehouseId: "22222222-2222-4222-8222-222222222222",
+        clientId: "33333333-3333-4333-8333-333333333333",
+        workflowId: "44444444-4444-4444-8444-444444444444",
+        subTotal: 10,
+        total: 10,
+        items: [{
+          quantity: 1,
+          unitPrice: 10,
+          total: 10,
+          components: [{
+            skuId: "55555555-5555-4555-8555-555555555555",
+            quantity: 1,
+            unitPrice: 10,
+            total: 10,
+          }],
+        }],
+      })
+      .expect(201);
+
+    expect(automaticWorkflow.evaluateAndNotify).toHaveBeenCalledWith(
+      "11111111-1111-4111-8111-111111111111",
+      SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_CREATED,
+    );
   });
 
   it("forwards one filtered statistics query", async () => {
@@ -217,6 +256,35 @@ describe("SaleOrdersController", () => {
       .expect(200);
 
     expect(updateSaleOrder.execute).toHaveBeenCalledWith(expect.objectContaining({ saleOrderId }));
+  });
+
+  it("evaluates automatic workflow after updating a sale order", async () => {
+    const saleOrderId = "11111111-1111-4111-8111-111111111111";
+    updateSaleOrder.execute.mockResolvedValueOnce({ orderId: saleOrderId });
+
+    await request(app.getHttpServer())
+      .patch(`/sale-orders/${saleOrderId}`)
+      .send({
+        warehouseId: "22222222-2222-4222-8222-222222222222",
+        clientId: "33333333-3333-4333-8333-333333333333",
+        items: [{
+          quantity: 1,
+          unitPrice: 10,
+          total: 10,
+          components: [{
+            skuId: "44444444-4444-4444-8444-444444444444",
+            quantity: 1,
+            unitPrice: 10,
+            total: 10,
+          }],
+        }],
+      })
+      .expect(200);
+
+    expect(automaticWorkflow.evaluateAndNotify).toHaveBeenCalledWith(
+      saleOrderId,
+      SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_UPDATED,
+    );
   });
 
   it("forwards order id to get usecase", async () => {
@@ -322,6 +390,10 @@ describe("SaleOrdersController", () => {
     expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
       "sale-orders.updated",
       expect.objectContaining({ saleOrderIds: [saleOrderId] }),
+    );
+    expect(automaticWorkflow.evaluateAndNotify).toHaveBeenCalledWith(
+      saleOrderId,
+      SaleOrderAutomaticWorkflowTriggerEnum.PAYMENT_CREATED,
     );
   });
 

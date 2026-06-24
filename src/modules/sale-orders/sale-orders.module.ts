@@ -2,7 +2,6 @@ import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { ProductCatalogModule } from "src/modules/product-catalog/product-catalog.module";
 import { PacksModule } from "src/modules/packs/packs.module";
-import { MailModule } from "src/modules/mail";
 import { SaleOrderEntity } from "./adapters/out/persistence/typeorm/entities/sale-order.entity";
 import { SaleOrderItemEntity } from "./adapters/out/persistence/typeorm/entities/sale-order-item.entity";
 import { SaleOrderItemComponentEntity } from "./adapters/out/persistence/typeorm/entities/sale-order-item-component.entity";
@@ -47,7 +46,6 @@ import { UsersModule } from "../users/infrastructure/users.module";
     ]),
     PacksModule,
     ProductCatalogModule,
-    MailModule,
     ClientsModule,
     SourcesModule,
     UbigeoModule,
