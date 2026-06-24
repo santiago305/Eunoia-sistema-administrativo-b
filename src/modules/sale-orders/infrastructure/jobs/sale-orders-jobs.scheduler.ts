@@ -28,7 +28,7 @@ export class SaleOrdersJobsScheduler implements OnModuleInit, OnModuleDestroy {
       }
       return result;
     }, {
-      everyMs: DAILY_AUTOMATIC_WORKFLOW_FALLBACK_MS,
+      everyMs: envs.saleOrderJobs.automaticWorkflowIntervalMs ?? DAILY_AUTOMATIC_WORKFLOW_FALLBACK_MS,
       runOnStart: envs.saleOrderJobs.automaticWorkflowRunOnStart,
       logEmptyResult: false,
     });

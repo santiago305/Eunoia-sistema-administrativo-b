@@ -268,27 +268,6 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     return this.toDomain(saved);
   }
 
-  async listIdsToProgramForDeliveryDate(
-    input: { deliveryDate: string; limit?: number },
-    tx?: TransactionContext,
-  ): Promise<string[]> {
-    const manager = this.getManager(tx);
-    const qb = manager
-      .getRepository(SaleOrderEntity)
-      .createQueryBuilder("so")
-      .select("so.id", "id")
-      .where("so.deliveryDate <= :deliveryDate", { deliveryDate: input.deliveryDate })
-      .andWhere("so.workflowId IS NOT NULL")
-      .andWhere("so.currentStateId IS NOT NULL")
-      .orderBy("so.deliveryDate", "ASC")
-      .addOrderBy("so.createdAt", "ASC")
-      .limit(input.limit ?? 500);
-
-    const rows = await qb.getRawMany<{ id: string }>();
-
-    return rows.map((row) => row.id);
-  }
-
   async listIdsForAutomaticWorkflow(limit = 500, tx?: TransactionContext): Promise<string[]> {
     const manager = this.getManager(tx);
     const rows = await manager
@@ -314,7 +293,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       .where("so.workflow_id IS NOT NULL")
       .andWhere("so.current_state_id IS NOT NULL")
       .andWhere("currentState.isFinal = false")
-      .andWhere("globalState.code <> :cancelledCode", {
+      .andWhere("upper(globalState.code) <> :cancelledCode", {
         cancelledCode: "CANCELLED",
       })
       .andWhere("wt.auto_trigger = true")
