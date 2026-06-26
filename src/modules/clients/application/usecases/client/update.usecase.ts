@@ -19,9 +19,15 @@ import { UbigeoDepartmentId } from "src/modules/clients/domain/value-objects/ubi
 import { UbigeoProvinceId } from "src/modules/clients/domain/value-objects/ubigeo-province-id.vo";
 import { UbigeoDistrictId } from "src/modules/clients/domain/value-objects/ubigeo-district-id.vo";
 import { InvalidUbigeoSelectionError } from "src/modules/clients/domain/errors/invalid-ubigeo-selection.error";
+import { Client } from "src/modules/clients/domain/entities/client";
 import { ClientFactory } from "src/modules/clients/domain/factories/client.factory";
 import { ClientId } from "src/modules/clients/domain/value-objects/client-id.vo";
 import { InvalidClientError } from "src/modules/clients/domain/errors/invalid-client.error";
+import {
+  CLIENT_REALTIME,
+  ClientRealtime,
+  ClientWorkflowField,
+} from "src/modules/clients/integration/client/ports/client-realtime.port";
 
 export class UpdateClientUsecase {
   constructor(
@@ -35,10 +41,12 @@ export class UpdateClientUsecase {
     private readonly ubigeoRepo: UbigeoRepository,
     @Inject(CLOCK)
     private readonly clock: ClockPort,
+    @Inject(CLIENT_REALTIME)
+    private readonly clientRealtime: ClientRealtime,
   ) {}
 
   async execute(input: UpdateClientInput): Promise<{ message: string }> {
-    return this.uow.runInTransaction(async (tx) => {
+    const txResult = await this.uow.runInTransaction(async (tx) => {
       const current = await this.clientRepo.findById(input.clientId, tx);
       if (!current) {
         throw new NotFoundException(new ClientNotFoundError().message);
@@ -47,6 +55,9 @@ export class UpdateClientUsecase {
       if (!current.isActive) {
         throw new BadRequestException("No puedes actualizar un cliente deshabilitado");
       }
+
+      const changedAt = this.clock.now();
+      let changedFields: ClientWorkflowField[] = [];
 
       const wantsUbigeo =
         input.departmentId !== undefined ||
@@ -97,8 +108,9 @@ export class UpdateClientUsecase {
           departmentId,
           provinceId,
           districtId,
-          updatedAt: this.clock.now(),
+          updatedAt: changedAt,
         });
+        changedFields = this.resolveWorkflowChangedFields(current, next);
 
         const updated = await this.clientRepo.update(
           {
@@ -169,7 +181,38 @@ export class UpdateClientUsecase {
         throw new InternalServerErrorException("No se pudo actualizar el cliente");
       }
 
-      return { message: "Cliente actualizado con exito" };
+      return {
+        message: "Cliente actualizado con exito",
+        event: changedFields.length
+          ? {
+              clientId: current.clientId.value,
+              changedFields,
+              occurredAt: changedAt.toISOString(),
+            }
+          : null,
+      };
     });
+
+    if (txResult.event) {
+      this.clientRealtime.emitClientUpdated(txResult.event);
+    }
+
+    return { message: txResult.message };
+  }
+
+  private resolveWorkflowChangedFields(before: Client, after: Client): ClientWorkflowField[] {
+    const fields: Array<[ClientWorkflowField, string | null | undefined, string | null | undefined]> = [
+      ["client.docNumber", before.docNumber, after.docNumber],
+      ["client.address", before.address, after.address],
+      ["client.reference", before.reference, after.reference],
+      ["client.docType", before.docType, after.docType],
+      ["client.departmentId", before.departmentId.value, after.departmentId.value],
+      ["client.provinceId", before.provinceId.value, after.provinceId.value],
+      ["client.districtId", before.districtId.value, after.districtId.value],
+    ];
+
+    return fields
+      .filter(([, previous, next]) => (previous ?? "") !== (next ?? ""))
+      .map(([field]) => field);
   }
 }

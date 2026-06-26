@@ -50,6 +50,10 @@ import { RunAutomaticWorkflowTransitionsJob } from "src/modules/workflow/applica
 import { SaleOrdersGateway } from "src/modules/sale-orders/adapters/in/websocket/sale-orders.gateway";
 import { SaleOrdersRealtimeService } from "src/modules/sale-orders/infrastructure/realtime/sale-orders-realtime.service";
 import { SaleOrderAutomaticWorkflowService } from "src/modules/sale-orders/application/services/sale-order-automatic-workflow.service";
+import { WorkflowReactivityGateway } from "src/modules/sale-orders/adapters/in/websocket/workflow-reactivity.gateway";
+import { WorkflowReactivityRealtimeService } from "src/modules/sale-orders/infrastructure/realtime/workflow-reactivity-realtime.service";
+import { WorkflowReactivityOrchestratorService } from "src/modules/sale-orders/application/services/workflow-reactivity-orchestrator.service";
+import { SaleOrderRealtimePayloadService } from "src/modules/sale-orders/application/services/sale-order-realtime-payload.service";
 
 export const saleOrdersModuleProviders = [
   { provide: SALE_ORDER_REPOSITORY, useClass: SaleOrderTypeormRepository },
@@ -93,8 +97,12 @@ export const saleOrdersModuleProviders = [
   SaveSaleOrderSearchMetricUsecase,
   DeleteSaleOrderSearchMetricUsecase,
   RunAutomaticWorkflowTransitionsJob,
+  SaleOrderRealtimePayloadService,
   SaleOrdersRealtimeService,
   SaleOrdersGateway,
   SaleOrderAutomaticWorkflowService,
+  WorkflowReactivityRealtimeService,
+  WorkflowReactivityGateway,
+  WorkflowReactivityOrchestratorService,
   SaleOrdersJobsScheduler,
 ];

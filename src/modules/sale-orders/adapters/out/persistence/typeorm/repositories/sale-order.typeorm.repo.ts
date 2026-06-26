@@ -25,6 +25,7 @@ import {
 } from "src/modules/sale-orders/application/support/sale-order-search.utils";
 import { BankAccountEntity } from "src/modules/bank-accounts/adapters/out/persistence/typeorm/entities/bank-account.entity";
 import { ProductCatalogSkuEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku.entity";
+import { ProductCatalogStockItemEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/stock-item.entity";
 import { SaleOrderGetOutput } from "src/modules/sale-orders/application/dtos/sale-order-search/output/sale-order-search-state.output";
 import { SaleOrderItemComponentEntity } from "../entities/sale-order-item-component.entity";
 import { SaleOrderItemEntity } from "../entities/sale-order-item.entity";
@@ -268,9 +269,8 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     return this.toDomain(saved);
   }
 
-  async listIdsForAutomaticWorkflow(limit = 500, tx?: TransactionContext): Promise<string[]> {
-    const manager = this.getManager(tx);
-    const rows = await manager
+  private automaticWorkflowCandidatesQuery(manager: EntityManager): SelectQueryBuilder<SaleOrderEntity> {
+    return manager
       .getRepository(SaleOrderEntity)
       .createQueryBuilder("so")
       .select("so.id", "id")
@@ -297,7 +297,12 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         cancelledCode: "CANCELLED",
       })
       .andWhere("wt.auto_trigger = true")
-      .andWhere("wt.is_active = true")
+      .andWhere("wt.is_active = true");
+  }
+
+  async listIdsForAutomaticWorkflow(limit = 500, tx?: TransactionContext): Promise<string[]> {
+    const manager = this.getManager(tx);
+    const rows = await this.automaticWorkflowCandidatesQuery(manager)
       .distinct(true)
       .orderBy("so.created_at", "ASC")
       .limit(limit)
@@ -305,6 +310,51 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
 
     return rows.map((row) => row.id);
   }
+
+  async listIdsForAutomaticWorkflowByClientId(
+    clientId: string,
+    limit = 100,
+    tx?: TransactionContext,
+  ): Promise<string[]> {
+    const manager = this.getManager(tx);
+    const rows = await this.automaticWorkflowCandidatesQuery(manager)
+      .andWhere("so.client_id = :clientId", { clientId })
+      .distinct(true)
+      .orderBy("so.created_at", "ASC")
+      .limit(limit)
+      .getRawMany<{ id: string }>();
+
+    return rows.map((row) => row.id);
+  }
+
+  async listIdsForAutomaticWorkflowByInventoryStockEvent(
+    input: { warehouseId: string; stockItemId: string },
+    limit = 100,
+    tx?: TransactionContext,
+  ): Promise<string[]> {
+    const manager = this.getManager(tx);
+    const rows = await this.automaticWorkflowCandidatesQuery(manager)
+      .innerJoin(SaleOrderItemEntity, "inventoryItem", "inventoryItem.sale_order_id = so.id")
+      .innerJoin(
+        SaleOrderItemComponentEntity,
+        "inventoryComponent",
+        "inventoryComponent.sale_order_item_id = inventoryItem.id",
+      )
+      .innerJoin(
+        ProductCatalogStockItemEntity,
+        "inventoryStockItem",
+        "inventoryStockItem.sku_id = inventoryComponent.sku_id",
+      )
+      .andWhere("so.warehouse_id = :warehouseId", { warehouseId: input.warehouseId })
+      .andWhere("inventoryStockItem.stock_item_id = :stockItemId", { stockItemId: input.stockItemId })
+      .distinct(true)
+      .orderBy("so.created_at", "ASC")
+      .limit(limit)
+      .getRawMany<{ id: string }>();
+
+    return rows.map((row) => row.id);
+  }
+
   async list(
     params: { q?: string; filters?: SaleOrderSearchRule[]; page?: number; limit?: number },
     tx?: TransactionContext,

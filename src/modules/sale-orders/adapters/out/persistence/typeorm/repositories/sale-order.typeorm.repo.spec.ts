@@ -92,6 +92,59 @@ describe("SaleOrderTypeormRepository", () => {
     });
   });
 
+  it("filters automatic workflow candidates by client id", async () => {
+    const qb = {
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      innerJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      distinct: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue([{ id: "order-1" }]),
+    };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue({ createQueryBuilder: jest.fn().mockReturnValue(qb) }) },
+    } as any);
+
+    await expect(repository.listIdsForAutomaticWorkflowByClientId("client-1")).resolves.toEqual(["order-1"]);
+
+    expect(qb.andWhere).toHaveBeenCalledWith("so.client_id = :clientId", { clientId: "client-1" });
+    expect(qb.andWhere).toHaveBeenCalledWith("currentState.isFinal = false");
+    expect(qb.andWhere).toHaveBeenCalledWith("upper(globalState.code) <> :cancelledCode", { cancelledCode: "CANCELLED" });
+    expect(qb.andWhere).toHaveBeenCalledWith("wt.auto_trigger = true");
+    expect(qb.limit).toHaveBeenCalledWith(100);
+  });
+
+  it("filters automatic workflow candidates by inventory stock event", async () => {
+    const qb = {
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      innerJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      distinct: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue([{ id: "order-1" }]),
+    };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue({ createQueryBuilder: jest.fn().mockReturnValue(qb) }) },
+    } as any);
+
+    await expect(
+      repository.listIdsForAutomaticWorkflowByInventoryStockEvent({
+        warehouseId: "warehouse-1",
+        stockItemId: "stock-1",
+      }),
+    ).resolves.toEqual(["order-1"]);
+
+    expect(qb.andWhere).toHaveBeenCalledWith("so.warehouse_id = :warehouseId", { warehouseId: "warehouse-1" });
+    expect(qb.andWhere).toHaveBeenCalledWith("inventoryStockItem.stock_item_id = :stockItemId", { stockItemId: "stock-1" });
+    expect(qb.limit).toHaveBeenCalledWith(100);
+  });
+
   it("loads the active main telephone when getting a sale order", async () => {
     const telephoneRepo = {
       findOne: jest.fn().mockResolvedValue({ number: "999999999" }),

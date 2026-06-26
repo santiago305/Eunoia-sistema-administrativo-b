@@ -37,6 +37,7 @@ import { PacksModule } from './modules/packs/packs.module';
 import { AgenciesModule } from './modules/agencies/agencies.module';
 import { SourcesModule } from './modules/sources/sources.module';
 import { SaleOrdersModule } from './modules/sale-orders/sale-orders.module';
+import { DashboardModule } from './modules/dashboard';
 import { BankAccountsModule } from './modules/bank-accounts/bank-accounts.module';
 import { AccountsPayableModule } from './modules/accounts-payable';
 import { PurchaseReceptionsModule } from './modules/purchase-receptions';
@@ -84,6 +85,7 @@ const redisUrl = `redis://${redisAuth}${envs.redis.host}:${envs.redis.port}/${en
     SourcesModule,
     PacksModule,
     SaleOrdersModule,
+    DashboardModule,
     BankAccountsModule,
     AccountsPayableModule,
     PurchaseReceptionsModule,

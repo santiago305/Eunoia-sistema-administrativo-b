@@ -37,6 +37,12 @@ export interface SaleOrderRepository {
   findByIdForUpdate(saleOrderId: string, tx?: TransactionContext): Promise<SaleOrder | null>;
   update(input: SaleOrderWrite & { saleOrderId: string }, tx?: TransactionContext): Promise<SaleOrder>;
   listIdsForAutomaticWorkflow(limit?: number, tx?: TransactionContext): Promise<string[]>;
+  listIdsForAutomaticWorkflowByClientId(clientId: string, limit?: number, tx?: TransactionContext): Promise<string[]>;
+  listIdsForAutomaticWorkflowByInventoryStockEvent(
+    input: { warehouseId: string; stockItemId: string },
+    limit?: number,
+    tx?: TransactionContext,
+  ): Promise<string[]>;
   list(
     params: { q?: string; filters?: SaleOrderSearchRule[]; page?: number; limit?: number },
     tx?: TransactionContext,
