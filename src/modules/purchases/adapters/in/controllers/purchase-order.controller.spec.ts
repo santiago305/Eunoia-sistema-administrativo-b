@@ -54,9 +54,24 @@ describe("PurchaseOrdersController", () => {
   let app: INestApplication;
   const listOrders = { execute: jest.fn() };
   const getSearchState = { execute: jest.fn() };
+  const purchaseRepo = { findById: jest.fn(), update: jest.fn() };
+  const purchaseHistoryRepository = { createQueryBuilder: jest.fn(), create: jest.fn(), save: jest.fn() };
+  const entityManager = { getRepository: jest.fn() };
+  const accessControlService = {
+    userHasAllPermissions: jest.fn().mockResolvedValue(true),
+    getUserIdsWithPermission: jest.fn().mockResolvedValue(["user-2"]),
+  };
 
   beforeEach(async () => {
     listOrders.execute.mockResolvedValue({ items: [], total: 0, page: 1, limit: 20 });
+    purchaseRepo.findById.mockResolvedValue(null);
+    purchaseRepo.update.mockResolvedValue(null);
+    purchaseHistoryRepository.createQueryBuilder.mockReset();
+    purchaseHistoryRepository.create.mockReset();
+    purchaseHistoryRepository.save.mockReset();
+    entityManager.getRepository.mockReset();
+    accessControlService.userHasAllPermissions.mockResolvedValue(true);
+    accessControlService.getUserIdsWithPermission.mockResolvedValue(["user-2"]);
     getSearchState.execute.mockResolvedValue({
       recent: [],
       metrics: [],
@@ -87,7 +102,7 @@ describe("PurchaseOrdersController", () => {
         { provide: DeletePurchaseOrderSearchMetricUsecase, useValue: { execute: jest.fn() } },
         { provide: ExportPurchaseOrdersExcelUsecase, useValue: { execute: jest.fn(), getAvailableColumns: jest.fn().mockReturnValue([]) } },
         { provide: ConfirmPurchaseReceptionUsecase, useValue: { execute: jest.fn() } },
-        { provide: PURCHASE_ORDER, useValue: { findById: jest.fn(), update: jest.fn() } },
+        { provide: PURCHASE_ORDER, useValue: purchaseRepo },
         { provide: LISTING_SEARCH_STORAGE, useValue: { listState: jest.fn().mockResolvedValue({ metrics: [] }), createMetric: jest.fn(), deleteMetric: jest.fn() } },
         { provide: PurchaseOrderExpectedScheduler, useValue: { schedule: jest.fn() } },
         { provide: IMAGE_PROCESSOR, useValue: { toWebp: jest.fn() } },
@@ -95,15 +110,9 @@ describe("PurchaseOrdersController", () => {
         { provide: NotificationsService, useValue: { createNotificationForUsers: jest.fn() } },
         { provide: getRepositoryToken(PurchaseProcessingApprovalEntity), useValue: { findOne: jest.fn(), create: jest.fn(), save: jest.fn() } },
         { provide: getRepositoryToken(ApprovalRequestEntity), useValue: { findOne: jest.fn(), create: jest.fn(), save: jest.fn() } },
-        { provide: getRepositoryToken(PurchaseHistoryEventEntity), useValue: { createQueryBuilder: jest.fn(), create: jest.fn(), save: jest.fn() } },
-        { provide: EntityManager, useValue: { getRepository: jest.fn() } },
-        {
-          provide: AccessControlService,
-          useValue: {
-            userHasAllPermissions: jest.fn().mockResolvedValue(true),
-            getUserIdsWithPermission: jest.fn().mockResolvedValue(["user-2"]),
-          },
-        },
+        { provide: getRepositoryToken(PurchaseHistoryEventEntity), useValue: purchaseHistoryRepository },
+        { provide: EntityManager, useValue: entityManager },
+        { provide: AccessControlService, useValue: accessControlService },
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -161,5 +170,59 @@ describe("PurchaseOrdersController", () => {
         ],
       }),
     );
+  });
+
+  it("returns a paginated purchase timeline with user display names", async () => {
+    const poId = "11111111-1111-4111-8111-111111111111";
+    const actorId = "22222222-2222-4222-8222-222222222222";
+    const event = {
+      id: "33333333-3333-4333-8333-333333333333",
+      purchaseId: poId,
+      eventType: "PAYMENT_APPROVED",
+      description: "Pago aprobado.",
+      oldValues: null,
+      newValues: null,
+      metadata: {},
+      performedByUserId: actorId,
+      targetUserId: null,
+      approvalRequestId: null,
+      createdAt: new Date("2026-06-01T10:00:00.000Z"),
+    };
+    const qb = {
+      where: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([[event], 7]),
+    };
+    purchaseRepo.findById.mockResolvedValue({ poId, createdBy: "user-1" });
+    purchaseHistoryRepository.createQueryBuilder.mockReturnValue(qb);
+    entityManager.getRepository.mockReturnValue({
+      find: jest.fn().mockResolvedValue([{ id: actorId, name: "Ana Lopez", email: "ana@example.com" }]),
+    });
+
+    const response = await request(app.getHttpServer())
+      .get(`/purchases/orders/${poId}/history`)
+      .query({ page: "2", limit: "3" })
+      .expect(200);
+
+    expect(qb.skip).toHaveBeenCalledWith(3);
+    expect(qb.take).toHaveBeenCalledWith(3);
+    expect(response.body).toEqual({
+      purchaseId: poId,
+      events: [
+        expect.objectContaining({
+          eventType: "PAYMENT_APPROVED",
+          performedByUserName: "Ana Lopez",
+        }),
+      ],
+      total: 7,
+      page: 2,
+      limit: 3,
+      totalPages: 3,
+      hasPrev: true,
+      hasNext: true,
+    });
   });
 });

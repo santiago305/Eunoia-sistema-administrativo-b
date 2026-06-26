@@ -928,6 +928,9 @@ export class PurchaseOrdersController {
       throw new ForbiddenException("No tienes permiso para ver historial de compras creadas por otros.");
     }
 
+    const page = query.page && query.page > 0 ? query.page : 1;
+    const limit = query.limit && query.limit > 0 ? Math.min(query.limit, 100) : 20;
+
     const qb = this.purchaseHistoryRepository
       .createQueryBuilder("event")
       .where("event.purchase_id = :purchaseId", { purchaseId: id })
@@ -948,7 +951,10 @@ export class PurchaseOrdersController {
       qb.andWhere("event.created_at <= :toDate", { toDate: new Date(query.to) });
     }
 
-    const events = await qb.getMany();
+    const [events, total] = await qb
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
     const userIds = Array.from(
       new Set(
         events
@@ -973,6 +979,12 @@ export class PurchaseOrdersController {
     return {
       purchaseId: id,
       events: eventRows,
+      total,
+      page,
+      limit,
+      totalPages: total === 0 ? 0 : Math.ceil(total / limit),
+      hasPrev: page > 1,
+      hasNext: page < Math.ceil(total / limit),
     };
   }
 
