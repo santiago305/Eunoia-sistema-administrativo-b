@@ -13,6 +13,61 @@ describe("permissions seed", () => {
     expect(codes.has("payments.manage")).toBe(true);
   });
 
+  it("includes the final purchase module permission matrix", () => {
+    const codes = new Set(PERMISSIONS_SEED.map((item) => item.code));
+    const expectedCodes = [
+      "purchases.view",
+      "purchases.view_all",
+      "purchases.view_detail",
+      "purchases.create",
+      "purchases.edit_draft",
+      "purchases.submit",
+      "purchases.approve",
+      "purchases.reject",
+      "purchases.cancel",
+      "purchases.receive",
+      "purchases.receive_stock",
+      "purchases.manage_internal_material",
+      "purchases.manage_assets",
+      "purchases.manage_services",
+      "purchases.export",
+      "purchases.view_costs",
+      "purchases.attach_documents",
+      "purchases.delete_documents",
+      "purchases.view_history",
+      "payments.read",
+      "payments.create",
+      "payments.schedule",
+      "payments.approve",
+      "payments.reject",
+      "payments.delete",
+      "payments.attach_evidence",
+      "payments.view_evidence",
+      "payments.view_all",
+      "payments.view_own",
+      "payments.export",
+      "accounts-payable.view",
+      "accounts-payable.manage",
+      "payment_accounts.view",
+      "payment_accounts.create",
+      "payment_accounts.edit",
+      "payment_accounts.disable",
+      "payment_accounts.delete",
+      "payment_accounts.view_sensitive",
+      "recurring_purchases.view",
+      "recurring_purchases.create",
+      "recurring_purchases.edit",
+      "recurring_purchases.pause",
+      "recurring_purchases.cancel",
+      "recurring_purchases.pay",
+      "purchases_dashboard.view",
+      "purchases_dashboard.view_costs",
+      "purchases_dashboard.export",
+    ];
+
+    expectedCodes.forEach((code) => expect(codes.has(code)).toBe(true));
+  });
+
   it("includes purchase attachment permissions", () => {
     const codes = new Set(PERMISSIONS_SEED.map((item) => item.code));
 

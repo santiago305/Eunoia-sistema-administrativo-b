@@ -47,6 +47,7 @@ import { CreatePurchaseReceptions20260621210000 } from "./migrations/20260621210
 import { CreatePurchaseAttachments20260622110000 } from "./migrations/20260622110000-create-purchase-attachments";
 import { CreateCompanyPaymentAccountsAndScheduledPayments20260622130000 } from "./migrations/20260622130000-create-company-payment-accounts-and-scheduled-payments";
 import { CreateRecurringPurchases20260626090000 } from "./migrations/20260626090000-create-recurring-purchases";
+import { AddPurchaseModulePermissions20260626110000 } from "./migrations/20260626110000-add-purchase-module-permissions";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -116,6 +117,7 @@ export const getMigrationDataSourceOptions = (): DataSourceOptions => ({
     CreatePurchaseAttachments20260622110000,
     CreateCompanyPaymentAccountsAndScheduledPayments20260622130000,
     CreateRecurringPurchases20260626090000,
+    AddPurchaseModulePermissions20260626110000,
   ],
 });
 

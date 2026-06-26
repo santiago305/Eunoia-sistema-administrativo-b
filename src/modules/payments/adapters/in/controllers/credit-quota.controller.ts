@@ -23,7 +23,7 @@ export class CreditQuotasController {
     private readonly listQuotas: ListCreditQuotasUsecase,
   ) {}
 
-  @RequirePermissions("payments.manage")
+  @RequirePermissions("payments.schedule")
   @Post()
   create(@Body() dto: HttpCreateCreditQuotaDto) {
     return this.createQuota.execute(PaymentsHttpMapper.toCreateCreditQuotaInput(dto));
@@ -51,7 +51,7 @@ export class CreditQuotasController {
     return this.getQuota.execute({ quotaId: id });
   }
 
-  @RequirePermissions("payments.manage")
+  @RequirePermissions("payments.delete")
   @Delete(":id")
   remove(@Param("id", ParseUUIDPipe) id: string) {
     return this.deleteQuota.execute(id);

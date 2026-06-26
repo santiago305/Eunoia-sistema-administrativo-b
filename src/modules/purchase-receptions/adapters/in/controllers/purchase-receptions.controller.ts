@@ -45,7 +45,7 @@ export class PurchaseReceptionsController {
   }
 
   @Post(":id/confirm")
-  @RequirePermissions("purchases.receive")
+  @RequirePermissions("purchases.receive_stock")
   async confirm(@Param("id", ParseUUIDPipe) id: string, @CurrentUser() user: { id: string }) {
     const reception = await this.confirmReception.execute(id, user.id);
     return { type: "success", message: "Recepción confirmada.", reception };

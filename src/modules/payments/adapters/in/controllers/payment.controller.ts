@@ -49,10 +49,10 @@ export class PaymentsController {
     private readonly recalculateAccountPayable: RecalculateAccountPayableUsecase,
   ) {}
 
-  @RequirePermissions("payments.manage")
+  @RequirePermissions("payments.create")
   @Post()
   async create(@Body() dto: HttpCreatePaymentDto, @CurrentUser() user: { id: string }) {
-    const canApprovePayment = await this.accessControlService.userHasAllPermissions(user.id, ["purchases.approve_payment"]);
+    const canApprovePayment = await this.accessControlService.userHasAllPermissions(user.id, ["payments.approve"]);
     const input = PaymentsHttpMapper.toCreatePaymentInput(dto);
 
     if (input.poId) {
@@ -119,7 +119,7 @@ export class PaymentsController {
           metadata: { amount: input.amount },
         }),
       );
-      const approvers = await this.accessControlService.getUserIdsWithPermission("purchases.approve_payment");
+      const approvers = await this.accessControlService.getUserIdsWithPermission("payments.approve");
       const recipients = approvers.filter((id) => id !== user.id);
       if (recipients.length) {
         await this.notificationsService.createNotificationForUsers({
@@ -161,7 +161,7 @@ export class PaymentsController {
     return result;
   }
 
-  @RequirePermissions("purchases.approve_payment")
+  @RequirePermissions("payments.approve")
   @Post(":id/approve")
   async approvePayment(
     @Param("id", ParseUUIDPipe) id: string,
@@ -250,7 +250,7 @@ export class PaymentsController {
     return { type: "success", message: "Pago aprobado correctamente" };
   }
 
-  @RequirePermissions("purchases.approve_payment")
+  @RequirePermissions("payments.reject")
   @Post(":id/reject")
   async rejectPayment(
     @Param("id", ParseUUIDPipe) id: string,
@@ -325,7 +325,7 @@ export class PaymentsController {
   @RequirePermissions("payments.read")
   @Get("get-by-po/:id")
   async listByPoId(@Param("id", ParseUUIDPipe) id: string, @CurrentUser() user: { id: string }) {
-    const canApprovePayment = await this.accessControlService.userHasAllPermissions(user.id, ["purchases.approve_payment"]);
+    const canApprovePayment = await this.accessControlService.userHasAllPermissions(user.id, ["payments.approve"]);
     const payments = await this.getPaymentsByPoId.execute({ poId: id });
 
     if (canApprovePayment) return payments;
@@ -348,7 +348,7 @@ export class PaymentsController {
     return this.getPayment.execute({ payDocId: id });
   }
 
-  @RequirePermissions("payments.manage")
+  @RequirePermissions("payments.delete")
   @Delete(":id")
   remove(@Param("id", ParseUUIDPipe) id: string) {
     return this.deletePayment.execute(id);

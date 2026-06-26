@@ -109,7 +109,7 @@ export class PurchaseOrdersController {
   async create(@Body() dto: HttpCreatePurchaseOrderDto, @CurrentUser() user: { id: string }) {
     try {
       const canApproveCreationWithPayment = await this.accessControlService.userHasAllPermissions(user.id, [
-        "purchases.approve_creation_with_payment",
+        "purchases.approve",
       ]);
       const requestedPayments = Array.isArray(dto.payments) ? dto.payments.length : 0;
       const requiresApprovalForCreationWithPayment = requestedPayments > 0 && !canApproveCreationWithPayment;
@@ -155,7 +155,7 @@ export class PurchaseOrdersController {
         );
 
         const approverIds = await this.accessControlService.getUserIdsWithPermission(
-          "purchases.approve_creation_with_payment",
+          "purchases.approve",
         );
         const filteredApprovers = approverIds.filter((idValue) => idValue !== user.id);
         if (filteredApprovers.length > 0) {
@@ -181,7 +181,7 @@ export class PurchaseOrdersController {
                   targetEntityType: "purchase_order",
                   targetEntityId: result.order.poId,
                   canExecuteUserIds: filteredApprovers,
-                  requiredPermissions: ["purchases.approve_creation_with_payment"],
+                  requiredPermissions: ["purchases.approve"],
                   metadata: {
                     label: "Confirmar compra",
                     completedLabel: "Compra confirmada",
@@ -256,10 +256,10 @@ export class PurchaseOrdersController {
   }
   @Patch(":id/sent")
   @UseGuards(PermissionsGuard)
-  @RequirePermissions("purchases.process")
+  @RequirePermissions("purchases.submit")
   async setSentPurchase(@Param("id", ParseUUIDPipe) id: string, @CurrentUser() user: { id: string }) {
     const canApproveProcessing = await this.accessControlService.userHasAllPermissions(user.id, [
-      "purchases.approve_processing",
+      "purchases.approve",
     ]);
     if (!canApproveProcessing) {
       throw new ForbiddenException("No tienes permiso para procesar directamente. Debes solicitar aprobación.");
@@ -339,14 +339,14 @@ export class PurchaseOrdersController {
   }
 
   @Post(":id/run-expected")
-  @RequirePermissions("purchases.process")
+  @RequirePermissions("purchases.submit")
   runExpectedAt(@Param("id", ParseUUIDPipe) id: string) {
     return this.runExpected.execute(id);
   }
 
   @Post(":id/request-processing")
   @UseGuards(PermissionsGuard)
-  @RequirePermissions("purchases.process")
+  @RequirePermissions("purchases.submit")
   async requestProcessingApproval(
     @Param("id", ParseUUIDPipe) id: string,
     @Body() body: { reason?: string },
@@ -387,7 +387,7 @@ export class PurchaseOrdersController {
     const saved = await this.purchaseApprovalRepository.save(approval);
 
     const approverIds = await this.accessControlService.getUserIdsWithPermission(
-      "purchases.approve_processing",
+      "purchases.approve",
     );
     const recipientIds = approverIds.filter((idValue) => idValue !== user.id);
     await this.purchaseHistoryRepository.save(
@@ -432,7 +432,7 @@ export class PurchaseOrdersController {
 
   @Post(":id/approve-processing")
   @UseGuards(PermissionsGuard)
-  @RequirePermissions("purchases.approve_processing")
+  @RequirePermissions("purchases.approve")
   async approveProcessing(
     @Param("id", ParseUUIDPipe) id: string,
     @Body() body: { comment?: string },
@@ -493,7 +493,7 @@ export class PurchaseOrdersController {
 
   @Post(":id/approve-creation-with-payment")
   @UseGuards(PermissionsGuard)
-  @RequirePermissions("purchases.approve_creation_with_payment")
+  @RequirePermissions("purchases.approve")
   async approveCreationWithPayment(
     @Param("id", ParseUUIDPipe) id: string,
     @CurrentUser() user: { id: string },
@@ -557,7 +557,7 @@ export class PurchaseOrdersController {
 
   @Post(":id/reject-creation-with-payment")
   @UseGuards(PermissionsGuard)
-  @RequirePermissions("purchases.approve_creation_with_payment")
+  @RequirePermissions("purchases.reject")
   async rejectCreationWithPayment(
     @Param("id", ParseUUIDPipe) id: string,
     @Body() body: { reason?: string },
@@ -625,7 +625,7 @@ export class PurchaseOrdersController {
 
   @Post(":id/reject-processing")
   @UseGuards(PermissionsGuard)
-  @RequirePermissions("purchases.approve_processing")
+  @RequirePermissions("purchases.reject")
   async rejectProcessing(
     @Param("id", ParseUUIDPipe) id: string,
     @Body() body: { comment?: string },
@@ -683,7 +683,7 @@ export class PurchaseOrdersController {
   }
 
   @Post(":id/confirm-reception")
-  @RequirePermissions("purchases.process")
+  @RequirePermissions("purchases.receive_stock")
   async confirmPurchaseReception(
     @Param("id", ParseUUIDPipe) id: string,
     @CurrentUser() user: { id: string },
@@ -797,7 +797,7 @@ export class PurchaseOrdersController {
   }
 
   @Post("export-excel")
-  @RequirePermissions("purchases.view")
+  @RequirePermissions("purchases.export")
   async exportOrdersExcel(
     @Body() dto: HttpExportPurchaseOrdersDto,
     @Res() res: Response,
@@ -1003,7 +1003,7 @@ export class PurchaseOrdersController {
   }
 
   @Patch(":id/extra-time")
-  @RequirePermissions("purchases.process")
+  @RequirePermissions("purchases.submit")
   async addExtraTime(
     @Param("id", ParseUUIDPipe) id: string,
     @Body() body: { days?: number; hours?: number; minutes?: number },
@@ -1047,7 +1047,7 @@ export class PurchaseOrdersController {
 
   @Patch(":id/image-prodution")
   @UseGuards(PermissionsGuard)
-  @RequirePermissions("purchases.upload_processed_photo")
+  @RequirePermissions("purchases.attach_documents")
   @UseInterceptors(
     FileInterceptor("file", {
       storage: memoryStorage(),

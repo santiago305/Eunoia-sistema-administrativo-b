@@ -48,7 +48,7 @@ export class PurchaseAttachmentsController {
   ) {}
 
   @Post()
-  @RequirePermissions("purchases.attachments.upload")
+  @RequirePermissions("purchases.attach_documents")
   @UseInterceptors(
     FileInterceptor("file", {
       storage: memoryStorage(),
@@ -81,7 +81,7 @@ export class PurchaseAttachmentsController {
   }
 
   @Get()
-  @RequirePermissions("purchases.attachments.view")
+  @RequirePermissions("purchases.view_detail")
   list(
     @Query("purchaseId") purchaseId?: string,
     @Query("paymentId") paymentId?: string,
@@ -92,7 +92,7 @@ export class PurchaseAttachmentsController {
   }
 
   @Delete(":id")
-  @RequirePermissions("purchases.attachments.delete")
+  @RequirePermissions("purchases.delete_documents")
   async remove(@Param("id", ParseUUIDPipe) id: string, @CurrentUser() user: { id: string }) {
     await this.deleteAttachment.execute(id, user.id);
     return { type: "success", message: "Documento eliminado." };
