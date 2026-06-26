@@ -14,6 +14,14 @@ describe("SaleOrdersJobsScheduler", () => {
 
   it("emits sale-orders.updated after automatic workflow updates", async () => {
     const realtimeService = { emitToAllConnected: jest.fn() };
+    const automaticPayload = {
+      updated: 1,
+      saleOrderIds: ["order-2"],
+      source: "automatic-workflow",
+      saleOrders: [{ id: "order-2", currentState: { code: "PROCESSED" } }],
+      statistics: { totals: { orders: 1 } },
+    };
+    const payloadBuilder = { build: jest.fn().mockResolvedValue(automaticPayload) };
     const automaticWorkflowJob = {
       run: jest.fn().mockResolvedValue({
         found: 2,
@@ -22,9 +30,10 @@ describe("SaleOrdersJobsScheduler", () => {
         saleOrderIds: ["order-2"],
       }),
     };
-    const scheduler = new SaleOrdersJobsScheduler(
+    const scheduler = new (SaleOrdersJobsScheduler as any)(
       realtimeService as any,
       automaticWorkflowJob as any,
+      payloadBuilder as any,
     );
 
     scheduler.onModuleInit();
@@ -34,17 +43,19 @@ describe("SaleOrdersJobsScheduler", () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith("sale-orders.updated", {
+    expect(payloadBuilder.build).toHaveBeenCalledWith({
       updated: 1,
       saleOrderIds: ["order-2"],
       source: "automatic-workflow",
     });
+    expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith("sale-orders.updated", automaticPayload);
     scheduler.onModuleDestroy();
   });
 
   it("does not emit automatic event when no order changed", async () => {
     const realtimeService = { emitToAllConnected: jest.fn() };
-    const scheduler = new SaleOrdersJobsScheduler(
+    const payloadBuilder = { build: jest.fn() };
+    const scheduler = new (SaleOrdersJobsScheduler as any)(
       realtimeService as any,
       {
         run: jest.fn().mockResolvedValue({
@@ -54,6 +65,7 @@ describe("SaleOrdersJobsScheduler", () => {
           saleOrderIds: [],
         }),
       } as any,
+      payloadBuilder as any,
     );
 
     scheduler.onModuleInit();
@@ -62,6 +74,7 @@ describe("SaleOrdersJobsScheduler", () => {
     await Promise.resolve();
 
     expect(realtimeService.emitToAllConnected).not.toHaveBeenCalled();
+    expect(payloadBuilder.build).not.toHaveBeenCalled();
     scheduler.onModuleDestroy();
   });
 
@@ -79,9 +92,10 @@ describe("SaleOrdersJobsScheduler", () => {
         saleOrderIds: [],
       }),
     };
-    const scheduler = new SaleOrdersJobsScheduler(
+    const scheduler = new (SaleOrdersJobsScheduler as any)(
       { emitToAllConnected: jest.fn() } as any,
       automaticWorkflowJob as any,
+      { build: jest.fn() } as any,
     );
 
     scheduler.onModuleInit();
@@ -106,9 +120,10 @@ describe("SaleOrdersJobsScheduler", () => {
         saleOrderIds: [],
       }),
     };
-    const scheduler = new SaleOrdersJobsScheduler(
+    const scheduler = new (SaleOrdersJobsScheduler as any)(
       { emitToAllConnected: jest.fn() } as any,
       automaticWorkflowJob as any,
+      { build: jest.fn() } as any,
     );
 
     scheduler.onModuleInit();

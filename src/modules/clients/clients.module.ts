@@ -11,11 +11,12 @@ import { ListingSearchRecentEntity } from "src/shared/listing-search/adapters/ou
 import { clientsModuleProviders } from "./composition/container";
 import { CLIENT_REPOSITORY } from "./domain/ports/client.repository";
 import { TELEPHONE_REPOSITORY } from "./domain/ports/telephone.repository";
+import { CLIENT_REALTIME } from "./integration/client/ports/client-realtime.port";
 
 @Module({
   imports: [TypeOrmModule.forFeature([ClientEntity, TelephoneEntity, ListingSearchRecentEntity, ListingSearchMetricEntity]), UbigeoModule, AccessControlModule],
   controllers: [ClientsController, ClientTelephonesController],
   providers: [...clientsModuleProviders],
-  exports: [CLIENT_REPOSITORY, TELEPHONE_REPOSITORY],
+  exports: [CLIENT_REPOSITORY, TELEPHONE_REPOSITORY, CLIENT_REALTIME],
 })
 export class ClientsModule {}

@@ -9,11 +9,14 @@ import { CLIENT_REPOSITORY } from "../domain/ports/client.repository";
 import { TELEPHONE_REPOSITORY } from "../domain/ports/telephone.repository";
 import { ClientTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/client.typeorm.repo";
 import { TelephoneTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/telephone.typeorm.repo";
+import { CLIENT_REALTIME } from "../integration/client/ports/client-realtime.port";
+import { ClientRealtimeBridge } from "../adapters/out/bridges/client-realtime.bridge";
 
 export const clientsModuleProviders: Provider[] = [
   ...clientsUsecasesProviders,
   { provide: CLIENT_REPOSITORY, useClass: ClientTypeormRepository },
   { provide: TELEPHONE_REPOSITORY, useClass: TelephoneTypeormRepository },
+  { provide: CLIENT_REALTIME, useClass: ClientRealtimeBridge },
   { provide: LISTING_SEARCH_STORAGE, useClass: ListingSearchTypeormRepository },
   { provide: UNIT_OF_WORK, useClass: TypeormUnitOfWork },
   { provide: CLOCK, useValue: { now: () => new Date() } },

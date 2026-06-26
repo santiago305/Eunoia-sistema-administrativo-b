@@ -1,9 +1,10 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
+import { SaleOrderRealtimePayloadService } from "src/modules/sale-orders/application/services/sale-order-realtime-payload.service";
 import { SaleOrdersRealtimeService } from "src/modules/sale-orders/infrastructure/realtime/sale-orders-realtime.service";
 import { RunAutomaticWorkflowTransitionsJob } from "src/modules/workflow/application/jobs/run-automatic-workflow-transitions.job";
 import { envs } from "src/infrastructure/config/envs";
 
-const DAILY_AUTOMATIC_WORKFLOW_FALLBACK_MS = 60_000;
+const AUTOMATIC_WORKFLOW_FALLBACK_MS =14_400_000;;
 
 @Injectable()
 export class SaleOrdersJobsScheduler implements OnModuleInit, OnModuleDestroy {
@@ -14,21 +15,23 @@ export class SaleOrdersJobsScheduler implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly realtimeService: SaleOrdersRealtimeService,
     private readonly automaticWorkflowJob: RunAutomaticWorkflowTransitionsJob,
+    private readonly payloadBuilder: SaleOrderRealtimePayloadService,
   ) {}
 
   onModuleInit() {
-    this.schedule("automatic-workflow", DAILY_AUTOMATIC_WORKFLOW_FALLBACK_MS, async () => {
+    this.schedule("automatic-workflow", AUTOMATIC_WORKFLOW_FALLBACK_MS, async () => {
       const result = await this.automaticWorkflowJob.run({ limit: 500 });
       if (result.updated) {
-        this.realtimeService.emitToAllConnected("sale-orders.updated", {
+        const payload = await this.payloadBuilder.build({
           updated: result.updated,
           saleOrderIds: result.saleOrderIds,
           source: "automatic-workflow",
         });
+        this.realtimeService.emitToAllConnected("sale-orders.updated", payload);
       }
       return result;
     }, {
-      everyMs: envs.saleOrderJobs.automaticWorkflowIntervalMs ?? DAILY_AUTOMATIC_WORKFLOW_FALLBACK_MS,
+      everyMs: envs.saleOrderJobs.automaticWorkflowIntervalMs ?? AUTOMATIC_WORKFLOW_FALLBACK_MS,
       runOnStart: envs.saleOrderJobs.automaticWorkflowRunOnStart,
       logEmptyResult: false,
     });

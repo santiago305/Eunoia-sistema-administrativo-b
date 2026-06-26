@@ -40,6 +40,8 @@ import { InventorySnapshotBridge } from "../adapters/out/bridges/inventory-snaps
 import { InventoryLockBridge } from "../adapters/out/bridges/inventory-lock.bridge";
 import { InventoryRealtimeBridge } from "../adapters/out/bridges/inventory-realtime.bridge";
 import { StockItemBridge } from "../adapters/out/bridges/stock-item.bridge";
+import { InventoryGateway } from "../adapters/in/websocket/inventory.gateway";
+import { InventorySocketRealtimeService } from "../infrastructure/realtime/inventory-socket-realtime.service";
 
 export const productCatalogModuleProviders: Provider[] = [
   ...productCatalogUsecasesProviders,
@@ -63,6 +65,8 @@ export const productCatalogModuleProviders: Provider[] = [
   { provide: INVENTORY_LOCK, useClass: InventoryLockBridge },
   { provide: INVENTORY_REALTIME, useClass: InventoryRealtimeBridge },
   { provide: STOCK_ITEM_REPOSITORY, useClass: StockItemBridge },
+  InventorySocketRealtimeService,
+  InventoryGateway,
 ];
 
 

@@ -30,6 +30,7 @@ import {
   SaleOrderAutomaticWorkflowService,
   SaleOrderAutomaticWorkflowTriggerEnum,
 } from "src/modules/sale-orders/application/services/sale-order-automatic-workflow.service";
+import { SaleOrderRealtimePayloadService } from "src/modules/sale-orders/application/services/sale-order-realtime-payload.service";
 
 @Injectable()
 class TestJwtAuthGuard implements CanActivate {
@@ -68,10 +69,18 @@ describe("SaleOrdersController", () => {
   const getOrderTimeline = { execute: jest.fn() };
   const realtimeService = { emitToAllConnected: jest.fn() };
   const automaticWorkflow = { evaluateAndNotify: jest.fn() };
+  const realtimePayload = { build: jest.fn() };
+  const statisticsPayload = {
+    byWorkflow: [],
+    byState: [],
+    byClientType: [],
+    byBankAccount: [],
+    totals: { orders: 1, total: 120, collected: 10, pending: 110, deliveryCostSum: 0 },
+  };
 
   beforeEach(async () => {
     listSaleOrders.execute.mockResolvedValue({ items: [], total: 0, page: 1, limit: 10 });
-    getStatistics.execute.mockResolvedValue({ byWorkflow: [], byState: [], byClientType: [], totals: {} });
+    getStatistics.execute.mockResolvedValue(statisticsPayload);
     getSearchState.execute.mockResolvedValue({ recent: [], saved: [], catalogs: { paymentStatuses: [] } });
     getComponents.execute.mockResolvedValue({ saleOrderId: "x", items: [] });
     getItemComponents.execute.mockResolvedValue({ saleOrderItemId: "x", components: [] });
@@ -88,6 +97,29 @@ describe("SaleOrdersController", () => {
     getAvailableTransitions.execute.mockResolvedValue([]);
     getOrderTimeline.execute.mockResolvedValue([]);
     automaticWorkflow.evaluateAndNotify.mockResolvedValue({ updated: 0, failed: 0, saleOrderIds: [] });
+    realtimePayload.build.mockImplementation(async (input: {
+      updated?: number;
+      saleOrderIds: string[];
+      source: string;
+      trigger?: string;
+    }) => {
+      const saleOrders = (
+        await Promise.all(
+          input.saleOrderIds.map((saleOrderId) =>
+            getSaleOrder.execute({ saleOrderId }).catch(() => undefined),
+          ),
+        )
+      ).filter((saleOrder): saleOrder is NonNullable<typeof saleOrder> => Boolean(saleOrder));
+
+      return {
+        updated: input.updated ?? input.saleOrderIds.length,
+        saleOrderIds: input.saleOrderIds,
+        source: input.source,
+        ...(input.trigger ? { trigger: input.trigger } : {}),
+        ...(saleOrders.length ? { saleOrders } : {}),
+        statistics: await getStatistics.execute({}),
+      };
+    });
 
     const moduleRef = await Test.createTestingModule({
       controllers: [SaleOrdersController],
@@ -114,6 +146,7 @@ describe("SaleOrdersController", () => {
         { provide: CreateFromImportPreviewUseCase, useValue: createFromImportPreview },
         { provide: SaleOrdersRealtimeService, useValue: realtimeService },
         { provide: SaleOrderAutomaticWorkflowService, useValue: automaticWorkflow },
+        { provide: SaleOrderRealtimePayloadService, useValue: realtimePayload },
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -166,9 +199,46 @@ describe("SaleOrdersController", () => {
     });
   });
 
+  it("emits imported sale orders with currentState in the websocket payload", async () => {
+    const saleOrderId = "11111111-1111-4111-8111-111111111111";
+    createFromImportPreview.execute.mockResolvedValueOnce({
+      importedRows: 1,
+      failedRows: 0,
+      rows: [{ saleOrderId }],
+      errors: [],
+    });
+    getSaleOrder.execute.mockResolvedValueOnce({
+      id: saleOrderId,
+      currentState: { code: "WAITING", name: "Esperando" },
+      items: [],
+      payments: [],
+      totalPaid: 0,
+      pendingAmount: 0,
+      paymentStatus: "PENDING",
+    });
+
+    await request(app.getHttpServer())
+      .post("/sale-orders/import-preview")
+      .send({ rows: [{ total: 120 }] })
+      .expect(201);
+
+    expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
+      "sale-orders.updated",
+      expect.objectContaining({
+        saleOrderIds: [saleOrderId],
+        saleOrders: [expect.objectContaining({
+          id: saleOrderId,
+          currentState: expect.objectContaining({ code: "WAITING" }),
+        })],
+        statistics: statisticsPayload,
+      }),
+    );
+  });
+
   it("emits realtime and evaluates automatic workflow after creating a sale order", async () => {
     const createSaleOrder = app.get(CreateSaleOrderUsecase) as { execute: jest.Mock };
     createSaleOrder.execute.mockResolvedValueOnce({ orderId: "11111111-1111-4111-8111-111111111111" });
+    getSaleOrder.execute.mockResolvedValueOnce({ id: "11111111-1111-4111-8111-111111111111", items: [], payments: [], totalPaid: 0, pendingAmount: 0, paymentStatus: "PENDING" });
 
     await request(app.getHttpServer())
       .post("/sale-orders")
@@ -197,11 +267,96 @@ describe("SaleOrdersController", () => {
       expect.objectContaining({
         saleOrderIds: ["11111111-1111-4111-8111-111111111111"],
         source: "sale-order-created",
+        statistics: statisticsPayload,
       }),
     );
     expect(automaticWorkflow.evaluateAndNotify).toHaveBeenCalledWith(
       "11111111-1111-4111-8111-111111111111",
       SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_CREATED,
+    );
+  });
+
+  it("does not emit the stale create event when automatic workflow already updated the order", async () => {
+    const createSaleOrder = app.get(CreateSaleOrderUsecase) as { execute: jest.Mock };
+    const saleOrderId = "11111111-1111-4111-8111-111111111111";
+    createSaleOrder.execute.mockResolvedValueOnce({ orderId: saleOrderId });
+    automaticWorkflow.evaluateAndNotify.mockResolvedValueOnce({
+      updated: 1,
+      failed: 0,
+      saleOrderIds: [saleOrderId],
+    });
+
+    await request(app.getHttpServer())
+      .post("/sale-orders")
+      .send({
+        warehouseId: "22222222-2222-4222-8222-222222222222",
+        clientId: "33333333-3333-4333-8333-333333333333",
+        workflowId: "44444444-4444-4444-8444-444444444444",
+        subTotal: 10,
+        total: 10,
+        items: [{
+          quantity: 1,
+          unitPrice: 10,
+          total: 10,
+          components: [{
+            skuId: "55555555-5555-4555-8555-555555555555",
+            quantity: 1,
+            unitPrice: 10,
+            total: 10,
+          }],
+        }],
+      })
+      .expect(201);
+
+    expect(automaticWorkflow.evaluateAndNotify).toHaveBeenCalledWith(
+      saleOrderId,
+      SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_CREATED,
+    );
+    expect(realtimeService.emitToAllConnected).not.toHaveBeenCalled();
+  });
+
+  it("emits imported sale orders without automatic workflow separately from automatic updates", async () => {
+    const automaticSaleOrderId = "11111111-1111-4111-8111-111111111111";
+    const unchangedSaleOrderId = "22222222-2222-4222-8222-222222222222";
+    createFromImportPreview.execute.mockResolvedValueOnce({
+      importedRows: 2,
+      failedRows: 0,
+      rows: [{ saleOrderId: automaticSaleOrderId }, { saleOrderId: unchangedSaleOrderId }],
+      errors: [],
+    });
+    automaticWorkflow.evaluateAndNotify
+      .mockResolvedValueOnce({
+        updated: 1,
+        failed: 0,
+        saleOrderIds: [automaticSaleOrderId],
+      })
+      .mockResolvedValueOnce({
+        updated: 0,
+        failed: 0,
+        saleOrderIds: [],
+      });
+    getSaleOrder.execute.mockResolvedValueOnce({
+      id: unchangedSaleOrderId,
+      currentState: { code: "WAITING", name: "Esperando" },
+      items: [],
+      payments: [],
+      totalPaid: 0,
+      pendingAmount: 0,
+      paymentStatus: "PENDING",
+    });
+
+    await request(app.getHttpServer())
+      .post("/sale-orders/import-preview")
+      .send({ rows: [{ total: 120 }, { total: 80 }] })
+      .expect(201);
+
+    expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
+      "sale-orders.updated",
+      expect.objectContaining({
+        saleOrderIds: [unchangedSaleOrderId],
+        saleOrders: [expect.objectContaining({ id: unchangedSaleOrderId })],
+        statistics: statisticsPayload,
+      }),
     );
   });
 
@@ -268,6 +423,7 @@ describe("SaleOrdersController", () => {
   it("emits realtime and evaluates automatic workflow after updating a sale order", async () => {
     const saleOrderId = "11111111-1111-4111-8111-111111111111";
     updateSaleOrder.execute.mockResolvedValueOnce({ orderId: saleOrderId });
+    getSaleOrder.execute.mockResolvedValueOnce({ id: saleOrderId, items: [], payments: [], totalPaid: 0, pendingAmount: 0, paymentStatus: "PENDING" });
 
     await request(app.getHttpServer())
       .patch(`/sale-orders/${saleOrderId}`)
@@ -293,12 +449,49 @@ describe("SaleOrdersController", () => {
       expect.objectContaining({
         saleOrderIds: [saleOrderId],
         source: "sale-order-updated",
+        saleOrders: [expect.objectContaining({ id: saleOrderId })],
+        statistics: statisticsPayload,
       }),
     );
     expect(automaticWorkflow.evaluateAndNotify).toHaveBeenCalledWith(
       saleOrderId,
       SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_UPDATED,
     );
+  });
+
+  it("does not emit the stale update event when automatic workflow already updated the order", async () => {
+    const saleOrderId = "11111111-1111-4111-8111-111111111111";
+    updateSaleOrder.execute.mockResolvedValueOnce({ orderId: saleOrderId });
+    automaticWorkflow.evaluateAndNotify.mockResolvedValueOnce({
+      updated: 1,
+      failed: 0,
+      saleOrderIds: [saleOrderId],
+    });
+
+    await request(app.getHttpServer())
+      .patch(`/sale-orders/${saleOrderId}`)
+      .send({
+        warehouseId: "22222222-2222-4222-8222-222222222222",
+        clientId: "33333333-3333-4333-8333-333333333333",
+        items: [{
+          quantity: 1,
+          unitPrice: 10,
+          total: 10,
+          components: [{
+            skuId: "44444444-4444-4444-8444-444444444444",
+            quantity: 1,
+            unitPrice: 10,
+            total: 10,
+          }],
+        }],
+      })
+      .expect(200);
+
+    expect(automaticWorkflow.evaluateAndNotify).toHaveBeenCalledWith(
+      saleOrderId,
+      SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_UPDATED,
+    );
+    expect(realtimeService.emitToAllConnected).not.toHaveBeenCalled();
   });
 
   it("forwards order id to get usecase", async () => {
@@ -380,6 +573,7 @@ describe("SaleOrdersController", () => {
 
   it("adds payment and emits realtime", async () => {
     const saleOrderId = "11111111-1111-4111-8111-111111111111";
+    getSaleOrder.execute.mockResolvedValueOnce({ id: saleOrderId, items: [], payments: [], totalPaid: 0, pendingAmount: 0, paymentStatus: "PENDING" });
     await request(app.getHttpServer())
       .post(`/sale-orders/${saleOrderId}/payments`)
       .send({
@@ -403,7 +597,11 @@ describe("SaleOrdersController", () => {
 
     expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
       "sale-orders.updated",
-      expect.objectContaining({ saleOrderIds: [saleOrderId] }),
+      expect.objectContaining({
+        saleOrderIds: [saleOrderId],
+        saleOrders: [expect.objectContaining({ id: saleOrderId })],
+        statistics: statisticsPayload,
+      }),
     );
     expect(automaticWorkflow.evaluateAndNotify).toHaveBeenCalledWith(
       saleOrderId,
@@ -420,7 +618,10 @@ describe("SaleOrdersController", () => {
     expect(deletePayment.execute).toHaveBeenCalledWith({ saleOrderId, paymentId });
     expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
       "sale-orders.updated",
-      expect.objectContaining({ saleOrderIds: [saleOrderId] }),
+      expect.objectContaining({
+        saleOrderIds: [saleOrderId],
+        statistics: statisticsPayload,
+      }),
     );
   });
 });
