@@ -47,7 +47,8 @@ import { PurchaseAttachmentsModule } from "src/modules/purchase-attachments";
     PurchaseAttachmentsModule,
   ],
   controllers: [PurchaseOrdersController],
-  providers: [...purchasesModuleProviders],
+  providers: [...purchasesModuleProviders,
+  ],
   exports: [PURCHASE_ORDER, PURCHASE_ORDER_ITEM, PURCHASE_SEARCH, PostInventoryFromPurchaseUsecase],
 })
 export class PurchasesModule {}

@@ -273,8 +273,8 @@ export class DashboardSaleOrdersTypeormRepository
 
     qb.andWhere(
       `
-        so.createdAt >= :monthStart
-        AND so.createdAt < :monthEnd
+        so.scheduleDate >= :monthStart
+        AND so.scheduleDate < :monthEnd
       `,
       {
         monthStart,
