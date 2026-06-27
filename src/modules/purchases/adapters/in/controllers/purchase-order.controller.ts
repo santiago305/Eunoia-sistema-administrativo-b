@@ -29,10 +29,6 @@ import { PurchaseOrderExpectedScheduler } from "src/modules/purchases/applicatio
 import { ExportPurchaseOrdersExcelUsecase } from "src/modules/purchases/application/usecases/purchase-order/export-excel.usecase";
 import { ConfirmPurchaseReceptionUsecase } from "src/modules/purchases/application/usecases/purchase-order/confirm-reception.usecase";
 import { LISTING_SEARCH_STORAGE, ListingSearchStorageRepository } from "src/shared/listing-search/domain/listing-search.repository";
-import { IMAGE_PROCESSOR, ImageProcessor } from "src/shared/application/ports/image-processor.port";
-import { FILE_STORAGE, FileStorage } from "src/shared/application/ports/file-storage.port";
-import { ImageProcessingError } from "src/shared/application/errors/image-processing.error";
-import { FileStorageConflictError, InvalidFileStoragePathError } from "src/shared/application/errors/file-storage.errors";
 import { NotificationsService } from "src/modules/mail/application/use-cases/notifications.service";
 import { PURCHASE_NOTIFICATION_TYPES } from "src/modules/mail/domain/constants/purchase-notification-types";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
@@ -46,6 +42,8 @@ import { PurchaseHistoryEventEntity } from "../../out/persistence/typeorm/entiti
 import { PaymentDocumentEntity } from "src/modules/payments/adapters/out/persistence/typeorm/entities/payment-document.entity";
 import { PurchaseOrderEntity } from "../../out/persistence/typeorm/entities/purchase-order.entity";
 import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
+import { UploadPurchaseAttachmentUsecase } from "src/modules/purchase-attachments/application/usecases/upload-purchase-attachment.usecase";
+import { PurchaseAttachmentType } from "src/modules/purchase-attachments/domain/value-objects/purchase-attachment-type";
 
 @Controller("purchases/orders")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
@@ -68,11 +66,8 @@ export class PurchaseOrdersController {
     @Inject(LISTING_SEARCH_STORAGE)
     private readonly listingSearchStorage: ListingSearchStorageRepository,
     private readonly scheduler: PurchaseOrderExpectedScheduler,
-    @Inject(IMAGE_PROCESSOR)
-    private readonly imageProcessor: ImageProcessor,
-    @Inject(FILE_STORAGE)
-    private readonly fileStorage: FileStorage,
     private readonly notificationsService: NotificationsService,
+    private readonly uploadAttachment: UploadPurchaseAttachmentUsecase,
     @InjectRepository(PurchaseProcessingApprovalEntity)
     private readonly purchaseApprovalRepository: Repository<PurchaseProcessingApprovalEntity>,
     @InjectRepository(ApprovalRequestEntity)
@@ -1064,7 +1059,7 @@ export class PurchaseOrdersController {
   async uploadPurchaseImage(
     @Param("id", ParseUUIDPipe) id: string,
     @UploadedFile() file: Express.Multer.File,
-    @CurrentUser() user: { id: string; role?: string },
+    @CurrentUser() user: { id: string },
   ) {
     if (!file?.buffer) {
       throw new BadRequestException("Debes enviar una imagen");
@@ -1079,77 +1074,41 @@ export class PurchaseOrdersController {
       throw new BadRequestException("La compra ya cuenta con evidencia cargada");
     }
 
-    let savedRelativePath = "";
-    try {
-      const processed = await this.imageProcessor.toWebp({
-        buffer: file.buffer,
-        maxWidth: 1920,
-        maxHeight: 1920,
-        quality: 80,
-        maxInputBytes: 10 * 1024 * 1024,
-        maxInputPixels: 20_000_000,
-        maxOutputBytes: 2 * 1024 * 1024,
-      });
+    const attachment = await this.uploadAttachment.execute(
+      {
+        purchaseId: id,
+        type: PurchaseAttachmentType.PRODUCT_PHOTO,
+        file,
+        note: "Migrado desde flujo legacy image_prodution.",
+      },
+      user.id,
+    );
 
-      const { relativePath } = await this.fileStorage.save({
-        directory: "purchases",
-        buffer: processed.buffer,
-        extension: processed.extension,
-        filenamePrefix: `purchase-${id}`,
-      });
-      savedRelativePath = relativePath;
+    const purchaseCode = [order.serie, order.correlative].filter(Boolean).join("-") || order.poId.slice(0, 8);
+    await this.notificationsService.createNotificationForUsers({
+      recipientUserIds: [user.id],
+      type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_PHOTO_UPLOADED,
+      category: "PURCHASES",
+      title: "Evidencia subida",
+      message: "Imagen registrada como documento.",
+      priority: "NORMAL",
+      actionUrl: `/compras/${order.poId}/documentos`,
+      actionLabel: "Ver documentos",
+      sourceModule: "purchases",
+      sourceEntityType: "purchase_order",
+      sourceEntityId: order.poId,
+      metadata: {
+        poId: order.poId,
+        purchaseCode,
+        attachmentId: attachment.attachmentId,
+      },
+    });
 
-      const urls = [...(order.imageProdution ?? []), relativePath];
-      const updated = await this.purchaseRepo.update({
-        poId: id,
-        imageProdution: urls,
-      });
-
-      if (!updated) {
-        throw new BadRequestException("No se pudo guardar la imagen en la compra");
-      }
-
-      const purchaseCode = [order.serie, order.correlative].filter(Boolean).join("-") || order.poId.slice(0, 8);
-      await this.notificationsService.createNotificationForUsers({
-        recipientUserIds: [user.id],
-        type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_PHOTO_UPLOADED,
-        category: "PURCHASES",
-        title: "Evidencia subida",
-        message: "Imagen registrada.",
-        priority: "NORMAL",
-        actionUrl: "/compras",
-        actionLabel: "Ver compra",
-        sourceModule: "purchases",
-        sourceEntityType: "purchase_order",
-        sourceEntityId: order.poId,
-        metadata: {
-          poId: order.poId,
-          purchaseCode,
-          imageCount: updated.imageProdution?.length ?? 0,
-        },
-      });
-
-      return {
-        type: "success",
-        message: "Imagen guardada.",
-        imageProdution: updated.imageProdution,
-      };
-    } catch (error) {
-      if (savedRelativePath) {
-        await this.fileStorage.delete(savedRelativePath).catch(() => undefined);
-      }
-      if (
-        error instanceof ImageProcessingError ||
-        error instanceof InvalidFileStoragePathError
-      ) {
-        throw new BadRequestException(error.message);
-      }
-
-      if (error instanceof FileStorageConflictError) {
-        throw new ConflictException(error.message);
-      }
-
-      throw error;
-    }
+    return {
+      type: "success",
+      message: "Imagen guardada como documento.",
+      imageProdution: attachment.url ? [attachment.url] : [],
+      attachment,
+    };
   }
 }

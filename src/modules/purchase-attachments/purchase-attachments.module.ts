@@ -32,7 +32,7 @@ import { PURCHASE_ATTACHMENT_REPOSITORY } from "./domain/ports/purchase-attachme
     { provide: PURCHASE_ATTACHMENT_REPOSITORY, useClass: PurchaseAttachmentTypeormRepository },
     { provide: FILE_STORAGE, useClass: LocalFileStorageService },
   ],
-  exports: [ListPurchaseAttachmentsUsecase, PURCHASE_ATTACHMENT_REPOSITORY],
+  exports: [UploadPurchaseAttachmentUsecase, ListPurchaseAttachmentsUsecase, PURCHASE_ATTACHMENT_REPOSITORY],
 })
 export class PurchaseAttachmentsModule {}
 

@@ -22,6 +22,7 @@ import { AccessControlModule } from "src/modules/access-control/infrastructure/a
 import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
 import { AccountsPayableModule } from "src/modules/accounts-payable";
 import { PostInventoryFromPurchaseUsecase } from "../application/usecases/purchase-order/Inventory-purchase.usecase";
+import { PurchaseAttachmentsModule } from "src/modules/purchase-attachments";
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { PostInventoryFromPurchaseUsecase } from "../application/usecases/purcha
     MailModule,
     AccessControlModule,
     AccountsPayableModule,
+    PurchaseAttachmentsModule,
   ],
   controllers: [PurchaseOrdersController],
   providers: [...purchasesModuleProviders],

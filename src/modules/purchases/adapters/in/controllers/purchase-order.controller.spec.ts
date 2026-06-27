@@ -33,6 +33,7 @@ import { SavePurchaseOrderSearchMetricUsecase } from "src/modules/purchases/appl
 import { DeletePurchaseOrderSearchMetricUsecase } from "src/modules/purchases/application/usecases/purchase-search/delete-metric.usecase";
 import { PurchaseOrdersController } from "./purchase-order.controller";
 import { AccessControlService } from "src/modules/access-control/application/services/access-control.service";
+import { UploadPurchaseAttachmentUsecase } from "src/modules/purchase-attachments/application/usecases/upload-purchase-attachment.usecase";
 
 @Injectable()
 class TestJwtAuthGuard implements CanActivate {
@@ -102,6 +103,7 @@ describe("PurchaseOrdersController", () => {
         { provide: DeletePurchaseOrderSearchMetricUsecase, useValue: { execute: jest.fn() } },
         { provide: ExportPurchaseOrdersExcelUsecase, useValue: { execute: jest.fn(), getAvailableColumns: jest.fn().mockReturnValue([]) } },
         { provide: ConfirmPurchaseReceptionUsecase, useValue: { execute: jest.fn() } },
+        { provide: UploadPurchaseAttachmentUsecase, useValue: { execute: jest.fn() } },
         { provide: PURCHASE_ORDER, useValue: purchaseRepo },
         { provide: LISTING_SEARCH_STORAGE, useValue: { listState: jest.fn().mockResolvedValue({ metrics: [] }), createMetric: jest.fn(), deleteMetric: jest.fn() } },
         { provide: PurchaseOrderExpectedScheduler, useValue: { schedule: jest.fn() } },
