@@ -47,11 +47,6 @@ export class CreateCorporateMessagingCore20260511000000 implements MigrationInte
         recipient_user_id uuid NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
         recipient_email varchar(255) NOT NULL,
         recipient_type varchar(10) NOT NULL DEFAULT 'TO',
-        read_at timestamp NULL,
-        starred_at timestamp NULL,
-        deleted_at timestamp NULL,
-        trash_expires_at timestamp NULL,
-        permanently_deleted_at timestamp NULL,
         delivered_at timestamp NULL,
         created_at timestamp NOT NULL DEFAULT now(),
         updated_at timestamp NOT NULL DEFAULT now(),
@@ -98,8 +93,8 @@ export class CreateCorporateMessagingCore20260511000000 implements MigrationInte
     `);
 
     await queryRunner.query(`
-      CREATE INDEX IF NOT EXISTS idx_message_recipients_user_deleted_read
-      ON message_recipients (recipient_user_id, deleted_at, read_at);
+      CREATE INDEX IF NOT EXISTS idx_message_recipients_user
+      ON message_recipients (recipient_user_id);
     `);
 
     await queryRunner.query(`
