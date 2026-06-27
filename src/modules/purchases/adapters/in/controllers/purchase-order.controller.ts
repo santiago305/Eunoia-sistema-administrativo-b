@@ -44,6 +44,7 @@ import { PaymentDocumentEntity } from "src/modules/payments/adapters/out/persist
 import { PurchaseOrderEntity } from "../../out/persistence/typeorm/entities/purchase-order.entity";
 import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
 import { UploadPurchaseAttachmentUsecase } from "src/modules/purchase-attachments/application/usecases/upload-purchase-attachment.usecase";
+import { ListPurchaseAttachmentsUsecase } from "src/modules/purchase-attachments/application/usecases/list-purchase-attachments.usecase";
 import { PurchaseAttachmentType } from "src/modules/purchase-attachments/domain/value-objects/purchase-attachment-type";
 
 @Controller("purchases/orders")
@@ -69,6 +70,7 @@ export class PurchaseOrdersController {
     private readonly scheduler: PurchaseOrderExpectedScheduler,
     private readonly notificationsService: NotificationsService,
     private readonly uploadAttachment: UploadPurchaseAttachmentUsecase,
+    private readonly listAttachments: ListPurchaseAttachmentsUsecase,
     @InjectRepository(PurchaseProcessingApprovalEntity)
     private readonly purchaseApprovalRepository: Repository<PurchaseProcessingApprovalEntity>,
     @InjectRepository(ApprovalRequestEntity)
@@ -1146,6 +1148,13 @@ export class PurchaseOrdersController {
     if ((order.imageProdution?.length ?? 0) > 0) {
       throw new BadRequestException("La compra ya cuenta con evidencia cargada");
     }
+    const productPhotos = await this.listAttachments.execute({
+      purchaseId: id,
+      type: PurchaseAttachmentType.PRODUCT_PHOTO,
+    });
+    if (productPhotos.length > 0) {
+      throw new BadRequestException("La compra ya cuenta con evidencia cargada");
+    }
 
     const attachment = await this.uploadAttachment.execute(
       {
@@ -1163,10 +1172,10 @@ export class PurchaseOrdersController {
       type: PURCHASE_NOTIFICATION_TYPES.PURCHASE_PHOTO_UPLOADED,
       category: "PURCHASES",
       title: "Evidencia subida",
-      message: "Imagen registrada como documento.",
+      message: "Foto de productos registrada.",
       priority: "NORMAL",
-      actionUrl: `/compras/${order.poId}/documentos`,
-      actionLabel: "Ver documentos",
+      actionUrl: `/compras?purchaseId=${order.poId}&modal=detail`,
+      actionLabel: "Ver compra",
       sourceModule: "purchases",
       sourceEntityType: "purchase_order",
       sourceEntityId: order.poId,
@@ -1179,7 +1188,7 @@ export class PurchaseOrdersController {
 
     return {
       type: "success",
-      message: "Imagen guardada como documento.",
+      message: "Foto de productos guardada.",
       imageProdution: attachment.url ? [attachment.url] : [],
       attachment,
     };

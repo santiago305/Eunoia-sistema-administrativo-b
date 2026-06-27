@@ -14,6 +14,8 @@ import { PurchaseOrderNotFoundApplicationError } from "../../errors/purchase-ord
 import { PRODUCT_CATALOG_PRODUCT_REPOSITORY, ProductCatalogProductRepository } from "src/modules/product-catalog/domain/ports/product.repository";
 import { PRODUCT_CATALOG_SKU_REPOSITORY, ProductCatalogSkuRepository } from "src/modules/product-catalog/domain/ports/sku.repository";
 import { PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY, ProductCatalogStockItemRepository } from "src/modules/product-catalog/domain/ports/stock-item.repository";
+import { ListPurchaseAttachmentsUsecase } from "src/modules/purchase-attachments/application/usecases/list-purchase-attachments.usecase";
+import { PurchaseAttachmentType } from "src/modules/purchase-attachments/domain/value-objects/purchase-attachment-type";
 
 export class GetPurchaseOrderUsecase {
   constructor(
@@ -31,6 +33,7 @@ export class GetPurchaseOrderUsecase {
     private readonly productCatalogSkuRepo: ProductCatalogSkuRepository,
     @Inject(PRODUCT_CATALOG_PRODUCT_REPOSITORY)
     private readonly productCatalogProductRepo: ProductCatalogProductRepository,
+    private readonly listAttachments: ListPurchaseAttachmentsUsecase,
   ) {}
 
   async execute(input: GetPurchaseOrderInput): Promise<PurchaseOrderDetailOutput> {
@@ -73,12 +76,22 @@ export class GetPurchaseOrderUsecase {
     const quotaOutputs: CreditQuotaOutput[] = quotas.map((row) =>
       PurchaseOrderOutputMapper.toQuotaOutput(row),
     );
+    const productPhotos = await this.listAttachments.execute({
+      purchaseId: order.poId,
+      type: PurchaseAttachmentType.PRODUCT_PHOTO,
+    });
+    const imageProdution = (order.imageProdution?.length ?? 0) > 0
+      ? order.imageProdution
+      : productPhotos.map((attachment) => attachment.url).filter(Boolean).slice(0, 1);
 
-    return PurchaseOrderOutputMapper.toDetailOutput({
+    return {
+      ...PurchaseOrderOutputMapper.toDetailOutput({
       order,
       items: itemOutputs,
       payments: paymentOutputs,
       quotas: quotaOutputs,
-    });
+      }),
+      imageProdution,
+    };
   }
 }

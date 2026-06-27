@@ -34,6 +34,8 @@ import { DeletePurchaseOrderSearchMetricUsecase } from "src/modules/purchases/ap
 import { PurchaseOrdersController } from "./purchase-order.controller";
 import { AccessControlService } from "src/modules/access-control/application/services/access-control.service";
 import { UploadPurchaseAttachmentUsecase } from "src/modules/purchase-attachments/application/usecases/upload-purchase-attachment.usecase";
+import { ListPurchaseAttachmentsUsecase } from "src/modules/purchase-attachments/application/usecases/list-purchase-attachments.usecase";
+import { PurchaseAttachmentType } from "src/modules/purchase-attachments/domain/value-objects/purchase-attachment-type";
 
 @Injectable()
 class TestJwtAuthGuard implements CanActivate {
@@ -56,6 +58,8 @@ describe("PurchaseOrdersController", () => {
   const listOrders = { execute: jest.fn() };
   const getSearchState = { execute: jest.fn() };
   const purchaseRepo = { findById: jest.fn(), update: jest.fn() };
+  const uploadAttachment = { execute: jest.fn() };
+  const listAttachments = { execute: jest.fn() };
   const purchaseHistoryRepository = { createQueryBuilder: jest.fn(), create: jest.fn(), save: jest.fn() };
   const entityManager = { getRepository: jest.fn() };
   const accessControlService = {
@@ -67,6 +71,9 @@ describe("PurchaseOrdersController", () => {
     listOrders.execute.mockResolvedValue({ items: [], total: 0, page: 1, limit: 20 });
     purchaseRepo.findById.mockResolvedValue(null);
     purchaseRepo.update.mockResolvedValue(null);
+    uploadAttachment.execute.mockReset();
+    listAttachments.execute.mockReset();
+    listAttachments.execute.mockResolvedValue([]);
     purchaseHistoryRepository.createQueryBuilder.mockReset();
     purchaseHistoryRepository.create.mockReset();
     purchaseHistoryRepository.save.mockReset();
@@ -103,7 +110,8 @@ describe("PurchaseOrdersController", () => {
         { provide: DeletePurchaseOrderSearchMetricUsecase, useValue: { execute: jest.fn() } },
         { provide: ExportPurchaseOrdersExcelUsecase, useValue: { execute: jest.fn(), getAvailableColumns: jest.fn().mockReturnValue([]) } },
         { provide: ConfirmPurchaseReceptionUsecase, useValue: { execute: jest.fn() } },
-        { provide: UploadPurchaseAttachmentUsecase, useValue: { execute: jest.fn() } },
+        { provide: UploadPurchaseAttachmentUsecase, useValue: uploadAttachment },
+        { provide: ListPurchaseAttachmentsUsecase, useValue: listAttachments },
         { provide: PURCHASE_ORDER, useValue: purchaseRepo },
         { provide: LISTING_SEARCH_STORAGE, useValue: { listState: jest.fn().mockResolvedValue({ metrics: [] }), createMetric: jest.fn(), deleteMetric: jest.fn() } },
         { provide: PurchaseOrderExpectedScheduler, useValue: { schedule: jest.fn() } },
@@ -253,5 +261,42 @@ describe("PurchaseOrdersController", () => {
       hasPrev: true,
       hasNext: true,
     });
+  });
+
+  it("rejects a second product photo for the same purchase", async () => {
+    const poId = "11111111-1111-4111-8111-111111111111";
+    purchaseRepo.findById.mockResolvedValue({
+      poId,
+      serie: "OC",
+      correlative: 18,
+      imageProdution: [],
+    });
+    listAttachments.execute.mockResolvedValue([
+      {
+        attachmentId: "attachment-1",
+        purchaseId: poId,
+        type: PurchaseAttachmentType.PRODUCT_PHOTO,
+        url: "purchase-attachments/purchase-1/products.webp",
+      },
+    ]);
+    uploadAttachment.execute.mockResolvedValue({
+      attachmentId: "attachment-2",
+      url: "purchase-attachments/purchase-1/products-2.webp",
+    });
+
+    const response = await request(app.getHttpServer())
+      .patch(`/purchases/orders/${poId}/image-prodution`)
+      .attach("file", Buffer.from("image"), {
+        filename: "products.png",
+        contentType: "image/png",
+      })
+      .expect(400);
+
+    expect(response.body.message).toContain("La compra ya cuenta con evidencia cargada");
+    expect(listAttachments.execute).toHaveBeenCalledWith({
+      purchaseId: poId,
+      type: PurchaseAttachmentType.PRODUCT_PHOTO,
+    });
+    expect(uploadAttachment.execute).not.toHaveBeenCalled();
   });
 });
