@@ -102,6 +102,10 @@ const SEARCH_FIELD_LABELS: Record<PurchaseSearchField, string> = {
   [PurchaseSearchFields.WAIT_TIME]: "T. Espera",
   [PurchaseSearchFields.DATE_ISSUE]: "Emision",
   [PurchaseSearchFields.EXPECTED_AT]: "Ing. Almacen",
+  [PurchaseSearchFields.EVENT_TYPE]: "Evento",
+  [PurchaseSearchFields.PERFORMED_BY_USER_ID]: "Usuario",
+  [PurchaseSearchFields.LAST_EVENT_AT]: "Ultimo evento",
+  [PurchaseSearchFields.EVENTS_COUNT]: "Eventos",
 };
 
 const SEARCH_OPERATOR_LABELS: Record<PurchaseSearchOperator, string> = {

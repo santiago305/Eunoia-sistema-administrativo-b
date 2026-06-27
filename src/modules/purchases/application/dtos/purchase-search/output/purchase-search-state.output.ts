@@ -30,5 +30,7 @@ export interface PurchaseSearchStateOutput {
     statuses: PurchaseSearchOptionOutput[];
     documentTypes: PurchaseSearchOptionOutput[];
     paymentForms: PurchaseSearchOptionOutput[];
+    events?: PurchaseSearchOptionOutput[];
+    users?: PurchaseSearchOptionOutput[];
   };
 }

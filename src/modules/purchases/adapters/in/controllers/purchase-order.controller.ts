@@ -23,7 +23,8 @@ import { PurchaseOrderOutputMapper } from "src/modules/purchases/application/map
 import { GetPurchaseOrderSearchStateUsecase } from "src/modules/purchases/application/usecases/purchase-search/get-state.usecase";
 import { SavePurchaseOrderSearchMetricUsecase } from "src/modules/purchases/application/usecases/purchase-search/save-metric.usecase";
 import { DeletePurchaseOrderSearchMetricUsecase } from "src/modules/purchases/application/usecases/purchase-search/delete-metric.usecase";
-import { sanitizePurchaseSearchSnapshot } from "src/modules/purchases/application/support/purchase-search.utils";`r`nimport { PurchaseSearchFields, PurchaseSearchOperators, PurchaseSearchRule } from "src/modules/purchases/application/dtos/purchase-search/purchase-search-snapshot";
+import { sanitizePurchaseSearchSnapshot } from "src/modules/purchases/application/support/purchase-search.utils";
+import { PurchaseSearchFields, PurchaseSearchOperators, PurchaseSearchRule } from "src/modules/purchases/application/dtos/purchase-search/purchase-search-snapshot";
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
 import { PurchaseOrderExpectedScheduler } from "src/modules/purchases/application/jobs/purchase-order-expected-scheduler";
 import { ExportPurchaseOrdersExcelUsecase } from "src/modules/purchases/application/usecases/purchase-order/export-excel.usecase";

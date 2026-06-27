@@ -15,6 +15,10 @@ export const PurchaseSearchFields = {
   WAIT_TIME: "waitTime",
   DATE_ISSUE: "dateIssue",
   EXPECTED_AT: "expectedAt",
+  EVENT_TYPE: "eventType",
+  PERFORMED_BY_USER_ID: "performedByUserId",
+  LAST_EVENT_AT: "lastEventAt",
+  EVENTS_COUNT: "eventsCount",
 } as const;
 
 export type PurchaseSearchField =

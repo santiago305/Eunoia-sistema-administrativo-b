@@ -32,8 +32,9 @@ export class HttpCreatePurchaseOrderDto {
   @IsEnum(CurrencyType)
   currency: CurrencyType;
 
+  @IsOptional()
   @IsEnum(PaymentFormType)
-  paymentForm: PaymentFormType;
+  paymentForm?: PaymentFormType;
 
   @IsOptional()
   @Type(() => Number)
