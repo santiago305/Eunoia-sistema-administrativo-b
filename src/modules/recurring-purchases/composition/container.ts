@@ -1,4 +1,6 @@
 import { Provider } from "@nestjs/common";
+import { UNIT_OF_WORK } from "src/shared/domain/ports/unit-of-work.port";
+import { TypeormUnitOfWork } from "src/shared/infrastructure/typeorm/typeorm.unit-of-work";
 import { RecurringPurchaseTemplateTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/recurring-purchase-template.typeorm.repo";
 import { CreateRecurringPurchaseUsecase } from "../application/usecases/create-recurring-purchase.usecase";
 import { ListRecurringPurchasesUsecase } from "../application/usecases/list-recurring-purchases.usecase";
@@ -18,4 +20,5 @@ export const recurringPurchasesModuleProviders: Provider[] = [
   GenerateCurrentPayableUsecase,
   RecurringPurchaseDailyJob,
   { provide: RECURRING_PURCHASE_TEMPLATE_REPOSITORY, useClass: RecurringPurchaseTemplateTypeormRepository },
+  { provide: UNIT_OF_WORK, useClass: TypeormUnitOfWork },
 ];
