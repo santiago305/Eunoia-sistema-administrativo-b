@@ -152,6 +152,33 @@ describe("PurchaseOrdersController", () => {
     expect(getSearchState.execute).toHaveBeenCalledWith("user-1");
   });
 
+  it("returns a dedicated purchase history search-state shape", async () => {
+    getSearchState.execute.mockResolvedValueOnce({
+      recent: [],
+      saved: [],
+      catalogs: {
+        suppliers: [],
+        statuses: [],
+        events: [{ id: "PROCESSING_REQUESTED", label: "Procesamiento solicitado" }],
+        users: [{ id: "user-1", label: "Ana Lopez" }],
+      },
+    });
+
+    const response = await request(app.getHttpServer())
+      .get("/purchases/orders/history/search-state")
+      .expect(200);
+
+    expect(response.body.catalogs).toEqual(
+      expect.objectContaining({
+        suppliers: expect.any(Array),
+        statuses: expect.any(Array),
+        events: expect.any(Array),
+        users: expect.any(Array),
+      }),
+    );
+    expect(getSearchState.execute).toHaveBeenCalledWith("user-1", "purchase-history");
+  });
+
   it("parses smart-search filters and forwards them to the list usecase", async () => {
     await request(app.getHttpServer())
       .get("/purchases/orders")

@@ -23,7 +23,7 @@ import { PurchaseOrderOutputMapper } from "src/modules/purchases/application/map
 import { GetPurchaseOrderSearchStateUsecase } from "src/modules/purchases/application/usecases/purchase-search/get-state.usecase";
 import { SavePurchaseOrderSearchMetricUsecase } from "src/modules/purchases/application/usecases/purchase-search/save-metric.usecase";
 import { DeletePurchaseOrderSearchMetricUsecase } from "src/modules/purchases/application/usecases/purchase-search/delete-metric.usecase";
-import { sanitizePurchaseSearchSnapshot } from "src/modules/purchases/application/support/purchase-search.utils";
+import { sanitizePurchaseSearchSnapshot } from "src/modules/purchases/application/support/purchase-search.utils";`r`nimport { PurchaseSearchFields, PurchaseSearchOperators, PurchaseSearchRule } from "src/modules/purchases/application/dtos/purchase-search/purchase-search-snapshot";
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
 import { PurchaseOrderExpectedScheduler } from "src/modules/purchases/application/jobs/purchase-order-expected-scheduler";
 import { ExportPurchaseOrdersExcelUsecase } from "src/modules/purchases/application/usecases/purchase-order/export-excel.usecase";
@@ -96,6 +96,71 @@ export class PurchaseOrdersController {
       metadata: { poId, showAsToast: false },
       showAsToast: false,
     });
+  }
+
+
+  private getHistorySearchRules(filters?: PurchaseSearchRule[]) {
+    return (filters ?? []).filter((filter) =>
+      filter.field === PurchaseSearchFields.EVENT_TYPE ||
+      filter.field === PurchaseSearchFields.PERFORMED_BY_USER_ID ||
+      filter.field === PurchaseSearchFields.LAST_EVENT_AT ||
+      filter.field === PurchaseSearchFields.EVENTS_COUNT,
+    );
+  }
+
+  private applyHistorySearchRule(eventQb: any, filter: PurchaseSearchRule, index: number) {
+    const valuesParam = `history_filter_${index}_values`;
+    const valueParam = `history_filter_${index}_value`;
+    const startParam = `history_filter_${index}_start`;
+    const endParam = `history_filter_${index}_end`;
+    const catalogOperator = filter.mode === "exclude" ? "NOT IN" : "IN";
+
+    if (filter.field === PurchaseSearchFields.EVENT_TYPE && filter.values?.length) {
+      eventQb.andWhere(`event.event_type ${catalogOperator} (:...${valuesParam})`, {
+        [valuesParam]: filter.values,
+      });
+      return;
+    }
+
+    if (filter.field === PurchaseSearchFields.PERFORMED_BY_USER_ID && filter.values?.length) {
+      eventQb.andWhere(`event.performed_by_user_id ${catalogOperator} (:...${valuesParam})`, {
+        [valuesParam]: filter.values,
+      });
+      return;
+    }
+
+    if (filter.field === PurchaseSearchFields.LAST_EVENT_AT) {
+      if (filter.operator === PurchaseSearchOperators.BETWEEN && filter.range?.start && filter.range?.end) {
+        eventQb.andHaving(`DATE(MAX(event.created_at)) BETWEEN :${startParam} AND :${endParam}`, {
+          [startParam]: filter.range.start,
+          [endParam]: filter.range.end,
+        });
+        return;
+      }
+      if (!filter.value) return;
+      const sqlOperator =
+        filter.operator === PurchaseSearchOperators.BEFORE ? "<" :
+        filter.operator === PurchaseSearchOperators.AFTER ? ">" :
+        filter.operator === PurchaseSearchOperators.ON_OR_BEFORE ? "<=" :
+        filter.operator === PurchaseSearchOperators.ON_OR_AFTER ? ">=" :
+        "=";
+      eventQb.andHaving(`DATE(MAX(event.created_at)) ${sqlOperator} :${valueParam}`, {
+        [valueParam]: filter.value,
+      });
+      return;
+    }
+
+    if (filter.field === PurchaseSearchFields.EVENTS_COUNT && filter.value) {
+      const sqlOperator =
+        filter.operator === PurchaseSearchOperators.GT ? ">" :
+        filter.operator === PurchaseSearchOperators.GTE ? ">=" :
+        filter.operator === PurchaseSearchOperators.LT ? "<" :
+        filter.operator === PurchaseSearchOperators.LTE ? "<=" :
+        "=";
+      eventQb.andHaving(`COUNT(event.purchase_history_event_id) ${sqlOperator} :${valueParam}`, {
+        [valueParam]: Number(filter.value),
+      });
+    }
   }
 
   @Post()
@@ -809,6 +874,13 @@ export class PurchaseOrdersController {
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename="${file.filename}"`);
     return res.status(200).send(file.content);
+  }
+
+
+  @Get("history/search-state")
+  @RequirePermissions("purchases.view_history")
+  getHistorySearchStateForUser(@CurrentUser() user: { id: string }) {
+    return this.getSearchState.execute(user.id, "purchase-history");
   }
 
   @Get("history")

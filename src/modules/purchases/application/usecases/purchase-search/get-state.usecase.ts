@@ -13,6 +13,17 @@ import {
 import { PurchaseSearchFields } from "../../dtos/purchase-search/purchase-search-snapshot";
 
 const PURCHASE_SEARCH_TABLE_KEY = "purchase-orders";
+const PURCHASE_HISTORY_SEARCH_TABLE_KEY = "purchase-history";
+
+const PURCHASE_HISTORY_EVENT_OPTIONS = [
+  { id: "PURCHASE_CREATED_WITH_PAYMENT_PENDING_APPROVAL", label: "Creacion con pago pendiente" },
+  { id: "PROCESSING_REQUESTED", label: "Procesamiento solicitado" },
+  { id: "PROCESSING_APPROVED", label: "Procesamiento aprobado" },
+  { id: "PROCESSING_REJECTED", label: "Procesamiento rechazado" },
+  { id: "PURCHASE_CREATION_APPROVED", label: "Creacion aprobada" },
+  { id: "PURCHASE_CREATION_REJECTED", label: "Creacion rechazada" },
+  { id: "PAYMENT_APPROVED", label: "Pago aprobado" },
+];
 
 export class GetPurchaseOrderSearchStateUsecase {
   constructor(
@@ -20,10 +31,13 @@ export class GetPurchaseOrderSearchStateUsecase {
     private readonly purchaseSearchRepo: PurchaseSearchRepository,
   ) {}
 
-  async execute(userId: string): Promise<PurchaseSearchStateOutput> {
+  async execute(userId: string, tableKey = PURCHASE_SEARCH_TABLE_KEY): Promise<PurchaseSearchStateOutput> {
+    const normalizedTableKey = tableKey === PURCHASE_HISTORY_SEARCH_TABLE_KEY
+      ? PURCHASE_HISTORY_SEARCH_TABLE_KEY
+      : PURCHASE_SEARCH_TABLE_KEY;
     const state = await this.purchaseSearchRepo.listState({
       userId,
-      tableKey: PURCHASE_SEARCH_TABLE_KEY,
+      tableKey: normalizedTableKey,
     });
 
     const supplierUsageOrder = new Map<string, number>();
@@ -57,7 +71,7 @@ export class GetPurchaseOrderSearchStateUsecase {
       waitTimes: new Map(PURCHASE_WAIT_TIME_SEARCH_OPTIONS.map((item) => [item.id, item.label])),
     };
 
-    return {
+    const base = {
       recent: state.recent.map((item) => ({
         recentId: item.recentId,
         label: buildPurchaseSearchLabel(item.snapshot, maps),
@@ -83,6 +97,17 @@ export class GetPurchaseOrderSearchStateUsecase {
         statuses: PURCHASE_STATUS_SEARCH_OPTIONS,
         documentTypes: PURCHASE_DOCUMENT_TYPE_SEARCH_OPTIONS,
         paymentForms: PURCHASE_PAYMENT_FORM_SEARCH_OPTIONS,
+      },
+    };
+
+    if (normalizedTableKey !== PURCHASE_HISTORY_SEARCH_TABLE_KEY) return base;
+
+    return {
+      ...base,
+      catalogs: {
+        ...base.catalogs,
+        events: PURCHASE_HISTORY_EVENT_OPTIONS,
+        users: [],
       },
     };
   }
