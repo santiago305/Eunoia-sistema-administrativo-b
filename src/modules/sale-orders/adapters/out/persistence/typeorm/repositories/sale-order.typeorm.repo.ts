@@ -23,7 +23,7 @@ import {
   SALE_ORDER_PAYMENT_STATUS_SEARCH_OPTIONS,
   sanitizeSaleOrderSearchFilters,
 } from "src/modules/sale-orders/application/support/sale-order-search.utils";
-import { BankAccountEntity } from "src/modules/bank-accounts/adapters/out/persistence/typeorm/entities/bank-account.entity";
+import { CompanyPaymentAccountEntity } from "src/modules/company-payment-accounts/adapters/out/persistence/typeorm/entities/company-payment-account.entity";
 import { ProductCatalogSkuEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku.entity";
 import { ProductCatalogStockItemEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/stock-item.entity";
 import { SaleOrderGetOutput } from "src/modules/sale-orders/application/dtos/sale-order-search/output/sale-order-search-state.output";
@@ -549,7 +549,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
 
     const bankAccountIds = Array.from(new Set(payments.map((p) => p.bankAccountId).filter(Boolean))) as string[];
     const bankAccounts = bankAccountIds.length
-      ? await manager.getRepository(BankAccountEntity).find({ where: { id: In(bankAccountIds) } })
+      ? await manager.getRepository(CompanyPaymentAccountEntity).find({ where: { id: In(bankAccountIds) } })
       : [];
 
     const clientById = new Map(clients.map((row) => [row.id, row]));
@@ -649,7 +649,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
           bankAccount: p.bankAccountId
             ? (() => {
                 const account = bankAccountById.get(p.bankAccountId);
-                return account ? { id: account.id, name: account.name, number: account.number ?? null } : null;
+                return account ? { id: account.id, name: account.name, number: account.accountNumber ?? null } : null;
               })()
             : null,
           date: toIso(p.date),
@@ -828,15 +828,15 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       base
         .clone()
         .innerJoin(SalePaymentEntity, "payment", "payment.saleOrderId = so.id")
-        .leftJoin(BankAccountEntity, "bankAccount", "bankAccount.id = payment.bankAccountId")
+        .leftJoin(CompanyPaymentAccountEntity, "bankAccount", "bankAccount.id = payment.bankAccountId")
         .select("bankAccount.id", "id")
         .addSelect("COALESCE(bankAccount.name, 'Sin cuenta')", "label")
-        .addSelect("bankAccount.number", "number")
+        .addSelect("bankAccount.accountNumber", "number")
         .addSelect("COUNT(payment.id)", "payments")
         .addSelect("COALESCE(SUM(payment.amount), 0)", "collected")
         .groupBy("bankAccount.id")
         .addGroupBy("bankAccount.name")
-        .addGroupBy("bankAccount.number")
+        .addGroupBy("bankAccount.accountNumber")
         .orderBy("collected", "DESC")
         .getRawMany<{
           id: string | null;
@@ -999,7 +999,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
   ) as string[];
 
   const bankAccounts = bankAccountIds.length
-    ? await manager.getRepository(BankAccountEntity).find({
+    ? await manager.getRepository(CompanyPaymentAccountEntity).find({
         where: { id: In(bankAccountIds) },
       })
     : [];
@@ -1167,7 +1167,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
               ? {
                   id: account.id,
                   name: account.name,
-                  number: account.number ?? null,
+                  number: account.accountNumber ?? null,
                 }
               : null;
           })()

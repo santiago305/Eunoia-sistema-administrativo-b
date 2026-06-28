@@ -12,7 +12,7 @@ import { ClientEntity } from "src/modules/clients/adapters/out/persistence/typeo
 import { WarehouseEntity } from "src/modules/warehouses/adapters/out/persistence/typeorm/entities/warehouse";
 import { SourceEntity } from "src/modules/sources/adapters/out/persistence/typeorm/entities/source.entity";
 import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
-import { BankAccountEntity } from "src/modules/bank-accounts/adapters/out/persistence/typeorm/entities/bank-account.entity";
+import { CompanyPaymentAccountEntity } from "src/modules/company-payment-accounts/adapters/out/persistence/typeorm/entities/company-payment-account.entity";
 import { ProductCatalogSkuEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku.entity";
 import { saleOrdersModuleProviders } from "./composition/container";
 import { SaleOrdersController } from "./adapters/in/controllers/sale-orders.controller";
@@ -38,7 +38,7 @@ import { UsersModule } from "../users/infrastructure/users.module";
       WarehouseEntity,
       SourceEntity,
       User,
-      BankAccountEntity,
+      CompanyPaymentAccountEntity,
       ProductCatalogSkuEntity,
       WorkflowEntity,
       WorkflowStateEntity,

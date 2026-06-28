@@ -22,8 +22,9 @@ import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { CsrfGuard } from 'src/shared/utilidades/guards/csrf.guard';
 import { randomBytes } from 'crypto';
 import { RevokeSessionUseCase } from 'src/modules/sessions/application/use-cases/revoke-session.usecase';
-import { Throttle } from '@nestjs/throttler';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { envs } from 'src/infrastructure/config/envs';
+import { SkipCsrf } from 'src/shared/utilidades/decorators';
 
 @Controller('auth')
 export class AuthController {
@@ -34,8 +35,15 @@ export class AuthController {
     private readonly revokeSessionUseCase: RevokeSessionUseCase,
   ) {}
 
+  private clearAuthCookies(res: Response) {
+    res.clearCookie('refresh_token');
+    res.clearCookie('access_token');
+    res.clearCookie('csrf_token');
+  }
+
   @Post('login')
   @HttpCode(200)
+  @SkipCsrf()
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   async login(
     @Body() dto: LoginAuthDto,
@@ -106,6 +114,7 @@ export class AuthController {
   }
 
   // REFRESH TOKEN
+  @SkipCsrf()
   @UseGuards(JwtRefreshAuthGuard, CsrfGuard)
   @Post('refresh')
   async refresh(
@@ -118,7 +127,10 @@ export class AuthController {
       refreshToken: req.cookies?.refresh_token ?? '',
     });
 
-    if (isTypeResponse(result)) return result;
+    if (isTypeResponse(result)) {
+      this.clearAuthCookies(res);
+      return result;
+    }
 
     const { access_token, refresh_token } = result;
     const csrfToken = randomBytes(32).toString('hex');
@@ -148,6 +160,7 @@ export class AuthController {
   }
 
   @Get('me')
+  @SkipThrottle()
   @UseGuards(JwtAuthGuard)
   getAuthUser(@UserDecorator() user: { id: string; role: string }) {
     return this.getAuthUserUseCase.execute(user);

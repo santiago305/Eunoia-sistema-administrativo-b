@@ -1,5 +1,8 @@
 import { AuthController } from './auth.controller';
 import { envs } from 'src/infrastructure/config/envs';
+import { status } from 'src/shared/constantes/constants';
+import { SKIP_CSRF_KEY } from 'src/shared/utilidades/decorators/skip-csrf.decorator';
+import { THROTTLER_SKIP } from '@nestjs/throttler/dist/throttler.constants';
 
 describe('AuthController security defaults', () => {
   const makeController = () => {
@@ -103,5 +106,37 @@ describe('AuthController security defaults', () => {
       'access-token',
       expect.objectContaining({ secure: false }),
     );
+  });
+
+  it('clears auth cookies when refresh token is invalid', async () => {
+    const { controller, refreshAuthUseCase } = makeController();
+    const res = makeResponse();
+    refreshAuthUseCase.execute.mockResolvedValueOnce({
+      type: status.UNAUTHORIZED,
+      message: 'Sesion invalida o expirada',
+    });
+
+    const result = await controller.refresh(
+      { sub: 'user-1', sessionId: 'session-1' },
+      { cookies: { refresh_token: 'stale-refresh-token' } } as any,
+      res as any,
+    );
+
+    expect(result).toEqual({
+      type: status.UNAUTHORIZED,
+      message: 'Sesion invalida o expirada',
+    });
+    expect(res.clearCookie).toHaveBeenCalledWith('refresh_token');
+    expect(res.clearCookie).toHaveBeenCalledWith('access_token');
+    expect(res.clearCookie).toHaveBeenCalledWith('csrf_token');
+  });
+
+  it('allows login and refresh to run with stale cookies that no longer have csrf', () => {
+    expect(Reflect.getMetadata(SKIP_CSRF_KEY, AuthController.prototype.login)).toBe(true);
+    expect(Reflect.getMetadata(SKIP_CSRF_KEY, AuthController.prototype.refresh)).toBe(true);
+  });
+
+  it('does not throttle passive session probes', () => {
+    expect(Reflect.getMetadata(`${THROTTLER_SKIP}default`, AuthController.prototype.getAuthUser)).toBe(true);
   });
 });

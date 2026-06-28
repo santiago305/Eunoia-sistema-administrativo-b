@@ -73,8 +73,8 @@ import { WorkflowTransitionEntity } from 'src/modules/workflow/adapters/out/pers
 import { WorkflowConditionEntity } from 'src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow-condition.entity';
 import { WorkflowActionEntity } from 'src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow-action.entity';
 import { seedWorkflows } from 'src/modules/workflow/infrastructure/seed/workflow.seeder';
-import { BankAccountEntity } from 'src/modules/bank-accounts/adapters/out/persistence/typeorm/entities/bank-account.entity';
-import { seedBankAccounts } from 'src/modules/bank-accounts/infrastructure/seed/bank-account.seeder';
+import { CompanyPaymentAccountEntity } from 'src/modules/company-payment-accounts/adapters/out/persistence/typeorm/entities/company-payment-account.entity';
+import { seedCompanyPaymentAccounts } from 'src/modules/company-payment-accounts/infrastructure/seed/company-payment-account.seeder';
 
 const entities = [
   Role,
@@ -130,7 +130,7 @@ const entities = [
   WorkflowTransitionEntity,
   WorkflowConditionEntity,
   WorkflowActionEntity,
-  BankAccountEntity,
+  CompanyPaymentAccountEntity,
 ];
 
 const dataSource = new DataSource({
@@ -152,7 +152,7 @@ dataSource
 
     await seedUser(dataSource);
     await seedCompany(dataSource);
-    await seedBankAccounts(dataSource);
+    await seedCompanyPaymentAccounts(dataSource);
     await seedUbigeo(dataSource);
     await seedSecurityReasonCatalog(dataSource);
     await seedSecurityIpActivity(dataSource);

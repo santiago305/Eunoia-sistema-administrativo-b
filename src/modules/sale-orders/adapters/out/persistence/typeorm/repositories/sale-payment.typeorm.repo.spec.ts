@@ -1,10 +1,10 @@
 import { In } from "typeorm";
-import { BankAccountEntity } from "src/modules/bank-accounts/adapters/out/persistence/typeorm/entities/bank-account.entity";
+import { CompanyPaymentAccountEntity } from "src/modules/company-payment-accounts/adapters/out/persistence/typeorm/entities/company-payment-account.entity";
 import { SalePaymentEntity } from "../entities/sale-payment.entity";
 import { SalePaymentTypeormRepository } from "./sale-payment.typeorm.repo";
 
 describe("SalePaymentTypeormRepository", () => {
-  it("loads bank account data when listing payments by sale order ids", async () => {
+  it("loads company payment account data when listing payments by sale order ids", async () => {
     const paymentDate = new Date("2026-06-13T00:00:00.000Z");
     const createdAt = new Date("2026-06-15T23:08:16.892Z");
     const paymentRepo = {
@@ -27,14 +27,14 @@ describe("SalePaymentTypeormRepository", () => {
         {
           id: "bank-1",
           name: "BCP Soles",
-          number: "001",
+          accountNumber: "001",
         },
       ]),
     };
     const manager = {
       getRepository: jest.fn((entity) => {
         if (entity === SalePaymentEntity) return paymentRepo;
-        if (entity === BankAccountEntity) return bankAccountRepo;
+        if (entity === CompanyPaymentAccountEntity) return bankAccountRepo;
         throw new Error("Unexpected repository");
       }),
     };

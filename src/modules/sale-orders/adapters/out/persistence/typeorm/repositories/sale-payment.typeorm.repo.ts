@@ -6,7 +6,7 @@ import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-trans
 import { SalePaymentEntity } from "../entities/sale-payment.entity";
 import { SalePaymentRepository } from "src/modules/sale-orders/domain/ports/sale-payment.repository";
 import { SalePayment } from "src/modules/sale-orders/domain/entities/sale-payment";
-import { BankAccountEntity } from "src/modules/bank-accounts/adapters/out/persistence/typeorm/entities/bank-account.entity";
+import { CompanyPaymentAccountEntity } from "src/modules/company-payment-accounts/adapters/out/persistence/typeorm/entities/company-payment-account.entity";
 
 @Injectable()
 export class SalePaymentTypeormRepository implements SalePaymentRepository {
@@ -24,7 +24,7 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
 
   private toDomain(
     row: SalePaymentEntity,
-    bankAccount?: BankAccountEntity | null,
+    bankAccount?: CompanyPaymentAccountEntity | null,
   ): SalePayment {
     return new SalePayment(
       row.id,
@@ -40,7 +40,7 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
         ? {
             id: bankAccount.id,
             name: bankAccount.name,
-            number: bankAccount.number ?? null,
+            number: bankAccount.accountNumber ?? null,
           }
         : null,
     );
@@ -91,7 +91,7 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
       new Set(rows.map((row) => row.bankAccountId).filter(Boolean)),
     ) as string[];
     const bankAccounts = bankAccountIds.length
-      ? await manager.getRepository(BankAccountEntity).find({
+      ? await manager.getRepository(CompanyPaymentAccountEntity).find({
           where: { id: In(bankAccountIds) },
         })
       : [];

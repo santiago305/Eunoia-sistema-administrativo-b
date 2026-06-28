@@ -6,6 +6,7 @@ import { IpBan } from '../../adapters/out/persistence/typeorm/entities/ip-ban.en
 import { ResolveClientIpUseCase } from './resolve-client-ip.usecase';
 
 const VIOLATION_WINDOW_MS = 24 * 60 * 60 * 1000;
+const MIN_VIOLATIONS_BEFORE_TEMPORARY_BAN = 3;
 const BAN_RULES_MINUTES = [15, 60, 24 * 60, 7 * 24 * 60];
 
 @Injectable()
@@ -60,7 +61,23 @@ export class RegisterIpViolationAndApplyPolicyUseCase {
       where: { ip, createdAt: MoreThanOrEqual(windowStart) },
     });
 
-    const banLevel = Math.max(1, Math.min(4, violationsInWindow));
+    if (violationsInWindow < MIN_VIOLATIONS_BEFORE_TEMPORARY_BAN) {
+      ban.banLevel = 0;
+      ban.bannedUntil = null;
+      ban.lastReason = params.reason;
+
+      const saved = await this.banRepository.save(ban);
+      return {
+        banLevel: saved.banLevel,
+        bannedUntil: saved.bannedUntil,
+        manualPermanentBan: saved.manualPermanentBan,
+      };
+    }
+
+    const banLevel = Math.max(
+      1,
+      Math.min(4, violationsInWindow - MIN_VIOLATIONS_BEFORE_TEMPORARY_BAN + 1),
+    );
     const banMinutes = BAN_RULES_MINUTES[banLevel - 1];
     const proposedUntil = new Date(Date.now() + banMinutes * 60 * 1000);
 

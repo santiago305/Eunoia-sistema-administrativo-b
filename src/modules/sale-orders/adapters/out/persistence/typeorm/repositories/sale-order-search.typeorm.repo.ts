@@ -14,7 +14,7 @@ import {
 import { SaleOrderSearchSnapshot } from "src/modules/sale-orders/application/dtos/sale-order-search/sale-order-search-snapshot";
 import { WorkflowEntity } from "src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow.entity";
 import { SaleOrderStatesEntity } from "src/modules/workflow/adapters/out/persistence/typeorm/entities/sale-order-states.entity";
-import { BankAccountEntity } from "src/modules/bank-accounts/adapters/out/persistence/typeorm/entities/bank-account.entity";
+import { CompanyPaymentAccountEntity } from "src/modules/company-payment-accounts/adapters/out/persistence/typeorm/entities/company-payment-account.entity";
 
 @Injectable()
 export class SaleOrderSearchTypeormRepository implements SaleOrderSearchRepository {
@@ -34,8 +34,8 @@ export class SaleOrderSearchTypeormRepository implements SaleOrderSearchReposito
     @InjectRepository(SaleOrderStatesEntity)
     private readonly stateRepo: Repository<SaleOrderStatesEntity>,
 
-    @InjectRepository(BankAccountEntity)
-    private readonly bankAccountRepo: Repository<BankAccountEntity>,
+    @InjectRepository(CompanyPaymentAccountEntity)
+    private readonly bankAccountRepo: Repository<CompanyPaymentAccountEntity>,
   ) {}
 
   async touchRecentSearch(params: Parameters<SaleOrderSearchRepository["touchRecentSearch"]>[0]): Promise<void> {
@@ -107,7 +107,7 @@ export class SaleOrderSearchTypeormRepository implements SaleOrderSearchReposito
       })),
 
       bankAccounts: orderedBankAccounts.map((row) => {
-        const number = row.number ? ` (${row.number})` : "";
+        const number = row.accountNumber ? ` (${row.accountNumber})` : "";
 
         return {
           bankAccountId: row.id,
