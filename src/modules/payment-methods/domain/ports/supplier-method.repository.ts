@@ -28,8 +28,10 @@ export interface SupplierMethodRepository {
       supplierMethodId: string;
       methodId?: string;
       number?: string | null;
+      isDefault?: boolean;
     },
     tx?: TransactionContext,
   ): Promise<SupplierMethod | null>;
   delete(supplierMethodId: string, tx?: TransactionContext): Promise<boolean>;
+  clearDefaultForSupplier(supplierId: string, exceptId?: string, tx?: TransactionContext): Promise<void>;
 }

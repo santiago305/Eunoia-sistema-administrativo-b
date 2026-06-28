@@ -58,6 +58,7 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
       .getRawMany<{
         relation_id: string;
         relation_number?: string | null;
+        relation_is_default: boolean;
         method_id: string;
         method_name: string;
         method_is_active: boolean;
@@ -71,6 +72,7 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
         isActive: row.method_is_active,
       }),
       number: row.relation_number ?? undefined,
+      isDefault: row.relation_is_default ?? false,
     }));
   }
 
@@ -82,6 +84,7 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
       .select([
         "sm.id AS relation_id",
         "sm.number AS relation_number",
+        "sm.isDefault AS relation_is_default",
         "pm.id AS method_id",
         "pm.name AS method_name",
         "pm.isActive AS method_is_active",
@@ -92,6 +95,7 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
       .getRawMany<{
         relation_id: string;
         relation_number?: string | null;
+        relation_is_default: boolean;
         method_id: string;
         method_name: string;
         method_is_active: boolean;

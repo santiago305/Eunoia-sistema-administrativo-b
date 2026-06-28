@@ -3,4 +3,5 @@ export interface PaymentMethodOutput {
   name: string;
   number?: string;
   isActive: boolean;
+  isDefault?: boolean;
 }

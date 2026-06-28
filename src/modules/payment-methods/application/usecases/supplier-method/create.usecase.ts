@@ -45,6 +45,10 @@ export class CreateSupplierMethodUsecase {
       }
 
       try {
+        if (relation.isDefault) {
+          await this.supplierMethodRepo.clearDefaultForSupplier(relation.supplierId, undefined, tx);
+        }
+
         const saved = await this.supplierMethodRepo.create(relation, tx);
         return successResponse("Relacion creada correctamente", PaymentMethodOutputMapper.toSupplierMethodOutput({
           relation: saved,

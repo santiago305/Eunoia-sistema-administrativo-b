@@ -16,6 +16,9 @@ export class SupplierMethodEntity {
   @Column({ type: "varchar", length: 30, nullable: true })
   number?: string | null;
 
+  @Column({ name: "is_default", type: "boolean", default: false })
+  isDefault: boolean;
+
   @ManyToOne(() => SupplierEntity)
   @JoinColumn({ name: "supplier_id" })
   supplier: SupplierEntity;

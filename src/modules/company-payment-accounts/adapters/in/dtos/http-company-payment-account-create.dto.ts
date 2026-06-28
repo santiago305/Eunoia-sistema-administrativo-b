@@ -39,4 +39,8 @@ export class HttpCompanyPaymentAccountCreateDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isDefault?: boolean;
 }

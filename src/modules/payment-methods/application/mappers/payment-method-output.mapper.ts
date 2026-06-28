@@ -21,6 +21,7 @@ export class PaymentMethodOutputMapper {
       name: item.method.name,
       number: item.number ?? undefined,
       isActive: item.method.isActive,
+      isDefault: item.isDefault ?? false,
     };
   }
 
@@ -32,6 +33,7 @@ export class PaymentMethodOutputMapper {
       methodName: item.method.name,
       number: item.relation.number,
       isActive: item.method.isActive,
+      isDefault: item.relation.isDefault,
     };
   }
 

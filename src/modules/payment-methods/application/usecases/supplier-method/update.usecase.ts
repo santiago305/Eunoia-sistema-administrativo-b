@@ -21,7 +21,8 @@ export class UpdateSupplierMethodUsecase {
   async execute(input: UpdateSupplierMethodInput) {
     return this.uow.runInTransaction(async (tx) => {
       const hasNumber = Object.prototype.hasOwnProperty.call(input, "number");
-      if (input.methodId === undefined && !hasNumber) {
+      const hasDefault = Object.prototype.hasOwnProperty.call(input, "isDefault");
+      if (input.methodId === undefined && !hasNumber && !hasDefault) {
         throw new BadRequestException("Debe enviar al menos un campo para actualizar");
       }
 
@@ -53,11 +54,16 @@ export class UpdateSupplierMethodUsecase {
       }
 
       try {
+        if (input.isDefault) {
+          await this.supplierMethodRepo.clearDefaultForSupplier(current.relation.supplierId, input.supplierMethodId, tx);
+        }
+
         const updated = await this.supplierMethodRepo.update(
           {
             supplierMethodId: input.supplierMethodId,
             methodId: input.methodId,
             ...(hasNumber ? { number: nextNumber } : {}),
+            ...(hasDefault ? { isDefault: input.isDefault } : {}),
           },
           tx,
         );

@@ -35,6 +35,7 @@ export class SupplierMethodTypeormRepository implements SupplierMethodRepository
       supplierId: row.supplierId,
       methodId: row.methodId,
       number: row.number ?? undefined,
+      isDefault: row.isDefault,
     });
   }
 
@@ -108,6 +109,7 @@ export class SupplierMethodTypeormRepository implements SupplierMethodRepository
       supplierId: method.supplierId,
       methodId: method.methodId,
       number: method.number ?? null,
+      isDefault: method.isDefault,
     });
     const saved = await repo.save(row);
     return this.toDomain(saved);
@@ -118,6 +120,7 @@ export class SupplierMethodTypeormRepository implements SupplierMethodRepository
       supplierMethodId: string;
       methodId?: string;
       number?: string | null;
+      isDefault?: boolean;
     },
     tx?: TransactionContext,
   ): Promise<SupplierMethod | null> {
@@ -126,6 +129,7 @@ export class SupplierMethodTypeormRepository implements SupplierMethodRepository
 
     if (params.methodId !== undefined) patch.methodId = params.methodId;
     if (Object.prototype.hasOwnProperty.call(params, "number")) patch.number = params.number ?? null;
+    if (params.isDefault !== undefined) patch.isDefault = params.isDefault;
 
     await repo.update({ id: params.supplierMethodId }, patch);
     const updated = await repo.findOne({ where: { id: params.supplierMethodId } });
@@ -136,5 +140,19 @@ export class SupplierMethodTypeormRepository implements SupplierMethodRepository
     const repo = this.getRepo(tx);
     const result = await repo.delete({ id: supplierMethodId });
     return (result.affected ?? 0) > 0;
+  }
+
+  async clearDefaultForSupplier(supplierId: string, exceptId?: string, tx?: TransactionContext): Promise<void> {
+    const qb = this.getRepo(tx)
+      .createQueryBuilder()
+      .update(SupplierMethodEntity)
+      .set({ isDefault: false })
+      .where("supplier_id = :supplierId", { supplierId });
+
+    if (exceptId) {
+      qb.andWhere("supplier_method_id != :exceptId", { exceptId });
+    }
+
+    await qb.execute();
   }
 }

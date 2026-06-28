@@ -35,6 +35,10 @@ export class HttpCompanyPaymentAccountUpdateDto {
   @IsOptional()
   @IsEnum(CurrencyType)
   currency?: CurrencyType;
+
+  @IsOptional()
+  @IsBoolean()
+  isDefault?: boolean;
 }
 
 export class HttpCompanyPaymentAccountSetActiveDto {

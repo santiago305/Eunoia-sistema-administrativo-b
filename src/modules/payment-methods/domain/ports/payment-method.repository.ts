@@ -7,6 +7,7 @@ export type PaymentMethodWithNumber = {
   relationId?: string;
   method: PaymentMethod;
   number?: string | null;
+  isDefault?: boolean;
 };
 
 export interface PaymentMethodRepository {

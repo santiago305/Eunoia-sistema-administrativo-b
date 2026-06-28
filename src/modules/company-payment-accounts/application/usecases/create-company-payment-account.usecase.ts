@@ -20,6 +20,7 @@ export type CreateCompanyPaymentAccountInput = {
   walletName?: string | null;
   currency: CurrencyType;
   isActive?: boolean;
+  isDefault?: boolean;
 };
 
 export class CreateCompanyPaymentAccountUsecase {
@@ -47,6 +48,10 @@ export class CreateCompanyPaymentAccountUsecase {
       if (account.accountNumber) {
         const duplicate = await this.accountRepo.findDuplicate(account.companyId, account.accountNumber, tx);
         if (duplicate) throw new ConflictException("La cuenta de pago ya existe");
+      }
+
+      if (account.isDefault) {
+        await this.accountRepo.clearDefaultForCompany(account.companyId, undefined, tx);
       }
 
       const saved = await this.accountRepo.create(account, tx);

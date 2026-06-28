@@ -15,6 +15,7 @@ export class CompanyPaymentAccount {
     public readonly name: string,
     public readonly currency: CurrencyType,
     public readonly isActive: boolean,
+    public readonly isDefault: boolean,
     public readonly bankName?: string | null,
     public readonly accountNumber?: string | null,
     public readonly accountLastFour?: string | null,
@@ -29,6 +30,7 @@ export class CompanyPaymentAccount {
     name: string;
     currency: CurrencyType;
     isActive?: boolean;
+    isDefault?: boolean;
     bankName?: string | null;
     accountNumber?: string | null;
     accountLastFour?: string | null;
@@ -52,6 +54,7 @@ export class CompanyPaymentAccount {
       name,
       params.currency,
       params.isActive ?? true,
+      params.isDefault ?? false,
       params.bankName?.trim() || null,
       accountNumber,
       accountLastFour,

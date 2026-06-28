@@ -18,8 +18,10 @@ export interface CompanyPaymentAccountRepository {
       cardLastFour?: string | null;
       walletName?: string | null;
       currency?: CompanyPaymentAccount["currency"];
+      isDefault?: boolean;
     },
     tx?: TransactionContext,
   ): Promise<CompanyPaymentAccount | null>;
   setActive(id: string, isActive: boolean, tx?: TransactionContext): Promise<void>;
+  clearDefaultForCompany(companyId: string, exceptId?: string, tx?: TransactionContext): Promise<void>;
 }

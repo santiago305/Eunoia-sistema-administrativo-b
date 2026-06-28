@@ -5,4 +5,5 @@ export interface SupplierMethodOutput {
   methodName: string;
   number?: string;
   isActive: boolean;
+  isDefault: boolean;
 }

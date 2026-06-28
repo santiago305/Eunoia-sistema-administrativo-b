@@ -13,6 +13,7 @@ export class CompanyPaymentAccountOutputMapper {
       walletName: account.walletName ?? null,
       currency: account.currency,
       isActive: account.isActive,
+      isDefault: account.isDefault,
       maskedLabel: account.maskedLabel,
     };
   }

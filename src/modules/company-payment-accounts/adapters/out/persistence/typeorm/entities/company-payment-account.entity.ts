@@ -39,6 +39,9 @@ export class CompanyPaymentAccountEntity {
   @Column({ name: "is_active", type: "boolean", default: true })
   isActive: boolean;
 
+  @Column({ name: "is_default", type: "boolean", default: false })
+  isDefault: boolean;
+
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
 

@@ -36,6 +36,7 @@ export class CompanyPaymentAccountTypeormRepository implements CompanyPaymentAcc
       walletName: row.walletName,
       currency: row.currency,
       isActive: row.isActive,
+      isDefault: row.isDefault,
     });
   }
 
@@ -71,6 +72,7 @@ export class CompanyPaymentAccountTypeormRepository implements CompanyPaymentAcc
       walletName: account.walletName,
       currency: account.currency,
       isActive: account.isActive,
+      isDefault: account.isDefault,
     }));
     return this.toDomain(saved);
   }
@@ -91,6 +93,7 @@ export class CompanyPaymentAccountTypeormRepository implements CompanyPaymentAcc
       walletName: params.walletName === undefined ? existing.walletName : params.walletName,
       currency: params.currency ?? existing.currency,
       isActive: existing.isActive,
+      isDefault: params.isDefault ?? existing.isDefault,
     });
 
     await repo.update({ id: params.id }, {
@@ -102,6 +105,7 @@ export class CompanyPaymentAccountTypeormRepository implements CompanyPaymentAcc
       cardLastFour: next.cardLastFour,
       walletName: next.walletName,
       currency: next.currency,
+      isDefault: next.isDefault,
     });
 
     const updated = await repo.findOne({ where: { id: params.id } });
@@ -110,5 +114,19 @@ export class CompanyPaymentAccountTypeormRepository implements CompanyPaymentAcc
 
   async setActive(id: string, isActive: boolean, tx?: TransactionContext): Promise<void> {
     await this.getRepo(tx).update({ id }, { isActive });
+  }
+
+  async clearDefaultForCompany(companyId: string, exceptId?: string, tx?: TransactionContext): Promise<void> {
+    const qb = this.getRepo(tx)
+      .createQueryBuilder()
+      .update(CompanyPaymentAccountEntity)
+      .set({ isDefault: false })
+      .where("company_id = :companyId", { companyId });
+
+    if (exceptId) {
+      qb.andWhere("company_payment_account_id != :exceptId", { exceptId });
+    }
+
+    await qb.execute();
   }
 }

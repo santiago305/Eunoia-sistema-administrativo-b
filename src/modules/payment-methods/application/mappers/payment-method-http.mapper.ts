@@ -67,6 +67,7 @@ export class PaymentMethodHttpMapper {
     if (Object.prototype.hasOwnProperty.call(dto, "number")) {
       input.number = PaymentMethodHttpMapper.normalizeNumber(dto.number);
     }
+    if (dto.isDefault !== undefined) input.isDefault = dto.isDefault;
 
     return input;
   }
