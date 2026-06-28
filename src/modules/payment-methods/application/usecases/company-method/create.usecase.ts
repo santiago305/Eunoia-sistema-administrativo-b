@@ -8,6 +8,7 @@ import { CreateCompanyMethodInput } from "../../dtos/company-method/input/create
 import { PaymentMethodFactory } from "src/modules/payment-methods/domain/factories/payment-method.factory";
 import { PaymentMethodNotFoundError } from "../../errors/payment-method-not-found.error";
 import { PaymentMethodOutputMapper } from "../../mappers/payment-method-output.mapper";
+import { resolveRequiresVoucher } from "src/modules/payment-methods/domain/services/payment-method-voucher-policy";
 
 export class CreateCompanyMethodUsecase {
   constructor(
@@ -33,7 +34,10 @@ export class CreateCompanyMethodUsecase {
         throw new NotFoundException(new PaymentMethodNotFoundError().message);
       }
 
-      const relation = PaymentMethodFactory.createCompanyMethod(input);
+      const relation = PaymentMethodFactory.createCompanyMethod({
+        ...input,
+        requiresVoucher: resolveRequiresVoucher(method.name, input.requiresVoucher),
+      });
       const existing = await this.companyMethodRepo.findDuplicate(
         relation.companyId,
         relation.methodId,

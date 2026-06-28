@@ -5,4 +5,5 @@ export interface CompanyMethodOutput {
   methodName: string;
   number?: string;
   isActive: boolean;
+  requiresVoucher: boolean;
 }

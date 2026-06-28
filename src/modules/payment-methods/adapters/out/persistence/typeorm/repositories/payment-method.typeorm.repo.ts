@@ -32,6 +32,7 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
       methodId: row.id,
       name: row.name,
       isActive: row.isActive,
+      requiresVoucher: row.requiresVoucher,
     });
   }
 
@@ -48,9 +49,11 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
       .select([
         "cm.id AS relation_id",
         "cm.number AS relation_number",
+        "cm.requiresVoucher AS relation_requires_voucher",
         "pm.id AS method_id",
         "pm.name AS method_name",
         "pm.isActive AS method_is_active",
+        "pm.requiresVoucher AS method_requires_voucher",
       ])
       .orderBy("pm.name", "ASC")
       .addOrderBy("cm.number", "ASC", "NULLS FIRST")
@@ -59,9 +62,11 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
         relation_id: string;
         relation_number?: string | null;
         relation_is_default: boolean;
+        relation_requires_voucher: boolean;
         method_id: string;
         method_name: string;
         method_is_active: boolean;
+        method_requires_voucher: boolean;
       }>();
 
     return rows.map((row) => ({
@@ -70,9 +75,11 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
         methodId: row.method_id,
         name: row.method_name,
         isActive: row.method_is_active,
+        requiresVoucher: row.method_requires_voucher,
       }),
       number: row.relation_number ?? undefined,
       isDefault: row.relation_is_default ?? false,
+      requiresVoucher: row.relation_requires_voucher ?? row.method_requires_voucher,
     }));
   }
 
@@ -85,9 +92,11 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
         "sm.id AS relation_id",
         "sm.number AS relation_number",
         "sm.isDefault AS relation_is_default",
+        "sm.requiresVoucher AS relation_requires_voucher",
         "pm.id AS method_id",
         "pm.name AS method_name",
         "pm.isActive AS method_is_active",
+        "pm.requiresVoucher AS method_requires_voucher",
       ])
       .orderBy("pm.name", "ASC")
       .addOrderBy("sm.number", "ASC", "NULLS FIRST")
@@ -96,9 +105,11 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
         relation_id: string;
         relation_number?: string | null;
         relation_is_default: boolean;
+        relation_requires_voucher: boolean;
         method_id: string;
         method_name: string;
         method_is_active: boolean;
+        method_requires_voucher: boolean;
       }>();
 
     return rows.map((row) => ({
@@ -107,8 +118,11 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
         methodId: row.method_id,
         name: row.method_name,
         isActive: row.method_is_active,
+        requiresVoucher: row.method_requires_voucher,
       }),
       number: row.relation_number ?? undefined,
+      isDefault: row.relation_is_default ?? false,
+      requiresVoucher: row.relation_requires_voucher ?? row.method_requires_voucher,
     }));
   }
 
@@ -143,6 +157,7 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
       id: method.methodId,
       name: method.name,
       isActive: method.isActive ?? true,
+      requiresVoucher: method.requiresVoucher,
     });
 
     const saved = await repo.save(row);
@@ -150,13 +165,14 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
   }
 
   async update(
-    params: { methodId: string; name?: string },
+    params: { methodId: string; name?: string; requiresVoucher?: boolean },
     tx?: TransactionContext,
   ): Promise<PaymentMethod | null> {
     const repo = this.getRepo(tx);
     const patch: Partial<PaymentMethodEntity> = {};
 
     if (params.name !== undefined) patch.name = params.name;
+    if (params.requiresVoucher !== undefined) patch.requiresVoucher = params.requiresVoucher;
 
     await repo.update({ id: params.methodId }, patch);
     const updated = await repo.findOne({ where: { id: params.methodId } });

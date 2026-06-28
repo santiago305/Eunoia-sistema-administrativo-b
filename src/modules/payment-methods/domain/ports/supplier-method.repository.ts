@@ -29,6 +29,7 @@ export interface SupplierMethodRepository {
       methodId?: string;
       number?: string | null;
       isDefault?: boolean;
+      requiresVoucher?: boolean;
     },
     tx?: TransactionContext,
   ): Promise<SupplierMethod | null>;

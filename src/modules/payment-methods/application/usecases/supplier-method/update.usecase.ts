@@ -22,7 +22,8 @@ export class UpdateSupplierMethodUsecase {
     return this.uow.runInTransaction(async (tx) => {
       const hasNumber = Object.prototype.hasOwnProperty.call(input, "number");
       const hasDefault = Object.prototype.hasOwnProperty.call(input, "isDefault");
-      if (input.methodId === undefined && !hasNumber && !hasDefault) {
+      const hasRequiresVoucher = Object.prototype.hasOwnProperty.call(input, "requiresVoucher");
+      if (input.methodId === undefined && !hasNumber && !hasDefault && !hasRequiresVoucher) {
         throw new BadRequestException("Debe enviar al menos un campo para actualizar");
       }
 
@@ -64,6 +65,7 @@ export class UpdateSupplierMethodUsecase {
             methodId: input.methodId,
             ...(hasNumber ? { number: nextNumber } : {}),
             ...(hasDefault ? { isDefault: input.isDefault } : {}),
+            ...(hasRequiresVoucher ? { requiresVoucher: input.requiresVoucher } : {}),
           },
           tx,
         );

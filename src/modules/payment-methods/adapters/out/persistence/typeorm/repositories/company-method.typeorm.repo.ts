@@ -35,6 +35,7 @@ export class CompanyMethodTypeormRepository implements CompanyMethodRepository {
       companyId: row.companyId,
       methodId: row.methodId,
       number: row.number ?? undefined,
+      requiresVoucher: row.requiresVoucher,
     });
   }
 
@@ -43,6 +44,7 @@ export class CompanyMethodTypeormRepository implements CompanyMethodRepository {
       methodId: row.method.id,
       name: row.method.name,
       isActive: row.method.isActive,
+      requiresVoucher: row.method.requiresVoucher,
     });
   }
 
@@ -108,6 +110,7 @@ export class CompanyMethodTypeormRepository implements CompanyMethodRepository {
       companyId: method.companyId,
       methodId: method.methodId,
       number: method.number ?? null,
+      requiresVoucher: method.requiresVoucher,
     });
     const saved = await repo.save(row);
     return this.toDomain(saved);
@@ -118,6 +121,7 @@ export class CompanyMethodTypeormRepository implements CompanyMethodRepository {
       companyMethodId: string;
       methodId?: string;
       number?: string | null;
+      requiresVoucher?: boolean;
     },
     tx?: TransactionContext,
   ): Promise<CompanyMethod | null> {
@@ -126,6 +130,7 @@ export class CompanyMethodTypeormRepository implements CompanyMethodRepository {
 
     if (params.methodId !== undefined) patch.methodId = params.methodId;
     if (Object.prototype.hasOwnProperty.call(params, "number")) patch.number = params.number ?? null;
+    if (params.requiresVoucher !== undefined) patch.requiresVoucher = params.requiresVoucher;
 
     await repo.update({ id: params.companyMethodId }, patch);
     const updated = await repo.findOne({ where: { id: params.companyMethodId } });

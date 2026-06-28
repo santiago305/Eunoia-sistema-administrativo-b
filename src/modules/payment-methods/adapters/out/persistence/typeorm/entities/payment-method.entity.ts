@@ -10,4 +10,7 @@ export class PaymentMethodEntity {
 
   @Column({ name: "is_active", type: "boolean", default: true })
   isActive: boolean;
+
+  @Column({ name: "requires_voucher", type: "boolean", default: true })
+  requiresVoucher: boolean;
 }

@@ -16,4 +16,8 @@ export class HttpSupplierMethodCreateDto {
   @IsOptional()
   @IsBoolean()
   isDefault?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  requiresVoucher?: boolean;
 }

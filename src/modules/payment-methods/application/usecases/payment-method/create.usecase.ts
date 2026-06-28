@@ -4,6 +4,7 @@ import { successResponse } from "src/shared/response-standard/response";
 import { PAYMENT_METHOD_REPOSITORY, PaymentMethodRepository } from "src/modules/payment-methods/domain/ports/payment-method.repository";
 import { CreatePaymentMethodInput } from "../../dtos/payment-method/input/create.input";
 import { PaymentMethodFactory } from "src/modules/payment-methods/domain/factories/payment-method.factory";
+import { resolveRequiresVoucher } from "src/modules/payment-methods/domain/services/payment-method-voucher-policy";
 
 export class CreatePaymentMethodUsecase {
   constructor(
@@ -15,7 +16,10 @@ export class CreatePaymentMethodUsecase {
 
   async execute(input: CreatePaymentMethodInput) {
     return this.uow.runInTransaction(async (tx) => {
-      const method = PaymentMethodFactory.create(input);
+      const method = PaymentMethodFactory.create({
+        ...input,
+        requiresVoucher: resolveRequiresVoucher(input.name, input.requiresVoucher),
+      });
 
       try {
         const saved = await this.paymentMethodRepo.create(method, tx);

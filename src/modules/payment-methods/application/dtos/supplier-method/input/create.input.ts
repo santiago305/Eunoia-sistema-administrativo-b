@@ -3,4 +3,5 @@ export interface CreateSupplierMethodInput {
   methodId: string;
   number?: string | null;
   isDefault?: boolean;
+  requiresVoucher?: boolean;
 }

@@ -19,6 +19,9 @@ export class SupplierMethodEntity {
   @Column({ name: "is_default", type: "boolean", default: false })
   isDefault: boolean;
 
+  @Column({ name: "requires_voucher", type: "boolean", default: true })
+  requiresVoucher: boolean;
+
   @ManyToOne(() => SupplierEntity)
   @JoinColumn({ name: "supplier_id" })
   supplier: SupplierEntity;

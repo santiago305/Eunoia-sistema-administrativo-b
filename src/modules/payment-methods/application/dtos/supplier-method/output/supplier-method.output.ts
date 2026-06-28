@@ -6,4 +6,5 @@ export interface SupplierMethodOutput {
   number?: string;
   isActive: boolean;
   isDefault: boolean;
+  requiresVoucher: boolean;
 }

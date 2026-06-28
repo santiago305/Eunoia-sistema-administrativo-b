@@ -26,6 +26,7 @@ export class UpdatePaymentMethodUsecase {
           {
             methodId: input.methodId,
             name: next.name,
+            requiresVoucher: input.requiresVoucher,
           },
           tx,
         );

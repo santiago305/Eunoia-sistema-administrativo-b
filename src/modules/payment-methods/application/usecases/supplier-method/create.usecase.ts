@@ -8,6 +8,7 @@ import { CreateSupplierMethodInput } from "../../dtos/supplier-method/input/crea
 import { PaymentMethodFactory } from "src/modules/payment-methods/domain/factories/payment-method.factory";
 import { PaymentMethodNotFoundError } from "../../errors/payment-method-not-found.error";
 import { PaymentMethodOutputMapper } from "../../mappers/payment-method-output.mapper";
+import { resolveRequiresVoucher } from "src/modules/payment-methods/domain/services/payment-method-voucher-policy";
 
 export class CreateSupplierMethodUsecase {
   constructor(
@@ -33,7 +34,10 @@ export class CreateSupplierMethodUsecase {
         throw new NotFoundException(new PaymentMethodNotFoundError().message);
       }
 
-      const relation = PaymentMethodFactory.createSupplierMethod(input);
+      const relation = PaymentMethodFactory.createSupplierMethod({
+        ...input,
+        requiresVoucher: resolveRequiresVoucher(method.name, input.requiresVoucher),
+      });
       const existing = await this.supplierMethodRepo.findDuplicate(
         relation.supplierId,
         relation.methodId,

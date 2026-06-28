@@ -16,6 +16,9 @@ export class CompanyMethodEntity {
   @Column({ type: "varchar", length: 30, nullable: true })
   number?: string | null;
 
+  @Column({ name: "requires_voucher", type: "boolean", default: true })
+  requiresVoucher: boolean;
+
   @ManyToOne(() => CompanyEntity)
   @JoinColumn({ name: "company_id" })
   company: CompanyEntity;

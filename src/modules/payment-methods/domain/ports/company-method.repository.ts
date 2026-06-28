@@ -28,6 +28,7 @@ export interface CompanyMethodRepository {
       companyMethodId: string;
       methodId?: string;
       number?: string | null;
+      requiresVoucher?: boolean;
     },
     tx?: TransactionContext,
   ): Promise<CompanyMethod | null>;

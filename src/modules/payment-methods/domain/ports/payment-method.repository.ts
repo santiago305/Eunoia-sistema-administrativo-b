@@ -8,6 +8,7 @@ export type PaymentMethodWithNumber = {
   method: PaymentMethod;
   number?: string | null;
   isDefault?: boolean;
+  requiresVoucher: boolean;
 };
 
 export interface PaymentMethodRepository {
@@ -24,6 +25,7 @@ export interface PaymentMethodRepository {
     params: {
       methodId: string;
       name?: string;
+      requiresVoucher?: boolean;
     },
     tx?: TransactionContext,
   ): Promise<PaymentMethod | null>;

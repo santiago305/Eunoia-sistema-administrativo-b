@@ -8,4 +8,8 @@ export class HttpPaymentMethodCreateDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  requiresVoucher?: boolean;
 }

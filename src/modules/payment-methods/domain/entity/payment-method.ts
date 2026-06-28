@@ -6,15 +6,16 @@ export class PaymentMethod {
     public readonly methodId: string | undefined,
     public readonly name: string,
     public readonly isActive: boolean = true,
+    public readonly requiresVoucher: boolean = true,
   ) {}
 
-  static create(params: { methodId?: string; name: string; isActive?: boolean }) {
+  static create(params: { methodId?: string; name: string; isActive?: boolean; requiresVoucher?: boolean }) {
     const name = PaymentMethodDomainService.normalizeName(params.name);
     if (!name) {
       throw new InvalidPaymentMethodNameError();
     }
 
-    return new PaymentMethod(params.methodId, name, params.isActive ?? true);
+    return new PaymentMethod(params.methodId, name, params.isActive ?? true, params.requiresVoucher ?? true);
   }
 
   rename(name: string) {
@@ -22,6 +23,7 @@ export class PaymentMethod {
       methodId: this.methodId,
       name,
       isActive: this.isActive,
+      requiresVoucher: this.requiresVoucher,
     });
   }
 
@@ -30,6 +32,7 @@ export class PaymentMethod {
       methodId: this.methodId,
       name: this.name,
       isActive,
+      requiresVoucher: this.requiresVoucher,
     });
   }
 }

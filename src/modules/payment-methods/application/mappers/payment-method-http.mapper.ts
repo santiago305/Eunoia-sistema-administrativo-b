@@ -19,6 +19,7 @@ export class PaymentMethodHttpMapper {
     return {
       name: dto.name.trim(),
       isActive: dto.isActive,
+      requiresVoucher: dto.requiresVoucher,
     };
   }
 
@@ -29,6 +30,7 @@ export class PaymentMethodHttpMapper {
     return {
       methodId,
       name: dto.name?.trim(),
+      requiresVoucher: dto.requiresVoucher,
     };
   }
 
@@ -68,6 +70,7 @@ export class PaymentMethodHttpMapper {
       input.number = PaymentMethodHttpMapper.normalizeNumber(dto.number);
     }
     if (dto.isDefault !== undefined) input.isDefault = dto.isDefault;
+    if (dto.requiresVoucher !== undefined) input.requiresVoucher = dto.requiresVoucher;
 
     return input;
   }
@@ -82,6 +85,7 @@ export class PaymentMethodHttpMapper {
     if (Object.prototype.hasOwnProperty.call(dto, "number")) {
       input.number = PaymentMethodHttpMapper.normalizeNumber(dto.number);
     }
+    if (dto.requiresVoucher !== undefined) input.requiresVoucher = dto.requiresVoucher;
 
     return input;
   }

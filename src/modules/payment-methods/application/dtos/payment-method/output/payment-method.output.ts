@@ -4,4 +4,5 @@ export interface PaymentMethodOutput {
   number?: string;
   isActive: boolean;
   isDefault?: boolean;
+  requiresVoucher: boolean;
 }

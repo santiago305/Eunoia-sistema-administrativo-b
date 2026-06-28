@@ -21,7 +21,8 @@ export class UpdateCompanyMethodUsecase {
   async execute(input: UpdateCompanyMethodInput) {
     return this.uow.runInTransaction(async (tx) => {
       const hasNumber = Object.prototype.hasOwnProperty.call(input, "number");
-      if (input.methodId === undefined && !hasNumber) {
+      const hasRequiresVoucher = Object.prototype.hasOwnProperty.call(input, "requiresVoucher");
+      if (input.methodId === undefined && !hasNumber && !hasRequiresVoucher) {
         throw new BadRequestException("Debe enviar al menos un campo para actualizar");
       }
 
@@ -58,6 +59,7 @@ export class UpdateCompanyMethodUsecase {
             companyMethodId: input.companyMethodId,
             methodId: input.methodId,
             ...(hasNumber ? { number: nextNumber } : {}),
+            ...(hasRequiresVoucher ? { requiresVoucher: input.requiresVoucher } : {}),
           },
           tx,
         );

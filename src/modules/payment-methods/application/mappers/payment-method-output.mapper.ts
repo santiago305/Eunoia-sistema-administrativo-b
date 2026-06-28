@@ -12,6 +12,7 @@ export class PaymentMethodOutputMapper {
       methodId: method.methodId!,
       name: method.name,
       isActive: method.isActive,
+      requiresVoucher: method.requiresVoucher,
     };
   }
 
@@ -22,6 +23,7 @@ export class PaymentMethodOutputMapper {
       number: item.number ?? undefined,
       isActive: item.method.isActive,
       isDefault: item.isDefault ?? false,
+      requiresVoucher: item.requiresVoucher,
     };
   }
 
@@ -34,6 +36,7 @@ export class PaymentMethodOutputMapper {
       number: item.relation.number,
       isActive: item.method.isActive,
       isDefault: item.relation.isDefault,
+      requiresVoucher: item.relation.requiresVoucher,
     };
   }
 
@@ -45,6 +48,7 @@ export class PaymentMethodOutputMapper {
       methodName: item.method.name,
       number: item.relation.number,
       isActive: item.method.isActive,
+      requiresVoucher: item.relation.requiresVoucher,
     };
   }
 }

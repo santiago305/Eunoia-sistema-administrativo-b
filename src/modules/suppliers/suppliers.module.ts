@@ -10,12 +10,16 @@ import { SUPPLIER_REPOSITORY } from "./domain/ports/supplier.repository";
 import { SUPPLIER_SKU_REPOSITORY } from "./domain/ports/supplier-sku.repository";
 import { suppliersModuleProviders } from "./composition/container";
 import { AccessControlModule } from "src/modules/access-control/infrastructure/access-control.module";
+import { PaymentMethodEntity } from "src/modules/payment-methods/adapters/out/persistence/typeorm/entities/payment-method.entity";
+import { SupplierMethodEntity } from "src/modules/payment-methods/adapters/out/persistence/typeorm/entities/supplier-method.entity";
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([
       SupplierEntity,
       SupplierSkuEntity,
+      PaymentMethodEntity,
+      SupplierMethodEntity,
       ListingSearchRecentEntity,
       ListingSearchMetricEntity,
     ]),

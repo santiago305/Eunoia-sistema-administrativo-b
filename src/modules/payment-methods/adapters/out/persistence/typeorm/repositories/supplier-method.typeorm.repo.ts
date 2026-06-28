@@ -36,6 +36,7 @@ export class SupplierMethodTypeormRepository implements SupplierMethodRepository
       methodId: row.methodId,
       number: row.number ?? undefined,
       isDefault: row.isDefault,
+      requiresVoucher: row.requiresVoucher,
     });
   }
 
@@ -44,6 +45,7 @@ export class SupplierMethodTypeormRepository implements SupplierMethodRepository
       methodId: row.method.id,
       name: row.method.name,
       isActive: row.method.isActive,
+      requiresVoucher: row.method.requiresVoucher,
     });
   }
 
@@ -110,6 +112,7 @@ export class SupplierMethodTypeormRepository implements SupplierMethodRepository
       methodId: method.methodId,
       number: method.number ?? null,
       isDefault: method.isDefault,
+      requiresVoucher: method.requiresVoucher,
     });
     const saved = await repo.save(row);
     return this.toDomain(saved);
@@ -121,6 +124,7 @@ export class SupplierMethodTypeormRepository implements SupplierMethodRepository
       methodId?: string;
       number?: string | null;
       isDefault?: boolean;
+      requiresVoucher?: boolean;
     },
     tx?: TransactionContext,
   ): Promise<SupplierMethod | null> {
@@ -130,6 +134,7 @@ export class SupplierMethodTypeormRepository implements SupplierMethodRepository
     if (params.methodId !== undefined) patch.methodId = params.methodId;
     if (Object.prototype.hasOwnProperty.call(params, "number")) patch.number = params.number ?? null;
     if (params.isDefault !== undefined) patch.isDefault = params.isDefault;
+    if (params.requiresVoucher !== undefined) patch.requiresVoucher = params.requiresVoucher;
 
     await repo.update({ id: params.supplierMethodId }, patch);
     const updated = await repo.findOne({ where: { id: params.supplierMethodId } });

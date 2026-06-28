@@ -3,6 +3,7 @@ import { SupplierEntity } from "../../adapters/out/persistence/typeorm/entities/
 import { SupplierDocType } from "../../domain/object-values/supplier-doc-type";
 import { PaymentMethodEntity } from "src/modules/payment-methods/adapters/out/persistence/typeorm/entities/payment-method.entity";
 import { SupplierMethodEntity } from "src/modules/payment-methods/adapters/out/persistence/typeorm/entities/supplier-method.entity";
+import { resolveRequiresVoucher } from "src/modules/payment-methods/domain/services/payment-method-voucher-policy";
 
 const REAL_SUPPLIER_NAMES = [
   "Alicorp",
@@ -87,8 +88,35 @@ export const seedSuppliers = async (dataSource: DataSource, count: number = 10):
           supplierId: supplier.id,
           methodId: method.id,
           number: methodNumber ?? null,
+          requiresVoucher: resolveRequiresVoucher(method.name, method.requiresVoucher),
         }),
       );
+    }
+
+    const cashMethod = methods.find((method) => method.name.trim().toUpperCase() === "EFECTIVO");
+    if (cashMethod) {
+      const existingCash = await supplierMethodRepo
+        .createQueryBuilder("sm")
+        .where("sm.supplierId = :supplierId", { supplierId: supplier.id })
+        .andWhere("sm.methodId = :methodId", { methodId: cashMethod.id })
+        .andWhere("COALESCE(BTRIM(sm.number), '') = ''")
+        .getOne();
+
+      if (existingCash) {
+        if (existingCash.requiresVoucher) {
+          await supplierMethodRepo.update({ id: existingCash.id }, { requiresVoucher: false });
+        }
+      } else {
+        await supplierMethodRepo.save(
+          supplierMethodRepo.create({
+            supplierId: supplier.id,
+            methodId: cashMethod.id,
+            number: null,
+            isDefault: true,
+            requiresVoucher: false,
+          }),
+        );
+      }
     }
 
     if (i === 1) {
@@ -110,6 +138,7 @@ export const seedSuppliers = async (dataSource: DataSource, count: number = 10):
               supplierId: supplier.id,
               methodId: bcpMethod.id,
               number: extraBcpNumber,
+              requiresVoucher: resolveRequiresVoucher(bcpMethod.name, bcpMethod.requiresVoucher),
             }),
           );
         }

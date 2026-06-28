@@ -7,6 +7,7 @@ export class SupplierMethod {
     public readonly methodId: string,
     public readonly number?: string,
     public readonly isDefault: boolean = false,
+    public readonly requiresVoucher: boolean = true,
   ) {}
 
   static create(params: {
@@ -15,6 +16,7 @@ export class SupplierMethod {
     methodId: string;
     number?: string | null;
     isDefault?: boolean;
+    requiresVoucher?: boolean;
   }) {
     if (!params.supplierId || !params.methodId) {
       throw new InvalidPaymentMethodRelationError("supplier");
@@ -26,6 +28,7 @@ export class SupplierMethod {
       params.methodId,
       params.number?.trim() || undefined,
       params.isDefault ?? false,
+      params.requiresVoucher ?? true,
     );
   }
 }
