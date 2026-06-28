@@ -51,6 +51,7 @@ import { AddPurchaseModulePermissions20260626110000 } from "./migrations/2026062
 import { MigrateLegacyPurchaseImagesToAttachments20260627120000 } from "./migrations/20260627120000-migrate-legacy-purchase-images-to-attachments";
 import { AddDefaultPaymentAccounts20260627170000 } from "./migrations/20260627170000-add-default-payment-accounts";
 import { UnifySalePaymentsCompanyPaymentAccounts20260628000000 } from "./migrations/20260628000000-unify-sale-payments-company-payment-accounts";
+import { AddFiscalDocumentTypeToPurchaseAttachments20260628010000 } from "./migrations/20260628010000-add-fiscal-document-type-to-purchase-attachments";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -124,6 +125,7 @@ export const getMigrationDataSourceOptions = (): DataSourceOptions => ({
     MigrateLegacyPurchaseImagesToAttachments20260627120000,
     AddDefaultPaymentAccounts20260627170000,
     UnifySalePaymentsCompanyPaymentAccounts20260628000000,
+    AddFiscalDocumentTypeToPurchaseAttachments20260628010000,
   ],
 });
 

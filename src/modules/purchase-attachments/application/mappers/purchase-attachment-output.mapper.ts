@@ -8,6 +8,7 @@ export class PurchaseAttachmentOutputMapper {
       purchaseId: row.purchaseId,
       paymentId: row.paymentId ?? null,
       receptionId: row.receptionId ?? null,
+      fiscalDocumentType: row.fiscalDocumentType ?? null,
       type: row.type,
       filename: row.filename,
       originalName: row.originalName,

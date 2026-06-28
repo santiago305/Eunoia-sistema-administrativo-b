@@ -1,4 +1,5 @@
 import { PurchaseAttachmentType } from "../value-objects/purchase-attachment-type";
+import { VoucherDocType } from "src/modules/purchases/domain/value-objects/voucher-doc-type";
 
 export class PurchaseAttachment {
   constructor(
@@ -14,6 +15,7 @@ export class PurchaseAttachment {
     public readonly uploadedByUserId?: string | null,
     public readonly paymentId?: string | null,
     public readonly receptionId?: string | null,
+    public readonly fiscalDocumentType?: VoucherDocType | null,
     public readonly note?: string | null,
     public readonly deletedAt?: Date | null,
     public readonly createdAt?: Date,
@@ -32,6 +34,7 @@ export class PurchaseAttachment {
     uploadedByUserId?: string | null;
     paymentId?: string | null;
     receptionId?: string | null;
+    fiscalDocumentType?: VoucherDocType | null;
     note?: string | null;
     deletedAt?: Date | null;
     createdAt?: Date;
@@ -49,6 +52,7 @@ export class PurchaseAttachment {
       params.uploadedByUserId ?? null,
       params.paymentId ?? null,
       params.receptionId ?? null,
+      params.fiscalDocumentType ?? null,
       params.note?.trim() || null,
       params.deletedAt ?? null,
       params.createdAt,

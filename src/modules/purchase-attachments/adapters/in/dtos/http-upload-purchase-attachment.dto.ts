@@ -1,5 +1,6 @@
 import { IsEnum, IsOptional, IsString, IsUUID, MaxLength } from "class-validator";
 import { PurchaseAttachmentType } from "src/modules/purchase-attachments/domain/value-objects/purchase-attachment-type";
+import { VoucherDocType } from "src/modules/purchases/domain/value-objects/voucher-doc-type";
 
 export class HttpUploadPurchaseAttachmentDto {
   @IsUUID()
@@ -7,6 +8,10 @@ export class HttpUploadPurchaseAttachmentDto {
 
   @IsEnum(PurchaseAttachmentType)
   type: PurchaseAttachmentType;
+
+  @IsOptional()
+  @IsEnum(VoucherDocType)
+  fiscalDocumentType?: VoucherDocType;
 
   @IsOptional()
   @IsUUID()

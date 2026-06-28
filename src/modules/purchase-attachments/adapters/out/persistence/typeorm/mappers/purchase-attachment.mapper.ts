@@ -16,6 +16,7 @@ export class PurchaseAttachmentMapper {
       uploadedByUserId: row.uploadedByUserId ?? null,
       paymentId: row.paymentId ?? null,
       receptionId: row.receptionId ?? null,
+      fiscalDocumentType: row.fiscalDocumentType ?? null,
       note: row.note ?? null,
       deletedAt: row.deletedAt ?? null,
       createdAt: row.createdAt,
@@ -36,6 +37,7 @@ export class PurchaseAttachmentMapper {
       uploadedByUserId: attachment.uploadedByUserId ?? null,
       paymentId: attachment.paymentId ?? null,
       receptionId: attachment.receptionId ?? null,
+      fiscalDocumentType: attachment.fiscalDocumentType ?? null,
       note: attachment.note ?? null,
       deletedAt: attachment.deletedAt ?? null,
     };

@@ -71,6 +71,7 @@ export class PurchaseAttachmentsController {
         purchaseId: dto.purchaseId,
         paymentId: dto.paymentId ?? null,
         receptionId: dto.receptionId ?? null,
+        fiscalDocumentType: dto.fiscalDocumentType ?? null,
         type: dto.type,
         note: dto.note,
         file,

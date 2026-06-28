@@ -5,6 +5,7 @@ import { FILE_STORAGE, FileStorage } from "src/shared/application/ports/file-sto
 import { PurchaseOrderEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-order.entity";
 import { PurchaseHistoryEventEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-history-event.entity";
 import { PaymentDocumentEntity } from "src/modules/payments/adapters/out/persistence/typeorm/entities/payment-document.entity";
+import { VoucherDocType } from "src/modules/purchases/domain/value-objects/voucher-doc-type";
 import { PurchaseAttachment } from "../../domain/entity/purchase-attachment";
 import {
   PURCHASE_ATTACHMENT_REPOSITORY,
@@ -18,6 +19,15 @@ const extensionFromName = (name: string) => {
   const raw = name.split(".").pop()?.toLowerCase() ?? "";
   return /^[a-z0-9]+$/.test(raw) ? raw : "bin";
 };
+
+const fiscalAttachmentTypes = new Set<PurchaseAttachmentType>([
+  PurchaseAttachmentType.FISCAL_DOCUMENT,
+  PurchaseAttachmentType.INVOICE,
+  PurchaseAttachmentType.RECEIPT,
+]);
+
+const isImageOrPdf = (mimeType?: string) =>
+  mimeType === "application/pdf" || Boolean(mimeType?.startsWith("image/"));
 
 @Injectable()
 export class UploadPurchaseAttachmentUsecase {
@@ -37,6 +47,7 @@ export class UploadPurchaseAttachmentUsecase {
       file: Express.Multer.File;
       paymentId?: string | null;
       receptionId?: string | null;
+      fiscalDocumentType?: VoucherDocType | null;
       note?: string | null;
     },
     userId?: string,
@@ -47,7 +58,7 @@ export class UploadPurchaseAttachmentUsecase {
 
     const purchase = await this.entityManager.getRepository(PurchaseOrderEntity).findOne({
       where: { id: input.purchaseId },
-      select: ["id"],
+      select: ["id", "documentType"],
     });
     if (!purchase) {
       throw new NotFoundException("Compra no encontrada.");
@@ -63,6 +74,24 @@ export class UploadPurchaseAttachmentUsecase {
       }
       if (payment.poId && payment.poId !== input.purchaseId) {
         throw new BadRequestException("El pago no pertenece a la compra indicada.");
+      }
+    }
+
+    const isFiscalDocument = fiscalAttachmentTypes.has(input.type);
+    const fiscalDocumentType = input.fiscalDocumentType ?? purchase.documentType ?? null;
+    if (input.type === PurchaseAttachmentType.FISCAL_DOCUMENT) {
+      if (!fiscalDocumentType) {
+        throw new BadRequestException("Selecciona el tipo de documento fiscal.");
+      }
+      if (!isImageOrPdf(input.file.mimetype)) {
+        throw new BadRequestException("El comprobante fiscal debe ser una imagen o PDF.");
+      }
+    }
+
+    if (isFiscalDocument) {
+      const existingFiscalDocuments = await this.attachmentRepo.list({ purchaseId: input.purchaseId });
+      if (existingFiscalDocuments.some((attachment) => fiscalAttachmentTypes.has(attachment.type))) {
+        throw new BadRequestException("Esta compra ya tiene un comprobante fiscal registrado.");
       }
     }
 
@@ -87,6 +116,7 @@ export class UploadPurchaseAttachmentUsecase {
         storagePath: saved.relativePath,
         note: input.note ?? null,
         uploadedByUserId: userId ?? null,
+        fiscalDocumentType: isFiscalDocument ? fiscalDocumentType : null,
       }),
     );
 
@@ -101,6 +131,7 @@ export class UploadPurchaseAttachmentUsecase {
         originalName: attachment.originalName,
         paymentId: attachment.paymentId ?? null,
         receptionId: attachment.receptionId ?? null,
+        fiscalDocumentType: attachment.fiscalDocumentType ?? null,
       },
     });
 

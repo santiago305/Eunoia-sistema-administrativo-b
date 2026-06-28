@@ -2,6 +2,7 @@ import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, Primary
 import { PaymentDocumentEntity } from "src/modules/payments/adapters/out/persistence/typeorm/entities/payment-document.entity";
 import { PurchaseOrderEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-order.entity";
 import { PurchaseAttachmentType } from "src/modules/purchase-attachments/domain/value-objects/purchase-attachment-type";
+import { VoucherDocType } from "src/modules/purchases/domain/value-objects/voucher-doc-type";
 
 @Entity("purchase_attachments")
 @Index("idx_purchase_attachments_purchase", ["purchaseId", "deletedAt"])
@@ -28,6 +29,9 @@ export class PurchaseAttachmentEntity {
 
   @Column({ name: "reception_id", type: "uuid", nullable: true })
   receptionId?: string | null;
+
+  @Column({ name: "fiscal_document_type", type: "enum", enum: VoucherDocType, enumName: "voucher_doc_type", nullable: true })
+  fiscalDocumentType?: VoucherDocType | null;
 
   @Column({ name: "type", type: "enum", enum: PurchaseAttachmentType, enumName: "purchase_attachment_type" })
   type: PurchaseAttachmentType;
