@@ -16,6 +16,6 @@ describe("AddFiscalDocumentTypeToPurchaseAttachments20260628010000", () => {
     expect(sql).toContain("ALTER TYPE purchase_attachment_type ADD VALUE 'FISCAL_DOCUMENT'");
     expect(sql).toContain("fiscal_document_type voucher_doc_type");
     expect(sql).toContain("ux_purchase_attachments_one_fiscal_document");
-    expect(sql).toContain("type::text IN ('FISCAL_DOCUMENT', 'INVOICE', 'RECEIPT')");
+    expect(sql).toContain("type IN ('FISCAL_DOCUMENT', 'INVOICE', 'RECEIPT')");
   });
 });

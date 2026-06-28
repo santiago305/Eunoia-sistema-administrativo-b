@@ -28,7 +28,7 @@ export class AddFiscalDocumentTypeToPurchaseAttachments20260628010000 implements
       CREATE UNIQUE INDEX IF NOT EXISTS ux_purchase_attachments_one_fiscal_document
       ON purchase_attachments (purchase_id)
       WHERE deleted_at IS NULL
-        AND type::text IN ('FISCAL_DOCUMENT', 'INVOICE', 'RECEIPT');
+        AND type IN ('FISCAL_DOCUMENT', 'INVOICE', 'RECEIPT');
     `);
   }
 
