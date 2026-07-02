@@ -18,6 +18,8 @@ type CreateSaleOrderInput = {
   scheduleDate?: string;
   deliveryDate?: string;
   note?: string;
+  advertisingCode?: string | null;
+  observation?: string | null;
   subTotal?: number;
   deliveryCost?: number;
   total?: number;
@@ -94,6 +96,8 @@ export class CreateSaleOrderUsecase {
           deliveryCost: input.deliveryCost ?? 0,
           total: input.total ?? 0,
           note: input.note ?? null,
+          advertisingCode: input.advertisingCode ?? null,
+          observation: input.observation ?? null,
           createdBy,
           workflowId: workflow.id,
           currentStateId: initialState.id,

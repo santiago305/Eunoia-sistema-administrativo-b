@@ -1,5 +1,9 @@
-import { Transform } from "class-transformer";
-import { IsBoolean, IsOptional, Matches } from "class-validator";
+import { Transform, Type } from "class-transformer";
+import { IsArray, IsBoolean, IsOptional, Matches, ValidateNested } from "class-validator";
+import {
+  HttpSaleOrderSearchRuleDto,
+  toSaleOrderFiltersArray,
+} from "src/modules/sale-orders/adapters/in/dtos/http-sale-order-list.dto";
 
 export class HttpDashboardSaleOrdersUbigeoQueryDto {
   @IsOptional()
@@ -7,6 +11,13 @@ export class HttpDashboardSaleOrdersUbigeoQueryDto {
     message: "month must use YYYY-MM format",
   })
   month?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => toSaleOrderFiltersArray(value))
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => HttpSaleOrderSearchRuleDto)
+  filters?: HttpSaleOrderSearchRuleDto[];
 
   @IsOptional()
   @Transform(({ value }) => value === true || value === "true")

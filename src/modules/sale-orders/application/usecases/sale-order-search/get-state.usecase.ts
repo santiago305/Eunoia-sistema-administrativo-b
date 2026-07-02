@@ -7,6 +7,7 @@ import {
   SALE_ORDER_PAYMENT_STATUS_SEARCH_OPTIONS,
   sanitizeSaleOrderSearchSnapshot,
 } from "src/modules/sale-orders/application/support/sale-order-search.utils";
+import { SaleOrderInvoiceStatusValues } from "src/modules/sale-orders/application/dtos/sale-order-search/sale-order-search-snapshot";
 import { SALE_ORDER_SEARCH, SaleOrderSearchRepository } from "src/modules/sale-orders/domain/ports/sale-order-search.repository";
 
 const SALE_ORDERS_SEARCH_TABLE_KEY = "sale-orders";
@@ -28,6 +29,14 @@ export class GetSaleOrderSearchStateUsecase {
       states: new Map(state.states.map((item) => [item.saleOrderStateId, item.label])),
       bankAccounts: new Map(state.bankAccounts.map((item) => [item.bankAccountId, item.label])),
       clientTypes: new Map(SALE_ORDER_CLIENT_TYPE_SEARCH_OPTIONS.map((item) => [item.id, item.label])),
+      departments: new Map((state.departments ?? []).map((item) => [item.id, item.label])),
+      provinces: new Map((state.provinces ?? []).map((item) => [item.id, item.label])),
+      districts: new Map((state.districts ?? []).map((item) => [item.id, item.label])),
+      sources: new Map((state.sources ?? []).map((item) => [item.id, item.label])),
+      invoiceStatuses: new Map([
+        [SaleOrderInvoiceStatusValues.SENT, "Enviado"],
+        [SaleOrderInvoiceStatusValues.PENDING, "Sin enviar"],
+      ]),
     };
 
     return {
@@ -58,6 +67,14 @@ export class GetSaleOrderSearchStateUsecase {
         states: state.states.map((item) => ({ id: item.saleOrderStateId, label: item.label })),
         bankAccounts: state.bankAccounts.map((item) => ({ id: item.bankAccountId, label: item.label })),
         clientTypes: SALE_ORDER_CLIENT_TYPE_SEARCH_OPTIONS,
+        departments: state.departments ?? [],
+        provinces: state.provinces ?? [],
+        districts: state.districts ?? [],
+        sources: state.sources ?? [],
+        invoiceStatuses: [
+          { id: SaleOrderInvoiceStatusValues.SENT, label: "Enviado" },
+          { id: SaleOrderInvoiceStatusValues.PENDING, label: "Sin enviar" },
+        ],
       },
     };
   }

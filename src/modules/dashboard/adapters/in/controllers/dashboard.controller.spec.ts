@@ -26,17 +26,20 @@ describe("DashboardController", () => {
   });
 
   it("maps departments endpoint to the use case", async () => {
-    await expect(controller.saleOrdersByDepartment({ month: "2026-06", cancelBool: true })).resolves.toEqual(output);
-    expect(usecase.byDepartment).toHaveBeenCalledWith({ month: "2026-06", cancelBool: true });
+    const filters = [{ field: "scheduleDate", operator: "inWeek", value: "2026-06-29" }] as const;
+    await expect(controller.saleOrdersByDepartment({ month: "2026-06", cancelBool: true, filters: [...filters] })).resolves.toEqual(output);
+    expect(usecase.byDepartment).toHaveBeenCalledWith({ month: "2026-06", cancelBool: true, filters });
   });
 
   it("maps provinces endpoint to the use case", async () => {
-    await expect(controller.saleOrdersByProvince("15", { month: "2026-06", cancelBool: true })).resolves.toEqual(output);
-    expect(usecase.byProvince).toHaveBeenCalledWith({ departmentId: "15", month: "2026-06", cancelBool: true });
+    const filters = [{ field: "deliveryDate", operator: "inMonth", value: "2026-07" }] as const;
+    await expect(controller.saleOrdersByProvince("15", { month: "2026-06", cancelBool: true, filters: [...filters] })).resolves.toEqual(output);
+    expect(usecase.byProvince).toHaveBeenCalledWith({ departmentId: "15", month: "2026-06", cancelBool: true, filters });
   });
 
   it("maps districts endpoint to the use case", async () => {
-    await expect(controller.saleOrdersByDistrict("1501", { month: "2026-06", cancelBool: true })).resolves.toEqual(output);
-    expect(usecase.byDistrict).toHaveBeenCalledWith({ provinceId: "1501", month: "2026-06", cancelBool: true });
+    const filters = [{ field: "scheduleDate", operator: "on", value: "2026-06-30" }] as const;
+    await expect(controller.saleOrdersByDistrict("1501", { month: "2026-06", cancelBool: true, filters: [...filters] })).resolves.toEqual(output);
+    expect(usecase.byDistrict).toHaveBeenCalledWith({ provinceId: "1501", month: "2026-06", cancelBool: true, filters });
   });
 });

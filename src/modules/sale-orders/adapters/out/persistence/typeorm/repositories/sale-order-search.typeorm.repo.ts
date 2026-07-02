@@ -15,6 +15,10 @@ import { SaleOrderSearchSnapshot } from "src/modules/sale-orders/application/dto
 import { WorkflowEntity } from "src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow.entity";
 import { SaleOrderStatesEntity } from "src/modules/workflow/adapters/out/persistence/typeorm/entities/sale-order-states.entity";
 import { CompanyPaymentAccountEntity } from "src/modules/company-payment-accounts/adapters/out/persistence/typeorm/entities/company-payment-account.entity";
+import { SourceEntity } from "src/modules/sources/adapters/out/persistence/typeorm/entities/source.entity";
+import { UbigeoDepartmentEntity } from "src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-department.entity";
+import { UbigeoProvinceEntity } from "src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-province.entity";
+import { UbigeoDistrictEntity } from "src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-district.entity";
 
 @Injectable()
 export class SaleOrderSearchTypeormRepository implements SaleOrderSearchRepository {
@@ -43,7 +47,7 @@ export class SaleOrderSearchTypeormRepository implements SaleOrderSearchReposito
   }
 
   async listState(params: { userId: string; tableKey: string }): Promise<SaleOrderSearchStateRecord> {
-    const [state, clients, warehouses, workflows, saleOrderStates, bankAccounts] = await Promise.all([
+    const [state, clients, warehouses, workflows, saleOrderStates, bankAccounts, departments, provinces, districts, sources] = await Promise.all([
       this.storage.listState(params),
       this.clientRepo.find({ where: { isActive: true } }),
       this.warehouseRepo.find({ where: { isActive: true } }),
@@ -54,6 +58,10 @@ export class SaleOrderSearchTypeormRepository implements SaleOrderSearchReposito
         },
       }),
       this.bankAccountRepo.find({ where: { isActive: true } }),
+      this.clientRepo.manager.getRepository(UbigeoDepartmentEntity).find({ order: { name: "ASC" } }),
+      this.clientRepo.manager.getRepository(UbigeoProvinceEntity).find({ order: { name: "ASC" } }),
+      this.clientRepo.manager.getRepository(UbigeoDistrictEntity).find({ order: { name: "ASC" } }),
+      this.clientRepo.manager.getRepository(SourceEntity).find({ order: { name: "ASC" } }),
     ]);
 
     const orderedClients = [...clients].sort((left, right) =>
@@ -114,6 +122,10 @@ export class SaleOrderSearchTypeormRepository implements SaleOrderSearchReposito
           label: `${row.name}${number}`.trim(),
         };
       }),
+      departments: departments.map((row) => ({ id: row.id, label: row.name })),
+      provinces: provinces.map((row) => ({ id: row.id, label: row.name })),
+      districts: districts.map((row) => ({ id: row.id, label: row.name })),
+      sources: sources.map((row) => ({ id: row.id, label: row.name })),
     };
   }
 

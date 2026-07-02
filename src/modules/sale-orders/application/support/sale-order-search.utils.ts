@@ -3,6 +3,7 @@ import { ClientType } from "src/modules/clients/domain/object-values/client-type
 import {
   SaleOrderPaymentStatusValue,
   SaleOrderPaymentStatusValues,
+  SaleOrderInvoiceStatusValues,
   SaleOrderSearchField,
   SaleOrderSearchFields,
   SaleOrderSearchOperator,
@@ -20,6 +21,11 @@ type SearchCatalogMaps = {
   bankAccounts?: Map<string, string>;
   clientTypes?: Map<string, string>;
   paymentStatuses?: Map<string, string>;
+  departments?: Map<string, string>;
+  provinces?: Map<string, string>;
+  districts?: Map<string, string>;
+  sources?: Map<string, string>;
+  invoiceStatuses?: Map<string, string>;
 };
 
 const uniqueStrings = (values: string[] | undefined) =>
@@ -34,8 +40,18 @@ const FILTER_FIELD_ORDER: SaleOrderSearchField[] = [
   SaleOrderSearchFields.BANK_ACCOUNT_ID,
   SaleOrderSearchFields.CLIENT_TYPE,
   SaleOrderSearchFields.PAYMENT_STATUS,
+  SaleOrderSearchFields.CLIENT_DEPARTMENT_ID,
+  SaleOrderSearchFields.CLIENT_PROVINCE_ID,
+  SaleOrderSearchFields.CLIENT_DISTRICT_ID,
+  SaleOrderSearchFields.CLIENT_PHONE,
+  SaleOrderSearchFields.AGENCY_DETAIL,
+  SaleOrderSearchFields.SOURCE_ID,
+  SaleOrderSearchFields.INVOICE_STATUS,
   SaleOrderSearchFields.SCHEDULE_DATE,
   SaleOrderSearchFields.DELIVERY_DATE,
+  SaleOrderSearchFields.CREATED_AT,
+  SaleOrderSearchFields.ADVERTISING_CODE,
+  SaleOrderSearchFields.OBSERVATION,
 ];
 
 const CATALOG_FIELDS = new Set<SaleOrderSearchField>([
@@ -46,14 +62,26 @@ const CATALOG_FIELDS = new Set<SaleOrderSearchField>([
   SaleOrderSearchFields.BANK_ACCOUNT_ID,
   SaleOrderSearchFields.CLIENT_TYPE,
   SaleOrderSearchFields.PAYMENT_STATUS,
+  SaleOrderSearchFields.CLIENT_DEPARTMENT_ID,
+  SaleOrderSearchFields.CLIENT_PROVINCE_ID,
+  SaleOrderSearchFields.CLIENT_DISTRICT_ID,
+  SaleOrderSearchFields.SOURCE_ID,
+  SaleOrderSearchFields.INVOICE_STATUS,
 ]);
 
 const DATE_FIELDS = new Set<SaleOrderSearchField>([
   SaleOrderSearchFields.SCHEDULE_DATE,
   SaleOrderSearchFields.DELIVERY_DATE,
+  SaleOrderSearchFields.CREATED_AT,
 ]);
 
-const TEXT_FIELDS = new Set<SaleOrderSearchField>([SaleOrderSearchFields.NUMBER]);
+const TEXT_FIELDS = new Set<SaleOrderSearchField>([
+  SaleOrderSearchFields.NUMBER,
+  SaleOrderSearchFields.ADVERTISING_CODE,
+  SaleOrderSearchFields.OBSERVATION,
+  SaleOrderSearchFields.CLIENT_PHONE,
+  SaleOrderSearchFields.AGENCY_DETAIL,
+]);
 
 const DATE_OPERATORS = new Set<SaleOrderSearchOperator>([
   SaleOrderSearchOperators.ON,
@@ -62,6 +90,8 @@ const DATE_OPERATORS = new Set<SaleOrderSearchOperator>([
   SaleOrderSearchOperators.BETWEEN,
   SaleOrderSearchOperators.ON_OR_BEFORE,
   SaleOrderSearchOperators.ON_OR_AFTER,
+  SaleOrderSearchOperators.IN_MONTH,
+  SaleOrderSearchOperators.IN_WEEK,
 ]);
 
 const TEXT_OPERATORS = new Set<SaleOrderSearchOperator>([
@@ -73,13 +103,23 @@ const SEARCH_FIELD_LABELS: Record<SaleOrderSearchField, string> = {
   [SaleOrderSearchFields.NUMBER]: "Numero",
   [SaleOrderSearchFields.CLIENT_ID]: "Cliente",
   [SaleOrderSearchFields.WAREHOUSE_ID]: "Almacen",
-  [SaleOrderSearchFields.WORKFLOW_ID]: "Flujo",
+  [SaleOrderSearchFields.WORKFLOW_ID]: "Tipo",
   [SaleOrderSearchFields.SALE_ORDER_STATE_ID]: "Estado",
   [SaleOrderSearchFields.BANK_ACCOUNT_ID]: "Cuenta",
   [SaleOrderSearchFields.CLIENT_TYPE]: "Tipo cliente",
   [SaleOrderSearchFields.PAYMENT_STATUS]: "Pago",
+  [SaleOrderSearchFields.CLIENT_DEPARTMENT_ID]: "Departamento",
+  [SaleOrderSearchFields.CLIENT_PROVINCE_ID]: "Provincia",
+  [SaleOrderSearchFields.CLIENT_DISTRICT_ID]: "Distrito",
+  [SaleOrderSearchFields.CLIENT_PHONE]: "Celular",
+  [SaleOrderSearchFields.AGENCY_DETAIL]: "Agencia",
+  [SaleOrderSearchFields.SOURCE_ID]: "Origen",
+  [SaleOrderSearchFields.INVOICE_STATUS]: "Comprobante",
   [SaleOrderSearchFields.SCHEDULE_DATE]: "F. Programada",
   [SaleOrderSearchFields.DELIVERY_DATE]: "F. Entrega",
+  [SaleOrderSearchFields.CREATED_AT]: "F. Creacion",
+  [SaleOrderSearchFields.ADVERTISING_CODE]: "Codigo publicitario",
+  [SaleOrderSearchFields.OBSERVATION]: "Observacion",
 };
 
 const SEARCH_OPERATOR_LABELS: Record<SaleOrderSearchOperator, string> = {
@@ -92,6 +132,8 @@ const SEARCH_OPERATOR_LABELS: Record<SaleOrderSearchOperator, string> = {
   [SaleOrderSearchOperators.BETWEEN]: "entre",
   [SaleOrderSearchOperators.ON_OR_BEFORE]: "<=",
   [SaleOrderSearchOperators.ON_OR_AFTER]: ">=",
+  [SaleOrderSearchOperators.IN_MONTH]: "en el mes",
+  [SaleOrderSearchOperators.IN_WEEK]: "en la semana",
 };
 
 export const SALE_ORDER_PAYMENT_STATUS_SEARCH_OPTIONS: ListingSearchOptionOutput[] = [
@@ -145,6 +187,119 @@ function normalizeDateValue(value?: string | null) {
   return trimmed.slice(0, 10);
 }
 
+const MONTH_LABELS = [
+  "enero",
+  "febrero",
+  "marzo",
+  "abril",
+  "mayo",
+  "junio",
+  "julio",
+  "agosto",
+  "setiembre",
+  "octubre",
+  "noviembre",
+  "diciembre",
+];
+
+const SHORT_MONTH_LABELS = [
+  "ene",
+  "feb",
+  "mar",
+  "abr",
+  "may",
+  "jun",
+  "jul",
+  "ago",
+  "set",
+  "oct",
+  "nov",
+  "dic",
+];
+
+function normalizeMonthValue(value?: string | null) {
+  const match = /^(\d{4})-(\d{2})$/.exec(value?.trim() ?? "");
+  if (!match) return undefined;
+  const month = Number(match[2]);
+  return month >= 1 && month <= 12 ? `${match[1]}-${match[2]}` : undefined;
+}
+
+function parseStrictDateOnly(value?: string | null) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value?.trim() ?? "");
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+
+  return parsed.getUTCFullYear() === year &&
+    parsed.getUTCMonth() === month - 1 &&
+    parsed.getUTCDate() === day
+    ? parsed
+    : null;
+}
+
+function getUtcDateKey(date: Date) {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function normalizeWeekValue(value?: string | null) {
+  const parsed = parseStrictDateOnly(value);
+  if (!parsed) return undefined;
+
+  const weekday = parsed.getUTCDay();
+  const mondayOffset = weekday === 0 ? 6 : weekday - 1;
+  parsed.setUTCDate(parsed.getUTCDate() - mondayOffset);
+  return getUtcDateKey(parsed);
+}
+
+export function getSaleOrderMonthRange(value?: string | null) {
+  const normalized = normalizeMonthValue(value);
+  if (!normalized) return null;
+
+  const [year, month] = normalized.split("-").map(Number);
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return {
+    start: `${normalized}-01`,
+    end: `${normalized}-${String(lastDay).padStart(2, "0")}`,
+  };
+}
+
+export function getSaleOrderCalendarWeekRange(value?: string | null) {
+  const normalized = normalizeWeekValue(value);
+  const start = parseStrictDateOnly(normalized);
+  if (!normalized || !start) return null;
+
+  const end = new Date(start.getTime());
+  end.setUTCDate(end.getUTCDate() + 6);
+  return { start: normalized, end: getUtcDateKey(end) };
+}
+
+function formatMonthValue(value: string) {
+  const normalized = normalizeMonthValue(value);
+  if (!normalized) return "";
+  const [year, month] = normalized.split("-").map(Number);
+  return `${MONTH_LABELS[month - 1]} ${year}`;
+}
+
+function formatWeekValue(value: string) {
+  const range = getSaleOrderCalendarWeekRange(value);
+  if (!range) return "";
+
+  const start = parseStrictDateOnly(range.start)!;
+  const end = parseStrictDateOnly(range.end)!;
+  const sameYear = start.getUTCFullYear() === end.getUTCFullYear();
+  const startLabel = `${start.getUTCDate()} ${SHORT_MONTH_LABELS[start.getUTCMonth()]}${
+    sameYear ? "" : ` ${start.getUTCFullYear()}`
+  }`;
+  const endLabel = `${end.getUTCDate()} ${SHORT_MONTH_LABELS[end.getUTCMonth()]} ${end.getUTCFullYear()}`;
+  return `${startLabel} - ${endLabel}`;
+}
+
 function orderDateRange(start: string, end: string) {
   return start <= end ? { start, end } : { start: end, end: start };
 }
@@ -178,6 +333,15 @@ function sanitizeSearchRule(rule?: Partial<SaleOrderSearchRule> | null): SaleOrd
       return { field, operator, mode, values: normalizedValues };
     }
 
+    if (field === SaleOrderSearchFields.INVOICE_STATUS) {
+      const allowed = new Set(Object.values(SaleOrderInvoiceStatusValues));
+      const normalizedValues = values.filter((value) => allowed.has(
+        value as typeof SaleOrderInvoiceStatusValues[keyof typeof SaleOrderInvoiceStatusValues],
+      ));
+      if (!normalizedValues.length) return null;
+      return { field, operator, mode, values: normalizedValues };
+    }
+
     return { field, operator, mode, values };
   }
 
@@ -190,6 +354,16 @@ function sanitizeSearchRule(rule?: Partial<SaleOrderSearchRule> | null): SaleOrd
 
   if (DATE_FIELDS.has(field)) {
     if (!DATE_OPERATORS.has(operator)) return null;
+
+    if (operator === SaleOrderSearchOperators.IN_MONTH) {
+      const value = normalizeMonthValue(rule.value);
+      return value ? { field, operator, value } : null;
+    }
+
+    if (operator === SaleOrderSearchOperators.IN_WEEK) {
+      const value = normalizeWeekValue(rule.value);
+      return value ? { field, operator, value } : null;
+    }
 
     if (operator === SaleOrderSearchOperators.BETWEEN) {
       const start = normalizeDateValue(rule.range?.start ?? null);
@@ -266,6 +440,16 @@ function getCatalogMap(field: SaleOrderSearchField, maps: SearchCatalogMaps) {
       return maps.clientTypes;
     case SaleOrderSearchFields.PAYMENT_STATUS:
       return maps.paymentStatuses;
+    case SaleOrderSearchFields.CLIENT_DEPARTMENT_ID:
+      return maps.departments;
+    case SaleOrderSearchFields.CLIENT_PROVINCE_ID:
+      return maps.provinces;
+    case SaleOrderSearchFields.CLIENT_DISTRICT_ID:
+      return maps.districts;
+    case SaleOrderSearchFields.SOURCE_ID:
+      return maps.sources;
+    case SaleOrderSearchFields.INVOICE_STATUS:
+      return maps.invoiceStatuses;
     default:
       return undefined;
   }
@@ -297,6 +481,24 @@ export function buildSaleOrderSearchLabel(snapshot: SaleOrderSearchSnapshot, map
       const end = rule.range?.end;
       if (!start || !end) return;
       parts.push(`${label} ${SEARCH_OPERATOR_LABELS[rule.operator]} ${start} - ${end}`);
+      return;
+    }
+
+    if (
+      rule.operator === SaleOrderSearchOperators.IN_MONTH &&
+      rule.value
+    ) {
+      const month = formatMonthValue(rule.value);
+      if (month) parts.push(`${label} en ${month}`);
+      return;
+    }
+
+    if (
+      rule.operator === SaleOrderSearchOperators.IN_WEEK &&
+      rule.value
+    ) {
+      const week = formatWeekValue(rule.value);
+      if (week) parts.push(`${label} en la semana ${week}`);
       return;
     }
 

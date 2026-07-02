@@ -106,6 +106,7 @@ export class HttpSalePaymentDto {
   @IsOptional()
   @IsString()
   note?: string;
+
 }
 
 export class HttpSaleOrderCreateDto {
@@ -143,6 +144,14 @@ export class HttpSaleOrderCreateDto {
   @IsOptional()
   @IsString()
   note?: string;
+
+  @IsOptional()
+  @IsString()
+  advertisingCode?: string | null;
+
+  @IsOptional()
+  @IsString()
+  observation?: string | null;
 
   @IsUUID()
   workflowId: string;

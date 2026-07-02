@@ -22,6 +22,11 @@ export interface SaleOrderSearchStateOutput {
     states: ListingSearchOptionOutput[];
     bankAccounts: ListingSearchOptionOutput[];
     clientTypes: ListingSearchOptionOutput[];
+    departments: ListingSearchOptionOutput[];
+    provinces: ListingSearchOptionOutput[];
+    districts: ListingSearchOptionOutput[];
+    sources: ListingSearchOptionOutput[];
+    invoiceStatuses: ListingSearchOptionOutput[];
   };
 }
 export type SaleOrderItemComponentOutput = {
@@ -85,6 +90,8 @@ export type SaleOrderGetOutput = {
   deliveryCost: number;
   total: number;
   note: string | null;
+  advertisingCode: string | null;
+  observation: string | null;
   createdBy: { id: string; name: string; email: string } | null;
   workflow: SaleOrderWorkflowOutput | null;
   currentState: SaleOrderWorkflowStateOutput | null;

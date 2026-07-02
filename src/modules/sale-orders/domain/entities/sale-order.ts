@@ -25,6 +25,8 @@ export class SaleOrder {
     public readonly deliveryCost: number,
     public readonly total: number,
     public readonly note: string | null,
+    public readonly advertisingCode: string | null,
+    public readonly observation: string | null,
     public readonly createdBy: string,
     public readonly workflowId: string | null,
     public readonly currentStateId: string | null,

@@ -7,8 +7,18 @@ export const SaleOrderSearchFields = {
   BANK_ACCOUNT_ID: "bankAccountId",
   CLIENT_TYPE: "clientType",
   PAYMENT_STATUS: "paymentStatus",
+  CLIENT_DEPARTMENT_ID: "clientDepartmentId",
+  CLIENT_PROVINCE_ID: "clientProvinceId",
+  CLIENT_DISTRICT_ID: "clientDistrictId",
+  CLIENT_PHONE: "clientPhone",
+  AGENCY_DETAIL: "agencyDetail",
+  SOURCE_ID: "sourceId",
+  INVOICE_STATUS: "invoiceStatus",
   SCHEDULE_DATE: "scheduleDate",
   DELIVERY_DATE: "deliveryDate",
+  CREATED_AT: "createdAt",
+  ADVERTISING_CODE: "advertisingCode",
+  OBSERVATION: "observation",
 } as const;
 
 export type SaleOrderSearchField = typeof SaleOrderSearchFields[keyof typeof SaleOrderSearchFields];
@@ -23,6 +33,8 @@ export const SaleOrderSearchOperators = {
   BETWEEN: "between",
   ON_OR_BEFORE: "onOrBefore",
   ON_OR_AFTER: "onOrAfter",
+  IN_MONTH: "inMonth",
+  IN_WEEK: "inWeek",
 } as const;
 
 export type SaleOrderSearchOperator = typeof SaleOrderSearchOperators[keyof typeof SaleOrderSearchOperators];
@@ -40,6 +52,11 @@ export const SaleOrderPaymentStatusValues = {
 } as const;
 
 export type SaleOrderPaymentStatusValue = typeof SaleOrderPaymentStatusValues[keyof typeof SaleOrderPaymentStatusValues];
+
+export const SaleOrderInvoiceStatusValues = {
+  SENT: "SENT",
+  PENDING: "PENDING",
+} as const;
 
 export interface SaleOrderSearchRule {
   field: SaleOrderSearchField;
@@ -96,6 +113,9 @@ export type SaleOrderListItemOutput = {
     docNumber?: string | null;
     reference?: string | null;
     mainPhone: string | null;
+    department: { id: string; name: string } | null;
+    province: { id: string; name: string; departmentId: string } | null;
+    district: { id: string; name: string; provinceId: string } | null;
   } | null;
   agencyDetail: string | null;
   source: { id: string; name: string; detail?: string | null } | null;
@@ -105,6 +125,8 @@ export type SaleOrderListItemOutput = {
   deliveryCost: number;
   total: number;
   note: string | null;
+  advertisingCode: string | null;
+  observation: string | null;
   createdBy: { id: string; name: string; email: string } | null;
   workflow: SaleOrderWorkflowOutput | null;
   currentState: SaleOrderWorkflowStateOutput | null;

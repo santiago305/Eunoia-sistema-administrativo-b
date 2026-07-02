@@ -11,7 +11,11 @@ export class DashboardController {
 
   @Get("sale-orders/ubigeo/departments")
   saleOrdersByDepartment(@Query() query: HttpDashboardSaleOrdersUbigeoQueryDto) {
-    return this.getSaleOrdersUbigeo.byDepartment({ month: query.month, cancelBool: query.cancelBool });
+    return this.getSaleOrdersUbigeo.byDepartment({
+      month: query.month,
+      filters: query.filters,
+      cancelBool: query.cancelBool,
+    });
   }
 
   @Get("sale-orders/ubigeo/departments/:departmentId/provinces")
@@ -19,7 +23,12 @@ export class DashboardController {
     @Param("departmentId") departmentId: string,
     @Query() query: HttpDashboardSaleOrdersUbigeoQueryDto,
   ) {
-    return this.getSaleOrdersUbigeo.byProvince({ departmentId, month: query.month, cancelBool: query.cancelBool });
+    return this.getSaleOrdersUbigeo.byProvince({
+      departmentId,
+      month: query.month,
+      filters: query.filters,
+      cancelBool: query.cancelBool,
+    });
   }
 
   @Get("sale-orders/ubigeo/provinces/:provinceId/districts")
@@ -27,6 +36,11 @@ export class DashboardController {
     @Param("provinceId") provinceId: string,
     @Query() query: HttpDashboardSaleOrdersUbigeoQueryDto,
   ) {
-    return this.getSaleOrdersUbigeo.byDistrict({ provinceId, month: query.month, cancelBool: query.cancelBool });
+    return this.getSaleOrdersUbigeo.byDistrict({
+      provinceId,
+      month: query.month,
+      filters: query.filters,
+      cancelBool: query.cancelBool,
+    });
   }
 }

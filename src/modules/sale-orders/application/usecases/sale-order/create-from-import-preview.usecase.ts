@@ -129,6 +129,8 @@ export class CreateFromImportPreviewUseCase {
         deliveryCost,
         total,
         note: input.row.internalNote ?? null,
+        advertisingCode: null,
+        observation: null,
         createdBy: input.userId,
         workflowId: resolvedWorkflow?.workflow.id ?? null,
         currentStateId: resolvedWorkflow?.initialState.id ?? null,
