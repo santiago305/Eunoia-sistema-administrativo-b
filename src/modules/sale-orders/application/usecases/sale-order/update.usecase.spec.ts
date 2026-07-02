@@ -19,6 +19,7 @@ describe("UpdateSaleOrderUsecase", () => {
     stockActions: Array<
       string | { type: string; actionBranch?: "THEN" | "ELSE"; executedBranch?: "THEN" | "ELSE" }
     > = [],
+    currentStateIsFinal = false,
   ) => {
     const saleOrderRepo = {
       findByIdForUpdate: jest.fn().mockResolvedValue({
@@ -36,13 +37,26 @@ describe("UpdateSaleOrderUsecase", () => {
       }),
     };
     const saleOrderItemRepo = {
-      listBySaleOrderId: jest.fn().mockResolvedValue([{ id: "old-item" }]),
+      listBySaleOrderId: jest.fn().mockResolvedValue([{
+        id: "old-item",
+        referencePackId: null,
+        quantity: 1,
+        unitPrice: 10,
+        total: 10,
+      }]),
       deleteBySaleOrderId: jest.fn(),
       bulkCreate: jest.fn().mockResolvedValue([{ id: "new-item" }]),
     };
     const componentRepo = {
       listBySaleOrderItemIds: jest.fn().mockResolvedValue([
-        { skuId: "sku-1", quantity: 1 },
+        {
+          saleOrderItemId: "old-item",
+          skuId: "sku-1",
+          referencePackItemId: null,
+          quantity: 1,
+          unitPrice: 10,
+          total: 10,
+        },
       ]),
       deleteBySaleOrderItemIds: jest.fn(),
       bulkCreate: jest.fn(),
@@ -74,6 +88,17 @@ describe("UpdateSaleOrderUsecase", () => {
         });
       }),
     };
+    const workflowRepo = {
+      findDetailedById: jest.fn().mockResolvedValue({
+        workflow: { id: "workflow-1", isActive: true },
+        states: [{
+          id: "state-1",
+          isActive: true,
+          isInitial: false,
+          isFinal: currentStateIsFinal,
+        }],
+      }),
+    };
     const usecase = new UpdateSaleOrderUsecase(
       { runInTransaction: (work: any) => work({}) } as any,
       { findByIdWithItems: jest.fn() } as any,
@@ -81,7 +106,7 @@ describe("UpdateSaleOrderUsecase", () => {
       saleOrderItemRepo as any,
       componentRepo as any,
       paymentRepo as any,
-      { findDetailedById: jest.fn() } as any,
+      workflowRepo as any,
       historyRepo as any,
       transitionRepo as any,
     );
@@ -101,6 +126,51 @@ describe("UpdateSaleOrderUsecase", () => {
     await usecase.execute(input);
 
     expect(componentRepo.bulkCreate).toHaveBeenCalled();
+  });
+
+  it("allows metadata edits when the current workflow state is final", async () => {
+    const fixture = createFixture([], true);
+
+    await expect(fixture.usecase.execute({
+      ...input,
+      note: "Nueva observacion interna",
+    })).resolves.toEqual(expect.objectContaining({ orderId: "order-1" }));
+  });
+
+  it("rejects quantity edits when the current workflow state is final", async () => {
+    const fixture = createFixture([], true);
+
+    await expect(fixture.usecase.execute({
+      ...input,
+      items: [{
+        ...input.items[0],
+        quantity: 2,
+      }],
+    })).rejects.toThrow("No se pueden cambiar productos, packs, cantidades, precios ni almacén de un pedido finalizado.");
+
+    expect(fixture.componentRepo.deleteBySaleOrderItemIds).not.toHaveBeenCalled();
+    expect(fixture.saleOrderItemRepo.deleteBySaleOrderId).not.toHaveBeenCalled();
+    expect(fixture.paymentRepo.deleteBySaleOrderId).not.toHaveBeenCalled();
+  });
+
+  it("rejects warehouse edits when the current workflow state is final", async () => {
+    const fixture = createFixture([], true);
+
+    await expect(fixture.usecase.execute({
+      ...input,
+      warehouseId: "warehouse-2",
+    })).rejects.toThrow("No se pueden cambiar productos, packs, cantidades, precios ni almacén de un pedido finalizado.");
+  });
+
+  it("keeps rejecting workflow changes when one is already assigned", async () => {
+    const fixture = createFixture();
+
+    await expect(fixture.usecase.execute({
+      ...input,
+      workflowId: "workflow-2",
+    })).rejects.toThrow(
+      "El pedido ya tiene flujo asignado. No debe cambiarlo",
+    );
   });
 
   it("rejects changing warehouse while stock is reserved before deleting related data", async () => {

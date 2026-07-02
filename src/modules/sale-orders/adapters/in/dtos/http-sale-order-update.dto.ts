@@ -59,6 +59,14 @@ export class HttpSaleOrderUpdateDto {
   @IsString()
   note?: string;
 
+  @IsOptional()
+  @IsString()
+  advertisingCode?: string | null;
+
+  @IsOptional()
+  @IsString()
+  observation?: string | null;
+
   @IsArray()
   @ArrayMinSize(1)
   @ValidateNested({ each: true })

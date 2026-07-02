@@ -23,6 +23,8 @@ type UpdateSaleOrderInput = {
   scheduleDate?: string;
   deliveryDate?: string;
   note?: string;
+  advertisingCode?: string | null;
+  observation?: string | null;
   subTotal?: number;
   deliveryCost?: number;
   total?: number;
@@ -99,6 +101,41 @@ export class UpdateSaleOrderUsecase {
       .join("|");
   }
 
+  private buildCommercialItemSignature(
+    items: Array<{
+      referencePackId?: string | null;
+      quantity: number;
+      unitPrice: number;
+      total: number;
+      components: Array<{
+        skuId: string;
+        referencePackItemId?: string | null;
+        quantity: number;
+        unitPrice: number;
+        total: number;
+      }>;
+    }>,
+  ): string {
+    return items
+      .map((item) => JSON.stringify({
+        referencePackId: item.referencePackId ?? null,
+        quantity: Number(item.quantity),
+        unitPrice: Number(item.unitPrice),
+        total: Number(item.total),
+        components: item.components
+          .map((component) => ({
+            skuId: component.skuId,
+            referencePackItemId: component.referencePackItemId ?? null,
+            quantity: Number(component.quantity),
+            unitPrice: Number(component.unitPrice),
+            total: Number(component.total),
+          }))
+          .sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right))),
+      }))
+      .sort()
+      .join("|");
+  }
+
   private async resolveStockLifecycleStatus(
     saleOrderId: string,
     tx: TransactionContext,
@@ -131,6 +168,18 @@ export class UpdateSaleOrderUsecase {
 
       if (!order) {
         throw new BadRequestException("Pedido no encontrado");
+      }
+
+      let currentStateIsFinal = false;
+      if (order.workflowId && order.currentStateId) {
+        const assignedWorkflow = await this.workflowRepo.findDetailedById(
+          order.workflowId,
+          tx,
+        );
+        const currentState = assignedWorkflow?.states.find(
+          (state) => state.id === order.currentStateId,
+        );
+        currentStateIsFinal = Boolean(currentState?.isFinal);
       }
 
       const selectedWorkflowId = input.workflowId?.trim() || null;
@@ -265,6 +314,45 @@ export class UpdateSaleOrderUsecase {
         componentPlansByItemIndex.push(plans);
       }
 
+      if (currentStateIsFinal) {
+        const existingComponents = await this.componentRepo.listBySaleOrderItemIds(
+          existingItemIds,
+          tx,
+        );
+        const currentSignature = this.buildCommercialItemSignature(
+          existingItems.map((item) => ({
+            referencePackId: item.referencePackId,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            total: item.total,
+            components: existingComponents
+              .filter((component) => component.saleOrderItemId === item.id)
+              .map((component) => ({
+                skuId: component.skuId,
+                referencePackItemId: component.referencePackItemId,
+                quantity: component.quantity,
+                unitPrice: component.unitPrice,
+                total: component.total,
+              })),
+          })),
+        );
+        const nextSignature = this.buildCommercialItemSignature(
+          input.items.map((item, index) => ({
+            referencePackId: item.referencePackId ?? null,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            total: item.total,
+            components: componentPlansByItemIndex[index] ?? [],
+          })),
+        );
+
+        if (input.warehouseId !== order.warehouseId || currentSignature !== nextSignature) {
+          throw new BadRequestException(
+            "No se pueden cambiar productos, packs, cantidades, precios ni almacén de un pedido finalizado.",
+          );
+        }
+      }
+
       const stockLifecycleStatus = await this.resolveStockLifecycleStatus(
         input.saleOrderId,
         tx,
@@ -326,6 +414,8 @@ export class UpdateSaleOrderUsecase {
           deliveryCost: input.deliveryCost ?? 0,
           total: input.total ?? 0,
           note: input.note ?? null,
+          advertisingCode: input.advertisingCode ?? null,
+          observation: input.observation ?? null,
         },
         tx,
       );

@@ -19,6 +19,16 @@ import { DashboardSaleOrdersRepository } from "src/modules/dashboard/domain/port
 
 import { SaleOrderEntity } from "src/modules/sale-orders/adapters/out/persistence/typeorm/entities/sale-order.entity";
 import { SalePaymentEntity } from "src/modules/sale-orders/adapters/out/persistence/typeorm/entities/sale-payment.entity";
+import {
+  SaleOrderSearchFields,
+  SaleOrderSearchOperators,
+  SaleOrderSearchRule,
+} from "src/modules/sale-orders/application/dtos/sale-order-search/sale-order-search-snapshot";
+import {
+  getSaleOrderCalendarWeekRange,
+  getSaleOrderMonthRange,
+  sanitizeSaleOrderSearchFilters,
+} from "src/modules/sale-orders/application/support/sale-order-search.utils";
 
 import { UbigeoDepartmentEntity } from "src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-department.entity";
 import { UbigeoDistrictEntity } from "src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-district.entity";
@@ -180,8 +190,65 @@ export class DashboardSaleOrdersTypeormRepository
     }
 
     this.applyMonthFilter(qb, input.month);
+    this.applyDateFilters(qb, input.filters);
 
     return qb;
+  }
+
+  private applyDateFilters(
+    qb: SelectQueryBuilder<SaleOrderEntity>,
+    filters?: SaleOrderSearchRule[],
+  ): void {
+    sanitizeSaleOrderSearchFilters(filters ?? [])
+      .filter(
+        (filter) =>
+          filter.field === SaleOrderSearchFields.SCHEDULE_DATE ||
+          filter.field === SaleOrderSearchFields.DELIVERY_DATE,
+      )
+      .forEach((filter, index) => {
+        const column =
+          filter.field === SaleOrderSearchFields.SCHEDULE_DATE
+            ? "so.scheduleDate"
+            : "so.deliveryDate";
+        const prefix = `dashboard_filter_${index}`;
+
+        if (filter.operator === SaleOrderSearchOperators.BETWEEN) {
+          if (!filter.range?.start || !filter.range.end) return;
+          qb.andWhere(`${column} BETWEEN :${prefix}_start AND :${prefix}_end`, {
+            [`${prefix}_start`]: filter.range.start,
+            [`${prefix}_end`]: filter.range.end,
+          });
+          return;
+        }
+
+        const range =
+          filter.operator === SaleOrderSearchOperators.IN_MONTH
+            ? getSaleOrderMonthRange(filter.value)
+            : filter.operator === SaleOrderSearchOperators.IN_WEEK
+              ? getSaleOrderCalendarWeekRange(filter.value)
+              : null;
+        if (range) {
+          qb.andWhere(`${column} BETWEEN :${prefix}_start AND :${prefix}_end`, {
+            [`${prefix}_start`]: range.start,
+            [`${prefix}_end`]: range.end,
+          });
+          return;
+        }
+
+        if (!filter.value) return;
+        const operators = {
+          [SaleOrderSearchOperators.ON]: "=",
+          [SaleOrderSearchOperators.BEFORE]: "<",
+          [SaleOrderSearchOperators.AFTER]: ">",
+          [SaleOrderSearchOperators.ON_OR_BEFORE]: "<=",
+          [SaleOrderSearchOperators.ON_OR_AFTER]: ">=",
+        } as const;
+        const comparator = operators[filter.operator as keyof typeof operators];
+        if (!comparator) return;
+        qb.andWhere(`${column} ${comparator} :${prefix}_value`, {
+          [`${prefix}_value`]: filter.value,
+        });
+      });
   }
 
   private addMetricSelects(

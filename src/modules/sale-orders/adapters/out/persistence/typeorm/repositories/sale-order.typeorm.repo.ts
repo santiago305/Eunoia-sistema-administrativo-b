@@ -19,6 +19,8 @@ import {
   SaleOrderSearchRule,
 } from "src/modules/sale-orders/application/dtos/sale-order-search/sale-order-search-snapshot";
 import {
+  getSaleOrderCalendarWeekRange,
+  getSaleOrderMonthRange,
   matchSearchOptionIds,
   SALE_ORDER_PAYMENT_STATUS_SEARCH_OPTIONS,
   sanitizeSaleOrderSearchFilters,
@@ -69,6 +71,8 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       Number(row.deliveryCost ?? 0),
       Number(row.total ?? 0),
       row.note ?? null,
+      row.advertisingCode ?? null,
+      row.observation ?? null,
       row.createdBy,
       row.workflowId ?? null,
       row.currentStateId ?? null,
@@ -104,6 +108,8 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       deliveryCost: input.deliveryCost,
       total: input.total,
       note: input.note ?? null,
+      advertisingCode: input.advertisingCode ?? null,
+      observation: input.observation ?? null,
       createdBy: input.createdBy,
       workflowId: input.workflowId ?? null,
       currentStateId: input.currentStateId ?? null,
@@ -145,6 +151,8 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       deliveryCost: input.deliveryCost,
       total: input.total,
       note: input.note ?? null,
+      advertisingCode: input.advertisingCode ?? null,
+      observation: input.observation ?? null,
       workflowId: input.workflowId ?? row.workflowId ?? null,
       currentStateId: input.currentStateId ?? row.currentStateId ?? null,
     });
@@ -208,7 +216,11 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     rangeStartParam: string,
     rangeEndParam: string,
   ) {
-    const column = filter.field === SaleOrderSearchFields.SCHEDULE_DATE ? "so.scheduleDate" : "so.deliveryDate";
+    const column = filter.field === SaleOrderSearchFields.SCHEDULE_DATE
+      ? "so.scheduleDate"
+      : filter.field === SaleOrderSearchFields.DELIVERY_DATE
+        ? "so.deliveryDate"
+        : "DATE(so.createdAt)";
 
     if (filter.operator === SaleOrderSearchOperators.BETWEEN) {
       const start = filter.range?.start;
@@ -217,6 +229,26 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       qb.andWhere(`${column} BETWEEN :${rangeStartParam} AND :${rangeEndParam}`, {
         [rangeStartParam]: start,
         [rangeEndParam]: end,
+      });
+      return;
+    }
+
+    if (filter.operator === SaleOrderSearchOperators.IN_MONTH) {
+      const range = getSaleOrderMonthRange(filter.value);
+      if (!range) return;
+      qb.andWhere(`${column} BETWEEN :${rangeStartParam} AND :${rangeEndParam}`, {
+        [rangeStartParam]: range.start,
+        [rangeEndParam]: range.end,
+      });
+      return;
+    }
+
+    if (filter.operator === SaleOrderSearchOperators.IN_WEEK) {
+      const range = getSaleOrderCalendarWeekRange(filter.value);
+      if (!range) return;
+      qb.andWhere(`${column} BETWEEN :${rangeStartParam} AND :${rangeEndParam}`, {
+        [rangeStartParam]: range.start,
+        [rangeEndParam]: range.end,
       });
       return;
     }
@@ -382,6 +414,8 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
             })
             .orWhere("unaccent(coalesce(so.agencyDetail, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
             .orWhere("unaccent(coalesce(so.note, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
+            .orWhere("unaccent(coalesce(so.advertisingCode, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
+            .orWhere("unaccent(coalesce(so.observation, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
             .orWhere("unaccent(coalesce(client.fullName, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
             .orWhere("unaccent(coalesce(client.docNumber, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
             .orWhere("unaccent(coalesce(warehouse.name, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
@@ -488,10 +522,62 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         case SaleOrderSearchFields.PAYMENT_STATUS:
           this.applyPaymentStatusFilter(qb, filter, valueParam);
           break;
+        case SaleOrderSearchFields.CLIENT_DEPARTMENT_ID:
+        case SaleOrderSearchFields.CLIENT_PROVINCE_ID:
+        case SaleOrderSearchFields.CLIENT_DISTRICT_ID:
+          if (filter.values?.length) {
+            qb.leftJoin(ClientEntity, "filterUbigeoClient", "filterUbigeoClient.id = so.clientId");
+            const column = filter.field === SaleOrderSearchFields.CLIENT_DEPARTMENT_ID
+              ? "filterUbigeoClient.departmentId"
+              : filter.field === SaleOrderSearchFields.CLIENT_PROVINCE_ID
+                ? "filterUbigeoClient.provinceId"
+                : "filterUbigeoClient.districtId";
+            qb.andWhere(`${column} ${filter.mode === "exclude" ? "NOT IN" : "IN"} (:...${valueParam})`, {
+              [valueParam]: filter.values,
+            });
+          }
+          break;
+        case SaleOrderSearchFields.SOURCE_ID:
+          if (filter.values?.length) {
+            qb.andWhere(`so.sourceId ${filter.mode === "exclude" ? "NOT IN" : "IN"} (:...${valueParam})`, {
+              [valueParam]: filter.values,
+            });
+          }
+          break;
+        case SaleOrderSearchFields.INVOICE_STATUS:
+          if (filter.values?.length) {
+            const sentValues = filter.values.map((value) => value === "SENT");
+            qb.andWhere(`so.invoiceSend ${filter.mode === "exclude" ? "NOT IN" : "IN"} (:...${valueParam})`, {
+              [valueParam]: sentValues,
+            });
+          }
+          break;
         case SaleOrderSearchFields.SCHEDULE_DATE:
         case SaleOrderSearchFields.DELIVERY_DATE:
+        case SaleOrderSearchFields.CREATED_AT:
           this.applyDateFilter(qb, filter, valueParam, rangeStartParam, rangeEndParam);
           break;
+        case SaleOrderSearchFields.ADVERTISING_CODE:
+        case SaleOrderSearchFields.OBSERVATION:
+        case SaleOrderSearchFields.AGENCY_DETAIL:
+        case SaleOrderSearchFields.CLIENT_PHONE: {
+          if (!filter.value) break;
+          let column = "so.observation";
+          if (filter.field === SaleOrderSearchFields.ADVERTISING_CODE) column = "so.advertisingCode";
+          if (filter.field === SaleOrderSearchFields.AGENCY_DETAIL) column = "so.agencyDetail";
+          if (filter.field === SaleOrderSearchFields.CLIENT_PHONE) {
+            qb.leftJoin(TelephoneEntity, "filterTelephone", "filterTelephone.clientId = so.clientId AND filterTelephone.isActive = true");
+            column = "filterTelephone.number";
+          }
+          const operator = filter.operator === SaleOrderSearchOperators.EQ ? "=" : "ILIKE";
+          const value = filter.operator === SaleOrderSearchOperators.EQ
+            ? filter.value
+            : `%${filter.value}%`;
+          qb.andWhere(`unaccent(coalesce(${column}, '')) ${operator} unaccent(:${valueParam})`, {
+            [valueParam]: value,
+          });
+          break;
+        }
         default:
           break;
       }
@@ -546,6 +632,33 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
           })
         : Promise.resolve([]),
     ]);
+    const departmentIds = Array.from(
+      new Set(clients.map((client) => client.departmentId).filter(Boolean)),
+    ) as string[];
+    const provinceIds = Array.from(
+      new Set(clients.map((client) => client.provinceId).filter(Boolean)),
+    ) as string[];
+    const districtIds = Array.from(
+      new Set(clients.map((client) => client.districtId).filter(Boolean)),
+    ) as string[];
+
+    const [departments, provinces, districts] = await Promise.all([
+      departmentIds.length
+        ? manager.getRepository(UbigeoDepartmentEntity).find({
+            where: { id: In(departmentIds) },
+          })
+        : Promise.resolve([]),
+      provinceIds.length
+        ? manager.getRepository(UbigeoProvinceEntity).find({
+            where: { id: In(provinceIds) },
+          })
+        : Promise.resolve([]),
+      districtIds.length
+        ? manager.getRepository(UbigeoDistrictEntity).find({
+            where: { id: In(districtIds) },
+          })
+        : Promise.resolve([]),
+    ]);
 
     const bankAccountIds = Array.from(new Set(payments.map((p) => p.bankAccountId).filter(Boolean))) as string[];
     const bankAccounts = bankAccountIds.length
@@ -554,6 +667,10 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
 
     const clientById = new Map(clients.map((row) => [row.id, row]));
     const mainTelephoneByClientId = new Map(mainTelephones.map((row) => [row.clientId, row.number]));
+    const departmentById = new Map(departments.map((row) => [row.id, row]));
+    const provinceById = new Map(provinces.map((row) => [row.id, row]));
+    const districtById = new Map(districts.map((row) => [row.id, row]));
+    
     const warehouseById = new Map(warehouses.map((row) => [row.id, row]));
     const sourceById = new Map(sources.map((row) => [row.id, row]));
     const userById = new Map(users.map((row) => [row.id, row]));
@@ -600,6 +717,28 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
               reference: client.reference ?? null,
               mainPhone: mainTelephoneByClientId.get(client.id) ?? null,
               count: await this.countSaleOrdersByClientId(client.id, tx),
+              department: client.departmentId
+                ? (() => {
+                    const department = departmentById.get(client.departmentId);
+                    return department ? { id: department.id, name: department.name } : null;
+                  })()
+                : null,
+              province: client.provinceId
+                ? (() => {
+                    const province = provinceById.get(client.provinceId);
+                    return province
+                      ? { id: province.id, name: province.name, departmentId: province.departmentId }
+                      : null;
+                  })()
+                : null,
+              district: client.districtId
+                ? (() => {
+                    const district = districtById.get(client.districtId);
+                    return district
+                      ? { id: district.id, name: district.name, provinceId: district.provinceId }
+                      : null;
+                  })()
+                : null,
               isActive: client.isActive
             }
           : null,
@@ -611,6 +750,8 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         deliveryCost: Number(row.deliveryCost ?? 0),
         total: totalOrder,
         note: row.note ?? null,
+        advertisingCode: row.advertisingCode ?? null,
+        observation: row.observation ?? null,
         createdBy: creator ? { id: creator.id, name: creator.name, email: creator.email } : null,
         workflow: workflow
           ? {
@@ -754,7 +895,8 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         this.applyPaymentStatusFilter(base, filter, valueParam);
       } else if (
         filter.field === SaleOrderSearchFields.SCHEDULE_DATE ||
-        filter.field === SaleOrderSearchFields.DELIVERY_DATE
+        filter.field === SaleOrderSearchFields.DELIVERY_DATE ||
+        filter.field === SaleOrderSearchFields.CREATED_AT
       ) {
         this.applyDateFilter(
           base,
@@ -770,6 +912,20 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
             ? "concat(coalesce(so.serie, ''), '-', coalesce(so.correlative::text, '')) = :statsNumber"
             : "concat(coalesce(so.serie, ''), '-', coalesce(so.correlative::text, '')) ILIKE :statsNumber",
           { statsNumber: filter.operator === SaleOrderSearchOperators.EQ ? filter.value : value },
+        );
+      } else if (
+        (filter.field === SaleOrderSearchFields.ADVERTISING_CODE ||
+          filter.field === SaleOrderSearchFields.OBSERVATION) &&
+        filter.value
+      ) {
+        const column = filter.field === SaleOrderSearchFields.ADVERTISING_CODE
+          ? "so.advertisingCode"
+          : "so.observation";
+        base.andWhere(
+          filter.operator === SaleOrderSearchOperators.EQ
+            ? `unaccent(coalesce(${column}, '')) = unaccent(:${valueParam})`
+            : `unaccent(coalesce(${column}, '')) ILIKE unaccent(:${valueParam})`,
+          { [valueParam]: filter.operator === SaleOrderSearchOperators.EQ ? filter.value : `%${filter.value}%` },
         );
       }
     });
@@ -1111,6 +1267,8 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     deliveryCost: Number(row.deliveryCost ?? 0),
     total: totalOrder,
     note: row.note ?? null,
+    advertisingCode: row.advertisingCode ?? null,
+    observation: row.observation ?? null,
 
     createdBy: creator
       ? {

@@ -5,6 +5,7 @@ import { DashboardSaleOrdersTypeormRepository } from "./dashboard-sale-orders.ty
 function createQueryBuilderMock(rawRows: unknown[]) {
   const qb: any = {
     leftJoin: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
     andWhere: jest.fn().mockReturnThis(),
     select: jest.fn().mockReturnThis(),
     addSelect: jest.fn().mockReturnThis(),
@@ -58,7 +59,7 @@ describe("DashboardSaleOrdersTypeormRepository", () => {
       },
     });
     expect(manager.getRepository).toHaveBeenCalledWith(SaleOrderEntity);
-    expect(qb.andWhere).toHaveBeenCalledWith("so.createdAt >= :monthStart AND so.createdAt < :monthEnd", {
+    expect(qb.andWhere).toHaveBeenCalledWith(expect.stringContaining("so.scheduleDate >= :monthStart"), {
       monthStart: new Date("2026-06-01T00:00:00.000Z"),
       monthEnd: new Date("2026-07-01T00:00:00.000Z"),
     });
@@ -109,6 +110,38 @@ describe("DashboardSaleOrdersTypeormRepository", () => {
     expect(qb.andWhere).not.toHaveBeenCalledWith(
       "(globalState.code IS NULL OR upper(globalState.code) <> :cancelCode)",
       { cancelCode: "CANCELLED" },
+    );
+  });
+
+  it("applies agenda week and delivery month filters", async () => {
+    const qb = createQueryBuilderMock([]);
+    const manager = {
+      getRepository: jest.fn().mockReturnValue({
+        createQueryBuilder: jest.fn().mockReturnValue(qb),
+      }),
+    } as unknown as EntityManager;
+
+    const repo = new DashboardSaleOrdersTypeormRepository(manager);
+    await repo.groupByDepartment({
+      filters: [
+        { field: "scheduleDate", operator: "inWeek", value: "2026-06-29" },
+        { field: "deliveryDate", operator: "inMonth", value: "2026-07" },
+      ],
+    });
+
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      "so.scheduleDate BETWEEN :dashboard_filter_0_start AND :dashboard_filter_0_end",
+      {
+        dashboard_filter_0_start: "2026-06-29",
+        dashboard_filter_0_end: "2026-07-05",
+      },
+    );
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      "so.deliveryDate BETWEEN :dashboard_filter_1_start AND :dashboard_filter_1_end",
+      {
+        dashboard_filter_1_start: "2026-07-01",
+        dashboard_filter_1_end: "2026-07-31",
+      },
     );
   });
 });

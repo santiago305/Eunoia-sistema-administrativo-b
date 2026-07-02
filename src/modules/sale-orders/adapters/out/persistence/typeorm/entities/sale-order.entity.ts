@@ -39,6 +39,12 @@ export class SaleOrderEntity {
   @Column({ name: "note", type: "text", nullable: true })
   note?: string | null;
 
+  @Column({ name: "advertising_code", type: "text", nullable: true })
+  advertisingCode?: string | null;
+
+  @Column({ name: "observation", type: "text", nullable: true })
+  observation?: string | null;
+
   @Column({ name: "client_id", type: "uuid" })
   clientId: string;
 

@@ -1,5 +1,8 @@
+import { SaleOrderSearchRule } from "src/modules/sale-orders/application/dtos/sale-order-search/sale-order-search-snapshot";
+
 export type DashboardSaleOrdersUbigeoBaseInput = {
   month?: string;
+  filters?: SaleOrderSearchRule[];
   cancelBool?: boolean;
 };
 

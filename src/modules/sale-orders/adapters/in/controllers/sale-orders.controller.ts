@@ -110,6 +110,8 @@ export class SaleOrdersController {
         subTotal: dto.subTotal,
         total: dto.total,
         note: dto.note,
+        advertisingCode: dto.advertisingCode,
+        observation: dto.observation,
         items: (dto.items ?? []).map((item) => ({
           quantity: item.quantity,
           unitPrice: item.unitPrice,
@@ -319,6 +321,8 @@ export class SaleOrdersController {
         subTotal: dto.subTotal,
         total: dto.total,
         note: dto.note,
+        advertisingCode: dto.advertisingCode,
+        observation: dto.observation,
         items: (dto.items ?? []).map((item) => ({
           quantity: item.quantity,
           unitPrice: item.unitPrice,

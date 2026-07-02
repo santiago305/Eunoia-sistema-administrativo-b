@@ -20,6 +20,8 @@ type SaleOrderWrite = {
   deliveryCost: number;
   total: number;
   note?: string | null;
+  advertisingCode?: string | null;
+  observation?: string | null;
   workflowId?: string | null;
   currentStateId?: string | null;
 };

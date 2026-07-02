@@ -283,4 +283,41 @@ describe("SaleOrderTypeormRepository", () => {
       stats_filter_1_value: ["NEW"],
     });
   });
+
+  it("applies inclusive month and calendar-week filters to statistics", async () => {
+    const baseQb = createStatsQueryBuilder();
+    baseQb.clone
+      .mockReturnValueOnce(createStatsQueryBuilder([]))
+      .mockReturnValueOnce(createStatsQueryBuilder([]))
+      .mockReturnValueOnce(createStatsQueryBuilder([]))
+      .mockReturnValueOnce(createStatsQueryBuilder([], {}))
+      .mockReturnValueOnce(createStatsQueryBuilder([]));
+
+    const entityRepo = { createQueryBuilder: jest.fn().mockReturnValue(baseQb) };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue(entityRepo) },
+    } as any);
+
+    await repository.statistics({
+      filters: [
+        { field: "scheduleDate", operator: "inMonth", value: "2028-02" },
+        { field: "deliveryDate", operator: "inWeek", value: "2026-12-28" },
+      ] as any,
+    });
+
+    expect(baseQb.andWhere).toHaveBeenCalledWith(
+      "so.scheduleDate BETWEEN :stats_filter_0_value_start AND :stats_filter_0_value_end",
+      {
+        stats_filter_0_value_start: "2028-02-01",
+        stats_filter_0_value_end: "2028-02-29",
+      },
+    );
+    expect(baseQb.andWhere).toHaveBeenCalledWith(
+      "so.deliveryDate BETWEEN :stats_filter_1_value_start AND :stats_filter_1_value_end",
+      {
+        stats_filter_1_value_start: "2026-12-28",
+        stats_filter_1_value_end: "2027-01-03",
+      },
+    );
+  });
 });

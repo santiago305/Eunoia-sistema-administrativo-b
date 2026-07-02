@@ -38,6 +38,10 @@ export interface SaleOrderSearchStateRecord {
   workflows: Array<{ workflowId: string; label: string }>;
   states: Array<{ saleOrderStateId: string; label: string }>;
   bankAccounts: SaleOrderSearchBankAccountCatalogRecord[];
+  departments?: Array<{ id: string; label: string }>;
+  provinces?: Array<{ id: string; label: string }>;
+  districts?: Array<{ id: string; label: string }>;
+  sources?: Array<{ id: string; label: string }>;
 }
 
 export interface SaleOrderSearchRepository {

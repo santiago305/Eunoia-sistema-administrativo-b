@@ -32,5 +32,16 @@ describe("HttpListSaleOrdersQueryDto", () => {
     const errors = validateSync(dto);
     expect(errors).not.toHaveLength(0);
   });
+
+  it("accepts semantic month and week operators", () => {
+    const dto = plainToInstance(HttpListSaleOrdersQueryDto, {
+      filters: JSON.stringify([
+        { field: "scheduleDate", operator: "inMonth", value: "2028-02" },
+        { field: "deliveryDate", operator: "inWeek", value: "2026-12-28" },
+      ]),
+    });
+
+    expect(validateSync(dto)).toHaveLength(0);
+  });
 });
 
