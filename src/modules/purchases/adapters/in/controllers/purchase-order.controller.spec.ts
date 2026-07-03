@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { CanActivate, ExecutionContext, INestApplication, Injectable, ValidationPipe } from "@nestjs/common";
+import { BadRequestException, CanActivate, ExecutionContext, INestApplication, Injectable, ValidationPipe } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { EntityManager } from "typeorm";
@@ -55,6 +55,7 @@ class AllowGuard implements CanActivate {
 
 describe("PurchaseOrdersController", () => {
   let app: INestApplication;
+  const createOrder = { execute: jest.fn() };
   const listOrders = { execute: jest.fn() };
   const getSearchState = { execute: jest.fn() };
   const purchaseRepo = { findById: jest.fn(), update: jest.fn() };
@@ -95,7 +96,7 @@ describe("PurchaseOrdersController", () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [PurchaseOrdersController],
       providers: [
-        { provide: CreatePurchaseOrderUsecase, useValue: { execute: jest.fn() } },
+        { provide: CreatePurchaseOrderUsecase, useValue: createOrder },
         { provide: UpdatePurchaseOrderUsecase, useValue: { execute: jest.fn() } },
         { provide: ListPurchaseOrdersUsecase, useValue: listOrders },
         { provide: GetPurchaseOrderUsecase, useValue: { execute: jest.fn() } },
@@ -260,6 +261,53 @@ describe("PurchaseOrdersController", () => {
       totalPages: 3,
       hasPrev: true,
       hasNext: true,
+    });
+  });
+
+  it("returns the original create failure message to the client", async () => {
+    createOrder.execute.mockRejectedValueOnce(
+      new BadRequestException("No existe equivalencia para convertir KGM a NIU en este producto"),
+    );
+
+    const response = await request(app.getHttpServer())
+      .post("/purchases/orders")
+      .send({
+        supplierId: "11111111-1111-4111-8111-111111111111",
+        warehouseId: "22222222-2222-4222-8222-222222222222",
+        documentType: "01",
+        serie: "F001",
+        correlative: 12,
+        currency: "PEN",
+        totalTaxed: 10,
+        totalExempted: 0,
+        totalIgv: 1.8,
+        purchaseValue: 10,
+        total: 11.8,
+        status: "DRAFT",
+        items: [
+          {
+            skuId: "33333333-3333-4333-8333-333333333333",
+            unitBase: "KGM",
+            equivalence: "KGM->NIU",
+            factor: 1,
+            afectType: "10",
+            quantity: 1,
+            porcentageIgv: 0.18,
+            baseWithoutIgv: 10,
+            amountIgv: 1.8,
+            unitValue: 10,
+            unitPrice: 11.8,
+            purchaseValue: 10,
+          },
+        ],
+        payments: [],
+        quotas: [],
+      })
+      .expect(201);
+
+    expect(response.body).toEqual({
+      type: "error",
+      message: "No existe equivalencia para convertir KGM a NIU en este producto",
     });
   });
 
