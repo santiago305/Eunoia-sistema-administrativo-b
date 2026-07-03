@@ -98,13 +98,13 @@ export class SaleOrderWorkflowTransitionService {
       throw new UnprocessableEntityException({ failures: decision.failures });
     }
 
-    await this.actionRunner.run(order, transitionBundle.actions, tx);
+    const actionResult = await this.actionRunner.run(order, transitionBundle.actions, tx);
 
     const updated = isActionOnly
-      ? order
+      ? actionResult.order
       : await this.saleOrderRepo.updateWorkflowState(
           {
-            saleOrderId: order.id,
+            saleOrderId: actionResult.order.id,
             currentStateId: transitionBundle.transition.toStateId as string,
           },
           tx,
@@ -120,12 +120,21 @@ export class SaleOrderWorkflowTransitionService {
         toStateId: transitionBundle.transition.toStateId ?? order.currentStateId,
         executedBy: input.executedBy,
         executedAt: this.clock.now(),
-        metadata: input.metadata ?? null,
+        metadata: {
+          ...(input.metadata ?? {}),
+          actionOutcomes: actionResult.outcomes,
+        },
       }),
       tx,
     );
 
-    return updated;
+    return {
+      order: updated,
+      actionOutcomes: actionResult.outcomes,
+      warnings: Array.from(
+        new Set(actionResult.outcomes.map((outcome) => outcome.message).filter(Boolean) as string[]),
+      ),
+    };
   }
 
   async advanceAutomatic(saleOrderId: string, executedBy: string, tx: TransactionContext) {
@@ -164,11 +173,14 @@ export class SaleOrderWorkflowTransitionService {
         throw new BadRequestException("Rama automatica de acciones sin acciones");
       }
 
-      await this.actionRunner.run(order, actions, tx);
+      const actionResult = await this.actionRunner.run(order, actions, tx);
       const updated =
         effect === TRANSITION_EFFECTS.RUN_ACTIONS
-          ? order
-          : await this.saleOrderRepo.updateWorkflowState({ saleOrderId: order.id, currentStateId: toStateId }, tx);
+          ? actionResult.order
+          : await this.saleOrderRepo.updateWorkflowState(
+              { saleOrderId: actionResult.order.id, currentStateId: toStateId },
+              tx,
+            );
       await this.historyRepo.append(
         new SaleOrderStateHistory({
           id: crypto.randomUUID(),
@@ -179,7 +191,11 @@ export class SaleOrderWorkflowTransitionService {
           toStateId: toStateId ?? order.currentStateId,
           executedBy,
           executedAt: this.clock.now(),
-          metadata: { source: "automatic-workflow", branch: passed ? "THEN" : "ELSE" },
+          metadata: {
+            source: "automatic-workflow",
+            branch: passed ? "THEN" : "ELSE",
+            actionOutcomes: actionResult.outcomes,
+          },
         }),
         tx,
       );

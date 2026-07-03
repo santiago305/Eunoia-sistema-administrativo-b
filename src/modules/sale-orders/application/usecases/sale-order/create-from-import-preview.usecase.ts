@@ -90,6 +90,7 @@ export class CreateFromImportPreviewUseCase {
       workflowName: string | null;
       address: string | null;
       internalNote: string | null;
+      advertisingCode: string | null;
       total: number;
       advance: number;
       deliveryCost?:number;
@@ -129,7 +130,7 @@ export class CreateFromImportPreviewUseCase {
         deliveryCost,
         total,
         note: input.row.internalNote ?? null,
-        advertisingCode: null,
+        advertisingCode: input.row.advertisingCode,
         observation: null,
         createdBy: input.userId,
         workflowId: resolvedWorkflow?.workflow.id ?? null,

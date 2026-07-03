@@ -213,6 +213,12 @@ export class SaveFullWorkflowUseCase {
           }),
         );
       });
+      ActionFactory.validateOrder(
+        actions.filter((action) => action.transitionId === transitionId && action.branch === "THEN"),
+      );
+      ActionFactory.validateOrder(
+        actions.filter((action) => action.transitionId === transitionId && action.branch === "ELSE"),
+      );
       if (effect === TRANSITION_EFFECTS.RUN_ACTIONS && !transition.actions?.length) {
         throw new BadRequestException("Una transicion de acciones requiere al menos una accion");
       }

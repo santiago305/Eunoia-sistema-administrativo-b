@@ -42,6 +42,7 @@ describe("CreateFromImportPreviewUseCase", () => {
         workflowName: "ABONADO ENVIO",
         address: "Av",
         internalNote: "facebook",
+        advertisingCode: "ABC1202438017105",
         total: 120,
         advance: 40,
         parsedSkus: [{ rawCode: "X", productName: "A", variantName: null, skuName: "A", customSku: "EVA001", quantity: 2 }],
@@ -88,6 +89,7 @@ describe("CreateFromImportPreviewUseCase", () => {
           currentStateId: "state-1",
           serie: "PE",
           correlative: 7,
+          advertisingCode: "ABC1202438017105",
         }),
         expect.anything(),
       );

@@ -1,5 +1,7 @@
 import { ABONADO_WORKFLOW_SEEDS } from './abonado-workflows.seed-data';
+import { ActionFactory } from '../../domain/factories/action.factory';
 import { materializeWorkflowSeed } from './workflow.seeder';
+import { DEFAULT_WAREHOUSE_IDS } from 'src/modules/warehouses/infrastructure/seed/warehouse.seeder';
 
 describe('ABONADO workflow seed definitions', () => {
   it('defines both complete workflows with locally resolvable references', () => {
@@ -73,6 +75,65 @@ describe('ABONADO workflow seed definitions', () => {
         }),
       ]),
     );
+  });
+
+  it('starts ABONADO workflows in draft and assigns warehouse before created state', () => {
+    for (const workflow of ABONADO_WORKFLOW_SEEDS) {
+      const draft = workflow.states.find((state) => state.saleOrderStateId === 'f24c85fa-28cc-412a-84d0-118e8d8f5059');
+      const created = workflow.states.find((state) => state.saleOrderStateId === 'ae9b51d9-9324-4d15-a648-626a5eabda3d');
+
+      expect(draft).toEqual(expect.objectContaining({ isInitial: true, isFinal: false }));
+      expect(created).toEqual(expect.objectContaining({ isInitial: false }));
+
+      const draftTransition = workflow.transitions.find(
+        (transition) => transition.fromStateRef === draft?.clientId && transition.toStateRef === created?.clientId,
+      );
+
+      expect(draftTransition).toEqual(
+        expect.objectContaining({
+          name: 'Creado',
+          autoTrigger: true,
+          conditions: [
+            {
+              type: 'SALE_ORDER_FIELD_REQUIRED',
+              config: { field: 'client.provinceId' },
+              position: 0,
+            },
+          ],
+          actions: expect.arrayContaining([
+            expect.objectContaining({
+              type: 'ASSIGN_WAREHOUSE_BY_PROVINCE',
+              config: expect.objectContaining({
+                mode: 'INCLUDE',
+                provinceIds: expect.arrayContaining(['2001', '2006', '1501']),
+                warehouseId: DEFAULT_WAREHOUSE_IDS.south,
+              }),
+              position: 0,
+            }),
+            expect.objectContaining({
+              type: 'ASSIGN_WAREHOUSE_BY_PROVINCE',
+              config: expect.objectContaining({
+                mode: 'INCLUDE',
+                provinceIds: expect.arrayContaining(['1401', '0401', '1301']),
+                warehouseId: DEFAULT_WAREHOUSE_IDS.north,
+              }),
+              position: 1,
+            }),
+          ]),
+        }),
+      );
+    }
+  });
+
+  it('defines only executable workflow actions', () => {
+    for (const workflow of ABONADO_WORKFLOW_SEEDS) {
+      for (const transition of workflow.transitions) {
+        expect(() => ActionFactory.validateOrder(transition.actions)).not.toThrow();
+        for (const action of transition.actions) {
+          expect(() => ActionFactory.validate(action)).not.toThrow();
+        }
+      }
+    }
   });
 });
 

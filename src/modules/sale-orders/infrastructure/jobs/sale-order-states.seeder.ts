@@ -10,6 +10,12 @@ type SaleOrderStateSeed = {
 
 const SALE_ORDER_STATES: SaleOrderStateSeed[] = [
   {
+    id: 'f24c85fa-28cc-412a-84d0-118e8d8f5059',
+    code: 'DRAFT',
+    name: 'Borrador',
+    color: '#94A3B8',
+  },
+  {
     id: 'ae9b51d9-9324-4d15-a648-626a5eabda3d',
     code: 'CREATED',
     name: 'Creado',

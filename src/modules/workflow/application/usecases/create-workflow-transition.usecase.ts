@@ -150,6 +150,8 @@ export class CreateWorkflowTransitionUseCase {
       }
       actions.forEach((action) => ActionFactory.validate(action));
       elseActions.forEach((action) => ActionFactory.validate(action));
+      ActionFactory.validateOrder(actions);
+      ActionFactory.validateOrder(elseActions);
 
       await this.workflowTransitionRepo.create(transition, conditions, [...actions, ...elseActions], tx);
       return this.workflowTransitionRepo.findDetailedById(transition.id, tx);

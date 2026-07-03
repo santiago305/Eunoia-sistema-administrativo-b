@@ -92,7 +92,11 @@ describe("SaleOrdersController", () => {
     deletePayment.execute.mockResolvedValue({ deleted: true });
     listPayments.execute.mockResolvedValue([{ id: "p1" }]);
     createFromImportPreview.execute.mockResolvedValue({ importedRows: 1, failedRows: 0, rows: [], errors: [] });
-    advanceSaleOrderState.execute.mockResolvedValue({ id: "x", currentStateId: "state-2" });
+    advanceSaleOrderState.execute.mockResolvedValue({
+      order: { id: "x", currentStateId: "state-2" },
+      warnings: [],
+      actionOutcomes: [],
+    });
     assignWorkflow.execute.mockResolvedValue({ id: "x", workflowId: "workflow-1", currentStateId: "state-1" });
     getAvailableTransitions.execute.mockResolvedValue([]);
     getOrderTimeline.execute.mockResolvedValue([]);
@@ -273,6 +277,38 @@ describe("SaleOrdersController", () => {
     expect(automaticWorkflow.evaluateAndNotify).toHaveBeenCalledWith(
       "11111111-1111-4111-8111-111111111111",
       SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_CREATED,
+    );
+  });
+
+  it("accepts an empty warehouseId when creating a sale order", async () => {
+    const createSaleOrder = app.get(CreateSaleOrderUsecase) as { execute: jest.Mock };
+    createSaleOrder.execute.mockResolvedValueOnce({ orderId: "11111111-1111-4111-8111-111111111111" });
+
+    await request(app.getHttpServer())
+      .post("/sale-orders")
+      .send({
+        warehouseId: "",
+        clientId: "33333333-3333-4333-8333-333333333333",
+        workflowId: "44444444-4444-4444-8444-444444444444",
+        subTotal: 10,
+        total: 10,
+        items: [{
+          quantity: 1,
+          unitPrice: 10,
+          total: 10,
+          components: [{
+            skuId: "55555555-5555-4555-8555-555555555555",
+            quantity: 1,
+            unitPrice: 10,
+            total: 10,
+          }],
+        }],
+      })
+      .expect(201);
+
+    expect(createSaleOrder.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ warehouseId: undefined }),
+      "user-1",
     );
   });
 
@@ -503,8 +539,13 @@ describe("SaleOrdersController", () => {
   it("advances state through a workflow transition", async () => {
     const saleOrderId = "11111111-1111-4111-8111-111111111111";
     const transitionId = "22222222-2222-4222-8222-222222222222";
+    advanceSaleOrderState.execute.mockResolvedValueOnce({
+      order: { id: saleOrderId, currentStateId: "state-2" },
+      warnings: ["Ya hay un almacén seleccionado"],
+      actionOutcomes: [],
+    });
 
-    await request(app.getHttpServer())
+    const response = await request(app.getHttpServer())
       .post(`/sale-orders/${saleOrderId}/change-state`)
       .send({ transitionId, metadata: { source: "ux" } })
       .expect(201);
@@ -515,6 +556,8 @@ describe("SaleOrdersController", () => {
       metadata: { source: "ux" },
       executedBy: "user-1",
     });
+    expect(response.body.warnings).toEqual(["Ya hay un almacén seleccionado"]);
+    expect(response.body.data).toEqual(expect.objectContaining({ id: saleOrderId }));
   });
 
   it("assigns a workflow to an order without workflow", async () => {

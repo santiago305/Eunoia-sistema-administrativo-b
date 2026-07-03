@@ -127,6 +127,23 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     return row ? this.toDomain(row) : null;
   }
 
+  async assignWarehouseIfEmpty(
+    input: { saleOrderId: string; warehouseId: string },
+    tx?: TransactionContext,
+  ): Promise<SaleOrder | null> {
+    const manager = this.getManager(tx);
+    const result = await manager
+      .getRepository(SaleOrderEntity)
+      .createQueryBuilder()
+      .update(SaleOrderEntity)
+      .set({ warehouseId: input.warehouseId })
+      .where("id = :saleOrderId", { saleOrderId: input.saleOrderId })
+      .andWhere("warehouse_id IS NULL")
+      .execute();
+
+    return result.affected ? this.findByIdForUpdate(input.saleOrderId, tx) : null;
+  }
+
   async update(input: Parameters<SaleOrderRepository["update"]>[0], tx?: TransactionContext): Promise<SaleOrder> {
     const manager = this.getManager(tx);
     const repo = manager.getRepository(SaleOrderEntity);

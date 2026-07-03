@@ -54,6 +54,7 @@ import { WorkflowReactivityGateway } from "src/modules/sale-orders/adapters/in/w
 import { WorkflowReactivityRealtimeService } from "src/modules/sale-orders/infrastructure/realtime/workflow-reactivity-realtime.service";
 import { WorkflowReactivityOrchestratorService } from "src/modules/sale-orders/application/services/workflow-reactivity-orchestrator.service";
 import { SaleOrderRealtimePayloadService } from "src/modules/sale-orders/application/services/sale-order-realtime-payload.service";
+import { SaleOrderWarehouseAssignmentService } from "src/modules/workflow/application/services/sale-order-warehouse-assignment.service";
 
 export const saleOrdersModuleProviders = [
   { provide: SALE_ORDER_REPOSITORY, useClass: SaleOrderTypeormRepository },
@@ -84,6 +85,7 @@ export const saleOrdersModuleProviders = [
   GetOrderTimelineUseCase,
   SaleOrderStockRequirementsService,
   SaleOrderWorkflowActionRunnerService,
+  SaleOrderWarehouseAssignmentService,
   SaleOrderStockConsumptionService,
   SaleOrderImportClientResolverService,
   SaleOrderImportRowNormalizerService,

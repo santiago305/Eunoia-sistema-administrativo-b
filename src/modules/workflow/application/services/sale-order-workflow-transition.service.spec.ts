@@ -74,7 +74,18 @@ describe("SaleOrderWorkflowTransitionService", () => {
     const historyRepo = { append: jest.fn() };
     const clock = { now: jest.fn(() => new Date("2026-06-08T10:00:00.000Z")) };
     const contextService = { build: jest.fn().mockResolvedValue({ saleOrder: order }) };
-    const actionRunner = { run: jest.fn() };
+    const actionRunner = {
+      run: jest.fn().mockResolvedValue({
+        order,
+        outcomes: [
+          {
+            actionType: ACTIONS.ASSIGN_WAREHOUSE_BY_PROVINCE,
+            status: "SKIPPED",
+            message: "Ya hay un almacén seleccionado",
+          },
+        ],
+      }),
+    };
     const service = new SaleOrderWorkflowTransitionService(
       saleOrderRepo as any,
       workflowRepo as any,
@@ -103,9 +114,28 @@ describe("SaleOrderWorkflowTransitionService", () => {
         fromStateId: "state-created",
         toStateId: "state-created",
         executedBy: "user-1",
+        metadata: {
+          actionOutcomes: [
+            {
+              actionType: ACTIONS.ASSIGN_WAREHOUSE_BY_PROVINCE,
+              status: "SKIPPED",
+              message: "Ya hay un almacén seleccionado",
+            },
+          ],
+        },
       }),
       tx,
     );
-    expect(result).toBe(order);
+    expect(result).toEqual({
+      order,
+      warnings: ["Ya hay un almacén seleccionado"],
+      actionOutcomes: [
+        {
+          actionType: ACTIONS.ASSIGN_WAREHOUSE_BY_PROVINCE,
+          status: "SKIPPED",
+          message: "Ya hay un almacén seleccionado",
+        },
+      ],
+    });
   });
 });

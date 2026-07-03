@@ -12,6 +12,7 @@ import {
   parseNumber,
 } from "src/modules/excel/application/orders-import/normalization";
 import { parseProductCodes } from "src/modules/excel/application/orders-import/product-codes";
+import { extractAdvertisingCode } from "src/modules/sale-orders/application/support/extract-advertising-code";
 
 export type NormalizedSaleOrderImportPreviewRow = {
   rowNumber: number;
@@ -33,6 +34,7 @@ export type NormalizedSaleOrderImportPreviewRow = {
   advance: number;
   codAmount: number;
   internalNote: string | null;
+  advertisingCode: string | null;
   confirmedBy: string | null;
   clientType: ClientType;
   parsedDocument: {
@@ -100,6 +102,7 @@ export class SaleOrderImportRowNormalizerService {
     const advance = this.toNumber(cleanRow.advance) || 0;
     const codAmount = this.toNumber(cleanRow.codAmount) || 0;
     const internalNote = this.toText(cleanRow.internalNote) || null;
+    const advertisingCode = extractAdvertisingCode(internalNote);
     const confirmedBy = this.toText(cleanRow.confirmedBy) || null;
     const productName = this.toText(cleanRow.productName) || null;
     const deliveryCost = this.toNumber(cleanRow.deliveryCost) || 0;
@@ -139,6 +142,7 @@ export class SaleOrderImportRowNormalizerService {
         advance,
         codAmount,
         internalNote,
+        advertisingCode,
         confirmedBy,
         clientType,
         parsedDocument,

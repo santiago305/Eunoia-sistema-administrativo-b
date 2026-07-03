@@ -184,6 +184,39 @@ describe("SaveFullWorkflowUseCase", () => {
     ).rejects.toThrow("La transicion de cancelacion debe ser global");
   });
 
+  it("rejects warehouse assignment after a stock action", async () => {
+    await expect(
+      createUseCase().execute({
+        name: "Pedidos",
+        states: [
+          { clientId: "created", code: "CREATED", name: "Creado", color: "#000", isInitial: true },
+          { clientId: "done", code: "DONE", name: "Final", color: "#0f0", isFinal: true },
+        ],
+        transitions: [
+          {
+            clientId: "schedule",
+            code: "SCHEDULE",
+            name: "Programar",
+            fromStateRef: "created",
+            toStateRef: "done",
+            actions: [
+              { type: ACTIONS.RESERVE_STOCK, position: 0 },
+              {
+                type: ACTIONS.ASSIGN_WAREHOUSE_BY_PROVINCE,
+                position: 1,
+                config: {
+                  mode: "INCLUDE",
+                  provinceIds: ["1501"],
+                  warehouseId: "22222222-2222-4222-8222-222222222222",
+                },
+              },
+            ],
+          },
+        ],
+      } as any),
+    ).rejects.toThrow("La asignacion de almacen debe ejecutarse antes de las acciones de stock");
+  });
+
   it("rejects more than one cancellation transition", async () => {
     await expect(
       createUseCase().execute({

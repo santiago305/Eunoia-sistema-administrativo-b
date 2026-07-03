@@ -10,7 +10,7 @@ import { WORKFLOW_STATE_REPOSITORY, WorkflowStateRepository } from "src/modules/
 import { SaleOrderNumberingService } from "../../services/sale-order-numbering.service";
 
 type CreateSaleOrderInput = {
-  warehouseId: string;
+  warehouseId?: string;
   clientId: string;
   workflowId: string;
   agencyDetail?: string;
