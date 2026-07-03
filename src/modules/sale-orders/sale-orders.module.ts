@@ -24,6 +24,7 @@ import { WorkflowEntity } from "../workflow/adapters/out/persistence/typeorm/ent
 import { WorkflowStateEntity } from "../workflow/adapters/out/persistence/typeorm/entities/workflow-state.entity";
 import { SaleOrderStatesEntity } from "../workflow/adapters/out/persistence/typeorm/entities/sale-order-states.entity";
 import { UsersModule } from "../users/infrastructure/users.module";
+import { WarehousesModule } from "../warehouses/warehouses.module";
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { UsersModule } from "../users/infrastructure/users.module";
     UbigeoModule,
     WorkflowModule,
     UsersModule,
+    WarehousesModule,
   ],
   controllers: [SaleOrdersController],
   providers: [...saleOrdersModuleProviders],

@@ -18,7 +18,11 @@ describe("CancelSaleOrderUsecase", () => {
     };
     const clientRepo = { update: jest.fn() };
     const transitionService = {
-      advance: jest.fn().mockResolvedValue({ id: "order-1", currentStateId: "cancelled" }),
+      advance: jest.fn().mockResolvedValue({
+        order: { id: "order-1", currentStateId: "cancelled" },
+        warnings: [],
+        actionOutcomes: [],
+      }),
     };
     const usecase = new CancelSaleOrderUsecase(
       { runInTransaction: (work: any) => work(tx) } as any,

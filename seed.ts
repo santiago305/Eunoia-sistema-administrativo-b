@@ -161,9 +161,9 @@ dataSource
     await seedProductCatalogEquivalences(dataSource);
     await seedProductCatalogRecipes(dataSource);
     await seedSaleOrderStates(dataSource);
+    const warehouses = await seedWarehouses(dataSource);
     await seedWorkflows(dataSource);
 
-    const warehouses = await seedWarehouses(dataSource);
     await seedProductCatalogInventory(dataSource);
     for (const wh of warehouses) {
       await seedDocumentSeries(dataSource, wh.id);

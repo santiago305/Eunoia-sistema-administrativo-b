@@ -41,7 +41,7 @@ export class ConfirmSaleOrderDeliveryUsecase {
         await this.clientRepo.update({ clientId: order.clientId, type: ClientType.LAGGING }, tx);
       }
 
-      return { saleOrderId: updated.id, currentStateId: updated.currentStateId };
+      return { saleOrderId: updated.order.id, currentStateId: updated.order.currentStateId };
     });
   }
 }

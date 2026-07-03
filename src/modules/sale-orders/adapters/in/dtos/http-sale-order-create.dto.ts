@@ -1,4 +1,4 @@
-import { Type } from "class-transformer";
+import { Transform, Type } from "class-transformer";
 import {
   ArrayMinSize,
   IsArray,
@@ -110,8 +110,10 @@ export class HttpSalePaymentDto {
 }
 
 export class HttpSaleOrderCreateDto {
+  @IsOptional()
+  @Transform(({ value }) => (value === "" || value === null ? undefined : value))
   @IsUUID()
-  warehouseId: string;
+  warehouseId?: string;
 
   @IsUUID()
   clientId: string;

@@ -133,6 +133,14 @@ describe("WorkflowsController", () => {
       { type: "CONSUME_STOCK", configSchema: {} },
       { type: "REVERT_STOCK", configSchema: {} },
       { type: "MARK_INVOICE_SENT", configSchema: {} },
+      {
+        type: "ASSIGN_WAREHOUSE_BY_PROVINCE",
+        configSchema: {
+          mode: { type: "select", required: true, options: ["INCLUDE", "EXCLUDE"] },
+          provinceIds: { type: "province-multiselect", required: true },
+          warehouseId: { type: "warehouse-select", required: true },
+        },
+      },
     ]);
   });
 

@@ -192,7 +192,7 @@ export class SaleOrdersController {
     @Body() body: ChangeSaleOrderStateDto,
     @CurrentUser() user: { id: string },
   ) {
-    const order = await this.advanceSaleOrderState.execute({
+    const result = await this.advanceSaleOrderState.execute({
       saleOrderId,
       transitionId: body.transitionId,
       metadata: body.metadata,
@@ -207,7 +207,8 @@ export class SaleOrdersController {
     return {
       type: "success",
       message: "Estado del pedido actualizado correctamente mediante workflow.",
-      data: order,
+      data: result.order,
+      warnings: result.warnings,
     };
   }
 

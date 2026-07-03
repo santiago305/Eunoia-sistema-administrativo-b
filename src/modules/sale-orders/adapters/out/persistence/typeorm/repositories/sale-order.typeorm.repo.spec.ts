@@ -16,6 +16,42 @@ const createStatsQueryBuilder = (rawMany: unknown[] = [], rawOne: unknown = {}) 
 });
 
 describe("SaleOrderTypeormRepository", () => {
+  it("assigns a warehouse only while the current value is null", async () => {
+    const queryBuilder = {
+      update: jest.fn().mockReturnThis(),
+      set: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      execute: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
+    const entityRepo = {
+      createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
+      findOne: jest.fn().mockResolvedValue({
+        id: "order-1",
+        clientId: "client-1",
+        warehouseId: "warehouse-1",
+        createdBy: "user-1",
+        total: 0,
+        subTotal: 0,
+        deliveryCost: 0,
+        invoiceSend: false,
+        isActive: true,
+        createdAt: new Date(),
+      }),
+    };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue(entityRepo) },
+    } as any);
+
+    const result = await repository.assignWarehouseIfEmpty({
+      saleOrderId: "order-1",
+      warehouseId: "warehouse-1",
+    });
+
+    expect(queryBuilder.andWhere).toHaveBeenCalledWith("warehouse_id IS NULL");
+    expect(result?.warehouseId).toBe("warehouse-1");
+  });
+
   it("marks invoiceSend true idempotently", async () => {
     const update = jest.fn().mockResolvedValue({ affected: 1 });
     const entityRepo = { update };

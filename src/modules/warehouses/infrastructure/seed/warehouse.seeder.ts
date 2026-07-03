@@ -7,8 +7,15 @@ type SeededWarehouse = {
   name: string;
 };
 
-const DEFAULT_WAREHOUSES = [
+export const DEFAULT_WAREHOUSE_IDS = {
+  central: "59179bc9-ff50-4816-bf16-801487c90e33",
+  north: "48d49c65-dfb8-4abf-8a77-e44bb5f313af",
+  south: "59190bfe-5738-4860-92c9-2b1c1394e6bc",
+} as const;
+
+export const DEFAULT_WAREHOUSES = [
   {
+    id: DEFAULT_WAREHOUSE_IDS.central,
     name: "Almacen Central",
     department: "Lima",
     province: "Lima",
@@ -16,6 +23,7 @@ const DEFAULT_WAREHOUSES = [
     address: "Av. Principal 123",
   },
   {
+    id: DEFAULT_WAREHOUSE_IDS.north,
     name: "Almacen Norte",
     department: "Lima",
     province: "Lima",
@@ -23,6 +31,7 @@ const DEFAULT_WAREHOUSES = [
     address: "Jr. Los Olivos 456",
   },
   {
+    id: DEFAULT_WAREHOUSE_IDS.south,
     name: "Almacen Sur",
     department: "Lima",
     province: "Lima",
@@ -43,7 +52,7 @@ export const seedWarehouses = async (dataSource: DataSource): Promise<SeededWare
   const seeded: SeededWarehouse[] = [];
 
   for (const wh of DEFAULT_WAREHOUSES) {
-    let entity = await warehouseRepo.findOne({ where: { name: wh.name } });
+    let entity = await warehouseRepo.findOne({ where: { id: wh.id } });
     if (!entity) {
       entity = await warehouseRepo.save(warehouseRepo.create({ ...wh, isActive: true }));
       console.log(`Almacen creado: ${entity.name}`);

@@ -41,7 +41,7 @@ export class CancelSaleOrderUsecase {
             : ClientType.REPURCHASE;
       await this.clientRepo.update({ clientId: order.clientId, type }, tx);
 
-      return { saleOrderId: order.id, currentStateId: updated.currentStateId };
+      return { saleOrderId: order.id, currentStateId: updated.order.currentStateId };
     });
   }
 }

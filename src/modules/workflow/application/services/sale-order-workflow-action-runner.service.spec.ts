@@ -32,6 +32,15 @@ describe("SaleOrderWorkflowActionRunnerService", () => {
       }),
     };
     const consumption = { consume: jest.fn().mockResolvedValue(undefined) };
+    const warehouseAssignment = {
+      assign: jest.fn().mockImplementation(async (_order, _config) => ({
+        order: { ..._order, warehouseId: _config.warehouseId },
+        outcome: {
+          actionType: "ASSIGN_WAREHOUSE_BY_PROVINCE",
+          status: "APPLIED",
+        },
+      })),
+    };
     return {
       runner: new SaleOrderWorkflowActionRunnerService(
         requirements as any,
@@ -41,6 +50,7 @@ describe("SaleOrderWorkflowActionRunnerService", () => {
         history as any,
         transitions as any,
         consumption as any,
+        warehouseAssignment as any,
       ),
       requirements,
       inventory,
@@ -49,6 +59,7 @@ describe("SaleOrderWorkflowActionRunnerService", () => {
       history,
       transitions,
       consumption,
+      warehouseAssignment,
     };
   }
 
@@ -72,6 +83,59 @@ describe("SaleOrderWorkflowActionRunnerService", () => {
     } else {
       expect(inventory.incrementOnHand).not.toHaveBeenCalled();
     }
+  });
+
+  it("uses an assigned warehouse for a later stock action", async () => {
+    const { runner, inventory, warehouseAssignment } = setup();
+    const orderWithoutWarehouse = { id: "order-1", warehouseId: null } as any;
+
+    const result = await runner.run(
+      orderWithoutWarehouse,
+      [
+        {
+          id: "a1",
+          transitionId: "t1",
+          type: "ASSIGN_WAREHOUSE_BY_PROVINCE",
+          config: {
+            mode: "INCLUDE",
+            provinceIds: ["1501"],
+            warehouseId: "22222222-2222-4222-8222-222222222222",
+          },
+          position: 0,
+        } as any,
+        { id: "a2", transitionId: "t1", type: "RESERVE_STOCK", config: {}, position: 1 } as any,
+      ],
+      tx,
+    );
+
+    expect(warehouseAssignment.assign).toHaveBeenCalled();
+    expect(inventory.incrementReserved).toHaveBeenCalledWith(
+      { warehouseId: "22222222-2222-4222-8222-222222222222", stockItemId: "stock-1", locationId: null, delta: 3 },
+      tx,
+    );
+    expect(result.order.warehouseId).toBe("22222222-2222-4222-8222-222222222222");
+    expect(result.outcomes).toEqual([
+      { actionType: "ASSIGN_WAREHOUSE_BY_PROVINCE", status: "APPLIED" },
+    ]);
+  });
+
+  it("rejects invalid persisted warehouse assignment config at runtime", async () => {
+    const { runner, warehouseAssignment } = setup();
+
+    await expect(
+      runner.run(
+        { id: "order-1", warehouseId: null } as any,
+        [{
+          id: "a1",
+          transitionId: "t1",
+          type: "ASSIGN_WAREHOUSE_BY_PROVINCE",
+          config: { mode: "INCLUDE", provinceIds: [], warehouseId: "invalid" },
+          position: 0,
+        } as any],
+        tx,
+      ),
+    ).rejects.toThrow("Configuracion de asignacion de almacen invalida");
+    expect(warehouseAssignment.assign).not.toHaveBeenCalled();
   });
 
   it("marks the invoice as sent without requiring a warehouse", async () => {

@@ -71,6 +71,7 @@ describe("SaleOrderImportRowNormalizerService", () => {
           productCodes: "AMPOLLA - ROJO - EVA001",
           total: 120,
           quantity: 2,
+          internalNote: "FB RECOMPRA 120243801710520154",
         } as any,
         2,
       );
@@ -80,6 +81,7 @@ describe("SaleOrderImportRowNormalizerService", () => {
         expect(result.row.ubigeo?.districtId).toBe("dist-1");
         expect(result.row.clientResolution.clientId).toBe("client-1");
         expect(result.row.parsedSkus.length).toBeGreaterThan(0);
+        expect(result.row.advertisingCode).toBe("120243801710520154");
       }
     } finally {
       await moduleRef.close();

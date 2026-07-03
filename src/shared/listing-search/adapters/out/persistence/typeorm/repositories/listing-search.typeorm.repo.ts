@@ -32,29 +32,19 @@ export class ListingSearchTypeormRepository implements ListingSearchStorageRepos
   }): Promise<void> {
     const snapshotHash = this.createSnapshotHash(params.snapshot);
     const now = new Date();
-    const existing = await this.recentRepo.findOne({
-      where: {
+    await this.recentRepo.upsert(
+      {
         userId: params.userId,
         tableKey: params.tableKey,
         snapshotHash,
+        snapshot: params.snapshot,
+        lastUsedAt: now,
       },
-    });
-
-    if (existing) {
-      existing.snapshot = params.snapshot;
-      existing.lastUsedAt = now;
-      await this.recentRepo.save(existing);
-    } else {
-      await this.recentRepo.save(
-        this.recentRepo.create({
-          userId: params.userId,
-          tableKey: params.tableKey,
-          snapshotHash,
-          snapshot: params.snapshot,
-          lastUsedAt: now,
-        }),
-      );
-    }
+      {
+        conflictPaths: ["userId", "tableKey", "snapshotHash"],
+        skipUpdateIfNoValuesChanged: true,
+      },
+    );
 
     const staleRows = await this.recentRepo
       .createQueryBuilder("recent")

@@ -115,6 +115,14 @@ export class WorkflowsController {
       { type: ACTIONS.CONSUME_STOCK, configSchema: {} },
       { type: ACTIONS.REVERT_STOCK, configSchema: {} },
       { type: ACTIONS.MARK_INVOICE_SENT, configSchema: {} },
+      {
+        type: ACTIONS.ASSIGN_WAREHOUSE_BY_PROVINCE,
+        configSchema: {
+          mode: { type: "select", required: true, options: ["INCLUDE", "EXCLUDE"] },
+          provinceIds: { type: "province-multiselect", required: true },
+          warehouseId: { type: "warehouse-select", required: true },
+        },
+      },
     ];
   }
 
