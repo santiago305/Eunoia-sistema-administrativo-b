@@ -13,7 +13,7 @@ export const seedUser = async (dataSource: DataSource) => {
   const avatarUrl = '';
 
   const configuredPassword = String(envs.masterAdminInitialPassword ?? '').trim();
-  const fallbackDevPassword = DevMaster_ChangeMe123!';
+  const fallbackDevPassword = 'DevMaster_ChangeMe123!';
   const resolvedPassword = configuredPassword || fallbackDevPassword;
 
   if (envs.nodeEnv === 'production' && !configuredPassword) {
