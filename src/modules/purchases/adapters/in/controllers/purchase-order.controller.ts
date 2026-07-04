@@ -20,6 +20,7 @@ import { CancelPurchaseOrderUsecase } from "src/modules/purchases/application/us
 import { User as CurrentUser } from "src/shared/utilidades/decorators/user.decorator";
 import { PurchaseOrderHttpMapper } from "src/modules/purchases/application/mappers/purchase-order-http.mapper";
 import { PurchaseOrderOutputMapper } from "src/modules/purchases/application/mappers/purchase-order-output.mapper";
+import { PaymentOutputMapper } from "src/modules/payments/application/mappers/payment-output.mapper";
 import { GetPurchaseOrderSearchStateUsecase } from "src/modules/purchases/application/usecases/purchase-search/get-state.usecase";
 import { SavePurchaseOrderSearchMetricUsecase } from "src/modules/purchases/application/usecases/purchase-search/save-metric.usecase";
 import { DeletePurchaseOrderSearchMetricUsecase } from "src/modules/purchases/application/usecases/purchase-search/delete-metric.usecase";
@@ -302,12 +303,16 @@ export class PurchaseOrdersController {
       }
 
         await this.notifyPurchaseRealtimeUpdate(result.order.poId, user.id);
+        const orderOutput = PurchaseOrderOutputMapper.toOrderOutput(result.order);
         return {
           type: "success",
           message: requiresApprovalForCreationWithPayment
             ? "Compra enviada. En espera de confirmación."
             : "Compra creada.",
-          order: PurchaseOrderOutputMapper.toOrderOutput(result.order),
+          order: {
+            ...orderOutput,
+            payments: result.createdPayments.map((payment) => PaymentOutputMapper.toOutput(payment)),
+          },
         };
     } catch (error: any) {
       const payload = error?.response ?? error;

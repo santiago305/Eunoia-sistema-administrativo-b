@@ -13,6 +13,7 @@ import { PurchaseOrderFactory } from "src/modules/purchases/domain/factories/pur
 import { PurchaseOrderItemFactory } from "src/modules/purchases/domain/factories/purchase-order-item.factory";
 import { DomainError } from "src/modules/purchases/domain/errors/domain.error";
 import { PaymentsFactory } from "src/modules/payments/domain/factories/payments.factory";
+import { PaymentDocument } from "src/modules/payments/domain/entity/payment-document";
 import { CreditQuotaNotFoundError } from "src/modules/payments/application/errors/credit-quota-not-found.error";
 import { CreateProductCatalogStockItem } from "src/modules/product-catalog/application/usecases/create-stock-item.usecase";
 import { PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY, ProductCatalogStockItemRepository } from "src/modules/product-catalog/domain/ports/stock-item.repository";
@@ -51,7 +52,12 @@ export class CreatePurchaseOrderUsecase {
     options?: {
       allowDirectPaymentCreation?: boolean;
     },
-  ): Promise<{ order: PurchaseOrder; pendingPaymentsCreated: number; directPaymentsCreated: number }> {
+  ): Promise<{
+    order: PurchaseOrder;
+    pendingPaymentsCreated: number;
+    directPaymentsCreated: number;
+    createdPayments: PaymentDocument[];
+  }> {
     const result = await this.uow.runInTransaction(async (tx) => {
       const currency = input.currency ?? "PEN";
 
@@ -199,6 +205,7 @@ export class CreatePurchaseOrderUsecase {
 
       let pendingPaymentsCreated = 0;
       let directPaymentsCreated = 0;
+      const createdPayments: PaymentDocument[] = [];
       if (po.paymentForm === PaymentFormType.CONTADO && input.payments && input.payments.length > 0) {
         const allowDirectPaymentCreation = options?.allowDirectPaymentCreation ?? false;
         let paymentsCreated = 0;
@@ -244,7 +251,8 @@ export class CreatePurchaseOrderUsecase {
           });
 
           try {
-            await this.paymentDocRepo.create(document, tx);
+            const createdPayment = await this.paymentDocRepo.create(document, tx);
+            if (createdPayment) createdPayments.push(createdPayment);
             paymentsCreated += 1;
             if (allowDirectPaymentCreation) directPaymentsCreated += 1;
             else pendingPaymentsCreated += 1;
@@ -383,7 +391,7 @@ export class CreatePurchaseOrderUsecase {
         }
       }
 
-      return { order: po, pendingPaymentsCreated, directPaymentsCreated };
+      return { order: po, pendingPaymentsCreated, directPaymentsCreated, createdPayments };
     });
 
     const purchaseCode = [result.order.serie, result.order.correlative].filter(Boolean).join("-") || result.order.poId.slice(0, 8);

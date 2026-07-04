@@ -132,4 +132,58 @@ describe("CreatePurchaseOrderUsecase", () => {
       expect.anything(),
     );
   });
+
+  it("devuelve los pagos creados para asociar comprobantes despues de crear la compra", async () => {
+    paymentDocRepo.create.mockResolvedValueOnce({
+      payDocId: "payment-1",
+      method: "BCP",
+      date: new Date("2026-07-03T00:00:00.000Z"),
+      operationNumber: "OP-1",
+      currency: CurrencyType.PEN,
+      amount: 100,
+      fromDocumentType: "PURCHASE",
+      poId: "po-1",
+      status: "PENDING_APPROVAL",
+      isPartial: false,
+    });
+
+    const input = {
+      supplierId: "11111111-1111-4111-8111-111111111111",
+      warehouseId: "22222222-2222-4222-8222-222222222222",
+      documentType: VoucherDocType.FACTURA,
+      serie: "F001",
+      correlative: 15,
+      currency: CurrencyType.PEN,
+      paymentForm: PaymentFormType.CONTADO,
+      totalTaxed: 100,
+      totalExempted: 0,
+      totalIgv: 18,
+      purchaseValue: 82,
+      total: 100,
+      status: PurchaseOrderStatus.DRAFT,
+      items: [],
+      payments: [
+        {
+          method: "BCP",
+          date: "2026-07-03",
+          operationNumber: "OP-1",
+          currency: CurrencyType.PEN,
+          amount: 100,
+        },
+      ],
+      quotas: [],
+    };
+
+    const result = await usecase.execute(input as any, "user-1", {
+      allowDirectPaymentCreation: false,
+    });
+
+    expect(result.createdPayments).toEqual([
+      expect.objectContaining({
+        payDocId: "payment-1",
+        method: "BCP",
+        status: "PENDING_APPROVAL",
+      }),
+    ]);
+  });
 });
