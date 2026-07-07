@@ -22,6 +22,7 @@ import { NotificationsService } from "src/modules/mail/application/use-cases/not
 import { PURCHASE_NOTIFICATION_TYPES } from "src/modules/mail/domain/constants/purchase-notification-types";
 import { CreateAccountPayableUsecase } from "src/modules/accounts-payable";
 import { PurchaseItemType } from "src/modules/purchases/domain/value-objects/purchase-item-type";
+import { PurchaseHistoryService } from "../../services/purchase-history.service";
 
 export class CreatePurchaseOrderUsecase {
   constructor(
@@ -44,6 +45,8 @@ export class CreatePurchaseOrderUsecase {
     private readonly notificationsService: NotificationsService,
     @Optional()
     private readonly createAccountPayable?: CreateAccountPayableUsecase,
+    @Optional()
+    private readonly history?: PurchaseHistoryService,
   ) {}
 
   async execute(
@@ -205,6 +208,8 @@ export class CreatePurchaseOrderUsecase {
 
       let pendingPaymentsCreated = 0;
       let directPaymentsCreated = 0;
+      let quotasCreated = 0;
+      let paidQuotas = 0;
       const createdPayments: PaymentDocument[] = [];
       if (po.paymentForm === PaymentFormType.CONTADO && input.payments && input.payments.length > 0) {
         const allowDirectPaymentCreation = options?.allowDirectPaymentCreation ?? false;
@@ -256,6 +261,25 @@ export class CreatePurchaseOrderUsecase {
             paymentsCreated += 1;
             if (allowDirectPaymentCreation) directPaymentsCreated += 1;
             else pendingPaymentsCreated += 1;
+            await this.history?.recordPayment({
+              purchaseId: po.poId,
+              eventType: allowDirectPaymentCreation ? "PAYMENT_REGISTERED" : "PAYMENT_REQUESTED",
+              description: allowDirectPaymentCreation
+                ? "Se registró un pago de la compra."
+                : "Se solicitó registrar un pago pendiente de aprobación.",
+              performedByUserId: createdBy,
+              targetUserId: allowDirectPaymentCreation ? null : createdBy,
+              metadata: {
+                paymentId: createdPayment?.payDocId ?? null,
+                amount: payment.amount,
+                currency: payment.currency,
+                method: payment.method,
+                operationNumber: payment.operationNumber ?? null,
+                quotaId: payment.quotaId ?? null,
+                status: allowDirectPaymentCreation ? "APPROVED" : "PENDING_APPROVAL",
+              },
+              tx,
+            });
           } catch {
             throw new BadRequestException("No se pudo crear el documento de pago");
           }
@@ -292,8 +316,6 @@ export class CreatePurchaseOrderUsecase {
           throw new BadRequestException("Debe registrar al menos una cuota");
         }
 
-        let quotasCreated = 0;
-        let paidQuotas = 0;
         for (const quotaInput of input.quotas) {
           if (quotaInput.totalPaid !== undefined && quotaInput.totalPaid > quotaInput.totalToPay) {
             throw new BadRequestException("El total pagado no puede ser mayor al total a pagar");
@@ -341,6 +363,20 @@ export class CreatePurchaseOrderUsecase {
             if ((quotaInput.totalPaid ?? 0) > 0) {
               paidQuotas += 1;
             }
+            await this.history?.record({
+              purchaseId: po.poId,
+              eventType: "PURCHASE_QUOTA_CREATED",
+              description: "Se registró una cuota de crédito de la compra.",
+              performedByUserId: createdBy,
+              metadata: {
+                quotaId: createdQuota.quotaId,
+                number: quotaInput.number,
+                totalToPay: quotaInput.totalToPay,
+                totalPaid: quotaInput.totalPaid ?? 0,
+                expirationDate,
+                paymentDate: paymentDate ?? null,
+              },
+            }, tx);
           } catch {
             throw new BadRequestException("No se pudo crear la cuota");
           }
@@ -391,6 +427,29 @@ export class CreatePurchaseOrderUsecase {
         }
       }
 
+      await this.history?.recordCreated({
+        purchaseId: po.poId,
+        performedByUserId: createdBy,
+        snapshot: this.purchaseSnapshot(po),
+        metadata: {
+          itemsCount: input.items?.length ?? 0,
+          paymentsRequested: pendingPaymentsCreated,
+          directPaymentsCreated,
+          quotasCreated,
+          paidQuotas,
+          items: (input.items ?? []).map((item) => ({
+            skuId: item.skuId ?? null,
+            stockItemId: item.stockItemId ?? null,
+            itemType: item.itemType ?? PurchaseItemType.PRODUCT,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            purchaseValue: item.purchaseValue,
+            affectsStock: item.affectsStock ?? null,
+          })),
+        },
+        tx,
+      });
+
       return { order: po, pendingPaymentsCreated, directPaymentsCreated, createdPayments };
     });
 
@@ -420,6 +479,37 @@ export class CreatePurchaseOrderUsecase {
     });
 
     return result;
+  }
+
+  private purchaseSnapshot(order: PurchaseOrder): Record<string, unknown> {
+    return {
+      poId: order.poId,
+      supplierId: order.supplierId,
+      warehouseId: order.warehouseId ?? null,
+      documentType: order.documentType ?? null,
+      serie: order.serie ?? null,
+      correlative: order.correlative ?? null,
+      currency: order.currency ?? null,
+      paymentForm: order.paymentForm ?? null,
+      status: order.status,
+      purchaseType: order.purchaseType,
+      receptionStatus: order.receptionStatus,
+      paymentStatus: order.paymentStatus,
+      totalTaxed: this.moneyAmount(order.totalTaxed),
+      totalExempted: this.moneyAmount(order.totalExempted),
+      totalIgv: this.moneyAmount(order.totalIgv),
+      purchaseValue: this.moneyAmount(order.purchaseValue),
+      total: this.moneyAmount(order.total),
+      note: order.note ?? null,
+      expectedAt: order.expectedAt ?? null,
+      dateIssue: order.dateIssue ?? null,
+      dateExpiration: order.dateExpiration ?? null,
+      createdBy: order.createdBy ?? null,
+    };
+  }
+
+  private moneyAmount(value: { getAmount?: () => number } | undefined): number | null {
+    return typeof value?.getAmount === "function" ? value.getAmount() : null;
   }
 }
 

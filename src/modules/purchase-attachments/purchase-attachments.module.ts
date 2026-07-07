@@ -13,6 +13,7 @@ import { DeletePurchaseAttachmentUsecase } from "./application/usecases/delete-p
 import { ListPurchaseAttachmentsUsecase } from "./application/usecases/list-purchase-attachments.usecase";
 import { UploadPurchaseAttachmentUsecase } from "./application/usecases/upload-purchase-attachment.usecase";
 import { PURCHASE_ATTACHMENT_REPOSITORY } from "./domain/ports/purchase-attachment.repository";
+import { PurchaseHistoryService } from "src/modules/purchases/application/services/purchase-history.service";
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { PURCHASE_ATTACHMENT_REPOSITORY } from "./domain/ports/purchase-attachme
     UploadPurchaseAttachmentUsecase,
     ListPurchaseAttachmentsUsecase,
     DeletePurchaseAttachmentUsecase,
+    PurchaseHistoryService,
     { provide: PURCHASE_ATTACHMENT_REPOSITORY, useClass: PurchaseAttachmentTypeormRepository },
     { provide: FILE_STORAGE, useClass: LocalFileStorageService },
   ],

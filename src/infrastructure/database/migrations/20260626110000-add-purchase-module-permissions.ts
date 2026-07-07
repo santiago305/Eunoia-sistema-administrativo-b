@@ -20,6 +20,7 @@ export class AddPurchaseModulePermissions20260626110000 implements MigrationInte
         ('purchases.view_costs', 'Ver costos de compras', 'Ver costos, importes y totales de compras', 'purchases', 'purchases', 'view_costs', 'action', true),
         ('purchases.attach_documents', 'Adjuntar documentos de compras', 'Adjuntar documentos y evidencias a compras', 'purchases', 'purchase_documents', 'attach_documents', 'action', true),
         ('purchases.delete_documents', 'Eliminar documentos de compras', 'Eliminar documentos y evidencias de compras', 'purchases', 'purchase_documents', 'delete_documents', 'action', true),
+        ('purchases.view_history', 'Ver historial de compras', 'Ver historial y auditoria de compras', 'purchases', 'purchases', 'view_history', 'action', true),
         ('payments.create', 'Crear pagos', 'Registrar pagos manuales o asociados a compras', 'payments', 'payments', 'create', 'action', true),
         ('payments.schedule', 'Programar pagos', 'Programar pagos futuros y vencimientos', 'payments', 'payments', 'schedule', 'action', true),
         ('payments.approve', 'Aprobar pagos', 'Aprobar pagos pendientes o programados', 'payments', 'payments', 'approve', 'action', true),

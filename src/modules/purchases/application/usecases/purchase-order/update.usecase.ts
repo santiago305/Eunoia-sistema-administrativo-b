@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, NotFoundException, Optional } from "@nestjs/common";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
 import { UpdatePurchaseOrderInput } from "../../dtos/purchase-order/input/update.input";
@@ -31,6 +31,8 @@ import { CreateProductCatalogStockItem } from "src/modules/product-catalog/appli
 import { errorResponse } from "src/shared/response-standard/response";
 import { PurchaseUnitConversionService } from "../../services/purchase-unit-conversion.service";
 import { PurchaseItemType } from "src/modules/purchases/domain/value-objects/purchase-item-type";
+import { PurchaseOrder } from "src/modules/purchases/domain/entities/purchase-order";
+import { PurchaseHistoryService } from "../../services/purchase-history.service";
 
 export class UpdatePurchaseOrderUsecase {
   constructor(
@@ -51,6 +53,8 @@ export class UpdatePurchaseOrderUsecase {
     private readonly stockItemRepo: ProductCatalogStockItemRepository,
     private readonly createStockItem: CreateProductCatalogStockItem,
     private readonly purchaseUnitConversionService: PurchaseUnitConversionService,
+    @Optional()
+    private readonly history?: PurchaseHistoryService,
   ) {}
 
   async execute(input: UpdatePurchaseOrderInput): Promise<{ message: string }> {
@@ -95,6 +99,7 @@ export class UpdatePurchaseOrderUsecase {
       if (!current) {
         throw new NotFoundException(new PurchaseOrderNotFoundApplicationError().message);
       }
+      const oldSnapshot = this.purchaseSnapshot(current);
 
       const currency = input.currency ?? current.currency ?? CurrencyType.PEN;
       let totalTaxed: Money | undefined;
@@ -263,7 +268,7 @@ export class UpdatePurchaseOrderUsecase {
         const existingPayments = await this.paymentDocRepo.findByPoId(updated.poId, tx);
         for (const payment of existingPayments) {
           try {
-            await this.deletePayment.execute(payment.payDocId, tx);
+            await this.deletePayment.execute(payment.payDocId, tx, input.performedByUserId);
           } catch {
             throw new BadRequestException("No se pudo eliminar pagos de la orden de compra");
           }
@@ -276,6 +281,21 @@ export class UpdatePurchaseOrderUsecase {
         for (const quota of quotasToDelete) {
           try {
             await this.creditQuotaRepo.deleteById(quota.quotaId, tx);
+            await this.history?.record({
+              purchaseId: updated.poId,
+              eventType: "PURCHASE_QUOTA_DELETED",
+              description: "Se eliminó una cuota de crédito de la compra durante la edición.",
+              performedByUserId: input.performedByUserId ?? null,
+              oldValues: {
+                quotaId: quota.quotaId,
+                number: quota.number,
+                totalToPay: quota.totalToPay,
+                totalPaid: quota.totalPaid,
+                expirationDate: quota.expirationDate,
+                paymentDate: quota.paymentDate ?? null,
+              },
+              metadata: { reason: "purchase_update_replaced_quotas" },
+            }, tx);
           } catch {
             throw new BadRequestException("No se pudo eliminar cuotas de la orden de compra");
           }
@@ -321,7 +341,22 @@ export class UpdatePurchaseOrderUsecase {
           });
 
           try {
-            await this.paymentDocRepo.create(document, tx);
+            const createdPayment = await this.paymentDocRepo.create(document, tx);
+            await this.history?.recordPayment({
+              purchaseId: updated.poId,
+              eventType: "PAYMENT_REGISTERED",
+              description: "Se registró un pago de la compra durante la edición.",
+              performedByUserId: input.performedByUserId ?? null,
+              metadata: {
+                paymentId: createdPayment?.payDocId ?? null,
+                amount: payment.amount,
+                currency: payment.currency,
+                method: payment.method,
+                operationNumber: payment.operationNumber ?? null,
+                quotaId: payment.quotaId ?? null,
+              },
+              tx,
+            });
           } catch {
             throw new BadRequestException("No se pudo crear el documento de pago");
           }
@@ -360,11 +395,50 @@ export class UpdatePurchaseOrderUsecase {
           });
 
           try {
-            await this.creditQuotaRepo.create(quota, tx);
+            const createdQuota = await this.creditQuotaRepo.create(quota, tx);
+            await this.history?.record({
+              purchaseId: updated.poId,
+              eventType: "PURCHASE_QUOTA_CREATED",
+              description: "Se registró una cuota de crédito de la compra durante la edición.",
+              performedByUserId: input.performedByUserId ?? null,
+              metadata: {
+                quotaId: createdQuota.quotaId,
+                number: quotaInput.number,
+                totalToPay: quotaInput.totalToPay,
+                totalPaid: quotaInput.totalPaid ?? 0,
+                expirationDate,
+                paymentDate: paymentDate ?? null,
+              },
+            }, tx);
           } catch {
             throw new BadRequestException("No se pudo crear la cuota");
           }
         }
+      }
+
+      const newSnapshot = this.purchaseSnapshot(updated);
+      const diff = this.diffSnapshots(oldSnapshot, newSnapshot);
+      const hasStructuralChanges =
+        input.items !== undefined ||
+        input.payments !== undefined ||
+        input.quotas !== undefined ||
+        Object.keys(diff.oldValues).length > 0;
+      if (hasStructuralChanges) {
+        await this.history?.recordUpdated({
+          purchaseId: updated.poId,
+          performedByUserId: input.performedByUserId ?? null,
+          oldValues: diff.oldValues,
+          newValues: diff.newValues,
+          metadata: {
+            itemsReplaced: input.items !== undefined,
+            paymentsReplaced: input.payments !== undefined,
+            quotasReplaced: input.quotas !== undefined,
+            itemsCount: input.items?.length ?? null,
+            paymentsCount: input.payments?.length ?? null,
+            quotasCount: input.quotas?.length ?? null,
+          },
+          tx,
+        });
       }
 
       return {type:"success", message: "Compra actualizada." };
@@ -392,6 +466,55 @@ export class UpdatePurchaseOrderUsecase {
       if (payTime !== matchPay) return true;
     }
     return false;
+  }
+
+  private purchaseSnapshot(order: PurchaseOrder): Record<string, unknown> {
+    return {
+      supplierId: order.supplierId,
+      warehouseId: order.warehouseId ?? null,
+      documentType: order.documentType ?? null,
+      serie: order.serie ?? null,
+      correlative: order.correlative ?? null,
+      currency: order.currency ?? null,
+      paymentForm: order.paymentForm ?? null,
+      creditDays: order.creditDays,
+      numQuotas: order.numQuotas,
+      totalTaxed: order.totalTaxed.getAmount(),
+      totalExempted: order.totalExempted.getAmount(),
+      totalIgv: order.totalIgv.getAmount(),
+      purchaseValue: order.purchaseValue.getAmount(),
+      total: order.total.getAmount(),
+      note: order.note ?? null,
+      status: order.status,
+      purchaseType: order.purchaseType,
+      receptionStatus: order.receptionStatus,
+      paymentStatus: order.paymentStatus,
+      isRecurringSource: order.isRecurringSource,
+      recurringTemplateId: order.recurringTemplateId ?? null,
+      requiresReceipt: order.requiresReceipt,
+      requiresStockEntry: order.requiresStockEntry,
+      requiresAssetCreation: order.requiresAssetCreation,
+      expectedAt: order.expectedAt ?? null,
+      dateIssue: order.dateIssue ?? null,
+      dateExpiration: order.dateExpiration ?? null,
+    };
+  }
+
+  private diffSnapshots(oldSnapshot: Record<string, unknown>, newSnapshot: Record<string, unknown>) {
+    const oldValues: Record<string, unknown> = {};
+    const newValues: Record<string, unknown> = {};
+    for (const key of new Set([...Object.keys(oldSnapshot), ...Object.keys(newSnapshot)])) {
+      if (this.normalize(oldSnapshot[key]) !== this.normalize(newSnapshot[key])) {
+        oldValues[key] = oldSnapshot[key];
+        newValues[key] = newSnapshot[key];
+      }
+    }
+    return { oldValues, newValues };
+  }
+
+  private normalize(value: unknown) {
+    if (value instanceof Date) return value.toISOString();
+    return JSON.stringify(value ?? null);
   }
 }
 

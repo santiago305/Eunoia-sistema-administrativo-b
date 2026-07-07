@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, NotFoundException, Optional } from "@nestjs/common";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { PAYMENT_DOCUMENT_REPOSITORY, PaymentDocumentRepository } from "src/modules/payments/domain/ports/payment-document.repository";
 import { CREDIT_QUOTA_REPOSITORY, CreditQuotaRepository } from "src/modules/payments/domain/ports/credit-quota.repository";
@@ -7,6 +7,7 @@ import { CreatePaymentInput } from "../../dtos/payment/input/create.input";
 import { PaymentsFactory } from "src/modules/payments/domain/factories/payments.factory";
 import { CreditQuotaNotFoundError } from "../../errors/credit-quota-not-found.error";
 import { successResponse } from "src/shared/response-standard/response";
+import { PurchaseHistoryService } from "src/modules/purchases/application/services/purchase-history.service";
 
 export class CreatePaymentUsecase {
   constructor(
@@ -16,6 +17,8 @@ export class CreatePaymentUsecase {
     private readonly paymentDocRepo: PaymentDocumentRepository,
     @Inject(CREDIT_QUOTA_REPOSITORY)
     private readonly creditQuotaRepo: CreditQuotaRepository,
+    @Optional()
+    private readonly history?: PurchaseHistoryService,
   ) {}
 
   async execute(
@@ -101,6 +104,33 @@ export class CreatePaymentUsecase {
       try {
         const created = await this.paymentDocRepo.create(document, tx);
         createdPaymentId = created.payDocId;
+        const status = options?.status ?? "APPROVED";
+        if (status === "APPROVED" || status === "SCHEDULED") {
+          await this.history?.recordPayment({
+            purchaseId: paymentPoId,
+            eventType: status === "SCHEDULED" ? "PAYMENT_SCHEDULED" : "PAYMENT_REGISTERED",
+            description: status === "SCHEDULED"
+              ? "Se programó un pago de la compra."
+              : "Se registró un pago de la compra.",
+            performedByUserId: options?.scheduledByUserId ?? options?.approvedByUserId ?? options?.requestedByUserId ?? input.paidByUserId ?? null,
+            metadata: {
+              paymentId: created.payDocId,
+              amount: input.amount,
+              currency: input.currency,
+              method: input.method,
+              operationNumber: input.operationNumber ?? null,
+              quotaId: input.quotaId ?? null,
+              accountPayableId: input.accountPayableId ?? null,
+              companyPaymentAccountId: input.companyPaymentAccountId ?? null,
+              paymentMethodId: input.paymentMethodId ?? null,
+              scheduledAt: scheduledAt ?? null,
+              paidAt: paidAt ?? null,
+              status,
+              isPartial: input.isPartial ?? false,
+            },
+            tx,
+          });
+        }
       } catch {
         throw new BadRequestException("No se pudo crear el documento de pago");
       }

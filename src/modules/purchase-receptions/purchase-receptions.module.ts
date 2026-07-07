@@ -14,6 +14,7 @@ import { CreatePurchaseReceptionUsecase } from "./application/usecases/create-pu
 import { ConfirmPurchaseReceptionUsecase } from "./application/usecases/confirm-purchase-reception.usecase";
 import { ListPurchaseReceptionsUsecase } from "./application/usecases/list-purchase-receptions.usecase";
 import { PurchaseReceptionsController } from "./adapters/in/controllers/purchase-receptions.controller";
+import { PurchaseHistoryService } from "src/modules/purchases/application/services/purchase-history.service";
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { PurchaseReceptionsController } from "./adapters/in/controllers/purchase
   providers: [
     CreatePurchaseReceptionUsecase,
     ConfirmPurchaseReceptionUsecase,
+    PurchaseHistoryService,
     ListPurchaseReceptionsUsecase,
     { provide: PURCHASE_RECEPTION_REPOSITORY, useClass: PurchaseReceptionTypeormRepository },
     { provide: UNIT_OF_WORK, useClass: TypeormUnitOfWork },

@@ -7,6 +7,7 @@ import { PaymentDocumentTypeormRepository } from "../adapters/out/persistence/ty
 import { paymentsUsecasesProviders } from "../application/providers/payments-usecases.providers";
 import { CREDIT_QUOTA_REPOSITORY } from "../domain/ports/credit-quota.repository";
 import { PAYMENT_DOCUMENT_REPOSITORY } from "../domain/ports/payment-document.repository";
+import { PurchaseHistoryService } from "src/modules/purchases/application/services/purchase-history.service";
 
 export const paymentsModuleProviders: Provider[] = [
   ...paymentsUsecasesProviders,
@@ -14,5 +15,6 @@ export const paymentsModuleProviders: Provider[] = [
   { provide: CREDIT_QUOTA_REPOSITORY, useClass: CreditQuotaTypeormRepository },
   { provide: UNIT_OF_WORK, useClass: TypeormUnitOfWork },
   { provide: CLOCK, useValue: { now: () => new Date() } },
+  PurchaseHistoryService,
 ];
 

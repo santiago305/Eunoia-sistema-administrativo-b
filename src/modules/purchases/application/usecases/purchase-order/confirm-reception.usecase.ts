@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, NotFoundException, Optional } from "@nestjs/common";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
 import { PurchaseOrderStatus } from "src/modules/purchases/domain/value-objects/po-status";
@@ -7,6 +7,7 @@ import { errorResponse } from "src/shared/response-standard/response";
 import { NotificationsService } from "src/modules/mail/application/use-cases/notifications.service";
 import { PURCHASE_NOTIFICATION_TYPES } from "src/modules/mail/domain/constants/purchase-notification-types";
 import { ReceptionStatus } from "src/modules/purchases/domain/value-objects/reception-status";
+import { PurchaseHistoryService } from "../../services/purchase-history.service";
 
 export class ConfirmPurchaseReceptionUsecase {
   constructor(
@@ -16,9 +17,11 @@ export class ConfirmPurchaseReceptionUsecase {
     private readonly purchaseRepo: PurchaseOrderRepository,
     private readonly inventoryPurchase: PostInventoryFromPurchaseUsecase,
     private readonly notificationsService: NotificationsService,
+    @Optional()
+    private readonly history?: PurchaseHistoryService,
   ) {}
 
-  async execute(poId: string): Promise<{ type: string; message: string }> {
+  async execute(poId: string, performedByUserId?: string): Promise<{ type: string; message: string }> {
     const result = await this.uow.runInTransaction(async (tx) => {
       const order = await this.purchaseRepo.findById(poId, tx);
       if (!order) {
@@ -57,6 +60,25 @@ export class ConfirmPurchaseReceptionUsecase {
         },
         tx,
       );
+
+      await this.history?.record({
+        purchaseId: order.poId,
+        eventType: "PURCHASE_FULLY_RECEIVED",
+        description: "La compra fue recibida completamente.",
+        oldValues: {
+          status: order.status,
+          receptionStatus: order.receptionStatus,
+        },
+        newValues: {
+          status: PurchaseOrderStatus.RECEIVED,
+          receptionStatus: ReceptionStatus.RECEIVED,
+        },
+        performedByUserId: performedByUserId ?? null,
+        metadata: {
+          legacyFlow: true,
+          stockEntryCreated: Boolean(order.requiresStockEntry),
+        },
+      }, tx);
 
       const hasPhotoEvidence = Array.isArray(order.imageProdution) && order.imageProdution.length > 0;
       return {

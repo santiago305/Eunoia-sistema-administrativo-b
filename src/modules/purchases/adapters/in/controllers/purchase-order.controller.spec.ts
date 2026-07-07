@@ -36,6 +36,7 @@ import { AccessControlService } from "src/modules/access-control/application/ser
 import { UploadPurchaseAttachmentUsecase } from "src/modules/purchase-attachments/application/usecases/upload-purchase-attachment.usecase";
 import { ListPurchaseAttachmentsUsecase } from "src/modules/purchase-attachments/application/usecases/list-purchase-attachments.usecase";
 import { PurchaseAttachmentType } from "src/modules/purchase-attachments/domain/value-objects/purchase-attachment-type";
+import { PurchaseHistoryService } from "src/modules/purchases/application/services/purchase-history.service";
 
 @Injectable()
 class TestJwtAuthGuard implements CanActivate {
@@ -113,6 +114,7 @@ describe("PurchaseOrdersController", () => {
         { provide: ConfirmPurchaseReceptionUsecase, useValue: { execute: jest.fn() } },
         { provide: UploadPurchaseAttachmentUsecase, useValue: uploadAttachment },
         { provide: ListPurchaseAttachmentsUsecase, useValue: listAttachments },
+        { provide: PurchaseHistoryService, useValue: { record: jest.fn(), recordPayment: jest.fn() } },
         { provide: PURCHASE_ORDER, useValue: purchaseRepo },
         { provide: LISTING_SEARCH_STORAGE, useValue: { listState: jest.fn().mockResolvedValue({ metrics: [] }), createMetric: jest.fn(), deleteMetric: jest.fn() } },
         { provide: PurchaseOrderExpectedScheduler, useValue: { schedule: jest.fn() } },

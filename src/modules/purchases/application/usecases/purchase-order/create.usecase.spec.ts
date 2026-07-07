@@ -16,6 +16,7 @@ describe("CreatePurchaseOrderUsecase", () => {
   let createStockItem: { execute: jest.Mock };
   let conversionService: { resolveFactor: jest.Mock };
   let notificationsService: { createNotificationForUsers: jest.Mock };
+  let history: { recordCreated: jest.Mock; recordPayment: jest.Mock; record: jest.Mock };
 
   let usecase: CreatePurchaseOrderUsecase;
 
@@ -63,6 +64,11 @@ describe("CreatePurchaseOrderUsecase", () => {
     notificationsService = {
       createNotificationForUsers: jest.fn().mockResolvedValue(undefined),
     };
+    history = {
+      recordCreated: jest.fn().mockResolvedValue(undefined),
+      recordPayment: jest.fn().mockResolvedValue(undefined),
+      record: jest.fn().mockResolvedValue(undefined),
+    };
 
     usecase = new CreatePurchaseOrderUsecase(
       uow as any,
@@ -75,6 +81,8 @@ describe("CreatePurchaseOrderUsecase", () => {
       createStockItem as any,
       conversionService as any,
       notificationsService as any,
+      undefined,
+      history as any,
     );
   });
 
@@ -185,5 +193,75 @@ describe("CreatePurchaseOrderUsecase", () => {
         status: "PENDING_APPROVAL",
       }),
     ]);
+  });
+
+  it("registra en historial la compra creada y sus pagos iniciales", async () => {
+    paymentDocRepo.create.mockResolvedValueOnce({
+      payDocId: "payment-1",
+      method: "BCP",
+      date: new Date("2026-07-03T00:00:00.000Z"),
+      operationNumber: "OP-1",
+      currency: CurrencyType.PEN,
+      amount: 100,
+      fromDocumentType: "PURCHASE",
+      poId: "po-1",
+      status: "APPROVED",
+      isPartial: false,
+    });
+
+    await usecase.execute({
+      supplierId: "11111111-1111-4111-8111-111111111111",
+      warehouseId: "22222222-2222-4222-8222-222222222222",
+      documentType: VoucherDocType.FACTURA,
+      serie: "F001",
+      correlative: 15,
+      currency: CurrencyType.PEN,
+      paymentForm: PaymentFormType.CONTADO,
+      totalTaxed: 100,
+      totalExempted: 0,
+      totalIgv: 18,
+      purchaseValue: 82,
+      total: 100,
+      status: PurchaseOrderStatus.DRAFT,
+      items: [],
+      payments: [
+        {
+          method: "BCP",
+          date: "2026-07-03",
+          operationNumber: "OP-1",
+          currency: CurrencyType.PEN,
+          amount: 100,
+        },
+      ],
+      quotas: [],
+    } as any, "user-1", { allowDirectPaymentCreation: true });
+
+    expect(history.recordPayment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        purchaseId: "po-1",
+        eventType: "PAYMENT_REGISTERED",
+        performedByUserId: "user-1",
+        metadata: expect.objectContaining({
+          paymentId: "payment-1",
+          amount: 100,
+          status: "APPROVED",
+        }),
+      }),
+    );
+    expect(history.recordCreated).toHaveBeenCalledWith(
+      expect.objectContaining({
+        purchaseId: "po-1",
+        performedByUserId: "user-1",
+        snapshot: expect.objectContaining({
+          poId: "po-1",
+          paymentForm: PaymentFormType.CONTADO,
+          total: 100,
+        }),
+        metadata: expect.objectContaining({
+          directPaymentsCreated: 1,
+          paymentsRequested: 0,
+        }),
+      }),
+    );
   });
 });

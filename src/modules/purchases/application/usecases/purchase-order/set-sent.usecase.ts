@@ -4,10 +4,11 @@ import { PurchaseOrderStatus } from "src/modules/purchases/domain/value-objects/
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { successResponse } from "src/shared/response-standard/response";
 import { PurchaseOrderNotFoundApplicationError } from "../../errors/purchase-order-not-found.error";
-import { BadRequestException, Inject, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, NotFoundException, Optional } from "@nestjs/common";
 import { CLOCK, ClockPort } from "src/shared/application/ports/clock.port";
 import { NotificationsService } from "src/modules/mail/application/use-cases/notifications.service";
 import { PURCHASE_NOTIFICATION_TYPES } from "src/modules/mail/domain/constants/purchase-notification-types";
+import { PurchaseHistoryService } from "../../services/purchase-history.service";
 
 export class SetSentPurchaseOrderUsecase {
   constructor(
@@ -19,9 +20,11 @@ export class SetSentPurchaseOrderUsecase {
     @Inject(CLOCK)
     private readonly clock: ClockPort,
     private readonly notificationsService: NotificationsService,
+    @Optional()
+    private readonly history?: PurchaseHistoryService,
   ) {}
 
-  async execute(poId: string): Promise<ReturnType<typeof successResponse>> {
+  async execute(poId: string, performedByUserId?: string): Promise<ReturnType<typeof successResponse>> {
     const result = await this.uow.runInTransaction(async (tx) => {
       const order = await this.purchaseRepo.findById(poId, tx);
       if (!order) {
@@ -56,6 +59,25 @@ export class SetSentPurchaseOrderUsecase {
       if (!updated) {
         throw new BadRequestException("No se pudo actualizar estado");
       }
+
+      await this.history?.record({
+        purchaseId: updated.poId,
+        eventType: "PURCHASE_SUBMITTED",
+        description: "La compra fue enviada a procesamiento.",
+        oldValues: {
+          status: order.status,
+          expectedAt: order.expectedAt,
+        },
+        newValues: {
+          status: updated.status,
+          expectedAt: recalculatedExpectedAt,
+        },
+        performedByUserId: performedByUserId ?? null,
+        metadata: {
+          originalExpectedAt: order.expectedAt,
+          recalculatedExpectedAt,
+        },
+      }, tx);
 
       this.scheduler.schedule(updated.poId, recalculatedExpectedAt);
 

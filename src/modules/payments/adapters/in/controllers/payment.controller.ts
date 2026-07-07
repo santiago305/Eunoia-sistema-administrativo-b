@@ -350,7 +350,7 @@ export class PaymentsController {
 
   @RequirePermissions("payments.delete")
   @Delete(":id")
-  remove(@Param("id", ParseUUIDPipe) id: string) {
-    return this.deletePayment.execute(id);
+  remove(@Param("id", ParseUUIDPipe) id: string, @CurrentUser() user: { id: string }) {
+    return this.deletePayment.execute(id, undefined, user.id);
   }
 }

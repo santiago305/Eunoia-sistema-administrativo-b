@@ -47,6 +47,7 @@ import { User } from "src/modules/users/adapters/out/persistence/typeorm/entitie
 import { UploadPurchaseAttachmentUsecase } from "src/modules/purchase-attachments/application/usecases/upload-purchase-attachment.usecase";
 import { ListPurchaseAttachmentsUsecase } from "src/modules/purchase-attachments/application/usecases/list-purchase-attachments.usecase";
 import { PurchaseAttachmentType } from "src/modules/purchase-attachments/domain/value-objects/purchase-attachment-type";
+import { PurchaseHistoryService } from "src/modules/purchases/application/services/purchase-history.service";
 
 @Controller("purchases/orders")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
@@ -72,6 +73,7 @@ export class PurchaseOrdersController {
     private readonly notificationsService: NotificationsService,
     private readonly uploadAttachment: UploadPurchaseAttachmentUsecase,
     private readonly listAttachments: ListPurchaseAttachmentsUsecase,
+    private readonly historyService: PurchaseHistoryService,
     @InjectRepository(PurchaseProcessingApprovalEntity)
     private readonly purchaseApprovalRepository: Repository<PurchaseProcessingApprovalEntity>,
     @InjectRepository(ApprovalRequestEntity)
@@ -344,7 +346,7 @@ export class PurchaseOrdersController {
     if (orderEntity?.approvalStatus === "REJECTED") {
       throw new BadRequestException("La compra fue rechazada y no puede procesarse.");
     }
-    const response = await this.setSent.execute(id);
+    const response = await this.setSent.execute(id, user.id);
     await this.notifyPurchaseRealtimeUpdate(id, user.id);
     return response;
   }
@@ -372,7 +374,7 @@ export class PurchaseOrdersController {
       }
     }
 
-    const response = await this.cancelOrder.execute(id);
+    const response = await this.cancelOrder.execute(id, user.id);
     await this.notifyPurchaseRealtimeUpdate(id, user.id);
     return response;
   }
@@ -514,7 +516,7 @@ export class PurchaseOrdersController {
       throw new BadRequestException("No existe solicitud pendiente para esta compra");
     }
 
-    const result = await this.setSent.execute(id);
+    const result = await this.setSent.execute(id, user.id);
 
     pending.status = "APPROVED";
     pending.reviewedBy = user.id;
@@ -574,6 +576,9 @@ export class PurchaseOrdersController {
       throw new BadRequestException("No existe solicitud pendiente para creación con pago.");
     }
 
+    const pendingPayments = await this.entityManager.getRepository(PaymentDocumentEntity).find({
+      where: { poId: id, status: "PENDING_APPROVAL" },
+    });
     await this.entityManager.getRepository(PaymentDocumentEntity).update(
       { poId: id, status: "PENDING_APPROVAL" },
       {
@@ -603,6 +608,23 @@ export class PurchaseOrdersController {
         metadata: {},
       }),
     );
+    for (const payment of pendingPayments) {
+      await this.historyService.recordPayment({
+        purchaseId: id,
+        eventType: "PAYMENT_APPROVED",
+        description: "Se aprobó un pago pendiente.",
+        performedByUserId: user.id,
+        targetUserId: payment.requestedByUserId ?? approval.requestedByUserId,
+        metadata: {
+          paymentId: payment.id,
+          amount: Number(payment.amount),
+          currency: payment.currency,
+          method: payment.method,
+          operationNumber: payment.operationNumber ?? null,
+          approvedThrough: "PURCHASE_CREATION_WITH_PAYMENT",
+        },
+      });
+    }
 
     await this.notificationsService.createNotificationForUsers({
       recipientUserIds: [approval.requestedByUserId],
@@ -640,6 +662,9 @@ export class PurchaseOrdersController {
     }
 
     const reason = body?.reason?.trim() || null;
+    const pendingPayments = await this.entityManager.getRepository(PaymentDocumentEntity).find({
+      where: { poId: id, status: "PENDING_APPROVAL" },
+    });
     await this.entityManager.getRepository(PaymentDocumentEntity).update(
       { poId: id, status: "PENDING_APPROVAL" },
       {
@@ -671,6 +696,24 @@ export class PurchaseOrdersController {
         metadata: { reason },
       }),
     );
+    for (const payment of pendingPayments) {
+      await this.historyService.recordPayment({
+        purchaseId: id,
+        eventType: "PAYMENT_REJECTED",
+        description: "Se rechazó un pago pendiente.",
+        performedByUserId: user.id,
+        targetUserId: payment.requestedByUserId ?? approval.requestedByUserId,
+        metadata: {
+          paymentId: payment.id,
+          amount: Number(payment.amount),
+          currency: payment.currency,
+          method: payment.method,
+          operationNumber: payment.operationNumber ?? null,
+          reason,
+          rejectedThrough: "PURCHASE_CREATION_WITH_PAYMENT",
+        },
+      });
+    }
 
     await this.notificationsService.createNotificationForUsers({
       recipientUserIds: [approval.requestedByUserId],
@@ -756,7 +799,7 @@ export class PurchaseOrdersController {
     @Param("id", ParseUUIDPipe) id: string,
     @CurrentUser() user: { id: string },
   ) {
-    const response = await this.confirmReception.execute(id);
+    const response = await this.confirmReception.execute(id, user.id);
     await this.notifyPurchaseRealtimeUpdate(id, user.id);
     return response;
   }
@@ -1073,8 +1116,15 @@ export class PurchaseOrdersController {
   @Patch(":id")
   @UseGuards(PermissionsGuard)
   @RequirePermissions("purchases.edit_draft")
-  update(@Param("id", ParseUUIDPipe) id: string, @Body() dto: HttpUpdatePurchaseOrderDto) {
-    return this.updateOrder.execute(PurchaseOrderHttpMapper.toUpdateInput(id, dto));
+  update(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: HttpUpdatePurchaseOrderDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.updateOrder.execute({
+      ...PurchaseOrderHttpMapper.toUpdateInput(id, dto),
+      performedByUserId: user.id,
+    });
   }
 
   @Patch(":id/extra-time")
@@ -1082,6 +1132,7 @@ export class PurchaseOrdersController {
   async addExtraTime(
     @Param("id", ParseUUIDPipe) id: string,
     @Body() body: { days?: number; hours?: number; minutes?: number },
+    @CurrentUser() user: { id: string },
   ) {
     const days = Number(body?.days ?? 0);
     const hours = Number(body?.hours ?? 0);
@@ -1112,6 +1163,16 @@ export class PurchaseOrdersController {
     }
 
     this.scheduler.schedule(updated.poId, nextExpectedAt);
+
+    await this.historyService.record({
+      purchaseId: id,
+      eventType: "PURCHASE_EXTRA_TIME_ADDED",
+      description: "Se agregó tiempo extra a la compra.",
+      oldValues: { expectedAt: order.expectedAt },
+      newValues: { expectedAt: nextExpectedAt },
+      performedByUserId: user.id,
+      metadata: { days, hours, minutes, extraMs },
+    });
 
     return {
       type: "success",

@@ -1,12 +1,12 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, NotFoundException, Optional } from "@nestjs/common";
 import { EntityManager } from "typeorm";
 import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
 import { TransactionContext } from "src/shared/domain/ports/transaction-context.port";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
 import { PURCHASE_ORDER_ITEM, PurchaseOrderItemRepository } from "src/modules/purchases/domain/ports/purchase-order-item.port.repository";
-import { PurchaseHistoryEventEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-history-event.entity";
 import { PostInventoryFromPurchaseUsecase } from "src/modules/purchases/application/usecases/purchase-order/Inventory-purchase.usecase";
+import { PurchaseHistoryService } from "src/modules/purchases/application/services/purchase-history.service";
 import { CurrencyType } from "src/modules/purchases/domain/value-objects/currency-type";
 import { PurchaseOrderStatus } from "src/modules/purchases/domain/value-objects/po-status";
 import { PurchaseItemType } from "src/modules/purchases/domain/value-objects/purchase-item-type";
@@ -30,6 +30,8 @@ export class ConfirmPurchaseReceptionUsecase {
     @Inject(PURCHASE_RECEPTION_REPOSITORY)
     private readonly receptionRepo: PurchaseReceptionRepository,
     private readonly inventoryPurchase: PostInventoryFromPurchaseUsecase,
+    @Optional()
+    private readonly history?: PurchaseHistoryService,
   ) {}
 
   async execute(receptionId: string, userId?: string): Promise<PurchaseReceptionOutput> {
@@ -116,8 +118,7 @@ export class ConfirmPurchaseReceptionUsecase {
         status: nextPurchaseStatus,
       }, tx);
 
-      const manager = this.manager(tx);
-      await manager.getRepository(PurchaseHistoryEventEntity).save({
+      await this.history?.record({
         purchaseId: purchase.poId,
         eventType: isFullyReceived ? "PURCHASE_FULLY_RECEIVED" : "PURCHASE_PARTIALLY_RECEIVED",
         description: isFullyReceived
@@ -136,26 +137,26 @@ export class ConfirmPurchaseReceptionUsecase {
             affectsStock: item.affectsStock,
           })),
         },
-      });
+      }, tx);
 
       if (inventoryDocumentId) {
-        await manager.getRepository(PurchaseHistoryEventEntity).save({
+        await this.history?.record({
           purchaseId: purchase.poId,
           eventType: "PURCHASE_STOCK_ENTRY_CREATED",
           description: "Se creó el ingreso de stock desde la recepción.",
           performedByUserId: userId ?? null,
           metadata: { receptionId, inventoryDocumentId, items: stockLines },
-        });
+        }, tx);
       }
 
       if (serviceConfirmedItemIds.length) {
-        await manager.getRepository(PurchaseHistoryEventEntity).save({
+        await this.history?.record({
           purchaseId: purchase.poId,
           eventType: "PURCHASE_SERVICE_CONFIRMED",
           description: "Se confirmó recepción de items sin movimiento de stock.",
           performedByUserId: userId ?? null,
           metadata: { receptionId, purchaseItemIds: serviceConfirmedItemIds },
-        });
+        }, tx);
       }
 
       const confirmed = await this.receptionRepo.findById(receptionId, tx);

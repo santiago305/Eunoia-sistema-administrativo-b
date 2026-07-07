@@ -41,4 +41,5 @@ export interface UpdatePurchaseOrderInput {
   items?: AddPurchaseOrderItemInput[];
   payments?: CreatePaymentInput[];
   quotas?: CreateCreditQuotaInput[];
+  performedByUserId?: string;
 }

@@ -1,8 +1,8 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, NotFoundException, Optional } from "@nestjs/common";
 import { InjectEntityManager } from "@nestjs/typeorm";
 import { EntityManager } from "typeorm";
 import { FILE_STORAGE, FileStorage } from "src/shared/application/ports/file-storage.port";
-import { PurchaseHistoryEventEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-history-event.entity";
+import { PurchaseHistoryService } from "src/modules/purchases/application/services/purchase-history.service";
 import {
   PURCHASE_ATTACHMENT_REPOSITORY,
   PurchaseAttachmentRepository,
@@ -17,6 +17,8 @@ export class DeletePurchaseAttachmentUsecase {
     private readonly fileStorage: FileStorage,
     @InjectEntityManager()
     private readonly entityManager: EntityManager,
+    @Optional()
+    private readonly history?: PurchaseHistoryService,
   ) {}
 
   async execute(attachmentId: string, userId?: string): Promise<void> {
@@ -31,7 +33,7 @@ export class DeletePurchaseAttachmentUsecase {
     }
 
     await this.attachmentRepo.markDeleted(attachmentId, new Date());
-    await this.entityManager.getRepository(PurchaseHistoryEventEntity).save({
+    await this.history?.record({
       purchaseId: attachment.purchaseId,
       eventType: "PURCHASE_ATTACHMENT_DELETED",
       description: "Se eliminó un documento de la compra.",

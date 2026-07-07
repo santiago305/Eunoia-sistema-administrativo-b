@@ -1,11 +1,11 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, NotFoundException, Optional } from "@nestjs/common";
 import { InjectEntityManager } from "@nestjs/typeorm";
 import { EntityManager } from "typeorm";
 import { FILE_STORAGE, FileStorage } from "src/shared/application/ports/file-storage.port";
 import { PurchaseOrderEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-order.entity";
-import { PurchaseHistoryEventEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-history-event.entity";
 import { PaymentDocumentEntity } from "src/modules/payments/adapters/out/persistence/typeorm/entities/payment-document.entity";
 import { VoucherDocType } from "src/modules/purchases/domain/value-objects/voucher-doc-type";
+import { PurchaseHistoryService } from "src/modules/purchases/application/services/purchase-history.service";
 import { PurchaseAttachment } from "../../domain/entity/purchase-attachment";
 import {
   PURCHASE_ATTACHMENT_REPOSITORY,
@@ -38,6 +38,8 @@ export class UploadPurchaseAttachmentUsecase {
     private readonly fileStorage: FileStorage,
     @InjectEntityManager()
     private readonly entityManager: EntityManager,
+    @Optional()
+    private readonly history?: PurchaseHistoryService,
   ) {}
 
   async execute(
@@ -120,7 +122,7 @@ export class UploadPurchaseAttachmentUsecase {
       }),
     );
 
-    await this.entityManager.getRepository(PurchaseHistoryEventEntity).save({
+    await this.history?.record({
       purchaseId: input.purchaseId,
       eventType: "PURCHASE_ATTACHMENT_UPLOADED",
       description: "Se subió un documento a la compra.",

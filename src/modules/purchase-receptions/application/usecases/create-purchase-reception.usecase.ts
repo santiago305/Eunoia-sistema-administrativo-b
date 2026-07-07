@@ -1,12 +1,12 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, NotFoundException, Optional } from "@nestjs/common";
 import { EntityManager } from "typeorm";
 import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
 import { TransactionContext } from "src/shared/domain/ports/transaction-context.port";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
 import { PURCHASE_ORDER_ITEM, PurchaseOrderItemRepository } from "src/modules/purchases/domain/ports/purchase-order-item.port.repository";
-import { PurchaseHistoryEventEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-history-event.entity";
 import { CurrencyType } from "src/modules/purchases/domain/value-objects/currency-type";
+import { PurchaseHistoryService } from "src/modules/purchases/application/services/purchase-history.service";
 import { PurchaseReception } from "../../domain/entity/purchase-reception";
 import { PurchaseReceptionItem } from "../../domain/entity/purchase-reception-item";
 import {
@@ -41,6 +41,8 @@ export class CreatePurchaseReceptionUsecase {
     private readonly purchaseItemRepo: PurchaseOrderItemRepository,
     @Inject(PURCHASE_RECEPTION_REPOSITORY)
     private readonly receptionRepo: PurchaseReceptionRepository,
+    @Optional()
+    private readonly history?: PurchaseHistoryService,
   ) {}
 
   async execute(input: CreatePurchaseReceptionInput, userId?: string): Promise<PurchaseReceptionOutput> {
@@ -123,7 +125,7 @@ export class CreatePurchaseReceptionUsecase {
         tx,
       );
 
-      await this.manager(tx).getRepository(PurchaseHistoryEventEntity).save({
+      await this.history?.record({
         purchaseId: purchase.poId,
         eventType: "PURCHASE_RECEPTION_CREATED",
         description: "Se registró una recepción de compra.",
@@ -138,7 +140,7 @@ export class CreatePurchaseReceptionUsecase {
             affectsStock: item.affectsStock,
           })),
         },
-      });
+      }, tx);
 
       return PurchaseReceptionOutputMapper.toOutput(row);
     });

@@ -1,4 +1,4 @@
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    import { BadRequestException, Inject, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, NotFoundException, Optional } from "@nestjs/common";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
 import { PurchaseOrderStatus } from "src/modules/purchases/domain/value-objects/po-status";
@@ -13,6 +13,7 @@ import { ReferenceType } from "src/shared/domain/value-objects/reference-type";
 import { NotificationsService } from "src/modules/mail/application/use-cases/notifications.service";
 import { PURCHASE_NOTIFICATION_TYPES } from "src/modules/mail/domain/constants/purchase-notification-types";
 import { CurrencyType } from "src/modules/purchases/domain/value-objects/currency-type";
+import { PurchaseHistoryService } from "../../services/purchase-history.service";
 
 export class CancelPurchaseOrderUsecase {
   constructor(
@@ -27,9 +28,11 @@ export class CancelPurchaseOrderUsecase {
     private readonly stockItemRepo: ProductCatalogStockItemRepository,
     private readonly registerInventoryMovement: RegisterProductCatalogInventoryMovement,
     private readonly notificationsService: NotificationsService,
+    @Optional()
+    private readonly history?: PurchaseHistoryService,
   ) {}
 
-  async execute(poId: string): Promise<{ message: string }> {
+  async execute(poId: string, performedByUserId?: string): Promise<{ message: string }> {
     const result = await this.uow.runInTransaction(async (tx) => {
       const order = await this.purchaseRepo.findById(poId, tx);
       if (!order) {
@@ -88,6 +91,18 @@ export class CancelPurchaseOrderUsecase {
       if (!updated) {
         throw new BadRequestException("No se pudo actualizar estado");
       }
+
+      await this.history?.record({
+        purchaseId: order.poId,
+        eventType: "PURCHASE_CANCELLED",
+        description: "Se canceló la compra.",
+        oldValues: { status: order.status },
+        newValues: { status: PurchaseOrderStatus.CANCELLED },
+        performedByUserId: performedByUserId ?? null,
+        metadata: {
+          reversedInventory: order.status === PurchaseOrderStatus.RECEIVED,
+        },
+      }, tx);
 
       this.scheduler.cancel(order.poId);
 
