@@ -25,6 +25,9 @@ import { WorkflowStateEntity } from "../workflow/adapters/out/persistence/typeor
 import { SaleOrderStatesEntity } from "../workflow/adapters/out/persistence/typeorm/entities/sale-order-states.entity";
 import { UsersModule } from "../users/infrastructure/users.module";
 import { WarehousesModule } from "../warehouses/warehouses.module";
+import { AdviserEntity } from "../advisers/adapters/out/persistence/typeorm/entities/adviser.entity";
+import { AdviserMembershipService } from "./application/services/adviser-membership.service";
+import { SaleOrderAttachmentsModule } from "../sale-order-attachments";
 
 @Module({
   imports: [
@@ -44,6 +47,7 @@ import { WarehousesModule } from "../warehouses/warehouses.module";
       WorkflowEntity,
       WorkflowStateEntity,
       SaleOrderStatesEntity,
+      AdviserEntity,
     ]),
     PacksModule,
     ProductCatalogModule,
@@ -53,8 +57,9 @@ import { WarehousesModule } from "../warehouses/warehouses.module";
     WorkflowModule,
     UsersModule,
     WarehousesModule,
+    SaleOrderAttachmentsModule,
   ],
   controllers: [SaleOrdersController],
-  providers: [...saleOrdersModuleProviders],
+  providers: [...saleOrdersModuleProviders, AdviserMembershipService],
 })
 export class SaleOrdersModule {}

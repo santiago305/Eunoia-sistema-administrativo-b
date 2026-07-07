@@ -31,6 +31,7 @@ import {
   SaleOrderAutomaticWorkflowTriggerEnum,
 } from "src/modules/sale-orders/application/services/sale-order-automatic-workflow.service";
 import { SaleOrderRealtimePayloadService } from "src/modules/sale-orders/application/services/sale-order-realtime-payload.service";
+import { SaveSaleOrderWithClientUsecase } from "src/modules/sale-orders/application/usecases/sale-order/save-with-client.usecase";
 
 @Injectable()
 class TestJwtAuthGuard implements CanActivate {
@@ -70,6 +71,7 @@ describe("SaleOrdersController", () => {
   const realtimeService = { emitToAllConnected: jest.fn() };
   const automaticWorkflow = { evaluateAndNotify: jest.fn() };
   const realtimePayload = { build: jest.fn() };
+  const saveWithClient = { execute: jest.fn() };
   const statisticsPayload = {
     byWorkflow: [],
     byState: [],
@@ -101,6 +103,10 @@ describe("SaleOrdersController", () => {
     getAvailableTransitions.execute.mockResolvedValue([]);
     getOrderTimeline.execute.mockResolvedValue([]);
     automaticWorkflow.evaluateAndNotify.mockResolvedValue({ updated: 0, failed: 0, saleOrderIds: [] });
+    saveWithClient.execute.mockResolvedValue({
+      orderId: "11111111-1111-4111-8111-111111111111",
+      clientId: "33333333-3333-4333-8333-333333333333",
+    });
     realtimePayload.build.mockImplementation(async (input: {
       updated?: number;
       saleOrderIds: string[];
@@ -151,6 +157,7 @@ describe("SaleOrdersController", () => {
         { provide: SaleOrdersRealtimeService, useValue: realtimeService },
         { provide: SaleOrderAutomaticWorkflowService, useValue: automaticWorkflow },
         { provide: SaleOrderRealtimePayloadService, useValue: realtimePayload },
+        { provide: SaveSaleOrderWithClientUsecase, useValue: saveWithClient },
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -309,6 +316,52 @@ describe("SaleOrdersController", () => {
     expect(createSaleOrder.execute).toHaveBeenCalledWith(
       expect.objectContaining({ warehouseId: undefined }),
       "user-1",
+    );
+  });
+
+  it("accepts multipart unified creation and notifies only after save succeeds", async () => {
+    const payload = {
+      client: {
+        mode: "existing",
+        id: "33333333-3333-4333-8333-333333333333",
+      },
+      workflowId: "44444444-4444-4444-8444-444444444444",
+      items: [{
+        quantity: 1,
+        unitPrice: 10,
+        total: 10,
+        components: [{
+          skuId: "55555555-5555-4555-8555-555555555555",
+          quantity: 1,
+          unitPrice: 10,
+          total: 10,
+        }],
+      }],
+      payments: [],
+    };
+
+    await request(app.getHttpServer())
+      .post("/sale-orders/with-client")
+      .field("data", JSON.stringify(payload))
+      .attach("shippingPhoto", Buffer.from("image"), {
+        filename: "shipping.png",
+        contentType: "image/png",
+      })
+      .expect(201);
+
+    expect(saveWithClient.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: payload,
+        shippingPhoto: expect.objectContaining({
+          fieldname: "shippingPhoto",
+          mimetype: "image/png",
+        }),
+        userId: "user-1",
+      }),
+    );
+    expect(automaticWorkflow.evaluateAndNotify).toHaveBeenCalledWith(
+      "11111111-1111-4111-8111-111111111111",
+      SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_CREATED,
     );
   });
 

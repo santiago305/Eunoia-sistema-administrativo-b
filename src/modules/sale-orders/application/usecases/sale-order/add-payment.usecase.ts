@@ -22,6 +22,7 @@ export class AddSaleOrderPaymentUsecase {
     date?: string;
     operationNumber?: string;
     note?: string;
+    paymentPhoto?: string | null;
   }) {
     return this.uow.runInTransaction(async (tx) => {
       const order = await this.saleOrderRepo.findByIdForUpdate(input.saleOrderId, tx);
@@ -41,6 +42,7 @@ export class AddSaleOrderPaymentUsecase {
           operationNumber: input.operationNumber ?? null,
           amount: input.amount,
           note: input.note ?? null,
+          paymentPhoto: input.paymentPhoto ?? null,
         },
       ];
 

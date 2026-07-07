@@ -33,6 +33,9 @@ export class SaleOrderEntity {
   @Column({ name: "delivery_cost", type: "numeric", precision: 12, scale: 2, default: 0 })
   deliveryCost: number;
 
+  @Column({ name: "discount", type: "numeric", precision: 12, scale: 2, default: 0 })
+  discount: number;
+
   @Column({ name: "total", type: "numeric", precision: 12, scale: 2, default: 0 })
   total: number;
 
@@ -45,11 +48,26 @@ export class SaleOrderEntity {
   @Column({ name: "observation", type: "text", nullable: true })
   observation?: string | null;
 
+  @Column({ name: "send_date", type: "timestamptz", nullable: true })
+  sendDate?: Date | null;
+
+  @Column({ name: "send_photo", type: "varchar", nullable: true })
+  sendPhoto?: string | null;
+
+  @Column({ name: "send_code", type: "varchar", nullable: true })
+  sendCode?: string | null;
+
+  @Column({ name: "send_address", type: "varchar", nullable: true })
+  sendAddress?: string | null;
+
+  @Column({ name: "assigned_by", type: "uuid", nullable: true })
+  assignedBy?: string | null;
+
   @Column({ name: "client_id", type: "uuid" })
   clientId: string;
 
-  @Column({ name: "agency_detail", type: "text", nullable: true })
-  agencyDetail?: string | null;
+  @Column({ name: "agency_subsidiary_id", type: "uuid", nullable: true })
+  agencySubsidiaryId?: string | null;
 
   @Column({ name: "source_id", type: "uuid", nullable: true })
   sourceId?: string | null;

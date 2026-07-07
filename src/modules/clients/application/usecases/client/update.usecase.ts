@@ -26,8 +26,10 @@ import { InvalidClientError } from "src/modules/clients/domain/errors/invalid-cl
 import {
   CLIENT_REALTIME,
   ClientRealtime,
+  ClientUpdatedEvent,
   ClientWorkflowField,
 } from "src/modules/clients/integration/client/ports/client-realtime.port";
+import { TransactionContext } from "src/shared/domain/ports/transaction-context.port";
 
 export class UpdateClientUsecase {
   constructor(
@@ -46,7 +48,25 @@ export class UpdateClientUsecase {
   ) {}
 
   async execute(input: UpdateClientInput): Promise<{ message: string }> {
-    const txResult = await this.uow.runInTransaction(async (tx) => {
+    const txResult = await this.uow.runInTransaction((tx) =>
+      this.executeInTransaction(input, tx),
+    );
+
+    if (txResult.event) {
+      this.clientRealtime.emitClientUpdated(txResult.event);
+    }
+
+    return { message: txResult.message };
+  }
+
+  async executeInTransaction(
+    input: UpdateClientInput,
+    tx: TransactionContext,
+  ): Promise<{
+    clientId: string;
+    message: string;
+    event: ClientUpdatedEvent | null;
+  }> {
       const current = await this.clientRepo.findById(input.clientId, tx);
       if (!current) {
         throw new NotFoundException(new ClientNotFoundError().message);
@@ -182,6 +202,7 @@ export class UpdateClientUsecase {
       }
 
       return {
+        clientId: current.clientId.value,
         message: "Cliente actualizado con exito",
         event: changedFields.length
           ? {
@@ -191,13 +212,6 @@ export class UpdateClientUsecase {
             }
           : null,
       };
-    });
-
-    if (txResult.event) {
-      this.clientRealtime.emitClientUpdated(txResult.event);
-    }
-
-    return { message: txResult.message };
   }
 
   private resolveWorkflowChangedFields(before: Client, after: Client): ClientWorkflowField[] {

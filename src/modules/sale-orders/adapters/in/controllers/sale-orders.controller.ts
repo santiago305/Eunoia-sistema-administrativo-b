@@ -1,4 +1,6 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, UploadedFiles, UseGuards, UseInterceptors } from "@nestjs/common";
+import { AnyFilesInterceptor } from "@nestjs/platform-express";
+import { memoryStorage } from "multer";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
 import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
 import { User as CurrentUser } from "src/shared/utilidades/decorators/user.decorator";
@@ -38,6 +40,8 @@ import {
   SaleOrderAutomaticWorkflowTriggerEnum,
 } from "src/modules/sale-orders/application/services/sale-order-automatic-workflow.service";
 import { SaleOrderRealtimePayloadService } from "src/modules/sale-orders/application/services/sale-order-realtime-payload.service";
+import { SaveSaleOrderWithClientUsecase } from "src/modules/sale-orders/application/usecases/sale-order/save-with-client.usecase";
+import { parseSaleOrderMultipart } from "../support/sale-order-multipart.parser";
 
 @Controller("sale-orders")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
@@ -66,6 +70,7 @@ export class SaleOrdersController {
     private readonly realtimeService: SaleOrdersRealtimeService,
     private readonly automaticWorkflow: SaleOrderAutomaticWorkflowService,
     private readonly realtimePayload: SaleOrderRealtimePayloadService,
+    private readonly saveWithClient: SaveSaleOrderWithClientUsecase,
   ) {}
 
   private async notifySaleOrderUpdated(saleOrderId: string, source: string, saleOrder?: unknown) {
@@ -102,7 +107,7 @@ export class SaleOrdersController {
         warehouseId: dto.warehouseId,
         clientId: dto.clientId,
         workflowId: dto.workflowId,
-        agencyDetail: dto.agencyDetail,
+        agencySubsidiaryId: dto.agencySubsidiaryId,
         sourceId: dto.sourceId,
         scheduleDate: dto.scheduleDate,
         deliveryDate: dto.deliveryDate,
@@ -112,6 +117,11 @@ export class SaleOrdersController {
         note: dto.note,
         advertisingCode: dto.advertisingCode,
         observation: dto.observation,
+        sendDate: dto.sendDate,
+        sendPhoto: dto.sendPhoto,
+        sendCode: dto.sendCode,
+        sendAddress: dto.sendAddress,
+        assignedBy: dto.assignedBy,
         items: (dto.items ?? []).map((item) => ({
           quantity: item.quantity,
           unitPrice: item.unitPrice,
@@ -133,6 +143,7 @@ export class SaleOrdersController {
           date: p.date,
           operationNumber: p.operationNumber,
           note: p.note,
+          paymentPhoto: p.paymentPhoto,
         })),
       },
       user.id,
@@ -145,6 +156,31 @@ export class SaleOrdersController {
       );
     }
 
+    return result;
+  }
+
+  @Post("with-client")
+  @UseInterceptors(
+    AnyFilesInterceptor({
+      storage: memoryStorage(),
+      limits: { files: 25, fileSize: 15 * 1024 * 1024 },
+    }),
+  )
+  async createWithClient(
+    @Body() body: unknown,
+    @UploadedFiles() files: Express.Multer.File[] = [],
+    @CurrentUser() user: { id: string },
+  ) {
+    const parsed = parseSaleOrderMultipart(body, files);
+    const result = await this.saveWithClient.execute({
+      ...parsed,
+      userId: user.id,
+    });
+
+    await this.evaluateAutomaticWorkflowThenNotify(
+      result.orderId,
+      SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_CREATED,
+    );
     return result;
   }
 
@@ -281,6 +317,7 @@ export class SaleOrdersController {
       date: dto.date,
       operationNumber: dto.operationNumber,
       note: dto.note,
+      paymentPhoto: dto.paymentPhoto,
     });
 
     await this.evaluateAutomaticWorkflowThenNotify(
@@ -314,7 +351,7 @@ export class SaleOrdersController {
         warehouseId: dto.warehouseId,
         workflowId: dto.workflowId,
         clientId: dto.clientId,
-        agencyDetail: dto.agencyDetail,
+        agencySubsidiaryId: dto.agencySubsidiaryId,
         sourceId: dto.sourceId,
         scheduleDate: dto.scheduleDate,
         deliveryDate: dto.deliveryDate,
@@ -324,6 +361,11 @@ export class SaleOrdersController {
         note: dto.note,
         advertisingCode: dto.advertisingCode,
         observation: dto.observation,
+        sendDate: dto.sendDate,
+        sendPhoto: dto.sendPhoto,
+        sendCode: dto.sendCode,
+        sendAddress: dto.sendAddress,
+        assignedBy: dto.assignedBy,
         items: (dto.items ?? []).map((item) => ({
           quantity: item.quantity,
           unitPrice: item.unitPrice,
@@ -345,9 +387,37 @@ export class SaleOrdersController {
           date: p.date,
           operationNumber: p.operationNumber,
           note: p.note,
+          paymentPhoto: p.paymentPhoto,
         })),
       },
     );
+
+    await this.evaluateAutomaticWorkflowThenNotify(
+      saleOrderId,
+      SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_UPDATED,
+    );
+    return result;
+  }
+
+  @Patch(":saleOrderId/with-client")
+  @UseInterceptors(
+    AnyFilesInterceptor({
+      storage: memoryStorage(),
+      limits: { files: 25, fileSize: 15 * 1024 * 1024 },
+    }),
+  )
+  async updateWithClient(
+    @Param("saleOrderId", ParseUUIDPipe) saleOrderId: string,
+    @Body() body: unknown,
+    @UploadedFiles() files: Express.Multer.File[] = [],
+    @CurrentUser() user: { id: string },
+  ) {
+    const parsed = parseSaleOrderMultipart(body, files);
+    const result = await this.saveWithClient.execute({
+      ...parsed,
+      saleOrderId,
+      userId: user.id,
+    });
 
     await this.evaluateAutomaticWorkflowThenNotify(
       saleOrderId,

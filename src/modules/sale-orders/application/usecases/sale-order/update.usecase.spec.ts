@@ -1,5 +1,6 @@
 import "reflect-metadata";
 import { ACTIONS } from "src/modules/workflow/domain/constants/workflow-action.constants";
+import { SaleOrderEditPolicyService } from "../../services/sale-order-edit-policy.service";
 import { UpdateSaleOrderUsecase } from "./update.usecase";
 
 describe("UpdateSaleOrderUsecase", () => {
@@ -20,6 +21,7 @@ describe("UpdateSaleOrderUsecase", () => {
       string | { type: string; actionBranch?: "THEN" | "ELSE"; executedBranch?: "THEN" | "ELSE" }
     > = [],
     currentStateIsFinal = false,
+    packRepo = { findByIdWithItems: jest.fn() },
   ) => {
     const saleOrderRepo = {
       findByIdForUpdate: jest.fn().mockResolvedValue({
@@ -99,16 +101,20 @@ describe("UpdateSaleOrderUsecase", () => {
         }],
       }),
     };
+    const editPolicy = new SaleOrderEditPolicyService(
+      historyRepo as any,
+      transitionRepo as any,
+      workflowRepo as any,
+    );
     const usecase = new UpdateSaleOrderUsecase(
       { runInTransaction: (work: any) => work({}) } as any,
-      { findByIdWithItems: jest.fn() } as any,
+      packRepo as any,
       saleOrderRepo as any,
       saleOrderItemRepo as any,
       componentRepo as any,
       paymentRepo as any,
       workflowRepo as any,
-      historyRepo as any,
-      transitionRepo as any,
+      editPolicy,
     );
 
     return {
@@ -117,15 +123,39 @@ describe("UpdateSaleOrderUsecase", () => {
       saleOrderItemRepo,
       componentRepo,
       paymentRepo,
+      packRepo,
     };
   };
 
   it("replaces order lines without mutating inventory", async () => {
-    const { usecase, componentRepo } = createFixture();
+    const { usecase, componentRepo, paymentRepo } = createFixture();
 
     await usecase.execute(input);
 
     expect(componentRepo.bulkCreate).toHaveBeenCalled();
+    expect(paymentRepo.deleteBySaleOrderId).not.toHaveBeenCalled();
+  });
+
+  it('computes subtotal and total from item totals, delivery and discount', async () => {
+    const { usecase, saleOrderRepo } = createFixture();
+
+    await usecase.execute({
+      ...input,
+      deliveryCost: 5,
+      discount: 3,
+      subTotal: 999,
+      total: 999,
+    });
+
+    expect(saleOrderRepo.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subTotal: 10,
+        deliveryCost: 5,
+        discount: 3,
+        total: 12,
+      }),
+      expect.anything(),
+    );
   });
 
   it("allows metadata edits when the current workflow state is final", async () => {
@@ -249,5 +279,54 @@ describe("UpdateSaleOrderUsecase", () => {
     await usecase.execute(input);
 
     expect(saleOrderRepo.update).toHaveBeenCalled();
+  });
+
+  it("allows extra components that do not belong to the selected pack", async () => {
+    const packRepo = {
+      findByIdWithItems: jest.fn().mockResolvedValue({
+        id: "pack-1",
+        items: [
+          {
+            id: "pack-item-1",
+            skuId: "sku-pack",
+            quantity: 1,
+            price: 10,
+            lineTotal: 10,
+          },
+        ],
+      }),
+    };
+    const fixture = createFixture([], false, packRepo);
+
+    await expect(fixture.usecase.execute({
+      ...input,
+      items: [{
+        quantity: 1,
+        unitPrice: 30,
+        total: 30,
+        referencePackId: "pack-1",
+        components: [
+          { skuId: "sku-pack", quantity: 1, unitPrice: 10, total: 10 },
+          { skuId: "sku-extra", quantity: 1, unitPrice: 20, total: 20 },
+        ],
+      }],
+    })).resolves.toEqual(expect.objectContaining({ orderId: "order-1" }));
+
+    expect(fixture.componentRepo.bulkCreate).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          skuId: "sku-pack",
+          referencePackItemId: "pack-item-1",
+        }),
+        expect.objectContaining({
+          skuId: "sku-extra",
+          referencePackItemId: null,
+          quantity: 1,
+          unitPrice: 20,
+          total: 20,
+        }),
+      ]),
+      expect.anything(),
+    );
   });
 });

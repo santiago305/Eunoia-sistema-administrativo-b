@@ -27,6 +27,9 @@ export class SalePaymentEntity {
   @Column({ name: "note", type: "varchar", length: 255, nullable: true })
   note?: string | null;
 
+  @Column({ name: "payment_photo", type: "varchar", nullable: true })
+  paymentPhoto?: string | null;
+
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
 }

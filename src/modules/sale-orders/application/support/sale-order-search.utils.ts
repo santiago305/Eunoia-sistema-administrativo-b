@@ -44,7 +44,7 @@ const FILTER_FIELD_ORDER: SaleOrderSearchField[] = [
   SaleOrderSearchFields.CLIENT_PROVINCE_ID,
   SaleOrderSearchFields.CLIENT_DISTRICT_ID,
   SaleOrderSearchFields.CLIENT_PHONE,
-  SaleOrderSearchFields.AGENCY_DETAIL,
+  SaleOrderSearchFields.AGENCY_SUBSIDIARY_ID,
   SaleOrderSearchFields.SOURCE_ID,
   SaleOrderSearchFields.INVOICE_STATUS,
   SaleOrderSearchFields.SCHEDULE_DATE,
@@ -80,7 +80,7 @@ const TEXT_FIELDS = new Set<SaleOrderSearchField>([
   SaleOrderSearchFields.ADVERTISING_CODE,
   SaleOrderSearchFields.OBSERVATION,
   SaleOrderSearchFields.CLIENT_PHONE,
-  SaleOrderSearchFields.AGENCY_DETAIL,
+  SaleOrderSearchFields.AGENCY_SUBSIDIARY_ID,
 ]);
 
 const DATE_OPERATORS = new Set<SaleOrderSearchOperator>([
@@ -112,7 +112,7 @@ const SEARCH_FIELD_LABELS: Record<SaleOrderSearchField, string> = {
   [SaleOrderSearchFields.CLIENT_PROVINCE_ID]: "Provincia",
   [SaleOrderSearchFields.CLIENT_DISTRICT_ID]: "Distrito",
   [SaleOrderSearchFields.CLIENT_PHONE]: "Celular",
-  [SaleOrderSearchFields.AGENCY_DETAIL]: "Agencia",
+  [SaleOrderSearchFields.AGENCY_SUBSIDIARY_ID]: "Sucursal de agencia",
   [SaleOrderSearchFields.SOURCE_ID]: "Origen",
   [SaleOrderSearchFields.INVOICE_STATUS]: "Comprobante",
   [SaleOrderSearchFields.SCHEDULE_DATE]: "F. Programada",

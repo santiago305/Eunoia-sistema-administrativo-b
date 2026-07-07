@@ -62,8 +62,49 @@ describe("SalePaymentTypeormRepository", () => {
         operationNumber: "",
         amount: 10,
         note: "ADELANTO",
+        paymentPhoto: null,
         createdAt,
       },
     ]);
+  });
+
+  it('updates and deletes selected payments through the transaction manager', async () => {
+    const paymentRepo = {
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
+      delete: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
+    const manager = {
+      getRepository: jest.fn((entity) => {
+        if (entity === SalePaymentEntity) return paymentRepo;
+        throw new Error('Unexpected repository');
+      }),
+    };
+    const repository = new SalePaymentTypeormRepository({ manager } as any);
+    const tx = { manager } as any;
+
+    await repository.update(
+      {
+        saleOrderId: 'order-1',
+        paymentId: 'payment-1',
+        bankAccountId: null,
+        date: new Date('2026-07-03T00:00:00.000Z'),
+        method: 'EFECTIVO',
+        amount: 80,
+      },
+      tx,
+    );
+    await repository.deleteByIds(
+      { saleOrderId: 'order-1', paymentIds: ['payment-2'] },
+      tx,
+    );
+
+    expect(paymentRepo.update).toHaveBeenCalledWith(
+      { id: 'payment-1', saleOrderId: 'order-1' },
+      expect.objectContaining({ amount: 80, method: 'EFECTIVO' }),
+    );
+    expect(paymentRepo.delete).toHaveBeenCalledWith({
+      id: In(['payment-2']),
+      saleOrderId: 'order-1',
+    });
   });
 });

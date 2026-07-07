@@ -35,6 +35,7 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
       row.operationNumber ?? null,
       Number(row.amount ?? 0),
       row.note ?? null,
+      row.paymentPhoto ?? null,
       row.createdAt,
       bankAccount
         ? {
@@ -58,6 +59,7 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
         operationNumber: row.operationNumber ?? null,
         amount: row.amount,
         note: row.note ?? null,
+        paymentPhoto: row.paymentPhoto ?? null,
       })),
     );
     return saved.map((row) => this.toDomain(row));
@@ -66,6 +68,43 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
   async deleteBySaleOrderId(saleOrderId: string, tx?: TransactionContext): Promise<void> {
     const manager = this.getManager(tx);
     await manager.getRepository(SalePaymentEntity).delete({ saleOrderId });
+  }
+
+  async listBySaleOrderId(
+    saleOrderId: string,
+    tx?: TransactionContext,
+  ): Promise<SalePayment[]> {
+    return this.listBySaleOrderIds([saleOrderId], tx);
+  }
+
+  async update(
+    input: Parameters<SalePaymentRepository['update']>[0],
+    tx?: TransactionContext,
+  ): Promise<void> {
+    const manager = this.getManager(tx);
+    await manager.getRepository(SalePaymentEntity).update(
+      { id: input.paymentId, saleOrderId: input.saleOrderId },
+      {
+        bankAccountId: input.bankAccountId ?? null,
+        date: input.date,
+        method: input.method,
+        operationNumber: input.operationNumber ?? null,
+        amount: input.amount,
+        note: input.note ?? null,
+      },
+    );
+  }
+
+  async deleteByIds(
+    input: Parameters<SalePaymentRepository['deleteByIds']>[0],
+    tx?: TransactionContext,
+  ): Promise<void> {
+    if (!input.paymentIds.length) return;
+    const manager = this.getManager(tx);
+    await manager.getRepository(SalePaymentEntity).delete({
+      id: In(input.paymentIds),
+      saleOrderId: input.saleOrderId,
+    });
   }
 
   async deleteById(

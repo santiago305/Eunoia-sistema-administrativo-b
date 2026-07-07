@@ -13,11 +13,36 @@ export interface SalePaymentRepository {
       operationNumber?: string | null;
       amount: number;
       note?: string | null;
+      paymentPhoto?: string | null;
     }>,
     tx?: TransactionContext,
   ): Promise<SalePayment[]>;
 
   deleteBySaleOrderId(saleOrderId: string, tx?: TransactionContext): Promise<void>;
+
+  listBySaleOrderId(
+    saleOrderId: string,
+    tx?: TransactionContext,
+  ): Promise<SalePayment[]>;
+
+  update(
+    input: {
+      saleOrderId: string;
+      paymentId: string;
+      bankAccountId?: string | null;
+      date: Date;
+      method: string;
+      operationNumber?: string | null;
+      amount: number;
+      note?: string | null;
+    },
+    tx?: TransactionContext,
+  ): Promise<void>;
+
+  deleteByIds(
+    input: { saleOrderId: string; paymentIds: string[] },
+    tx?: TransactionContext,
+  ): Promise<void>;
 
   deleteById(
     input: { saleOrderId: string; paymentId: string },
