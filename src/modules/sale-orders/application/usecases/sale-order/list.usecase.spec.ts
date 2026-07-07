@@ -45,7 +45,7 @@ describe("ListSaleOrdersUsecase", () => {
             correlative: 10,
             warehouse: null,
             client: null,
-            agencyDetail: null,
+            agencySubsidiaryId: null,
             source: null,
             scheduleDate: null,
             deliveryDate: null,

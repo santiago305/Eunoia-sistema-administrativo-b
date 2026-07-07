@@ -44,6 +44,7 @@ import { PurchaseAttachmentsModule } from './modules/purchase-attachments';
 import { CompanyPaymentAccountsModule } from './modules/company-payment-accounts';
 import { RecurringPurchasesModule } from './modules/recurring-purchases';
 import { PurchaseDashboardModule } from './modules/purchase-dashboard/purchase-dashboard.module';
+import { AdvisersModule } from './modules/advisers';
 
 const redisAuth = envs.redis.password ? `:${encodeURIComponent(envs.redis.password)}@` : '';
 const redisUrl = `redis://${redisAuth}${envs.redis.host}:${envs.redis.port}/${envs.redis.db}`;
@@ -95,6 +96,7 @@ const redisUrl = `redis://${redisAuth}${envs.redis.host}:${envs.redis.port}/${en
     SecurityModule,
     MailModule,
     AccessControlModule,
+    AdvisersModule,
   ],
   providers: [
     {

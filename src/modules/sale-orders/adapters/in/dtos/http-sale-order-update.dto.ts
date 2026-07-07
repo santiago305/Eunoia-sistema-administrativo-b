@@ -25,8 +25,8 @@ export class HttpSaleOrderUpdateDto {
   workflowId: string;
 
   @IsOptional()
-  @IsString()
-  agencyDetail?: string;
+  @IsUUID()
+  agencySubsidiaryId?: string;
 
   @IsOptional()
   @IsUUID()
@@ -66,6 +66,26 @@ export class HttpSaleOrderUpdateDto {
   @IsOptional()
   @IsString()
   observation?: string | null;
+
+  @IsOptional()
+  @IsDateString()
+  sendDate?: string | null;
+
+  @IsOptional()
+  @IsString()
+  sendPhoto?: string | null;
+
+  @IsOptional()
+  @IsString()
+  sendCode?: string | null;
+
+  @IsOptional()
+  @IsString()
+  sendAddress?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  assignedBy?: string | null;
 
   @IsArray()
   @ArrayMinSize(1)

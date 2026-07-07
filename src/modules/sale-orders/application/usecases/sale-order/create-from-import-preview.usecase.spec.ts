@@ -13,6 +13,60 @@ import { CreateFromImportPreviewUseCase } from "./create-from-import-preview.use
 import { WORKFLOW_REPOSITORY } from "src/modules/workflow/domain/ports/workflow.repository";
 import { SaleOrderNumberingService } from "../../services/sale-order-numbering.service";
 
+function makeImportUsecase(overrides: Record<string, any> = {}) {
+  const tx = overrides.tx ?? {};
+  const uow = { runInTransaction: (work: any) => work(tx) };
+  const saleOrderRepo = { create: jest.fn().mockResolvedValue({ id: "order-1" }) };
+  const saleOrderItemRepo = { bulkCreate: jest.fn().mockResolvedValue([{ id: "item-1" }]) };
+  const componentRepo = { bulkCreate: jest.fn().mockResolvedValue([]) };
+  const paymentRepo = { bulkCreate: jest.fn().mockResolvedValue([]) };
+  const workflowRepo = { findActiveByNormalizedName: jest.fn().mockResolvedValue(null) };
+  const numbering = { reserveNext: jest.fn().mockResolvedValue({ serie: "PE", correlative: 1 }) };
+  const normalizer = { normalize: jest.fn() };
+  const clientResolver = { resolveOrCreate: jest.fn().mockResolvedValue("client-1") };
+  const sourceResolver = { resolveOrCreate: jest.fn().mockResolvedValue("source-1") };
+  const skuResolver = {
+    resolveOrCreateSkus: jest.fn().mockResolvedValue([
+      {
+        productId: "product-1",
+        skuId: "sku-1",
+        skuName: "Jabon Azufre",
+        customSku: "EVA001",
+        quantity: 1,
+      },
+    ]),
+  };
+
+  const usecase = new CreateFromImportPreviewUseCase(
+    overrides.uow ?? (uow as any),
+    overrides.saleOrderRepo ?? (saleOrderRepo as any),
+    overrides.saleOrderItemRepo ?? (saleOrderItemRepo as any),
+    overrides.componentRepo ?? (componentRepo as any),
+    overrides.paymentRepo ?? (paymentRepo as any),
+    overrides.normalizer ?? (normalizer as any),
+    overrides.clientResolver ?? (clientResolver as any),
+    overrides.sourceResolver ?? (sourceResolver as any),
+    overrides.skuResolver ?? (skuResolver as any),
+    overrides.workflowRepo ?? (workflowRepo as any),
+    overrides.numbering ?? (numbering as any),
+  );
+
+  return {
+    usecase,
+    tx,
+    saleOrderRepo,
+    saleOrderItemRepo,
+    componentRepo,
+    paymentRepo,
+    normalizer,
+    clientResolver,
+    sourceResolver,
+    skuResolver,
+    workflowRepo,
+    numbering,
+  };
+}
+
 describe("CreateFromImportPreviewUseCase", () => {
   it("imports a single valid row", async () => {
     const uow = { runInTransaction: (work: any) => work({}) };
@@ -131,6 +185,167 @@ describe("CreateFromImportPreviewUseCase", () => {
     } finally {
       await moduleRef.close();
     }
+  });
+
+  it("stores unmatched import address on the client and leaves order sendAddress empty", async () => {
+    const queryBuilder = {
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getOne: jest.fn().mockResolvedValue(null),
+    };
+    const tx = {
+      manager: {
+        getRepository: jest.fn().mockReturnValue({
+          createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
+        }),
+      },
+    };
+    const f = makeImportUsecase({ tx });
+    f.normalizer.normalize.mockResolvedValue({
+      ok: true,
+      row: {
+        deliveryDate: "2026-07-06",
+        workflowName: null,
+        address: "Av. Cliente 123",
+        productName: "Pack Aloe",
+        internalNote: null,
+        advertisingCode: null,
+        total: 120,
+        advance: 0,
+        deliveryCost: 0,
+        couponCode: null,
+        parsedSkus: [],
+        clientResolution: { clientId: null, matchedBy: null },
+      },
+    });
+
+    await f.usecase.execute({ rows: [{ total: 120 } as any], userId: "user-1" });
+
+    expect(f.clientResolver.resolveOrCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ address: "Av. Cliente 123" }),
+      tx,
+    );
+    expect(f.saleOrderRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agencySubsidiaryId: null,
+        sendAddress: null,
+      }),
+      tx,
+    );
+  });
+
+  it("stores matched subsidiary alias on the order delivery fields instead of the client address", async () => {
+    const queryBuilder = {
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getOne: jest.fn().mockResolvedValue({
+        id: "subsidiary-1",
+        address: "Av. Sucursal 456",
+      }),
+    };
+    const tx = {
+      manager: {
+        getRepository: jest.fn().mockReturnValue({
+          createQueryBuilder: jest.fn().mockReturnValue(queryBuilder),
+        }),
+      },
+    };
+    const f = makeImportUsecase({ tx });
+    f.normalizer.normalize.mockResolvedValue({
+      ok: true,
+      row: {
+        deliveryDate: "2026-07-06",
+        workflowName: null,
+        address: "Sucursal Norte",
+        productName: "Pack Aloe",
+        internalNote: null,
+        advertisingCode: null,
+        total: 120,
+        advance: 0,
+        deliveryCost: 0,
+        couponCode: null,
+        parsedSkus: [],
+        clientResolution: { clientId: null, matchedBy: null },
+      },
+    });
+
+    await f.usecase.execute({ rows: [{ total: 120 } as any], userId: "user-1" });
+
+    expect(f.clientResolver.resolveOrCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ address: null }),
+      tx,
+    );
+    expect(f.saleOrderRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agencySubsidiaryId: "subsidiary-1",
+        sendAddress: "Av. Sucursal 456",
+      }),
+      tx,
+    );
+  });
+
+  it("uses the imported pack name as the sale order item description", async () => {
+    const f = makeImportUsecase();
+    f.normalizer.normalize.mockResolvedValue({
+      ok: true,
+      row: {
+        deliveryDate: "2026-07-06",
+        workflowName: null,
+        address: null,
+        productName: "Pack Aloe",
+        internalNote: null,
+        advertisingCode: null,
+        total: 120,
+        advance: 0,
+        deliveryCost: 0,
+        couponCode: "COUPON-IGNORED-AS-DESCRIPTION",
+        parsedSkus: [],
+        clientResolution: { clientId: null, matchedBy: null },
+      },
+    });
+
+    await f.usecase.execute({ rows: [{ total: 120 } as any], userId: "user-1" });
+
+    expect(f.saleOrderItemRepo.bulkCreate).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          description: "Pack Aloe",
+        }),
+      ],
+      expect.anything(),
+    );
+  });
+
+  it("uses Sin nombre when the imported pack name is empty", async () => {
+    const f = makeImportUsecase();
+    f.normalizer.normalize.mockResolvedValue({
+      ok: true,
+      row: {
+        deliveryDate: "2026-07-06",
+        workflowName: null,
+        address: null,
+        productName: null,
+        internalNote: null,
+        advertisingCode: null,
+        total: 120,
+        advance: 0,
+        deliveryCost: 0,
+        couponCode: null,
+        parsedSkus: [],
+        clientResolution: { clientId: null, matchedBy: null },
+      },
+    });
+
+    await f.usecase.execute({ rows: [{ total: 120 } as any], userId: "user-1" });
+
+    expect(f.saleOrderItemRepo.bulkCreate).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          description: "Sin nombre",
+        }),
+      ],
+      expect.anything(),
+    );
   });
 });
 

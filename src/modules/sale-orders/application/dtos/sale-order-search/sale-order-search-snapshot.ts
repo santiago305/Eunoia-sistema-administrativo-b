@@ -11,7 +11,7 @@ export const SaleOrderSearchFields = {
   CLIENT_PROVINCE_ID: "clientProvinceId",
   CLIENT_DISTRICT_ID: "clientDistrictId",
   CLIENT_PHONE: "clientPhone",
-  AGENCY_DETAIL: "agencyDetail",
+  AGENCY_SUBSIDIARY_ID: "agencySubsidiaryId",
   SOURCE_ID: "sourceId",
   INVOICE_STATUS: "invoiceStatus",
   SCHEDULE_DATE: "scheduleDate",
@@ -117,7 +117,7 @@ export type SaleOrderListItemOutput = {
     province: { id: string; name: string; departmentId: string } | null;
     district: { id: string; name: string; provinceId: string } | null;
   } | null;
-  agencyDetail: string | null;
+  agencySubsidiaryId: string | null;
   source: { id: string; name: string; detail?: string | null } | null;
   scheduleDate: string | null;
   deliveryDate: string | null;

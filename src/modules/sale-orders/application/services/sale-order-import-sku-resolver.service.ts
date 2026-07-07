@@ -96,9 +96,7 @@ export class SaleOrderImportSkuResolverService {
       isManufacturable: true,
       isStockTracked: true,
       isActive: true,
-      attributes: input.variantName
-        ? [{ code: "variant", name: "variant", value: input.variantName }]
-        : [],
+      attributes: [],
     };
 
     let createdSku: any;

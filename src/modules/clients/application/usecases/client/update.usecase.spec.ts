@@ -16,6 +16,71 @@ import { UbigeoDistrictId } from "src/modules/clients/domain/value-objects/ubige
 import { BadRequestException } from "@nestjs/common";
 
 describe("UpdateClientUsecase", () => {
+  it("updates inside a caller transaction without emitting before commit", async () => {
+    const current = Client.create({
+      type: ClientType.NEW,
+      fullName: "Juan Perez",
+      docType: ClientDocType.DNI,
+      docNumber: "12345678",
+      departmentId: new UbigeoDepartmentId("15"),
+      provinceId: new UbigeoProvinceId("1501"),
+      districtId: new UbigeoDistrictId("150101"),
+      isActive: true,
+    });
+    const tx = { id: "shared-tx" };
+    const uow = { runInTransaction: jest.fn() };
+    const clientRealtime = {
+      emitClientUpdated: jest.fn(),
+      stream: jest.fn(),
+    };
+    const clientRepo = {
+      findById: jest.fn().mockResolvedValue(current),
+      update: jest.fn().mockResolvedValue({}),
+    };
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        UpdateClientUsecase,
+        { provide: UNIT_OF_WORK, useValue: uow },
+        {
+          provide: CLOCK,
+          useValue: { now: () => new Date("2026-07-03T10:00:00.000Z") },
+        },
+        { provide: CLIENT_REPOSITORY, useValue: clientRepo },
+        { provide: TELEPHONE_REPOSITORY, useValue: {} },
+        {
+          provide: UBIGEO_REPOSITORY,
+          useValue: { findByDistrictCode: jest.fn() },
+        },
+        { provide: CLIENT_REALTIME, useValue: clientRealtime },
+      ],
+    }).compile();
+
+    try {
+      const usecase = moduleRef.get(UpdateClientUsecase);
+      const result = await usecase.executeInTransaction(
+        {
+          clientId: current.clientId.value,
+          docNumber: "87654321",
+        },
+        tx,
+      );
+
+      expect(clientRepo.findById).toHaveBeenCalledWith(
+        current.clientId.value,
+        tx,
+      );
+      expect(clientRepo.update).toHaveBeenCalledWith(
+        expect.objectContaining({ docNumber: "87654321" }),
+        tx,
+      );
+      expect(result.event?.changedFields).toEqual(["client.docNumber"]);
+      expect(uow.runInTransaction).not.toHaveBeenCalled();
+      expect(clientRealtime.emitClientUpdated).not.toHaveBeenCalled();
+    } finally {
+      await moduleRef.close();
+    }
+  });
+
   it("does not modify telephones when telephonesReplace is not provided", async () => {
     const current = Client.create({
       type: ClientType.NEW,

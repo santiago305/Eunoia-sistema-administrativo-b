@@ -9,6 +9,7 @@ import { SaleOrderItemComponentRepository } from "src/modules/sale-orders/domain
 import { SaleOrderItemComponent } from "src/modules/sale-orders/domain/entities/sale-order-item-component";
 import { ProductCatalogSkuEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku.entity";
 import { ProductCatalogSkuAttributeValueEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku-attribute-value.entity";
+import { ProductCatalogStockItemEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/stock-item.entity";
 import { SaleOrderComponentsOutput } from "src/modules/sale-orders/application/dtos/sale-order-search/output/sale-order-search-state.output";
 
 @Injectable()
@@ -44,6 +45,7 @@ export class SaleOrderItemComponentTypeormRepository implements SaleOrderItemCom
     skuIds: string[],
   ): Promise<{
     skuById: Map<string, ProductCatalogSkuEntity>;
+    stockItemBySkuId: Map<string, ProductCatalogStockItemEntity>;
     attributesBySkuId: Map<
       string,
       Array<{
@@ -56,6 +58,13 @@ export class SaleOrderItemComponentTypeormRepository implements SaleOrderItemCom
     const skus = skuIds.length
       ? await manager.getRepository(ProductCatalogSkuEntity).find({
           where: { id: In(skuIds) },
+          relations: { product: { baseUnit: true } },
+        })
+      : [];
+
+    const stockItems = skuIds.length
+      ? await manager.getRepository(ProductCatalogStockItemEntity).find({
+          where: { skuId: In(skuIds) },
         })
       : [];
 
@@ -72,6 +81,9 @@ export class SaleOrderItemComponentTypeormRepository implements SaleOrderItemCom
       : [];
 
     const skuById = new Map(skus.map((row) => [row.id, row]));
+    const stockItemBySkuId = new Map(
+      stockItems.map((row) => [row.skuId, row]),
+    );
 
     const attributesBySkuId = new Map<
       string,
@@ -96,6 +108,7 @@ export class SaleOrderItemComponentTypeormRepository implements SaleOrderItemCom
 
     return {
       skuById,
+      stockItemBySkuId,
       attributesBySkuId,
     };
   }
@@ -103,6 +116,7 @@ export class SaleOrderItemComponentTypeormRepository implements SaleOrderItemCom
   private mapComponentOutput(
     row: SaleOrderItemComponentEntity,
     skuById: Map<string, ProductCatalogSkuEntity>,
+    stockItemBySkuId: Map<string, ProductCatalogStockItemEntity>,
     attributesBySkuId: Map<
       string,
       Array<{
@@ -117,19 +131,38 @@ export class SaleOrderItemComponentTypeormRepository implements SaleOrderItemCom
     if (!sku) {
       throw new BadRequestException("SKU no encontrado para componente");
     }
+    const unit = sku.product?.baseUnit ?? null;
 
     return {
       id: row.id,
       saleOrderItemId: row.saleOrderItemId,
       sku: {
         id: sku.id,
+        productId: sku.productId,
         name: sku.name,
         backendSku: sku.backendSku,
-        customSku: sku.customSku,
-        barcode: sku.barcode,
-        image: sku.image,
-        attributes: attributesBySkuId.get(sku.id) ?? [],
+        customSku: sku.customSku ?? null,
+        barcode: sku.barcode ?? null,
+        image: sku.image ?? null,
+        price: Number(sku.price ?? 0),
+        cost: Number(sku.cost ?? 0),
+        isSellable: Boolean(sku.isSellable),
+        isPurchasable: Boolean(sku.isPurchasable),
+        isManufacturable: Boolean(sku.isManufacturable),
+        isStockTracked: Boolean(sku.isStockTracked),
+        isActive: Boolean(sku.isActive),
+        createdAt: sku.createdAt.toISOString(),
+        updatedAt: sku.updatedAt ? sku.updatedAt.toISOString() : null,
       },
+      unit: unit
+        ? {
+            id: unit.id,
+            name: unit.name,
+            code: unit.code,
+          }
+        : null,
+      attributes: attributesBySkuId.get(sku.id) ?? [],
+      stockItemId: stockItemBySkuId.get(sku.id)?.id ?? null,
       referencePackItemId: row.referencePackItemId ?? null,
       quantity: Number(row.quantity ?? 0),
       unitPrice: Number(row.unitPrice ?? 0),
@@ -199,9 +232,9 @@ export class SaleOrderItemComponentTypeormRepository implements SaleOrderItemCom
 
     const skuIds = Array.from(new Set(components.map((row) => row.skuId).filter(Boolean)));
 
-    const { skuById, attributesBySkuId } = await this.getSkusWithAttributes(manager, skuIds);
+    const { skuById, stockItemBySkuId, attributesBySkuId } = await this.getSkusWithAttributes(manager, skuIds);
 
-    const outputs = components.map((row) => this.mapComponentOutput(row, skuById, attributesBySkuId));
+    const outputs = components.map((row) => this.mapComponentOutput(row, skuById, stockItemBySkuId, attributesBySkuId));
 
     return {
       saleOrderId: saleOrderItemId,
@@ -235,9 +268,9 @@ export class SaleOrderItemComponentTypeormRepository implements SaleOrderItemCom
 
     const skuIds = Array.from(new Set(components.map((row) => row.skuId).filter(Boolean)));
 
-    const { skuById, attributesBySkuId } = await this.getSkusWithAttributes(manager, skuIds);
+    const { skuById, stockItemBySkuId, attributesBySkuId } = await this.getSkusWithAttributes(manager, skuIds);
 
-    const outputs = components.map((row) => this.mapComponentOutput(row, skuById, attributesBySkuId));
+    const outputs = components.map((row) => this.mapComponentOutput(row, skuById, stockItemBySkuId, attributesBySkuId));
 
     const byItemId = new Map<string, typeof outputs>();
 

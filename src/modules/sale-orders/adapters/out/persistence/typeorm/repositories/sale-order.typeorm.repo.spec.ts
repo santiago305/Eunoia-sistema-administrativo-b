@@ -16,6 +16,44 @@ const createStatsQueryBuilder = (rawMany: unknown[] = [], rawOne: unknown = {}) 
 });
 
 describe("SaleOrderTypeormRepository", () => {
+  it("maps and persists the sale order discount", async () => {
+    const savedRow = {
+      id: "order-1",
+      clientId: "client-1",
+      createdBy: "user-1",
+      subTotal: 100,
+      deliveryCost: 10,
+      discount: 15,
+      total: 95,
+      invoiceSend: false,
+      isActive: true,
+      createdAt: new Date("2026-07-03T00:00:00.000Z"),
+    };
+    const entityRepo = {
+      save: jest.fn().mockResolvedValue(savedRow),
+    };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue(entityRepo) },
+    } as any);
+
+    const result = await repository.create({
+      serie: "P001",
+      correlative: 1,
+      warehouseId: null,
+      clientId: "client-1",
+      subTotal: 100,
+      deliveryCost: 10,
+      discount: 15,
+      total: 95,
+      createdBy: "user-1",
+    });
+
+    expect(entityRepo.save).toHaveBeenCalledWith(
+      expect.objectContaining({ discount: 15 }),
+    );
+    expect(result.discount).toBe(15);
+  });
+
   it("assigns a warehouse only while the current value is null", async () => {
     const queryBuilder = {
       update: jest.fn().mockReturnThis(),
@@ -184,6 +222,14 @@ describe("SaleOrderTypeormRepository", () => {
   it("loads the active main telephone when getting a sale order", async () => {
     const telephoneRepo = {
       findOne: jest.fn().mockResolvedValue({ number: "999999999" }),
+      find: jest.fn().mockResolvedValue([
+        {
+          id: "telephone-1",
+          number: "999999999",
+          isMain: true,
+          isActive: true,
+        },
+      ]),
     };
     const repositories = new Map<any, any>();
     const manager = {
@@ -236,6 +282,173 @@ describe("SaleOrderTypeormRepository", () => {
       where: { clientId: "client-1", isMain: true, isActive: true },
     });
     expect(result?.client?.mainPhone).toBe("999999999");
+    expect(result?.client?.telephones).toEqual([
+      expect.objectContaining({ number: "999999999", isMain: true }),
+    ]);
+  });
+
+  it("returns enriched item components when getting a sale order", async () => {
+    const {
+      SaleOrderEntity,
+    } = require("../entities/sale-order.entity");
+    const {
+      SaleOrderItemEntity,
+    } = require("../entities/sale-order-item.entity");
+    const {
+      SaleOrderItemComponentEntity,
+    } = require("../entities/sale-order-item-component.entity");
+    const {
+      ProductCatalogSkuEntity,
+    } = require("src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku.entity");
+    const {
+      ProductCatalogStockItemEntity,
+    } = require("src/modules/product-catalog/adapters/out/persistence/typeorm/entities/stock-item.entity");
+    const {
+      ProductCatalogSkuAttributeValueEntity,
+    } = require("src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku-attribute-value.entity");
+
+    const attributeQb = {
+      innerJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue([
+        {
+          sku_id: "sku-1",
+          code: "variant",
+          name: "Variante",
+          value: "Azufre",
+        },
+      ]),
+    };
+
+    const repositories = new Map<any, any>();
+    const manager = {
+      getRepository: jest.fn((entity) => {
+        if (entity === SaleOrderEntity) {
+          return {
+            findOne: jest.fn().mockResolvedValue({
+              id: "order-1",
+              clientId: "client-1",
+              warehouseId: null,
+              sourceId: null,
+              createdBy: "user-1",
+              workflowId: null,
+              currentStateId: null,
+              total: 22,
+              subTotal: 22,
+              deliveryCost: 0,
+              invoiceSend: false,
+              isActive: true,
+              createdAt: new Date("2026-07-06T20:00:00.000Z"),
+            }),
+          };
+        }
+        if (entity === SaleOrderItemEntity) {
+          return {
+            find: jest.fn().mockResolvedValue([
+              {
+                id: "item-1",
+                referencePackId: null,
+                description: "JABON AZUFRE",
+                quantity: 1,
+                unitPrice: 22,
+                total: 22,
+                createdAt: new Date("2026-07-06T20:00:00.000Z"),
+              },
+            ]),
+          };
+        }
+        if (entity === SaleOrderItemComponentEntity) {
+          return {
+            find: jest.fn().mockResolvedValue([
+              {
+                id: "component-1",
+                saleOrderItemId: "item-1",
+                skuId: "sku-1",
+                referencePackItemId: null,
+                quantity: 1,
+                unitPrice: 22,
+                total: 22,
+                createdAt: new Date("2026-07-06T20:00:00.000Z"),
+              },
+            ]),
+          };
+        }
+        if (entity === ProductCatalogSkuEntity) {
+          return {
+            find: jest.fn().mockResolvedValue([
+              {
+                id: "sku-1",
+                productId: "product-1",
+                backendSku: "10017",
+                customSku: "EVA01893",
+                name: "JABON AZUFRE",
+                barcode: null,
+                image: "https://example.test/jabon.png",
+                price: 22,
+                cost: 10,
+                isSellable: true,
+                isPurchasable: false,
+                isManufacturable: false,
+                isStockTracked: true,
+                isActive: true,
+                createdAt: new Date("2026-01-01T00:00:00.000Z"),
+                updatedAt: new Date("2026-01-02T00:00:00.000Z"),
+                product: {
+                  baseUnit: {
+                    id: "unit-1",
+                    name: "UNIDADES",
+                    code: "NIU",
+                  },
+                },
+              },
+            ]),
+          };
+        }
+        if (entity === ProductCatalogStockItemEntity) {
+          return {
+            find: jest.fn().mockResolvedValue([
+              { id: "stock-1", skuId: "sku-1" },
+            ]),
+          };
+        }
+        if (entity === ProductCatalogSkuAttributeValueEntity) {
+          return {
+            createQueryBuilder: jest.fn().mockReturnValue(attributeQb),
+          };
+        }
+        if (!repositories.has(entity)) {
+          repositories.set(entity, {
+            findOne: jest.fn().mockResolvedValue(null),
+            find: jest.fn().mockResolvedValue([]),
+          });
+        }
+        return repositories.get(entity);
+      }),
+    };
+    const repository = new SaleOrderTypeormRepository({ manager } as any);
+
+    const result = await repository.findById("order-1");
+    const component = result?.items[0]?.components[0];
+
+    expect(component).toEqual(
+      expect.objectContaining({
+        stockItemId: "stock-1",
+        unit: { id: "unit-1", name: "UNIDADES", code: "NIU" },
+        attributes: [{ code: "variant", name: "Variante", value: "Azufre" }],
+      }),
+    );
+    expect(component?.sku).toEqual(
+      expect.objectContaining({
+        id: "sku-1",
+        productId: "product-1",
+        image: "https://example.test/jabon.png",
+        price: 22,
+        cost: 10,
+        isStockTracked: true,
+      }),
+    );
   });
 
   it("returns statistics grouped by bank account payment amounts", async () => {

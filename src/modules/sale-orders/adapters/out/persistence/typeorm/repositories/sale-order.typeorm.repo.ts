@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Brackets, EntityManager, In, Repository, SelectQueryBuilder } from "typeorm";
+import { Brackets, EntityManager, In, IsNull, Repository, SelectQueryBuilder } from "typeorm";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
 import { SaleOrderEntity } from "../entities/sale-order.entity";
@@ -28,6 +28,8 @@ import {
 import { CompanyPaymentAccountEntity } from "src/modules/company-payment-accounts/adapters/out/persistence/typeorm/entities/company-payment-account.entity";
 import { ProductCatalogSkuEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku.entity";
 import { ProductCatalogStockItemEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/stock-item.entity";
+import { ProductCatalogAttributeEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/attribute.entity";
+import { ProductCatalogSkuAttributeValueEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku-attribute-value.entity";
 import { SaleOrderGetOutput } from "src/modules/sale-orders/application/dtos/sale-order-search/output/sale-order-search-state.output";
 import { SaleOrderItemComponentEntity } from "../entities/sale-order-item-component.entity";
 import { SaleOrderItemEntity } from "../entities/sale-order-item.entity";
@@ -41,6 +43,8 @@ import { SaleOrderStatesEntity } from "src/modules/workflow/adapters/out/persist
 import { UbigeoDepartmentEntity } from "src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-department.entity";
 import { UbigeoDistrictEntity } from "src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-district.entity";
 import { UbigeoProvinceEntity } from "src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-province.entity";
+import { SaleOrderAttachmentEntity } from "src/modules/sale-order-attachments/adapters/out/persistence/typeorm/entities/sale-order-attachment.entity";
+import { SaleOrderAttachmentType } from "src/modules/sale-order-attachments/domain/value-objects/sale-order-attachment-type";
 
 @Injectable()
 export class SaleOrderTypeormRepository implements SaleOrderRepository {
@@ -56,6 +60,39 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     return this.repo.manager;
   }
 
+  private async loadSkuAttributes(
+    manager: EntityManager,
+    skuIds: string[],
+  ): Promise<Map<string, Array<{ code: string; name: string | null; value: string }>>> {
+    if (!skuIds.length) return new Map();
+
+    const rows = await manager
+      .getRepository(ProductCatalogSkuAttributeValueEntity)
+      .createQueryBuilder("sav")
+      .innerJoin(ProductCatalogAttributeEntity, "a", "a.attribute_id = sav.attribute_id")
+      .where("sav.sku_id IN (:...skuIds)", { skuIds })
+      .select([
+        "sav.sku_id AS sku_id",
+        "sav.value AS value",
+        "a.code AS code",
+        "a.name AS name",
+      ])
+      .orderBy("a.code", "ASC")
+      .getRawMany<{ sku_id: string; code: string; name: string | null; value: string }>();
+
+    const map = new Map<string, Array<{ code: string; name: string | null; value: string }>>();
+    for (const row of rows) {
+      const list = map.get(row.sku_id) ?? [];
+      list.push({
+        code: row.code,
+        name: row.name ?? null,
+        value: row.value,
+      });
+      map.set(row.sku_id, list);
+    }
+    return map;
+  }
+
   private toDomain(row: SaleOrderEntity): SaleOrder {
     return new SaleOrder(
       row.id,
@@ -63,16 +100,22 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       row.correlative ?? null,
       row.warehouseId ?? null,
       row.clientId,
-      row.agencyDetail ?? null,
+      row.agencySubsidiaryId ?? null,
       row.sourceId ?? null,
       row.scheduleDate ?? null,
       row.deliveryDate ?? null,
       Number(row.subTotal ?? 0),
       Number(row.deliveryCost ?? 0),
+      Number(row.discount ?? 0),
       Number(row.total ?? 0),
       row.note ?? null,
       row.advertisingCode ?? null,
       row.observation ?? null,
+      row.sendDate ?? null,
+      row.sendPhoto ?? null,
+      row.sendCode ?? null,
+      row.sendAddress ?? null,
+      row.assignedBy ?? null,
       row.createdBy,
       row.workflowId ?? null,
       row.currentStateId ?? null,
@@ -100,16 +143,22 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       correlative: input.correlative ?? null,
       warehouseId: input.warehouseId ?? null,
       clientId: input.clientId,
-      agencyDetail: input.agencyDetail ?? null,
+      agencySubsidiaryId: input.agencySubsidiaryId ?? null,
       sourceId: input.sourceId ?? null,
       scheduleDate: input.scheduleDate ?? null,
       deliveryDate: input.deliveryDate ?? null,
       subTotal: input.subTotal,
       deliveryCost: input.deliveryCost,
+      discount: input.discount ?? 0,
       total: input.total,
       note: input.note ?? null,
       advertisingCode: input.advertisingCode ?? null,
       observation: input.observation ?? null,
+      sendDate: input.sendDate ?? null,
+      sendPhoto: input.sendPhoto ?? null,
+      sendCode: input.sendCode ?? null,
+      sendAddress: input.sendAddress ?? null,
+      assignedBy: input.assignedBy ?? null,
       createdBy: input.createdBy,
       workflowId: input.workflowId ?? null,
       currentStateId: input.currentStateId ?? null,
@@ -160,16 +209,22 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       ...row,
       warehouseId: input.warehouseId ?? null,
       clientId: input.clientId,
-      agencyDetail: input.agencyDetail ?? null,
+      agencySubsidiaryId: input.agencySubsidiaryId ?? null,
       sourceId: input.sourceId ?? null,
       scheduleDate: input.scheduleDate ?? null,
       deliveryDate: input.deliveryDate ?? null,
       subTotal: input.subTotal,
       deliveryCost: input.deliveryCost,
+      discount: input.discount ?? row.discount ?? 0,
       total: input.total,
       note: input.note ?? null,
       advertisingCode: input.advertisingCode ?? null,
       observation: input.observation ?? null,
+      sendDate: input.sendDate ?? row.sendDate ?? null,
+      sendPhoto: input.sendPhoto ?? row.sendPhoto ?? null,
+      sendCode: input.sendCode ?? row.sendCode ?? null,
+      sendAddress: input.sendAddress ?? row.sendAddress ?? null,
+      assignedBy: input.assignedBy ?? row.assignedBy ?? null,
       workflowId: input.workflowId ?? row.workflowId ?? null,
       currentStateId: input.currentStateId ?? row.currentStateId ?? null,
     });
@@ -429,7 +484,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
             .where("concat(coalesce(so.serie, ''), '-', coalesce(so.correlative::text, '')) ILIKE :q", {
               q: `%${q}%`,
             })
-            .orWhere("unaccent(coalesce(so.agencyDetail, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
+            .orWhere("cast(so.agencySubsidiaryId as text) ILIKE :q", { q: `%${q}%` })
             .orWhere("unaccent(coalesce(so.note, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
             .orWhere("unaccent(coalesce(so.advertisingCode, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
             .orWhere("unaccent(coalesce(so.observation, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
@@ -576,12 +631,12 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
           break;
         case SaleOrderSearchFields.ADVERTISING_CODE:
         case SaleOrderSearchFields.OBSERVATION:
-        case SaleOrderSearchFields.AGENCY_DETAIL:
+        case SaleOrderSearchFields.AGENCY_SUBSIDIARY_ID:
         case SaleOrderSearchFields.CLIENT_PHONE: {
           if (!filter.value) break;
           let column = "so.observation";
           if (filter.field === SaleOrderSearchFields.ADVERTISING_CODE) column = "so.advertisingCode";
-          if (filter.field === SaleOrderSearchFields.AGENCY_DETAIL) column = "so.agencyDetail";
+          if (filter.field === SaleOrderSearchFields.AGENCY_SUBSIDIARY_ID) column = "so.agencySubsidiaryId";
           if (filter.field === SaleOrderSearchFields.CLIENT_PHONE) {
             qb.leftJoin(TelephoneEntity, "filterTelephone", "filterTelephone.clientId = so.clientId AND filterTelephone.isActive = true");
             column = "filterTelephone.number";
@@ -759,7 +814,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
               isActive: client.isActive
             }
           : null,
-        agencyDetail: row.agencyDetail ?? null,
+        agencySubsidiaryId: row.agencySubsidiaryId ?? null,
         source: source ? { id: source.id, name: source.name, detail: source.detail ?? null } : null,
         scheduleDate: row.scheduleDate ?? null,
         deliveryDate: row.deliveryDate ?? null,
@@ -857,7 +912,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
             .where("concat(coalesce(so.serie, ''), '-', coalesce(so.correlative::text, '')) ILIKE :q", {
               q: `%${q}%`,
             })
-            .orWhere("unaccent(coalesce(so.agencyDetail, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
+            .orWhere("cast(so.agencySubsidiaryId as text) ILIKE :q", { q: `%${q}%` })
             .orWhere("unaccent(coalesce(so.note, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
             .orWhere("unaccent(coalesce(client.fullName, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
             .orWhere("unaccent(coalesce(client.docNumber, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
@@ -1066,11 +1121,14 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     payments,
     client,
     mainTelephone,
+    telephones,
     warehouse,
     source,
     creator,
+    assignedUser,
     workflow,
     currentState,
+    attachments,
   ] = await Promise.all([
     manager.getRepository(SaleOrderItemEntity).find({
       where: { saleOrderId: row.id },
@@ -1094,6 +1152,14 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       },
     }),
 
+    manager.getRepository(TelephoneEntity).find({
+      where: {
+        clientId: row.clientId,
+        isActive: true,
+      },
+      order: { isMain: "DESC", number: "ASC" },
+    }),
+
     row.warehouseId
       ? manager.getRepository(WarehouseEntity).findOne({
           where: { id: row.warehouseId },
@@ -1110,6 +1176,12 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       where: { id: row.createdBy },
     }),
 
+    row.assignedBy
+      ? manager.getRepository(User).findOne({
+          where: { id: row.assignedBy },
+        })
+      : Promise.resolve(null),
+
     row.workflowId
       ? manager.getRepository(WorkflowEntity).findOne({
           where: { id: row.workflowId },
@@ -1122,6 +1194,11 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
           relations: { saleOrderState: true },
         })
       : Promise.resolve(null),
+
+    manager.getRepository(SaleOrderAttachmentEntity).find({
+      where: { saleOrderId: row.id, deletedAt: IsNull() },
+      order: { createdAt: "ASC" },
+    }),
   ]);
 
   const [department, province, district] = client
@@ -1162,10 +1239,24 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
   const skus = skuIds.length
     ? await manager.getRepository(ProductCatalogSkuEntity).find({
         where: { id: In(skuIds) },
+        relations: { product: { baseUnit: true } },
       })
     : [];
 
   const skuById = new Map(skus.map((sku) => [sku.id, sku]));
+
+  const [stockItems, attributesBySkuId] = await Promise.all([
+    skuIds.length
+      ? manager.getRepository(ProductCatalogStockItemEntity).find({
+          where: { skuId: In(skuIds) },
+        })
+      : Promise.resolve([]),
+    this.loadSkuAttributes(manager, skuIds),
+  ]);
+
+  const stockItemBySkuId = new Map(
+    stockItems.map((stockItem) => [stockItem.skuId, stockItem]),
+  );
 
   const bankAccountIds = Array.from(
     new Set(payments.map((payment) => payment.bankAccountId).filter(Boolean)),
@@ -1178,6 +1269,19 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     : [];
 
   const bankAccountById = new Map(bankAccounts.map((account) => [account.id, account]));
+  const shippingAttachment = attachments.find(
+    (attachment) =>
+      attachment.type === SaleOrderAttachmentType.SHIPPING_PHOTO,
+  );
+  const paymentAttachmentByPaymentId = new Map(
+    attachments
+      .filter(
+        (attachment) =>
+          attachment.type === SaleOrderAttachmentType.PAYMENT_PROOF &&
+          attachment.saleOrderPaymentId,
+      )
+      .map((attachment) => [attachment.saleOrderPaymentId!, attachment]),
+  );
 
   const toIso = (date: Date) => date.toISOString();
 
@@ -1191,17 +1295,38 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     }
 
     const list = compsByItemId.get(component.saleOrderItemId) ?? [];
+    const unit = sku.product?.baseUnit ?? null;
 
     list.push({
       id: component.id,
       saleOrderItemId: component.saleOrderItemId,
       sku: {
         id: sku.id,
+        productId: sku.productId,
         name: sku.name,
         backendSku: sku.backendSku,
         customSku: sku.customSku ?? null,
         barcode: sku.barcode ?? null,
+        image: sku.image ?? null,
+        price: Number(sku.price ?? 0),
+        cost: Number(sku.cost ?? 0),
+        isSellable: Boolean(sku.isSellable),
+        isPurchasable: Boolean(sku.isPurchasable),
+        isManufacturable: Boolean(sku.isManufacturable),
+        isStockTracked: Boolean(sku.isStockTracked),
+        isActive: Boolean(sku.isActive),
+        createdAt: toIso(sku.createdAt),
+        updatedAt: sku.updatedAt ? toIso(sku.updatedAt) : null,
       },
+      unit: unit
+        ? {
+            id: unit.id,
+            name: unit.name,
+            code: unit.code,
+          }
+        : null,
+      attributes: attributesBySkuId.get(sku.id) ?? [],
+      stockItemId: stockItemBySkuId.get(sku.id)?.id ?? null,
       referencePackItemId: component.referencePackItemId ?? null,
       quantity: Number(component.quantity ?? 0),
       unitPrice: Number(component.unitPrice ?? 0),
@@ -1233,8 +1358,11 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       ? {
           id: client.id,
           type: client.type,
+          docType: client.docType,
           fullName: client.fullName,
           docNumber: client.docNumber ?? null,
+          address: client.address ?? null,
+          isActive: Boolean(client.isActive),
 
           departmentId: client.departmentId ?? null,
           provinceId: client.provinceId ?? null,
@@ -1265,10 +1393,16 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
 
           reference: client.reference ?? null,
           mainPhone: mainTelephone?.number ?? null,
+          telephones: telephones.map((telephone) => ({
+            id: telephone.id,
+            number: telephone.number,
+            isMain: Boolean(telephone.isMain),
+            isActive: Boolean(telephone.isActive),
+          })),
         }
       : null,
 
-    agencyDetail: row.agencyDetail ?? null,
+    agencySubsidiaryId: row.agencySubsidiaryId ?? null,
 
     source: source
       ? {
@@ -1282,10 +1416,22 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     deliveryDate: row.deliveryDate ?? null,
     subTotal: Number(row.subTotal ?? 0),
     deliveryCost: Number(row.deliveryCost ?? 0),
+    discount: Number(row.discount ?? 0),
     total: totalOrder,
     note: row.note ?? null,
     advertisingCode: row.advertisingCode ?? null,
     observation: row.observation ?? null,
+    sendDate: row.sendDate ? toIso(row.sendDate) : null,
+    sendPhoto: shippingAttachment?.url ?? null,
+    sendCode: row.sendCode ?? null,
+    sendAddress: row.sendAddress ?? null,
+    assignedBy: assignedUser
+      ? {
+          id: assignedUser.id,
+          name: assignedUser.name,
+          email: assignedUser.email,
+        }
+      : null,
 
     createdBy: creator
       ? {
@@ -1334,6 +1480,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
 
     payments: payments.map((payment) => ({
       id: payment.id,
+      clientKey: payment.id,
       bankAccount: payment.bankAccountId
         ? (() => {
             const account = bankAccountById.get(payment.bankAccountId);
@@ -1352,8 +1499,31 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       operationNumber: payment.operationNumber ?? null,
       amount: Number(payment.amount ?? 0),
       note: payment.note ?? null,
+      paymentPhoto:
+        paymentAttachmentByPaymentId.get(payment.id)?.url ?? null,
       createdAt: toIso(payment.createdAt),
     })),
+
+    attachments: attachments.map((attachment) => ({
+      id: attachment.id,
+      saleOrderPaymentId: attachment.saleOrderPaymentId ?? null,
+      type: attachment.type,
+      filename: attachment.filename,
+      originalName: attachment.originalName,
+      mimeType: attachment.mimeType,
+      sizeBytes: Number(attachment.sizeBytes),
+      url: attachment.url,
+      note: attachment.note ?? null,
+      createdAt: toIso(attachment.createdAt),
+    })),
+
+    editPolicy: {
+      stockStatus: "NONE",
+      productsEditable: true,
+      warehouseEditable: true,
+      isFinal: false,
+      reason: null,
+    },
 
     totalPaid,
     pendingAmount,

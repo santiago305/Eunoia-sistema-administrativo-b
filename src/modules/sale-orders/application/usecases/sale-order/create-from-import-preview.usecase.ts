@@ -11,6 +11,14 @@ import { SaleOrderImportSourceResolverService } from "src/modules/sale-orders/ap
 import { TransactionContext, UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { WORKFLOW_REPOSITORY, WorkflowRepository } from "src/modules/workflow/domain/ports/workflow.repository";
 import { SaleOrderNumberingService } from "src/modules/sale-orders/application/services/sale-order-numbering.service";
+import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
+import { SubsidiaryEntity } from "src/modules/agencies/adapters/out/persistence/typeorm/entities/subsidiary.entity";
+
+type ImportDestination = {
+  agencySubsidiaryId: string | null;
+  sendAddress: string | null;
+  clientAddress: string | null;
+};
 
 @Injectable()
 export class CreateFromImportPreviewUseCase {
@@ -46,12 +54,20 @@ export class CreateFromImportPreviewUseCase {
 
       try {
         const result = await this.uow.runInTransaction(async (tx) => {
-          const clientId = await this.clientResolver.resolveOrCreate(normalized.row, tx);
+          const destination = await this.resolveImportDestination(
+            normalized.row.address,
+            tx,
+          );
+          const clientId = await this.clientResolver.resolveOrCreate(
+            { ...normalized.row, address: destination.clientAddress },
+            tx,
+          );
           const sourceId = await this.sourceResolver.resolveOrCreate(normalized.row.internalNote, tx);
           const skus = await this.skuResolver.resolveOrCreateSkus(normalized.row.parsedSkus, tx);
 
           const saleOrderId = await this.createSaleOrderFromImportRow({
             row: normalized.row,
+            destination,
             clientId,
             sourceId,
             userId: input.userId,
@@ -89,6 +105,7 @@ export class CreateFromImportPreviewUseCase {
       deliveryDate: string | null;
       workflowName: string | null;
       address: string | null;
+      productName: string | null;
       internalNote: string | null;
       advertisingCode: string | null;
       total: number;
@@ -96,6 +113,7 @@ export class CreateFromImportPreviewUseCase {
       deliveryCost?:number;
       couponCode: string | null;
     };
+    destination: ImportDestination;
     clientId: string;
     sourceId: string;
     userId: string;
@@ -122,7 +140,7 @@ export class CreateFromImportPreviewUseCase {
         correlative,
         warehouseId,
         clientId: input.clientId,
-        agencyDetail: input.row.address || null,
+        agencySubsidiaryId: input.destination.agencySubsidiaryId,
         sourceId: input.sourceId,
         scheduleDate: deliveryDate,
         deliveryDate,
@@ -132,6 +150,7 @@ export class CreateFromImportPreviewUseCase {
         note: input.row.internalNote ?? null,
         advertisingCode: input.row.advertisingCode,
         observation: null,
+        sendAddress: input.destination.sendAddress,
         createdBy: input.userId,
         workflowId: resolvedWorkflow?.workflow.id ?? null,
         currentStateId: resolvedWorkflow?.initialState.id ?? null,
@@ -142,9 +161,7 @@ export class CreateFromImportPreviewUseCase {
 
     const saleOrderId = this.getEntityId((saleOrder as any).saleOrderId ?? (saleOrder as any).id);
 
-    const itemDescription =
-    input.row.couponCode ? input.row.couponCode :
-    input.skus.map((item) => `${item.skuName} x ${item.quantity}`).join(", ");
+    const itemDescription = input.row.productName?.trim() || "Sin nombre";
     
     const items = await this.saleOrderItemRepo.bulkCreate(
       [
@@ -195,6 +212,49 @@ export class CreateFromImportPreviewUseCase {
     }
 
     return saleOrderId;
+  }
+
+  private async resolveImportDestination(
+    address: string | null,
+    tx: TransactionContext,
+  ): Promise<ImportDestination> {
+    const rawAddress = address?.trim() || null;
+    if (!rawAddress) {
+      return { agencySubsidiaryId: null, sendAddress: null, clientAddress: null };
+    }
+
+    const manager = (tx as TypeormTransactionContext).manager;
+    if (!manager) {
+      return {
+        agencySubsidiaryId: null,
+        sendAddress: null,
+        clientAddress: rawAddress,
+      };
+    }
+
+    const subsidiary = await manager
+      .getRepository(SubsidiaryEntity)
+      .createQueryBuilder("subsidiary")
+      .where("subsidiary.isActive = true")
+      .andWhere(
+        "unaccent(lower(trim(subsidiary.alias))) = unaccent(lower(trim(:alias)))",
+        { alias: rawAddress },
+      )
+      .getOne();
+
+    if (!subsidiary) {
+      return {
+        agencySubsidiaryId: null,
+        sendAddress: null,
+        clientAddress: rawAddress,
+      };
+    }
+
+    return {
+      agencySubsidiaryId: subsidiary.id,
+      sendAddress: subsidiary.address ?? rawAddress,
+      clientAddress: null,
+    };
   }
 
   private getEntityId(value: any): string {

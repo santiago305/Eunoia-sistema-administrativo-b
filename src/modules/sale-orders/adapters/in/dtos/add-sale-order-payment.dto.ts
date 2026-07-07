@@ -23,5 +23,9 @@ export class AddSaleOrderPaymentDto {
   @IsOptional()
   @IsString()
   note?: string;
+
+  @IsOptional()
+  @IsString()
+  paymentPhoto?: string | null;
 }
 

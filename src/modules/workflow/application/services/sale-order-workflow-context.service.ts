@@ -47,7 +47,7 @@ export class SaleOrderWorkflowContextService {
         deliveryDate: order.deliveryDate,
         scheduleDate: order.scheduleDate,
         sourceId: order.sourceId,
-        agencyDetail: order.agencyDetail,
+        agencySubsidiaryId: order.agencySubsidiaryId,
         note: order.note,
         "client.docNumber": client?.docNumber ?? null,
         "client.address": client?.address ?? null,

@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, Optional } from "@nestjs/common";
 import { TransactionContext, UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { PACK_REPOSITORY, PackRepository } from "src/modules/packs/domain/ports/pack.repository";
 import { SALE_ORDER_REPOSITORY, SaleOrderRepository } from "src/modules/sale-orders/domain/ports/sale-order.repository";
@@ -9,24 +9,29 @@ import {
 } from "src/modules/sale-orders/domain/ports/sale-order-item-component.repository";
 import { SALE_PAYMENT_REPOSITORY, SalePaymentRepository } from "src/modules/sale-orders/domain/ports/sale-payment.repository";
 import { WORKFLOW_REPOSITORY, WorkflowRepository } from "src/modules/workflow/domain/ports/workflow.repository";
-import { SALE_ORDER_STATE_HISTORY_REPOSITORY, SaleOrderStateHistoryRepository } from "src/modules/workflow/domain/ports/sale-order-state-history.repository";
-import { WORKFLOW_TRANSITION_REPOSITORY, WorkflowTransitionRepository } from "src/modules/workflow/domain/ports/workflow-transition.repository";
-import { ACTIONS } from "src/modules/workflow/domain/constants/workflow-action.constants";
+import { AdviserMembershipService } from "../../services/adviser-membership.service";
+import { SaleOrderEditPolicyService } from "../../services/sale-order-edit-policy.service";
 
-type UpdateSaleOrderInput = {
+export type UpdateSaleOrderInput = {
   saleOrderId: string;
   workflowId?: string | null;
   warehouseId: string;
   clientId: string;
-  agencyDetail?: string;
+  agencySubsidiaryId?: string;
   sourceId?: string;
   scheduleDate?: string;
   deliveryDate?: string;
   note?: string;
   advertisingCode?: string | null;
   observation?: string | null;
+  sendDate?: string | null;
+  sendPhoto?: string | null;
+  sendCode?: string | null;
+  sendAddress?: string | null;
+  assignedBy?: string | null;
   subTotal?: number;
   deliveryCost?: number;
+  discount?: number;
   total?: number;
   items: Array<{
     quantity: number;
@@ -49,10 +54,9 @@ type UpdateSaleOrderInput = {
     date?: string;
     operationNumber?: string;
     note?: string;
+    paymentPhoto?: string | null;
   }>;
 };
-
-type StockLifecycleStatus = "NONE" | "RESERVED" | "REVERTED" | "CONSUMED";
 
 @Injectable()
 export class UpdateSaleOrderUsecase {
@@ -77,12 +81,8 @@ export class UpdateSaleOrderUsecase {
 
     @Inject(WORKFLOW_REPOSITORY)
     private readonly workflowRepo: WorkflowRepository,
-    @Inject(SALE_ORDER_STATE_HISTORY_REPOSITORY)
-    private readonly historyRepo: SaleOrderStateHistoryRepository,
-
-    @Inject(WORKFLOW_TRANSITION_REPOSITORY)
-    private readonly transitionRepo: WorkflowTransitionRepository,
-
+    private readonly editPolicy: SaleOrderEditPolicyService,
+    @Optional() private readonly adviserMembership?: AdviserMembershipService,
   ) {}
 
   private buildComponentSignature(
@@ -136,51 +136,24 @@ export class UpdateSaleOrderUsecase {
       .join("|");
   }
 
-  private async resolveStockLifecycleStatus(
-    saleOrderId: string,
-    tx: TransactionContext,
-  ): Promise<StockLifecycleStatus> {
-    const history = await this.historyRepo.listBySaleOrderId(saleOrderId, tx);
-    let status: StockLifecycleStatus = "NONE";
-    for (const item of history) {
-      if (!item.transitionId) continue;
-      const detailed = await this.transitionRepo.findDetailedById(item.transitionId, tx);
-      const executedBranch = item.metadata?.branch === "ELSE" ? "ELSE" : "THEN";
-      const actions = [...(detailed?.actions ?? [])]
-        .filter((action) => action.branch === executedBranch)
-        .sort((a, b) => a.position - b.position);
-      for (const action of actions) {
-        if (action.type === ACTIONS.RESERVE_STOCK) {
-          status = "RESERVED";
-        } else if (action.type === ACTIONS.REVERT_STOCK) {
-          status = "REVERTED";
-        } else if (action.type === ACTIONS.CONSUME_STOCK) {
-          status = "CONSUMED";
-        }
-      }
-    }
-    return status;
+  async execute(input: UpdateSaleOrderInput) {
+    return this.uow.runInTransaction((tx) =>
+      this.executeInTransaction(input, tx),
+    );
   }
 
-  async execute(input: UpdateSaleOrderInput) {
-    return this.uow.runInTransaction(async (tx) => {
+  async executeInTransaction(
+    input: UpdateSaleOrderInput,
+    tx: TransactionContext,
+  ) {
+      await this.adviserMembership?.assertIsAdviser(input.assignedBy);
       const order = await this.saleOrderRepo.findByIdForUpdate(input.saleOrderId, tx);
 
       if (!order) {
         throw new BadRequestException("Pedido no encontrado");
       }
 
-      let currentStateIsFinal = false;
-      if (order.workflowId && order.currentStateId) {
-        const assignedWorkflow = await this.workflowRepo.findDetailedById(
-          order.workflowId,
-          tx,
-        );
-        const currentState = assignedWorkflow?.states.find(
-          (state) => state.id === order.currentStateId,
-        );
-        currentStateIsFinal = Boolean(currentState?.isFinal);
-      }
+      const editPolicy = await this.editPolicy.resolve(order, tx);
 
       const selectedWorkflowId = input.workflowId?.trim() || null;
 
@@ -307,14 +280,20 @@ export class UpdateSaleOrderUsecase {
           });
         }
 
-        if (overridesBySkuId.size) {
-          throw new BadRequestException("Components contiene SKU(s) que no pertenecen al pack");
+        for (const extra of overridesBySkuId.values()) {
+          plans.push({
+            skuId: extra.skuId,
+            referencePackItemId: null,
+            quantity: extra.quantity,
+            unitPrice: extra.unitPrice,
+            total: extra.total,
+          });
         }
 
         componentPlansByItemIndex.push(plans);
       }
 
-      if (currentStateIsFinal) {
+      if (editPolicy.isFinal) {
         const existingComponents = await this.componentRepo.listBySaleOrderItemIds(
           existingItemIds,
           tx,
@@ -353,10 +332,7 @@ export class UpdateSaleOrderUsecase {
         }
       }
 
-      const stockLifecycleStatus = await this.resolveStockLifecycleStatus(
-        input.saleOrderId,
-        tx,
-      );
+      const stockLifecycleStatus = editPolicy.stockStatus;
       const warehouseChanged = input.warehouseId !== order.warehouseId;
       if (warehouseChanged && stockLifecycleStatus === "RESERVED") {
         throw new BadRequestException(
@@ -395,7 +371,18 @@ export class UpdateSaleOrderUsecase {
 
       await this.componentRepo.deleteBySaleOrderItemIds(existingItemIds, tx);
       await this.saleOrderItemRepo.deleteBySaleOrderId(input.saleOrderId, tx);
-      await this.paymentRepo.deleteBySaleOrderId(input.saleOrderId, tx);
+
+      if (input.payments) {
+        await this.paymentRepo.deleteBySaleOrderId(input.saleOrderId, tx);
+      }
+
+      const subTotal = input.items.reduce(
+        (sum, item) => sum + Number(item.total ?? 0),
+        0,
+      );
+      const deliveryCost = Number(input.deliveryCost ?? 0);
+      const discount = Number(input.discount ?? order.discount ?? 0);
+      const total = Math.max(0, subTotal + deliveryCost - discount);
 
       const updated = await this.saleOrderRepo.update(
         {
@@ -406,16 +393,22 @@ export class UpdateSaleOrderUsecase {
 
           warehouseId: input.warehouseId,
           clientId: input.clientId,
-          agencyDetail: input.agencyDetail?.trim() ? input.agencyDetail.trim() : null,
+          agencySubsidiaryId: input.agencySubsidiaryId ?? null,
           sourceId: input.sourceId?.trim() ? input.sourceId.trim() : null,
           scheduleDate: input.scheduleDate ?? null,
           deliveryDate: input.deliveryDate ?? null,
-          subTotal: input.subTotal ?? 0,
-          deliveryCost: input.deliveryCost ?? 0,
-          total: input.total ?? 0,
+          subTotal,
+          deliveryCost,
+          discount,
+          total,
           note: input.note ?? null,
           advertisingCode: input.advertisingCode ?? null,
           observation: input.observation ?? null,
+          sendDate: input.sendDate ? new Date(input.sendDate) : null,
+          sendPhoto: input.sendPhoto ?? null,
+          sendCode: input.sendCode ?? null,
+          sendAddress: input.sendAddress ?? null,
+          assignedBy: input.assignedBy ?? null,
         },
         tx,
       );
@@ -468,6 +461,7 @@ export class UpdateSaleOrderUsecase {
           operationNumber: payment.operationNumber ?? null,
           amount: payment.amount,
           note: payment.note ?? null,
+          paymentPhoto: payment.paymentPhoto ?? null,
         };
       });
 
@@ -490,6 +484,5 @@ export class UpdateSaleOrderUsecase {
         workflowId: updated.workflowId ?? null,
         currentStateId: updated.currentStateId ?? null,
       };
-    });
   }
 }

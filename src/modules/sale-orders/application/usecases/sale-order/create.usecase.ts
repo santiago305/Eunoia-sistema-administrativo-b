@@ -1,5 +1,9 @@
-import { BadRequestException, Inject, Injectable } from "@nestjs/common";
-import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
+import { BadRequestException, Inject, Injectable, Optional } from "@nestjs/common";
+import {
+  TransactionContext,
+  UNIT_OF_WORK,
+  UnitOfWork,
+} from "src/shared/domain/ports/unit-of-work.port";
 import { PACK_REPOSITORY, PackRepository } from "src/modules/packs/domain/ports/pack.repository";
 import { SALE_ORDER_REPOSITORY, SaleOrderRepository } from "src/modules/sale-orders/domain/ports/sale-order.repository";
 import { SALE_ORDER_ITEM_REPOSITORY, SaleOrderItemRepository } from "src/modules/sale-orders/domain/ports/sale-order-item.repository";
@@ -8,20 +12,27 @@ import { SALE_PAYMENT_REPOSITORY, SalePaymentRepository } from "src/modules/sale
 import { WORKFLOW_REPOSITORY, WorkflowRepository } from "src/modules/workflow/domain/ports/workflow.repository";
 import { WORKFLOW_STATE_REPOSITORY, WorkflowStateRepository } from "src/modules/workflow/domain/ports/workflow-state.repository";
 import { SaleOrderNumberingService } from "../../services/sale-order-numbering.service";
+import { AdviserMembershipService } from "../../services/adviser-membership.service";
 
-type CreateSaleOrderInput = {
+export type CreateSaleOrderInput = {
   warehouseId?: string;
   clientId: string;
   workflowId: string;
-  agencyDetail?: string;
+  agencySubsidiaryId?: string;
   sourceId?: string;
   scheduleDate?: string;
   deliveryDate?: string;
   note?: string;
   advertisingCode?: string | null;
   observation?: string | null;
+  sendDate?: string | null;
+  sendPhoto?: string | null;
+  sendCode?: string | null;
+  sendAddress?: string | null;
+  assignedBy?: string | null;
   subTotal?: number;
   deliveryCost?: number;
+  discount?: number;
   total?: number;
   items: Array<{
     quantity: number;
@@ -44,6 +55,7 @@ type CreateSaleOrderInput = {
     date?: string;
     operationNumber?: string;
     note?: string;
+    paymentPhoto?: string | null;
   }>;
 };
 
@@ -67,10 +79,21 @@ export class CreateSaleOrderUsecase {
     private readonly workflowRepo: WorkflowRepository,
     @Inject(WORKFLOW_STATE_REPOSITORY)
     private readonly workflowStateRepo: WorkflowStateRepository,
+    @Optional() private readonly adviserMembership?: AdviserMembershipService,
   ) {}
 
   async execute(input: CreateSaleOrderInput, createdBy: string) {
-    return this.uow.runInTransaction(async (tx) => {
+    return this.uow.runInTransaction((tx) =>
+      this.executeInTransaction(input, createdBy, tx),
+    );
+  }
+
+  async executeInTransaction(
+    input: CreateSaleOrderInput,
+    createdBy: string,
+    tx: TransactionContext,
+  ) {
+      await this.adviserMembership?.assertIsAdviser(input.assignedBy);
       if (!input.workflowId) {
         throw new BadRequestException("workflowId es obligatorio");
       }
@@ -82,22 +105,36 @@ export class CreateSaleOrderUsecase {
         throw new BadRequestException("Workflow invalido para crear pedido");
       }
 
+      const subTotal = input.items.reduce(
+        (sum, item) => sum + Number(item.total ?? 0),
+        0,
+      );
+      const deliveryCost = Number(input.deliveryCost ?? 0);
+      const discount = Number(input.discount ?? 0);
+      const total = Math.max(0, subTotal + deliveryCost - discount);
+
       const order = await this.saleOrderRepo.create(
         {
           serie,
           correlative,
           warehouseId: input.warehouseId,
           clientId: input.clientId,
-          agencyDetail: input.agencyDetail?.trim() ? input.agencyDetail.trim() : null,
+          agencySubsidiaryId: input.agencySubsidiaryId ?? null,
           sourceId: input.sourceId ?? null,
           scheduleDate: input.scheduleDate ?? null,
           deliveryDate: input.deliveryDate ?? null,
-          subTotal: input.subTotal ?? 0,
-          deliveryCost: input.deliveryCost ?? 0,
-          total: input.total ?? 0,
+          subTotal,
+          deliveryCost,
+          discount,
+          total,
           note: input.note ?? null,
           advertisingCode: input.advertisingCode ?? null,
           observation: input.observation ?? null,
+          sendDate: input.sendDate ? new Date(input.sendDate) : null,
+          sendPhoto: input.sendPhoto ?? null,
+          sendCode: input.sendCode ?? null,
+          sendAddress: input.sendAddress ?? null,
+          assignedBy: input.assignedBy ?? null,
           createdBy,
           workflowId: workflow.id,
           currentStateId: initialState.id,
@@ -195,8 +232,15 @@ export class CreateSaleOrderUsecase {
           });
         }
 
-        if (overridesBySkuId.size) {
-          throw new BadRequestException("Components contiene SKU(s) que no pertenecen al pack");
+        for (const extra of overridesBySkuId.values()) {
+          componentsInput.push({
+            saleOrderItemId: savedItem.id,
+            skuId: extra.skuId,
+            referencePackItemId: null,
+            quantity: extra.quantity,
+            unitPrice: extra.unitPrice,
+            total: extra.total,
+          });
         }
       }
 
@@ -215,10 +259,13 @@ export class CreateSaleOrderUsecase {
           operationNumber: p.operationNumber ?? null,
           amount: p.amount,
           note: p.note ?? null,
+          paymentPhoto: p.paymentPhoto ?? null,
         };
       });
       try {
-        await this.paymentRepo.bulkCreate(paymentsInput, tx);
+        if (input.payments) {
+          await this.paymentRepo.bulkCreate(paymentsInput, tx);
+        }
       } catch (error: any) {
         if (error?.code === "23503") {
           throw new BadRequestException("Cuenta bancaria inválida");
@@ -233,6 +280,5 @@ export class CreateSaleOrderUsecase {
         workflowId: order.workflowId,
         currentStateId: order.currentStateId,
       };
-    });
   }
 }

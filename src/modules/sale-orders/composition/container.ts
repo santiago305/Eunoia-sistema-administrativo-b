@@ -55,6 +55,11 @@ import { WorkflowReactivityRealtimeService } from "src/modules/sale-orders/infra
 import { WorkflowReactivityOrchestratorService } from "src/modules/sale-orders/application/services/workflow-reactivity-orchestrator.service";
 import { SaleOrderRealtimePayloadService } from "src/modules/sale-orders/application/services/sale-order-realtime-payload.service";
 import { SaleOrderWarehouseAssignmentService } from "src/modules/workflow/application/services/sale-order-warehouse-assignment.service";
+import { SaleOrderEditPolicyService } from "../application/services/sale-order-edit-policy.service";
+import { UpdateClientUsecase } from "src/modules/clients/application/usecases/client/update.usecase";
+import { SaleOrderClientCommandService } from "../application/services/sale-order-client-command.service";
+import { SaleOrderPaymentReconcilerService } from "../application/services/sale-order-payment-reconciler.service";
+import { SaveSaleOrderWithClientUsecase } from "../application/usecases/sale-order/save-with-client.usecase";
 
 export const saleOrdersModuleProviders = [
   { provide: SALE_ORDER_REPOSITORY, useClass: SaleOrderTypeormRepository },
@@ -67,6 +72,7 @@ export const saleOrdersModuleProviders = [
   { provide: CLOCK, useValue: { now: () => new Date() } },
   CreateSaleOrderUsecase,
   SaleOrderNumberingService,
+  SaleOrderEditPolicyService,
   GetSaleOrderUsecase,
   UpdateSaleOrderUsecase,
   ListSaleOrdersUsecase,
@@ -92,6 +98,10 @@ export const saleOrdersModuleProviders = [
   SaleOrderImportSkuResolverService,
   SaleOrderImportSourceResolverService,
   CreateClientUsecase,
+  UpdateClientUsecase,
+  SaleOrderClientCommandService,
+  SaleOrderPaymentReconcilerService,
+  SaveSaleOrderWithClientUsecase,
   CreateSourceUsecase,
   GetSaleOrderComponentsUsecase,
   GetSaleOrderItemComponentsUsecase,
