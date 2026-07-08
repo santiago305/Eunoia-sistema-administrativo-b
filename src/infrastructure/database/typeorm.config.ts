@@ -53,6 +53,7 @@ import { AddDefaultPaymentAccounts20260627170000 } from "./migrations/2026062717
 import { UnifySalePaymentsCompanyPaymentAccounts20260628000000 } from "./migrations/20260628000000-unify-sale-payments-company-payment-accounts";
 import { AddFiscalDocumentTypeToPurchaseAttachments20260628010000 } from "./migrations/20260628010000-add-fiscal-document-type-to-purchase-attachments";
 import { AddPaymentMethodRequiresVoucher20260628120000 } from "./migrations/20260628120000-add-payment-method-requires-voucher";
+import { AddPurchaseDashboardGroupPermissions20260707010000 } from "./migrations/20260707010000-add-purchase-dashboard-group-permissions";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -128,6 +129,7 @@ export const getMigrationDataSourceOptions = (): DataSourceOptions => ({
     UnifySalePaymentsCompanyPaymentAccounts20260628000000,
     AddFiscalDocumentTypeToPurchaseAttachments20260628010000,
     AddPaymentMethodRequiresVoucher20260628120000,
+    AddPurchaseDashboardGroupPermissions20260707010000,
   ],
 });
 

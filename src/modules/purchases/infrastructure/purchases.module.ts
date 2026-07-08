@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { PurchaseOrdersController } from "../adapters/in/controllers/purchase-order.controller";
+import { PurchaseDashboardController } from "../adapters/in/controllers/purchase-dashboard.controller";
 import { PurchaseOrderEntity } from "../adapters/out/persistence/typeorm/entities/purchase-order.entity";
 import { PurchaseOrderItemEntity } from "../adapters/out/persistence/typeorm/entities/purchase-order-item.entity";
 import { PURCHASE_ORDER } from "../domain/ports/purchase-order.port.repository";
@@ -46,7 +47,7 @@ import { PurchaseAttachmentsModule } from "src/modules/purchase-attachments";
     AccountsPayableModule,
     PurchaseAttachmentsModule,
   ],
-  controllers: [PurchaseOrdersController],
+  controllers: [PurchaseOrdersController, PurchaseDashboardController],
   providers: [...purchasesModuleProviders,
   ],
   exports: [PURCHASE_ORDER, PURCHASE_ORDER_ITEM, PURCHASE_SEARCH, PostInventoryFromPurchaseUsecase],

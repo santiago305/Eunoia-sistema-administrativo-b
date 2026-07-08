@@ -62,10 +62,32 @@ describe("permissions seed", () => {
       "recurring_purchases.pay",
       "purchases_dashboard.view",
       "purchases_dashboard.view_costs",
+      "purchases_dashboard.view_payments",
+      "purchases_dashboard.view_suppliers",
+      "purchases_dashboard.view_items",
+      "purchases_dashboard.view_operations",
       "purchases_dashboard.export",
     ];
 
     expectedCodes.forEach((code) => expect(codes.has(code)).toBe(true));
+  });
+
+  it("defines purchase dashboard permissions as chart groups", () => {
+    const permissions = PERMISSIONS_SEED.filter((item) => item.module === "purchases_dashboard");
+
+    expect(permissions.map((item) => item.code)).toEqual([
+      "purchases_dashboard.view",
+      "purchases_dashboard.view_costs",
+      "purchases_dashboard.view_payments",
+      "purchases_dashboard.view_suppliers",
+      "purchases_dashboard.view_items",
+      "purchases_dashboard.view_operations",
+      "purchases_dashboard.export",
+    ]);
+    permissions.forEach((permission) => {
+      expect(permission.resource).toBe("purchases_dashboard");
+      expect(permission.type).toBe("action");
+    });
   });
 
   it("includes purchase attachment permissions", () => {
