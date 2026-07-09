@@ -125,13 +125,17 @@ describe("PurchaseDashboardQueryTypeormRepository", () => {
 
     await repo.getTopItems({});
 
-    expect(qb.leftJoin).toHaveBeenCalledWith("pc_stock_items", "psi", "psi.stock_item_id = item.stockItemId");
+    expect(qb.leftJoin).toHaveBeenCalledWith("pc_stock_items", "psi", "psi.stock_item_id = item.stock_item_id");
     expect(qb.leftJoin).toHaveBeenCalledWith("pc_skus", "sku", "sku.sku_id = psi.sku_id");
     expect(qb.leftJoin).toHaveBeenCalledWith("pc_products", "product", "product.product_id = sku.product_id");
     expect(qb.select).toHaveBeenCalledWith(
-      "COALESCE(item.stockItemId, item.internalMaterialId, item.assetCategoryId)::text",
+      "COALESCE(item.stock_item_id, item.internal_material_id, item.asset_category_id)::text",
       "itemId",
     );
+    expect(qb.addSelect).toHaveBeenCalledWith(expect.stringContaining("item.stock_item_id::text"), "label");
+    expect(qb.addSelect).toHaveBeenCalledWith(expect.stringContaining("item.internal_material_id::text"), "label");
+    expect(qb.addSelect).toHaveBeenCalledWith(expect.stringContaining("item.asset_category_id::text"), "label");
+    expect(qb.addSelect).toHaveBeenCalledWith(expect.stringContaining("NULLIF(trim(item.service_name), '')"), "label");
     expect(qb.addSelect).toHaveBeenCalledWith(expect.stringContaining("NULLIF(sku.name, '')"), "label");
     expect(qb.addSelect).toHaveBeenCalledWith(expect.stringContaining("NULLIF(product.name, '')"), "label");
   });

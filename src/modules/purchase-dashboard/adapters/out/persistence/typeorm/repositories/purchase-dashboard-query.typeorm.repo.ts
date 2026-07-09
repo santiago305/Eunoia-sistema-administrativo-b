@@ -218,37 +218,38 @@ export class PurchaseDashboardQueryTypeormRepository implements PurchaseDashboar
       this.itemRepo
         .createQueryBuilder("item")
         .leftJoin(PurchaseOrderEntity, "po", "po.id = item.poId")
-        .leftJoin("pc_stock_items", "psi", "psi.stock_item_id = item.stockItemId")
+        .leftJoin("pc_stock_items", "psi", "psi.stock_item_id = item.stock_item_id")
         .leftJoin("pc_skus", "sku", "sku.sku_id = psi.sku_id")
         .leftJoin("pc_products", "product", "product.product_id = sku.product_id")
-        .select("COALESCE(item.stockItemId, item.internalMaterialId, item.assetCategoryId)::text", "itemId")
+        .select("COALESCE(item.stock_item_id, item.internal_material_id, item.asset_category_id)::text", "itemId")
         .addSelect(
           `
             COALESCE(
-              NULLIF(trim(item.serviceName), ''),
+              NULLIF(trim(item.service_name), ''),
               NULLIF(trim(item.description), ''),
               NULLIF(sku.name, ''),
               NULLIF(product.name, ''),
-              item.stockItemId::text,
-              item.internalMaterialId::text,
-              item.assetCategoryId::text,
+              item.stock_item_id::text,
+              item.internal_material_id::text,
+              item.asset_category_id::text,
               'Sin nombre'
             )
           `,
           "label",
         )
-        .addSelect("item.itemType", "itemType")
-        .addSelect("COALESCE(SUM(item.purchaseValue), 0)", "total")
+        .addSelect("item.item_type", "itemType")
+        .addSelect("COALESCE(SUM(item.purchase_value), 0)", "total")
         .addSelect("COALESCE(SUM(item.quantity), 0)", "quantity")
         .groupBy('"itemId"')
         .addGroupBy("label")
-        .addGroupBy("item.serviceName")
+        .addGroupBy("item.service_name")
         .addGroupBy("item.description")
         .addGroupBy("sku.name")
         .addGroupBy("product.name")
-        .addGroupBy("item.internalMaterialId")
-        .addGroupBy("item.assetCategoryId")
-        .addGroupBy("item.itemType")
+        .addGroupBy("item.stock_item_id")
+        .addGroupBy("item.internal_material_id")
+        .addGroupBy("item.asset_category_id")
+        .addGroupBy("item.item_type")
         .orderBy("total", "DESC")
         .limit(limitFrom(filters.limit)),
       filters,
