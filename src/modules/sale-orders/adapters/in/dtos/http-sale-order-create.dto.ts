@@ -127,6 +127,10 @@ export class HttpSaleOrderCreateDto {
   agencySubsidiaryId?: string;
 
   @IsOptional()
+  @IsString()
+  agencyDetail?: string | null;
+
+  @IsOptional()
   @IsUUID()
   sourceId?: string;
 

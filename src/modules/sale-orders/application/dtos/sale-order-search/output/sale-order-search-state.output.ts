@@ -19,6 +19,8 @@ export interface SaleOrderSearchStateOutput {
   saved: ListingSearchMetricOutput<SaleOrderSearchSnapshot>[];
   catalogs: {
     clients: ListingSearchOptionOutput[];
+    creators: ListingSearchOptionOutput[];
+    assignees: ListingSearchOptionOutput[];
     warehouses: ListingSearchOptionOutput[];
     paymentStatuses: ListingSearchOptionOutput[];
     workflows: ListingSearchOptionOutput[];
@@ -115,6 +117,7 @@ export type SaleOrderGetOutput = {
     }>;
   } | null;
   agencySubsidiaryId: string | null;
+  agencyDetail: string | null;
   source: { id: string; name: string; detail?: string | null } | null;
   scheduleDate: string | null;
   deliveryDate: string | null;
@@ -134,6 +137,7 @@ export type SaleOrderGetOutput = {
   workflow: SaleOrderWorkflowOutput | null;
   currentState: SaleOrderWorkflowStateOutput | null;
   invoiceSend: boolean;
+  reserveBool: boolean;
   isActive: boolean;
   createdAt: string;
   updatedAt: string | null;

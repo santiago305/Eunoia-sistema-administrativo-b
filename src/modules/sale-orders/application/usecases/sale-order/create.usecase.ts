@@ -19,6 +19,7 @@ export type CreateSaleOrderInput = {
   clientId: string;
   workflowId: string;
   agencySubsidiaryId?: string;
+  agencyDetail?: string | null;
   sourceId?: string;
   scheduleDate?: string;
   deliveryDate?: string;
@@ -120,6 +121,7 @@ export class CreateSaleOrderUsecase {
           warehouseId: input.warehouseId,
           clientId: input.clientId,
           agencySubsidiaryId: input.agencySubsidiaryId ?? null,
+          agencyDetail: input.agencyDetail ?? null,
           sourceId: input.sourceId ?? null,
           scheduleDate: input.scheduleDate ?? null,
           deliveryDate: input.deliveryDate ?? null,

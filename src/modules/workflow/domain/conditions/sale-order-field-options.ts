@@ -9,7 +9,7 @@ export const SALE_ORDER_FIELD_OPTIONS = [
   { label: "Pedido tiene fecha de agenda", value: "scheduleDate",reason:"Fecha de agenda requerida" },
   { label: "Pedido tiene almacen", value: "warehouseId",reason:"Almacen requerido" },
   { label: "Pedido tiene enganche", value: "sourceId",reason:"Enganche requerido" },
-  { label: "Pedido tiene agencia/dirección exacta", value: "agencyDetail",reason:"Agencia/direccion exacta requerido" },
+  { label: "Pedido tiene agencia", value: "agencyDetail", reason: "Agencia requerida" },
   { label: "Pedido tiene nota", value: "note", reason:"Nota requerida" },
 ] as const;
 

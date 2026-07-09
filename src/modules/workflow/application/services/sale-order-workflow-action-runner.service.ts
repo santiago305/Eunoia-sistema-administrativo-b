@@ -117,9 +117,17 @@ export class SaleOrderWorkflowActionRunnerService {
 
     const onlyRevertsStock = stockActions.every((action) => action.type === ACTIONS.REVERT_STOCK);
     if (onlyRevertsStock && !(await this.hasActiveReservation(effectiveOrder.id, tx))) {
+      await this.saleOrderRepo.setReserveBool(
+        { saleOrderId: effectiveOrder.id, reserveBool: false },
+        tx,
+      );
       return { order: effectiveOrder, outcomes };
     }
     if (!effectiveOrder.warehouseId && onlyRevertsStock) {
+      await this.saleOrderRepo.setReserveBool(
+        { saleOrderId: effectiveOrder.id, reserveBool: false },
+        tx,
+      );
       return { order: effectiveOrder, outcomes };
     }
     if (!effectiveOrder.warehouseId) {
@@ -199,6 +207,10 @@ export class SaleOrderWorkflowActionRunnerService {
       }
       if (action.type === ACTIONS.CONSUME_STOCK) {
         await this.stockConsumption.consume(effectiveOrder, requirements, tx);
+        await this.saleOrderRepo.setReserveBool(
+          { saleOrderId: effectiveOrder.id, reserveBool: false },
+          tx,
+        );
         continue;
       }
       for (const { stockItemId, quantity } of requirements) {
@@ -209,6 +221,15 @@ export class SaleOrderWorkflowActionRunnerService {
         const base = { warehouseId: effectiveOrder.warehouseId, stockItemId, locationId: null };
         const reservedDelta = action.type === ACTIONS.RESERVE_STOCK ? quantityToApply : -quantityToApply;
         await this.inventoryRepo.incrementReserved({ ...base, delta: reservedDelta }, tx);
+      }
+      if (action.type === ACTIONS.RESERVE_STOCK || action.type === ACTIONS.REVERT_STOCK) {
+        await this.saleOrderRepo.setReserveBool(
+          {
+            saleOrderId: effectiveOrder.id,
+            reserveBool: action.type === ACTIONS.RESERVE_STOCK,
+          },
+          tx,
+        );
       }
     }
     return { order: effectiveOrder, outcomes };

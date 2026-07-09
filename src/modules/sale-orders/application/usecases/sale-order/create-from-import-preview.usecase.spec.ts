@@ -187,7 +187,7 @@ describe("CreateFromImportPreviewUseCase", () => {
     }
   });
 
-  it("stores unmatched import address on the client and leaves order sendAddress empty", async () => {
+  it("stores imported address on agencyDetail and does not change the client address", async () => {
     const queryBuilder = {
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
@@ -221,20 +221,18 @@ describe("CreateFromImportPreviewUseCase", () => {
 
     await f.usecase.execute({ rows: [{ total: 120 } as any], userId: "user-1" });
 
-    expect(f.clientResolver.resolveOrCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ address: "Av. Cliente 123" }),
-      tx,
-    );
+    expect(f.clientResolver.resolveOrCreate).toHaveBeenCalledWith(expect.objectContaining({ address: null }), tx);
     expect(f.saleOrderRepo.create).toHaveBeenCalledWith(
       expect.objectContaining({
         agencySubsidiaryId: null,
-        sendAddress: null,
+        agencyDetail: "Av. Cliente 123",
       }),
       tx,
     );
+    expect(tx.manager.getRepository).not.toHaveBeenCalled();
   });
 
-  it("stores matched subsidiary alias on the order delivery fields instead of the client address", async () => {
+  it("does not match import address against agency subsidiaries", async () => {
     const queryBuilder = {
       where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
@@ -271,17 +269,15 @@ describe("CreateFromImportPreviewUseCase", () => {
 
     await f.usecase.execute({ rows: [{ total: 120 } as any], userId: "user-1" });
 
-    expect(f.clientResolver.resolveOrCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ address: null }),
-      tx,
-    );
+    expect(f.clientResolver.resolveOrCreate).toHaveBeenCalledWith(expect.objectContaining({ address: null }), tx);
     expect(f.saleOrderRepo.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        agencySubsidiaryId: "subsidiary-1",
-        sendAddress: "Av. Sucursal 456",
+        agencySubsidiaryId: null,
+        agencyDetail: "Sucursal Norte",
       }),
       tx,
     );
+    expect(tx.manager.getRepository).not.toHaveBeenCalled();
   });
 
   it("uses the imported pack name as the sale order item description", async () => {
@@ -344,6 +340,38 @@ describe("CreateFromImportPreviewUseCase", () => {
           description: "Sin nombre",
         }),
       ],
+      expect.anything(),
+    );
+  });
+
+  it("uses the imported order date as the sale order creation date", async () => {
+    const f = makeImportUsecase();
+    f.normalizer.normalize.mockResolvedValue({
+      ok: true,
+      row: {
+        deliveryDate: "2026-07-06",
+        orderDate: "2026-07-04",
+        workflowName: null,
+        address: null,
+        productName: "Pack Aloe",
+        internalNote: null,
+        advertisingCode: null,
+        total: 120,
+        advance: 0,
+        deliveryCost: 0,
+        couponCode: null,
+        parsedSkus: [],
+        clientResolution: { clientId: null, matchedBy: null },
+      },
+    });
+
+    await f.usecase.execute({ rows: [{ total: 120 } as any], userId: "user-1" });
+
+    expect(f.saleOrderRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scheduleDate: "2026-07-04",
+        createdAt: new Date("2026-07-04T00:00:00.000Z"),
+      }),
       expect.anything(),
     );
   });

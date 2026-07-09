@@ -13,6 +13,7 @@ type SaleOrderWrite = {
   warehouseId: string | null;
   clientId: string;
   agencySubsidiaryId?: string | null;
+  agencyDetail?: string | null;
   sourceId?: string | null;
   scheduleDate?: string | null;
   deliveryDate?: string | null;
@@ -38,6 +39,7 @@ export interface SaleOrderRepository {
       serie: string | null;
       correlative: number | null;
       createdBy: string;
+      createdAt?: Date | null;
       isActive?: boolean;
     },
     tx?: TransactionContext,
@@ -45,6 +47,10 @@ export interface SaleOrderRepository {
   findByIdForUpdate(saleOrderId: string, tx?: TransactionContext): Promise<SaleOrder | null>;
   assignWarehouseIfEmpty(
     input: { saleOrderId: string; warehouseId: string },
+    tx?: TransactionContext,
+  ): Promise<SaleOrder | null>;
+  updateAssignedBy(
+    input: { saleOrderId: string; assignedBy: string | null },
     tx?: TransactionContext,
   ): Promise<SaleOrder | null>;
   update(input: SaleOrderWrite & { saleOrderId: string }, tx?: TransactionContext): Promise<SaleOrder>;
@@ -74,4 +80,5 @@ export interface SaleOrderRepository {
   ): Promise<SaleOrder>;
   countSaleOrdersByClientId(clientId: string, tx?: TransactionContext): Promise<number>;
   markInvoiceSent(saleOrderId: string, tx?: TransactionContext): Promise<void>;
+  setReserveBool(input: { saleOrderId: string; reserveBool: boolean }, tx?: TransactionContext): Promise<void>;
 }

@@ -1,6 +1,8 @@
 export const SaleOrderSearchFields = {
   NUMBER: "number",
   CLIENT_ID: "clientId",
+  CREATED_BY: "createdBy",
+  ASSIGNED_BY: "assignedBy",
   WAREHOUSE_ID: "warehouseId",
   WORKFLOW_ID: "workflowId",
   SALE_ORDER_STATE_ID: "saleOrderStateId",
@@ -11,7 +13,7 @@ export const SaleOrderSearchFields = {
   CLIENT_PROVINCE_ID: "clientProvinceId",
   CLIENT_DISTRICT_ID: "clientDistrictId",
   CLIENT_PHONE: "clientPhone",
-  AGENCY_SUBSIDIARY_ID: "agencySubsidiaryId",
+  AGENCY_DETAIL: "agencyDetail",
   SOURCE_ID: "sourceId",
   INVOICE_STATUS: "invoiceStatus",
   SCHEDULE_DATE: "scheduleDate",
@@ -118,6 +120,7 @@ export type SaleOrderListItemOutput = {
     district: { id: string; name: string; provinceId: string } | null;
   } | null;
   agencySubsidiaryId: string | null;
+  agencyDetail: string | null;
   source: { id: string; name: string; detail?: string | null } | null;
   scheduleDate: string | null;
   deliveryDate: string | null;
@@ -127,10 +130,12 @@ export type SaleOrderListItemOutput = {
   note: string | null;
   advertisingCode: string | null;
   observation: string | null;
+  assignedBy: { id: string; name: string; email: string } | null;
   createdBy: { id: string; name: string; email: string } | null;
   workflow: SaleOrderWorkflowOutput | null;
   currentState: SaleOrderWorkflowStateOutput | null;
   invoiceSend: boolean;
+  reserveBool: boolean;
   isActive: boolean;
   createdAt: string;
   updatedAt: string | null;

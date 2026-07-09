@@ -57,10 +57,7 @@ export class SaleOrderImportClientResolverService {
     const sanitized = this.sanitizeReference(row.parsedDocument.reference);
     if (sanitized) return sanitized;
 
-    if (row.normalizedPhone) return `TEL ${row.normalizedPhone}`;
-    if (row.recipientName) return row.recipientName.slice(0, 80);
-
-    return "IMPORT";
+    return undefined;
   }
 
   private sanitizeReference(value: string | null | undefined): string | undefined {

@@ -9,6 +9,7 @@ import {
   WorkflowTransitionRepository,
 } from "../../domain/ports/workflow-transition.repository";
 import { SaleOrderWorkflowContextService } from "../services/sale-order-workflow-context.service";
+import { ACTIONS } from "../../domain/constants/workflow-action.constants";
 
 @Injectable()
 export class GetAvailableTransitionsUseCase {
@@ -48,7 +49,13 @@ export class GetAvailableTransitionsUseCase {
       const context = await this.contextService.build(order, currentState, tx);
       const bundles = await this.transitionRepo.listFromState(order.workflowId, order.currentStateId, tx);
 
-      return bundles.map((bundle) => {
+      return bundles.filter((bundle) => {
+        if (!order.invoiceSend) {
+          return true;
+        }
+
+        return !bundle.actions.some((action) => action.type === ACTIONS.MARK_INVOICE_SENT);
+      }).map((bundle) => {
         const targetState = aggregate.states.find((state) => state.id === bundle.transition.toStateId) ?? null;
         const decision = this.engine.canTransition({
           workflow: aggregate.workflow,

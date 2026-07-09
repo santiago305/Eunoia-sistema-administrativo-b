@@ -24,6 +24,8 @@ export class GetSaleOrderSearchStateUsecase {
     const maps = {
       paymentStatuses: new Map(SALE_ORDER_PAYMENT_STATUS_SEARCH_OPTIONS.map((item) => [item.id, item.label])),
       clients: new Map(state.clients.map((item) => [item.clientId, item.label])),
+      creators: new Map((state.creators ?? []).map((item) => [item.userId, item.label])),
+      assignees: new Map((state.assignees ?? []).map((item) => [item.userId, item.label])),
       warehouses: new Map(state.warehouses.map((item) => [item.warehouseId, item.label])),
       workflows: new Map(state.workflows.map((item) => [item.workflowId, item.label])),
       states: new Map(state.states.map((item) => [item.saleOrderStateId, item.label])),
@@ -61,6 +63,8 @@ export class GetSaleOrderSearchStateUsecase {
       }),
       catalogs: {
         clients: state.clients.map((item) => ({ id: item.clientId, label: item.label })),
+        creators: (state.creators ?? []).map((item) => ({ id: item.userId, label: item.label })),
+        assignees: (state.assignees ?? []).map((item) => ({ id: item.userId, label: item.label })),
         warehouses: state.warehouses.map((item) => ({ id: item.warehouseId, label: item.label })),
         paymentStatuses: SALE_ORDER_PAYMENT_STATUS_SEARCH_OPTIONS,
         workflows: state.workflows.map((item) => ({ id: item.workflowId, label: item.label })),

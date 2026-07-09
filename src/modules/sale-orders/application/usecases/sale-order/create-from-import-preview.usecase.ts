@@ -11,11 +11,10 @@ import { SaleOrderImportSourceResolverService } from "src/modules/sale-orders/ap
 import { TransactionContext, UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { WORKFLOW_REPOSITORY, WorkflowRepository } from "src/modules/workflow/domain/ports/workflow.repository";
 import { SaleOrderNumberingService } from "src/modules/sale-orders/application/services/sale-order-numbering.service";
-import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
-import { SubsidiaryEntity } from "src/modules/agencies/adapters/out/persistence/typeorm/entities/subsidiary.entity";
 
 type ImportDestination = {
   agencySubsidiaryId: string | null;
+  agencyDetail: string | null;
   sendAddress: string | null;
   clientAddress: string | null;
 };
@@ -54,10 +53,7 @@ export class CreateFromImportPreviewUseCase {
 
       try {
         const result = await this.uow.runInTransaction(async (tx) => {
-          const destination = await this.resolveImportDestination(
-            normalized.row.address,
-            tx,
-          );
+          const destination = this.resolveImportDestination(normalized.row.address);
           const clientId = await this.clientResolver.resolveOrCreate(
             { ...normalized.row, address: destination.clientAddress },
             tx,
@@ -103,6 +99,7 @@ export class CreateFromImportPreviewUseCase {
   private async createSaleOrderFromImportRow(input: {
     row: {
       deliveryDate: string | null;
+      orderDate: string | null;
       workflowName: string | null;
       address: string | null;
       productName: string | null;
@@ -129,6 +126,8 @@ export class CreateFromImportPreviewUseCase {
 
     const { serie, correlative } = await this.numbering.reserveNext(input.tx);
     const deliveryDate = input.row.deliveryDate;
+    const orderDate = input.row.orderDate;
+    const createdAt = this.resolveCreatedAtFromOrderDate(orderDate);
     const normalizedWorkflowName = this.normalizeWorkflowName(input.row.workflowName);
     const resolvedWorkflow = normalizedWorkflowName
       ? await this.workflowRepo.findActiveByNormalizedName(normalizedWorkflowName, input.tx)
@@ -141,9 +140,10 @@ export class CreateFromImportPreviewUseCase {
         warehouseId,
         clientId: input.clientId,
         agencySubsidiaryId: input.destination.agencySubsidiaryId,
+        agencyDetail: input.destination.agencyDetail,
         sourceId: input.sourceId,
-        scheduleDate: deliveryDate,
-        deliveryDate,
+        scheduleDate:orderDate,
+        deliveryDate:deliveryDate,
         subTotal,
         deliveryCost,
         total,
@@ -152,6 +152,7 @@ export class CreateFromImportPreviewUseCase {
         observation: null,
         sendAddress: input.destination.sendAddress,
         createdBy: input.userId,
+        createdAt,
         workflowId: resolvedWorkflow?.workflow.id ?? null,
         currentStateId: resolvedWorkflow?.initialState.id ?? null,
         isActive: true,
@@ -214,45 +215,14 @@ export class CreateFromImportPreviewUseCase {
     return saleOrderId;
   }
 
-  private async resolveImportDestination(
+  private resolveImportDestination(
     address: string | null,
-    tx: TransactionContext,
-  ): Promise<ImportDestination> {
+  ): ImportDestination {
     const rawAddress = address?.trim() || null;
-    if (!rawAddress) {
-      return { agencySubsidiaryId: null, sendAddress: null, clientAddress: null };
-    }
-
-    const manager = (tx as TypeormTransactionContext).manager;
-    if (!manager) {
-      return {
-        agencySubsidiaryId: null,
-        sendAddress: null,
-        clientAddress: rawAddress,
-      };
-    }
-
-    const subsidiary = await manager
-      .getRepository(SubsidiaryEntity)
-      .createQueryBuilder("subsidiary")
-      .where("subsidiary.isActive = true")
-      .andWhere(
-        "unaccent(lower(trim(subsidiary.alias))) = unaccent(lower(trim(:alias)))",
-        { alias: rawAddress },
-      )
-      .getOne();
-
-    if (!subsidiary) {
-      return {
-        agencySubsidiaryId: null,
-        sendAddress: null,
-        clientAddress: rawAddress,
-      };
-    }
-
     return {
-      agencySubsidiaryId: subsidiary.id,
-      sendAddress: subsidiary.address ?? rawAddress,
+      agencySubsidiaryId: null,
+      agencyDetail: rawAddress,
+      sendAddress: null,
       clientAddress: null,
     };
   }
@@ -267,5 +237,11 @@ export class CreateFromImportPreviewUseCase {
   private normalizeWorkflowName(value: string | null | undefined): string | null {
     const trimmed = String(value ?? "").trim().replace(/\s+/g, " ");
     return trimmed ? trimmed.toLocaleUpperCase("es-PE") : null;
+  }
+
+  private resolveCreatedAtFromOrderDate(value: string | null | undefined): Date | null {
+    if (!value) return null;
+    const createdAt = new Date(`${value}T00:00:00.000Z`);
+    return Number.isNaN(createdAt.getTime()) ? null : createdAt;
   }
 }
