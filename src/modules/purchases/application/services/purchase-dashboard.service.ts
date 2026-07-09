@@ -282,7 +282,7 @@ export class PurchaseDashboardService implements PurchaseDashboardReader {
         FROM accounts_payable ap
         INNER JOIN purchase_orders po ON po.po_id = ap.purchase_id
         LEFT JOIN suppliers s ON s.supplier_id = ap.supplier_id
-        WHERE ${sqlFilters.where.join(" AND ")} AND (${statusPredicate})
+        WHERE ${sqlFilters.where.join(" AND ")} AND ap.amount_pending > 0 AND (${statusPredicate})
         ORDER BY ap.due_date ASC NULLS LAST, ap.amount_pending DESC
         LIMIT 10
       `,
@@ -316,12 +316,6 @@ export class PurchaseDashboardService implements PurchaseDashboardReader {
     if (filters.paymentStatus) add("po.payment_status = ?", filters.paymentStatus);
     if (filters.userId) add("po.created_by = ?", filters.userId);
     if (filters.warehouseId) add("po.warehouse_id = ?", filters.warehouseId);
-    if (filters.paymentMethodId) {
-      add("EXISTS (SELECT 1 FROM payment_documents pd_filter WHERE pd_filter.po_id = po.po_id AND pd_filter.payment_method_id = ?)", filters.paymentMethodId);
-    }
-    if (filters.companyPaymentAccountId) {
-      add("EXISTS (SELECT 1 FROM payment_documents pd_account_filter WHERE pd_account_filter.po_id = po.po_id AND pd_account_filter.company_payment_account_id = ?)", filters.companyPaymentAccountId);
-    }
 
     return { where, values };
   }
@@ -350,7 +344,23 @@ export class PurchaseDashboardService implements PurchaseDashboardReader {
   }
 
   private buildPayableFilters(filters: PurchaseDashboardFiltersInput, offset = 0): SqlFilter {
-    return this.buildPurchaseFilters(filters, offset);
+    const where = ["po.is_active = true"];
+    const values: unknown[] = [];
+    const add = (sql: string, value: unknown) => {
+      values.push(value);
+      where.push(sql.replace("?", `$${offset + values.length}`));
+    };
+
+    if (filters.from) add("DATE(COALESCE(po.date_issue, po.created_at)) >= ?", filters.from);
+    if (filters.to) add("DATE(COALESCE(po.date_issue, po.created_at)) <= ?", filters.to);
+    if (filters.supplierId) add("po.supplier_id = ?", filters.supplierId);
+    if (filters.purchaseType) add("po.purchase_type = ?", filters.purchaseType);
+    if (filters.status) add("po.status = ?", filters.status);
+    if (filters.paymentStatus) add("po.payment_status = ?", filters.paymentStatus);
+    if (filters.userId) add("po.created_by = ?", filters.userId);
+    if (filters.warehouseId) add("po.warehouse_id = ?", filters.warehouseId);
+
+    return { where, values };
   }
 }
 
