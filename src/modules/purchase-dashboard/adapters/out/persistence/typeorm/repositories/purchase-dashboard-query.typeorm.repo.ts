@@ -38,7 +38,7 @@ export class PurchaseDashboardQueryTypeormRepository implements PurchaseDashboar
     private readonly itemRepo: Repository<PurchaseOrderItemEntity>,
   ) {}
 
-  private applyPurchaseFilters<T>(qb: SelectQueryBuilder<T>, filters: PurchaseDashboardFilters, alias = "po") {
+  private applyPurchaseOrderFilters<T>(qb: SelectQueryBuilder<T>, filters: PurchaseDashboardFilters, alias = "po") {
     qb.andWhere(`${alias}.isActive = true`);
     if (filters.from) qb.andWhere(`COALESCE(${alias}.dateIssue, ${alias}.createdAt) >= :from`, { from: filters.from });
     if (filters.to) qb.andWhere(`COALESCE(${alias}.dateIssue, ${alias}.createdAt) <= :to`, { to: filters.to });
@@ -51,20 +51,28 @@ export class PurchaseDashboardQueryTypeormRepository implements PurchaseDashboar
     return qb;
   }
 
-  private applyPaymentFilters<T>(qb: SelectQueryBuilder<T>, filters: PurchaseDashboardFilters, dateAlias = "pd") {
-    if (filters.from) qb.andWhere(`${dateAlias}.date >= :from`, { from: filters.from });
-    if (filters.to) qb.andWhere(`${dateAlias}.date <= :to`, { to: filters.to });
-    if (filters.paymentMethodId) qb.andWhere(`${dateAlias}.paymentMethodId = :paymentMethodId`, { paymentMethodId: filters.paymentMethodId });
+  private applyPaymentDocumentFilters<T>(qb: SelectQueryBuilder<T>, filters: PurchaseDashboardFilters, paymentAlias = "pd") {
+    if (filters.from) qb.andWhere(`${paymentAlias}.date >= :from`, { from: filters.from });
+    if (filters.to) qb.andWhere(`${paymentAlias}.date <= :to`, { to: filters.to });
+    if (filters.paymentMethodId) qb.andWhere(`${paymentAlias}.paymentMethodId = :paymentMethodId`, { paymentMethodId: filters.paymentMethodId });
     if (filters.companyPaymentAccountId) {
-      qb.andWhere(`${dateAlias}.companyPaymentAccountId = :companyPaymentAccountId`, {
+      qb.andWhere(`${paymentAlias}.companyPaymentAccountId = :companyPaymentAccountId`, {
         companyPaymentAccountId: filters.companyPaymentAccountId,
       });
     }
     return qb;
   }
 
+  private applyApprovedPaymentFilters<T>(qb: SelectQueryBuilder<T>, filters: PurchaseDashboardFilters) {
+    return this.applyPaymentDocumentFilters(this.applyPurchaseOrderFilters(qb, filters), filters);
+  }
+
+  private applyPayableFilters<T>(qb: SelectQueryBuilder<T>, filters: PurchaseDashboardFilters) {
+    return this.applyPurchaseOrderFilters(qb, filters);
+  }
+
   async getSummary(filters: PurchaseDashboardFilters): Promise<PurchaseDashboardSummaryOutput> {
-    const purchaseQb = this.applyPurchaseFilters(
+    const purchaseQb = this.applyPurchaseOrderFilters(
       this.purchaseRepo
         .createQueryBuilder("po")
         .select("COALESCE(SUM(CASE WHEN po.status != :cancelled THEN po.total ELSE 0 END), 0)", "totalPurchased")
@@ -80,8 +88,8 @@ export class PurchaseDashboardQueryTypeormRepository implements PurchaseDashboar
       filters,
     );
 
-    const paymentQb = this.applyPaymentFilters(
-      this.applyPurchaseFilters(
+    const paymentQb = this.applyPaymentDocumentFilters(
+      this.applyPurchaseOrderFilters(
         this.paymentRepo
           .createQueryBuilder("pd")
           .leftJoin(PurchaseOrderEntity, "po", "po.id = pd.poId")
@@ -93,7 +101,7 @@ export class PurchaseDashboardQueryTypeormRepository implements PurchaseDashboar
       filters,
     );
 
-    const payableQb = this.applyPurchaseFilters(
+    const payableQb = this.applyPayableFilters(
       this.payableRepo
         .createQueryBuilder("ap")
         .leftJoin(PurchaseOrderEntity, "po", "po.id = ap.purchaseId")
@@ -122,7 +130,7 @@ export class PurchaseDashboardQueryTypeormRepository implements PurchaseDashboar
   }
 
   async getByType(filters: PurchaseDashboardFilters): Promise<PurchaseDashboardSeriesPoint[]> {
-    const rows = await this.applyPurchaseFilters(
+    const rows = await this.applyPurchaseOrderFilters(
       this.purchaseRepo
         .createQueryBuilder("po")
         .select("po.purchaseType", "label")
@@ -136,7 +144,7 @@ export class PurchaseDashboardQueryTypeormRepository implements PurchaseDashboar
   }
 
   async getByStatus(filters: PurchaseDashboardFilters): Promise<PurchaseDashboardSeriesPoint[]> {
-    const rows = await this.applyPurchaseFilters(
+    const rows = await this.applyPurchaseOrderFilters(
       this.purchaseRepo
         .createQueryBuilder("po")
         .select("po.paymentStatus", "label")
@@ -150,7 +158,7 @@ export class PurchaseDashboardQueryTypeormRepository implements PurchaseDashboar
   }
 
   async getMonthlySpending(filters: PurchaseDashboardFilters): Promise<PurchaseDashboardMonthlyPoint[]> {
-    const purchaseRows = await this.applyPurchaseFilters(
+    const purchaseRows = await this.applyPurchaseOrderFilters(
       this.purchaseRepo
         .createQueryBuilder("po")
         .select("TO_CHAR(DATE_TRUNC('month', po.createdAt), 'YYYY-MM')", "month")
@@ -160,18 +168,15 @@ export class PurchaseDashboardQueryTypeormRepository implements PurchaseDashboar
       filters,
     ).getRawMany();
 
-    const paymentRows = await this.applyPaymentFilters(
-      this.applyPurchaseFilters(
-        this.paymentRepo
-          .createQueryBuilder("pd")
-          .leftJoin(PurchaseOrderEntity, "po", "po.id = pd.poId")
-          .select("TO_CHAR(DATE_TRUNC('month', pd.date), 'YYYY-MM')", "month")
-          .addSelect("COALESCE(SUM(pd.amount), 0)", "paid")
-          .where("pd.status = :approved", { approved: "APPROVED" })
-          .groupBy("DATE_TRUNC('month', pd.date)")
-          .orderBy("month", "ASC"),
-        filters,
-      ),
+    const paymentRows = await this.applyApprovedPaymentFilters(
+      this.paymentRepo
+        .createQueryBuilder("pd")
+        .leftJoin(PurchaseOrderEntity, "po", "po.id = pd.poId")
+        .select("TO_CHAR(DATE_TRUNC('month', pd.date), 'YYYY-MM')", "month")
+        .addSelect("COALESCE(SUM(pd.amount), 0)", "paid")
+        .where("pd.status = :approved", { approved: "APPROVED" })
+        .groupBy("DATE_TRUNC('month', pd.date)")
+        .orderBy("month", "ASC"),
       filters,
     ).getRawMany();
 
@@ -209,7 +214,7 @@ export class PurchaseDashboardQueryTypeormRepository implements PurchaseDashboar
   }
 
   async getTopItems(filters: PurchaseDashboardFilters): Promise<PurchaseDashboardTopItem[]> {
-    const rows = await this.applyPurchaseFilters(
+    const rows = await this.applyPurchaseOrderFilters(
       this.itemRepo
         .createQueryBuilder("item")
         .leftJoin(PurchaseOrderEntity, "po", "po.id = item.poId")
@@ -258,7 +263,7 @@ export class PurchaseDashboardQueryTypeormRepository implements PurchaseDashboar
   }
 
   async getTopSuppliers(filters: PurchaseDashboardFilters): Promise<PurchaseDashboardTopSupplier[]> {
-    const rows = await this.applyPurchaseFilters(
+    const rows = await this.applyPurchaseOrderFilters(
       this.purchaseRepo
         .createQueryBuilder("po")
         .leftJoin("suppliers", "s", "s.supplier_id = po.supplierId")
@@ -283,28 +288,25 @@ export class PurchaseDashboardQueryTypeormRepository implements PurchaseDashboar
   }
 
   async getPaymentMethodUsage(filters: PurchaseDashboardFilters): Promise<PurchaseDashboardSeriesPoint[]> {
-    const rows = await this.applyPaymentFilters(
-      this.applyPurchaseFilters(
-        this.paymentRepo
-          .createQueryBuilder("pd")
-          .leftJoin(PurchaseOrderEntity, "po", "po.id = pd.poId")
-          .leftJoin("payment_methods", "pm", "pm.method_id = pd.paymentMethodId")
-          .select("COALESCE(pm.name, pd.method, 'Sin metodo')", "label")
-          .addSelect("COALESCE(SUM(pd.amount), 0)", "value")
-          .addSelect("COUNT(*)", "count")
-          .where("pd.status = :approved", { approved: "APPROVED" })
-          .groupBy("pm.name")
-          .addGroupBy("pd.method")
-          .orderBy("value", "DESC"),
-        filters,
-      ),
+    const rows = await this.applyApprovedPaymentFilters(
+      this.paymentRepo
+        .createQueryBuilder("pd")
+        .leftJoin(PurchaseOrderEntity, "po", "po.id = pd.poId")
+        .leftJoin("payment_methods", "pm", "pm.method_id = pd.paymentMethodId")
+        .select("COALESCE(pm.name, pd.method, 'Sin metodo')", "label")
+        .addSelect("COALESCE(SUM(pd.amount), 0)", "value")
+        .addSelect("COUNT(*)", "count")
+        .where("pd.status = :approved", { approved: "APPROVED" })
+        .groupBy("pm.name")
+        .addGroupBy("pd.method")
+        .orderBy("value", "DESC"),
       filters,
     ).getRawMany();
     return rows.map((row) => ({ label: row.label, value: numberFrom(row.value), count: numberFrom(row.count) }));
   }
 
   async getInternalVsInventory(filters: PurchaseDashboardFilters): Promise<PurchaseDashboardSeriesPoint[]> {
-    const rows = await this.applyPurchaseFilters(
+    const rows = await this.applyPurchaseOrderFilters(
       this.purchaseRepo
         .createQueryBuilder("po")
         .select(
@@ -321,7 +323,7 @@ export class PurchaseDashboardQueryTypeormRepository implements PurchaseDashboar
   }
 
   private payableBaseRows(filters: PurchaseDashboardFilters) {
-    return this.applyPurchaseFilters(
+    return this.applyPayableFilters(
       this.payableRepo
         .createQueryBuilder("ap")
         .leftJoin(PurchaseOrderEntity, "po", "po.id = ap.purchaseId")

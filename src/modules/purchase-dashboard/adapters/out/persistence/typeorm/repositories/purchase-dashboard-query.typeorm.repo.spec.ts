@@ -74,6 +74,49 @@ describe("PurchaseDashboardQueryTypeormRepository", () => {
     expect(whereClauses).not.toContain("companyPaymentAccountId");
   });
 
+  it("applies payable filters through purchases without payment document fields", async () => {
+    const qb = makeQueryBuilder([]);
+    const { repo } = makeRepository({ payable: qb });
+
+    await repo.getOverduePayments({
+      from: new Date("2026-07-01T00:00:00.000Z"),
+      supplierId: "supplier-1",
+      purchaseType: "SERVICE",
+      paymentStatus: "PARTIAL",
+      paymentMethodId: "method-1",
+      companyPaymentAccountId: "account-1",
+    });
+
+    const whereClauses = qb.andWhere.mock.calls.map(([sql]: [string]) => sql).join("\n");
+    expect(whereClauses).toContain("COALESCE(po.dateIssue, po.createdAt) >= :from");
+    expect(whereClauses).toContain("po.supplierId = :supplierId");
+    expect(whereClauses).toContain("po.purchaseType = :purchaseType");
+    expect(whereClauses).toContain("po.paymentStatus = :paymentStatus");
+    expect(whereClauses).not.toContain("pd.paymentMethodId");
+    expect(whereClauses).not.toContain("pd.companyPaymentAccountId");
+  });
+
+  it("applies approved payment filters through payment documents and joined purchases", async () => {
+    const qb = makeQueryBuilder([]);
+    const { repo } = makeRepository({ payment: qb });
+
+    await repo.getPaymentMethodUsage({
+      from: new Date("2026-07-01T00:00:00.000Z"),
+      to: new Date("2026-07-31T23:59:59.999Z"),
+      supplierId: "supplier-1",
+      paymentMethodId: "method-1",
+      companyPaymentAccountId: "account-1",
+    });
+
+    const whereClauses = qb.andWhere.mock.calls.map(([sql]: [string]) => sql).join("\n");
+    expect(qb.where).toHaveBeenCalledWith("pd.status = :approved", { approved: "APPROVED" });
+    expect(whereClauses).toContain("po.supplierId = :supplierId");
+    expect(whereClauses).toContain("pd.date >= :from");
+    expect(whereClauses).toContain("pd.date <= :to");
+    expect(whereClauses).toContain("pd.paymentMethodId = :paymentMethodId");
+    expect(whereClauses).toContain("pd.companyPaymentAccountId = :companyPaymentAccountId");
+  });
+
   it("resolves top item labels from catalog names before falling back to ids", async () => {
     const qb = makeQueryBuilder([
       { itemId: "stock-item-1", label: "Jabón", itemType: "RAW_MATERIAL", total: "10", quantity: "2" },
