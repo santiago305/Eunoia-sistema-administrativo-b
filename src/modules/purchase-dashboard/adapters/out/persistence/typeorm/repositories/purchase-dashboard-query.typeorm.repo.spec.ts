@@ -104,4 +104,25 @@ describe("PurchaseDashboardQueryTypeormRepository", () => {
     expect(qb.select).toHaveBeenCalledWith(expect.stringContaining("THEN 'Interno'"), "label");
     expect(qb.select).toHaveBeenCalledWith(expect.stringContaining("ELSE 'Servicio'"), "label");
   });
+
+  it("applies default and clamped limits only to dashboard row lists", async () => {
+    const upcomingQb = makeQueryBuilder([]);
+    const suppliersQb = makeQueryBuilder([]);
+    const byTypeQb = makeQueryBuilder([]);
+    const { repo } = makeRepository({
+      payable: upcomingQb,
+      purchase: suppliersQb,
+    });
+
+    await repo.getUpcomingPayments({});
+    await repo.getTopSuppliers({ limit: 99 });
+
+    expect(upcomingQb.limit).toHaveBeenCalledWith(10);
+    expect(suppliersQb.limit).toHaveBeenCalledWith(50);
+
+    const { repo: aggregateRepo } = makeRepository({ purchase: byTypeQb });
+    await aggregateRepo.getByType({ limit: 50 });
+
+    expect(byTypeQb.limit).not.toHaveBeenCalled();
+  });
 });

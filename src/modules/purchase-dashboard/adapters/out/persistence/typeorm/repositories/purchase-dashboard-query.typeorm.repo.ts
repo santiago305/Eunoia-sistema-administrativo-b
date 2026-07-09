@@ -19,7 +19,11 @@ import {
 import { PurchaseDashboardQueryRepository } from "src/modules/purchase-dashboard/domain/ports/purchase-dashboard-query.repository";
 
 const numberFrom = (value: unknown): number => Number(value ?? 0);
-const limitFrom = (value?: number): number => Math.min(Math.max(Number(value ?? 10), 1), 50);
+const limitFrom = (value?: number): number => {
+  const limit = Number(value ?? 10);
+  if (!Number.isFinite(limit)) return 10;
+  return Math.min(Math.max(Math.trunc(limit), 1), 50);
+};
 
 @Injectable()
 export class PurchaseDashboardQueryTypeormRepository implements PurchaseDashboardQueryRepository {

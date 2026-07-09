@@ -12,12 +12,13 @@ export type PurchaseDashboardFilterInput = {
   warehouseId?: string;
   paymentMethodId?: string;
   companyPaymentAccountId?: string;
-  limit?: number;
+  limit?: number | string;
 };
 
-export type PurchaseDashboardFilters = Omit<PurchaseDashboardFilterInput, "from" | "to"> & {
+export type PurchaseDashboardFilters = Omit<PurchaseDashboardFilterInput, "from" | "to" | "limit"> & {
   from?: Date;
   to?: Date;
+  limit?: number;
 };
 
 const startOfUtcDay = (value?: string): Date | undefined => {
@@ -36,6 +37,13 @@ const endOfUtcDay = (value?: string): Date | undefined => {
   return date;
 };
 
+const normalizeLimit = (value?: number | string): number | undefined => {
+  if (value === undefined || value === null || value === "") return undefined;
+  const limit = Number(value);
+  if (!Number.isFinite(limit)) return undefined;
+  return Math.min(Math.max(Math.trunc(limit), 1), 50);
+};
+
 export const normalizePurchaseDashboardFilters = (
   input: PurchaseDashboardFilterInput = {},
 ): PurchaseDashboardFilters => ({
@@ -49,6 +57,6 @@ export const normalizePurchaseDashboardFilters = (
   warehouseId: input.warehouseId,
   paymentMethodId: input.paymentMethodId,
   companyPaymentAccountId: input.companyPaymentAccountId,
-  limit: input.limit,
+  limit: normalizeLimit(input.limit),
 });
 
