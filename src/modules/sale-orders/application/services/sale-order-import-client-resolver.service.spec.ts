@@ -80,7 +80,7 @@ describe("SaleOrderImportClientResolverService", () => {
     );
   });
 
-  it("falls back to phone when delivery note has no usable reference", async () => {
+  it("does not save a reference when delivery note has no usable reference", async () => {
     const createClientUsecase = {
       executeInTransaction: jest.fn().mockResolvedValue("client-1"),
     };
@@ -105,7 +105,7 @@ describe("SaleOrderImportClientResolverService", () => {
 
     expect(createClientUsecase.executeInTransaction).toHaveBeenCalledWith(
       expect.objectContaining({
-        reference: "TEL 995622971",
+        reference: undefined,
       }),
       expect.anything(),
     );

@@ -69,6 +69,9 @@ export class SaleOrderEntity {
   @Column({ name: "agency_subsidiary_id", type: "uuid", nullable: true })
   agencySubsidiaryId?: string | null;
 
+  @Column({ name: "agency_detail", type: "text", nullable: true })
+  agencyDetail?: string | null;
+
   @Column({ name: "source_id", type: "uuid", nullable: true })
   sourceId?: string | null;
 
@@ -86,6 +89,9 @@ export class SaleOrderEntity {
 
   @Column({ name: "invoice_send", type: "boolean", default: false })
   invoiceSend: boolean;
+
+  @Column({ name: "reserve_bool", type: "boolean", default: false })
+  reserveBool: boolean;
 
   @Column({ name: "is_active", type: "boolean", default: true })
   isActive: boolean;

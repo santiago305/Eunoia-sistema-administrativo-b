@@ -15,6 +15,8 @@ import {
 
 type SearchCatalogMaps = {
   clients?: Map<string, string>;
+  creators?: Map<string, string>;
+  assignees?: Map<string, string>;
   warehouses?: Map<string, string>;
   workflows?: Map<string, string>;
   states?: Map<string, string>;
@@ -34,6 +36,8 @@ const uniqueStrings = (values: string[] | undefined) =>
 const FILTER_FIELD_ORDER: SaleOrderSearchField[] = [
   SaleOrderSearchFields.NUMBER,
   SaleOrderSearchFields.CLIENT_ID,
+  SaleOrderSearchFields.CREATED_BY,
+  SaleOrderSearchFields.ASSIGNED_BY,
   SaleOrderSearchFields.WAREHOUSE_ID,
   SaleOrderSearchFields.WORKFLOW_ID,
   SaleOrderSearchFields.SALE_ORDER_STATE_ID,
@@ -44,7 +48,7 @@ const FILTER_FIELD_ORDER: SaleOrderSearchField[] = [
   SaleOrderSearchFields.CLIENT_PROVINCE_ID,
   SaleOrderSearchFields.CLIENT_DISTRICT_ID,
   SaleOrderSearchFields.CLIENT_PHONE,
-  SaleOrderSearchFields.AGENCY_SUBSIDIARY_ID,
+  SaleOrderSearchFields.AGENCY_DETAIL,
   SaleOrderSearchFields.SOURCE_ID,
   SaleOrderSearchFields.INVOICE_STATUS,
   SaleOrderSearchFields.SCHEDULE_DATE,
@@ -56,6 +60,8 @@ const FILTER_FIELD_ORDER: SaleOrderSearchField[] = [
 
 const CATALOG_FIELDS = new Set<SaleOrderSearchField>([
   SaleOrderSearchFields.CLIENT_ID,
+  SaleOrderSearchFields.CREATED_BY,
+  SaleOrderSearchFields.ASSIGNED_BY,
   SaleOrderSearchFields.WAREHOUSE_ID,
   SaleOrderSearchFields.WORKFLOW_ID,
   SaleOrderSearchFields.SALE_ORDER_STATE_ID,
@@ -80,7 +86,7 @@ const TEXT_FIELDS = new Set<SaleOrderSearchField>([
   SaleOrderSearchFields.ADVERTISING_CODE,
   SaleOrderSearchFields.OBSERVATION,
   SaleOrderSearchFields.CLIENT_PHONE,
-  SaleOrderSearchFields.AGENCY_SUBSIDIARY_ID,
+  SaleOrderSearchFields.AGENCY_DETAIL,
 ]);
 
 const DATE_OPERATORS = new Set<SaleOrderSearchOperator>([
@@ -102,6 +108,8 @@ const TEXT_OPERATORS = new Set<SaleOrderSearchOperator>([
 const SEARCH_FIELD_LABELS: Record<SaleOrderSearchField, string> = {
   [SaleOrderSearchFields.NUMBER]: "Numero",
   [SaleOrderSearchFields.CLIENT_ID]: "Cliente",
+  [SaleOrderSearchFields.CREATED_BY]: "Creado por",
+  [SaleOrderSearchFields.ASSIGNED_BY]: "Asignado a",
   [SaleOrderSearchFields.WAREHOUSE_ID]: "Almacen",
   [SaleOrderSearchFields.WORKFLOW_ID]: "Tipo",
   [SaleOrderSearchFields.SALE_ORDER_STATE_ID]: "Estado",
@@ -112,7 +120,7 @@ const SEARCH_FIELD_LABELS: Record<SaleOrderSearchField, string> = {
   [SaleOrderSearchFields.CLIENT_PROVINCE_ID]: "Provincia",
   [SaleOrderSearchFields.CLIENT_DISTRICT_ID]: "Distrito",
   [SaleOrderSearchFields.CLIENT_PHONE]: "Celular",
-  [SaleOrderSearchFields.AGENCY_SUBSIDIARY_ID]: "Sucursal de agencia",
+  [SaleOrderSearchFields.AGENCY_DETAIL]: "Agencia",
   [SaleOrderSearchFields.SOURCE_ID]: "Origen",
   [SaleOrderSearchFields.INVOICE_STATUS]: "Comprobante",
   [SaleOrderSearchFields.SCHEDULE_DATE]: "F. Programada",
@@ -428,6 +436,10 @@ function getCatalogMap(field: SaleOrderSearchField, maps: SearchCatalogMaps) {
   switch (field) {
     case SaleOrderSearchFields.CLIENT_ID:
       return maps.clients;
+    case SaleOrderSearchFields.CREATED_BY:
+      return maps.creators;
+    case SaleOrderSearchFields.ASSIGNED_BY:
+      return maps.assignees;
     case SaleOrderSearchFields.WAREHOUSE_ID:
       return maps.warehouses;
     case SaleOrderSearchFields.WORKFLOW_ID:

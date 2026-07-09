@@ -18,6 +18,7 @@ export class SaleOrder {
     public readonly warehouseId: string | null,
     public readonly clientId: string,
     public readonly agencySubsidiaryId: string | null,
+    public readonly agencyDetail: string | null,
     public readonly sourceId: string | null,
     public readonly scheduleDate: string | null,
     public readonly deliveryDate: string | null,
@@ -41,5 +42,6 @@ export class SaleOrder {
     public readonly updatedAt: Date | null,
     public readonly items: SaleOrderItem[] = [],
     public readonly invoiceSend: boolean = false,
+    public readonly reserveBool: boolean = false,
   ) {}
 }

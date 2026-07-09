@@ -18,6 +18,8 @@ import { ListSaleOrdersUsecase } from "src/modules/sale-orders/application/useca
 import { GetSaleOrderComponentsUsecase } from "src/modules/sale-orders/application/usecases/sale-order/get-components.usecase";
 import { GetSaleOrderItemComponentsUsecase } from "src/modules/sale-orders/application/usecases/sale-order/get-item-components.usecase";
 import { UpdateSaleOrderUsecase } from "src/modules/sale-orders/application/usecases/sale-order/update.usecase";
+import { BulkAssignSaleOrdersUsecase } from "../application/usecases/sale-order/bulk-assign.usecase";
+import { BulkChangeSaleOrderStateUsecase } from "../application/usecases/sale-order/bulk-change-state.usecase";
 import { GetSaleOrderSearchStateUsecase } from "src/modules/sale-orders/application/usecases/sale-order-search/get-state.usecase";
 import { SaveSaleOrderSearchMetricUsecase } from "src/modules/sale-orders/application/usecases/sale-order-search/save-metric.usecase";
 import { DeleteSaleOrderSearchMetricUsecase } from "src/modules/sale-orders/application/usecases/sale-order-search/delete-metric.usecase";
@@ -75,6 +77,8 @@ export const saleOrdersModuleProviders = [
   SaleOrderEditPolicyService,
   GetSaleOrderUsecase,
   UpdateSaleOrderUsecase,
+  BulkAssignSaleOrdersUsecase,
+  BulkChangeSaleOrderStateUsecase,
   ListSaleOrdersUsecase,
   GetSaleOrderStatisticsUsecase,
   CancelSaleOrderUsecase,

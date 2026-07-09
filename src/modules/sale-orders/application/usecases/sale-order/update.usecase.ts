@@ -18,6 +18,7 @@ export type UpdateSaleOrderInput = {
   warehouseId: string;
   clientId: string;
   agencySubsidiaryId?: string;
+  agencyDetail?: string | null;
   sourceId?: string;
   scheduleDate?: string;
   deliveryDate?: string;
@@ -394,6 +395,7 @@ export class UpdateSaleOrderUsecase {
           warehouseId: input.warehouseId,
           clientId: input.clientId,
           agencySubsidiaryId: input.agencySubsidiaryId ?? null,
+          agencyDetail: input.agencyDetail ?? null,
           sourceId: input.sourceId?.trim() ? input.sourceId.trim() : null,
           scheduleDate: input.scheduleDate ?? null,
           deliveryDate: input.deliveryDate ?? null,

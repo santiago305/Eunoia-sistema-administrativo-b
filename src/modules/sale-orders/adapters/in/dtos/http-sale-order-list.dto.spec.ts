@@ -43,5 +43,20 @@ describe("HttpListSaleOrdersQueryDto", () => {
 
     expect(validateSync(dto)).toHaveLength(0);
   });
+
+  it("accepts creator and assigned user catalog filters", () => {
+    const dto = plainToInstance(HttpListSaleOrdersQueryDto, {
+      filters: JSON.stringify([
+        { field: "createdBy", operator: "in", values: ["user-1", "user-2"] },
+        { field: "assignedBy", operator: "in", values: ["user-3"] },
+      ]),
+    });
+
+    expect(validateSync(dto)).toHaveLength(0);
+    expect(dto.filters).toEqual([
+      { field: "createdBy", operator: "in", values: ["user-1", "user-2"] },
+      { field: "assignedBy", operator: "in", values: ["user-3"] },
+    ]);
+  });
 });
 

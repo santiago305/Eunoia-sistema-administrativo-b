@@ -1,6 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { In, Repository } from "typeorm";
 import { ClientEntity } from "src/modules/clients/adapters/out/persistence/typeorm/entities/client.entity";
 import { WarehouseEntity } from "src/modules/warehouses/adapters/out/persistence/typeorm/entities/warehouse";
 import {
@@ -19,6 +19,8 @@ import { SourceEntity } from "src/modules/sources/adapters/out/persistence/typeo
 import { UbigeoDepartmentEntity } from "src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-department.entity";
 import { UbigeoProvinceEntity } from "src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-province.entity";
 import { UbigeoDistrictEntity } from "src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-district.entity";
+import { SaleOrderEntity } from "../entities/sale-order.entity";
+import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
 
 @Injectable()
 export class SaleOrderSearchTypeormRepository implements SaleOrderSearchRepository {
@@ -47,7 +49,7 @@ export class SaleOrderSearchTypeormRepository implements SaleOrderSearchReposito
   }
 
   async listState(params: { userId: string; tableKey: string }): Promise<SaleOrderSearchStateRecord> {
-    const [state, clients, warehouses, workflows, saleOrderStates, bankAccounts, departments, provinces, districts, sources] = await Promise.all([
+    const [state, clients, warehouses, workflows, saleOrderStates, bankAccounts, departments, provinces, districts, sources, saleOrders] = await Promise.all([
       this.storage.listState(params),
       this.clientRepo.find({ where: { isActive: true } }),
       this.warehouseRepo.find({ where: { isActive: true } }),
@@ -62,7 +64,30 @@ export class SaleOrderSearchTypeormRepository implements SaleOrderSearchReposito
       this.clientRepo.manager.getRepository(UbigeoProvinceEntity).find({ order: { name: "ASC" } }),
       this.clientRepo.manager.getRepository(UbigeoDistrictEntity).find({ order: { name: "ASC" } }),
       this.clientRepo.manager.getRepository(SourceEntity).find({ order: { name: "ASC" } }),
+      this.clientRepo.manager.getRepository(SaleOrderEntity).find({
+        select: {
+          createdBy: true,
+          assignedBy: true,
+        },
+      }),
     ]);
+
+    const creatorIds = Array.from(new Set(saleOrders.map((row) => row.createdBy).filter(Boolean))) as string[];
+    const assigneeIds = Array.from(new Set(saleOrders.map((row) => row.assignedBy).filter(Boolean))) as string[];
+    const userIds = Array.from(new Set([...creatorIds, ...assigneeIds]));
+    const users = userIds.length
+      ? await this.clientRepo.manager.getRepository(User).find({ where: { id: In(userIds) } })
+      : [];
+    const userById = new Map(users.map((user) => [user.id, user]));
+    const userLabel = (user: User) => `${user.name}${user.email ? ` (${user.email})` : ""}`.trim();
+    const mapUserCatalog = (ids: string[]) =>
+      ids
+        .map((id) => {
+          const user = userById.get(id);
+          return user ? { userId: user.id, label: userLabel(user) } : null;
+        })
+        .filter((item): item is { userId: string; label: string } => Boolean(item))
+        .sort((left, right) => left.label.localeCompare(right.label, "es", { sensitivity: "base" }));
 
     const orderedClients = [...clients].sort((left, right) =>
       left.fullName.localeCompare(right.fullName, "es", { sensitivity: "base" }),
@@ -126,6 +151,8 @@ export class SaleOrderSearchTypeormRepository implements SaleOrderSearchReposito
       provinces: provinces.map((row) => ({ id: row.id, label: row.name })),
       districts: districts.map((row) => ({ id: row.id, label: row.name })),
       sources: sources.map((row) => ({ id: row.id, label: row.name })),
+      creators: mapUserCatalog(creatorIds),
+      assignees: mapUserCatalog(assigneeIds),
     };
   }
 

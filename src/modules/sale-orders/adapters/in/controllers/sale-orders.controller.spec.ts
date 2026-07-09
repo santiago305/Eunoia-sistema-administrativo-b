@@ -32,6 +32,8 @@ import {
 } from "src/modules/sale-orders/application/services/sale-order-automatic-workflow.service";
 import { SaleOrderRealtimePayloadService } from "src/modules/sale-orders/application/services/sale-order-realtime-payload.service";
 import { SaveSaleOrderWithClientUsecase } from "src/modules/sale-orders/application/usecases/sale-order/save-with-client.usecase";
+import { BulkAssignSaleOrdersUsecase } from "src/modules/sale-orders/application/usecases/sale-order/bulk-assign.usecase";
+import { BulkChangeSaleOrderStateUsecase } from "src/modules/sale-orders/application/usecases/sale-order/bulk-change-state.usecase";
 
 @Injectable()
 class TestJwtAuthGuard implements CanActivate {
@@ -72,6 +74,8 @@ describe("SaleOrdersController", () => {
   const automaticWorkflow = { evaluateAndNotify: jest.fn() };
   const realtimePayload = { build: jest.fn() };
   const saveWithClient = { execute: jest.fn() };
+  const bulkAssignSaleOrders = { execute: jest.fn() };
+  const bulkChangeSaleOrderState = { execute: jest.fn() };
   const statisticsPayload = {
     byWorkflow: [],
     byState: [],
@@ -103,6 +107,40 @@ describe("SaleOrdersController", () => {
     getAvailableTransitions.execute.mockResolvedValue([]);
     getOrderTimeline.execute.mockResolvedValue([]);
     automaticWorkflow.evaluateAndNotify.mockResolvedValue({ updated: 0, failed: 0, saleOrderIds: [] });
+    bulkAssignSaleOrders.execute.mockResolvedValue({
+      type: "success",
+      message: "Operacion masiva procesada",
+      data: {
+        requested: 2,
+        succeeded: 2,
+        failed: 0,
+        results: [
+          { saleOrderId: "11111111-1111-4111-8111-111111111111", status: "success" },
+          { saleOrderId: "22222222-2222-4222-8222-222222222222", status: "success" },
+        ],
+      },
+    });
+    bulkChangeSaleOrderState.execute.mockResolvedValue({
+      type: "success",
+      message: "Operacion masiva procesada",
+      data: {
+        requested: 2,
+        succeeded: 1,
+        failed: 1,
+        results: [
+          {
+            saleOrderId: "11111111-1111-4111-8111-111111111111",
+            status: "success",
+            warnings: ["w1"],
+          },
+          {
+            saleOrderId: "22222222-2222-4222-8222-222222222222",
+            status: "failed",
+            message: "Transicion no disponible",
+          },
+        ],
+      },
+    });
     saveWithClient.execute.mockResolvedValue({
       orderId: "11111111-1111-4111-8111-111111111111",
       clientId: "33333333-3333-4333-8333-333333333333",
@@ -141,6 +179,8 @@ describe("SaleOrdersController", () => {
         { provide: GetSaleOrderComponentsUsecase, useValue: getComponents },
         { provide: GetSaleOrderItemComponentsUsecase, useValue: getItemComponents },
         { provide: UpdateSaleOrderUsecase, useValue: updateSaleOrder },
+        { provide: BulkAssignSaleOrdersUsecase, useValue: bulkAssignSaleOrders },
+        { provide: BulkChangeSaleOrderStateUsecase, useValue: bulkChangeSaleOrderState },
         { provide: GetSaleOrderSearchStateUsecase, useValue: getSearchState },
         { provide: SaveSaleOrderSearchMetricUsecase, useValue: { execute: jest.fn() } },
         { provide: DeleteSaleOrderSearchMetricUsecase, useValue: { execute: jest.fn() } },
@@ -581,6 +621,60 @@ describe("SaleOrdersController", () => {
       SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_UPDATED,
     );
     expect(realtimeService.emitToAllConnected).not.toHaveBeenCalled();
+  });
+
+  it("bulk assigns sale orders and emits one consolidated realtime update", async () => {
+    const firstId = "11111111-1111-4111-8111-111111111111";
+    const secondId = "22222222-2222-4222-8222-222222222222";
+    const assignedBy = "33333333-3333-4333-8333-333333333333";
+
+    await request(app.getHttpServer())
+      .patch("/sale-orders/bulk/assigned-by")
+      .send({ saleOrderIds: [firstId, secondId], assignedBy })
+      .expect(200);
+
+    expect(bulkAssignSaleOrders.execute).toHaveBeenCalledWith({
+      saleOrderIds: [firstId, secondId],
+      assignedBy,
+    });
+    expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
+      "sale-orders.updated",
+      expect.objectContaining({
+        saleOrderIds: [firstId, secondId],
+        source: "sale-orders-bulk-assigned-by",
+      }),
+    );
+  });
+
+  it("bulk changes workflow state with current user and notifies only successful rows", async () => {
+    const firstId = "11111111-1111-4111-8111-111111111111";
+    const secondId = "22222222-2222-4222-8222-222222222222";
+    const transitionId = "33333333-3333-4333-8333-333333333333";
+
+    const response = await request(app.getHttpServer())
+      .post("/sale-orders/bulk/change-state")
+      .send({
+        saleOrderIds: [firstId, secondId],
+        transitionId,
+        metadata: { source: "ux" },
+      })
+      .expect(201);
+
+    expect(bulkChangeSaleOrderState.execute).toHaveBeenCalledWith({
+      saleOrderIds: [firstId, secondId],
+      transitionId,
+      metadata: { source: "ux" },
+      executedBy: "user-1",
+    });
+    expect(automaticWorkflow.evaluateAndNotify).toHaveBeenCalledWith(
+      firstId,
+      SaleOrderAutomaticWorkflowTriggerEnum.WORKFLOW_STATE_CHANGED,
+    );
+    expect(automaticWorkflow.evaluateAndNotify).not.toHaveBeenCalledWith(
+      secondId,
+      SaleOrderAutomaticWorkflowTriggerEnum.WORKFLOW_STATE_CHANGED,
+    );
+    expect(response.body.data.succeeded).toBe(1);
   });
 
   it("forwards order id to get usecase", async () => {

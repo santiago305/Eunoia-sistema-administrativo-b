@@ -28,6 +28,18 @@ describe("sale order search utils", () => {
     ]);
   });
 
+  it("keeps creator and assigned user catalog filters with multiple values", () => {
+    expect(
+      sanitizeSaleOrderSearchFilters([
+        { field: "createdBy", operator: "in", values: ["user-1", "user-2"] },
+        { field: "assignedBy", operator: "in", mode: "exclude", values: ["user-3"] },
+      ] as any),
+    ).toEqual([
+      { field: "createdBy", operator: "in", mode: "include", values: ["user-1", "user-2"] },
+      { field: "assignedBy", operator: "in", mode: "exclude", values: ["user-3"] },
+    ]);
+  });
+
   it("uses workflow and state labels in saved searches", () => {
     const label = buildSaleOrderSearchLabel(
       {
@@ -63,6 +75,26 @@ describe("sale order search utils", () => {
     );
 
     expect(label).toBe("Cuenta: BCP Soles | Tipo cliente: Nuevo - Rezagado");
+  });
+
+  it("uses creator and assigned user labels in saved searches", () => {
+    const label = buildSaleOrderSearchLabel(
+      {
+        filters: [
+          { field: "createdBy", operator: "in", values: ["user-1"] },
+          { field: "assignedBy", operator: "in", values: ["user-2", "user-3"] },
+        ],
+      } as any,
+      {
+        creators: new Map([["user-1", "Santiago"]]),
+        assignees: new Map([
+          ["user-2", "Ana"],
+          ["user-3", "Luis"],
+        ]),
+      } as any,
+    );
+
+    expect(label).toBe("Creado por: Santiago | Asignado a: Ana - Luis");
   });
 
   it("normalizes calendar periods and preserves semantic labels", () => {

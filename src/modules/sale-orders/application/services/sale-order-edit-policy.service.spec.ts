@@ -85,4 +85,18 @@ describe('SaleOrderEditPolicyService', () => {
       reason: 'Pedido finalizado · Stock reservado',
     });
   });
+
+  it('does not report reserved stock when the order has no active reservation flag', async () => {
+    const service = createFixture([ACTIONS.RESERVE_STOCK]);
+
+    await expect(
+      service.resolve({ ...order, reserveBool: false }, tx),
+    ).resolves.toEqual({
+      stockStatus: 'NONE',
+      productsEditable: true,
+      warehouseEditable: true,
+      isFinal: false,
+      reason: null,
+    });
+  });
 });

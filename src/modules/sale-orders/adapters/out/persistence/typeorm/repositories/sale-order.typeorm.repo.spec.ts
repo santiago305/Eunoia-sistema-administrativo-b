@@ -1,5 +1,14 @@
 import { SaleOrderTypeormRepository } from "./sale-order.typeorm.repo";
+import { ClientEntity } from "src/modules/clients/adapters/out/persistence/typeorm/entities/client.entity";
 import { TelephoneEntity } from "src/modules/clients/adapters/out/persistence/typeorm/entities/telephone.entity";
+import { CompanyPaymentAccountEntity } from "src/modules/company-payment-accounts/adapters/out/persistence/typeorm/entities/company-payment-account.entity";
+import { SourceEntity } from "src/modules/sources/adapters/out/persistence/typeorm/entities/source.entity";
+import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
+import { WarehouseEntity } from "src/modules/warehouses/adapters/out/persistence/typeorm/entities/warehouse";
+import { WorkflowEntity } from "src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow.entity";
+import { WorkflowStateEntity } from "src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow-state.entity";
+import { SaleOrderEntity } from "../entities/sale-order.entity";
+import { SalePaymentEntity } from "../entities/sale-payment.entity";
 
 const createStatsQueryBuilder = (rawMany: unknown[] = [], rawOne: unknown = {}) => ({
   leftJoin: jest.fn().mockReturnThis(),
@@ -16,6 +25,79 @@ const createStatsQueryBuilder = (rawMany: unknown[] = [], rawOne: unknown = {}) 
 });
 
 describe("SaleOrderTypeormRepository", () => {
+  it("returns assignedBy and agencyDetail in list items", async () => {
+    const orderRow = {
+      id: "order-1",
+      serie: "P001",
+      correlative: 12,
+      clientId: "client-1",
+      warehouseId: null,
+      sourceId: null,
+      agencySubsidiaryId: "subsidiary-1",
+      agencyDetail: "Agencia Norte - Av. Lima 123",
+      assignedBy: "assigned-user-1",
+      createdBy: "user-1",
+      workflowId: null,
+      currentStateId: null,
+      scheduleDate: null,
+      deliveryDate: null,
+      subTotal: 100,
+      deliveryCost: 10,
+      total: 110,
+      note: null,
+      advertisingCode: null,
+      observation: null,
+      invoiceSend: false,
+      isActive: true,
+      createdAt: new Date("2026-07-07T00:00:00.000Z"),
+      updatedAt: null,
+      items: [],
+    };
+
+    const qb = {
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([[orderRow], 1]),
+    };
+
+    const repositories = new Map<any, any>([
+      [SaleOrderEntity, { createQueryBuilder: jest.fn().mockReturnValue(qb) }],
+      [SalePaymentEntity, { find: jest.fn().mockResolvedValue([]) }],
+      [ClientEntity, { find: jest.fn().mockResolvedValue([]) }],
+      [TelephoneEntity, { find: jest.fn().mockResolvedValue([]) }],
+      [WarehouseEntity, { find: jest.fn().mockResolvedValue([]) }],
+      [SourceEntity, { find: jest.fn().mockResolvedValue([]) }],
+      [
+        User,
+        {
+          find: jest.fn().mockResolvedValue([
+            { id: "user-1", name: "Santiago", email: "minecratf633@gmail.com" },
+            { id: "assigned-user-1", name: "Asesor", email: "asesor@example.test" },
+          ]),
+        },
+      ],
+      [CompanyPaymentAccountEntity, { find: jest.fn().mockResolvedValue([]) }],
+      [WorkflowEntity, { find: jest.fn().mockResolvedValue([]) }],
+      [WorkflowStateEntity, { find: jest.fn().mockResolvedValue([]) }],
+    ]);
+
+    const manager = {
+      getRepository: jest.fn((entity) => repositories.get(entity) ?? { find: jest.fn().mockResolvedValue([]) }),
+    };
+    const repository = new SaleOrderTypeormRepository({ manager } as any);
+
+    const result = await repository.list({ page: 1, limit: 10 });
+
+    expect(result.items[0].assignedBy).toEqual({
+      id: "assigned-user-1",
+      name: "Asesor",
+      email: "asesor@example.test",
+    });
+    expect(result.items[0].agencyDetail).toBe("Agencia Norte - Av. Lima 123");
+    expect(result.items[0]).not.toHaveProperty("agencySubsidiary");
+  });
   it("maps and persists the sale order discount", async () => {
     const savedRow = {
       id: "order-1",
@@ -52,6 +134,47 @@ describe("SaleOrderTypeormRepository", () => {
       expect.objectContaining({ discount: 15 }),
     );
     expect(result.discount).toBe(15);
+  });
+
+  it("forces imported creation date after creating the sale order", async () => {
+    const importedCreatedAt = new Date("2026-07-04T00:00:00.000Z");
+    const savedRow = {
+      id: "order-1",
+      clientId: "client-1",
+      createdBy: "user-1",
+      subTotal: 100,
+      deliveryCost: 10,
+      discount: 0,
+      total: 110,
+      invoiceSend: false,
+      isActive: true,
+      createdAt: new Date("2026-07-09T00:00:00.000Z"),
+    };
+    const entityRepo = {
+      save: jest.fn().mockResolvedValue(savedRow),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue(entityRepo) },
+    } as any);
+
+    const result = await repository.create({
+      serie: "P001",
+      correlative: 1,
+      warehouseId: null,
+      clientId: "client-1",
+      subTotal: 100,
+      deliveryCost: 10,
+      total: 110,
+      createdBy: "user-1",
+      createdAt: importedCreatedAt,
+    });
+
+    expect(entityRepo.update).toHaveBeenCalledWith(
+      { id: "order-1" },
+      { createdAt: importedCreatedAt },
+    );
+    expect(result.createdAt).toEqual(importedCreatedAt);
   });
 
   it("assigns a warehouse only while the current value is null", async () => {
@@ -102,6 +225,21 @@ describe("SaleOrderTypeormRepository", () => {
     expect(update).toHaveBeenCalledWith(
       { id: "order-1" },
       { invoiceSend: true },
+    );
+  });
+
+  it("updates reserveBool explicitly", async () => {
+    const update = jest.fn().mockResolvedValue({ affected: 1 });
+    const entityRepo = { update };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue(entityRepo) },
+    } as any);
+
+    await repository.setReserveBool({ saleOrderId: "order-1", reserveBool: true });
+
+    expect(update).toHaveBeenCalledWith(
+      { id: "order-1" },
+      { reserveBool: true },
     );
   });
 
@@ -533,6 +671,64 @@ describe("SaleOrderTypeormRepository", () => {
     });
   });
 
+  it("applies creator and assigned user filters to list queries", async () => {
+    const qb = {
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      leftJoin: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+    };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue({ createQueryBuilder: jest.fn().mockReturnValue(qb) }) },
+    } as any);
+
+    await repository.list({
+      filters: [
+        { field: "createdBy", operator: "in", values: ["creator-1", "creator-2"] },
+        { field: "assignedBy", operator: "in", values: ["assignee-1"] },
+      ] as any,
+    });
+
+    expect(qb.andWhere).toHaveBeenCalledWith("so.createdBy IN (:...filter_0_value)", {
+      filter_0_value: ["creator-1", "creator-2"],
+    });
+    expect(qb.andWhere).toHaveBeenCalledWith("so.assignedBy IN (:...filter_1_value)", {
+      filter_1_value: ["assignee-1"],
+    });
+  });
+
+  it("applies creator and assigned user filters to statistics", async () => {
+    const baseQb = createStatsQueryBuilder();
+    baseQb.clone
+      .mockReturnValueOnce(createStatsQueryBuilder([]))
+      .mockReturnValueOnce(createStatsQueryBuilder([]))
+      .mockReturnValueOnce(createStatsQueryBuilder([]))
+      .mockReturnValueOnce(createStatsQueryBuilder([], {}))
+      .mockReturnValueOnce(createStatsQueryBuilder([]));
+
+    const entityRepo = { createQueryBuilder: jest.fn().mockReturnValue(baseQb) };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue(entityRepo) },
+    } as any);
+
+    await repository.statistics({
+      filters: [
+        { field: "createdBy", operator: "in", values: ["creator-1", "creator-2"] },
+        { field: "assignedBy", operator: "in", mode: "exclude", values: ["assignee-1"] },
+      ] as any,
+    });
+
+    expect(baseQb.andWhere).toHaveBeenCalledWith("so.createdBy IN (:...stats_filter_0_value)", {
+      stats_filter_0_value: ["creator-1", "creator-2"],
+    });
+    expect(baseQb.andWhere).toHaveBeenCalledWith("so.assignedBy NOT IN (:...stats_filter_1_value)", {
+      stats_filter_1_value: ["assignee-1"],
+    });
+  });
+
   it("applies inclusive month and calendar-week filters to statistics", async () => {
     const baseQb = createStatsQueryBuilder();
     baseQb.clone
@@ -568,5 +764,51 @@ describe("SaleOrderTypeormRepository", () => {
         stats_filter_1_value_end: "2027-01-03",
       },
     );
+  });
+
+  it("updates only assignedBy and returns the reloaded sale order", async () => {
+    const update = jest.fn().mockResolvedValue({ affected: 1 });
+    const findOne = jest.fn().mockResolvedValue({
+      id: "order-1",
+      clientId: "client-1",
+      warehouseId: null,
+      assignedBy: "adviser-1",
+      createdBy: "user-1",
+      total: 0,
+      subTotal: 0,
+      deliveryCost: 0,
+      invoiceSend: false,
+      isActive: true,
+      createdAt: new Date("2026-07-08T00:00:00.000Z"),
+    });
+    const entityRepo = { update, findOne };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue(entityRepo) },
+    } as any);
+
+    const result = await repository.updateAssignedBy({
+      saleOrderId: "order-1",
+      assignedBy: "adviser-1",
+    });
+
+    expect(update).toHaveBeenCalledWith(
+      { id: "order-1" },
+      { assignedBy: "adviser-1" },
+    );
+    expect(result?.assignedBy).toBe("adviser-1");
+  });
+
+  it("returns null when assignedBy update finds no sale order", async () => {
+    const update = jest.fn().mockResolvedValue({ affected: 0 });
+    const entityRepo = { update, findOne: jest.fn() };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue(entityRepo) },
+    } as any);
+
+    await expect(
+      repository.updateAssignedBy({ saleOrderId: "missing-order", assignedBy: null }),
+    ).resolves.toBeNull();
+
+    expect(entityRepo.findOne).not.toHaveBeenCalled();
   });
 });

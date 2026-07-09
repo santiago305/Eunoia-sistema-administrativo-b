@@ -2,26 +2,35 @@ import { SaleOrder } from "src/modules/sale-orders/domain/entities/sale-order";
 import { SaleOrderWorkflowContextService } from "./sale-order-workflow-context.service";
 
 describe("SaleOrderWorkflowContextService", () => {
-  const order = new SaleOrder(
-    "order-1",
-    "SO",
-    1,
-    "warehouse-1",
-    "client-1",
-    null,
-    null,
-    null,
-    null,
-    10,
-    0,
-    10,
-    null,
-    "user-1",
-    "workflow-1",
-    "state-1",
-    true,
-    new Date("2026-06-06T00:00:00.000Z"),
-    null,
+  const buildOrder = (overrides: Partial<Record<string, unknown>> = {}) => new SaleOrder(
+    (overrides.id as string) ?? "order-1",
+    (overrides.serie as string | null) ?? "SO",
+    (overrides.correlative as number | null) ?? 1,
+    (overrides.warehouseId as string | null) ?? "warehouse-1",
+    (overrides.clientId as string) ?? "client-1",
+    (overrides.agencySubsidiaryId as string | null) ?? null,
+    (overrides.agencyDetail as string | null) ?? null,
+    (overrides.sourceId as string | null) ?? null,
+    (overrides.scheduleDate as string | null) ?? null,
+    (overrides.deliveryDate as string | null) ?? null,
+    (overrides.subTotal as number) ?? 10,
+    (overrides.deliveryCost as number) ?? 0,
+    (overrides.discount as number) ?? 0,
+    (overrides.total as number) ?? 10,
+    (overrides.note as string | null) ?? null,
+    (overrides.advertisingCode as string | null) ?? null,
+    (overrides.observation as string | null) ?? null,
+    (overrides.sendDate as Date | null) ?? null,
+    (overrides.sendPhoto as string | null) ?? null,
+    (overrides.sendCode as string | null) ?? null,
+    (overrides.sendAddress as string | null) ?? null,
+    (overrides.assignedBy as string | null) ?? null,
+    (overrides.createdBy as string) ?? "user-1",
+    (overrides.workflowId as string | null) ?? "workflow-1",
+    (overrides.currentStateId as string | null) ?? "state-1",
+    (overrides.isActive as boolean) ?? true,
+    (overrides.createdAt as Date) ?? new Date("2026-06-06T00:00:00.000Z"),
+    (overrides.updatedAt as Date | null) ?? null,
   );
   const currentState = {
     id: "state-1",
@@ -41,13 +50,13 @@ describe("SaleOrderWorkflowContextService", () => {
   }
 
   it("reports stock when unreserved availability covers the requirement", async () => {
-    const context = await buildService({ onHand: 10, reserved: 3 }).build(order, currentState);
+    const context = await buildService({ onHand: 10, reserved: 3 }).build(buildOrder(), currentState);
 
     expect(context.hasStock).toBe(true);
   });
 
   it("rejects stock when existing reservations consume the availability", async () => {
-    const context = await buildService({ onHand: 10, reserved: 7 }).build(order, currentState);
+    const context = await buildService({ onHand: 10, reserved: 7 }).build(buildOrder(), currentState);
 
     expect(context.hasStock).toBe(false);
   });
@@ -70,27 +79,13 @@ describe("SaleOrderWorkflowContextService", () => {
         }),
       } as any,
     );
-    const orderWithFields = new SaleOrder(
-      "order-1",
-      "SO",
-      1,
-      "warehouse-1",
-      "client-1",
-      "Agencia central",
-      "source-1",
-      "2026-06-18",
-      "2026-06-20",
-      10,
-      0,
-      10,
-      "Nota interna",
-      "user-1",
-      "workflow-1",
-      "state-1",
-      true,
-      new Date("2026-06-06T00:00:00.000Z"),
-      null,
-    );
+    const orderWithFields = buildOrder({
+      agencyDetail: "Agencia Norte",
+      sourceId: "source-1",
+      scheduleDate: "2026-06-18",
+      deliveryDate: "2026-06-20",
+      note: "Nota interna",
+    });
 
     const context = await service.build(orderWithFields, currentState);
 
@@ -107,7 +102,7 @@ describe("SaleOrderWorkflowContextService", () => {
         scheduleDate: "2026-06-18",
         warehouseId: "warehouse-1",
         sourceId: "source-1",
-        agencyDetail: "Agencia central",
+        agencyDetail: "Agencia Norte",
         note: "Nota interna",
       }),
     );

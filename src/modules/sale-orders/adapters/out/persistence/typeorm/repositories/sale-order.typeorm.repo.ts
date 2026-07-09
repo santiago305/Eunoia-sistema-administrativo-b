@@ -101,6 +101,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       row.warehouseId ?? null,
       row.clientId,
       row.agencySubsidiaryId ?? null,
+      row.agencyDetail ?? null,
       row.sourceId ?? null,
       row.scheduleDate ?? null,
       row.deliveryDate ?? null,
@@ -133,6 +134,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         createdAt: item.createdAt,
       })) ?? [],
       Boolean(row.invoiceSend),
+      Boolean(row.reserveBool),
     );
   }
 
@@ -144,6 +146,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       warehouseId: input.warehouseId ?? null,
       clientId: input.clientId,
       agencySubsidiaryId: input.agencySubsidiaryId ?? null,
+      agencyDetail: input.agencyDetail ?? null,
       sourceId: input.sourceId ?? null,
       scheduleDate: input.scheduleDate ?? null,
       deliveryDate: input.deliveryDate ?? null,
@@ -160,10 +163,18 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       sendAddress: input.sendAddress ?? null,
       assignedBy: input.assignedBy ?? null,
       createdBy: input.createdBy,
+      createdAt: input.createdAt ?? undefined,
       workflowId: input.workflowId ?? null,
       currentStateId: input.currentStateId ?? null,
       isActive: input.isActive ?? true,
     });
+    if (input.createdAt) {
+      await manager.getRepository(SaleOrderEntity).update(
+        { id: saved.id },
+        { createdAt: input.createdAt },
+      );
+      saved.createdAt = input.createdAt;
+    }
     return this.toDomain(saved);
   }
 
@@ -193,6 +204,25 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     return result.affected ? this.findByIdForUpdate(input.saleOrderId, tx) : null;
   }
 
+  async updateAssignedBy(
+    input: { saleOrderId: string; assignedBy: string | null },
+    tx?: TransactionContext,
+  ): Promise<SaleOrder | null> {
+    const manager = this.getManager(tx);
+    const repo = manager.getRepository(SaleOrderEntity);
+    const result = await repo.update(
+      { id: input.saleOrderId },
+      { assignedBy: input.assignedBy },
+    );
+
+    if (!result.affected) {
+      return null;
+    }
+
+    const row = await repo.findOne({ where: { id: input.saleOrderId } });
+    return row ? this.toDomain(row) : null;
+  }
+
   async update(input: Parameters<SaleOrderRepository["update"]>[0], tx?: TransactionContext): Promise<SaleOrder> {
     const manager = this.getManager(tx);
     const repo = manager.getRepository(SaleOrderEntity);
@@ -210,6 +240,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       warehouseId: input.warehouseId ?? null,
       clientId: input.clientId,
       agencySubsidiaryId: input.agencySubsidiaryId ?? null,
+      agencyDetail: input.agencyDetail ?? null,
       sourceId: input.sourceId ?? null,
       scheduleDate: input.scheduleDate ?? null,
       deliveryDate: input.deliveryDate ?? null,
@@ -255,6 +286,14 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     await manager.getRepository(SaleOrderEntity).update(
       { id: saleOrderId },
       { invoiceSend: true },
+    );
+  }
+
+  async setReserveBool(input: { saleOrderId: string; reserveBool: boolean }, tx?: TransactionContext): Promise<void> {
+    const manager = this.getManager(tx);
+    await manager.getRepository(SaleOrderEntity).update(
+      { id: input.saleOrderId },
+      { reserveBool: input.reserveBool },
     );
   }
 
@@ -484,7 +523,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
             .where("concat(coalesce(so.serie, ''), '-', coalesce(so.correlative::text, '')) ILIKE :q", {
               q: `%${q}%`,
             })
-            .orWhere("cast(so.agencySubsidiaryId as text) ILIKE :q", { q: `%${q}%` })
+            .orWhere("unaccent(coalesce(so.agencyDetail, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
             .orWhere("unaccent(coalesce(so.note, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
             .orWhere("unaccent(coalesce(so.advertisingCode, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
             .orWhere("unaccent(coalesce(so.observation, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
@@ -549,6 +588,20 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         case SaleOrderSearchFields.CLIENT_ID:
           if (filter.values?.length) {
             qb.andWhere(`so.clientId ${filter.mode === "exclude" ? "NOT IN" : "IN"} (:...${valueParam})`, {
+              [valueParam]: filter.values,
+            });
+          }
+          break;
+        case SaleOrderSearchFields.CREATED_BY:
+          if (filter.values?.length) {
+            qb.andWhere(`so.createdBy ${filter.mode === "exclude" ? "NOT IN" : "IN"} (:...${valueParam})`, {
+              [valueParam]: filter.values,
+            });
+          }
+          break;
+        case SaleOrderSearchFields.ASSIGNED_BY:
+          if (filter.values?.length) {
+            qb.andWhere(`so.assignedBy ${filter.mode === "exclude" ? "NOT IN" : "IN"} (:...${valueParam})`, {
               [valueParam]: filter.values,
             });
           }
@@ -631,12 +684,12 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
           break;
         case SaleOrderSearchFields.ADVERTISING_CODE:
         case SaleOrderSearchFields.OBSERVATION:
-        case SaleOrderSearchFields.AGENCY_SUBSIDIARY_ID:
+        case SaleOrderSearchFields.AGENCY_DETAIL:
         case SaleOrderSearchFields.CLIENT_PHONE: {
           if (!filter.value) break;
           let column = "so.observation";
           if (filter.field === SaleOrderSearchFields.ADVERTISING_CODE) column = "so.advertisingCode";
-          if (filter.field === SaleOrderSearchFields.AGENCY_SUBSIDIARY_ID) column = "so.agencySubsidiaryId";
+          if (filter.field === SaleOrderSearchFields.AGENCY_DETAIL) column = "so.agencyDetail";
           if (filter.field === SaleOrderSearchFields.CLIENT_PHONE) {
             qb.leftJoin(TelephoneEntity, "filterTelephone", "filterTelephone.clientId = so.clientId AND filterTelephone.isActive = true");
             column = "filterTelephone.number";
@@ -668,7 +721,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     const clientIds = Array.from(new Set(rows.map((row) => row.clientId).filter(Boolean))) as string[];
     const warehouseIds = Array.from(new Set(rows.map((row) => row.warehouseId).filter(Boolean))) as string[];
     const sourceIds = Array.from(new Set(rows.map((row) => row.sourceId).filter(Boolean))) as string[];
-    const userIds = Array.from(new Set(rows.map((row) => row.createdBy).filter(Boolean))) as string[];
+    const userIds = Array.from(new Set(rows.flatMap((row) => [row.createdBy, row.assignedBy]).filter(Boolean))) as string[];
     const workflowIds = Array.from(new Set(rows.map((row) => row.workflowId).filter(Boolean))) as string[];
     const stateIds = Array.from(new Set(rows.map((row) => row.currentStateId).filter(Boolean))) as string[];
 
@@ -771,6 +824,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       const warehouse = warehouseById.get(row.warehouseId);
       const source = row.sourceId ? sourceById.get(row.sourceId) : undefined;
       const creator = userById.get(row.createdBy);
+      const assignedUser = row.assignedBy ? userById.get(row.assignedBy) : undefined;
       const workflow = row.workflowId ? workflowById.get(row.workflowId) : undefined;
       const currentState = row.currentStateId ? stateById.get(row.currentStateId) : undefined;
 
@@ -815,6 +869,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
             }
           : null,
         agencySubsidiaryId: row.agencySubsidiaryId ?? null,
+        agencyDetail: row.agencyDetail ?? null,
         source: source ? { id: source.id, name: source.name, detail: source.detail ?? null } : null,
         scheduleDate: row.scheduleDate ?? null,
         deliveryDate: row.deliveryDate ?? null,
@@ -824,6 +879,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         note: row.note ?? null,
         advertisingCode: row.advertisingCode ?? null,
         observation: row.observation ?? null,
+        assignedBy: assignedUser ? { id: assignedUser.id, name: assignedUser.name, email: assignedUser.email } : null,
         createdBy: creator ? { id: creator.id, name: creator.name, email: creator.email } : null,
         workflow: workflow
           ? {
@@ -845,6 +901,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
             }
           : null,
         invoiceSend: Boolean(row.invoiceSend),
+        reserveBool: Boolean(row.reserveBool),
         isActive: Boolean(row.isActive),
         createdAt: toIso(row.createdAt),
         updatedAt: row.updatedAt ? toIso(row.updatedAt) : null,
@@ -912,7 +969,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
             .where("concat(coalesce(so.serie, ''), '-', coalesce(so.correlative::text, '')) ILIKE :q", {
               q: `%${q}%`,
             })
-            .orWhere("cast(so.agencySubsidiaryId as text) ILIKE :q", { q: `%${q}%` })
+            .orWhere("unaccent(coalesce(so.agencyDetail, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
             .orWhere("unaccent(coalesce(so.note, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
             .orWhere("unaccent(coalesce(client.fullName, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
             .orWhere("unaccent(coalesce(client.docNumber, '')) ILIKE unaccent(:q)", { q: `%${q}%` })
@@ -935,6 +992,14 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       const valueParam = `stats_filter_${index}_value`;
       if (filter.field === SaleOrderSearchFields.CLIENT_ID && filter.values?.length) {
         base.andWhere(`so.clientId ${filter.mode === "exclude" ? "NOT IN" : "IN"} (:...${valueParam})`, {
+          [valueParam]: filter.values,
+        });
+      } else if (filter.field === SaleOrderSearchFields.CREATED_BY && filter.values?.length) {
+        base.andWhere(`so.createdBy ${filter.mode === "exclude" ? "NOT IN" : "IN"} (:...${valueParam})`, {
+          [valueParam]: filter.values,
+        });
+      } else if (filter.field === SaleOrderSearchFields.ASSIGNED_BY && filter.values?.length) {
+        base.andWhere(`so.assignedBy ${filter.mode === "exclude" ? "NOT IN" : "IN"} (:...${valueParam})`, {
           [valueParam]: filter.values,
         });
       } else if (filter.field === SaleOrderSearchFields.WAREHOUSE_ID && filter.values?.length) {
@@ -987,12 +1052,15 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         );
       } else if (
         (filter.field === SaleOrderSearchFields.ADVERTISING_CODE ||
-          filter.field === SaleOrderSearchFields.OBSERVATION) &&
+          filter.field === SaleOrderSearchFields.OBSERVATION ||
+          filter.field === SaleOrderSearchFields.AGENCY_DETAIL) &&
         filter.value
       ) {
         const column = filter.field === SaleOrderSearchFields.ADVERTISING_CODE
           ? "so.advertisingCode"
-          : "so.observation";
+          : filter.field === SaleOrderSearchFields.AGENCY_DETAIL
+            ? "so.agencyDetail"
+            : "so.observation";
         base.andWhere(
           filter.operator === SaleOrderSearchOperators.EQ
             ? `unaccent(coalesce(${column}, '')) = unaccent(:${valueParam})`
@@ -1403,6 +1471,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       : null,
 
     agencySubsidiaryId: row.agencySubsidiaryId ?? null,
+    agencyDetail: row.agencyDetail ?? null,
 
     source: source
       ? {
@@ -1463,6 +1532,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       : null,
 
     invoiceSend: Boolean(row.invoiceSend),
+    reserveBool: Boolean(row.reserveBool),
     isActive: Boolean(row.isActive),
     createdAt: toIso(row.createdAt),
     updatedAt: row.updatedAt ? toIso(row.updatedAt) : null,

@@ -18,7 +18,10 @@ describe("SaleOrderWorkflowActionRunnerService", () => {
       incrementOnHand: jest.fn().mockResolvedValue(undefined),
     };
     const lock = { lockSnapshots: jest.fn().mockResolvedValue(undefined) };
-    const saleOrders = { markInvoiceSent: jest.fn().mockResolvedValue(undefined) };
+    const saleOrders = {
+      markInvoiceSent: jest.fn().mockResolvedValue(undefined),
+      setReserveBool: jest.fn().mockResolvedValue(undefined),
+    };
     const history = {
       listBySaleOrderId: jest.fn().mockResolvedValue(
         options.hasActiveReservation === false
@@ -229,6 +232,25 @@ describe("SaleOrderWorkflowActionRunnerService", () => {
     );
     expect(inventory.incrementReserved).not.toHaveBeenCalled();
     expect(inventory.incrementOnHand).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["RESERVE_STOCK", true],
+    ["REVERT_STOCK", false],
+    ["CONSUME_STOCK", false],
+  ] as const)("marks reserveBool as %s after %s", async (type, reserveBool) => {
+    const { runner, saleOrders } = setup();
+
+    await runner.run(
+      order,
+      [{ id: "a1", transitionId: "t1", type, config: {}, position: 0 } as any],
+      tx,
+    );
+
+    expect(saleOrders.setReserveBool).toHaveBeenCalledWith(
+      { saleOrderId: "order-1", reserveBool },
+      tx,
+    );
   });
 
   it("does not revert reservations owned by other orders when this order never reserved stock", async () => {

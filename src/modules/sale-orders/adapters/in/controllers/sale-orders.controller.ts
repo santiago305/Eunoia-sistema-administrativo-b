@@ -12,6 +12,8 @@ import { GetSaleOrderComponentsUsecase } from "src/modules/sale-orders/applicati
 import { GetSaleOrderItemComponentsUsecase } from "src/modules/sale-orders/application/usecases/sale-order/get-item-components.usecase";
 import { HttpSaleOrderUpdateDto } from "src/modules/sale-orders/adapters/in/dtos/http-sale-order-update.dto";
 import { UpdateSaleOrderUsecase } from "src/modules/sale-orders/application/usecases/sale-order/update.usecase";
+import { BulkAssignSaleOrdersUsecase } from "src/modules/sale-orders/application/usecases/sale-order/bulk-assign.usecase";
+import { BulkChangeSaleOrderStateUsecase } from "src/modules/sale-orders/application/usecases/sale-order/bulk-change-state.usecase";
 import { GetSaleOrderUsecase } from "src/modules/sale-orders/application/usecases/sale-order/get.usecase";
 import { GetSaleOrderSearchStateUsecase } from "src/modules/sale-orders/application/usecases/sale-order-search/get-state.usecase";
 import { SaveSaleOrderSearchMetricUsecase } from "src/modules/sale-orders/application/usecases/sale-order-search/save-metric.usecase";
@@ -42,6 +44,8 @@ import {
 import { SaleOrderRealtimePayloadService } from "src/modules/sale-orders/application/services/sale-order-realtime-payload.service";
 import { SaveSaleOrderWithClientUsecase } from "src/modules/sale-orders/application/usecases/sale-order/save-with-client.usecase";
 import { parseSaleOrderMultipart } from "../support/sale-order-multipart.parser";
+import { BulkAssignSaleOrdersDto } from "../dtos/bulk-assign-sale-orders.dto";
+import { BulkChangeSaleOrderStateDto } from "../dtos/bulk-change-sale-order-state.dto";
 
 @Controller("sale-orders")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
@@ -54,6 +58,8 @@ export class SaleOrdersController {
     private readonly getComponents: GetSaleOrderComponentsUsecase,
     private readonly getItemComponents: GetSaleOrderItemComponentsUsecase,
     private readonly updateSaleOrder: UpdateSaleOrderUsecase,
+    private readonly bulkAssignSaleOrders: BulkAssignSaleOrdersUsecase,
+    private readonly bulkChangeSaleOrderState: BulkChangeSaleOrderStateUsecase,
     private readonly getSearchState: GetSaleOrderSearchStateUsecase,
     private readonly saveSearchMetric: SaveSaleOrderSearchMetricUsecase,
     private readonly deleteSearchMetric: DeleteSaleOrderSearchMetricUsecase,
@@ -89,6 +95,14 @@ export class SaleOrdersController {
     return payload.saleOrders ?? [];
   }
 
+  private getSuccessfulSaleOrderIds(result: {
+    data?: { results?: Array<{ saleOrderId: string; status: string }> };
+  }) {
+    return (result.data?.results ?? [])
+      .filter((row) => row.status === "success")
+      .map((row) => row.saleOrderId);
+  }
+
   private async evaluateAutomaticWorkflowThenNotify(
     saleOrderId: string,
     trigger: SaleOrderAutomaticWorkflowTriggerEnum,
@@ -108,6 +122,7 @@ export class SaleOrdersController {
         clientId: dto.clientId,
         workflowId: dto.workflowId,
         agencySubsidiaryId: dto.agencySubsidiaryId,
+        agencyDetail: dto.agencyDetail,
         sourceId: dto.sourceId,
         scheduleDate: dto.scheduleDate,
         deliveryDate: dto.deliveryDate,
@@ -216,6 +231,57 @@ export class SaleOrdersController {
       await this.notifySaleOrdersUpdated(
         importedSaleOrderIdsWithoutAutomaticWorkflow,
         SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_IMPORTED,
+      );
+    }
+
+    return result;
+  }
+
+  @Patch("bulk/assigned-by")
+  async bulkAssignBy(@Body() dto: BulkAssignSaleOrdersDto) {
+    const result = await this.bulkAssignSaleOrders.execute({
+      saleOrderIds: dto.saleOrderIds,
+      assignedBy: dto.assignedBy ?? null,
+    });
+
+    const successfulIds = this.getSuccessfulSaleOrderIds(result);
+    if (successfulIds.length) {
+      await this.notifySaleOrdersUpdated(
+        successfulIds,
+        "sale-orders-bulk-assigned-by",
+      );
+    }
+
+    return result;
+  }
+
+  @Post("bulk/change-state")
+  async bulkChangeState(
+    @Body() body: BulkChangeSaleOrderStateDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    const result = await this.bulkChangeSaleOrderState.execute({
+      saleOrderIds: body.saleOrderIds,
+      transitionId: body.transitionId,
+      metadata: body.metadata,
+      executedBy: user.id,
+    });
+
+    const successfulIdsWithoutAutomaticWorkflow: string[] = [];
+    for (const saleOrderId of this.getSuccessfulSaleOrderIds(result)) {
+      const automaticResult = await this.automaticWorkflow.evaluateAndNotify(
+        saleOrderId,
+        SaleOrderAutomaticWorkflowTriggerEnum.WORKFLOW_STATE_CHANGED,
+      );
+      if (!automaticResult.updated) {
+        successfulIdsWithoutAutomaticWorkflow.push(saleOrderId);
+      }
+    }
+
+    if (successfulIdsWithoutAutomaticWorkflow.length) {
+      await this.notifySaleOrdersUpdated(
+        successfulIdsWithoutAutomaticWorkflow,
+        SaleOrderAutomaticWorkflowTriggerEnum.WORKFLOW_STATE_CHANGED,
       );
     }
 
@@ -352,6 +418,7 @@ export class SaleOrdersController {
         workflowId: dto.workflowId,
         clientId: dto.clientId,
         agencySubsidiaryId: dto.agencySubsidiaryId,
+        agencyDetail: dto.agencyDetail,
         sourceId: dto.sourceId,
         scheduleDate: dto.scheduleDate,
         deliveryDate: dto.deliveryDate,

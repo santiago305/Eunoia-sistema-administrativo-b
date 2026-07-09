@@ -43,6 +43,23 @@ describe("SaleOrderFieldRequiredCondition", () => {
 });
 
 describe("ConditionFactory sale-order field config", () => {
+  it("creates the sale-order field condition for agencyDetail", () => {
+    const condition = ConditionFactory.create({
+      type: CONDITIONS.SALE_ORDER_FIELD_REQUIRED,
+      config: { field: "agencyDetail" },
+    });
+
+    expect(condition).toBeInstanceOf(SaleOrderFieldRequiredCondition);
+  });
+
+  it("rejects the replaced agencySubsidiaryId field value", () => {
+    expect(() =>
+      ConditionFactory.create({
+        type: CONDITIONS.SALE_ORDER_FIELD_REQUIRED,
+        config: { field: "agencySubsidiaryId" },
+      }),
+    ).toThrow("Config field invalida");
+  });
   it("creates the sale-order field condition for an allowed field value", () => {
     const condition = ConditionFactory.create({
       type: CONDITIONS.SALE_ORDER_FIELD_REQUIRED,
