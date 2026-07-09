@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from "@nestjs/common";
+import { Controller, Get, Inject, Query, UseGuards } from "@nestjs/common";
 import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
 import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
@@ -13,7 +13,6 @@ import {
   PURCHASE_DASHBOARD_QUERY_REPOSITORY,
   PurchaseDashboardQueryRepository,
 } from "../../../domain/ports/purchase-dashboard-query.repository";
-import { Inject } from "@nestjs/common";
 
 @Controller("purchases/dashboard")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
@@ -46,43 +45,43 @@ export class PurchaseDashboardController {
     return this.queryRepo.getByStatus(normalizePurchaseDashboardFilters(query));
   }
 
-  @RequirePermissions("purchases_dashboard.view")
+  @RequirePermissions("purchases_dashboard.view", "purchases_dashboard.view_items")
   @Get("top-items")
   getTopItems(@Query() query: PurchaseDashboardFilterInput) {
     return this.queryRepo.getTopItems(normalizePurchaseDashboardFilters(query));
   }
 
-  @RequirePermissions("purchases_dashboard.view")
+  @RequirePermissions("purchases_dashboard.view", "purchases_dashboard.view_suppliers")
   @Get("top-suppliers")
   getTopSuppliers(@Query() query: PurchaseDashboardFilterInput) {
     return this.queryRepo.getTopSuppliers(normalizePurchaseDashboardFilters(query));
   }
 
-  @RequirePermissions("purchases_dashboard.view")
+  @RequirePermissions("purchases_dashboard.view", "purchases_dashboard.view_costs")
   @Get("monthly-spending")
   getMonthlySpending(@Query() query: PurchaseDashboardFilterInput) {
     return this.monthlySpending.execute(query);
   }
 
-  @RequirePermissions("purchases_dashboard.view")
+  @RequirePermissions("purchases_dashboard.view", "purchases_dashboard.view_payments")
   @Get("upcoming-payments")
   getUpcomingPayments(@Query() query: PurchaseDashboardFilterInput) {
     return this.upcomingPayments.execute(query);
   }
 
-  @RequirePermissions("purchases_dashboard.view")
+  @RequirePermissions("purchases_dashboard.view", "purchases_dashboard.view_payments")
   @Get("overdue-payments")
   getOverduePayments(@Query() query: PurchaseDashboardFilterInput) {
     return this.overduePayments.execute(query);
   }
 
-  @RequirePermissions("purchases_dashboard.view")
+  @RequirePermissions("purchases_dashboard.view", "purchases_dashboard.view_payments")
   @Get("payment-method-usage")
   getPaymentMethodUsage(@Query() query: PurchaseDashboardFilterInput) {
     return this.queryRepo.getPaymentMethodUsage(normalizePurchaseDashboardFilters(query));
   }
 
-  @RequirePermissions("purchases_dashboard.view")
+  @RequirePermissions("purchases_dashboard.view", "purchases_dashboard.view_operations")
   @Get("internal-vs-inventory")
   getInternalVsInventory(@Query() query: PurchaseDashboardFilterInput) {
     return this.queryRepo.getInternalVsInventory(normalizePurchaseDashboardFilters(query));

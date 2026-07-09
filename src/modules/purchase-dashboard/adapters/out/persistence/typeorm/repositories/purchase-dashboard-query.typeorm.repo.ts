@@ -35,8 +35,9 @@ export class PurchaseDashboardQueryTypeormRepository implements PurchaseDashboar
   ) {}
 
   private applyPurchaseFilters<T>(qb: SelectQueryBuilder<T>, filters: PurchaseDashboardFilters, alias = "po") {
-    if (filters.from) qb.andWhere(`${alias}.createdAt >= :from`, { from: filters.from });
-    if (filters.to) qb.andWhere(`${alias}.createdAt <= :to`, { to: filters.to });
+    qb.andWhere(`${alias}.isActive = true`);
+    if (filters.from) qb.andWhere(`COALESCE(${alias}.dateIssue, ${alias}.createdAt) >= :from`, { from: filters.from });
+    if (filters.to) qb.andWhere(`COALESCE(${alias}.dateIssue, ${alias}.createdAt) <= :to`, { to: filters.to });
     if (filters.supplierId) qb.andWhere(`${alias}.supplierId = :supplierId`, { supplierId: filters.supplierId });
     if (filters.purchaseType) qb.andWhere(`${alias}.purchaseType = :purchaseType`, { purchaseType: filters.purchaseType });
     if (filters.status) qb.andWhere(`${alias}.status = :status`, { status: filters.status });
@@ -183,10 +184,11 @@ export class PurchaseDashboardQueryTypeormRepository implements PurchaseDashboar
   }
 
   async getUpcomingPayments(filters: PurchaseDashboardFilters): Promise<PurchaseDashboardPaymentRow[]> {
+    const today = new Date().toISOString().slice(0, 10);
     const qb = this.payableBaseRows(filters)
       .andWhere("ap.amountPending > 0")
-      .andWhere("ap.status IN (:...statuses)", { statuses: ["PENDING", "PARTIAL"] });
-    if (filters.to) qb.andWhere("ap.dueDate <= :dueTo", { dueTo: filters.to.toISOString().slice(0, 10) });
+      .andWhere("ap.status IN (:...statuses)", { statuses: ["PENDING", "PARTIAL"] })
+      .andWhere("(ap.dueDate IS NULL OR ap.dueDate >= :today)", { today });
     const rows = await qb.orderBy("ap.dueDate", "ASC", "NULLS LAST").limit(limitFrom(filters.limit)).getRawMany();
     return rows.map(this.mapPaymentRow);
   }
@@ -207,14 +209,36 @@ export class PurchaseDashboardQueryTypeormRepository implements PurchaseDashboar
       this.itemRepo
         .createQueryBuilder("item")
         .leftJoin(PurchaseOrderEntity, "po", "po.id = item.poId")
-        .select("item.stockItemId", "itemId")
-        .addSelect("COALESCE(item.serviceName, item.description, item.itemType)", "label")
+        .leftJoin("pc_stock_items", "psi", "psi.stock_item_id = item.stockItemId")
+        .leftJoin("pc_skus", "sku", "sku.sku_id = psi.sku_id")
+        .leftJoin("pc_products", "product", "product.product_id = sku.product_id")
+        .select("COALESCE(item.stockItemId, item.internalMaterialId, item.assetCategoryId)::text", "itemId")
+        .addSelect(
+          `
+            COALESCE(
+              NULLIF(trim(item.serviceName), ''),
+              NULLIF(trim(item.description), ''),
+              NULLIF(sku.name, ''),
+              NULLIF(product.name, ''),
+              item.stockItemId::text,
+              item.internalMaterialId::text,
+              item.assetCategoryId::text,
+              'Sin nombre'
+            )
+          `,
+          "label",
+        )
         .addSelect("item.itemType", "itemType")
         .addSelect("COALESCE(SUM(item.purchaseValue), 0)", "total")
         .addSelect("COALESCE(SUM(item.quantity), 0)", "quantity")
-        .groupBy("item.stockItemId")
+        .groupBy('"itemId"')
+        .addGroupBy("label")
         .addGroupBy("item.serviceName")
         .addGroupBy("item.description")
+        .addGroupBy("sku.name")
+        .addGroupBy("product.name")
+        .addGroupBy("item.internalMaterialId")
+        .addGroupBy("item.assetCategoryId")
         .addGroupBy("item.itemType")
         .orderBy("total", "DESC")
         .limit(limitFrom(filters.limit)),
@@ -280,7 +304,7 @@ export class PurchaseDashboardQueryTypeormRepository implements PurchaseDashboar
       this.purchaseRepo
         .createQueryBuilder("po")
         .select(
-          "CASE WHEN po.requiresStockEntry = true THEN 'Inventario' WHEN po.requiresAssetCreation = true THEN 'Activo fijo' ELSE 'Interno/servicio' END",
+          "CASE WHEN po.requiresStockEntry = true THEN 'Inventario' WHEN po.requiresAssetCreation = true THEN 'Activo' WHEN po.requiresReceipt = false THEN 'Interno' ELSE 'Servicio' END",
           "label",
         )
         .addSelect("COALESCE(SUM(po.total), 0)", "value")

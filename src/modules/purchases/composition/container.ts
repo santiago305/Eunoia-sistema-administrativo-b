@@ -15,7 +15,6 @@ import { IMAGE_PROCESSOR } from "src/shared/application/ports/image-processor.po
 import { FILE_STORAGE } from "src/shared/application/ports/file-storage.port";
 import { SharpImageProcessorService } from "src/shared/utilidades/services/sharp-image-processor.service";
 import { LocalFileStorageService } from "src/shared/utilidades/services/local-file-storage.service";
-import { PURCHASE_DASHBOARD, PurchaseDashboardService } from "../application/services/purchase-dashboard.service";
 
 export const purchasesModuleProviders: Provider[] = [
   ...purchasesUsecasesProviders,
@@ -26,7 +25,6 @@ export const purchasesModuleProviders: Provider[] = [
   { provide: UNIT_OF_WORK, useClass: TypeormUnitOfWork },
   { provide: IMAGE_PROCESSOR, useClass: SharpImageProcessorService },
   { provide: FILE_STORAGE, useClass: LocalFileStorageService },
-  { provide: PURCHASE_DASHBOARD, useClass: PurchaseDashboardService },
   CreateProductCatalogStockItem, 
 
 ];
