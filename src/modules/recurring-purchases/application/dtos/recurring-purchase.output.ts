@@ -14,6 +14,7 @@ export interface RecurringPurchaseOutput {
   amount: number;
   startDate: Date;
   nextDueDate: Date;
+  billingAnchorDay: number;
   status: RecurringStatus;
   reminderDaysBefore: number[];
   createdByUserId?: string;

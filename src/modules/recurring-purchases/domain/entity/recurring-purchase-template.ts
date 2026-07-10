@@ -1,17 +1,15 @@
 import { randomUUID } from "crypto";
 import { CurrencyType } from "src/modules/purchases/domain/value-objects/currency-type";
 import { PurchaseType } from "src/modules/purchases/domain/value-objects/purchase-type";
+import {
+  calculateFirstRecurringDueDate,
+  calculateNextRecurringDueDate,
+  getBillingAnchorDay,
+} from "../services/recurring-due-date-calculator";
 import { RecurringFrequency } from "../value-objects/recurring-frequency";
 import { RecurringStatus } from "../value-objects/recurring-status";
 
 const DEFAULT_REMINDER_DAYS = [7, 3, 1];
-
-const addFrequency = (date: Date, frequency: RecurringFrequency) => {
-  const next = new Date(date);
-  if (frequency === "ANNUAL") next.setUTCFullYear(next.getUTCFullYear() + 1);
-  else next.setUTCMonth(next.getUTCMonth() + 1);
-  return next;
-};
 
 export const getRecurringPeriodKey = (date: Date, frequency: RecurringFrequency) => {
   const year = date.getUTCFullYear();
@@ -31,6 +29,7 @@ export class RecurringPurchaseTemplate {
     public readonly amount: number,
     public readonly startDate: Date,
     public readonly nextDueDate: Date,
+    public readonly billingAnchorDay: number,
     public readonly status: RecurringStatus,
     public readonly reminderDaysBefore: number[],
     public readonly createdByUserId: string | undefined,
@@ -53,6 +52,7 @@ export class RecurringPurchaseTemplate {
     amount: number;
     startDate: Date;
     nextDueDate?: Date;
+    billingAnchorDay?: number;
     status?: RecurringStatus;
     reminderDaysBefore?: number[];
     createdByUserId?: string;
@@ -69,6 +69,10 @@ export class RecurringPurchaseTemplate {
       throw new Error("El monto recurrente debe ser mayor a cero");
     }
     if (Number.isNaN(params.startDate.getTime())) throw new Error("La fecha inicial no es valida");
+    const billingAnchorDay = params.billingAnchorDay ?? getBillingAnchorDay(params.startDate);
+    if (!Number.isInteger(billingAnchorDay) || billingAnchorDay < 1 || billingAnchorDay > 31) {
+      throw new Error("El dia ancla de facturacion no es valido");
+    }
 
     const reminderDaysBefore = (params.reminderDaysBefore?.length
       ? params.reminderDaysBefore
@@ -88,7 +92,8 @@ export class RecurringPurchaseTemplate {
       params.currency as CurrencyType,
       Number(params.amount),
       params.startDate,
-      params.nextDueDate ?? params.startDate,
+      params.nextDueDate ?? calculateFirstRecurringDueDate(params.startDate, params.frequency),
+      billingAnchorDay,
       params.status ?? "ACTIVE",
       reminderDaysBefore,
       params.createdByUserId,
@@ -138,7 +143,12 @@ export class RecurringPurchaseTemplate {
       currency: this.currency,
       amount: this.amount,
       startDate: this.startDate,
-      nextDueDate: addFrequency(this.nextDueDate, this.frequency),
+      nextDueDate: calculateNextRecurringDueDate(
+        this.nextDueDate,
+        this.frequency,
+        this.billingAnchorDay,
+      ),
+      billingAnchorDay: this.billingAnchorDay,
       status: this.status,
       reminderDaysBefore: this.reminderDaysBefore,
       createdByUserId: this.createdByUserId,
@@ -163,6 +173,7 @@ export class RecurringPurchaseTemplate {
       amount: this.amount,
       startDate: this.startDate,
       nextDueDate: this.nextDueDate,
+      billingAnchorDay: this.billingAnchorDay,
       status,
       reminderDaysBefore: this.reminderDaysBefore,
       createdByUserId: this.createdByUserId,

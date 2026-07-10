@@ -14,6 +14,7 @@ export const toRecurringPurchaseOutput = (
   amount: template.amount,
   startDate: template.startDate,
   nextDueDate: template.nextDueDate,
+  billingAnchorDay: template.billingAnchorDay,
   status: template.status,
   reminderDaysBefore: template.reminderDaysBefore,
   createdByUserId: template.createdByUserId,

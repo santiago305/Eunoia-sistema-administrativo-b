@@ -38,6 +38,9 @@ export class RecurringPurchaseTemplateEntity {
   @Column({ name: "next_due_date", type: "date" })
   nextDueDate: Date;
 
+  @Column({ name: "billing_anchor_day", type: "int" })
+  billingAnchorDay: number;
+
   @Column({ name: "status", type: "varchar", length: 20, default: "ACTIVE" })
   status: RecurringStatus;
 
