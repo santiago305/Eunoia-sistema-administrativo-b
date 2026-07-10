@@ -1,5 +1,6 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, UploadedFiles, UseGuards, UseInterceptors } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Inject, Param, ParseUUIDPipe, Patch, Post, Query, Res, UploadedFiles, UseGuards, UseInterceptors } from "@nestjs/common";
 import { AnyFilesInterceptor } from "@nestjs/platform-express";
+import { Response } from "express";
 import { memoryStorage } from "multer";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
 import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
@@ -46,9 +47,14 @@ import { SaveSaleOrderWithClientUsecase } from "src/modules/sale-orders/applicat
 import { parseSaleOrderMultipart } from "../support/sale-order-multipart.parser";
 import { BulkAssignSaleOrdersDto } from "../dtos/bulk-assign-sale-orders.dto";
 import { BulkChangeSaleOrderStateDto } from "../dtos/bulk-change-sale-order-state.dto";
+import { ExportSaleOrdersExcelUsecase } from "src/modules/sale-orders/application/usecases/sale-order/export-excel.usecase";
+import { HttpExportSaleOrdersDto } from "../dtos/http-export-sale-orders.dto";
+import { LISTING_SEARCH_STORAGE, ListingSearchStorageRepository } from "src/shared/listing-search/domain/listing-search.repository";
+import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
+import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
 
 @Controller("sale-orders")
-@UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
+@UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
 export class SaleOrdersController {
   constructor(
     private readonly createSaleOrder: CreateSaleOrderUsecase,
@@ -77,6 +83,9 @@ export class SaleOrdersController {
     private readonly automaticWorkflow: SaleOrderAutomaticWorkflowService,
     private readonly realtimePayload: SaleOrderRealtimePayloadService,
     private readonly saveWithClient: SaveSaleOrderWithClientUsecase,
+    private readonly exportExcel: ExportSaleOrdersExcelUsecase,
+    @Inject(LISTING_SEARCH_STORAGE)
+    private readonly listingSearchStorage: ListingSearchStorageRepository,
   ) {}
 
   private async notifySaleOrderUpdated(saleOrderId: string, source: string, saleOrder?: unknown) {
@@ -538,6 +547,67 @@ export class SaleOrdersController {
   @Delete("search-metrics/:metricId")
   deleteMetric(@Param("metricId", ParseUUIDPipe) metricId: string, @CurrentUser() user: { id: string }) {
     return this.deleteSearchMetric.execute(user.id, metricId);
+  }
+
+  @Get("export-columns")
+  getExportColumns() {
+    return this.exportExcel.getAvailableColumns();
+  }
+
+  @Get("export-presets")
+  async getExportPresets(@CurrentUser() user: { id: string }) {
+    const state = await this.listingSearchStorage.listState({
+      userId: user.id,
+      tableKey: "sale-orders:export",
+    });
+    return state.metrics;
+  }
+
+  @Post("export-presets")
+  saveExportPreset(
+    @CurrentUser() user: { id: string },
+    @Body() body: { name: string; columns: Array<{ key: string; label: string }>; useDateRange?: boolean },
+  ) {
+    return this.listingSearchStorage.createMetric({
+      userId: user.id,
+      tableKey: "sale-orders:export",
+      name: body.name,
+      snapshot: {
+        q: "",
+        filters: [],
+        ...(body as any),
+      } as any,
+    });
+  }
+
+  @Delete("export-presets/:metricId")
+  deleteExportPreset(
+    @CurrentUser() user: { id: string },
+    @Param("metricId", ParseUUIDPipe) metricId: string,
+  ) {
+    return this.listingSearchStorage.deleteMetric({
+      userId: user.id,
+      tableKey: "sale-orders:export",
+      metricId,
+    });
+  }
+
+  @Post("export-excel")
+  @RequirePermissions("sale_orders.export")
+  async exportOrdersExcel(
+    @Body() dto: HttpExportSaleOrdersDto,
+    @Res() res: Response,
+  ) {
+    const file = await this.exportExcel.execute({
+      columns: dto.columns,
+      q: dto.q,
+      filters: dto.filters,
+      useDateRange: dto.useDateRange,
+    });
+
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="${file.filename}"`);
+    return res.status(200).send(file.content);
   }
 
   @Get(":id/components")

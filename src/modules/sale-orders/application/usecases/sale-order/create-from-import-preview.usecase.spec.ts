@@ -375,5 +375,34 @@ describe("CreateFromImportPreviewUseCase", () => {
       expect.anything(),
     );
   });
+
+  it("does not roll an invalid imported order date into another local day", async () => {
+    const f = makeImportUsecase();
+    f.normalizer.normalize.mockResolvedValue({
+      ok: true,
+      row: {
+        deliveryDate: "2026-03-01",
+        orderDate: "2026-02-31",
+        workflowName: null,
+        address: null,
+        productName: "Pack Aloe",
+        internalNote: null,
+        advertisingCode: null,
+        total: 120,
+        advance: 0,
+        deliveryCost: 0,
+        couponCode: null,
+        parsedSkus: [],
+        clientResolution: { clientId: null, matchedBy: null },
+      },
+    });
+
+    await f.usecase.execute({ rows: [{ total: 120 } as any], userId: "user-1" });
+
+    expect(f.saleOrderRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({ createdAt: null }),
+      expect.anything(),
+    );
+  });
 });
 

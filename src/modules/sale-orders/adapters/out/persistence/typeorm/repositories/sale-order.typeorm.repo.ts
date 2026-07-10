@@ -320,6 +320,94 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     return `CASE WHEN ${paymentsSumSql} >= so.total THEN '${SaleOrderPaymentStatusValues.PAID}' ELSE '${SaleOrderPaymentStatusValues.PENDING}' END`;
   }
 
+  private parseLocalDateBoundary(value: string | undefined, addDays = 0): string | null {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value ?? "");
+    if (!match) return null;
+
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(Date.UTC(year, month - 1, day));
+
+    if (
+      date.getUTCFullYear() !== year ||
+      date.getUTCMonth() !== month - 1 ||
+      date.getUTCDate() !== day
+    ) {
+      return null;
+    }
+
+    if (addDays) {
+      date.setUTCDate(date.getUTCDate() + addDays);
+    }
+
+    return `${date.toISOString().slice(0, 10)} 00:00:00`;
+  }
+
+  private applyCreatedAtDateFilter(
+    qb: SelectQueryBuilder<SaleOrderEntity>,
+    filter: SaleOrderSearchRule,
+    valueParam: string,
+    rangeStartParam: string,
+    rangeEndParam: string,
+  ) {
+    const applyClosedDayRange = (startValue: string | undefined, endValue: string | undefined) => {
+      const start = this.parseLocalDateBoundary(startValue);
+      const endExclusive = this.parseLocalDateBoundary(endValue, 1);
+      if (!start || !endExclusive) return;
+      qb.andWhere(`so.createdAt >= :${rangeStartParam} AND so.createdAt < :${rangeEndParam}`, {
+        [rangeStartParam]: start,
+        [rangeEndParam]: endExclusive,
+      });
+    };
+
+    if (filter.operator === SaleOrderSearchOperators.BETWEEN) {
+      applyClosedDayRange(filter.range?.start, filter.range?.end);
+      return;
+    }
+
+    if (filter.operator === SaleOrderSearchOperators.IN_MONTH) {
+      const range = getSaleOrderMonthRange(filter.value);
+      if (range) applyClosedDayRange(range.start, range.end);
+      return;
+    }
+
+    if (filter.operator === SaleOrderSearchOperators.IN_WEEK) {
+      const range = getSaleOrderCalendarWeekRange(filter.value);
+      if (range) applyClosedDayRange(range.start, range.end);
+      return;
+    }
+
+    if (!filter.value) return;
+
+    const start = this.parseLocalDateBoundary(filter.value);
+    const endExclusive = this.parseLocalDateBoundary(filter.value, 1);
+    if (!start || !endExclusive) return;
+
+    switch (filter.operator) {
+      case SaleOrderSearchOperators.ON:
+        qb.andWhere(`so.createdAt >= :${rangeStartParam} AND so.createdAt < :${rangeEndParam}`, {
+          [rangeStartParam]: start,
+          [rangeEndParam]: endExclusive,
+        });
+        return;
+      case SaleOrderSearchOperators.BEFORE:
+        qb.andWhere(`so.createdAt < :${valueParam}`, { [valueParam]: start });
+        return;
+      case SaleOrderSearchOperators.AFTER:
+        qb.andWhere(`so.createdAt >= :${valueParam}`, { [valueParam]: endExclusive });
+        return;
+      case SaleOrderSearchOperators.ON_OR_BEFORE:
+        qb.andWhere(`so.createdAt < :${valueParam}`, { [valueParam]: endExclusive });
+        return;
+      case SaleOrderSearchOperators.ON_OR_AFTER:
+        qb.andWhere(`so.createdAt >= :${valueParam}`, { [valueParam]: start });
+        return;
+      default:
+        return;
+    }
+  }
+
   private applyDateFilter(
     qb: SelectQueryBuilder<SaleOrderEntity>,
     filter: SaleOrderSearchRule,
@@ -327,11 +415,14 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     rangeStartParam: string,
     rangeEndParam: string,
   ) {
+    if (filter.field === SaleOrderSearchFields.CREATED_AT) {
+      this.applyCreatedAtDateFilter(qb, filter, valueParam, rangeStartParam, rangeEndParam);
+      return;
+    }
+
     const column = filter.field === SaleOrderSearchFields.SCHEDULE_DATE
       ? "so.scheduleDate"
-      : filter.field === SaleOrderSearchFields.DELIVERY_DATE
-        ? "so.deliveryDate"
-        : "DATE(so.createdAt)";
+      : "so.deliveryDate";
 
     if (filter.operator === SaleOrderSearchOperators.BETWEEN) {
       const start = filter.range?.start;

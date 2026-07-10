@@ -96,10 +96,19 @@ export class SaleOrderEntity {
   @Column({ name: "is_active", type: "boolean", default: true })
   isActive: boolean;
 
-  @CreateDateColumn({ name: "created_at", type: "timestamptz" })
+  @CreateDateColumn({
+    name: "created_at",
+    type: "timestamp",
+    default: () => "timezone('America/Lima', CURRENT_TIMESTAMP)",
+  })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: "updated_at", type: "timestamptz", nullable: true })
+  @UpdateDateColumn({
+    name: "updated_at",
+    type: "timestamp",
+    nullable: true,
+    default: () => "timezone('America/Lima', CURRENT_TIMESTAMP)",
+  })
   updatedAt?: Date | null;
   
   @OneToMany(() => SaleOrderItemEntity, (item) => item.saleOrder)
