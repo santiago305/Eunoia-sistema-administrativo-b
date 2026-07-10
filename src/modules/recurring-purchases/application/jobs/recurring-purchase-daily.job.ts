@@ -6,10 +6,13 @@ import {
 } from "../../domain/ports/recurring-purchase-template.repository";
 import { Inject } from "@nestjs/common";
 import { NotificationsService } from "src/modules/mail/application/use-cases/notifications.service";
+import { AccessControlService } from "src/modules/access-control/application/services/access-control.service";
 import {
   RECURRING_PURCHASE_REMINDER_DELIVERY_REPOSITORY,
   RecurringPurchaseReminderDeliveryRepository,
 } from "../../domain/ports/recurring-purchase-reminder-delivery.repository";
+
+const RECURRING_PURCHASE_DUE_NOTIFICATION_PERMISSION = "recurring_purchases.receive_due_notifications";
 
 @Injectable()
 export class RecurringPurchaseDailyJob {
@@ -22,6 +25,7 @@ export class RecurringPurchaseDailyJob {
     private readonly notificationsService: NotificationsService,
     @Inject(RECURRING_PURCHASE_REMINDER_DELIVERY_REPOSITORY)
     private readonly reminderDeliveryRepo: RecurringPurchaseReminderDeliveryRepository,
+    private readonly accessControlService: AccessControlService,
   ) {}
 
   async run(now = new Date()) {
@@ -45,7 +49,7 @@ export class RecurringPurchaseDailyJob {
     const templates = await this.templateRepo.list({ status: "ACTIVE", page: 1, limit: 100 });
     let sent = 0;
     for (const template of templates.items) {
-      if (!template.createdByUserId || template.lastGeneratedPeriodKey === template.currentPeriodKey()) {
+      if (template.lastGeneratedPeriodKey === template.currentPeriodKey()) {
         continue;
       }
       const rawDaysUntilDue = Math.ceil(
@@ -60,8 +64,12 @@ export class RecurringPurchaseDailyJob {
         daysBefore: daysUntilDue,
       };
       if (await this.reminderDeliveryRepo.hasDelivery(reminderKey)) continue;
+      const recipientUserIds = await this.accessControlService.getUserIdsWithPermission(
+        RECURRING_PURCHASE_DUE_NOTIFICATION_PERMISSION,
+      );
+      if (!recipientUserIds.length) continue;
       await this.notificationsService.createNotificationForUsers({
-        recipientUserIds: [template.createdByUserId],
+        recipientUserIds,
         type: "RECURRING_PURCHASE_REMINDER",
         category: "PURCHASES",
         title: "Recurrente por vencer",

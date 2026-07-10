@@ -60,6 +60,7 @@ describe("permissions seed", () => {
       "recurring_purchases.pause",
       "recurring_purchases.cancel",
       "recurring_purchases.pay",
+      "recurring_purchases.receive_due_notifications",
       "purchases_dashboard.view",
       "purchases_dashboard.view_costs",
       "purchases_dashboard.view_payments",

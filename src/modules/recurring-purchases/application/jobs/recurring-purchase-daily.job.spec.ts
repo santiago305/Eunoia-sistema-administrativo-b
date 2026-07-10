@@ -4,6 +4,7 @@ import { RecurringPurchaseDailyJob } from "./recurring-purchase-daily.job";
 const templateId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const supplierId = "11111111-1111-4111-8111-111111111111";
 const userId = "22222222-2222-4222-8222-222222222222";
+const notificationUserId = "55555555-5555-4555-8555-555555555555";
 
 const buildTemplate = () =>
   RecurringPurchaseTemplate.create({
@@ -34,19 +35,23 @@ describe("RecurringPurchaseDailyJob", () => {
       hasDelivery: jest.fn(async () => false),
       recordDelivery: jest.fn(async () => undefined),
     };
+    const accessControlService = {
+      getUserIdsWithPermission: jest.fn(async () => [notificationUserId]),
+    };
 
     const job = new RecurringPurchaseDailyJob(
       templateRepo as any,
       generateCurrentPayable as any,
       notificationsService as any,
       reminderDeliveryRepo as any,
+      accessControlService as any,
     );
 
-    return { job, templateRepo, notificationsService, reminderDeliveryRepo };
+    return { job, templateRepo, notificationsService, reminderDeliveryRepo, accessControlService };
   };
 
   it("sends and records the due-day reminder once for the period", async () => {
-    const { job, notificationsService, reminderDeliveryRepo } = buildDeps();
+    const { job, notificationsService, reminderDeliveryRepo, accessControlService } = buildDeps();
 
     const result = await job.run(new Date("2026-07-10T08:00:00.000Z"));
 
@@ -58,6 +63,14 @@ describe("RecurringPurchaseDailyJob", () => {
       daysBefore: 0,
     });
     expect(notificationsService.createNotificationForUsers).toHaveBeenCalledTimes(1);
+    expect(accessControlService.getUserIdsWithPermission).toHaveBeenCalledWith(
+      "recurring_purchases.receive_due_notifications",
+    );
+    expect(notificationsService.createNotificationForUsers).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipientUserIds: [notificationUserId],
+      }),
+    );
     expect(reminderDeliveryRepo.recordDelivery).toHaveBeenCalledWith({
       templateId,
       periodKey: "2026-07",
@@ -70,6 +83,17 @@ describe("RecurringPurchaseDailyJob", () => {
   it("does not send the same reminder twice", async () => {
     const { job, notificationsService, reminderDeliveryRepo } = buildDeps();
     reminderDeliveryRepo.hasDelivery.mockResolvedValue(true);
+
+    const result = await job.run(new Date("2026-07-10T08:00:00.000Z"));
+
+    expect(result.reminders).toBe(0);
+    expect(notificationsService.createNotificationForUsers).not.toHaveBeenCalled();
+    expect(reminderDeliveryRepo.recordDelivery).not.toHaveBeenCalled();
+  });
+
+  it("does not send reminders when no user has the notification permission", async () => {
+    const { job, notificationsService, reminderDeliveryRepo, accessControlService } = buildDeps();
+    accessControlService.getUserIdsWithPermission.mockResolvedValue([]);
 
     const result = await job.run(new Date("2026-07-10T08:00:00.000Z"));
 

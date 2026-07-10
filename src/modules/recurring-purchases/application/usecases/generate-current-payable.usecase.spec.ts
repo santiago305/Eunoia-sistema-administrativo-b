@@ -4,6 +4,7 @@ import { RecurringPurchaseTemplate } from "../../domain/entity/recurring-purchas
 const templateId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const supplierId = "11111111-1111-4111-8111-111111111111";
 const userId = "22222222-2222-4222-8222-222222222222";
+const notificationUserId = "55555555-5555-4555-8555-555555555555";
 
 describe("GenerateCurrentPayableUsecase", () => {
   const buildDeps = () => {
@@ -34,6 +35,9 @@ describe("GenerateCurrentPayableUsecase", () => {
     };
     const historyRepo = { save: jest.fn(async (event) => event) };
     const notifications = { createNotificationForUsers: jest.fn(async () => undefined) };
+    const accessControlService = {
+      getUserIdsWithPermission: jest.fn(async () => [notificationUserId]),
+    };
     const uow = { runInTransaction: jest.fn((work) => work({})) };
 
     const usecase = new GenerateCurrentPayableUsecase(
@@ -43,13 +47,14 @@ describe("GenerateCurrentPayableUsecase", () => {
       accountPayable as any,
       historyRepo as any,
       notifications as any,
+      accessControlService as any,
     );
 
-    return { usecase, templateRepo, purchaseRepo, accountPayable, historyRepo, notifications };
+    return { usecase, templateRepo, purchaseRepo, accountPayable, historyRepo, notifications, accessControlService };
   };
 
   it("creates a recurring purchase and payable for the due period", async () => {
-    const { usecase, templateRepo, purchaseRepo, accountPayable, historyRepo } = buildDeps();
+    const { usecase, templateRepo, purchaseRepo, accountPayable, historyRepo, notifications, accessControlService } = buildDeps();
 
     const result = await usecase.execute({
       templateId,
@@ -84,6 +89,14 @@ describe("GenerateCurrentPayableUsecase", () => {
     expect(historyRepo.save).toHaveBeenCalledWith(
       expect.objectContaining({ eventType: "PAYABLE_CREATED" }),
       {},
+    );
+    expect(accessControlService.getUserIdsWithPermission).toHaveBeenCalledWith(
+      "recurring_purchases.receive_due_notifications",
+    );
+    expect(notifications.createNotificationForUsers).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recipientUserIds: [notificationUserId],
+      }),
     );
   });
 

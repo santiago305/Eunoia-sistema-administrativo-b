@@ -10,10 +10,13 @@ import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.p
 import { Repository } from "typeorm";
 import { NotificationsService } from "src/modules/mail/application/use-cases/notifications.service";
 import { InjectRepository } from "@nestjs/typeorm";
+import { AccessControlService } from "src/modules/access-control/application/services/access-control.service";
 import {
   RECURRING_PURCHASE_TEMPLATE_REPOSITORY,
   RecurringPurchaseTemplateRepository,
 } from "../../domain/ports/recurring-purchase-template.repository";
+
+const RECURRING_PURCHASE_DUE_NOTIFICATION_PERMISSION = "recurring_purchases.receive_due_notifications";
 
 export class GenerateCurrentPayableUsecase {
   constructor(
@@ -27,6 +30,7 @@ export class GenerateCurrentPayableUsecase {
     @InjectRepository(PurchaseHistoryEventEntity)
     private readonly historyRepo: Pick<Repository<PurchaseHistoryEventEntity>, "save">,
     private readonly notificationsService: NotificationsService,
+    private readonly accessControlService: AccessControlService,
   ) {}
 
   async execute(input: { templateId: string; generatedByUserId?: string; now?: Date }) {
@@ -104,9 +108,12 @@ export class GenerateCurrentPayableUsecase {
         tx as any,
       );
 
-      if (template.createdByUserId) {
+      const recipientUserIds = await this.accessControlService.getUserIdsWithPermission(
+        RECURRING_PURCHASE_DUE_NOTIFICATION_PERMISSION,
+      );
+      if (recipientUserIds.length) {
         await this.notificationsService.createNotificationForUsers({
-          recipientUserIds: [template.createdByUserId],
+          recipientUserIds,
           type: "RECURRING_PURCHASE_PAYABLE_CREATED",
           category: "PURCHASES",
           title: "Cuenta por pagar recurrente",

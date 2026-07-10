@@ -7,6 +7,7 @@ export const NOTIFICATION_MODULE_PERMISSIONS: Record<string, string[]> = {
   security: ['security.read'],
   roles: ['roles.read'],
   providers: ['suppliers.read'],
+  'recurring-purchases': ['recurring_purchases.receive_due_notifications'],
   corporate: ['page.notifications.view'],
   system: ['page.notifications.view'],
 };
@@ -20,6 +21,7 @@ export const NOTIFICATION_MODULE_LABELS: Record<string, string> = {
   security: 'Seguridad',
   roles: 'Roles',
   providers: 'Proveedores',
+  'recurring-purchases': 'Compras recurrentes',
   corporate: 'Sistema',
   system: 'Sistema',
 };
@@ -33,6 +35,7 @@ export const NOTIFICATION_MODULE_ICONS: Record<string, string> = {
   security: 'Shield',
   roles: 'KeyRound',
   providers: 'Truck',
+  'recurring-purchases': 'CalendarClock',
   corporate: 'Mail',
   system: 'Bell',
 };
