@@ -34,6 +34,9 @@ import { SaleOrderRealtimePayloadService } from "src/modules/sale-orders/applica
 import { SaveSaleOrderWithClientUsecase } from "src/modules/sale-orders/application/usecases/sale-order/save-with-client.usecase";
 import { BulkAssignSaleOrdersUsecase } from "src/modules/sale-orders/application/usecases/sale-order/bulk-assign.usecase";
 import { BulkChangeSaleOrderStateUsecase } from "src/modules/sale-orders/application/usecases/sale-order/bulk-change-state.usecase";
+import { ExportSaleOrdersExcelUsecase } from "src/modules/sale-orders/application/usecases/sale-order/export-excel.usecase";
+import { LISTING_SEARCH_STORAGE } from "src/shared/listing-search/domain/listing-search.repository";
+import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
 
 @Injectable()
 class TestJwtAuthGuard implements CanActivate {
@@ -76,6 +79,15 @@ describe("SaleOrdersController", () => {
   const saveWithClient = { execute: jest.fn() };
   const bulkAssignSaleOrders = { execute: jest.fn() };
   const bulkChangeSaleOrderState = { execute: jest.fn() };
+  const exportExcel = {
+    getAvailableColumns: jest.fn(),
+    execute: jest.fn(),
+  };
+  const listingSearchStorage = {
+    listState: jest.fn(),
+    createMetric: jest.fn(),
+    deleteMetric: jest.fn(),
+  };
   const statisticsPayload = {
     byWorkflow: [],
     byState: [],
@@ -141,6 +153,16 @@ describe("SaleOrdersController", () => {
         ],
       },
     });
+    exportExcel.getAvailableColumns.mockReturnValue([{ key: "number", label: "Numero" }]);
+    exportExcel.execute.mockResolvedValue({
+      filename: "pedidos-2026-07-09.xlsx",
+      content: Buffer.from("excel"),
+    });
+    listingSearchStorage.listState.mockResolvedValue({
+      metrics: [{ metricId: "metric-1", name: "Basico", snapshot: { columns: [{ key: "number", label: "Numero" }] } }],
+    });
+    listingSearchStorage.createMetric.mockResolvedValue({ metricId: "metric-1" });
+    listingSearchStorage.deleteMetric.mockResolvedValue(true);
     saveWithClient.execute.mockResolvedValue({
       orderId: "11111111-1111-4111-8111-111111111111",
       clientId: "33333333-3333-4333-8333-333333333333",
@@ -181,6 +203,8 @@ describe("SaleOrdersController", () => {
         { provide: UpdateSaleOrderUsecase, useValue: updateSaleOrder },
         { provide: BulkAssignSaleOrdersUsecase, useValue: bulkAssignSaleOrders },
         { provide: BulkChangeSaleOrderStateUsecase, useValue: bulkChangeSaleOrderState },
+        { provide: ExportSaleOrdersExcelUsecase, useValue: exportExcel },
+        { provide: LISTING_SEARCH_STORAGE, useValue: listingSearchStorage },
         { provide: GetSaleOrderSearchStateUsecase, useValue: getSearchState },
         { provide: SaveSaleOrderSearchMetricUsecase, useValue: { execute: jest.fn() } },
         { provide: DeleteSaleOrderSearchMetricUsecase, useValue: { execute: jest.fn() } },
@@ -203,6 +227,8 @@ describe("SaleOrdersController", () => {
       .overrideGuard(JwtAuthGuard)
       .useClass(TestJwtAuthGuard)
       .overrideGuard(CompanyConfiguredGuard)
+      .useClass(AllowGuard)
+      .overrideGuard(PermissionsGuard)
       .useClass(AllowGuard)
       .compile();
 
@@ -521,6 +547,82 @@ describe("SaleOrdersController", () => {
   it("returns search-state catalogs", async () => {
     const response = await request(app.getHttpServer()).get("/sale-orders/search-state").expect(200);
     expect(response.body).toHaveProperty("catalogs");
+  });
+
+  it("returns export columns", async () => {
+    const response = await request(app.getHttpServer()).get("/sale-orders/export-columns").expect(200);
+
+    expect(response.body).toEqual([{ key: "number", label: "Numero" }]);
+    expect(exportExcel.getAvailableColumns).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses sale-orders export table key for presets", async () => {
+    const response = await request(app.getHttpServer()).get("/sale-orders/export-presets").expect(200);
+
+    expect(response.body).toEqual([
+      { metricId: "metric-1", name: "Basico", snapshot: { columns: [{ key: "number", label: "Numero" }] } },
+    ]);
+    expect(listingSearchStorage.listState).toHaveBeenCalledWith({
+      userId: "user-1",
+      tableKey: "sale-orders:export",
+    });
+  });
+
+  it("stores sale-orders export presets with selected columns", async () => {
+    await request(app.getHttpServer())
+      .post("/sale-orders/export-presets")
+      .send({
+        name: "Basico",
+        columns: [{ key: "number", label: "Numero" }],
+        useDateRange: true,
+      })
+      .expect(201);
+
+    expect(listingSearchStorage.createMetric).toHaveBeenCalledWith({
+      userId: "user-1",
+      tableKey: "sale-orders:export",
+      name: "Basico",
+      snapshot: {
+        q: "",
+        filters: [],
+        name: "Basico",
+        columns: [{ key: "number", label: "Numero" }],
+        useDateRange: true,
+      },
+    });
+  });
+
+  it("deletes sale-orders export presets from the export table key", async () => {
+    const metricId = "11111111-1111-4111-8111-111111111111";
+
+    await request(app.getHttpServer()).delete(`/sale-orders/export-presets/${metricId}`).expect(200);
+
+    expect(listingSearchStorage.deleteMetric).toHaveBeenCalledWith({
+      userId: "user-1",
+      tableKey: "sale-orders:export",
+      metricId,
+    });
+  });
+
+  it("exports sale orders as an Excel attachment", async () => {
+    const response = await request(app.getHttpServer())
+      .post("/sale-orders/export-excel")
+      .send({
+        columns: [{ key: "number", label: "Numero" }],
+        q: "SO",
+        filters: [{ field: "createdAt", operator: "between", range: { start: "2026-07-01", end: "2026-07-09" } }],
+        useDateRange: true,
+      })
+      .expect(200);
+
+    expect(response.headers["content-type"]).toBe("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    expect(response.headers["content-disposition"]).toBe('attachment; filename="pedidos-2026-07-09.xlsx"');
+    expect(exportExcel.execute).toHaveBeenCalledWith({
+      columns: [{ key: "number", label: "Numero" }],
+      q: "SO",
+      filters: [{ field: "createdAt", operator: "between", range: { start: "2026-07-01", end: "2026-07-09" } }],
+      useDateRange: true,
+    });
   });
 
   it("forwards order id to components usecase", async () => {

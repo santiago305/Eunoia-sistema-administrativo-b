@@ -9,6 +9,7 @@ import {
   ProductCatalogStockItemRepository,
 } from "../../domain/ports/stock-item.repository";
 import { TransactionContext } from "src/shared/domain/ports/transaction-context.port";
+import { parseInventoryRangeDate } from "../support/inventory-date-range";
 
 @Injectable()
 export class ListProductCatalogInventoryLedger {
@@ -44,8 +45,15 @@ export class ListProductCatalogInventoryLedger {
     },
     tx: TransactionContext,
   ) {
-    const from = new Date(input.from);
-    const toExclusive = new Date(input.to);
+    const from = parseInventoryRangeDate(input.from, "start");
+    const toExclusive = parseInventoryRangeDate(input.to, "endExclusive");
+
+    if (from === null) {
+      throw new BadRequestException("Fecha 'from' invalida");
+    }
+    if (toExclusive === null) {
+      throw new BadRequestException("Fecha 'to' invalida");
+    }
 
     let stockItemId = input.stockItemId;
     if (!stockItemId) {
@@ -60,8 +68,8 @@ export class ListProductCatalogInventoryLedger {
       {
         stockItemId,
         warehouseId: input.warehouseId,
-        from,
-        toExclusive,
+        from: from ?? undefined,
+        toExclusive: toExclusive ?? undefined,
       },
       tx,
     );

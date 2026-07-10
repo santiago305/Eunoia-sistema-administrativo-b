@@ -18,6 +18,7 @@ import {
   InventoryLedgerSearchFields,
   InventoryLedgerSearchOperators,
 } from "../dtos/inventory-ledger-search/inventory-ledger-search-snapshot";
+import { parseInventoryRangeDate } from "../support/inventory-date-range";
 
 @Injectable()
 export class ListProductCatalogInventoryLedgerMovements {
@@ -39,12 +40,19 @@ export class ListProductCatalogInventoryLedgerMovements {
     filters?: InventoryLedgerSearchRule[];
     requestedBy?: string;
   }) {
-    const from = this.parseDate(params.from, "from");
-    const toExclusive = this.parseDate(params.to, "to");
+    const from = parseInventoryRangeDate(params.from, "start");
+    const toExclusive = parseInventoryRangeDate(params.to, "endExclusive");
 
-    if (from && toExclusive && from.getTime() >= toExclusive.getTime()) {
-      throw new BadRequestException("Rango de fechas inválido");
+    if (from === null) {
+      throw new BadRequestException("Fecha 'from' invalida");
     }
+    if (toExclusive === null) {
+      throw new BadRequestException("Fecha 'to' invalida");
+    }
+
+    // if (from && toExclusive && from.getTime() >= toExclusive.getTime()) {
+    //   throw new BadRequestException("Rango de fechas inválido");
+    // }
 
     const snapshot = sanitizeInventoryLedgerSearchSnapshot({
       q: params.q,
@@ -80,8 +88,8 @@ export class ListProductCatalogInventoryLedgerMovements {
       page: params.page ?? 1,
       limit: params.limit ?? 20,
       productType: params.productType,
-      from,
-      toExclusive,
+      from: from ?? undefined,
+      toExclusive: toExclusive ?? undefined,
       warehouseIdsIn: warehouseIdsIn.length ? warehouseIdsIn : undefined,
       skuIdsIn: skuIdsIn.length ? skuIdsIn : undefined,
       userIdsIn: userIdsIn.length ? userIdsIn : undefined,

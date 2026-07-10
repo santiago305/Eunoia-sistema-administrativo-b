@@ -191,6 +191,7 @@ export const PERMISSIONS_SEED: PermissionSeedItem[] = [
   { code: 'purchases.manage_assets', name: 'Gestionar activos', description: 'Gestionar compras de activos y equipos', module: 'purchases', resource: 'purchases', action: 'manage_assets', type: 'action' },
   { code: 'purchases.manage_services', name: 'Gestionar servicios', description: 'Gestionar compras de servicios, membresias y suscripciones', module: 'purchases', resource: 'purchases', action: 'manage_services', type: 'action' },
   { code: 'purchases.export', name: 'Exportar compras', description: 'Exportar compras e historial a archivos', module: 'purchases', resource: 'purchases', action: 'export', type: 'action' },
+  { code: 'sale_orders.export', name: 'Exportar pedidos', description: 'Exportar pedidos a archivos', module: 'sale_orders', resource: 'sale_orders', action: 'export', type: 'action' },
   { code: 'purchases.view_costs', name: 'Ver costos de compras', description: 'Ver costos, importes y totales de compras', module: 'purchases', resource: 'purchases', action: 'view_costs', type: 'action' },
   { code: 'purchases.attach_documents', name: 'Adjuntar documentos de compras', description: 'Adjuntar documentos y evidencias a compras', module: 'purchases', resource: 'purchase_documents', action: 'attach_documents', type: 'action' },
   { code: 'purchases.delete_documents', name: 'Eliminar documentos de compras', description: 'Eliminar documentos y evidencias de compras', module: 'purchases', resource: 'purchase_documents', action: 'delete_documents', type: 'action' },

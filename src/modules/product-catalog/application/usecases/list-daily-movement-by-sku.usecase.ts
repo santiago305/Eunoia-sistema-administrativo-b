@@ -10,6 +10,7 @@ import {
 } from "../../domain/ports/stock-item.repository";
 import { TransactionContext } from "src/shared/domain/ports/transaction-context.port";
 import { Direction } from "src/shared/domain/value-objects/direction";
+import { parseInventoryRangeDate } from "../support/inventory-date-range";
 
 type DailyMovementTotal = { day: string; entrada: number; salida: number; balance: number };
 
@@ -47,8 +48,8 @@ export class ListDailyMovementBySku {
     },
     tx: TransactionContext,
   ) {
-    const from = new Date(input.from);
-    const toExclusive = new Date(input.to);
+    const from = parseInventoryRangeDate(input.from, "start");
+    const toExclusive = parseInventoryRangeDate(input.to, "endExclusive");
 
     if (!from || !toExclusive) {
       throw new BadRequestException("from y to requeridos");

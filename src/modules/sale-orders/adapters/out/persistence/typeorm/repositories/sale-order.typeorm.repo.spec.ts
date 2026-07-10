@@ -700,6 +700,35 @@ describe("SaleOrderTypeormRepository", () => {
     });
   });
 
+  it("applies createdAt filters as full local Peru day ranges in list queries", async () => {
+    const qb = {
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      leftJoin: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+    };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue({ createQueryBuilder: jest.fn().mockReturnValue(qb) }) },
+    } as any);
+
+    await repository.list({
+      filters: [
+        { field: "createdAt", operator: "between", range: { start: "2026-07-09", end: "2026-07-09" } },
+      ] as any,
+    });
+
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      "so.createdAt >= :filter_0_range_start AND so.createdAt < :filter_0_range_end",
+      {
+        filter_0_range_start: "2026-07-09 00:00:00",
+        filter_0_range_end: "2026-07-10 00:00:00",
+      },
+    );
+  });
+
   it("applies creator and assigned user filters to statistics", async () => {
     const baseQb = createStatsQueryBuilder();
     baseQb.clone

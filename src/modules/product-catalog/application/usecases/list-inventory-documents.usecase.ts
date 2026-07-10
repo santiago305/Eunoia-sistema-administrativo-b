@@ -16,6 +16,7 @@ import {
   resolveInventoryDocumentsTableKey,
   sanitizeInventoryDocumentsSearchSnapshot,
 } from "../support/inventory-documents-search.utils";
+import { parseInventoryRangeDate } from "../support/inventory-date-range";
 @Injectable()
 export class ListProductCatalogInventoryDocuments {
   constructor(
@@ -47,19 +48,19 @@ export class ListProductCatalogInventoryDocuments {
     filters?: InventoryDocumentsSearchRule[];
     requestedBy?: string;
   }) {
-    const from = params.from ? new Date(params.from) : undefined;
-    const toExclusive = params.to ? new Date(params.to) : undefined;
+    const from = parseInventoryRangeDate(params.from, "start");
+    const toExclusive = parseInventoryRangeDate(params.to, "endExclusive");
 
-    if (from && Number.isNaN(from.getTime())) {
+    if (from === null) {
       throw new BadRequestException("Fecha 'from' inválida");
     }
-    if (toExclusive && Number.isNaN(toExclusive.getTime())) {
+    if (toExclusive === null) {
       throw new BadRequestException("Fecha 'to' inválida");
     }
 
-    if (from && toExclusive && from.getTime() >= toExclusive.getTime()) {
-      throw new BadRequestException("Rango de fechas invalido");
-    }
+    // if (from && toExclusive && from.getTime() >= toExclusive.getTime()) {
+    //   throw new BadRequestException("Rango de fechas invalido");
+    // }
 
     const includeItems = params.includeItems ?? false;
     const warehouseIdsIn = Array.from(new Set([...(params.warehouseIdsIn ?? []), ...(params.warehouseIds ?? [])]));
@@ -75,8 +76,8 @@ export class ListProductCatalogInventoryDocuments {
     const response = await this.repo.list({
       page: params.page ?? 1,
       limit: params.limit ?? 20,
-      from,
-      toExclusive,
+      from: from ?? undefined,
+      toExclusive: toExclusive ?? undefined,
       docType: params.docType,
       productType: params.productType,
       status: params.status,

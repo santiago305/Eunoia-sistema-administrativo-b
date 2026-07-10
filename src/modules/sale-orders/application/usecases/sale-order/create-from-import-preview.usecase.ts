@@ -241,7 +241,24 @@ export class CreateFromImportPreviewUseCase {
 
   private resolveCreatedAtFromOrderDate(value: string | null | undefined): Date | null {
     if (!value) return null;
-    const createdAt = new Date(`${value}T00:00:00.000Z`);
-    return Number.isNaN(createdAt.getTime()) ? null : createdAt;
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (!match) return null;
+
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const localWallTime = new Date(Date.UTC(year, month - 1, day));
+
+    if (
+      localWallTime.getUTCFullYear() !== year ||
+      localWallTime.getUTCMonth() !== month - 1 ||
+      localWallTime.getUTCDate() !== day
+    ) {
+      return null;
+    }
+
+    // created_at is a timestamp without time zone. UTC components are used here
+    // only as a stable representation of Peru's local wall-clock midnight.
+    return localWallTime;
   }
 }

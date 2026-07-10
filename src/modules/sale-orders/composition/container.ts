@@ -62,6 +62,7 @@ import { UpdateClientUsecase } from "src/modules/clients/application/usecases/cl
 import { SaleOrderClientCommandService } from "../application/services/sale-order-client-command.service";
 import { SaleOrderPaymentReconcilerService } from "../application/services/sale-order-payment-reconciler.service";
 import { SaveSaleOrderWithClientUsecase } from "../application/usecases/sale-order/save-with-client.usecase";
+import { ExportSaleOrdersExcelUsecase } from "../application/usecases/sale-order/export-excel.usecase";
 
 export const saleOrdersModuleProviders = [
   { provide: SALE_ORDER_REPOSITORY, useClass: SaleOrderTypeormRepository },
@@ -106,6 +107,7 @@ export const saleOrdersModuleProviders = [
   SaleOrderClientCommandService,
   SaleOrderPaymentReconcilerService,
   SaveSaleOrderWithClientUsecase,
+  ExportSaleOrdersExcelUsecase,
   CreateSourceUsecase,
   GetSaleOrderComponentsUsecase,
   GetSaleOrderItemComponentsUsecase,
