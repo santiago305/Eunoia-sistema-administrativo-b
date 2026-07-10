@@ -6,6 +6,10 @@ import {
 } from "../../domain/ports/recurring-purchase-template.repository";
 import { Inject } from "@nestjs/common";
 import { NotificationsService } from "src/modules/mail/application/use-cases/notifications.service";
+import {
+  RECURRING_PURCHASE_REMINDER_DELIVERY_REPOSITORY,
+  RecurringPurchaseReminderDeliveryRepository,
+} from "../../domain/ports/recurring-purchase-reminder-delivery.repository";
 
 @Injectable()
 export class RecurringPurchaseDailyJob {
@@ -16,6 +20,8 @@ export class RecurringPurchaseDailyJob {
     private readonly templateRepo: RecurringPurchaseTemplateRepository,
     private readonly generateCurrentPayable: GenerateCurrentPayableUsecase,
     private readonly notificationsService: NotificationsService,
+    @Inject(RECURRING_PURCHASE_REMINDER_DELIVERY_REPOSITORY)
+    private readonly reminderDeliveryRepo: RecurringPurchaseReminderDeliveryRepository,
   ) {}
 
   async run(now = new Date()) {
@@ -42,10 +48,18 @@ export class RecurringPurchaseDailyJob {
       if (!template.createdByUserId || template.lastGeneratedPeriodKey === template.currentPeriodKey()) {
         continue;
       }
-      const daysUntilDue = Math.ceil(
+      const rawDaysUntilDue = Math.ceil(
         (template.nextDueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
       );
+      const daysUntilDue = Object.is(rawDaysUntilDue, -0) ? 0 : rawDaysUntilDue;
       if (!template.reminderDaysBefore.includes(daysUntilDue)) continue;
+      const reminderKey = {
+        templateId: template.recurringPurchaseTemplateId,
+        periodKey: template.currentPeriodKey(),
+        dueDate: template.nextDueDate,
+        daysBefore: daysUntilDue,
+      };
+      if (await this.reminderDeliveryRepo.hasDelivery(reminderKey)) continue;
       await this.notificationsService.createNotificationForUsers({
         recipientUserIds: [template.createdByUserId],
         type: "RECURRING_PURCHASE_REMINDER",
@@ -64,6 +78,7 @@ export class RecurringPurchaseDailyJob {
           daysUntilDue,
         },
       });
+      await this.reminderDeliveryRepo.recordDelivery({ ...reminderKey, sentAt: now });
       sent += 1;
     }
     return sent;

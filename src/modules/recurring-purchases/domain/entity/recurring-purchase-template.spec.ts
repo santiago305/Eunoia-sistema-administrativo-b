@@ -15,7 +15,21 @@ describe("RecurringPurchaseTemplate", () => {
     expect(template.status).toBe("ACTIVE");
     expect(template.nextDueDate.toISOString()).toBe("2026-07-10T00:00:00.000Z");
     expect(template.billingAnchorDay).toBe(10);
-    expect(template.reminderDaysBefore).toEqual([7, 3, 1]);
+    expect(template.reminderDaysBefore).toEqual([7, 3, 1, 0]);
+  });
+
+  it("keeps the due-day reminder and ignores invalid reminder values", () => {
+    const template = RecurringPurchaseTemplate.create({
+      supplierId: "11111111-1111-4111-8111-111111111111",
+      name: "Membresia mensual",
+      frequency: "MONTHLY",
+      currency: "PEN",
+      amount: 90,
+      startDate: new Date("2026-06-10T00:00:00.000Z"),
+      reminderDaysBefore: [7, 0, -1, 3, 1, 2.5],
+    });
+
+    expect(template.reminderDaysBefore).toEqual([7, 3, 1, 0]);
   });
 
   it("rejects templates with non positive amounts", () => {

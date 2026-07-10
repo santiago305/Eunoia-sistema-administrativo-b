@@ -9,7 +9,7 @@ import {
 import { RecurringFrequency } from "../value-objects/recurring-frequency";
 import { RecurringStatus } from "../value-objects/recurring-status";
 
-const DEFAULT_REMINDER_DAYS = [7, 3, 1];
+const DEFAULT_REMINDER_DAYS = [7, 3, 1, 0];
 
 export const getRecurringPeriodKey = (date: Date, frequency: RecurringFrequency) => {
   const year = date.getUTCFullYear();
@@ -79,7 +79,7 @@ export class RecurringPurchaseTemplate {
       : DEFAULT_REMINDER_DAYS
     )
       .map((value) => Number(value))
-      .filter((value) => Number.isInteger(value) && value > 0)
+      .filter((value) => Number.isInteger(value) && value >= 0)
       .sort((a, b) => b - a);
 
     return new RecurringPurchaseTemplate(

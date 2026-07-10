@@ -44,7 +44,7 @@ export class RecurringPurchaseTemplateEntity {
   @Column({ name: "status", type: "varchar", length: 20, default: "ACTIVE" })
   status: RecurringStatus;
 
-  @Column({ name: "reminder_days_before", type: "jsonb", default: () => "'[7,3,1]'" })
+  @Column({ name: "reminder_days_before", type: "jsonb", default: () => "'[7,3,1,0]'" })
   reminderDaysBefore: number[];
 
   @Column({ name: "created_by_user_id", type: "uuid", nullable: true })

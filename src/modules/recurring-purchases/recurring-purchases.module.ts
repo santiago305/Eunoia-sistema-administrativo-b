@@ -6,12 +6,17 @@ import { MailModule } from "src/modules/mail";
 import { PurchaseHistoryEventEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-history-event.entity";
 import { PurchasesModule } from "src/modules/purchases/infrastructure/purchases.module";
 import { RecurringPurchasesController } from "./adapters/in/controllers/recurring-purchases.controller";
+import { RecurringPurchaseReminderDeliveryEntity } from "./adapters/out/persistence/typeorm/entities/recurring-purchase-reminder-delivery.entity";
 import { RecurringPurchaseTemplateEntity } from "./adapters/out/persistence/typeorm/entities/recurring-purchase-template.entity";
 import { recurringPurchasesModuleProviders } from "./composition/container";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([RecurringPurchaseTemplateEntity, PurchaseHistoryEventEntity]),
+    TypeOrmModule.forFeature([
+      RecurringPurchaseTemplateEntity,
+      RecurringPurchaseReminderDeliveryEntity,
+      PurchaseHistoryEventEntity,
+    ]),
     PurchasesModule,
     AccountsPayableModule,
     MailModule,
