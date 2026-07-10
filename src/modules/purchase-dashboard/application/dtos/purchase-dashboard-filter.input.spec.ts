@@ -18,4 +18,31 @@ describe("normalizePurchaseDashboardFilters", () => {
     expect(normalizePurchaseDashboardFilters({ limit: "99" }).limit).toBe(50);
     expect(normalizePurchaseDashboardFilters({ limit: "abc" }).limit).toBeUndefined();
   });
+
+  it("preserves every dashboard filter param while leaving omitted limit undefined", () => {
+    const filters = normalizePurchaseDashboardFilters({
+      supplierId: "supplier-1",
+      purchaseType: "SERVICE",
+      status: "RECEIVED",
+      paymentStatus: "PARTIAL",
+      userId: "user-1",
+      warehouseId: "warehouse-1",
+      paymentMethodId: "method-1",
+      companyPaymentAccountId: "account-1",
+    });
+
+    expect(filters).toEqual({
+      supplierId: "supplier-1",
+      purchaseType: "SERVICE",
+      status: "RECEIVED",
+      paymentStatus: "PARTIAL",
+      userId: "user-1",
+      warehouseId: "warehouse-1",
+      paymentMethodId: "method-1",
+      companyPaymentAccountId: "account-1",
+      limit: undefined,
+      from: undefined,
+      to: undefined,
+    });
+  });
 });

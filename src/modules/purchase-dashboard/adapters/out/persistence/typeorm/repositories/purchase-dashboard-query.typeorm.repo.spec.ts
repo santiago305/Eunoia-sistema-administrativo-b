@@ -96,6 +96,55 @@ describe("PurchaseDashboardQueryTypeormRepository", () => {
     expect(whereClauses).not.toContain("pd.companyPaymentAccountId");
   });
 
+  it("applies every purchase-order dashboard filter to purchase based queries", async () => {
+    const qb = makeQueryBuilder([]);
+    const { repo } = makeRepository({ purchase: qb });
+
+    await repo.getTopSuppliers({
+      from: new Date("2026-07-01T00:00:00.000Z"),
+      to: new Date("2026-07-31T23:59:59.999Z"),
+      supplierId: "supplier-1",
+      purchaseType: "SERVICE",
+      status: "RECEIVED",
+      paymentStatus: "PARTIAL",
+      userId: "user-1",
+      warehouseId: "warehouse-1",
+    });
+
+    const whereClauses = qb.andWhere.mock.calls.map(([sql]: [string]) => sql).join("\n");
+    expect(whereClauses).toContain("po.isActive = true");
+    expect(whereClauses).toContain("COALESCE(po.dateIssue, po.createdAt) >= :from");
+    expect(whereClauses).toContain("COALESCE(po.dateIssue, po.createdAt) <= :to");
+    expect(whereClauses).toContain("po.supplierId = :supplierId");
+    expect(whereClauses).toContain("po.purchaseType = :purchaseType");
+    expect(whereClauses).toContain("po.status = :status");
+    expect(whereClauses).toContain("po.paymentStatus = :paymentStatus");
+    expect(whereClauses).toContain("po.createdBy = :userId");
+    expect(whereClauses).toContain("po.warehouseId = :warehouseId");
+  });
+
+  it("does not apply payment document fields to purchase-order based queries", async () => {
+    const byStatusQb = makeQueryBuilder([]);
+    const topItemsQb = makeQueryBuilder([]);
+    const { repo } = makeRepository({ purchase: byStatusQb, item: topItemsQb });
+
+    await repo.getByStatus({
+      paymentMethodId: "method-1",
+      companyPaymentAccountId: "account-1",
+    });
+    await repo.getTopItems({
+      paymentMethodId: "method-1",
+      companyPaymentAccountId: "account-1",
+    });
+
+    const byStatusWhereClauses = byStatusQb.andWhere.mock.calls.map(([sql]: [string]) => sql).join("\n");
+    const topItemsWhereClauses = topItemsQb.andWhere.mock.calls.map(([sql]: [string]) => sql).join("\n");
+    expect(byStatusWhereClauses).not.toContain("paymentMethodId");
+    expect(byStatusWhereClauses).not.toContain("companyPaymentAccountId");
+    expect(topItemsWhereClauses).not.toContain("paymentMethodId");
+    expect(topItemsWhereClauses).not.toContain("companyPaymentAccountId");
+  });
+
   it("applies approved payment filters through payment documents and joined purchases", async () => {
     const qb = makeQueryBuilder([]);
     const { repo } = makeRepository({ payment: qb });

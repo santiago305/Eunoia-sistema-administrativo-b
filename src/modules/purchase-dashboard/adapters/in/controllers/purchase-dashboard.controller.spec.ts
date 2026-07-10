@@ -29,6 +29,19 @@ describe("PurchaseDashboardController", () => {
       getPaymentMethodUsage: jest.fn().mockResolvedValue([]),
       getInternalVsInventory: jest.fn().mockResolvedValue([]),
     };
+    const listingSearchStorage = {
+      listState: jest.fn().mockResolvedValue({ recent: [], metrics: [] }),
+      createMetric: jest.fn().mockResolvedValue({
+        metricId: "metric-1",
+        name: "Filtro dashboard",
+        snapshot: {
+          filters: [{ field: "supplierId", operator: "in", values: ["supplier-1"] }],
+          dateRange: { mode: "absolute", from: "2026-06-01" },
+        },
+        updatedAt: new Date("2026-06-02T10:00:00.000Z"),
+      }),
+      deleteMetric: jest.fn().mockResolvedValue(true),
+    };
 
     return {
       controller: new PurchaseDashboardController(
@@ -38,6 +51,7 @@ describe("PurchaseDashboardController", () => {
         upcomingPayments as any,
         overduePayments as any,
         queryRepo as any,
+        listingSearchStorage as any,
       ),
       summary,
       byType,
@@ -45,6 +59,7 @@ describe("PurchaseDashboardController", () => {
       upcomingPayments,
       overduePayments,
       queryRepo,
+      listingSearchStorage,
     };
   };
 
@@ -84,12 +99,18 @@ describe("PurchaseDashboardController", () => {
 
   it("keeps base dashboard endpoints behind the default view permission", () => {
     expect(getPermissions("getSummary")).toEqual(["purchases_dashboard.view"]);
+    expect(getPermissions("getSearchState")).toEqual(["purchases_dashboard.view"]);
+    expect(getPermissions("saveSearchMetric")).toEqual(["purchases_dashboard.view"]);
+    expect(getPermissions("deleteSearchMetric")).toEqual(["purchases_dashboard.view"]);
     expect(getPermissions("getByType")).toEqual(["purchases_dashboard.view"]);
     expect(getPermissions("getByStatus")).toEqual(["purchases_dashboard.view"]);
   });
 
   it("keeps the same public dashboard endpoint paths", () => {
     expect(getPath("getSummary")).toBe("summary");
+    expect(getPath("getSearchState")).toBe("search-state");
+    expect(getPath("saveSearchMetric")).toBe("search-metrics");
+    expect(getPath("deleteSearchMetric")).toBe("search-metrics/:metricId");
     expect(getPath("getByType")).toBe("by-type");
     expect(getPath("getByStatus")).toBe("by-status");
     expect(getPath("getTopItems")).toBe("top-items");
@@ -130,6 +151,148 @@ describe("PurchaseDashboardController", () => {
       "purchases_dashboard.view",
       "purchases_dashboard.view_operations",
     ]);
+  });
+
+  it("loads dashboard saved filters with the purchase-dashboard table key", async () => {
+    const { controller, listingSearchStorage } = makeController();
+    listingSearchStorage.listState.mockResolvedValueOnce({
+      recent: [
+        {
+          recentId: "recent-1",
+          snapshot: {
+            q: "ignored",
+            filters: [
+              { field: "supplierId", operator: "in", values: ["supplier-1", "supplier-1", ""] },
+              { field: "status", operator: "in", values: ["RECEIVED"] },
+            ],
+            dateRange: { mode: "absolute", from: "2026-06-01T12:00:00.000Z" },
+          },
+          lastUsedAt: new Date("2026-06-02T10:00:00.000Z"),
+        },
+      ],
+      metrics: [
+        {
+          metricId: "metric-1",
+          name: "Dashboard",
+          snapshot: {
+            filters: [{ field: "paymentStatus", operator: "in", values: ["PARTIAL"] }],
+            dateRange: { mode: "absolute", to: "2026-06-30" },
+          },
+          updatedAt: new Date("2026-06-03T10:00:00.000Z"),
+        },
+      ],
+    });
+
+    const state = await controller.getSearchState({ id: "user-1" });
+
+    expect(listingSearchStorage.listState).toHaveBeenCalledWith({
+      userId: "user-1",
+      tableKey: "purchase-dashboard",
+    });
+    expect(listingSearchStorage.listState).not.toHaveBeenCalledWith(
+      expect.objectContaining({ tableKey: "purchase-orders" }),
+    );
+    expect(state).toEqual({
+      recent: [
+        {
+          recentId: "recent-1",
+          snapshot: {
+            filters: [{ field: "supplierId", operator: "in", values: ["supplier-1"] }],
+            dateRange: { mode: "absolute", from: "2026-06-01" },
+          },
+          lastUsedAt: new Date("2026-06-02T10:00:00.000Z"),
+        },
+      ],
+      saved: [
+        {
+          metricId: "metric-1",
+          name: "Dashboard",
+          snapshot: {
+            filters: [{ field: "paymentStatus", operator: "in", values: ["PARTIAL"] }],
+            dateRange: { mode: "absolute", to: "2026-06-30" },
+          },
+          updatedAt: new Date("2026-06-03T10:00:00.000Z"),
+        },
+      ],
+    });
+  });
+
+  it("saves dashboard metrics with sanitized filters and date range", async () => {
+    const { controller, listingSearchStorage } = makeController();
+
+    const response = await controller.saveSearchMetric(
+      {
+        name: "  Filtro dashboard  ",
+        snapshot: {
+          filters: [
+            { field: "supplierId", operator: "in", values: ["supplier-1", "supplier-1", ""] },
+            { field: "invalid" as any, operator: "in", values: ["x"] },
+            { field: "paymentStatus", operator: "eq" as any, values: ["PAID"] },
+          ],
+          dateRange: { mode: "absolute", from: "2026-06-01T12:00:00.000Z", to: "bad-date" },
+        },
+      },
+      { id: "user-1" },
+    );
+
+    expect(listingSearchStorage.createMetric).toHaveBeenCalledWith({
+      userId: "user-1",
+      tableKey: "purchase-dashboard",
+      name: "Filtro dashboard",
+      snapshot: {
+        filters: [{ field: "supplierId", operator: "in", values: ["supplier-1"] }],
+        dateRange: { mode: "absolute", from: "2026-06-01" },
+      },
+    });
+    expect(response).toEqual({
+      type: "success",
+      message: "Metrica guardada correctamente",
+      metric: expect.objectContaining({
+        metricId: "metric-1",
+        snapshot: {
+          filters: [{ field: "supplierId", operator: "in", values: ["supplier-1"] }],
+          dateRange: { mode: "absolute", from: "2026-06-01" },
+        },
+      }),
+    });
+  });
+
+  it("does not save an empty dashboard metric", async () => {
+    const { controller, listingSearchStorage } = makeController();
+
+    const response = await controller.saveSearchMetric(
+      {
+        name: "Sin filtros",
+        snapshot: {
+          filters: [{ field: "supplierId", operator: "in", values: [""] }],
+          dateRange: { mode: "absolute" },
+        },
+      },
+      { id: "user-1" },
+    );
+
+    expect(response).toEqual({
+      type: "error",
+      message: "No hay filtros para guardar en la metrica",
+    });
+    expect(listingSearchStorage.createMetric).not.toHaveBeenCalled();
+  });
+
+  it("deletes dashboard metrics with the purchase-dashboard table key", async () => {
+    const { controller, listingSearchStorage } = makeController();
+    const metricId = "11111111-1111-4111-8111-111111111111";
+
+    const response = await controller.deleteSearchMetric(metricId, { id: "user-1" });
+
+    expect(listingSearchStorage.deleteMetric).toHaveBeenCalledWith({
+      userId: "user-1",
+      tableKey: "purchase-dashboard",
+      metricId,
+    });
+    expect(response).toEqual({
+      type: "success",
+      message: "Metrica eliminada correctamente",
+    });
   });
 });
 

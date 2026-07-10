@@ -5,6 +5,10 @@ import { AccessControlModule } from "src/modules/access-control/infrastructure/a
 import { PaymentDocumentEntity } from "src/modules/payments/adapters/out/persistence/typeorm/entities/payment-document.entity";
 import { PurchaseOrderEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-order.entity";
 import { PurchaseOrderItemEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-order-item.entity";
+import { ListingSearchTypeormRepository } from "src/shared/listing-search/adapters/out/persistence/typeorm/repositories/listing-search.typeorm.repo";
+import { ListingSearchMetricEntity } from "src/shared/listing-search/adapters/out/persistence/typeorm/entities/listing-search-metric.entity";
+import { ListingSearchRecentEntity } from "src/shared/listing-search/adapters/out/persistence/typeorm/entities/listing-search-recent.entity";
+import { LISTING_SEARCH_STORAGE } from "src/shared/listing-search/domain/listing-search.repository";
 import { PurchaseDashboardController } from "./adapters/in/controllers/purchase-dashboard.controller";
 import { PurchaseDashboardQueryTypeormRepository } from "./adapters/out/persistence/typeorm/repositories/purchase-dashboard-query.typeorm.repo";
 import { GetPurchaseDashboardByTypeUsecase } from "./application/usecases/get-purchase-dashboard-by-type.usecase";
@@ -21,6 +25,8 @@ import { PURCHASE_DASHBOARD_QUERY_REPOSITORY } from "./domain/ports/purchase-das
       PurchaseOrderItemEntity,
       PaymentDocumentEntity,
       AccountPayableEntity,
+      ListingSearchRecentEntity,
+      ListingSearchMetricEntity,
     ]),
     AccessControlModule,
   ],
@@ -35,6 +41,7 @@ import { PURCHASE_DASHBOARD_QUERY_REPOSITORY } from "./domain/ports/purchase-das
       provide: PURCHASE_DASHBOARD_QUERY_REPOSITORY,
       useClass: PurchaseDashboardQueryTypeormRepository,
     },
+    { provide: LISTING_SEARCH_STORAGE, useClass: ListingSearchTypeormRepository },
   ],
 })
 export class PurchaseDashboardModule {}
