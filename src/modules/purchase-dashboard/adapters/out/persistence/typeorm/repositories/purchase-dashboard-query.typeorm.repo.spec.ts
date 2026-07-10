@@ -123,6 +123,26 @@ describe("PurchaseDashboardQueryTypeormRepository", () => {
     expect(whereClauses).toContain("po.warehouseId = :warehouseId");
   });
 
+  it("applies repeated purchase-order dashboard filters with IN clauses", async () => {
+    const qb = makeQueryBuilder([]);
+    const { repo } = makeRepository({ purchase: qb });
+
+    await repo.getTopSuppliers({
+      supplierIds: ["supplier-1", "supplier-2"],
+      purchaseTypes: ["SERVICE", "RAW_MATERIAL"],
+      paymentStatuses: ["PARTIAL", "OVERDUE"],
+      userIds: ["user-1", "user-2"],
+      warehouseIds: ["warehouse-1", "warehouse-2"],
+    });
+
+    const whereClauses = qb.andWhere.mock.calls.map(([sql]: [string]) => sql).join("\n");
+    expect(whereClauses).toContain("po.supplierId IN (:...supplierIds)");
+    expect(whereClauses).toContain("po.purchaseType IN (:...purchaseTypes)");
+    expect(whereClauses).toContain("po.paymentStatus IN (:...paymentStatuses)");
+    expect(whereClauses).toContain("po.createdBy IN (:...userIds)");
+    expect(whereClauses).toContain("po.warehouseId IN (:...warehouseIds)");
+  });
+
   it("does not apply payment document fields to purchase-order based queries", async () => {
     const byStatusQb = makeQueryBuilder([]);
     const topItemsQb = makeQueryBuilder([]);
@@ -164,6 +184,20 @@ describe("PurchaseDashboardQueryTypeormRepository", () => {
     expect(whereClauses).toContain("pd.date <= :to");
     expect(whereClauses).toContain("pd.paymentMethodId = :paymentMethodId");
     expect(whereClauses).toContain("pd.companyPaymentAccountId = :companyPaymentAccountId");
+  });
+
+  it("applies repeated payment document filters with IN clauses", async () => {
+    const qb = makeQueryBuilder([]);
+    const { repo } = makeRepository({ payment: qb });
+
+    await repo.getPaymentMethodUsage({
+      paymentMethodIds: ["method-1", "method-2"],
+      companyPaymentAccountIds: ["account-1", "account-2"],
+    });
+
+    const whereClauses = qb.andWhere.mock.calls.map(([sql]: [string]) => sql).join("\n");
+    expect(whereClauses).toContain("pd.paymentMethodId IN (:...paymentMethodIds)");
+    expect(whereClauses).toContain("pd.companyPaymentAccountId IN (:...companyPaymentAccountIds)");
   });
 
   it("resolves top item labels from catalog names before falling back to ids", async () => {

@@ -25,6 +25,8 @@ const limitFrom = (value?: number): number => {
   return Math.min(Math.max(Math.trunc(limit), 1), 50);
 };
 
+const uniqueValues = (values?: string[]) => Array.from(new Set((values ?? []).filter(Boolean)));
+
 @Injectable()
 export class PurchaseDashboardQueryTypeormRepository implements PurchaseDashboardQueryRepository {
   constructor(
@@ -42,25 +44,46 @@ export class PurchaseDashboardQueryTypeormRepository implements PurchaseDashboar
     qb.andWhere(`${alias}.isActive = true`);
     if (filters.from) qb.andWhere(`COALESCE(${alias}.dateIssue, ${alias}.createdAt) >= :from`, { from: filters.from });
     if (filters.to) qb.andWhere(`COALESCE(${alias}.dateIssue, ${alias}.createdAt) <= :to`, { to: filters.to });
-    if (filters.supplierId) qb.andWhere(`${alias}.supplierId = :supplierId`, { supplierId: filters.supplierId });
-    if (filters.purchaseType) qb.andWhere(`${alias}.purchaseType = :purchaseType`, { purchaseType: filters.purchaseType });
+    this.applyStringFilter(qb, `${alias}.supplierId`, "supplierId", "supplierIds", filters.supplierId, filters.supplierIds);
+    this.applyStringFilter(qb, `${alias}.purchaseType`, "purchaseType", "purchaseTypes", filters.purchaseType, filters.purchaseTypes);
     if (filters.status) qb.andWhere(`${alias}.status = :status`, { status: filters.status });
-    if (filters.paymentStatus) qb.andWhere(`${alias}.paymentStatus = :paymentStatus`, { paymentStatus: filters.paymentStatus });
-    if (filters.userId) qb.andWhere(`${alias}.createdBy = :userId`, { userId: filters.userId });
-    if (filters.warehouseId) qb.andWhere(`${alias}.warehouseId = :warehouseId`, { warehouseId: filters.warehouseId });
+    this.applyStringFilter(qb, `${alias}.paymentStatus`, "paymentStatus", "paymentStatuses", filters.paymentStatus, filters.paymentStatuses);
+    this.applyStringFilter(qb, `${alias}.createdBy`, "userId", "userIds", filters.userId, filters.userIds);
+    this.applyStringFilter(qb, `${alias}.warehouseId`, "warehouseId", "warehouseIds", filters.warehouseId, filters.warehouseIds);
     return qb;
   }
 
   private applyPaymentDocumentFilters<T>(qb: SelectQueryBuilder<T>, filters: PurchaseDashboardFilters, paymentAlias = "pd") {
     if (filters.from) qb.andWhere(`${paymentAlias}.date >= :from`, { from: filters.from });
     if (filters.to) qb.andWhere(`${paymentAlias}.date <= :to`, { to: filters.to });
-    if (filters.paymentMethodId) qb.andWhere(`${paymentAlias}.paymentMethodId = :paymentMethodId`, { paymentMethodId: filters.paymentMethodId });
-    if (filters.companyPaymentAccountId) {
-      qb.andWhere(`${paymentAlias}.companyPaymentAccountId = :companyPaymentAccountId`, {
-        companyPaymentAccountId: filters.companyPaymentAccountId,
-      });
-    }
+    this.applyStringFilter(qb, `${paymentAlias}.paymentMethodId`, "paymentMethodId", "paymentMethodIds", filters.paymentMethodId, filters.paymentMethodIds);
+    this.applyStringFilter(
+      qb,
+      `${paymentAlias}.companyPaymentAccountId`,
+      "companyPaymentAccountId",
+      "companyPaymentAccountIds",
+      filters.companyPaymentAccountId,
+      filters.companyPaymentAccountIds,
+    );
     return qb;
+  }
+
+  private applyStringFilter<T>(
+    qb: SelectQueryBuilder<T>,
+    column: string,
+    parameterName: string,
+    listParameterName: string,
+    value?: string,
+    values?: string[],
+  ) {
+    const normalizedValues = uniqueValues(values);
+    if (normalizedValues.length > 1) {
+      qb.andWhere(`${column} IN (:...${listParameterName})`, { [listParameterName]: normalizedValues });
+      return;
+    }
+
+    const singleValue = normalizedValues[0] ?? value;
+    if (singleValue) qb.andWhere(`${column} = :${parameterName}`, { [parameterName]: singleValue });
   }
 
   private applyApprovedPaymentFilters<T>(qb: SelectQueryBuilder<T>, filters: PurchaseDashboardFilters) {
