@@ -6,7 +6,8 @@ export class SaleOrderFieldRequiredCondition implements Condition {
   constructor(private readonly field: SaleOrderFieldValue) {}
 
   evaluate(context: WorkflowContext): ConditionEvaluation {
-    const passed = isPresentSaleOrderFieldValue(context.variables[this.field]);
+    const currentValue = context.variables[this.field];
+    const passed = isPresentSaleOrderFieldValue(currentValue);
     const option = getSaleOrderFieldOption(this.field);
 
     return passed
@@ -15,6 +16,12 @@ export class SaleOrderFieldRequiredCondition implements Condition {
           passed: false,
           type: CONDITIONS.SALE_ORDER_FIELD_REQUIRED,
           reason: option?.reason ?? "El campo requerido del pedido no esta completo",
+          details: {
+            field: this.field,
+            label: option?.label ?? this.field,
+            missing: true,
+            currentValue,
+          },
         };
   }
 }

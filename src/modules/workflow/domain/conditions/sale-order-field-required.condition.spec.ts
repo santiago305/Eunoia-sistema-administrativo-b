@@ -31,6 +31,12 @@ describe("SaleOrderFieldRequiredCondition", () => {
       passed: false,
       type: CONDITIONS.SALE_ORDER_FIELD_REQUIRED,
       reason: "Nota requerida",
+      details: {
+        field: "note",
+        label: "Pedido tiene nota",
+        missing: true,
+        currentValue: "  ",
+      },
     });
   });
 
@@ -39,6 +45,15 @@ describe("SaleOrderFieldRequiredCondition", () => {
 
     expect(result.passed).toBe(false);
     expect(result.type).toBe(CONDITIONS.SALE_ORDER_FIELD_REQUIRED);
+    expect(result).toMatchObject({
+      reason: "Referencia requerida",
+      details: {
+        field: "client.reference",
+        label: "Cliente tiene referencia",
+        missing: true,
+        currentValue: undefined,
+      },
+    });
   });
 });
 

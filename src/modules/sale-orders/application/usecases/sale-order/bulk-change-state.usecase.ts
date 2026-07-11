@@ -1,51 +1,42 @@
 import { Injectable } from "@nestjs/common";
-import { AdvanceSaleOrderStateUseCase } from "src/modules/workflow/application/usecases/advance-sale-order-state.usecase";
-
-type BulkStateResultRow =
-  | { saleOrderId: string; status: "success"; warnings?: string[] }
-  | { saleOrderId: string; status: "failed"; message: string };
+import { SaleOrderWorkflowRouteResult } from "src/modules/workflow/application/dtos/sale-order-workflow-route.output";
+import { AdvanceSaleOrderToTargetStateUseCase } from "src/modules/workflow/application/usecases/advance-sale-order-to-target-state.usecase";
 
 @Injectable()
 export class BulkChangeSaleOrderStateUsecase {
-  constructor(private readonly advanceSaleOrderState: AdvanceSaleOrderStateUseCase) {}
+  constructor(private readonly advanceSaleOrderToTargetState: AdvanceSaleOrderToTargetStateUseCase) {}
 
   async execute(input: {
     saleOrderIds: string[];
-    transitionId: string;
-    metadata?: Record<string, unknown>;
+    targetStateId: string;
     executedBy: string;
   }) {
-    const results: BulkStateResultRow[] = [];
+    const results: SaleOrderWorkflowRouteResult[] = [];
 
     for (const saleOrderId of input.saleOrderIds) {
-      try {
-        const result = await this.advanceSaleOrderState.execute({
-          saleOrderId,
-          transitionId: input.transitionId,
-          metadata: input.metadata,
-          executedBy: input.executedBy,
-        });
-
-        results.push({
-          saleOrderId,
-          status: "success",
-          ...(result.warnings?.length ? { warnings: result.warnings } : {}),
-        });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : "Error inesperado";
-        results.push({ saleOrderId, status: "failed", message });
-      }
+      const result = await this.advanceSaleOrderToTargetState.execute({
+        saleOrderId,
+        targetStateId: input.targetStateId,
+        executedBy: input.executedBy,
+      });
+      results.push(result);
     }
 
     const succeeded = results.filter((row) => row.status === "success").length;
+    const failed = results.length - succeeded;
+    const partiallyCompleted = results.filter(
+      (row) => row.status === "failed" && row.completedTransitions.length > 0,
+    ).length;
 
     return {
       type: "success",
       message: "Operacion masiva procesada",
       data: {
+        targetStateId: input.targetStateId,
         requested: input.saleOrderIds.length,
         succeeded,
-        failed: input.saleOrderIds.length - succeeded,
+        failed,
+        partiallyCompleted,
         results,
       },
     };
