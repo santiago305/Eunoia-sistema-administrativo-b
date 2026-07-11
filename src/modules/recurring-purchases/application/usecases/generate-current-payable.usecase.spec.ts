@@ -168,4 +168,22 @@ describe("GenerateCurrentPayableUsecase", () => {
     expect(purchaseRepo.create).not.toHaveBeenCalled();
     expect(accountPayable.execute).not.toHaveBeenCalled();
   });
+
+  it("generates the payable without sending a notification when no recipient has the permission", async () => {
+    const { usecase, notifications, accessControlService, recurringPurchaseNotificationService } = buildDeps();
+    accessControlService.getUserIdsWithPermission.mockResolvedValue([]);
+
+    const result = await usecase.execute({
+      templateId,
+      generatedByUserId: userId,
+      now: new Date("2026-06-11T12:00:00.000Z"),
+    });
+
+    expect(result.generated).toBe(true);
+    expect(accessControlService.getUserIdsWithPermission).toHaveBeenCalledWith(
+      "recurring_purchases.receive_due_notifications",
+    );
+    expect(recurringPurchaseNotificationService.buildPayableCreatedNotification).not.toHaveBeenCalled();
+    expect(notifications.createNotificationForUsers).not.toHaveBeenCalled();
+  });
 });

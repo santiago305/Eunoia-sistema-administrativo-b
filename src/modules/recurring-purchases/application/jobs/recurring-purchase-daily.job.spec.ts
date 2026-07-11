@@ -6,7 +6,12 @@ const supplierId = "11111111-1111-4111-8111-111111111111";
 const userId = "22222222-2222-4222-8222-222222222222";
 const notificationUserId = "55555555-5555-4555-8555-555555555555";
 
-const buildTemplate = () =>
+const buildTemplate = (
+  overrides: Partial<{
+    nextDueDate: Date;
+    reminderDaysBefore: number[];
+  }> = {},
+) =>
   RecurringPurchaseTemplate.create({
     recurringPurchaseTemplateId: templateId,
     supplierId,
@@ -17,11 +22,11 @@ const buildTemplate = () =>
     startDate: new Date("2026-06-10T00:00:00.000Z"),
     nextDueDate: new Date("2026-07-10T00:00:00.000Z"),
     createdByUserId: userId,
+    ...overrides,
   });
 
 describe("RecurringPurchaseDailyJob", () => {
-  const buildDeps = () => {
-    const template = buildTemplate();
+  const buildDeps = (template = buildTemplate()) => {
     const templateRepo = {
       create: jest.fn(),
       update: jest.fn(),
@@ -128,6 +133,53 @@ describe("RecurringPurchaseDailyJob", () => {
       daysBefore: 0,
       sentAt: new Date("2026-07-10T08:00:00.000Z"),
     });
+  });
+
+  it.each([
+    [7, "2026-07-03T08:00:00.000Z"],
+    [3, "2026-07-07T08:00:00.000Z"],
+    [1, "2026-07-09T08:00:00.000Z"],
+    [0, "2026-07-10T08:00:00.000Z"],
+  ])("sends reminders for the %i-day window", async (daysBefore, runAt) => {
+    const {
+      job,
+      notificationsService,
+      reminderDeliveryRepo,
+      recurringPurchaseNotificationService,
+    } = buildDeps();
+
+    const result = await job.run(new Date(runAt));
+
+    expect(result.reminders).toBe(1);
+    expect(recurringPurchaseNotificationService.buildDueReminderNotification).toHaveBeenCalledWith({
+      template: expect.objectContaining({ recurringPurchaseTemplateId: templateId }),
+      daysUntilDue: daysBefore,
+    });
+    expect(reminderDeliveryRepo.hasDelivery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        daysBefore,
+      }),
+    );
+    expect(notificationsService.createNotificationForUsers).toHaveBeenCalledTimes(1);
+    expect(reminderDeliveryRepo.recordDelivery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        daysBefore,
+        sentAt: new Date(runAt),
+      }),
+    );
+  });
+
+  it("skips a due reminder when the template does not include that reminder window", async () => {
+    const { job, notificationsService, reminderDeliveryRepo, accessControlService } = buildDeps(
+      buildTemplate({ reminderDaysBefore: [7] }),
+    );
+
+    const result = await job.run(new Date("2026-07-07T08:00:00.000Z"));
+
+    expect(result.reminders).toBe(0);
+    expect(reminderDeliveryRepo.hasDelivery).not.toHaveBeenCalled();
+    expect(accessControlService.getUserIdsWithPermission).not.toHaveBeenCalled();
+    expect(notificationsService.createNotificationForUsers).not.toHaveBeenCalled();
   });
 
   it("does not send the same reminder twice", async () => {
