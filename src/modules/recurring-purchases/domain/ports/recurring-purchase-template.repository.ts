@@ -13,4 +13,9 @@ export interface RecurringPurchaseTemplateRepository {
     tx?: TransactionContext,
   ): Promise<{ items: RecurringPurchaseTemplate[]; total: number; page: number; limit: number }>;
   findDueForGeneration(now: Date, tx?: TransactionContext): Promise<RecurringPurchaseTemplate[]>;
+  findDueForReminderWindows(
+    now: Date,
+    windowsDaysBefore: number[],
+    tx?: TransactionContext,
+  ): Promise<RecurringPurchaseTemplate[]>;
 }

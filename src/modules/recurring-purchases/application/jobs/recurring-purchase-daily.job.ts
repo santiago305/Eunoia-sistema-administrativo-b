@@ -14,6 +14,7 @@ import {
 import { RecurringPurchaseNotificationService } from "../services/recurring-purchase-notification.service";
 
 const RECURRING_PURCHASE_DUE_NOTIFICATION_PERMISSION = "recurring_purchases.receive_due_notifications";
+const REMINDER_WINDOWS_DAYS_BEFORE = [7, 3, 1, 0];
 
 @Injectable()
 export class RecurringPurchaseDailyJob {
@@ -48,9 +49,9 @@ export class RecurringPurchaseDailyJob {
   }
 
   private async sendReminders(now: Date) {
-    const templates = await this.templateRepo.list({ status: "ACTIVE", page: 1, limit: 100 });
+    const templates = await this.templateRepo.findDueForReminderWindows(now, REMINDER_WINDOWS_DAYS_BEFORE);
     let sent = 0;
-    for (const template of templates.items) {
+    for (const template of templates) {
       if (template.lastGeneratedPeriodKey === template.currentPeriodKey()) {
         continue;
       }

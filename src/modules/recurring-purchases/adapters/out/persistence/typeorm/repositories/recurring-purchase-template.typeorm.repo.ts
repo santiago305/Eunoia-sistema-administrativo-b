@@ -120,4 +120,31 @@ export class RecurringPurchaseTemplateTypeormRepository implements RecurringPurc
       .getMany();
     return rows.map((row) => this.toDomain(row));
   }
+
+  async findDueForReminderWindows(now: Date, windowsDaysBefore: number[], tx?: TransactionContext) {
+    const maxWindow = Math.max(
+      0,
+      ...windowsDaysBefore
+        .map((value) => Number(value))
+        .filter((value) => Number.isInteger(value) && value >= 0),
+    );
+    const today = this.toDateOnly(now);
+    const maxDueDate = this.toDateOnly(this.addUtcDays(now, maxWindow));
+
+    const rows = await this.getRepo(tx)
+      .createQueryBuilder("template")
+      .where("template.status = :status", { status: "ACTIVE" })
+      .andWhere("template.nextDueDate BETWEEN :today AND :maxDueDate", { today, maxDueDate })
+      .orderBy("template.nextDueDate", "ASC")
+      .getMany();
+    return rows.map((row) => this.toDomain(row));
+  }
+
+  private addUtcDays(date: Date, days: number) {
+    return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + days));
+  }
+
+  private toDateOnly(date: Date) {
+    return date.toISOString().slice(0, 10);
+  }
 }

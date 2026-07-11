@@ -27,9 +27,10 @@ describe("RecurringPurchaseDailyJob", () => {
       update: jest.fn(),
       findById: jest.fn(),
       findDueForGeneration: jest.fn(async () => []),
+      findDueForReminderWindows: jest.fn(async () => [template]),
       list: jest.fn(async () => ({ items: [template], total: 1, page: 1, limit: 100 })),
     };
-    const generateCurrentPayable = { execute: jest.fn() };
+    const generateCurrentPayable = { execute: jest.fn(async () => ({ generated: true })) };
     const notificationsService = { createNotificationForUsers: jest.fn(async () => undefined) };
     const reminderDeliveryRepo = {
       hasDelivery: jest.fn(async () => false),
@@ -80,6 +81,7 @@ describe("RecurringPurchaseDailyJob", () => {
   it("sends and records the due-day reminder once for the period", async () => {
     const {
       job,
+      templateRepo,
       notificationsService,
       reminderDeliveryRepo,
       accessControlService,
@@ -89,6 +91,11 @@ describe("RecurringPurchaseDailyJob", () => {
     const result = await job.run(new Date("2026-07-10T08:00:00.000Z"));
 
     expect(result.reminders).toBe(1);
+    expect(templateRepo.findDueForReminderWindows).toHaveBeenCalledWith(
+      new Date("2026-07-10T08:00:00.000Z"),
+      [7, 3, 1, 0],
+    );
+    expect(templateRepo.list).not.toHaveBeenCalled();
     expect(reminderDeliveryRepo.hasDelivery).toHaveBeenCalledWith({
       templateId,
       periodKey: "2026-07",
@@ -143,5 +150,16 @@ describe("RecurringPurchaseDailyJob", () => {
     expect(result.reminders).toBe(0);
     expect(notificationsService.createNotificationForUsers).not.toHaveBeenCalled();
     expect(reminderDeliveryRepo.recordDelivery).not.toHaveBeenCalled();
+  });
+
+  it("generates current payables before sending reminders", async () => {
+    const { job, templateRepo } = buildDeps();
+    const dueTemplate = buildTemplate();
+    templateRepo.findDueForGeneration.mockResolvedValue([dueTemplate]);
+
+    const result = await job.run(new Date("2026-07-10T08:00:00.000Z"));
+
+    expect(result.generated).toBe(1);
+    expect(templateRepo.findDueForGeneration).toHaveBeenCalledWith(new Date("2026-07-10T08:00:00.000Z"));
   });
 });
