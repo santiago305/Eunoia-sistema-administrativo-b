@@ -15,6 +15,7 @@ import {
   RECURRING_PURCHASE_TEMPLATE_REPOSITORY,
   RecurringPurchaseTemplateRepository,
 } from "../../domain/ports/recurring-purchase-template.repository";
+import { RecurringPurchaseNotificationService } from "../services/recurring-purchase-notification.service";
 
 const RECURRING_PURCHASE_DUE_NOTIFICATION_PERMISSION = "recurring_purchases.receive_due_notifications";
 
@@ -31,6 +32,7 @@ export class GenerateCurrentPayableUsecase {
     private readonly historyRepo: Pick<Repository<PurchaseHistoryEventEntity>, "save">,
     private readonly notificationsService: NotificationsService,
     private readonly accessControlService: AccessControlService,
+    private readonly recurringPurchaseNotificationService: RecurringPurchaseNotificationService,
   ) {}
 
   async execute(input: { templateId: string; generatedByUserId?: string; now?: Date }) {
@@ -112,24 +114,15 @@ export class GenerateCurrentPayableUsecase {
         RECURRING_PURCHASE_DUE_NOTIFICATION_PERMISSION,
       );
       if (recipientUserIds.length) {
+        const notification = this.recurringPurchaseNotificationService.buildPayableCreatedNotification({
+          template,
+          purchaseId: purchase.poId,
+          accountPayableId: payable.accountPayableId,
+          periodKey,
+        });
         await this.notificationsService.createNotificationForUsers({
           recipientUserIds,
-          type: "RECURRING_PURCHASE_PAYABLE_CREATED",
-          category: "PURCHASES",
-          title: "Cuenta por pagar recurrente",
-          message: `Se genero ${template.name} por ${template.amount.toFixed(2)} ${template.currency}.`,
-          priority: "NORMAL",
-          actionUrl: "/compras/recurrentes",
-          actionLabel: "Ver recurrentes",
-          sourceModule: "recurring-purchases",
-          sourceEntityType: "recurring_purchase_template",
-          sourceEntityId: template.recurringPurchaseTemplateId,
-          metadata: {
-            recurringTemplateId: template.recurringPurchaseTemplateId,
-            purchaseId: purchase.poId,
-            accountPayableId: payable.accountPayableId,
-            periodKey,
-          },
+          ...notification,
         });
       }
 

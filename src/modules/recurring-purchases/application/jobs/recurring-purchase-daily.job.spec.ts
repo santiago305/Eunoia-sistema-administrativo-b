@@ -38,6 +38,25 @@ describe("RecurringPurchaseDailyJob", () => {
     const accessControlService = {
       getUserIdsWithPermission: jest.fn(async () => [notificationUserId]),
     };
+    const recurringPurchaseNotificationService = {
+      buildDueReminderNotification: jest.fn(() => ({
+        type: "RECURRING_PURCHASE_REMINDER",
+        category: "PURCHASES",
+        title: "Compra recurrente vence hoy",
+        message: "Hosting mensual vence hoy. Monto: PEN 120.00.",
+        priority: "URGENT",
+        actionUrl: "/compras/recurrentes",
+        actionLabel: "Ver o registrar pago",
+        sourceModule: "recurring-purchases",
+        sourceEntityType: "recurring_purchase_template",
+        sourceEntityId: templateId,
+        metadata: {
+          module: "recurring-purchases",
+          notificationKind: "due_reminder",
+          recurringTemplateId: templateId,
+        },
+      })),
+    };
 
     const job = new RecurringPurchaseDailyJob(
       templateRepo as any,
@@ -45,13 +64,27 @@ describe("RecurringPurchaseDailyJob", () => {
       notificationsService as any,
       reminderDeliveryRepo as any,
       accessControlService as any,
+      recurringPurchaseNotificationService as any,
     );
 
-    return { job, templateRepo, notificationsService, reminderDeliveryRepo, accessControlService };
+    return {
+      job,
+      templateRepo,
+      notificationsService,
+      reminderDeliveryRepo,
+      accessControlService,
+      recurringPurchaseNotificationService,
+    };
   };
 
   it("sends and records the due-day reminder once for the period", async () => {
-    const { job, notificationsService, reminderDeliveryRepo, accessControlService } = buildDeps();
+    const {
+      job,
+      notificationsService,
+      reminderDeliveryRepo,
+      accessControlService,
+      recurringPurchaseNotificationService,
+    } = buildDeps();
 
     const result = await job.run(new Date("2026-07-10T08:00:00.000Z"));
 
@@ -69,8 +102,18 @@ describe("RecurringPurchaseDailyJob", () => {
     expect(notificationsService.createNotificationForUsers).toHaveBeenCalledWith(
       expect.objectContaining({
         recipientUserIds: [notificationUserId],
+        title: "Compra recurrente vence hoy",
+        message: "Hosting mensual vence hoy. Monto: PEN 120.00.",
+        metadata: expect.objectContaining({
+          module: "recurring-purchases",
+          notificationKind: "due_reminder",
+        }),
       }),
     );
+    expect(recurringPurchaseNotificationService.buildDueReminderNotification).toHaveBeenCalledWith({
+      template: expect.objectContaining({ recurringPurchaseTemplateId: templateId }),
+      daysUntilDue: 0,
+    });
     expect(reminderDeliveryRepo.recordDelivery).toHaveBeenCalledWith({
       templateId,
       periodKey: "2026-07",

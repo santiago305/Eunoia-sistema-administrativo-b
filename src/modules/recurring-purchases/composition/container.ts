@@ -8,6 +8,7 @@ import { ResumeRecurringPurchaseUsecase } from "../application/usecases/resume-r
 import { CancelRecurringPurchaseUsecase } from "../application/usecases/cancel-recurring-purchase.usecase";
 import { GenerateCurrentPayableUsecase } from "../application/usecases/generate-current-payable.usecase";
 import { RecurringPurchaseDailyJob } from "../application/jobs/recurring-purchase-daily.job";
+import { RecurringPurchaseNotificationService } from "../application/services/recurring-purchase-notification.service";
 import { RECURRING_PURCHASE_TEMPLATE_REPOSITORY } from "../domain/ports/recurring-purchase-template.repository";
 import { RECURRING_PURCHASE_REMINDER_DELIVERY_REPOSITORY } from "../domain/ports/recurring-purchase-reminder-delivery.repository";
 import { UNIT_OF_WORK } from "src/shared/domain/ports/unit-of-work.port";
@@ -20,6 +21,7 @@ export const recurringPurchasesModuleProviders: Provider[] = [
   ResumeRecurringPurchaseUsecase,
   CancelRecurringPurchaseUsecase,
   GenerateCurrentPayableUsecase,
+  RecurringPurchaseNotificationService,
   RecurringPurchaseDailyJob,
   { provide: UNIT_OF_WORK, useClass: TypeormUnitOfWork },
   { provide: RECURRING_PURCHASE_TEMPLATE_REPOSITORY, useClass: RecurringPurchaseTemplateTypeormRepository },

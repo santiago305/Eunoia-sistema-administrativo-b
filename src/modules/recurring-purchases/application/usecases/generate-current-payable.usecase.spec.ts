@@ -38,6 +38,25 @@ describe("GenerateCurrentPayableUsecase", () => {
     const accessControlService = {
       getUserIdsWithPermission: jest.fn(async () => [notificationUserId]),
     };
+    const recurringPurchaseNotificationService = {
+      buildPayableCreatedNotification: jest.fn(() => ({
+        type: "RECURRING_PURCHASE_PAYABLE_CREATED",
+        category: "PURCHASES",
+        title: "Cuenta por pagar recurrente generada",
+        message: "Se genero la cuenta por pagar de Hosting mensual para el periodo 2026-06.",
+        priority: "NORMAL",
+        actionUrl: "/compras/recurrentes",
+        actionLabel: "Ver o registrar pago",
+        sourceModule: "recurring-purchases",
+        sourceEntityType: "recurring_purchase_template",
+        sourceEntityId: templateId,
+        metadata: {
+          module: "recurring-purchases",
+          notificationKind: "payable_created",
+          recurringTemplateId: templateId,
+        },
+      })),
+    };
     const uow = { runInTransaction: jest.fn((work) => work({})) };
 
     const usecase = new GenerateCurrentPayableUsecase(
@@ -48,13 +67,32 @@ describe("GenerateCurrentPayableUsecase", () => {
       historyRepo as any,
       notifications as any,
       accessControlService as any,
+      recurringPurchaseNotificationService as any,
     );
 
-    return { usecase, templateRepo, purchaseRepo, accountPayable, historyRepo, notifications, accessControlService };
+    return {
+      usecase,
+      templateRepo,
+      purchaseRepo,
+      accountPayable,
+      historyRepo,
+      notifications,
+      accessControlService,
+      recurringPurchaseNotificationService,
+    };
   };
 
   it("creates a recurring purchase and payable for the due period", async () => {
-    const { usecase, templateRepo, purchaseRepo, accountPayable, historyRepo, notifications, accessControlService } = buildDeps();
+    const {
+      usecase,
+      templateRepo,
+      purchaseRepo,
+      accountPayable,
+      historyRepo,
+      notifications,
+      accessControlService,
+      recurringPurchaseNotificationService,
+    } = buildDeps();
 
     const result = await usecase.execute({
       templateId,
@@ -96,8 +134,19 @@ describe("GenerateCurrentPayableUsecase", () => {
     expect(notifications.createNotificationForUsers).toHaveBeenCalledWith(
       expect.objectContaining({
         recipientUserIds: [notificationUserId],
+        title: "Cuenta por pagar recurrente generada",
+        metadata: expect.objectContaining({
+          module: "recurring-purchases",
+          notificationKind: "payable_created",
+        }),
       }),
     );
+    expect(recurringPurchaseNotificationService.buildPayableCreatedNotification).toHaveBeenCalledWith({
+      template: expect.objectContaining({ recurringPurchaseTemplateId: templateId }),
+      purchaseId: "33333333-3333-4333-8333-333333333333",
+      accountPayableId: "44444444-4444-4444-8444-444444444444",
+      periodKey: "2026-06",
+    });
   });
 
   it("does not generate twice for the same period", async () => {

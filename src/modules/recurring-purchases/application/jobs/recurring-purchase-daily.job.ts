@@ -11,6 +11,7 @@ import {
   RECURRING_PURCHASE_REMINDER_DELIVERY_REPOSITORY,
   RecurringPurchaseReminderDeliveryRepository,
 } from "../../domain/ports/recurring-purchase-reminder-delivery.repository";
+import { RecurringPurchaseNotificationService } from "../services/recurring-purchase-notification.service";
 
 const RECURRING_PURCHASE_DUE_NOTIFICATION_PERMISSION = "recurring_purchases.receive_due_notifications";
 
@@ -26,6 +27,7 @@ export class RecurringPurchaseDailyJob {
     @Inject(RECURRING_PURCHASE_REMINDER_DELIVERY_REPOSITORY)
     private readonly reminderDeliveryRepo: RecurringPurchaseReminderDeliveryRepository,
     private readonly accessControlService: AccessControlService,
+    private readonly recurringPurchaseNotificationService: RecurringPurchaseNotificationService,
   ) {}
 
   async run(now = new Date()) {
@@ -68,23 +70,13 @@ export class RecurringPurchaseDailyJob {
         RECURRING_PURCHASE_DUE_NOTIFICATION_PERMISSION,
       );
       if (!recipientUserIds.length) continue;
+      const notification = this.recurringPurchaseNotificationService.buildDueReminderNotification({
+        template,
+        daysUntilDue,
+      });
       await this.notificationsService.createNotificationForUsers({
         recipientUserIds,
-        type: "RECURRING_PURCHASE_REMINDER",
-        category: "PURCHASES",
-        title: "Recurrente por vencer",
-        message: `${template.name} vence en ${daysUntilDue} dia(s).`,
-        priority: daysUntilDue <= 1 ? "HIGH" : "NORMAL",
-        actionUrl: "/compras/recurrentes",
-        actionLabel: "Ver recurrentes",
-        sourceModule: "recurring-purchases",
-        sourceEntityType: "recurring_purchase_template",
-        sourceEntityId: template.recurringPurchaseTemplateId,
-        metadata: {
-          recurringTemplateId: template.recurringPurchaseTemplateId,
-          dueDate: template.nextDueDate,
-          daysUntilDue,
-        },
+        ...notification,
       });
       await this.reminderDeliveryRepo.recordDelivery({ ...reminderKey, sentAt: now });
       sent += 1;
