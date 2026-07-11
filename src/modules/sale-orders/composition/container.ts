@@ -40,6 +40,7 @@ import { CreateSourceUsecase } from "src/modules/sources/application/usecases/so
 import { SaleOrderWorkflowTransitionService } from "src/modules/workflow/application/services/sale-order-workflow-transition.service";
 import { SaleOrderWorkflowContextService } from "src/modules/workflow/application/services/sale-order-workflow-context.service";
 import { AdvanceSaleOrderStateUseCase } from "src/modules/workflow/application/usecases/advance-sale-order-state.usecase";
+import { AdvanceSaleOrderToTargetStateUseCase } from "src/modules/workflow/application/usecases/advance-sale-order-to-target-state.usecase";
 import { AssignSaleOrderWorkflowUseCase } from "src/modules/workflow/application/usecases/assign-sale-order-workflow.usecase";
 import { GetAvailableTransitionsUseCase } from "src/modules/workflow/application/usecases/get-available-transitions.usecase";
 import { GetOrderTimelineUseCase } from "src/modules/workflow/application/usecases/get-order-timeline.usecase";
@@ -91,6 +92,7 @@ export const saleOrdersModuleProviders = [
   SaleOrderWorkflowContextService,
   SaleOrderWorkflowTransitionService,
   AdvanceSaleOrderStateUseCase,
+  AdvanceSaleOrderToTargetStateUseCase,
   AssignSaleOrderWorkflowUseCase,
   GetAvailableTransitionsUseCase,
   GetOrderTimelineUseCase,

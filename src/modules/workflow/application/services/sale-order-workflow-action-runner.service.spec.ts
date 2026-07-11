@@ -268,4 +268,32 @@ describe("SaleOrderWorkflowActionRunnerService", () => {
     expect(requirements.resolve).not.toHaveBeenCalled();
     expect(inventory.incrementReserved).not.toHaveBeenCalled();
   });
+
+  it("replays only the recorded transition branch when checking active reservations", async () => {
+    const { runner, inventory, requirements, history, transitions } = setup(
+      { available: 0, reserved: 10, onHand: 10 },
+      { hasActiveReservation: false },
+    );
+    history.listBySaleOrderId.mockResolvedValue([
+      {
+        transitionId: "reserve-transition",
+        metadata: { branch: "THEN" },
+      },
+    ]);
+    transitions.findDetailedById.mockResolvedValue({
+      actions: [
+        { type: "RESERVE_STOCK", position: 0, branch: "ELSE" },
+        { type: "MARK_INVOICE_SENT", position: 1, branch: "THEN" },
+      ],
+    });
+
+    await runner.run(
+      order,
+      [{ id: "a1", transitionId: "t1", type: "REVERT_STOCK", config: {}, position: 0 } as any],
+      tx,
+    );
+
+    expect(requirements.resolve).not.toHaveBeenCalled();
+    expect(inventory.incrementReserved).not.toHaveBeenCalled();
+  });
 });

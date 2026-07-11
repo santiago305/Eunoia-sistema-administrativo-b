@@ -136,19 +136,31 @@ describe("SaleOrdersController", () => {
       type: "success",
       message: "Operacion masiva procesada",
       data: {
+        targetStateId: "33333333-3333-4333-8333-333333333333",
         requested: 2,
         succeeded: 1,
         failed: 1,
+        partiallyCompleted: 1,
         results: [
           {
             saleOrderId: "11111111-1111-4111-8111-111111111111",
+            targetStateId: "33333333-3333-4333-8333-333333333333",
             status: "success",
+            initialState: { workflowStateId: "state-1", saleOrderStateId: "global-created", code: "CREATED", name: "Creado" },
+            finalState: { workflowStateId: "state-2", saleOrderStateId: "global-packed", code: "PACKED", name: "Empacado" },
+            completedTransitions: [{ transitionId: "transition-1" }],
             warnings: ["w1"],
           },
           {
             saleOrderId: "22222222-2222-4222-8222-222222222222",
+            targetStateId: "33333333-3333-4333-8333-333333333333",
             status: "failed",
-            message: "Transicion no disponible",
+            message: "El DNI del cliente es obligatorio",
+            initialState: { workflowStateId: "state-1", saleOrderStateId: "global-created", code: "CREATED", name: "Creado" },
+            finalState: { workflowStateId: "state-2", saleOrderStateId: "global-packed", code: "PACKED", name: "Empacado" },
+            completedTransitions: [{ transitionId: "transition-2" }],
+            warnings: [],
+            failure: { code: "CONDITION_FAILED", message: "El DNI del cliente es obligatorio" },
           },
         ],
       },
@@ -748,35 +760,37 @@ describe("SaleOrdersController", () => {
     );
   });
 
-  it("bulk changes workflow state with current user and notifies only successful rows", async () => {
+  it("bulk changes workflow state to one global target and notifies changed rows once", async () => {
     const firstId = "11111111-1111-4111-8111-111111111111";
     const secondId = "22222222-2222-4222-8222-222222222222";
-    const transitionId = "33333333-3333-4333-8333-333333333333";
+    const targetStateId = "33333333-3333-4333-8333-333333333333";
 
     const response = await request(app.getHttpServer())
       .post("/sale-orders/bulk/change-state")
       .send({
         saleOrderIds: [firstId, secondId],
-        transitionId,
-        metadata: { source: "ux" },
+        targetStateId,
       })
       .expect(201);
 
     expect(bulkChangeSaleOrderState.execute).toHaveBeenCalledWith({
       saleOrderIds: [firstId, secondId],
-      transitionId,
-      metadata: { source: "ux" },
+      targetStateId,
       executedBy: "user-1",
     });
-    expect(automaticWorkflow.evaluateAndNotify).toHaveBeenCalledWith(
+    expect(automaticWorkflow.evaluateAndNotify).not.toHaveBeenCalledWith(
       firstId,
       SaleOrderAutomaticWorkflowTriggerEnum.WORKFLOW_STATE_CHANGED,
     );
-    expect(automaticWorkflow.evaluateAndNotify).not.toHaveBeenCalledWith(
-      secondId,
-      SaleOrderAutomaticWorkflowTriggerEnum.WORKFLOW_STATE_CHANGED,
+    expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
+      "sale-orders.updated",
+      expect.objectContaining({
+        saleOrderIds: [firstId, secondId],
+        source: "sale-orders-bulk-target-state",
+      }),
     );
     expect(response.body.data.succeeded).toBe(1);
+    expect(response.body.data.partiallyCompleted).toBe(1);
   });
 
   it("forwards order id to get usecase", async () => {

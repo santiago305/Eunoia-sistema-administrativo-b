@@ -14,6 +14,7 @@ export type ConditionEvaluation = {
   passed: boolean;
   type: WorkflowConditionType;
   reason?: string;
+  details?: Record<string, unknown>;
 };
 
 export interface Condition {

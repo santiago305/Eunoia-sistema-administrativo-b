@@ -95,10 +95,34 @@ export class SaleOrderWorkflowTransitionService {
     });
 
     if (!decision.allowed) {
-      throw new UnprocessableEntityException({ failures: decision.failures });
+      throw new UnprocessableEntityException({
+        type: "workflow_transition_condition_failed",
+        message: "La transicion no cumple sus condiciones",
+        details: {
+          code: "CONDITION_FAILED",
+          transitionId: transitionBundle.transition.id,
+          failures: decision.failures,
+        },
+      });
     }
 
-    const actionResult = await this.actionRunner.run(order, transitionBundle.actions, tx);
+    const branch = "THEN";
+    const actions = transitionBundle.actions.filter((action) => action.branch === branch);
+    let actionResult;
+    try {
+      actionResult = await this.actionRunner.run(order, actions, tx);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error al ejecutar acciones de workflow";
+      throw new UnprocessableEntityException({
+        type: "workflow_transition_action_failed",
+        message,
+        details: {
+          code: "ACTION_FAILED",
+          transitionId: transitionBundle.transition.id,
+          actionTypes: actions.map((action) => action.type),
+        },
+      });
+    }
 
     const updated = isActionOnly
       ? actionResult.order
@@ -122,6 +146,7 @@ export class SaleOrderWorkflowTransitionService {
         executedAt: this.clock.now(),
         metadata: {
           ...(input.metadata ?? {}),
+          branch,
           actionOutcomes: actionResult.outcomes,
         },
       }),

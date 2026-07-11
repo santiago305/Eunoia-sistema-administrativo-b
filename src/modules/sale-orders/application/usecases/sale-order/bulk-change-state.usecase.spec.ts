@@ -1,45 +1,138 @@
-import { BadRequestException } from "@nestjs/common";
 import { BulkChangeSaleOrderStateUsecase } from "./bulk-change-state.usecase";
 
 describe("BulkChangeSaleOrderStateUsecase", () => {
-  it("advances each order and keeps row failures isolated", async () => {
-    const advance = {
+  const state = (suffix: string) => ({
+    workflowStateId: `workflow-state-${suffix}`,
+    saleOrderStateId: `global-state-${suffix}`,
+    code: suffix.toUpperCase(),
+    name: suffix,
+  });
+
+  const completed = (suffix: string) => ({
+    transitionId: `transition-${suffix}`,
+    code: suffix.toUpperCase(),
+    name: suffix,
+    fromState: state("created"),
+    toState: state(suffix),
+    warnings: [],
+    actionOutcomes: [],
+  });
+
+  it("processes every order independently toward one global target", async () => {
+    const advanceToTarget = {
       execute: jest
         .fn()
-        .mockResolvedValueOnce({ order: { id: "order-1" }, warnings: ["w1"] })
-        .mockRejectedValueOnce(new BadRequestException("Transicion no disponible")),
+        .mockResolvedValueOnce({
+          saleOrderId: "order-1",
+          targetStateId: "global-state-delivered",
+          status: "success",
+          initialState: state("created"),
+          finalState: state("delivered"),
+          completedTransitions: [completed("delivered")],
+          warnings: ["w1"],
+        })
+        .mockResolvedValueOnce({
+          saleOrderId: "order-2",
+          targetStateId: "global-state-delivered",
+          status: "failed",
+          message: "No existe una ruta al estado destino en el flujo del pedido",
+          initialState: state("created"),
+          finalState: state("created"),
+          completedTransitions: [],
+          warnings: [],
+          failure: {
+            code: "ROUTE_NOT_FOUND",
+            message: "No existe una ruta al estado destino en el flujo del pedido",
+          },
+        }),
     };
-    const usecase = new BulkChangeSaleOrderStateUsecase(advance as any);
+    const usecase = new BulkChangeSaleOrderStateUsecase(advanceToTarget as any);
 
     const result = await usecase.execute({
       saleOrderIds: ["order-1", "order-2"],
-      transitionId: "transition-1",
-      metadata: { source: "bulk-action" },
+      targetStateId: "global-state-delivered",
       executedBy: "user-1",
     });
 
-    expect(advance.execute).toHaveBeenNthCalledWith(1, {
+    expect(advanceToTarget.execute).toHaveBeenNthCalledWith(1, {
       saleOrderId: "order-1",
-      transitionId: "transition-1",
-      metadata: { source: "bulk-action" },
+      targetStateId: "global-state-delivered",
       executedBy: "user-1",
     });
-    expect(advance.execute).toHaveBeenNthCalledWith(2, {
+    expect(advanceToTarget.execute).toHaveBeenNthCalledWith(2, {
       saleOrderId: "order-2",
-      transitionId: "transition-1",
-      metadata: { source: "bulk-action" },
+      targetStateId: "global-state-delivered",
       executedBy: "user-1",
     });
     expect(result.data).toEqual({
+      targetStateId: "global-state-delivered",
       requested: 2,
       succeeded: 1,
       failed: 1,
+      partiallyCompleted: 0,
       results: [
-        { saleOrderId: "order-1", status: "success", warnings: ["w1"] },
+        {
+          saleOrderId: "order-1",
+          targetStateId: "global-state-delivered",
+          status: "success",
+          initialState: state("created"),
+          finalState: state("delivered"),
+          completedTransitions: [completed("delivered")],
+          warnings: ["w1"],
+        },
         {
           saleOrderId: "order-2",
+          targetStateId: "global-state-delivered",
           status: "failed",
-          message: "Transicion no disponible",
+          message: "No existe una ruta al estado destino en el flujo del pedido",
+          initialState: state("created"),
+          finalState: state("created"),
+          completedTransitions: [],
+          warnings: [],
+          failure: {
+            code: "ROUTE_NOT_FOUND",
+            message: "No existe una ruta al estado destino en el flujo del pedido",
+          },
+        },
+      ],
+    });
+  });
+
+  it("counts partially completed failed routes separately", async () => {
+    const advanceToTarget = {
+      execute: jest.fn().mockResolvedValueOnce({
+        saleOrderId: "order-1",
+        targetStateId: "global-state-delivered",
+        status: "failed",
+        message: "El DNI del cliente es obligatorio",
+        initialState: state("created"),
+        finalState: state("packed"),
+        completedTransitions: [completed("packed")],
+        warnings: [],
+        failure: {
+          code: "CONDITION_FAILED",
+          message: "El DNI del cliente es obligatorio",
+        },
+      }),
+    };
+    const usecase = new BulkChangeSaleOrderStateUsecase(advanceToTarget as any);
+
+    const result = await usecase.execute({
+      saleOrderIds: ["order-1"],
+      targetStateId: "global-state-delivered",
+      executedBy: "user-1",
+    });
+
+    expect(result.data).toMatchObject({
+      requested: 1,
+      succeeded: 0,
+      failed: 1,
+      partiallyCompleted: 1,
+      results: [
+        {
+          saleOrderId: "order-1",
+          status: "failed",
+          completedTransitions: [completed("packed")],
         },
       ],
     });

@@ -61,7 +61,10 @@ export class SaleOrderWorkflowActionRunnerService {
     for (const entry of history) {
       if (!entry.transitionId) continue;
       const transition = await this.transitionRepo.findDetailedById(entry.transitionId, tx);
-      const actions = [...(transition?.actions ?? [])].sort((a, b) => a.position - b.position);
+      const branch = entry.metadata?.branch === "ELSE" ? "ELSE" : "THEN";
+      const actions = [...(transition?.actions ?? [])]
+        .filter((action) => (action.branch ?? "THEN") === branch)
+        .sort((a, b) => a.position - b.position);
       for (const action of actions) {
         if (action.type === ACTIONS.RESERVE_STOCK) {
           active = true;
