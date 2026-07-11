@@ -27,9 +27,14 @@ const makeRow = () =>
 
 const createQueryBuilder = (rows = [makeRow()]) => {
   const qb = {
+    leftJoin: jest.fn().mockReturnThis(),
     where: jest.fn().mockReturnThis(),
     andWhere: jest.fn().mockReturnThis(),
     orderBy: jest.fn().mockReturnThis(),
+    addOrderBy: jest.fn().mockReturnThis(),
+    skip: jest.fn().mockReturnThis(),
+    take: jest.fn().mockReturnThis(),
+    getManyAndCount: jest.fn(async () => [rows, rows.length]),
     getMany: jest.fn(async () => rows),
   };
   return qb;
@@ -60,5 +65,71 @@ describe("RecurringPurchaseTemplateTypeormRepository", () => {
     expect(qb.orderBy).toHaveBeenCalledWith("template.nextDueDate", "ASC");
     expect(result).toHaveLength(1);
     expect(result[0].recurringPurchaseTemplateId).toBe("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+  });
+
+  it("applies smart filters, search text and defaults pagination to 25", async () => {
+    const qb = createQueryBuilder();
+    const ormRepo = {
+      manager: {
+        getRepository: jest.fn(() => ormRepo),
+      },
+      createQueryBuilder: jest.fn(() => qb),
+    };
+    const repository = new RecurringPurchaseTemplateTypeormRepository(ormRepo as any);
+
+    const result = await repository.list({
+      q: "hosting",
+      filters: [
+        {
+          field: "supplierId",
+          operator: "in",
+          values: ["11111111-1111-4111-8111-111111111111"],
+        },
+        {
+          field: "nextDueDate",
+          operator: "between",
+          range: { start: "2026-07-01", end: "2026-07-31" },
+        },
+        {
+          field: "amount",
+          operator: "gte",
+          value: "100",
+        },
+        {
+          field: "paymentStatus",
+          operator: "in",
+          values: ["PENDING", "PARTIAL"],
+        },
+      ],
+    });
+
+    expect(qb.leftJoin).toHaveBeenCalledWith(
+      "accounts_payable",
+      "payable",
+      "payable.account_payable_id = template.last_generated_account_payable_id",
+    );
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      expect.stringContaining("template.supplierId"),
+      expect.objectContaining({ filter_0_values: ["11111111-1111-4111-8111-111111111111"] }),
+    );
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      expect.stringContaining("template.nextDueDate BETWEEN"),
+      expect.objectContaining({ filter_1_start: "2026-07-01", filter_1_end: "2026-07-31" }),
+    );
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      expect.stringContaining("template.amount >="),
+      expect.objectContaining({ filter_2_value: 100 }),
+    );
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      expect.stringContaining("payable.status"),
+      expect.objectContaining({ filter_3_values: ["PENDING", "PARTIAL"] }),
+    );
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      expect.stringContaining("template.name ILIKE"),
+      expect.objectContaining({ q: "%hosting%" }),
+    );
+    expect(qb.skip).toHaveBeenCalledWith(0);
+    expect(qb.take).toHaveBeenCalledWith(25);
+    expect(result.limit).toBe(25);
   });
 });

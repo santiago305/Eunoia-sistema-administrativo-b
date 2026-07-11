@@ -1,9 +1,9 @@
 import { Inject } from "@nestjs/common";
 import {
   RECURRING_PURCHASE_TEMPLATE_REPOSITORY,
+  RecurringPurchaseTemplateListParams,
   RecurringPurchaseTemplateRepository,
 } from "../../domain/ports/recurring-purchase-template.repository";
-import { RecurringStatus } from "../../domain/value-objects/recurring-status";
 import { toRecurringPurchaseOutput } from "../mappers/recurring-purchase-output.mapper";
 
 export class ListRecurringPurchasesUsecase {
@@ -12,8 +12,14 @@ export class ListRecurringPurchasesUsecase {
     private readonly repo: RecurringPurchaseTemplateRepository,
   ) {}
 
-  async execute(input: { status?: RecurringStatus; page?: number; limit?: number }) {
-    const result = await this.repo.list(input);
+  async execute(input: RecurringPurchaseTemplateListParams) {
+    const page = input.page && input.page > 0 ? input.page : 1;
+    const limit = input.limit && input.limit > 0 ? input.limit : 25;
+    const result = await this.repo.list({
+      ...input,
+      page,
+      limit,
+    });
     const totalPages = Math.max(Math.ceil(result.total / result.limit), 1);
     return {
       items: result.items.map(toRecurringPurchaseOutput),
