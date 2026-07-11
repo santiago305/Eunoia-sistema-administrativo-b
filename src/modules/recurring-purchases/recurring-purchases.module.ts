@@ -3,6 +3,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { AccountsPayableModule } from "src/modules/accounts-payable";
 import { AccessControlModule } from "src/modules/access-control/infrastructure/access-control.module";
 import { MailModule } from "src/modules/mail";
+import { PaymentsModule } from "src/modules/payments/payments.module";
 import { PurchaseHistoryEventEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-history-event.entity";
 import { PurchasesModule } from "src/modules/purchases/infrastructure/purchases.module";
 import { RecurringPurchasesController } from "./adapters/in/controllers/recurring-purchases.controller";
@@ -19,6 +20,7 @@ import { recurringPurchasesModuleProviders } from "./composition/container";
     ]),
     PurchasesModule,
     AccountsPayableModule,
+    PaymentsModule,
     MailModule,
     AccessControlModule,
   ],

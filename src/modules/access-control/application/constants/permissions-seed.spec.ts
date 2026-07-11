@@ -61,6 +61,8 @@ describe("permissions seed", () => {
       "recurring_purchases.cancel",
       "recurring_purchases.pay",
       "recurring_purchases.receive_due_notifications",
+      "recurring_purchases.register_payment",
+      "recurring_purchases.upload_payment_evidence",
       "purchases_dashboard.view",
       "purchases_dashboard.view_costs",
       "purchases_dashboard.view_payments",

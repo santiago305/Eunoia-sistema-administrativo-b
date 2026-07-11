@@ -10,8 +10,10 @@ import { PauseRecurringPurchaseUsecase } from "../../../application/usecases/pau
 import { ResumeRecurringPurchaseUsecase } from "../../../application/usecases/resume-recurring-purchase.usecase";
 import { CancelRecurringPurchaseUsecase } from "../../../application/usecases/cancel-recurring-purchase.usecase";
 import { GenerateCurrentPayableUsecase } from "../../../application/usecases/generate-current-payable.usecase";
+import { RegisterRecurringPurchasePaymentUsecase } from "../../../application/usecases/register-recurring-purchase-payment.usecase";
 import { HttpRecurringPurchaseCreateDto } from "../dtos/http-recurring-purchase-create.dto";
 import { HttpRecurringPurchaseListDto } from "../dtos/http-recurring-purchase-list.dto";
+import { HttpRecurringPurchasePaymentDto } from "../dtos/http-recurring-purchase-payment.dto";
 
 @Controller("recurring-purchases")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
@@ -23,6 +25,7 @@ export class RecurringPurchasesController {
     private readonly resumeRecurringPurchase: ResumeRecurringPurchaseUsecase,
     private readonly cancelRecurringPurchase: CancelRecurringPurchaseUsecase,
     private readonly generateCurrentPayable: GenerateCurrentPayableUsecase,
+    private readonly registerRecurringPayment: RegisterRecurringPurchasePaymentUsecase,
   ) {}
 
   @RequirePermissions("recurring_purchases.view")
@@ -64,5 +67,19 @@ export class RecurringPurchasesController {
   @Post(":id/generate-current-payable")
   generate(@Param("id", ParseUUIDPipe) id: string, @CurrentUser() user: { id: string }) {
     return this.generateCurrentPayable.execute({ templateId: id, generatedByUserId: user.id });
+  }
+
+  @RequirePermissions("recurring_purchases.register_payment")
+  @Post(":id/register-payment")
+  registerPayment(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: HttpRecurringPurchasePaymentDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.registerRecurringPayment.execute({
+      templateId: id,
+      userId: user.id,
+      payment: dto,
+    });
   }
 }
