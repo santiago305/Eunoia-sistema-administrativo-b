@@ -112,6 +112,14 @@ export class SaleOrdersController {
       .map((row) => row.saleOrderId);
   }
 
+  private getChangedSaleOrderIds(result: {
+    data?: { results?: Array<{ saleOrderId: string; completedTransitions?: unknown[] }> };
+  }) {
+    return (result.data?.results ?? [])
+      .filter((row) => (row.completedTransitions?.length ?? 0) > 0)
+      .map((row) => row.saleOrderId);
+  }
+
   private async evaluateAutomaticWorkflowThenNotify(
     saleOrderId: string,
     trigger: SaleOrderAutomaticWorkflowTriggerEnum,
@@ -271,26 +279,15 @@ export class SaleOrdersController {
   ) {
     const result = await this.bulkChangeSaleOrderState.execute({
       saleOrderIds: body.saleOrderIds,
-      transitionId: body.transitionId,
-      metadata: body.metadata,
+      targetStateId: body.targetStateId,
       executedBy: user.id,
     });
 
-    const successfulIdsWithoutAutomaticWorkflow: string[] = [];
-    for (const saleOrderId of this.getSuccessfulSaleOrderIds(result)) {
-      const automaticResult = await this.automaticWorkflow.evaluateAndNotify(
-        saleOrderId,
-        SaleOrderAutomaticWorkflowTriggerEnum.WORKFLOW_STATE_CHANGED,
-      );
-      if (!automaticResult.updated) {
-        successfulIdsWithoutAutomaticWorkflow.push(saleOrderId);
-      }
-    }
-
-    if (successfulIdsWithoutAutomaticWorkflow.length) {
+    const changedSaleOrderIds = this.getChangedSaleOrderIds(result);
+    if (changedSaleOrderIds.length) {
       await this.notifySaleOrdersUpdated(
-        successfulIdsWithoutAutomaticWorkflow,
-        SaleOrderAutomaticWorkflowTriggerEnum.WORKFLOW_STATE_CHANGED,
+        changedSaleOrderIds,
+        "sale-orders-bulk-target-state",
       );
     }
 

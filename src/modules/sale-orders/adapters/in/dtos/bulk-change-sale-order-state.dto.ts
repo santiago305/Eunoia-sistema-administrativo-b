@@ -1,4 +1,4 @@
-import { ArrayMinSize, IsArray, IsObject, IsOptional, IsUUID } from "class-validator";
+import { ArrayMinSize, IsArray, IsUUID } from "class-validator";
 
 export class BulkChangeSaleOrderStateDto {
   @IsArray()
@@ -7,9 +7,5 @@ export class BulkChangeSaleOrderStateDto {
   saleOrderIds: string[];
 
   @IsUUID()
-  transitionId: string;
-
-  @IsOptional()
-  @IsObject()
-  metadata?: Record<string, unknown>;
+  targetStateId: string;
 }
