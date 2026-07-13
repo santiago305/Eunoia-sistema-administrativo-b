@@ -11,6 +11,7 @@ import { ListPaymentsUsecase } from "src/modules/payments/application/usecases/p
 import { PaymentsHttpMapper } from "src/modules/payments/application/mappers/payments-http.mapper";
 import { HttpCreatePaymentDto } from "../dtos/payment/http-payment-create.dto";
 import { HttpListPaymentsQueryDto } from "../dtos/payment/http-payment-list.dto";
+import { HttpCreatePaymentSearchMetricDto } from "../dtos/payment/http-payment-search-metric-create.dto";
 import { User as CurrentUser } from "src/shared/utilidades/decorators/user.decorator";
 import { AccessControlService } from "src/modules/access-control/application/services/access-control.service";
 import { NotificationsService } from "src/modules/mail/application/use-cases/notifications.service";
@@ -24,6 +25,10 @@ import { PurchaseOrderEntity } from "src/modules/purchases/adapters/out/persiste
 import { CREDIT_QUOTA_REPOSITORY, CreditQuotaRepository } from "src/modules/payments/domain/ports/credit-quota.repository";
 import { Inject } from "@nestjs/common";
 import { RecalculateAccountPayableUsecase } from "src/modules/accounts-payable";
+import { GetPaymentSearchStateUsecase } from "src/modules/payments/application/usecases/payment-search/get-state.usecase";
+import { SavePaymentSearchMetricUsecase } from "src/modules/payments/application/usecases/payment-search/save-metric.usecase";
+import { DeletePaymentSearchMetricUsecase } from "src/modules/payments/application/usecases/payment-search/delete-metric.usecase";
+import { sanitizePaymentSearchSnapshot } from "src/modules/payments/application/support/payment-search.utils";
 
 @Controller("payments")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
@@ -34,6 +39,9 @@ export class PaymentsController {
     private readonly getPayment: GetPaymentUsecase,
     private readonly getPaymentsByPoId: GetPaymentsByPoIdUsecase,
     private readonly listPayments: ListPaymentsUsecase,
+    private readonly getSearchState: GetPaymentSearchStateUsecase,
+    private readonly saveSearchMetric: SavePaymentSearchMetricUsecase,
+    private readonly deleteSearchMetric: DeletePaymentSearchMetricUsecase,
     private readonly accessControlService: AccessControlService,
     private readonly notificationsService: NotificationsService,
     @InjectRepository(PaymentDocumentEntity)
@@ -308,6 +316,37 @@ export class PaymentsController {
     }
 
     return { type: "success", message: "Pago rechazado correctamente" };
+  }
+
+  @RequirePermissions("payments.read")
+  @Get("search-state")
+  getSearchStateForUser(@CurrentUser() user: { id: string }) {
+    return this.getSearchState.execute(user.id);
+  }
+
+  @RequirePermissions("payments.read")
+  @Post("search-metrics")
+  saveMetric(
+    @Body() dto: HttpCreatePaymentSearchMetricDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.saveSearchMetric.execute({
+      userId: user.id,
+      name: dto.name,
+      snapshot: sanitizePaymentSearchSnapshot({
+        q: dto.snapshot?.q,
+        filters: dto.snapshot?.filters,
+      }),
+    });
+  }
+
+  @RequirePermissions("payments.read")
+  @Delete("search-metrics/:metricId")
+  deleteMetric(
+    @Param("metricId", ParseUUIDPipe) metricId: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.deleteSearchMetric.execute(user.id, metricId);
   }
 
   @RequirePermissions("payments.read")

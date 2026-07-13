@@ -17,10 +17,22 @@ import { PurchaseHistoryEventEntity } from "src/modules/purchases/adapters/out/p
 import { PurchaseOrderEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-order.entity";
 import { MailModule } from "src/modules/mail";
 import { AccountsPayableModule } from "src/modules/accounts-payable";
+import { ListingSearchMetricEntity } from "src/shared/listing-search/adapters/out/persistence/typeorm/entities/listing-search-metric.entity";
+import { ListingSearchRecentEntity } from "src/shared/listing-search/adapters/out/persistence/typeorm/entities/listing-search-recent.entity";
+import { PaymentMethodEntity } from "src/modules/payment-methods/adapters/out/persistence/typeorm/entities/payment-method.entity";
+import { CompanyPaymentAccountEntity } from "src/modules/company-payment-accounts/adapters/out/persistence/typeorm/entities/company-payment-account.entity";
+import { PAYMENT_SEARCH } from "./domain/ports/payment-search.repository";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([PaymentDocumentEntity, CreditQuotaEntity]),
+    TypeOrmModule.forFeature([
+      PaymentDocumentEntity,
+      CreditQuotaEntity,
+      ListingSearchRecentEntity,
+      ListingSearchMetricEntity,
+      PaymentMethodEntity,
+      CompanyPaymentAccountEntity,
+    ]),
     TypeOrmModule.forFeature([
       ApprovalRequestEntity,
       PurchaseHistoryEventEntity,
@@ -38,6 +50,7 @@ import { AccountsPayableModule } from "src/modules/accounts-payable";
     CreateCreditQuotaUsecase,
     PAYMENT_DOCUMENT_REPOSITORY,
     CREDIT_QUOTA_REPOSITORY,
+    PAYMENT_SEARCH,
     CLOCK,
   ],
 })

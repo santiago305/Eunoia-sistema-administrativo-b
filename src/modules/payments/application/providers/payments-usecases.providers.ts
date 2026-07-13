@@ -9,6 +9,9 @@ import { DeletePaymentUsecase } from "../usecases/payment/delete.usecase";
 import { GetPaymentUsecase } from "../usecases/payment/get-by-id.usecase";
 import { GetPaymentsByPoIdUsecase } from "../usecases/payment/get-by-po-id.usecase";
 import { ListPaymentsUsecase } from "../usecases/payment/list.usecase";
+import { DeletePaymentSearchMetricUsecase } from "../usecases/payment-search/delete-metric.usecase";
+import { GetPaymentSearchStateUsecase } from "../usecases/payment-search/get-state.usecase";
+import { SavePaymentSearchMetricUsecase } from "../usecases/payment-search/save-metric.usecase";
 
 export const paymentsUsecasesProviders: Provider[] = [
   CreatePaymentUsecase,
@@ -16,6 +19,9 @@ export const paymentsUsecasesProviders: Provider[] = [
   GetPaymentUsecase,
   GetPaymentsByPoIdUsecase,
   ListPaymentsUsecase,
+  GetPaymentSearchStateUsecase,
+  SavePaymentSearchMetricUsecase,
+  DeletePaymentSearchMetricUsecase,
   CreateCreditQuotaUsecase,
   DeleteCreditQuotaUsecase,
   GetCreditQuotaUsecase,
