@@ -113,7 +113,12 @@ export class CompanyPaymentAccountTypeormRepository implements CompanyPaymentAcc
   }
 
   async setActive(id: string, isActive: boolean, tx?: TransactionContext): Promise<void> {
-    await this.getRepo(tx).update({ id }, { isActive });
+    const repo = this.getRepo(tx);
+    const existing = await repo.findOne({ where: { id } });
+    if (!existing) return;
+
+    existing.isActive = isActive;
+    await repo.save(existing);
   }
 
   async clearDefaultForCompany(companyId: string, exceptId?: string, tx?: TransactionContext): Promise<void> {

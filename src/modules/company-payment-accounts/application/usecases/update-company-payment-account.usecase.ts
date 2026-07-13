@@ -12,7 +12,7 @@ export class UpdateCompanyPaymentAccountUsecase {
     private readonly accountRepo: CompanyPaymentAccountRepository,
   ) {}
 
-  async execute(input: Parameters<CompanyPaymentAccountRepository["update"]>[0]) {
+  async execute(input: Parameters<CompanyPaymentAccountRepository["update"]>[0] & { includeSensitive?: boolean }) {
     const current = await this.accountRepo.findById(input.id);
     if (!current) throw new NotFoundException("Cuenta de pago no encontrada");
     if (input.isDefault) {
@@ -21,6 +21,11 @@ export class UpdateCompanyPaymentAccountUsecase {
 
     const updated = await this.accountRepo.update(input);
     if (!updated) throw new NotFoundException("Cuenta de pago no encontrada");
-    return successResponse("Cuenta de pago actualizada correctamente", CompanyPaymentAccountOutputMapper.toOutput(updated));
+    return successResponse(
+      "Cuenta de pago actualizada correctamente",
+      CompanyPaymentAccountOutputMapper.toOutput(updated, {
+        includeSensitive: input.includeSensitive,
+      }),
+    );
   }
 }

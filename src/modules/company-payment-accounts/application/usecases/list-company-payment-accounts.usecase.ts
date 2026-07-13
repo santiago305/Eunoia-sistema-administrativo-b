@@ -11,8 +11,14 @@ export class ListCompanyPaymentAccountsUsecase {
     private readonly accountRepo: CompanyPaymentAccountRepository,
   ) {}
 
-  async execute(input: { companyId: string }) {
+  async execute(input: { companyId: string; includeSensitive?: boolean }) {
     const items = await this.accountRepo.listByCompany(input.companyId);
-    return { items: items.map(CompanyPaymentAccountOutputMapper.toOutput) };
+    return {
+      items: items.map((account) =>
+        CompanyPaymentAccountOutputMapper.toOutput(account, {
+          includeSensitive: input.includeSensitive,
+        }),
+      ),
+    };
   }
 }

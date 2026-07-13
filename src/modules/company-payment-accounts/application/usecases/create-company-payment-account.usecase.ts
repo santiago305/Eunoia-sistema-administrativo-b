@@ -21,6 +21,7 @@ export type CreateCompanyPaymentAccountInput = {
   currency: CurrencyType;
   isActive?: boolean;
   isDefault?: boolean;
+  includeSensitive?: boolean;
 };
 
 export class CreateCompanyPaymentAccountUsecase {
@@ -55,7 +56,12 @@ export class CreateCompanyPaymentAccountUsecase {
       }
 
       const saved = await this.accountRepo.create(account, tx);
-      return successResponse("Cuenta de pago creada correctamente", CompanyPaymentAccountOutputMapper.toOutput(saved));
+      return successResponse(
+        "Cuenta de pago creada correctamente",
+        CompanyPaymentAccountOutputMapper.toOutput(saved, {
+          includeSensitive: input.includeSensitive,
+        }),
+      );
     });
   }
 }
