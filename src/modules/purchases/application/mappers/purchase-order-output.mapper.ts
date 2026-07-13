@@ -1,5 +1,6 @@
 import { CreditQuotaOutput } from "src/modules/payments/application/dtos/credit-quota/output/credit-quota.output";
 import { PaymentOutput } from "src/modules/payments/application/dtos/payment/output/payment.output";
+import { PaymentOutputMapper } from "src/modules/payments/application/mappers/payment-output.mapper";
 import { CreditQuota } from "src/modules/payments/domain/entity/credit-quota";
 import { PaymentDocument } from "src/modules/payments/domain/entity/payment-document";
 import { PurchaseOrderItem } from "../../domain/entities/purchase-order-item";
@@ -85,25 +86,7 @@ export class PurchaseOrderOutputMapper {
   }
 
   static toPaymentOutput(row: PaymentDocument): PaymentOutput {
-    return {
-      payDocId: row.payDocId,
-      method: row.method,
-      date: row.date,
-      operationNumber: row.operationNumber ?? null,
-      currency: row.currency,
-      amount: row.amount,
-      note: row.note ?? null,
-      fromDocumentType: row.fromDocumentType,
-      poId: row.poId ?? "",
-      quotaId: row.quotaId ?? null,
-      status: row.status,
-      requestedByUserId: row.requestedByUserId ?? null,
-      approvedByUserId: row.approvedByUserId ?? null,
-      rejectedByUserId: row.rejectedByUserId ?? null,
-      approvedAt: row.approvedAt ?? null,
-      rejectedAt: row.rejectedAt ?? null,
-      rejectionReason: row.rejectionReason ?? null,
-    };
+    return PaymentOutputMapper.toOutput(row);
   }
 
   static toQuotaOutput(row: CreditQuota): CreditQuotaOutput {

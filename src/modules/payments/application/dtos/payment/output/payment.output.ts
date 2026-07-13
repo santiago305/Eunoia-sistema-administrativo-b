@@ -27,6 +27,8 @@ export interface PaymentOutput {
   scheduledAt?: Date | null;
   paidAt?: Date | null;
   paymentEvidenceFileId?: string | null;
+  paymentEvidenceCount: number;
+  hasEvidence: boolean;
   bankName?: string | null;
   cardLastFour?: string | null;
   operationCode?: string | null;

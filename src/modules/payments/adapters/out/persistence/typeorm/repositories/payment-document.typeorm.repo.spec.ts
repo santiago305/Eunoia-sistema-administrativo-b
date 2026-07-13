@@ -51,12 +51,13 @@ describe("PaymentDocumentTypeormRepository", () => {
     return qb;
   };
 
-  const makeRepository = (qb = createQueryBuilder()) => {
+  const makeRepository = (qb = createQueryBuilder(), evidenceRows: Array<{ paymentId: string; count: number }> = []) => {
     const baseRepo = {
       createQueryBuilder: jest.fn().mockReturnValue(qb),
     } as unknown as Repository<PaymentDocumentEntity>;
     const manager = {
       getRepository: jest.fn().mockReturnValue(baseRepo),
+      query: jest.fn().mockResolvedValue(evidenceRows),
     };
     (baseRepo as any).manager = manager;
 
@@ -139,7 +140,10 @@ describe("PaymentDocumentTypeormRepository", () => {
     expect(qb.andWhere).toHaveBeenCalledWith("pd.approvedByUserId = :approvedByUserId", {
       approvedByUserId: "77777777-7777-7777-7777-777777777777",
     });
-    expect(qb.andWhere).toHaveBeenCalledWith("pd.paymentEvidenceFileId IS NOT NULL");
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      "(pd.paymentEvidenceFileId IS NOT NULL OR EXISTS (SELECT 1 FROM purchase_attachments pa WHERE pa.payment_id = pd.id AND pa.type = :paymentProofType AND pa.deleted_at IS NULL))",
+      { paymentProofType: "PAYMENT_PROOF" },
+    );
     expect(qb.andWhere).toHaveBeenCalledWith(
       `(${[
         "pd.method ILIKE :q",
@@ -159,6 +163,30 @@ describe("PaymentDocumentTypeormRepository", () => {
 
     await repo.list({ hasEvidence: false });
 
-    expect(qb.andWhere).toHaveBeenCalledWith("pd.paymentEvidenceFileId IS NULL");
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      "NOT (pd.paymentEvidenceFileId IS NOT NULL OR EXISTS (SELECT 1 FROM purchase_attachments pa WHERE pa.payment_id = pd.id AND pa.type = :paymentProofType AND pa.deleted_at IS NULL))",
+      { paymentProofType: "PAYMENT_PROOF" },
+    );
+  });
+
+  it("treats purchase attachment payment proofs as payment evidence", async () => {
+    const { repo, qb } = makeRepository();
+
+    await repo.list({ hasEvidence: true });
+
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      "(pd.paymentEvidenceFileId IS NOT NULL OR EXISTS (SELECT 1 FROM purchase_attachments pa WHERE pa.payment_id = pd.id AND pa.type = :paymentProofType AND pa.deleted_at IS NULL))",
+      { paymentProofType: "PAYMENT_PROOF" },
+    );
+  });
+
+  it("hydrates payment evidence count from purchase attachments", async () => {
+    const { repo } = makeRepository(createQueryBuilder([makeRow({ paymentEvidenceFileId: null })]), [
+      { paymentId: "11111111-1111-1111-1111-111111111111", count: 2 },
+    ]);
+
+    const result = await repo.list({});
+
+    expect(result.items[0].paymentEvidenceCount).toBe(2);
   });
 });
