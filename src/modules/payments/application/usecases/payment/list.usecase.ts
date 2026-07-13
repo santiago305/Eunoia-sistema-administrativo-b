@@ -16,9 +16,7 @@ export class ListPaymentsUsecase {
     const limit = input.limit && input.limit > 0 ? input.limit : 10;
 
     const { items, total } = await this.paymentDocRepo.list({
-      poId: input.poId,
-      quotaId: input.quotaId,
-      status: input.status,
+      ...input,
       page,
       limit,
     });

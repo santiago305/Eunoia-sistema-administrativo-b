@@ -4,7 +4,11 @@ import { EntityManager, Repository } from "typeorm";
 import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { PaymentDocument } from "src/modules/payments/domain/entity/payment-document";
-import { PaymentDocumentRepository } from "src/modules/payments/domain/ports/payment-document.repository";
+import {
+  ListPaymentDocumentsParams,
+  PaymentDocumentRepository,
+  PaymentStatus,
+} from "src/modules/payments/domain/ports/payment-document.repository";
 import { PaymentDocumentEntity } from "../entities/payment-document.entity";
 
 @Injectable()
@@ -174,13 +178,7 @@ export class PaymentDocumentTypeormRepository implements PaymentDocumentReposito
   }
 
   async list(
-    params: {
-      poId?: string;
-      quotaId?: string;
-      status?: "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
-      page?: number;
-      limit?: number;
-    },
+    params: ListPaymentDocumentsParams,
     tx?: TransactionContext,
   ): Promise<{ items: PaymentDocument[]; total: number }> {
     const repo = this.getRepo(tx);
@@ -188,7 +186,75 @@ export class PaymentDocumentTypeormRepository implements PaymentDocumentReposito
 
     if (params.poId) qb.andWhere("pd.poId = :poId", { poId: params.poId });
     if (params.quotaId) qb.andWhere("pd.quotaId = :quotaId", { quotaId: params.quotaId });
-    if (params.status) qb.andWhere("pd.status = :status", { status: params.status });
+    if (params.accountPayableId) {
+      qb.andWhere("pd.accountPayableId = :accountPayableId", { accountPayableId: params.accountPayableId });
+    }
+
+    const statuses = this.mergeValues<PaymentStatus>(params.status ? [params.status] : undefined, params.statuses);
+    if (statuses.length === 1) {
+      qb.andWhere("pd.status = :status", { status: statuses[0] });
+    } else if (statuses.length > 1) {
+      qb.andWhere("pd.status IN (:...statuses)", { statuses });
+    }
+
+    if (params.currency) qb.andWhere("pd.currency = :currency", { currency: params.currency });
+
+    const paymentMethodIds = this.mergeValues(
+      params.paymentMethodId ? [params.paymentMethodId] : undefined,
+      params.paymentMethodIds,
+    );
+    if (paymentMethodIds.length === 1) {
+      qb.andWhere("pd.paymentMethodId = :paymentMethodId", { paymentMethodId: paymentMethodIds[0] });
+    } else if (paymentMethodIds.length > 1) {
+      qb.andWhere("pd.paymentMethodId IN (:...paymentMethodIds)", { paymentMethodIds });
+    }
+
+    const companyPaymentAccountIds = this.mergeValues(
+      params.companyPaymentAccountId ? [params.companyPaymentAccountId] : undefined,
+      params.companyPaymentAccountIds,
+    );
+    if (companyPaymentAccountIds.length === 1) {
+      qb.andWhere("pd.companyPaymentAccountId = :companyPaymentAccountId", {
+        companyPaymentAccountId: companyPaymentAccountIds[0],
+      });
+    } else if (companyPaymentAccountIds.length > 1) {
+      qb.andWhere("pd.companyPaymentAccountId IN (:...companyPaymentAccountIds)", { companyPaymentAccountIds });
+    }
+
+    if (params.fromDocumentType) {
+      qb.andWhere("pd.fromDocumentType = :fromDocumentType", { fromDocumentType: params.fromDocumentType });
+    }
+
+    this.applyDateRange(qb, "pd.date", "date", params.dateFrom, params.dateTo);
+    this.applyDateRange(qb, "pd.scheduledAt", "scheduled", params.scheduledFrom, params.scheduledTo);
+    this.applyDateRange(qb, "pd.paidAt", "paid", params.paidFrom, params.paidTo);
+
+    if (params.amountMin !== undefined) qb.andWhere("pd.amount >= :amountMin", { amountMin: params.amountMin });
+    if (params.amountMax !== undefined) qb.andWhere("pd.amount <= :amountMax", { amountMax: params.amountMax });
+
+    if (params.requestedByUserId) {
+      qb.andWhere("pd.requestedByUserId = :requestedByUserId", { requestedByUserId: params.requestedByUserId });
+    }
+    if (params.approvedByUserId) {
+      qb.andWhere("pd.approvedByUserId = :approvedByUserId", { approvedByUserId: params.approvedByUserId });
+    }
+
+    if (params.hasEvidence === true) qb.andWhere("pd.paymentEvidenceFileId IS NOT NULL");
+    if (params.hasEvidence === false) qb.andWhere("pd.paymentEvidenceFileId IS NULL");
+
+    const q = params.q?.trim();
+    if (q) {
+      qb.andWhere(
+        `(${[
+          "pd.method ILIKE :q",
+          "pd.operationNumber ILIKE :q",
+          "pd.operationCode ILIKE :q",
+          "pd.note ILIKE :q",
+          "pd.bankName ILIKE :q",
+        ].join(" OR ")})`,
+        { q: `%${q}%` },
+      );
+    }
 
     const page = params.page ?? 1;
     const limit = params.limit ?? 20;
@@ -200,5 +266,24 @@ export class PaymentDocumentTypeormRepository implements PaymentDocumentReposito
       .getManyAndCount();
 
     return { items: rows.map((r) => this.toDomain(r)), total };
+  }
+
+  private mergeValues<T>(...groups: Array<T[] | undefined>): T[] {
+    return Array.from(new Set(groups.flatMap((group) => group ?? []).filter(Boolean)));
+  }
+
+  private applyDateRange(
+    qb: Pick<ReturnType<Repository<PaymentDocumentEntity>["createQueryBuilder"]>, "andWhere">,
+    column: string,
+    prefix: string,
+    from?: string,
+    to?: string,
+  ) {
+    if (from) qb.andWhere(`DATE(${column}) >= :${prefix}From`, { [`${prefix}From`]: this.toDateOnly(from) });
+    if (to) qb.andWhere(`DATE(${column}) <= :${prefix}To`, { [`${prefix}To`]: this.toDateOnly(to) });
+  }
+
+  private toDateOnly(value: string): string {
+    return value.slice(0, 10);
   }
 }
