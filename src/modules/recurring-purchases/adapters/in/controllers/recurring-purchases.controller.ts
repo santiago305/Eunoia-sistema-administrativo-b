@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
 import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
@@ -11,9 +11,14 @@ import { ResumeRecurringPurchaseUsecase } from "../../../application/usecases/re
 import { CancelRecurringPurchaseUsecase } from "../../../application/usecases/cancel-recurring-purchase.usecase";
 import { GenerateCurrentPayableUsecase } from "../../../application/usecases/generate-current-payable.usecase";
 import { RegisterRecurringPurchasePaymentUsecase } from "../../../application/usecases/register-recurring-purchase-payment.usecase";
+import { GetRecurringPurchaseSearchStateUsecase } from "../../../application/usecases/recurring-purchase-search/get-state.usecase";
+import { SaveRecurringPurchaseSearchMetricUsecase } from "../../../application/usecases/recurring-purchase-search/save-metric.usecase";
+import { DeleteRecurringPurchaseSearchMetricUsecase } from "../../../application/usecases/recurring-purchase-search/delete-metric.usecase";
 import { HttpRecurringPurchaseCreateDto } from "../dtos/http-recurring-purchase-create.dto";
 import { HttpRecurringPurchaseListDto } from "../dtos/http-recurring-purchase-list.dto";
+import { HttpCreateRecurringPurchaseSearchMetricDto } from "../dtos/http-recurring-purchase-search-metric-create.dto";
 import { HttpRecurringPurchasePaymentDto } from "../dtos/http-recurring-purchase-payment.dto";
+import { sanitizeRecurringPurchaseSearchSnapshot } from "../../../application/support/recurring-purchase-search.utils";
 
 @Controller("recurring-purchases")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
@@ -26,12 +31,49 @@ export class RecurringPurchasesController {
     private readonly cancelRecurringPurchase: CancelRecurringPurchaseUsecase,
     private readonly generateCurrentPayable: GenerateCurrentPayableUsecase,
     private readonly registerRecurringPayment: RegisterRecurringPurchasePaymentUsecase,
+    private readonly getSearchState: GetRecurringPurchaseSearchStateUsecase,
+    private readonly saveSearchMetric: SaveRecurringPurchaseSearchMetricUsecase,
+    private readonly deleteSearchMetric: DeleteRecurringPurchaseSearchMetricUsecase,
   ) {}
 
   @RequirePermissions("recurring_purchases.view")
   @Get()
-  list(@Query() query: HttpRecurringPurchaseListDto) {
-    return this.listRecurringPurchases.execute(query);
+  list(@Query() query: HttpRecurringPurchaseListDto, @CurrentUser() user: { id: string }) {
+    return this.listRecurringPurchases.execute({
+      ...query,
+      requestedBy: user?.id,
+    });
+  }
+
+  @RequirePermissions("recurring_purchases.view")
+  @Get("search-state")
+  getSearchStateForUser(@CurrentUser() user: { id: string }) {
+    return this.getSearchState.execute(user.id);
+  }
+
+  @RequirePermissions("recurring_purchases.view")
+  @Post("search-metrics")
+  saveMetric(
+    @Body() dto: HttpCreateRecurringPurchaseSearchMetricDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.saveSearchMetric.execute({
+      userId: user.id,
+      name: dto.name,
+      snapshot: sanitizeRecurringPurchaseSearchSnapshot({
+        q: dto.snapshot?.q,
+        filters: dto.snapshot?.filters,
+      }),
+    });
+  }
+
+  @RequirePermissions("recurring_purchases.view")
+  @Delete("search-metrics/:metricId")
+  deleteMetric(
+    @Param("metricId", ParseUUIDPipe) metricId: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.deleteSearchMetric.execute(user.id, metricId);
   }
 
   @RequirePermissions("recurring_purchases.create")

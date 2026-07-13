@@ -24,7 +24,8 @@ describe("ListRecurringPurchasesUsecase", () => {
         limit: 25,
       })),
     };
-    const usecase = new ListRecurringPurchasesUsecase(repo as any);
+    const searchRepo = { touchRecentSearch: jest.fn() };
+    const usecase = new ListRecurringPurchasesUsecase(repo as any, searchRepo as any);
 
     await usecase.execute({
       q: "hosting",
@@ -32,9 +33,11 @@ describe("ListRecurringPurchasesUsecase", () => {
         {
           field: "supplierId",
           operator: "in",
+          mode: "include",
           values: ["11111111-1111-4111-8111-111111111111"],
         },
       ],
+      requestedBy: "22222222-2222-4222-8222-222222222222",
     });
 
     expect(repo.list).toHaveBeenCalledWith({
@@ -43,11 +46,28 @@ describe("ListRecurringPurchasesUsecase", () => {
         {
           field: "supplierId",
           operator: "in",
+          mode: "include",
           values: ["11111111-1111-4111-8111-111111111111"],
         },
       ],
       page: 1,
       limit: 25,
+      requestedBy: "22222222-2222-4222-8222-222222222222",
+    });
+    expect(searchRepo.touchRecentSearch).toHaveBeenCalledWith({
+      userId: "22222222-2222-4222-8222-222222222222",
+      tableKey: "recurring-purchases",
+      snapshot: {
+        q: "hosting",
+        filters: [
+          {
+            field: "supplierId",
+            operator: "in",
+            mode: "include",
+            values: ["11111111-1111-4111-8111-111111111111"],
+          },
+        ],
+      },
     });
   });
 });
