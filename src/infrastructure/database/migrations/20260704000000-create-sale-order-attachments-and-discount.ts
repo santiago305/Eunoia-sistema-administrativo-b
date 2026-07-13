@@ -55,7 +55,7 @@ export class CreateSaleOrderAttachmentsAndDiscount20260704000000
       DO $$ BEGIN
         ALTER TABLE sale_order_attachments
           ADD CONSTRAINT fk_sale_order_attachments_user
-          FOREIGN KEY (uploaded_by_user_id) REFERENCES users(id)
+          FOREIGN KEY (uploaded_by_user_id) REFERENCES users(user_id)
           ON DELETE SET NULL;
       EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 

@@ -43,6 +43,10 @@ describe('CreateSaleOrderAttachmentsAndDiscount20260704000000', () => {
     expect(upSql).toContain(
       'FOREIGN KEY (sale_order_payment_id) REFERENCES sale_payments(id)',
     );
+    expect(upSql).toContain(
+      'FOREIGN KEY (uploaded_by_user_id) REFERENCES users(user_id)',
+    );
+    expect(upSql).not.toContain('REFERENCES users(id)');
     expect(upSql).toContain('ON DELETE SET NULL');
 
     queries.length = 0;

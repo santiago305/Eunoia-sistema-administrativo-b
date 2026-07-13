@@ -11,8 +11,8 @@ const makeRow = () =>
     purchaseType: PurchaseType.SUBSCRIPTION,
     currency: "PEN",
     amount: "120.00",
-    startDate: new Date("2026-06-10T00:00:00.000Z"),
-    nextDueDate: new Date("2026-07-10T00:00:00.000Z"),
+    startDate: "2026-06-10",
+    nextDueDate: "2026-07-10",
     billingAnchorDay: 10,
     status: "ACTIVE",
     reminderDaysBefore: [7, 3, 1, 0],
@@ -58,7 +58,7 @@ describe("RecurringPurchaseTemplateTypeormRepository", () => {
 
     expect(ormRepo.createQueryBuilder).toHaveBeenCalledWith("template");
     expect(qb.where).toHaveBeenCalledWith("template.status = :status", { status: "ACTIVE" });
-    expect(qb.andWhere).toHaveBeenCalledWith("template.nextDueDate BETWEEN :today AND :maxDueDate", {
+    expect(qb.andWhere).toHaveBeenCalledWith("template.next_due_date BETWEEN :today AND :maxDueDate", {
       today: "2026-07-03",
       maxDueDate: "2026-07-10",
     });
@@ -109,11 +109,11 @@ describe("RecurringPurchaseTemplateTypeormRepository", () => {
       "payable.account_payable_id = template.last_generated_account_payable_id",
     );
     expect(qb.andWhere).toHaveBeenCalledWith(
-      expect.stringContaining("template.supplierId"),
+      expect.stringContaining("template.supplier_id"),
       expect.objectContaining({ filter_0_values: ["11111111-1111-4111-8111-111111111111"] }),
     );
     expect(qb.andWhere).toHaveBeenCalledWith(
-      expect.stringContaining("template.nextDueDate BETWEEN"),
+      expect.stringContaining("template.next_due_date BETWEEN"),
       expect.objectContaining({ filter_1_start: "2026-07-01", filter_1_end: "2026-07-31" }),
     );
     expect(qb.andWhere).toHaveBeenCalledWith(
@@ -128,6 +128,8 @@ describe("RecurringPurchaseTemplateTypeormRepository", () => {
       expect.stringContaining("template.name ILIKE"),
       expect.objectContaining({ q: "%hosting%" }),
     );
+    expect(qb.orderBy).toHaveBeenCalledWith("template.nextDueDate", "ASC");
+    expect(qb.addOrderBy).toHaveBeenCalledWith("template.createdAt", "DESC");
     expect(qb.skip).toHaveBeenCalledWith(0);
     expect(qb.take).toHaveBeenCalledWith(25);
     expect(result.limit).toBe(25);

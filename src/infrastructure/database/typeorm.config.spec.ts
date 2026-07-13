@@ -50,4 +50,23 @@ describe('getTypeOrmModuleOptions', () => {
       expect.arrayContaining(expectedMigrationNames),
     );
   });
+
+  it('registers recurring purchase migrations required by the runtime entities', () => {
+    const registeredMigrations = (getMigrationDataSourceOptions().migrations ??
+      []) as Array<string | Function>;
+    const registeredMigrationNames = registeredMigrations.map((migration) =>
+      typeof migration === 'function' ? migration.name : String(migration),
+    );
+
+    expect(registeredMigrationNames).toEqual(
+      expect.arrayContaining([
+        'CreateRecurringPurchases20260626090000',
+        'AddRecurringPurchaseBillingAnchorDay20260710154000',
+        'AddRecurringPurchaseReminderDeliveries20260710165000',
+        'AddRecurringPurchaseDueNotificationPermission20260710172000',
+        'AddRecurringPurchasePaymentPermissions20260711100000',
+        'AddRecurringPurchaseRelations20260711120000',
+      ]),
+    );
+  });
 });

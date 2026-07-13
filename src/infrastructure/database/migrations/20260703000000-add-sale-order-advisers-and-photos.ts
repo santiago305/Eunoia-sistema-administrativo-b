@@ -6,7 +6,7 @@ export class AddSaleOrderAdvisersAndPhotos20260703000000
   async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS advisers (
-        user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE
+        user_id uuid PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE
       );
       ALTER TABLE sale_orders
         ADD COLUMN IF NOT EXISTS send_date timestamptz NULL,
@@ -18,7 +18,7 @@ export class AddSaleOrderAdvisersAndPhotos20260703000000
         ON sale_orders (assigned_by);
       DO $$ BEGIN
         ALTER TABLE sale_orders ADD CONSTRAINT fk_sale_orders_assigned_by
-          FOREIGN KEY (assigned_by) REFERENCES users(id) ON DELETE SET NULL;
+          FOREIGN KEY (assigned_by) REFERENCES users(user_id) ON DELETE SET NULL;
       EXCEPTION WHEN duplicate_object THEN NULL; END $$;
       ALTER TABLE sale_payments
         ADD COLUMN IF NOT EXISTS payment_photo varchar NULL;

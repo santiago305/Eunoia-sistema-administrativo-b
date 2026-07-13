@@ -19,6 +19,9 @@ describe('AddSaleOrderAdvisersAndPhotos20260703000000', () => {
     expect(upSql).toContain('assigned_by');
     expect(upSql).toContain('payment_photo');
     expect(upSql).toContain('idx_sale_orders_assigned_by');
+    expect(upSql).toContain('REFERENCES users(user_id) ON DELETE CASCADE');
+    expect(upSql).toContain('FOREIGN KEY (assigned_by) REFERENCES users(user_id) ON DELETE SET NULL');
+    expect(upSql).not.toContain('REFERENCES users(id)');
 
     queries.length = 0;
     await migration.down(queryRunner as never);

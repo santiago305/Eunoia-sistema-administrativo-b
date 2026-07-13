@@ -16,6 +16,19 @@ import {
 } from "src/modules/recurring-purchases/application/dtos/recurring-purchase-search/recurring-purchase-search-snapshot";
 import { RecurringPurchaseTemplateEntity } from "../entities/recurring-purchase-template.entity";
 
+const TEMPLATE_COLUMNS = {
+  supplierId: "template.supplier_id",
+  purchaseType: "template.purchase_type",
+  startDate: "template.start_date",
+  nextDueDate: "template.next_due_date",
+  lastGeneratedAccountPayableId: "template.last_generated_account_payable_id",
+};
+
+const TEMPLATE_PROPERTIES = {
+  nextDueDate: "template.nextDueDate",
+  createdAt: "template.createdAt",
+};
+
 @Injectable()
 export class RecurringPurchaseTemplateTypeormRepository implements RecurringPurchaseTemplateRepository {
   constructor(
@@ -34,6 +47,10 @@ export class RecurringPurchaseTemplateTypeormRepository implements RecurringPurc
     return this.getManager(tx).getRepository(RecurringPurchaseTemplateEntity);
   }
 
+  private toDate(value: Date | string) {
+    return value instanceof Date ? value : new Date(`${value}T00:00:00.000Z`);
+  }
+
   private toDomain(row: RecurringPurchaseTemplateEntity) {
     return RecurringPurchaseTemplate.create({
       recurringPurchaseTemplateId: row.id,
@@ -44,8 +61,8 @@ export class RecurringPurchaseTemplateTypeormRepository implements RecurringPurc
       purchaseType: row.purchaseType,
       currency: row.currency,
       amount: Number(row.amount),
-      startDate: row.startDate,
-      nextDueDate: row.nextDueDate,
+      startDate: this.toDate(row.startDate),
+      nextDueDate: this.toDate(row.nextDueDate),
       billingAnchorDay: row.billingAnchorDay,
       status: row.status,
       reminderDaysBefore: row.reminderDaysBefore,
@@ -107,14 +124,14 @@ export class RecurringPurchaseTemplateTypeormRepository implements RecurringPurc
     qb.leftJoin(
       "accounts_payable",
       "payable",
-      "payable.account_payable_id = template.last_generated_account_payable_id",
+      `payable.account_payable_id = ${TEMPLATE_COLUMNS.lastGeneratedAccountPayableId}`,
     );
 
     if (params.status) qb.andWhere("template.status = :status", { status: params.status });
     if (params.statuses?.length) qb.andWhere("template.status IN (:...statuses)", { statuses: params.statuses });
-    if (params.supplierId) qb.andWhere("template.supplierId = :supplierId", { supplierId: params.supplierId });
+    if (params.supplierId) qb.andWhere(`${TEMPLATE_COLUMNS.supplierId} = :supplierId`, { supplierId: params.supplierId });
     if (params.supplierIds?.length) {
-      qb.andWhere("template.supplierId IN (:...supplierIds)", { supplierIds: params.supplierIds });
+      qb.andWhere(`${TEMPLATE_COLUMNS.supplierId} IN (:...supplierIds)`, { supplierIds: params.supplierIds });
     }
     if (params.frequency) qb.andWhere("template.frequency = :frequency", { frequency: params.frequency });
     if (params.frequencies?.length) {
@@ -123,10 +140,10 @@ export class RecurringPurchaseTemplateTypeormRepository implements RecurringPurc
     if (params.currency) qb.andWhere("template.currency = :currency", { currency: params.currency });
     if (params.currencies?.length) qb.andWhere("template.currency IN (:...currencies)", { currencies: params.currencies });
     if (params.purchaseType) {
-      qb.andWhere("template.purchaseType = :purchaseType", { purchaseType: params.purchaseType });
+      qb.andWhere(`${TEMPLATE_COLUMNS.purchaseType} = :purchaseType`, { purchaseType: params.purchaseType });
     }
     if (params.purchaseTypes?.length) {
-      qb.andWhere("template.purchaseType IN (:...purchaseTypes)", { purchaseTypes: params.purchaseTypes });
+      qb.andWhere(`${TEMPLATE_COLUMNS.purchaseType} IN (:...purchaseTypes)`, { purchaseTypes: params.purchaseTypes });
     }
 
     this.applySmartFilters(qb, params.filters ?? []);
@@ -140,8 +157,8 @@ export class RecurringPurchaseTemplateTypeormRepository implements RecurringPurc
     }
 
     const [rows, total] = await qb
-      .orderBy("template.nextDueDate", "ASC")
-      .addOrderBy("template.createdAt", "DESC")
+      .orderBy(TEMPLATE_PROPERTIES.nextDueDate, "ASC")
+      .addOrderBy(TEMPLATE_PROPERTIES.createdAt, "DESC")
       .skip((page - 1) * limit)
       .take(limit)
       .getManyAndCount();
@@ -160,7 +177,7 @@ export class RecurringPurchaseTemplateTypeormRepository implements RecurringPurc
       switch (filter.field) {
         case RecurringPurchaseSearchFields.SUPPLIER_ID:
           if (filter.values?.length) {
-            qb.andWhere(`template.supplierId ${catalogOperator} (:...${valuesParam})`, {
+            qb.andWhere(`${TEMPLATE_COLUMNS.supplierId} ${catalogOperator} (:...${valuesParam})`, {
               [valuesParam]: filter.values,
             });
           }
@@ -181,7 +198,7 @@ export class RecurringPurchaseTemplateTypeormRepository implements RecurringPurc
           break;
         case RecurringPurchaseSearchFields.PURCHASE_TYPE:
           if (filter.values?.length) {
-            qb.andWhere(`template.purchaseType ${catalogOperator} (:...${valuesParam})`, {
+            qb.andWhere(`${TEMPLATE_COLUMNS.purchaseType} ${catalogOperator} (:...${valuesParam})`, {
               [valuesParam]: filter.values,
             });
           }
@@ -204,10 +221,10 @@ export class RecurringPurchaseTemplateTypeormRepository implements RecurringPurc
           this.applyNumberFilter(qb, "template.amount", filter, valueParam);
           break;
         case RecurringPurchaseSearchFields.START_DATE:
-          this.applyDateFilter(qb, "template.startDate", filter, valueParam, startParam, endParam);
+          this.applyDateFilter(qb, TEMPLATE_COLUMNS.startDate, filter, valueParam, startParam, endParam);
           break;
         case RecurringPurchaseSearchFields.NEXT_DUE_DATE:
-          this.applyDateFilter(qb, "template.nextDueDate", filter, valueParam, startParam, endParam);
+          this.applyDateFilter(qb, TEMPLATE_COLUMNS.nextDueDate, filter, valueParam, startParam, endParam);
           break;
         default:
           break;
@@ -274,8 +291,8 @@ export class RecurringPurchaseTemplateTypeormRepository implements RecurringPurc
     const rows = await this.getRepo(tx)
       .createQueryBuilder("template")
       .where("template.status = :status", { status: "ACTIVE" })
-      .andWhere("template.nextDueDate <= :today", { today: now.toISOString().slice(0, 10) })
-      .orderBy("template.nextDueDate", "ASC")
+      .andWhere(`${TEMPLATE_COLUMNS.nextDueDate} <= :today`, { today: now.toISOString().slice(0, 10) })
+      .orderBy(TEMPLATE_PROPERTIES.nextDueDate, "ASC")
       .getMany();
     return rows.map((row) => this.toDomain(row));
   }
@@ -293,8 +310,8 @@ export class RecurringPurchaseTemplateTypeormRepository implements RecurringPurc
     const rows = await this.getRepo(tx)
       .createQueryBuilder("template")
       .where("template.status = :status", { status: "ACTIVE" })
-      .andWhere("template.nextDueDate BETWEEN :today AND :maxDueDate", { today, maxDueDate })
-      .orderBy("template.nextDueDate", "ASC")
+      .andWhere(`${TEMPLATE_COLUMNS.nextDueDate} BETWEEN :today AND :maxDueDate`, { today, maxDueDate })
+      .orderBy(TEMPLATE_PROPERTIES.nextDueDate, "ASC")
       .getMany();
     return rows.map((row) => this.toDomain(row));
   }

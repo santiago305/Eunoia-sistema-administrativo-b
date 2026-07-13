@@ -53,8 +53,20 @@ import { AddDefaultPaymentAccounts20260627170000 } from "./migrations/2026062717
 import { UnifySalePaymentsCompanyPaymentAccounts20260628000000 } from "./migrations/20260628000000-unify-sale-payments-company-payment-accounts";
 import { AddFiscalDocumentTypeToPurchaseAttachments20260628010000 } from "./migrations/20260628010000-add-fiscal-document-type-to-purchase-attachments";
 import { AddPaymentMethodRequiresVoucher20260628120000 } from "./migrations/20260628120000-add-payment-method-requires-voucher";
+import { AddSaleOrderAdvertisingObservation20260701000000 } from "./migrations/20260701000000-add-sale-order-advertising-observation";
+import { AddSaleOrderAdvisersAndPhotos20260703000000 } from "./migrations/20260703000000-add-sale-order-advisers-and-photos";
+import { ReplaceSaleOrderAgencyDetail20260703010000 } from "./migrations/20260703010000-replace-sale-order-agency-detail";
+import { CreateSaleOrderAttachmentsAndDiscount20260704000000 } from "./migrations/20260704000000-create-sale-order-attachments-and-discount";
 import { AddPurchaseDashboardGroupPermissions20260707010000 } from "./migrations/20260707010000-add-purchase-dashboard-group-permissions";
 import { RestoreSaleOrderAgencyDetail20260708000000 } from "./migrations/20260708000000-restore-sale-order-agency-detail";
+import { AddSaleOrderReserveBool20260708010000 } from "./migrations/20260708010000-add-sale-order-reserve-bool";
+import { AddPurchaseDashboardIndexes20260709010000 } from "./migrations/20260709010000-add-purchase-dashboard-indexes";
+import { AddSaleOrdersExportPermission20260709170000 } from "./migrations/20260709170000-add-sale-orders-export-permission";
+import { AddRecurringPurchaseBillingAnchorDay20260710154000 } from "./migrations/20260710154000-add-recurring-purchase-billing-anchor-day";
+import { AddRecurringPurchaseReminderDeliveries20260710165000 } from "./migrations/20260710165000-add-recurring-purchase-reminder-deliveries";
+import { AddRecurringPurchaseDueNotificationPermission20260710172000 } from "./migrations/20260710172000-add-recurring-purchase-due-notification-permission";
+import { AddRecurringPurchasePaymentPermissions20260711100000 } from "./migrations/20260711100000-add-recurring-purchase-payment-permissions";
+import { AddRecurringPurchaseRelations20260711120000 } from "./migrations/20260711120000-add-recurring-purchase-relations";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -130,8 +142,20 @@ export const getMigrationDataSourceOptions = (): DataSourceOptions => ({
     UnifySalePaymentsCompanyPaymentAccounts20260628000000,
     AddFiscalDocumentTypeToPurchaseAttachments20260628010000,
     AddPaymentMethodRequiresVoucher20260628120000,
+    AddSaleOrderAdvertisingObservation20260701000000,
+    AddSaleOrderAdvisersAndPhotos20260703000000,
+    ReplaceSaleOrderAgencyDetail20260703010000,
+    CreateSaleOrderAttachmentsAndDiscount20260704000000,
     AddPurchaseDashboardGroupPermissions20260707010000,
     RestoreSaleOrderAgencyDetail20260708000000,
+    AddSaleOrderReserveBool20260708010000,
+    AddPurchaseDashboardIndexes20260709010000,
+    AddSaleOrdersExportPermission20260709170000,
+    AddRecurringPurchaseBillingAnchorDay20260710154000,
+    AddRecurringPurchaseReminderDeliveries20260710165000,
+    AddRecurringPurchaseDueNotificationPermission20260710172000,
+    AddRecurringPurchasePaymentPermissions20260711100000,
+    AddRecurringPurchaseRelations20260711120000,
   ],
 });
 
