@@ -6,6 +6,7 @@ import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { AccountPayable } from "src/modules/accounts-payable/domain/entity/account-payable";
 import { AccountPayableRepository } from "src/modules/accounts-payable/domain/ports/account-payable.repository";
 import { PayableStatus } from "src/modules/accounts-payable/domain/value-objects/payable-status";
+import { CurrencyType } from "src/modules/payments/domain/value-objects/currency-type";
 import { AccountPayableEntity } from "../entities/account-payable.entity";
 
 @Injectable()
@@ -99,12 +100,41 @@ export class AccountPayableTypeormRepository implements AccountPayableRepository
   }
 
   async list(
-    params: { status?: PayableStatus; purchaseId?: string; page?: number; limit?: number },
+    params: {
+      q?: string;
+      status?: PayableStatus;
+      statuses?: PayableStatus[];
+      purchaseId?: string;
+      supplierId?: string;
+      currency?: CurrencyType;
+      dueFrom?: string;
+      dueTo?: string;
+      amountPendingMin?: number;
+      amountPendingMax?: number;
+      page?: number;
+      limit?: number;
+    },
     tx?: TransactionContext,
   ): Promise<{ items: AccountPayable[]; total: number }> {
     const qb = this.getRepo(tx).createQueryBuilder("ap");
+    if (params.q?.trim()) {
+      qb.andWhere("(ap.description ILIKE :q OR CAST(ap.purchaseId AS text) ILIKE :q)", {
+        q: `%${params.q.trim()}%`,
+      });
+    }
     if (params.status) qb.andWhere("ap.status = :status", { status: params.status });
+    if (params.statuses?.length) qb.andWhere("ap.status IN (:...statuses)", { statuses: params.statuses });
     if (params.purchaseId) qb.andWhere("ap.purchaseId = :purchaseId", { purchaseId: params.purchaseId });
+    if (params.supplierId) qb.andWhere("ap.supplierId = :supplierId", { supplierId: params.supplierId });
+    if (params.currency) qb.andWhere("ap.currency = :currency", { currency: params.currency });
+    if (params.dueFrom) qb.andWhere("ap.dueDate >= :dueFrom", { dueFrom: params.dueFrom });
+    if (params.dueTo) qb.andWhere("ap.dueDate <= :dueTo", { dueTo: params.dueTo });
+    if (params.amountPendingMin !== undefined) {
+      qb.andWhere("ap.amountPending >= :amountPendingMin", { amountPendingMin: params.amountPendingMin });
+    }
+    if (params.amountPendingMax !== undefined) {
+      qb.andWhere("ap.amountPending <= :amountPendingMax", { amountPendingMax: params.amountPendingMax });
+    }
 
     const page = params.page ?? 1;
     const limit = params.limit ?? 20;

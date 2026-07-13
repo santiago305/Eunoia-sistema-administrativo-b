@@ -1,4 +1,5 @@
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
+import { CurrencyType } from "src/modules/payments/domain/value-objects/currency-type";
 import { AccountPayable } from "../entity/account-payable";
 import { PayableStatus } from "../value-objects/payable-status";
 
@@ -14,7 +15,20 @@ export interface AccountPayableRepository {
     tx?: TransactionContext,
   ): Promise<AccountPayable | null>;
   list(
-    params: { status?: PayableStatus; purchaseId?: string; page?: number; limit?: number },
+    params: {
+      q?: string;
+      status?: PayableStatus;
+      statuses?: PayableStatus[];
+      purchaseId?: string;
+      supplierId?: string;
+      currency?: CurrencyType;
+      dueFrom?: string;
+      dueTo?: string;
+      amountPendingMin?: number;
+      amountPendingMax?: number;
+      page?: number;
+      limit?: number;
+    },
     tx?: TransactionContext,
   ): Promise<{ items: AccountPayable[]; total: number }>;
   markOverdue(now: Date, tx?: TransactionContext): Promise<number>;
