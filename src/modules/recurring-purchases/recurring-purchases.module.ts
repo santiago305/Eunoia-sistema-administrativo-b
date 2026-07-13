@@ -13,6 +13,7 @@ import { RecurringPurchasesController } from "./adapters/in/controllers/recurrin
 import { RecurringPurchaseReminderDeliveryEntity } from "./adapters/out/persistence/typeorm/entities/recurring-purchase-reminder-delivery.entity";
 import { RecurringPurchaseTemplateEntity } from "./adapters/out/persistence/typeorm/entities/recurring-purchase-template.entity";
 import { recurringPurchasesModuleProviders } from "./composition/container";
+import { RecurringPurchasesJobsScheduler } from "./infrastructure/jobs/recurring-purchases-jobs.scheduler";
 
 @Module({
   imports: [
@@ -31,6 +32,6 @@ import { recurringPurchasesModuleProviders } from "./composition/container";
     AccessControlModule,
   ],
   controllers: [RecurringPurchasesController],
-  providers: [...recurringPurchasesModuleProviders],
+  providers: [...recurringPurchasesModuleProviders, RecurringPurchasesJobsScheduler],
 })
 export class RecurringPurchasesModule {}
