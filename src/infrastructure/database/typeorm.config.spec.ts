@@ -66,6 +66,7 @@ describe('getTypeOrmModuleOptions', () => {
         'AddRecurringPurchaseDueNotificationPermission20260710172000',
         'AddRecurringPurchasePaymentPermissions20260711100000',
         'AddRecurringPurchaseRelations20260711120000',
+        'AddRecurringPurchaseExportPermission20260712120000',
       ]),
     );
   });

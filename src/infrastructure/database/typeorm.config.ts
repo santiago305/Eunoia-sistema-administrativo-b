@@ -67,6 +67,7 @@ import { AddRecurringPurchaseReminderDeliveries20260710165000 } from "./migratio
 import { AddRecurringPurchaseDueNotificationPermission20260710172000 } from "./migrations/20260710172000-add-recurring-purchase-due-notification-permission";
 import { AddRecurringPurchasePaymentPermissions20260711100000 } from "./migrations/20260711100000-add-recurring-purchase-payment-permissions";
 import { AddRecurringPurchaseRelations20260711120000 } from "./migrations/20260711120000-add-recurring-purchase-relations";
+import { AddRecurringPurchaseExportPermission20260712120000 } from "./migrations/20260712120000-add-recurring-purchase-export-permission";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -156,6 +157,7 @@ export const getMigrationDataSourceOptions = (): DataSourceOptions => ({
     AddRecurringPurchaseDueNotificationPermission20260710172000,
     AddRecurringPurchasePaymentPermissions20260711100000,
     AddRecurringPurchaseRelations20260711120000,
+    AddRecurringPurchaseExportPermission20260712120000,
   ],
 });
 

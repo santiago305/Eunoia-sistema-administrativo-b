@@ -3,12 +3,14 @@ import { RecurringPurchaseReminderDeliveryTypeormRepository } from "../adapters/
 import { RecurringPurchaseSearchTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/recurring-purchase-search.typeorm.repo";
 import { RecurringPurchaseTemplateTypeormRepository } from "../adapters/out/persistence/typeorm/repositories/recurring-purchase-template.typeorm.repo";
 import { CreateRecurringPurchaseUsecase } from "../application/usecases/create-recurring-purchase.usecase";
+import { UpdateRecurringPurchaseUsecase } from "../application/usecases/update-recurring-purchase.usecase";
 import { ListRecurringPurchasesUsecase } from "../application/usecases/list-recurring-purchases.usecase";
 import { PauseRecurringPurchaseUsecase } from "../application/usecases/pause-recurring-purchase.usecase";
 import { ResumeRecurringPurchaseUsecase } from "../application/usecases/resume-recurring-purchase.usecase";
 import { CancelRecurringPurchaseUsecase } from "../application/usecases/cancel-recurring-purchase.usecase";
 import { GenerateCurrentPayableUsecase } from "../application/usecases/generate-current-payable.usecase";
 import { RegisterRecurringPurchasePaymentUsecase } from "../application/usecases/register-recurring-purchase-payment.usecase";
+import { ExportRecurringPurchasesExcelUsecase } from "../application/usecases/export-recurring-purchases-excel.usecase";
 import { DeleteRecurringPurchaseSearchMetricUsecase } from "../application/usecases/recurring-purchase-search/delete-metric.usecase";
 import { GetRecurringPurchaseSearchStateUsecase } from "../application/usecases/recurring-purchase-search/get-state.usecase";
 import { SaveRecurringPurchaseSearchMetricUsecase } from "../application/usecases/recurring-purchase-search/save-metric.usecase";
@@ -24,12 +26,14 @@ import { TypeormUnitOfWork } from "src/shared/infrastructure/typeorm/typeorm.uni
 
 export const recurringPurchasesModuleProviders: Provider[] = [
   CreateRecurringPurchaseUsecase,
+  UpdateRecurringPurchaseUsecase,
   ListRecurringPurchasesUsecase,
   PauseRecurringPurchaseUsecase,
   ResumeRecurringPurchaseUsecase,
   CancelRecurringPurchaseUsecase,
   GenerateCurrentPayableUsecase,
   RegisterRecurringPurchasePaymentUsecase,
+  ExportRecurringPurchasesExcelUsecase,
   GetRecurringPurchaseSearchStateUsecase,
   SaveRecurringPurchaseSearchMetricUsecase,
   DeleteRecurringPurchaseSearchMetricUsecase,
