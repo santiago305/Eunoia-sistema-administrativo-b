@@ -9,6 +9,7 @@ import {
   PaymentDocumentRepository,
   PaymentStatus,
 } from "src/modules/payments/domain/ports/payment-document.repository";
+import { PurchaseAttachmentType } from "src/modules/purchase-attachments/domain/value-objects/purchase-attachment-type";
 import { PaymentDocumentEntity } from "../entities/payment-document.entity";
 
 @Injectable()
@@ -29,7 +30,7 @@ export class PaymentDocumentTypeormRepository implements PaymentDocumentReposito
     return this.getManager(tx).getRepository(PaymentDocumentEntity);
   }
 
-  private toDomain(row: PaymentDocumentEntity): PaymentDocument {
+  private toDomain(row: PaymentDocumentEntity, paymentEvidenceCount = 0): PaymentDocument {
     return PaymentDocument.create({
       payDocId: row.id,
       method: row.method,
@@ -61,6 +62,7 @@ export class PaymentDocumentTypeormRepository implements PaymentDocumentReposito
       operationCode: row.operationCode ?? undefined,
       isPartial: row.isPartial,
       companyPaymentAccountMaskedLabel: row.bankName && row.cardLastFour ? `${row.bankName} ****${row.cardLastFour}` : undefined,
+      paymentEvidenceCount,
     });
   }
 
@@ -239,8 +241,12 @@ export class PaymentDocumentTypeormRepository implements PaymentDocumentReposito
       qb.andWhere("pd.approvedByUserId = :approvedByUserId", { approvedByUserId: params.approvedByUserId });
     }
 
-    if (params.hasEvidence === true) qb.andWhere("pd.paymentEvidenceFileId IS NOT NULL");
-    if (params.hasEvidence === false) qb.andWhere("pd.paymentEvidenceFileId IS NULL");
+    if (params.hasEvidence === true) qb.andWhere(this.paymentProofExistsCondition(), {
+      paymentProofType: PurchaseAttachmentType.PAYMENT_PROOF,
+    });
+    if (params.hasEvidence === false) qb.andWhere(`NOT ${this.paymentProofExistsCondition()}`, {
+      paymentProofType: PurchaseAttachmentType.PAYMENT_PROOF,
+    });
 
     const q = params.q?.trim();
     if (q) {
@@ -265,7 +271,32 @@ export class PaymentDocumentTypeormRepository implements PaymentDocumentReposito
       .take(limit)
       .getManyAndCount();
 
-    return { items: rows.map((r) => this.toDomain(r)), total };
+    const evidenceCounts = await this.getPaymentEvidenceCounts(rows.map((row) => row.id), tx);
+
+    return { items: rows.map((r) => this.toDomain(r, evidenceCounts.get(r.id) ?? 0)), total };
+  }
+
+  private paymentProofExistsCondition() {
+    return "(pd.paymentEvidenceFileId IS NOT NULL OR EXISTS (SELECT 1 FROM purchase_attachments pa WHERE pa.payment_id = pd.id AND pa.type = :paymentProofType AND pa.deleted_at IS NULL))";
+  }
+
+  private async getPaymentEvidenceCounts(paymentIds: string[], tx?: TransactionContext): Promise<Map<string, number>> {
+    const ids = paymentIds.filter(Boolean);
+    if (!ids.length) return new Map();
+
+    const rows = await this.getManager(tx).query(
+      `
+        SELECT payment_id AS "paymentId", COUNT(*)::int AS "count"
+        FROM purchase_attachments
+        WHERE payment_id = ANY($1)
+          AND type = $2
+          AND deleted_at IS NULL
+        GROUP BY payment_id
+      `,
+      [ids, PurchaseAttachmentType.PAYMENT_PROOF],
+    );
+
+    return new Map(rows.map((row: { paymentId: string; count: number | string }) => [row.paymentId, Number(row.count)]));
   }
 
   private mergeValues<T>(...groups: Array<T[] | undefined>): T[] {

@@ -34,6 +34,7 @@ export class PaymentDocument {
     public readonly operationCode?: string,
     public readonly isPartial: boolean = false,
     public readonly companyPaymentAccountMaskedLabel?: string,
+    public readonly paymentEvidenceCount: number = 0,
   ) {}
 
   static create(params: {
@@ -67,6 +68,7 @@ export class PaymentDocument {
     operationCode?: string;
     isPartial?: boolean;
     companyPaymentAccountMaskedLabel?: string;
+    paymentEvidenceCount?: number;
   }) {
     const method = PaymentsDomainService.normalizeMethod(params.method);
     if (!method || Number.isNaN(params.date.getTime()) || !PaymentsDomainService.isPositiveAmount(params.amount)) {
@@ -104,6 +106,7 @@ export class PaymentDocument {
       params.operationCode?.trim() || undefined,
       params.isPartial ?? false,
       params.companyPaymentAccountMaskedLabel?.trim() || undefined,
+      Math.max(0, Number(params.paymentEvidenceCount ?? 0)),
     );
   }
 }

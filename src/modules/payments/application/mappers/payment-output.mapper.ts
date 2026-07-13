@@ -29,6 +29,8 @@ export class PaymentOutputMapper {
       scheduledAt: row.scheduledAt ?? null,
       paidAt: row.paidAt ?? null,
       paymentEvidenceFileId: row.paymentEvidenceFileId ?? null,
+      paymentEvidenceCount: row.paymentEvidenceCount,
+      hasEvidence: Boolean(row.paymentEvidenceFileId || row.paymentEvidenceCount > 0),
       bankName: row.bankName ?? null,
       cardLastFour: row.cardLastFour ?? null,
       operationCode: row.operationCode ?? null,
