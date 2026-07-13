@@ -47,3 +47,8 @@ export interface RecurringPurchaseSearchRule {
   values?: string[];
   range?: RecurringPurchaseSearchRangeValue;
 }
+
+export interface RecurringPurchaseSearchSnapshot {
+  q?: string;
+  filters: RecurringPurchaseSearchRule[];
+}

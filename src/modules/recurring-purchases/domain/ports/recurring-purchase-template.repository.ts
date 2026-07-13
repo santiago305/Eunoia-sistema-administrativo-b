@@ -23,6 +23,7 @@ export interface RecurringPurchaseTemplateListParams {
   filters?: RecurringPurchaseSearchRule[];
   page?: number;
   limit?: number;
+  requestedBy?: string;
 }
 
 export interface RecurringPurchaseTemplateRepository {
