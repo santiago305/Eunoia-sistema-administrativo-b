@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Header, Inject, Param, ParseUUIDPipe, Post, Query, Res, UseGuards } from "@nestjs/common";
+import type { Response } from "express";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
 import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
 import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
@@ -10,6 +11,7 @@ import { GetPaymentUsecase } from "src/modules/payments/application/usecases/pay
 import { GetPaymentsByPoIdUsecase } from "src/modules/payments/application/usecases/payment/get-by-po-id.usecase";
 import { ListPaymentsUsecase } from "src/modules/payments/application/usecases/payment/list.usecase";
 import { RejectPaymentUsecase } from "src/modules/payments/application/usecases/payment/reject.usecase";
+import { ExportPaymentsExcelUsecase } from "src/modules/payments/application/usecases/payment/export-excel.usecase";
 import { PaymentsHttpMapper } from "src/modules/payments/application/mappers/payments-http.mapper";
 import { HttpCreatePaymentDto } from "../dtos/payment/http-payment-create.dto";
 import { HttpListPaymentsQueryDto } from "../dtos/payment/http-payment-list.dto";
@@ -28,6 +30,7 @@ import { GetPaymentSearchStateUsecase } from "src/modules/payments/application/u
 import { SavePaymentSearchMetricUsecase } from "src/modules/payments/application/usecases/payment-search/save-metric.usecase";
 import { DeletePaymentSearchMetricUsecase } from "src/modules/payments/application/usecases/payment-search/delete-metric.usecase";
 import { sanitizePaymentSearchSnapshot } from "src/modules/payments/application/support/payment-search.utils";
+import { LISTING_SEARCH_STORAGE, ListingSearchStorageRepository } from "src/shared/listing-search/domain/listing-search.repository";
 
 @Controller("payments")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
@@ -40,11 +43,14 @@ export class PaymentsController {
     private readonly getPayment: GetPaymentUsecase,
     private readonly getPaymentsByPoId: GetPaymentsByPoIdUsecase,
     private readonly listPayments: ListPaymentsUsecase,
+    private readonly exportExcel: ExportPaymentsExcelUsecase,
     private readonly getSearchState: GetPaymentSearchStateUsecase,
     private readonly saveSearchMetric: SavePaymentSearchMetricUsecase,
     private readonly deleteSearchMetric: DeletePaymentSearchMetricUsecase,
     private readonly accessControlService: AccessControlService,
     private readonly notificationsService: NotificationsService,
+    @Inject(LISTING_SEARCH_STORAGE)
+    private readonly listingSearchStorage: ListingSearchStorageRepository,
     @InjectRepository(ApprovalRequestEntity)
     private readonly approvalRequestRepo: Repository<ApprovalRequestEntity>,
     @InjectRepository(PurchaseHistoryEventEntity)
@@ -193,6 +199,65 @@ export class PaymentsController {
   @Get("search-state")
   getSearchStateForUser(@CurrentUser() user: { id: string }) {
     return this.getSearchState.execute(user.id);
+  }
+
+  @RequirePermissions("payments.export")
+  @Get("export-columns")
+  getExportColumns() {
+    return this.exportExcel.getAvailableColumns();
+  }
+
+  @RequirePermissions("payments.export")
+  @Get("export-presets")
+  async getExportPresets(@CurrentUser() user: { id: string }) {
+    const state = await this.listingSearchStorage.listState({
+      userId: user.id,
+      tableKey: "payments:export",
+    });
+    return state.metrics;
+  }
+
+  @RequirePermissions("payments.export")
+  @Post("export-presets")
+  saveExportPreset(
+    @CurrentUser() user: { id: string },
+    @Body() body: { name: string; columns: Array<{ key: string; label: string }> },
+  ) {
+    return this.listingSearchStorage.createMetric({
+      userId: user.id,
+      tableKey: "payments:export",
+      name: body.name,
+      snapshot: {
+        q: "",
+        filters: [],
+        ...(body as any),
+      } as any,
+    });
+  }
+
+  @RequirePermissions("payments.export")
+  @Delete("export-presets/:metricId")
+  deleteExportPreset(
+    @CurrentUser() user: { id: string },
+    @Param("metricId", ParseUUIDPipe) metricId: string,
+  ) {
+    return this.listingSearchStorage.deleteMetric({
+      userId: user.id,
+      tableKey: "payments:export",
+      metricId,
+    });
+  }
+
+  @RequirePermissions("payments.export")
+  @Post("export-excel")
+  @Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+  async exportPaymentsExcel(
+    @Body() dto: { columns: Array<{ key: string; label: string }>; q?: string; filters?: Record<string, unknown>[] },
+    @Res() res: Response,
+  ) {
+    const file = await this.exportExcel.execute(dto);
+    res.setHeader("Content-Disposition", `attachment; filename="${file.filename}"`);
+    return res.send(file.content);
   }
 
   @RequirePermissions("payments.read")
