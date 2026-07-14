@@ -101,6 +101,48 @@ describe("permissions seed", () => {
     expect(codes.has("purchases.attachments.delete")).toBe(true);
   });
 
+  it("includes administrative income, finance and logistics permissions", () => {
+    const codes = new Set(PERMISSIONS_SEED.map((item) => item.code));
+    const expectedCodes = [
+      "page.income.view",
+      "income.read",
+      "income.export",
+      "income.view_all",
+      "income.view_own",
+      "page.admin-finance.view",
+      "admin_finance.read",
+      "admin_finance.export",
+      "logistics_payables.view",
+      "logistics_payables.manage",
+    ];
+
+    expectedCodes.forEach((code) => expect(codes.has(code)).toBe(true));
+  });
+
+  it("defines administrative finance permissions with stable modules and resources", () => {
+    const permissionByCode = new Map(PERMISSIONS_SEED.map((item) => [item.code, item]));
+
+    expect(permissionByCode.get("page.income.view")).toEqual(
+      expect.objectContaining({ module: "income", resource: "income", action: "view", type: "page" }),
+    );
+    expect(permissionByCode.get("page.admin-finance.view")).toEqual(
+      expect.objectContaining({
+        module: "admin_finance",
+        resource: "admin_finance",
+        action: "view",
+        type: "page",
+      }),
+    );
+    expect(permissionByCode.get("logistics_payables.manage")).toEqual(
+      expect.objectContaining({
+        module: "logistics_payables",
+        resource: "logistics_payables",
+        action: "manage",
+        type: "action",
+      }),
+    );
+  });
+
   it("includes fine warehouse and supplier permissions", () => {
     const codes = new Set(PERMISSIONS_SEED.map((item) => item.code));
 
