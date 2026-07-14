@@ -118,6 +118,7 @@ export class ExportSaleOrdersExcelUsecase {
     const excelColumns: XlsxColumn[] = selected.map(({ requested }) => ({
       key: requested.key,
       header: requested.label,
+      format: requested.key === "number" ? "text" : undefined,
     }));
     const builder = new XlsxBuilderService();
     const content = await builder.build({

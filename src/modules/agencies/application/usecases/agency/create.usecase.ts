@@ -66,6 +66,7 @@ export class CreateAgencyUsecase {
         agency = AgencyFactory.createAgency({
           name: input.name,
           isActive: input.isActive ?? true,
+          description: input.description ?? null,
           createdAt: now,
         });
       } catch (error) {

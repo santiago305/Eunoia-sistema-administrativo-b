@@ -12,6 +12,7 @@ export interface SubsidiaryInput {
 
 export interface CreateAgencyInput {
   name: string;
+  description?: string | null;
   isActive?: boolean;
   subsidiaries: SubsidiaryInput[];
 }

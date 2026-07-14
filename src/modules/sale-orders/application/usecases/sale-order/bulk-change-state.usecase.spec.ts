@@ -46,7 +46,9 @@ describe("BulkChangeSaleOrderStateUsecase", () => {
           },
         }),
     };
-    const usecase = new BulkChangeSaleOrderStateUsecase(advanceToTarget as any);
+    const usecase = new BulkChangeSaleOrderStateUsecase(advanceToTarget as any, { execute: jest.fn() } as any, {
+      findById: jest.fn().mockResolvedValue({ id: "global-state-delivered", code: "DELIVERED" }),
+    } as any);
 
     const result = await usecase.execute({
       saleOrderIds: ["order-1", "order-2"],
@@ -115,7 +117,9 @@ describe("BulkChangeSaleOrderStateUsecase", () => {
         },
       }),
     };
-    const usecase = new BulkChangeSaleOrderStateUsecase(advanceToTarget as any);
+    const usecase = new BulkChangeSaleOrderStateUsecase(advanceToTarget as any, { execute: jest.fn() } as any, {
+      findById: jest.fn().mockResolvedValue({ id: "global-state-delivered", code: "DELIVERED" }),
+    } as any);
 
     const result = await usecase.execute({
       saleOrderIds: ["order-1"],
@@ -133,6 +137,67 @@ describe("BulkChangeSaleOrderStateUsecase", () => {
           saleOrderId: "order-1",
           status: "failed",
           completedTransitions: [completed("packed")],
+        },
+      ],
+    });
+  });
+
+  it("uses the cancellation usecase when the target global state is cancelled", async () => {
+    const advanceToTarget = { execute: jest.fn() };
+    const cancelSaleOrder = {
+      execute: jest
+        .fn()
+        .mockResolvedValueOnce({ saleOrderId: "order-1", currentStateId: "workflow-cancelled-1" })
+        .mockResolvedValueOnce({ saleOrderId: "order-2", currentStateId: "workflow-cancelled-2" }),
+    };
+    const saleOrderStates = {
+      findById: jest.fn().mockResolvedValue({
+        id: "global-state-cancelled",
+        code: "CANCELLED",
+        name: "Cancelado",
+        color: "#ef4444",
+      }),
+    };
+    const usecase = new BulkChangeSaleOrderStateUsecase(
+      advanceToTarget as any,
+      cancelSaleOrder as any,
+      saleOrderStates as any,
+    );
+
+    const result = await usecase.execute({
+      saleOrderIds: ["order-1", "order-2"],
+      targetStateId: "global-state-cancelled",
+      executedBy: "user-1",
+    });
+
+    expect(saleOrderStates.findById).toHaveBeenCalledWith("global-state-cancelled");
+    expect(advanceToTarget.execute).not.toHaveBeenCalled();
+    expect(cancelSaleOrder.execute).toHaveBeenNthCalledWith(1, { saleOrderId: "order-1" });
+    expect(cancelSaleOrder.execute).toHaveBeenNthCalledWith(2, { saleOrderId: "order-2" });
+    expect(result.data).toMatchObject({
+      targetStateId: "global-state-cancelled",
+      requested: 2,
+      succeeded: 2,
+      failed: 0,
+      partiallyCompleted: 0,
+      results: [
+        {
+          saleOrderId: "order-1",
+          targetStateId: "global-state-cancelled",
+          status: "success",
+          initialState: null,
+          finalState: null,
+          completedTransitions: [],
+          warnings: [],
+        },
+        {
+          saleOrderId: "order-2",
+          targetStateId: "global-state-cancelled",
+          status: "success",
+          initialState: null,
+          finalState: null,
+          completedTransitions: [],
+          warnings: [],
         },
       ],
     });

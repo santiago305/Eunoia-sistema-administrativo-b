@@ -8,6 +8,7 @@ export class AgencyOutputMapper {
     return {
       id: agency.agencyId.value,
       name: agency.name,
+      description: agency.description,
       isActive: agency.isActive,
       subsidiaryCount: subsidiaries?.length,
       subsidiaries: subsidiaries?.map((subsidiary) => this.toSubsidiaryOutput(subsidiary)),

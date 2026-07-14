@@ -276,6 +276,7 @@ export const PERMISSIONS_SEED: PermissionSeedItem[] = [
   { code: 'security.read', name: 'Consultar seguridad', description: 'Consultar metricas y reportes de seguridad', module: 'security', resource: 'security', action: 'read', type: 'action' },
   { code: 'agencies.read', name: 'Consultar agencias', description: 'Consultar agencias', module: 'agencies', resource: 'agencies', action: 'read', type: 'action' },
   { code: 'agencies.manage', name: 'Gestionar agencias', description: 'Crear/actualizar agencias y su estado', module: 'agencies', resource: 'agencies', action: 'manage', type: 'action' },
+  { code: 'agencies.export', name: 'Exportar agencias', description: 'Exportar agencias a Excel', module: 'agencies', resource: 'agencies', action: 'export', type: 'action' },
   { code: 'sources.read', name: 'Consultar fuentes', description: 'Consultar fuentes', module: 'sources', resource: 'sources', action: 'read', type: 'action' },
   { code: 'sources.manage', name: 'Gestionar fuentes', description: 'Crear/actualizar fuentes y su estado', module: 'sources', resource: 'sources', action: 'manage', type: 'action' },
   { code: 'bank-accounts.read', name: 'Consultar cuentas bancarias', description: 'Consultar cuentas bancarias por empresa', module: 'bank_accounts', resource: 'bank_accounts', action: 'read', type: 'action' },

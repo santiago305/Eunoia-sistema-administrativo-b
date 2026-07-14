@@ -1,4 +1,5 @@
 import { BadRequestException } from "@nestjs/common";
+import ExcelJS from "exceljs";
 import { ExportSaleOrdersExcelUsecase } from "./export-excel.usecase";
 import { SaleOrderSearchFields, SaleOrderSearchOperators } from "../../dtos/sale-order-search/sale-order-search-snapshot";
 
@@ -103,6 +104,31 @@ describe("ExportSaleOrdersExcelUsecase", () => {
         ],
       }),
     );
+  });
+
+  it("exports Numero as text when it looks like a date", async () => {
+    saleOrderRepo.list.mockResolvedValueOnce({
+      total: 1,
+      items: [
+        {
+          id: "order-1",
+          serie: "1958",
+          correlative: "01",
+        },
+      ],
+    });
+    const usecase = new ExportSaleOrdersExcelUsecase(saleOrderRepo as any);
+
+    const result = await usecase.execute({
+      columns: [{ key: "number", label: "Numero" }],
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(result.content);
+    const worksheet = workbook.getWorksheet("Pedidos");
+    const cell = worksheet?.getCell("A2");
+    expect(cell?.value).toBe("1958-01");
+    expect(cell?.numFmt).toBe("@");
   });
 
   it("rejects empty or unknown column selections", async () => {
