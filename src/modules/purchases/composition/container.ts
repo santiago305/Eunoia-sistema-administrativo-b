@@ -12,9 +12,7 @@ import { PURCHASE_ORDER } from "../domain/ports/purchase-order.port.repository";
 import { PURCHASE_SEARCH } from "../domain/ports/purchase-search.repository";
 import { CreateProductCatalogStockItem } from "src/modules/product-catalog/application/usecases/create-stock-item.usecase";
 import { IMAGE_PROCESSOR } from "src/shared/application/ports/image-processor.port";
-import { FILE_STORAGE } from "src/shared/application/ports/file-storage.port";
 import { SharpImageProcessorService } from "src/shared/utilidades/services/sharp-image-processor.service";
-import { LocalFileStorageService } from "src/shared/utilidades/services/local-file-storage.service";
 
 export const purchasesModuleProviders: Provider[] = [
   ...purchasesUsecasesProviders,
@@ -24,7 +22,6 @@ export const purchasesModuleProviders: Provider[] = [
   { provide: LISTING_SEARCH_STORAGE, useClass: ListingSearchTypeormRepository },
   { provide: UNIT_OF_WORK, useClass: TypeormUnitOfWork },
   { provide: IMAGE_PROCESSOR, useClass: SharpImageProcessorService },
-  { provide: FILE_STORAGE, useClass: LocalFileStorageService },
   CreateProductCatalogStockItem, 
 
 ];

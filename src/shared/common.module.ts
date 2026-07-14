@@ -4,6 +4,7 @@ import { CompaniesModule } from 'src/modules/companies/companies.module';
 import { HttpErrorFilter } from './errores/http-exception.filter';
 import { LoggingInterceptor } from './utilidades/interceptors/logging.interceptor';
 import { CompanyConfiguredGuard } from './utilidades/guards/company-configured.guard';
+import { StorageModule } from './storage/storage.module';
 
 
 /**
@@ -26,7 +27,7 @@ import { CompanyConfiguredGuard } from './utilidades/guards/company-configured.g
  */
 @Global()
 @Module({
-  imports: [CompaniesModule],
+  imports: [CompaniesModule, StorageModule],
   providers: [
     {
       provide: APP_FILTER,
@@ -38,7 +39,7 @@ import { CompanyConfiguredGuard } from './utilidades/guards/company-configured.g
     },
     CompanyConfiguredGuard,
   ],
-  exports: [CompanyConfiguredGuard, CompaniesModule],
+  exports: [CompanyConfiguredGuard, CompaniesModule, StorageModule],
 })
 export class CommonModule {}
 
