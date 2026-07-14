@@ -25,7 +25,6 @@ import { Repository } from "typeorm";
 import { ApprovalRequestEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/approval-request.entity";
 import { PurchaseHistoryEventEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-history-event.entity";
 import { PurchaseOrderEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-order.entity";
-import { RecalculateAccountPayableUsecase } from "src/modules/accounts-payable";
 import { GetPaymentSearchStateUsecase } from "src/modules/payments/application/usecases/payment-search/get-state.usecase";
 import { SavePaymentSearchMetricUsecase } from "src/modules/payments/application/usecases/payment-search/save-metric.usecase";
 import { DeletePaymentSearchMetricUsecase } from "src/modules/payments/application/usecases/payment-search/delete-metric.usecase";
@@ -57,7 +56,6 @@ export class PaymentsController {
     private readonly purchaseHistoryRepo: Repository<PurchaseHistoryEventEntity>,
     @InjectRepository(PurchaseOrderEntity)
     private readonly purchaseOrderRepo: Repository<PurchaseOrderEntity>,
-    private readonly recalculateAccountPayable: RecalculateAccountPayableUsecase,
   ) {}
 
   @RequirePermissions("payments.create")
@@ -102,10 +100,6 @@ export class PaymentsController {
         approvedAt: canApprovePayment ? new Date() : undefined,
       },
     );
-
-    if (canApprovePayment && input.accountPayableId) {
-      await this.recalculateAccountPayable.execute({ accountPayableId: input.accountPayableId });
-    }
 
     if (!canApprovePayment && input.poId) {
       const approval = await this.approvalRequestRepo.save(

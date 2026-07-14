@@ -8,6 +8,7 @@ import { PaymentsFactory } from "src/modules/payments/domain/factories/payments.
 import { CreditQuotaNotFoundError } from "../../errors/credit-quota-not-found.error";
 import { successResponse } from "src/shared/response-standard/response";
 import { PurchaseHistoryService } from "src/modules/purchases/application/services/purchase-history.service";
+import { RecalculateAccountPayableUsecase } from "src/modules/accounts-payable";
 
 export class CreatePaymentUsecase {
   constructor(
@@ -17,6 +18,7 @@ export class CreatePaymentUsecase {
     private readonly paymentDocRepo: PaymentDocumentRepository,
     @Inject(CREDIT_QUOTA_REPOSITORY)
     private readonly creditQuotaRepo: CreditQuotaRepository,
+    private readonly recalculateAccountPayable: RecalculateAccountPayableUsecase,
     @Optional()
     private readonly history?: PurchaseHistoryService,
   ) {}
@@ -140,6 +142,9 @@ export class CreatePaymentUsecase {
           const newTotalPaid = quotaToUpdate.totalPaid + input.amount;
           await this.creditQuotaRepo.updateTotalPaid(quotaToUpdate.quotaId, newTotalPaid, tx);
           await this.creditQuotaRepo.updatePaymentDate(quotaToUpdate.quotaId, date, tx);
+        }
+        if (input.accountPayableId && (options?.status ?? "APPROVED") === "APPROVED") {
+          await this.recalculateAccountPayable.execute({ accountPayableId: input.accountPayableId }, tx);
         }
       } catch {
         throw new BadRequestException("No se pudo vincular el pago a la orden de compra");

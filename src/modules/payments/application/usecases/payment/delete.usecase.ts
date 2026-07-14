@@ -5,6 +5,7 @@ import { CREDIT_QUOTA_REPOSITORY, CreditQuotaRepository } from "src/modules/paym
 import { PaymentNotFoundError } from "../../errors/payment-not-found.error";
 import { successResponse } from "src/shared/response-standard/response";
 import { PurchaseHistoryService } from "src/modules/purchases/application/services/purchase-history.service";
+import { RecalculateAccountPayableUsecase } from "src/modules/accounts-payable";
 
 export class DeletePaymentUsecase {
   constructor(
@@ -14,6 +15,7 @@ export class DeletePaymentUsecase {
     private readonly paymentDocRepo: PaymentDocumentRepository,
     @Inject(CREDIT_QUOTA_REPOSITORY)
     private readonly creditQuotaRepo: CreditQuotaRepository,
+    private readonly recalculateAccountPayable: RecalculateAccountPayableUsecase,
     @Optional()
     private readonly history?: PurchaseHistoryService,
   ) {}
@@ -44,6 +46,9 @@ export class DeletePaymentUsecase {
 
     try {
       await this.paymentDocRepo.deleteById(payDocId, tx);
+      if (existing.accountPayableId) {
+        await this.recalculateAccountPayable.execute({ accountPayableId: existing.accountPayableId }, tx);
+      }
       if (existing.poId) {
         await this.history?.recordPayment({
           purchaseId: existing.poId,
