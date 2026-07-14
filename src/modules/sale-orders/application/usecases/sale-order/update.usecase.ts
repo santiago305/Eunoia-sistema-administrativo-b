@@ -33,6 +33,7 @@ export type UpdateSaleOrderInput = {
   assignedBy?: string | null;
   subTotal?: number;
   deliveryCost?: number;
+  logisticsCost?: number;
   discount?: number;
   total?: number;
   items: Array<{
@@ -487,7 +488,7 @@ export class UpdateSaleOrderUsecase {
           serie: updated.serie ?? null,
           correlative: updated.correlative ?? null,
           agencySubsidiaryId: updated.agencySubsidiaryId ?? null,
-          deliveryCost: updated.deliveryCost,
+          deliveryCost: Number(input.logisticsCost ?? updated.deliveryCost),
           deliveryDate: updated.deliveryDate ?? null,
           scheduleDate: updated.scheduleDate ?? null,
         },

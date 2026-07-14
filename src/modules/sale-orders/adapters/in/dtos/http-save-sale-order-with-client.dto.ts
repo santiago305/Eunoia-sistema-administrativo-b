@@ -85,6 +85,11 @@ export class HttpSaveSaleOrderWithClientDto {
   @IsOptional()
   @IsNumber()
   @Min(0)
+  logisticsCost?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
   discount?: number;
 
   @IsOptional()

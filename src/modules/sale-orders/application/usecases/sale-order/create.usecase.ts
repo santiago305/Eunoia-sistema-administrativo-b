@@ -34,6 +34,7 @@ export type CreateSaleOrderInput = {
   assignedBy?: string | null;
   subTotal?: number;
   deliveryCost?: number;
+  logisticsCost?: number;
   discount?: number;
   total?: number;
   items: Array<{
@@ -283,7 +284,7 @@ export class CreateSaleOrderUsecase {
           serie: order.serie ?? null,
           correlative: order.correlative ?? null,
           agencySubsidiaryId: order.agencySubsidiaryId ?? null,
-          deliveryCost: order.deliveryCost,
+          deliveryCost: Number(input.logisticsCost ?? order.deliveryCost),
           deliveryDate: order.deliveryDate ?? null,
           scheduleDate: order.scheduleDate ?? null,
           createdByUserId: createdBy,

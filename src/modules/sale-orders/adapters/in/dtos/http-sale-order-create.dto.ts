@@ -144,6 +144,9 @@ export class HttpSaleOrderCreateDto {
   
   @IsOptional()
   deliveryCost?: number;
+
+  @IsOptional()
+  logisticsCost?: number;
   
   @IsOptional()
   subTotal?: number;

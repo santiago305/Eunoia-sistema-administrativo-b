@@ -52,6 +52,11 @@ export class HttpSaleOrderUpdateDto {
   @IsOptional()
   @IsNumber()
   @Min(0)
+  logisticsCost?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
   subTotal?: number;
 
   @IsOptional()
