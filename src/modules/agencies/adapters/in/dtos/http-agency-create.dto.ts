@@ -44,6 +44,11 @@ export class HttpCreateAgencyDto {
   @MaxLength(255)
   name: string;
 
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  description?: string | null;
+
   @IsArray()
   @ArrayMinSize(1)
   @ValidateNested({ each: true })

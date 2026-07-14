@@ -22,6 +22,7 @@ import {
   AgencySearchFields,
   AgencySearchOperators,
 } from "src/modules/agencies/application/dtos/agency-search/agency-search-snapshot";
+import { SaleOrderEntity } from "src/modules/sale-orders/adapters/out/persistence/typeorm/entities/sale-order.entity";
 import { AgencyEntity } from "../entities/agency.entity";
 import { SubsidiaryEntity } from "../entities/subsidiary.entity";
 
@@ -54,6 +55,7 @@ export class AgencyTypeormRepository implements AgencyRepository {
       agencyId: new AgencyId(row.id),
       name: row.name,
       isActive: row.isActive,
+      description: row.description ?? null,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     });
@@ -108,6 +110,7 @@ export class AgencyTypeormRepository implements AgencyRepository {
     const row = repo.create({
       id: agency.agencyId.value,
       name: agency.name,
+      description: agency.description,
       isActive: agency.isActive,
       createdAt: agency.createdAt,
       updatedAt: agency.updatedAt,
@@ -121,7 +124,7 @@ export class AgencyTypeormRepository implements AgencyRepository {
   }
 
   async update(
-    params: { agencyId: string; name?: string; isActive?: boolean; updatedAt?: Date },
+    params: { agencyId: string; name?: string; isActive?: boolean; description?: string | null; updatedAt?: Date },
     tx?: TransactionContext,
   ): Promise<Agency | null> {
     return this.updateWithSubsidiaries(params, tx);
@@ -132,6 +135,7 @@ export class AgencyTypeormRepository implements AgencyRepository {
       agencyId: string;
       name?: string;
       isActive?: boolean;
+      description?: string | null;
       updatedAt?: Date;
       subsidiaries?: Subsidiary[];
     },
@@ -143,6 +147,7 @@ export class AgencyTypeormRepository implements AgencyRepository {
 
     if (params.name !== undefined) patch.name = params.name;
     if (params.isActive !== undefined) patch.isActive = params.isActive;
+    if (params.description !== undefined) patch.description = params.description;
     if (params.updatedAt !== undefined) patch.updatedAt = params.updatedAt;
 
     await repo.update({ id: params.agencyId }, patch);
@@ -164,7 +169,7 @@ export class AgencyTypeormRepository implements AgencyRepository {
 
       const omittedIds = current.filter((row) => !incomingIds.has(row.id)).map((row) => row.id);
       if (omittedIds.length) {
-        await subsidiaryRepo.update({ id: In(omittedIds), agencyId: params.agencyId }, { isActive: false });
+        await subsidiaryRepo.delete({ id: In(omittedIds), agencyId: params.agencyId });
       }
     }
 
@@ -222,6 +227,48 @@ export class AgencyTypeormRepository implements AgencyRepository {
 
     const rows = await qb.orderBy("s.alias", "ASC").limit(50).getMany();
     return rows.map((row) => this.toSubsidiaryDomain(row));
+  }
+
+  async findExistingSubsidiaryAliases(
+    aliases: string[],
+    tx?: TransactionContext,
+  ): Promise<string[]> {
+    const normalized = Array.from(
+      new Set(aliases.map((alias) => alias.trim()).filter(Boolean)),
+    );
+    if (!normalized.length) return [];
+
+    const rows = await this.getSubsidiaryRepo(tx)
+      .createQueryBuilder("s")
+      .select("s.alias", "alias")
+      .where("unaccent(lower(s.alias)) IN (:...aliases)", {
+        aliases: normalized.map((alias) =>
+          alias
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .toLowerCase(),
+        ),
+      })
+      .getRawMany<{ alias: string }>();
+
+    return rows.map((row) => row.alias);
+  }
+
+  async findReferencedSubsidiaryIds(
+    subsidiaryIds: string[],
+    tx?: TransactionContext,
+  ): Promise<string[]> {
+    const ids = Array.from(new Set(subsidiaryIds.filter(Boolean)));
+    if (!ids.length) return [];
+
+    const rows = await this.getManager(tx)
+      .getRepository(SaleOrderEntity)
+      .createQueryBuilder("so")
+      .select("DISTINCT so.agencySubsidiaryId", "agencySubsidiaryId")
+      .where("so.agencySubsidiaryId IN (:...ids)", { ids })
+      .getRawMany<{ agencySubsidiaryId: string }>();
+
+    return rows.map((row) => row.agencySubsidiaryId);
   }
 
   async list(

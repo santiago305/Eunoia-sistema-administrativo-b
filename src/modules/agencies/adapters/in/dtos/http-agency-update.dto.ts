@@ -48,6 +48,11 @@ export class HttpUpdateAgencyDto {
   name?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  description?: string | null;
+
+  @IsOptional()
   @IsBoolean()
   isActive?: boolean;
 

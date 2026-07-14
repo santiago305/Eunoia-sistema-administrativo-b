@@ -13,6 +13,7 @@ export interface AgencyRepository {
       agencyId: string;
       name?: string;
       isActive?: boolean;
+      description?: string | null;
       updatedAt?: Date;
     },
     tx?: TransactionContext,
@@ -38,6 +39,7 @@ export interface AgencyRepository {
       agencyId: string;
       name?: string;
       isActive?: boolean;
+      description?: string | null;
       updatedAt?: Date;
       subsidiaries?: Subsidiary[];
     },
@@ -52,5 +54,13 @@ export interface AgencyRepository {
     params: { q?: string; agencyId?: string; isActive?: boolean },
     tx?: TransactionContext,
   ): Promise<Subsidiary[]>;
+  findExistingSubsidiaryAliases(
+    aliases: string[],
+    tx?: TransactionContext,
+  ): Promise<string[]>;
+  findReferencedSubsidiaryIds(
+    subsidiaryIds: string[],
+    tx?: TransactionContext,
+  ): Promise<string[]>;
 }
 
