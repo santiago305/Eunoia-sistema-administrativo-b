@@ -19,10 +19,12 @@ describe('envs validation', () => {
 
   beforeEach(() => {
     jest.resetModules();
+    jest.doMock('dotenv/config', () => ({}));
     process.env = { ...originalEnv, ...REQUIRED_ENV };
   });
 
   afterEach(() => {
+    jest.dontMock('dotenv/config');
     process.env = originalEnv;
   });
 
@@ -46,5 +48,25 @@ describe('envs validation', () => {
         require('./envs');
       });
     }).not.toThrow();
+  });
+
+  it('uses unified storage defaults for files and mail attachments', () => {
+    process.env.JWT_SECRET = 'j'.repeat(32);
+    process.env.COOKIE_SECRET = 'c'.repeat(32);
+
+    jest.isolateModules(() => {
+      const { envs } = require('./envs');
+
+      expect(envs.files.rootDir).toBe('storage');
+      expect(envs.files.publicDir).toBe('storage/public');
+      expect(envs.files.privateDir).toBe('storage/private');
+      expect(envs.files.deletedDir).toBe('storage/deleted');
+      expect(envs.mail.attachmentsDir).toBe(
+        'storage/private/mail-attachments',
+      );
+      expect(envs.mail.attachmentsDeletedDir).toBe(
+        'storage/deleted/mail-attachments',
+      );
+    });
   });
 });

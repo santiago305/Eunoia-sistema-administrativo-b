@@ -24,6 +24,10 @@ interface EnvVars {
     REDIS_TTL_MS?: number;
     SALE_ORDER_AUTOMATIC_WORKFLOW_INTERVAL_MS?: number;
     SALE_ORDER_AUTOMATIC_WORKFLOW_RUN_ON_START?: boolean;
+    FILES_STORAGE_ROOT?: string;
+    FILES_PUBLIC_DIR?: string;
+    FILES_PRIVATE_DIR?: string;
+    FILES_DELETED_DIR?: string;
     MAIL_DEFAULT_USER_STORAGE_GB?: number;
     MAIL_ATTACHMENTS_DIR?: string;
     MAIL_ATTACHMENTS_DELETED_DIR?: string;
@@ -65,6 +69,10 @@ const envsSchema = joi.object({
     REDIS_TTL_MS: joi.number().optional(),
     SALE_ORDER_AUTOMATIC_WORKFLOW_INTERVAL_MS: joi.number().min(10_000).optional(),
     SALE_ORDER_AUTOMATIC_WORKFLOW_RUN_ON_START: joi.boolean().optional(),
+    FILES_STORAGE_ROOT: joi.string().optional(),
+    FILES_PUBLIC_DIR: joi.string().optional(),
+    FILES_PRIVATE_DIR: joi.string().optional(),
+    FILES_DELETED_DIR: joi.string().optional(),
     MAIL_DEFAULT_USER_STORAGE_GB: joi.number().min(1).max(5).optional(),
     MAIL_ATTACHMENTS_DIR: joi.string().optional(),
     MAIL_ATTACHMENTS_DELETED_DIR: joi.string().optional(),
@@ -94,6 +102,11 @@ if (error) {
 }
 
 const envsVars:EnvVars = value
+
+const filesRootDir = envsVars.FILES_STORAGE_ROOT ?? 'storage';
+const filesPublicDir = envsVars.FILES_PUBLIC_DIR ?? `${filesRootDir}/public`;
+const filesPrivateDir = envsVars.FILES_PRIVATE_DIR ?? `${filesRootDir}/private`;
+const filesDeletedDir = envsVars.FILES_DELETED_DIR ?? `${filesRootDir}/deleted`;
 
 export const envs = {
     port: envsVars.PORT,
@@ -131,16 +144,22 @@ export const envs = {
         automaticWorkflowIntervalMs: envsVars.SALE_ORDER_AUTOMATIC_WORKFLOW_INTERVAL_MS ?? 60_000,
         automaticWorkflowRunOnStart: envsVars.SALE_ORDER_AUTOMATIC_WORKFLOW_RUN_ON_START ?? true,
     },
+    files: {
+        rootDir: filesRootDir,
+        publicDir: filesPublicDir,
+        privateDir: filesPrivateDir,
+        deletedDir: filesDeletedDir,
+    },
     mail: {
         defaultUserStorageGb: envsVars.MAIL_DEFAULT_USER_STORAGE_GB ?? 1,
         attachmentsDir:
           envsVars.MAIL_STORAGE_ACTIVE_DIR ??
           envsVars.MAIL_ATTACHMENTS_DIR ??
-          'storage/mail-attachments',
+          `${filesPrivateDir}/mail-attachments`,
         attachmentsDeletedDir:
           envsVars.MAIL_STORAGE_DELETED_DIR ??
           envsVars.MAIL_ATTACHMENTS_DELETED_DIR ??
-          'storage/mail-attachments-deleted',
+          `${filesDeletedDir}/mail-attachments`,
         deletedDb: {
           host: envsVars.MAIL_DELETED_DB_HOST,
           port: envsVars.MAIL_DELETED_DB_PORT,
