@@ -700,6 +700,31 @@ describe("SaleOrderTypeormRepository", () => {
     });
   });
 
+  it("applies workflow type filters to list queries", async () => {
+    const qb = {
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      leftJoin: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+    };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue({ createQueryBuilder: jest.fn().mockReturnValue(qb) }) },
+    } as any);
+
+    await repository.list({
+      filters: [
+        { field: "workflowId", operator: "in", values: ["workflow-1", "workflow-2"] },
+      ] as any,
+    });
+
+    expect(qb.andWhere).toHaveBeenCalledWith("so.workflowId IN (:...filter_0_value)", {
+      filter_0_value: ["workflow-1", "workflow-2"],
+    });
+  });
+
   it("applies createdAt filters as full local Peru day ranges in list queries", async () => {
     const qb = {
       leftJoinAndSelect: jest.fn().mockReturnThis(),

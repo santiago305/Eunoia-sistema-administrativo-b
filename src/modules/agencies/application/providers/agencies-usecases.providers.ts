@@ -1,7 +1,9 @@
 import { Provider } from "@nestjs/common";
 import { CreateAgencyUsecase } from "../usecases/agency/create.usecase";
+import { ExportAgenciesExcelUsecase } from "../usecases/agency/export-excel.usecase";
 import { GetAgencyUsecase } from "../usecases/agency/get-by-id.usecase";
 import { GetAgencyWithSubsidiariesUsecase } from "../usecases/agency/get-with-subsidiaries.usecase";
+import { ImportCreateAgencyUsecase } from "../usecases/agency/import-create.usecase";
 import { ListAgenciesUsecase } from "../usecases/agency/list.usecase";
 import { ListSubsidiariesUsecase } from "../usecases/agency/list-subsidiaries.usecase";
 import { SetAgencyActiveUsecase } from "../usecases/agency/set-active.usecase";
@@ -12,6 +14,8 @@ import { SaveAgencySearchMetricUsecase } from "../usecases/agency-search/save-me
 
 export const agenciesUsecasesProviders: Provider[] = [
   CreateAgencyUsecase,
+  ExportAgenciesExcelUsecase,
+  ImportCreateAgencyUsecase,
   GetAgencyUsecase,
   GetAgencyWithSubsidiariesUsecase,
   ListAgenciesUsecase,

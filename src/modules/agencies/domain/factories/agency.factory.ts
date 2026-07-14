@@ -11,6 +11,7 @@ export class AgencyFactory {
     agencyId?: AgencyId;
     name: string;
     isActive?: boolean;
+    description?: string | null;
     createdAt?: Date;
     updatedAt?: Date;
   }) {

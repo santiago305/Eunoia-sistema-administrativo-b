@@ -71,11 +71,39 @@ export class UpdateAgencyUsecase {
         const next = current.update({
           name: input.name,
           isActive: input.isActive,
+          description: input.description,
           updatedAt: now,
         });
 
         const subsidiaries = [];
         if (input.subsidiaries) {
+          const currentWithSubsidiaries = await this.agencyRepo.findByIdWithSubsidiaries(
+            current.agencyId.value,
+            { includeInactiveSubsidiaries: true },
+            tx,
+          );
+          const incomingExistingIds = new Set(
+            input.subsidiaries
+              .map((item) => item.id)
+              .filter((id): id is string => Boolean(id)),
+          );
+          const omittedSubsidiaryIds =
+            currentWithSubsidiaries?.subsidiaries
+              .map((subsidiary) => subsidiary.subsidiaryId.value)
+              .filter((id) => !incomingExistingIds.has(id)) ?? [];
+
+          if (omittedSubsidiaryIds.length) {
+            const referencedIds = await this.agencyRepo.findReferencedSubsidiaryIds(
+              omittedSubsidiaryIds,
+              tx,
+            );
+            if (referencedIds.length) {
+              throw new ConflictException(
+                "No se puede eliminar sucursal referenciada en los pedidos",
+              );
+            }
+          }
+
           const agencyId = new AgencyId(current.agencyId.value);
           for (const item of input.subsidiaries) {
             const ubigeo = await this.validateUbigeo(item);
@@ -100,6 +128,7 @@ export class UpdateAgencyUsecase {
             agencyId: next.agencyId.value,
             name: next.name,
             isActive: next.isActive,
+            description: next.description,
             updatedAt: next.updatedAt,
             subsidiaries: input.subsidiaries ? subsidiaries : undefined,
           },

@@ -3,6 +3,7 @@ import ExcelJS from "exceljs";
 export type XlsxColumn = {
   key: string;
   header: string;
+  format?: "text";
 };
 
 type BuildXlsxInput = {
@@ -11,8 +12,9 @@ type BuildXlsxInput = {
   rows: Record<string, unknown>[];
 };
 
-function normalizeCellValue(value: unknown): string | number | boolean | null {
+function normalizeCellValue(value: unknown, asText = false): string | number | boolean | null {
   if (value === null || value === undefined) return null;
+  if (asText) return String(value);
   if (value instanceof Date) return formatLocalDateTime(value);
   if (typeof value === "string") {
     const parsed = new Date(value);
@@ -38,12 +40,13 @@ export class XlsxBuilderService {
       header: column.header,
       key: column.key,
       width: Math.max(14, Math.min(42, column.header.length + 4)),
+      style: column.format === "text" ? { numFmt: "@" } : undefined,
     }));
 
     input.rows.forEach((row) => {
       const normalized: Record<string, string | number | boolean | null> = {};
       input.columns.forEach((column) => {
-        normalized[column.key] = normalizeCellValue(row[column.key]);
+        normalized[column.key] = normalizeCellValue(row[column.key], column.format === "text");
       });
       worksheet.addRow(normalized);
     });

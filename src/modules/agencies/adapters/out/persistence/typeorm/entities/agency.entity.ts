@@ -8,6 +8,9 @@ export class AgencyEntity {
   @Column({ type: "varchar", length: 255 })
   name: string;
 
+  @Column({ type: "varchar", length: 500, nullable: true })
+  description: string | null;
+
   @Column({ name: "is_active", type: "boolean", default: true })
   isActive: boolean;
 
