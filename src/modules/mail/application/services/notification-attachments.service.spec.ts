@@ -18,6 +18,7 @@ describe('NotificationAttachmentsService', () => {
   let messageRepository: ReturnType<typeof createRepository>;
   let attachmentUserRefRepository: ReturnType<typeof createRepository>;
   let service: NotificationAttachmentsService;
+  let imageProcessor: { toWebp: jest.Mock };
 
   beforeEach(() => {
     attachmentRepository = createRepository();
@@ -36,6 +37,14 @@ describe('NotificationAttachmentsService', () => {
     }));
     jest.spyOn(fs, 'mkdir').mockResolvedValue(undefined);
     jest.spyOn(fs, 'writeFile').mockResolvedValue(undefined);
+    imageProcessor = {
+      toWebp: jest.fn().mockResolvedValue({
+        buffer: Buffer.from('webp'),
+        extension: 'webp',
+        mimeType: 'image/webp',
+        sizeBytes: 4,
+      }),
+    };
 
     service = new NotificationAttachmentsService(
       attachmentRepository as any,
@@ -49,6 +58,7 @@ describe('NotificationAttachmentsService', () => {
         syncAttachmentRefsToMessage: jest.fn(),
         releaseAttachmentRefs: jest.fn(),
       } as any,
+      imageProcessor as any,
     );
   });
 
@@ -84,11 +94,39 @@ describe('NotificationAttachmentsService', () => {
     })) as any;
 
     expect(result.attachmentKind).toBe('file');
+    expect(imageProcessor.toWebp).not.toHaveBeenCalled();
     expect(attachmentRepository.save).toHaveBeenCalledWith(
       expect.objectContaining({
         originalName: 'foto.png',
         mimeType: 'image/png',
         attachmentKind: 'file',
+      }),
+    );
+  });
+
+  it('converts non-PNG image attachments to WEBP before writing to disk', async () => {
+    await upload({
+      fileName: 'foto.jpg',
+      mimeType: 'image/jpeg',
+      size: 3,
+      buffer: Buffer.from([0xff, 0xd8, 0xff, 0xdb]),
+      kind: 'image' as any,
+    });
+
+    expect(imageProcessor.toWebp).toHaveBeenCalledWith(expect.objectContaining({
+      buffer: Buffer.from([0xff, 0xd8, 0xff, 0xdb]),
+    }));
+    expect(fs.writeFile).toHaveBeenCalledWith(
+      expect.stringMatching(/\.webp$/),
+      Buffer.from('webp'),
+    );
+    expect(attachmentRepository.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        originalName: 'foto.jpg',
+        storedName: expect.stringMatching(/\.webp$/),
+        mimeType: 'image/webp',
+        sizeBytes: '4',
+        attachmentKind: 'image',
       }),
     );
   });

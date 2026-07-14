@@ -1,5 +1,7 @@
 import { UNIT_OF_WORK } from "src/shared/domain/ports/unit-of-work.port";
+import { IMAGE_PROCESSOR } from "src/shared/application/ports/image-processor.port";
 import { TypeormUnitOfWork } from "src/shared/infrastructure/typeorm/typeorm.unit-of-work";
+import { SharpImageProcessorService } from "src/shared/utilidades/services/sharp-image-processor.service";
 import { ListingSearchTypeormRepository } from "src/shared/listing-search/adapters/out/persistence/typeorm/repositories/listing-search.typeorm.repo";
 import { LISTING_SEARCH_STORAGE } from "src/shared/listing-search/domain/listing-search.repository";
 import { SALE_ORDER_REPOSITORY } from "src/modules/sale-orders/domain/ports/sale-order.repository";
@@ -73,6 +75,7 @@ export const saleOrdersModuleProviders = [
   { provide: LISTING_SEARCH_STORAGE, useClass: ListingSearchTypeormRepository },
   { provide: SALE_ORDER_SEARCH, useClass: SaleOrderSearchTypeormRepository },
   { provide: UNIT_OF_WORK, useClass: TypeormUnitOfWork },
+  { provide: IMAGE_PROCESSOR, useClass: SharpImageProcessorService },
   { provide: CLOCK, useValue: { now: () => new Date() } },
   CreateSaleOrderUsecase,
   SaleOrderNumberingService,

@@ -3,9 +3,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { SaleOrderEntity } from 'src/modules/sale-orders/adapters/out/persistence/typeorm/entities/sale-order.entity';
 import { SalePaymentEntity } from 'src/modules/sale-orders/adapters/out/persistence/typeorm/entities/sale-payment.entity';
 import { FILE_STORAGE } from 'src/shared/application/ports/file-storage.port';
+import { IMAGE_PROCESSOR } from 'src/shared/application/ports/image-processor.port';
 import { UNIT_OF_WORK } from 'src/shared/domain/ports/unit-of-work.port';
 import { TypeormUnitOfWork } from 'src/shared/infrastructure/typeorm/typeorm.unit-of-work';
 import { LocalFileStorageService } from 'src/shared/utilidades/services/local-file-storage.service';
+import { SharpImageProcessorService } from 'src/shared/utilidades/services/sharp-image-processor.service';
 import { SaleOrderAttachmentsController } from './adapters/in/controllers/sale-order-attachments.controller';
 import { SaleOrderAttachmentEntity } from './adapters/out/persistence/typeorm/entities/sale-order-attachment.entity';
 import { SaleOrderAttachmentTypeormRepository } from './adapters/out/persistence/typeorm/repositories/sale-order-attachment.typeorm.repo';
@@ -32,6 +34,7 @@ import { SALE_ORDER_ATTACHMENT_REPOSITORY } from './domain/ports/sale-order-atta
       useClass: SaleOrderAttachmentTypeormRepository,
     },
     { provide: FILE_STORAGE, useClass: LocalFileStorageService },
+    { provide: IMAGE_PROCESSOR, useClass: SharpImageProcessorService },
     { provide: UNIT_OF_WORK, useClass: TypeormUnitOfWork },
   ],
   exports: [

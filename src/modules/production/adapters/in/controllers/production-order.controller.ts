@@ -28,6 +28,7 @@ import { IMAGE_PROCESSOR, ImageProcessor } from "src/shared/application/ports/im
 import { FILE_STORAGE, FileStorage } from "src/shared/application/ports/file-storage.port";
 import { ImageProcessingError } from "src/shared/application/errors/image-processing.error";
 import { FileStorageConflictError, InvalidFileStoragePathError } from "src/shared/application/errors/file-storage.errors";
+import { prepareImageForStorage } from "src/shared/utilidades/utils/prepare-image-for-storage";
 import { ExportProductionOrdersExcelUsecase } from "src/modules/production/application/usecases/production-order/export-excel.usecase";
 import { LISTING_SEARCH_STORAGE, ListingSearchStorageRepository } from "src/shared/listing-search/domain/listing-search.repository";
 import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
@@ -1124,8 +1125,7 @@ export class ProductionOrdersController {
 
     let savedRelativePath = "";
     try {
-      const processed = await this.imageProcessor.toWebp({
-        buffer: file.buffer,
+      const preparedFile = await prepareImageForStorage(file, this.imageProcessor, {
         maxWidth: 1920,
         maxHeight: 1920,
         quality: 80,
@@ -1136,8 +1136,8 @@ export class ProductionOrdersController {
 
       const { relativePath } = await this.fileStorage.save({
         directory: "production",
-        buffer: processed.buffer,
-        extension: processed.extension,
+        buffer: preparedFile.buffer,
+        extension: preparedFile.extension,
         filenamePrefix: `production-${id}`,
       });
       savedRelativePath = relativePath;

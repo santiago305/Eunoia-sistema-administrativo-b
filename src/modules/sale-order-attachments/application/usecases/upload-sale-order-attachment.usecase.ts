@@ -13,9 +13,14 @@ import {
   FileStorage,
 } from 'src/shared/application/ports/file-storage.port';
 import {
+  IMAGE_PROCESSOR,
+  ImageProcessor,
+} from 'src/shared/application/ports/image-processor.port';
+import {
   UNIT_OF_WORK,
   UnitOfWork,
 } from 'src/shared/domain/ports/unit-of-work.port';
+import { prepareImageForStorage } from 'src/shared/utilidades/utils/prepare-image-for-storage';
 import { SaleOrderAttachment } from '../../domain/entities/sale-order-attachment';
 import {
   SALE_ORDER_ATTACHMENT_REPOSITORY,
@@ -32,11 +37,6 @@ const ALLOWED_IMAGE_TYPES = new Set([
   'image/webp',
 ]);
 
-const extensionFromName = (name: string) => {
-  const raw = name.split('.').pop()?.toLowerCase() ?? '';
-  return /^[a-z0-9]+$/.test(raw) ? raw : 'bin';
-};
-
 @Injectable()
 export class UploadSaleOrderAttachmentUsecase {
   constructor(
@@ -48,6 +48,8 @@ export class UploadSaleOrderAttachmentUsecase {
     private readonly entityManager: EntityManager,
     @Inject(UNIT_OF_WORK)
     private readonly uow: UnitOfWork,
+    @Inject(IMAGE_PROCESSOR)
+    private readonly imageProcessor: ImageProcessor,
   ) {}
 
   async execute(
@@ -88,10 +90,19 @@ export class UploadSaleOrderAttachmentUsecase {
       }
     }
 
+    const preparedFile = await prepareImageForStorage(input.file, this.imageProcessor, {
+      maxWidth: 1920,
+      maxHeight: 1920,
+      quality: 80,
+      maxInputBytes: MAX_IMAGE_BYTES,
+      maxInputPixels: 20_000_000,
+      maxOutputBytes: 2 * 1024 * 1024,
+    });
+
     const savedFile = await this.fileStorage.save({
       directory: `sale-order-attachments/${input.saleOrderId}`,
-      buffer: input.file.buffer,
-      extension: extensionFromName(input.file.originalname),
+      buffer: preparedFile.buffer,
+      extension: preparedFile.extension,
       filenamePrefix: type.toLowerCase(),
     });
 
@@ -122,8 +133,8 @@ export class UploadSaleOrderAttachmentUsecase {
             type,
             filename: savedFile.filename,
             originalName: input.file.originalname,
-            mimeType: input.file.mimetype,
-            sizeBytes: input.file.size,
+            mimeType: preparedFile.mimeType,
+            sizeBytes: preparedFile.sizeBytes,
             url: savedFile.relativePath,
             storagePath: savedFile.relativePath,
             uploadedByUserId: userId ?? null,

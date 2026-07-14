@@ -2,10 +2,12 @@ import { BadRequestException, Inject, Injectable, NotFoundException, Optional } 
 import { InjectEntityManager } from "@nestjs/typeorm";
 import { EntityManager } from "typeorm";
 import { FILE_STORAGE, FileStorage } from "src/shared/application/ports/file-storage.port";
+import { IMAGE_PROCESSOR, ImageProcessor } from "src/shared/application/ports/image-processor.port";
 import { PurchaseOrderEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-order.entity";
 import { PaymentDocumentEntity } from "src/modules/payments/adapters/out/persistence/typeorm/entities/payment-document.entity";
 import { VoucherDocType } from "src/modules/purchases/domain/value-objects/voucher-doc-type";
 import { PurchaseHistoryService } from "src/modules/purchases/application/services/purchase-history.service";
+import { prepareImageForStorage } from "src/shared/utilidades/utils/prepare-image-for-storage";
 import { PurchaseAttachment } from "../../domain/entity/purchase-attachment";
 import {
   PURCHASE_ATTACHMENT_REPOSITORY,
@@ -14,11 +16,6 @@ import {
 import { PurchaseAttachmentType } from "../../domain/value-objects/purchase-attachment-type";
 import { PurchaseAttachmentOutput } from "../dtos/purchase-attachment.output";
 import { PurchaseAttachmentOutputMapper } from "../mappers/purchase-attachment-output.mapper";
-
-const extensionFromName = (name: string) => {
-  const raw = name.split(".").pop()?.toLowerCase() ?? "";
-  return /^[a-z0-9]+$/.test(raw) ? raw : "bin";
-};
 
 const fiscalAttachmentTypes = new Set<PurchaseAttachmentType>([
   PurchaseAttachmentType.FISCAL_DOCUMENT,
@@ -38,6 +35,8 @@ export class UploadPurchaseAttachmentUsecase {
     private readonly fileStorage: FileStorage,
     @InjectEntityManager()
     private readonly entityManager: EntityManager,
+    @Inject(IMAGE_PROCESSOR)
+    private readonly imageProcessor: ImageProcessor,
     @Optional()
     private readonly history?: PurchaseHistoryService,
   ) {}
@@ -97,10 +96,19 @@ export class UploadPurchaseAttachmentUsecase {
       }
     }
 
+    const preparedFile = await prepareImageForStorage(input.file, this.imageProcessor, {
+      maxWidth: 1920,
+      maxHeight: 1920,
+      quality: 80,
+      maxInputBytes: 15 * 1024 * 1024,
+      maxInputPixels: 20_000_000,
+      maxOutputBytes: 2 * 1024 * 1024,
+    });
+
     const saved = await this.fileStorage.save({
       directory: `purchase-attachments/${input.purchaseId}`,
-      buffer: input.file.buffer,
-      extension: extensionFromName(input.file.originalname),
+      buffer: preparedFile.buffer,
+      extension: preparedFile.extension,
       filenamePrefix: `${input.type.toLowerCase()}-${input.purchaseId.slice(0, 8)}`,
     });
 
@@ -112,8 +120,8 @@ export class UploadPurchaseAttachmentUsecase {
         type: input.type,
         filename: saved.filename,
         originalName: input.file.originalname,
-        mimeType: input.file.mimetype,
-        sizeBytes: input.file.size,
+        mimeType: preparedFile.mimeType,
+        sizeBytes: preparedFile.sizeBytes,
         url: saved.relativePath,
         storagePath: saved.relativePath,
         note: input.note ?? null,

@@ -10,6 +10,8 @@ import { ACCESS_CONTROL_PORT, AccessControlPort } from '../ports/access-control.
 import { MessageAccessService } from './message-access.service';
 import { MailStorageQuotaService } from './mail-storage-quota.service';
 import { envs } from 'src/infrastructure/config/envs';
+import { IMAGE_PROCESSOR, ImageProcessor } from 'src/shared/application/ports/image-processor.port';
+import { prepareImageForStorage } from 'src/shared/utilidades/utils/prepare-image-for-storage';
 
 export type MailAttachmentKind = 'file' | 'image';
 type DetectedAttachmentSignature =
@@ -60,6 +62,8 @@ export class NotificationAttachmentsService {
     private readonly accessControlPort: AccessControlPort,
     private readonly messageAccessService: MessageAccessService,
     private readonly mailStorageQuotaService: MailStorageQuotaService,
+    @Inject(IMAGE_PROCESSOR)
+    private readonly imageProcessor: ImageProcessor,
   ) {}
 
   private normalizeKind(kind?: MailAttachmentKind): MailAttachmentKind {
@@ -209,20 +213,38 @@ export class NotificationAttachmentsService {
       if (!draft) throw new ForbiddenException('ATTACHMENT_ACCESS_DENIED');
     }
 
-    await this.mailStorageQuotaService.assertCanAddBytes(input.userId, input.size);
+    const preparedFile = await prepareImageForStorage(
+      {
+        buffer: input.buffer,
+        originalname: input.fileName,
+        mimetype: input.mimeType,
+        size: input.size,
+      } as Express.Multer.File,
+      this.imageProcessor,
+      {
+        maxWidth: 1920,
+        maxHeight: 1920,
+        quality: 80,
+        maxInputBytes: this.maxAttachmentSizeBytes,
+        maxInputPixels: 20_000_000,
+        maxOutputBytes: this.maxAttachmentSizeBytes,
+      },
+    );
+
+    await this.mailStorageQuotaService.assertCanAddBytes(input.userId, preparedFile.sizeBytes);
 
     await fs.mkdir(this.attachmentStorageDir, { recursive: true });
-    const storedName = `${Date.now()}-${Math.random().toString(36).slice(2)}${path.extname(input.fileName).toLowerCase()}`;
+    const storedName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${preparedFile.extension}`;
     const storageKey = path.join(this.attachmentStorageDir, storedName);
-    await fs.writeFile(storageKey, input.buffer);
+    await fs.writeFile(storageKey, preparedFile.buffer);
 
     const saved = await this.messageAttachmentRepository.save(this.messageAttachmentRepository.create({
       messageId: input.messageId ?? null,
       draftId: input.draftId ?? null,
       originalName: input.fileName,
       storedName,
-      mimeType: input.mimeType,
-      sizeBytes: String(input.size),
+      mimeType: preparedFile.mimeType,
+      sizeBytes: String(preparedFile.sizeBytes),
       storageKey,
       uploadedByUserId: input.userId,
       attachmentKind,

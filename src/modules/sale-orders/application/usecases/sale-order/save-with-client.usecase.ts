@@ -13,9 +13,14 @@ import {
   FileStorage,
 } from 'src/shared/application/ports/file-storage.port';
 import {
+  IMAGE_PROCESSOR,
+  ImageProcessor,
+} from 'src/shared/application/ports/image-processor.port';
+import {
   UNIT_OF_WORK,
   UnitOfWork,
 } from 'src/shared/domain/ports/unit-of-work.port';
+import { prepareImageForStorage } from 'src/shared/utilidades/utils/prepare-image-for-storage';
 import {
   SALE_ORDER_ATTACHMENT_REPOSITORY,
   SaleOrderAttachmentRepository,
@@ -51,6 +56,8 @@ export class SaveSaleOrderWithClientUsecase {
     private readonly fileStorage: FileStorage,
     @Inject(CLIENT_REALTIME)
     private readonly clientRealtime: ClientRealtime,
+    @Inject(IMAGE_PROCESSOR)
+    private readonly imageProcessor: ImageProcessor,
   ) {}
 
   async execute(input: SaveSaleOrderWithClientInput) {
@@ -281,10 +288,19 @@ export class SaveSaleOrderWithClientUsecase {
     tx: Parameters<SaleOrderAttachmentRepository['create']>[1],
     newFilePaths: string[],
   ): Promise<void> {
+    const preparedFile = await prepareImageForStorage(file, this.imageProcessor, {
+      maxWidth: 1920,
+      maxHeight: 1920,
+      quality: 80,
+      maxInputBytes: 15 * 1024 * 1024,
+      maxInputPixels: 20_000_000,
+      maxOutputBytes: 2 * 1024 * 1024,
+    });
+
     const stored = await this.fileStorage.save({
       directory: `sale-order-attachments/${saleOrderId}`,
-      buffer: file.buffer,
-      extension: this.extensionFromName(file.originalname),
+      buffer: preparedFile.buffer,
+      extension: preparedFile.extension,
       filenamePrefix: type.toLowerCase(),
     });
     newFilePaths.push(stored.relativePath);
@@ -296,8 +312,8 @@ export class SaveSaleOrderWithClientUsecase {
         type,
         filename: stored.filename,
         originalName: file.originalname,
-        mimeType: file.mimetype,
-        sizeBytes: file.size,
+        mimeType: preparedFile.mimeType,
+        sizeBytes: preparedFile.sizeBytes,
         url: stored.relativePath,
         storagePath: stored.relativePath,
         uploadedByUserId: userId,
@@ -306,8 +322,4 @@ export class SaveSaleOrderWithClientUsecase {
     );
   }
 
-  private extensionFromName(name: string): string {
-    const extension = name.split('.').pop()?.toLowerCase() ?? '';
-    return /^[a-z0-9]+$/.test(extension) ? extension : 'bin';
-  }
 }

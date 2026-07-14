@@ -51,6 +51,8 @@ import { MessageActionsService } from '../application/services/message-actions.s
 import { MailStorageQuotaService } from '../application/services/mail-storage-quota.service';
 import { ACCESS_CONTROL_PORT } from '../application/ports/access-control.port';
 import { AccessControlAdapter } from '../adapters/out/access-control/access-control.adapter';
+import { IMAGE_PROCESSOR } from 'src/shared/application/ports/image-processor.port';
+import { SharpImageProcessorService } from 'src/shared/utilidades/services/sharp-image-processor.service';
 
 @Module({
   imports: [
@@ -97,6 +99,7 @@ import { AccessControlAdapter } from '../adapters/out/access-control/access-cont
     MailStorageQuotaService,
     AccessControlAdapter,
     { provide: ACCESS_CONTROL_PORT, useExisting: AccessControlAdapter },
+    { provide: IMAGE_PROCESSOR, useClass: SharpImageProcessorService },
     NotificationRealtimeService,
     NotificationGateway,
     ExpireDraftsJob,
