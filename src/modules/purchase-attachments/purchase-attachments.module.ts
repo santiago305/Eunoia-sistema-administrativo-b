@@ -1,9 +1,7 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { AccessControlModule } from "src/modules/access-control/infrastructure/access-control.module";
-import { FILE_STORAGE } from "src/shared/application/ports/file-storage.port";
 import { IMAGE_PROCESSOR } from "src/shared/application/ports/image-processor.port";
-import { LocalFileStorageService } from "src/shared/utilidades/services/local-file-storage.service";
 import { SharpImageProcessorService } from "src/shared/utilidades/services/sharp-image-processor.service";
 import { PaymentDocumentEntity } from "src/modules/payments/adapters/out/persistence/typeorm/entities/payment-document.entity";
 import { PurchaseHistoryEventEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-history-event.entity";
@@ -34,7 +32,6 @@ import { PurchaseHistoryService } from "src/modules/purchases/application/servic
     DeletePurchaseAttachmentUsecase,
     PurchaseHistoryService,
     { provide: PURCHASE_ATTACHMENT_REPOSITORY, useClass: PurchaseAttachmentTypeormRepository },
-    { provide: FILE_STORAGE, useClass: LocalFileStorageService },
     { provide: IMAGE_PROCESSOR, useClass: SharpImageProcessorService },
   ],
   exports: [UploadPurchaseAttachmentUsecase, ListPurchaseAttachmentsUsecase, PURCHASE_ATTACHMENT_REPOSITORY],

@@ -3,6 +3,8 @@ import { UploadPurchaseAttachmentUsecase } from "./upload-purchase-attachment.us
 import { PurchaseAttachment } from "../../domain/entity/purchase-attachment";
 import { PurchaseAttachmentType } from "../../domain/value-objects/purchase-attachment-type";
 import { VoucherDocType } from "src/modules/purchases/domain/value-objects/voucher-doc-type";
+import { FileStorage } from "src/shared/application/ports/file-storage.port";
+import { SaveStoredFileInput } from "src/shared/application/ports/storage-file";
 
 const file = {
   buffer: Buffer.from("file"),
@@ -19,12 +21,23 @@ describe("UploadPurchaseAttachmentUsecase", () => {
       list: jest.fn(async () => existing),
       markDeleted: jest.fn(),
     };
-    const fileStorage = {
-      save: jest.fn(async () => ({
-        filename: "factura.pdf",
-        relativePath: "purchase-attachments/purchase-1/factura.pdf",
+    const savedFile = {
+      area: "public" as const,
+      key: "public/purchase-attachments/purchase-1/factura.pdf",
+      filename: "factura.pdf",
+      relativePath: "purchase-attachments/purchase-1/factura.pdf",
+      publicUrl: "purchase-attachments/purchase-1/factura.pdf",
+      absolutePath: "storage/public/purchase-attachments/purchase-1/factura.pdf",
+    };
+    const fileStorage: jest.Mocked<FileStorage> = {
+      save: jest.fn(async (_params: SaveStoredFileInput) => ({
+        ...savedFile,
       })),
-      delete: jest.fn(),
+      read: jest.fn(async (_keyOrPath: string) => Buffer.from("")),
+      exists: jest.fn(async (_keyOrPath: string) => true),
+      delete: jest.fn(async (_keyOrPath: string) => true),
+      moveToDeleted: jest.fn(async (_keyOrPath: string, _targetDirectory: string) => savedFile),
+      resolve: jest.fn((_keyOrPath: string) => savedFile),
     };
     const imageProcessor = {
       toWebp: jest.fn(async () => ({
