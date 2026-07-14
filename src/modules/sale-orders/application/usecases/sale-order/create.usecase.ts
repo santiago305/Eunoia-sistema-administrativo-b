@@ -13,6 +13,7 @@ import { WORKFLOW_REPOSITORY, WorkflowRepository } from "src/modules/workflow/do
 import { WORKFLOW_STATE_REPOSITORY, WorkflowStateRepository } from "src/modules/workflow/domain/ports/workflow-state.repository";
 import { SaleOrderNumberingService } from "../../services/sale-order-numbering.service";
 import { AdviserMembershipService } from "../../services/adviser-membership.service";
+import { CreateLogisticsPayableForSaleOrderUsecase } from "src/modules/logistics-payables/application/usecases/create-logistics-payable-for-sale-order.usecase";
 
 export type CreateSaleOrderInput = {
   warehouseId?: string;
@@ -81,6 +82,7 @@ export class CreateSaleOrderUsecase {
     @Inject(WORKFLOW_STATE_REPOSITORY)
     private readonly workflowStateRepo: WorkflowStateRepository,
     @Optional() private readonly adviserMembership?: AdviserMembershipService,
+    @Optional() private readonly createLogisticsPayable?: CreateLogisticsPayableForSaleOrderUsecase,
   ) {}
 
   async execute(input: CreateSaleOrderInput, createdBy: string) {
@@ -274,6 +276,20 @@ export class CreateSaleOrderUsecase {
         }
         throw error;
       }
+
+      await this.createLogisticsPayable?.execute(
+        {
+          saleOrderId: order.id,
+          serie: order.serie ?? null,
+          correlative: order.correlative ?? null,
+          agencySubsidiaryId: order.agencySubsidiaryId ?? null,
+          deliveryCost: order.deliveryCost,
+          deliveryDate: order.deliveryDate ?? null,
+          scheduleDate: order.scheduleDate ?? null,
+          createdByUserId: createdBy,
+        },
+        tx,
+      );
 
       return {
         orderId: order.id,

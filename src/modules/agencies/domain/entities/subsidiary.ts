@@ -18,6 +18,9 @@ export class Subsidiary {
     public readonly address: string | undefined,
     public readonly basePrice: number,
     public readonly note: string | undefined,
+    public readonly generatesPayable: boolean = false,
+    public readonly payableSupplierId?: string,
+    public readonly payableDescription?: string,
     public readonly isActive: boolean = true,
     public readonly createdAt?: Date,
     public readonly updatedAt?: Date,
@@ -33,6 +36,9 @@ export class Subsidiary {
     address?: string;
     basePrice?: number;
     note?: string;
+    generatesPayable?: boolean;
+    payableSupplierId?: string;
+    payableDescription?: string;
     isActive?: boolean;
     createdAt?: Date;
     updatedAt?: Date;
@@ -57,6 +63,9 @@ export class Subsidiary {
       AgencyDomainService.normalizeOptionalText(params.address),
       basePrice,
       AgencyDomainService.normalizeOptionalText(params.note),
+      params.generatesPayable ?? false,
+      AgencyDomainService.normalizeOptionalText(params.payableSupplierId),
+      AgencyDomainService.normalizeOptionalText(params.payableDescription),
       params.isActive ?? true,
       params.createdAt,
       params.updatedAt,

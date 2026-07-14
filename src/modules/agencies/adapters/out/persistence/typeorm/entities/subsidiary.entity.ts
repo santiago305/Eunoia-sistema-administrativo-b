@@ -38,6 +38,15 @@ export class SubsidiaryEntity {
   @Column({ type: "text", nullable: true })
   note?: string | null;
 
+  @Column({ name: "generates_payable", type: "boolean", default: false })
+  generatesPayable: boolean;
+
+  @Column({ name: "payable_supplier_id", type: "uuid", nullable: true })
+  payableSupplierId?: string | null;
+
+  @Column({ name: "payable_description", type: "varchar", length: 250, nullable: true })
+  payableDescription?: string | null;
+
   @Column({ name: "is_active", type: "boolean", default: true })
   isActive: boolean;
 

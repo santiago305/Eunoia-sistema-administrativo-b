@@ -8,5 +8,8 @@ export interface SubsidiaryOutput {
   address?: string;
   basePrice: number;
   note?: string;
+  generatesPayable: boolean;
+  payableSupplierId?: string | null;
+  payableDescription?: string | null;
   isActive: boolean;
 }

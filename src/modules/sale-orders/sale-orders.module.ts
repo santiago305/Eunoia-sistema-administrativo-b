@@ -29,6 +29,7 @@ import { AdviserEntity } from "../advisers/adapters/out/persistence/typeorm/enti
 import { AdviserMembershipService } from "./application/services/adviser-membership.service";
 import { SaleOrderAttachmentsModule } from "../sale-order-attachments";
 import { AccessControlModule } from "../access-control/infrastructure/access-control.module";
+import { LogisticsPayablesModule } from "../logistics-payables/logistics-payables.module";
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { AccessControlModule } from "../access-control/infrastructure/access-con
     WarehousesModule,
     SaleOrderAttachmentsModule,
     AccessControlModule,
+    LogisticsPayablesModule,
   ],
   controllers: [SaleOrdersController],
   providers: [...saleOrdersModuleProviders, AdviserMembershipService],

@@ -115,6 +115,9 @@ export class UpdateAgencyUsecase {
               address: item.address,
               basePrice: item.basePrice ?? 0,
               note: item.note,
+              generatesPayable: item.generatesPayable ?? false,
+              payableSupplierId: item.payableSupplierId,
+              payableDescription: item.payableDescription,
               isActive: item.isActive ?? true,
               updatedAt: now,
             });

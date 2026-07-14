@@ -7,6 +7,9 @@ export interface SubsidiaryInput {
   address?: string;
   basePrice?: number;
   note?: string;
+  generatesPayable?: boolean;
+  payableSupplierId?: string;
+  payableDescription?: string;
   isActive?: boolean;
 }
 

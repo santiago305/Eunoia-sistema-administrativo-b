@@ -11,6 +11,7 @@ import { SALE_PAYMENT_REPOSITORY, SalePaymentRepository } from "src/modules/sale
 import { WORKFLOW_REPOSITORY, WorkflowRepository } from "src/modules/workflow/domain/ports/workflow.repository";
 import { AdviserMembershipService } from "../../services/adviser-membership.service";
 import { SaleOrderEditPolicyService } from "../../services/sale-order-edit-policy.service";
+import { ReconcileLogisticsPayableForSaleOrderUsecase } from "src/modules/logistics-payables/application/usecases/reconcile-logistics-payable-for-sale-order.usecase";
 
 export type UpdateSaleOrderInput = {
   saleOrderId: string;
@@ -84,6 +85,7 @@ export class UpdateSaleOrderUsecase {
     private readonly workflowRepo: WorkflowRepository,
     private readonly editPolicy: SaleOrderEditPolicyService,
     @Optional() private readonly adviserMembership?: AdviserMembershipService,
+    @Optional() private readonly reconcileLogisticsPayable?: ReconcileLogisticsPayableForSaleOrderUsecase,
   ) {}
 
   private buildComponentSignature(
@@ -478,6 +480,19 @@ export class UpdateSaleOrderUsecase {
 
         throw error;
       }
+
+      await this.reconcileLogisticsPayable?.execute(
+        {
+          saleOrderId: updated.id,
+          serie: updated.serie ?? null,
+          correlative: updated.correlative ?? null,
+          agencySubsidiaryId: updated.agencySubsidiaryId ?? null,
+          deliveryCost: updated.deliveryCost,
+          deliveryDate: updated.deliveryDate ?? null,
+          scheduleDate: updated.scheduleDate ?? null,
+        },
+        tx,
+      );
 
       return {
         orderId: updated.id,

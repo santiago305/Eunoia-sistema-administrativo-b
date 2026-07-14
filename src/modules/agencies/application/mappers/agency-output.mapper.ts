@@ -26,6 +26,9 @@ export class AgencyOutputMapper {
       address: subsidiary.address,
       basePrice: subsidiary.basePrice,
       note: subsidiary.note,
+      generatesPayable: subsidiary.generatesPayable,
+      payableSupplierId: subsidiary.payableSupplierId ?? null,
+      payableDescription: subsidiary.payableDescription ?? null,
       isActive: subsidiary.isActive,
     };
   }

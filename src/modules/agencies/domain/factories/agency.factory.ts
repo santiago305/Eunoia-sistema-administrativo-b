@@ -28,6 +28,9 @@ export class AgencyFactory {
     address?: string;
     basePrice?: number;
     note?: string;
+    generatesPayable?: boolean;
+    payableSupplierId?: string;
+    payableDescription?: string;
     isActive?: boolean;
     createdAt?: Date;
     updatedAt?: Date;
