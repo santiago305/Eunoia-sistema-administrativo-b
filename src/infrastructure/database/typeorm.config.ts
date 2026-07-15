@@ -68,6 +68,9 @@ import { AddRecurringPurchaseDueNotificationPermission20260710172000 } from "./m
 import { AddRecurringPurchasePaymentPermissions20260711100000 } from "./migrations/20260711100000-add-recurring-purchase-payment-permissions";
 import { AddRecurringPurchaseRelations20260711120000 } from "./migrations/20260711120000-add-recurring-purchase-relations";
 import { AddRecurringPurchaseExportPermission20260712120000 } from "./migrations/20260712120000-add-recurring-purchase-export-permission";
+import { AddAgencyDescription20260713000000 } from "./migrations/20260713000000-add-agency-description";
+import { CreateLogisticsPayables20260714010000 } from "./migrations/20260714010000-create-logistics-payables";
+import { NormalizeFileStorageKeys20260714020000 } from "./migrations/20260714020000-normalize-file-storage-keys";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -158,6 +161,9 @@ export const getMigrationDataSourceOptions = (): DataSourceOptions => ({
     AddRecurringPurchasePaymentPermissions20260711100000,
     AddRecurringPurchaseRelations20260711120000,
     AddRecurringPurchaseExportPermission20260712120000,
+    AddAgencyDescription20260713000000,
+    CreateLogisticsPayables20260714010000,
+    NormalizeFileStorageKeys20260714020000,
   ],
 });
 
