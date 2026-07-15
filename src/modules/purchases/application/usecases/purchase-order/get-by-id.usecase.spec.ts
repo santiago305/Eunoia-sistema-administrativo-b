@@ -66,4 +66,79 @@ describe("GetPurchaseOrderUsecase", () => {
     });
     expect(result.imageProdution).toEqual(["purchase-attachments/purchase-1/products.webp"]);
   });
+
+  it("prefers product photo attachments over the legacy imageProdution array", async () => {
+    purchaseRepo.findById.mockResolvedValue(
+      PurchaseOrderFactory.reconstitute({
+        poId,
+        supplierId: "22222222-2222-4222-8222-222222222222",
+        warehouseId: "33333333-3333-4333-8333-333333333333",
+        totalTaxed: 0,
+        totalExempted: 0,
+        totalIgv: 0,
+        purchaseValue: 125,
+        total: 125,
+        currency: CurrencyType.PEN,
+        status: PurchaseOrderStatus.RECEIVED,
+        imageProdution: ["/api/assets/production/legacy.webp"],
+      }),
+    );
+    listAttachments.execute.mockResolvedValue([
+      {
+        attachmentId: "attachment-1",
+        purchaseId: poId,
+        type: PurchaseAttachmentType.PRODUCT_PHOTO,
+        url: "/api/assets/purchase-attachments/purchase-1/products.webp",
+      },
+    ]);
+    const usecase = new (GetPurchaseOrderUsecase as any)(
+      purchaseRepo,
+      itemRepo,
+      paymentDocRepo,
+      creditQuotaRepo,
+      stockItemRepo,
+      skuRepo,
+      productRepo,
+      listAttachments,
+    ) as GetPurchaseOrderUsecase;
+
+    const result = await usecase.execute({ poId });
+
+    expect(result.imageProdution).toEqual([
+      "/api/assets/purchase-attachments/purchase-1/products.webp",
+    ]);
+  });
+
+  it("keeps legacy imageProdution output when no product photo attachment exists", async () => {
+    purchaseRepo.findById.mockResolvedValue(
+      PurchaseOrderFactory.reconstitute({
+        poId,
+        supplierId: "22222222-2222-4222-8222-222222222222",
+        warehouseId: "33333333-3333-4333-8333-333333333333",
+        totalTaxed: 0,
+        totalExempted: 0,
+        totalIgv: 0,
+        purchaseValue: 125,
+        total: 125,
+        currency: CurrencyType.PEN,
+        status: PurchaseOrderStatus.RECEIVED,
+        imageProdution: ["/api/assets/production/legacy.webp"],
+      }),
+    );
+    listAttachments.execute.mockResolvedValue([]);
+    const usecase = new (GetPurchaseOrderUsecase as any)(
+      purchaseRepo,
+      itemRepo,
+      paymentDocRepo,
+      creditQuotaRepo,
+      stockItemRepo,
+      skuRepo,
+      productRepo,
+      listAttachments,
+    ) as GetPurchaseOrderUsecase;
+
+    const result = await usecase.execute({ poId });
+
+    expect(result.imageProdution).toEqual(["/api/assets/production/legacy.webp"]);
+  });
 });

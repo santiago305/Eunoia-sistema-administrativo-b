@@ -1,4 +1,8 @@
 import "reflect-metadata";
+jest.mock("src/modules/mail/application/use-cases/notifications.service", () => ({
+  NotificationsService: class NotificationsService {},
+}));
+
 import { CanActivate, ExecutionContext, INestApplication, Injectable, ValidationPipe } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { FILE_STORAGE } from "src/shared/application/ports/file-storage.port";
@@ -223,7 +227,7 @@ describe("ProductionOrdersController", () => {
       relativePath: "/api/assets/production/photo.webp",
     });
 
-    await request(app.getHttpServer())
+    const response = await request(app.getHttpServer())
       .patch(`/production-orders/${productionId}/image-prodution`)
       .attach("file", Buffer.from("image"), {
         filename: "photo.png",
@@ -235,5 +239,8 @@ describe("ProductionOrdersController", () => {
       area: "public",
       directory: "production",
     }));
+    expect(response.body.imageProdution).toEqual([
+      "/api/assets/production/photo.webp",
+    ]);
   });
 });
