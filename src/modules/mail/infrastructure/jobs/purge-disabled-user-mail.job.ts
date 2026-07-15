@@ -1,10 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { promises as fs } from 'node:fs';
-import * as path from 'node:path';
 import { Repository } from 'typeorm';
 import { envs } from 'src/infrastructure/config/envs';
 import { User } from 'src/modules/users/adapters/out/persistence/typeorm/entities/user.entity';
+import { FILE_STORAGE, FileStorage } from 'src/shared/application/ports/file-storage.port';
 import { MessageUserStateEntity } from '../../adapters/out/persistence/typeorm/entities/message-user-state.entity';
 import { MailAttachmentUserRefEntity } from '../../adapters/out/persistence/typeorm/entities/mail-attachment-user-ref.entity';
 import { MessageAttachmentEntity } from '../../adapters/out/persistence/typeorm/entities/message-attachment.entity';
@@ -12,8 +11,6 @@ import { MessageAttachmentEntity } from '../../adapters/out/persistence/typeorm/
 @Injectable()
 export class PurgeDisabledUserMailJob {
   private readonly logger = new Logger(PurgeDisabledUserMailJob.name);
-  private readonly attachmentActiveDir = path.resolve(process.cwd(), envs.mail.attachmentsDir);
-  private readonly attachmentDeletedDir = path.resolve(process.cwd(), envs.mail.attachmentsDeletedDir);
 
   constructor(
     @InjectRepository(User)
@@ -24,38 +21,16 @@ export class PurgeDisabledUserMailJob {
     private readonly attachmentUserRefRepository: Repository<MailAttachmentUserRefEntity>,
     @InjectRepository(MessageAttachmentEntity)
     private readonly messageAttachmentRepository: Repository<MessageAttachmentEntity>,
+    @Inject(FILE_STORAGE)
+    private readonly fileStorage: FileStorage,
   ) {}
 
   private buildCutoffDate(retentionDays: number) {
     return new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
   }
 
-  private async moveAttachmentToDeletedArea(storageKey: string, storedName: string) {
-    const normalizedStorageKey = path.resolve(storageKey);
-    const normalizedActiveDir = this.attachmentActiveDir + path.sep;
-    if (!normalizedStorageKey.startsWith(normalizedActiveDir)) {
-      return;
-    }
-
-    try {
-      await fs.access(normalizedStorageKey);
-    } catch {
-      return;
-    }
-
-    await fs.mkdir(this.attachmentDeletedDir, { recursive: true });
-    const targetPath = path.join(this.attachmentDeletedDir, `${Date.now()}-${storedName}`);
-
-    try {
-      await fs.rename(normalizedStorageKey, targetPath);
-      return;
-    } catch (error) {
-      const code = (error as NodeJS.ErrnoException)?.code;
-      if (code !== 'EXDEV') throw error;
-    }
-
-    await fs.copyFile(normalizedStorageKey, targetPath);
-    await fs.unlink(normalizedStorageKey);
+  private async moveAttachmentToDeletedArea(storageKey: string) {
+    await this.fileStorage.moveToDeleted(storageKey, 'mail-attachments');
   }
 
   async run(batchSize = 200) {
@@ -136,7 +111,7 @@ export class PurgeDisabledUserMailJob {
         .getRawMany<{ id: string; storageKey: string; storedName: string }>();
 
       for (const attachment of releasableAttachments) {
-        await this.moveAttachmentToDeletedArea(attachment.storageKey, attachment.storedName);
+        await this.moveAttachmentToDeletedArea(attachment.storageKey);
         movedFiles += 1;
       }
     }
