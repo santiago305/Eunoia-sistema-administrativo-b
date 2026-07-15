@@ -33,6 +33,7 @@ import { ProductionOrdersController } from "./production-order.controller";
 import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
 import { getEntityManagerToken, getRepositoryToken } from "@nestjs/typeorm";
 import { ProductionHistoryEventEntity } from "../../out/persistence/typeorm/entities/production-history-event.entity";
+import { ProductionAttachmentEntity } from "../../out/persistence/typeorm/entities/production-attachment.entity";
 import { ApprovalRequestEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/approval-request.entity";
 import { NotificationsService } from "src/modules/mail/application/use-cases/notifications.service";
 
@@ -60,6 +61,12 @@ describe("ProductionOrdersController", () => {
   const orderRepo = { findById: jest.fn(), update: jest.fn() };
   const accessControlService = { getEffectivePermissions: jest.fn() };
   const fileStorage = { save: jest.fn(), delete: jest.fn() };
+  const productionAttachmentRepository = {
+    count: jest.fn(),
+    create: jest.fn((value) => value),
+    save: jest.fn(),
+    find: jest.fn(),
+  };
 
   beforeEach(async () => {
     listOrders.execute.mockResolvedValue({ items: [], total: 0, page: 1, limit: 20 });
@@ -76,6 +83,13 @@ describe("ProductionOrdersController", () => {
     orderRepo.findById.mockResolvedValue(null);
     orderRepo.update.mockResolvedValue(null);
     accessControlService.getEffectivePermissions.mockResolvedValue(["*"]);
+    productionAttachmentRepository.count.mockResolvedValue(0);
+    productionAttachmentRepository.save.mockImplementation(async (value) => ({
+      id: "attachment-1",
+      createdAt: new Date("2026-07-15T00:00:00.000Z"),
+      ...value,
+    }));
+    productionAttachmentRepository.find.mockResolvedValue([]);
 
     const moduleRef = await Test.createTestingModule({
       controllers: [ProductionOrdersController],
@@ -100,6 +114,7 @@ describe("ProductionOrdersController", () => {
         { provide: ExportProductionOrdersExcelUsecase, useValue: { execute: jest.fn(), getAvailableColumns: jest.fn().mockReturnValue([]) } },
         { provide: LISTING_SEARCH_STORAGE, useValue: { listState: jest.fn().mockResolvedValue({ metrics: [] }), createMetric: jest.fn(), deleteMetric: jest.fn() } },
         { provide: getRepositoryToken(ProductionHistoryEventEntity), useValue: { create: jest.fn((value) => value), save: jest.fn(), createQueryBuilder: jest.fn() } },
+        { provide: getRepositoryToken(ProductionAttachmentEntity), useValue: productionAttachmentRepository },
         { provide: getRepositoryToken(ApprovalRequestEntity), useValue: { create: jest.fn((value) => value), save: jest.fn(), find: jest.fn().mockResolvedValue([]), findOne: jest.fn() } },
         { provide: getEntityManagerToken(), useValue: { getRepository: jest.fn() } },
         { provide: AccessControlService, useValue: accessControlService },
@@ -210,7 +225,7 @@ describe("ProductionOrdersController", () => {
     expect(cancelOrder.execute).not.toHaveBeenCalled();
   });
 
-  it("saves uploaded production images in the public storage area", async () => {
+  it("saves uploaded production images as attachments and keeps imageProdution as compatibility output", async () => {
     const productionId = "44444444-4444-4444-8444-444444444444";
     orderRepo.findById.mockResolvedValue({
       productionId,
@@ -218,13 +233,9 @@ describe("ProductionOrdersController", () => {
       imageProdution: [],
       createdBy: "user-1",
     });
-    orderRepo.update.mockResolvedValue({
-      productionId,
-      imageProdution: ["/api/assets/production/photo.webp"],
-    });
     fileStorage.save.mockResolvedValue({
       filename: "photo.webp",
-      relativePath: "/api/assets/production/photo.webp",
+      relativePath: "/api/assets/production-attachments/44444444-4444-4444-8444-444444444444/photo.webp",
     });
 
     const response = await request(app.getHttpServer())
@@ -237,10 +248,13 @@ describe("ProductionOrdersController", () => {
 
     expect(fileStorage.save).toHaveBeenCalledWith(expect.objectContaining({
       area: "public",
-      directory: "production",
+      directory: `production-attachments/${productionId}`,
     }));
+    expect(orderRepo.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ imageProdution: expect.any(Array) }),
+    );
     expect(response.body.imageProdution).toEqual([
-      "/api/assets/production/photo.webp",
+      "/api/assets/production-attachments/44444444-4444-4444-8444-444444444444/photo.webp",
     ]);
   });
 });

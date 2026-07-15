@@ -8,6 +8,7 @@
   "scripts": {
     "build": "nest build",
     "migrate": "ts-node -r tsconfig-paths/register src/infrastructure/database/run-migrations.ts",
+    "migrate:assets": "ts-node -r tsconfig-paths/register scripts/migrate-assets-to-storage-public.ts",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",

@@ -3,6 +3,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { ProductionOrderEntity } from "../adapters/out/persistence/typeorm/entities/production_order.entity";
 import { ProductionOrderItemEntity } from "../adapters/out/persistence/typeorm/entities/production_order_item.entity";
 import { ProductionHistoryEventEntity } from "../adapters/out/persistence/typeorm/entities/production-history-event.entity";
+import { ProductionAttachmentEntity } from "../adapters/out/persistence/typeorm/entities/production-attachment.entity";
 import { ApprovalRequestEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/approval-request.entity";
 import { ProductionOrdersController } from "../adapters/in/controllers/production-order.controller";
 import { PRODUCTION_ORDER_REPOSITORY } from "../application/ports/production-order.repository";
@@ -26,6 +27,7 @@ import { MailModule } from "src/modules/mail/infrastructure/mail.module";
       ProductionOrderEntity,
       ProductionOrderItemEntity,
       ProductionHistoryEventEntity,
+      ProductionAttachmentEntity,
       ApprovalRequestEntity,
       WarehouseEntity,
       ProductCatalogDocumentSerieEntity,

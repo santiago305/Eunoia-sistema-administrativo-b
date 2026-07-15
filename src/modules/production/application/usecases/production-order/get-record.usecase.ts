@@ -1,4 +1,6 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { IsNull, Repository } from "typeorm";
 import { STOCK_ITEM_REPOSITORY, StockItemRepository } from "src/modules/product-catalog/integration/inventory/ports/stock-item.repository.port";
 import { StockItemType } from "src/shared/domain/value-objects/stock-item-type";
 import { PRODUCT_CATALOG_PRODUCT_REPOSITORY, ProductCatalogProductRepository } from "src/modules/product-catalog/domain/ports/product.repository";
@@ -12,6 +14,8 @@ import {
 } from "../../dto/production-order/output/production-order-detail-out";
 import { ProductionOrderOutputMapper } from "../../mappers/production-order-output.mapper";
 import { ProductionOrderNotFoundApplicationError } from "../../errors/production-order-not-found.error";
+import { ProductionAttachmentEntity } from "src/modules/production/adapters/out/persistence/typeorm/entities/production-attachment.entity";
+import { ProductionOrder } from "src/modules/production/domain/entity/production-order.entity";
 
 @Injectable()
 export class GetProductionOrder {
@@ -27,7 +31,28 @@ export class GetProductionOrder {
     private readonly productCatalogSkuRepo: ProductCatalogSkuRepository,
     @Inject(PRODUCT_CATALOG_PRODUCT_REPOSITORY)
     private readonly productCatalogProductRepo: ProductCatalogProductRepository,
+    @InjectRepository(ProductionAttachmentEntity)
+    private readonly productionAttachmentRepository: Repository<ProductionAttachmentEntity>,
   ) {}
+
+  private withCompatibilityImages(order: ProductionOrder, imageProdution: string[]) {
+    return new ProductionOrder(
+      order.productionId,
+      order.fromWarehouseId,
+      order.toWarehouseId,
+      order.docType,
+      order.serieId,
+      order.correlative,
+      order.status,
+      order.manufactureDate,
+      order.createdBy,
+      order.createdAt,
+      order.reference,
+      order.updatedAt,
+      order.updatedBy,
+      imageProdution,
+    );
+  }
 
   async execute(params: { productionId: string }): Promise<ProductionOrderDetailOutput> {
     return this.uow.runInTransaction(async (tx) => {
@@ -104,8 +129,19 @@ export class GetProductionOrder {
           }
         : null;
 
+      const attachments = await this.productionAttachmentRepository.find({
+        where: { productionId: params.productionId, deletedAt: IsNull() },
+        order: { createdAt: "ASC" },
+      });
+      const imageProdution = Array.from(
+        new Set([
+          ...attachments.map((attachment) => attachment.url),
+          ...(result.order.imageProdution ?? []),
+        ]),
+      );
+
       return ProductionOrderOutputMapper.toDetailOutput({
-        order: result.order,
+        order: this.withCompatibilityImages(result.order, imageProdution),
         serie,
         items,
       });

@@ -1,9 +1,6 @@
 import { BadRequestException, Inject } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
-import { join } from "path";
-import { pathToFileURL } from "url";
-import sharp from "sharp";
 import { COMPANY_REPOSITORY, CompanyRepository } from "src/modules/companies/domain/ports/company.repository";
 import { PDF_RENDERER, PdfRendererPort } from "src/modules/pdf-generated/domain/ports/pdf-renderer.port";
 import { SaleOrderPdfData } from "src/modules/pdf-generated/domain/interfaces/sale-order-data";
@@ -16,35 +13,7 @@ import { SalePaymentEntity } from "src/modules/sale-orders/adapters/out/persiste
 import { ClientEntity } from "src/modules/clients/adapters/out/persistence/typeorm/entities/client.entity";
 import { WarehouseEntity } from "src/modules/warehouses/adapters/out/persistence/typeorm/entities/warehouse";
 import { ProductCatalogSkuEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku.entity";
-
-const resolveLogoUrl = async (logoPath?: string) => {
-  if (!logoPath) return undefined;
-  if (/^(https?:|data:|file:)/i.test(logoPath)) return logoPath;
-
-  const normalized = logoPath.replace(/\\/g, "/");
-  let relative = normalized;
-
-  if (normalized.startsWith("/api/assets/")) {
-    relative = normalized.replace(/^\/api\/assets\//, "");
-  } else if (normalized.startsWith("/assets/")) {
-    relative = normalized.replace(/^\/assets\//, "");
-  } else {
-    relative = normalized.replace(/^\/+/, "");
-  }
-
-  const absolutePath = join(process.cwd(), "assets", relative);
-
-  if (/\.webp$/i.test(absolutePath)) {
-    try {
-      const pngBuffer = await sharp(absolutePath).png().toBuffer();
-      return `data:image/png;base64,${pngBuffer.toString("base64")}`;
-    } catch {
-      return pathToFileURL(absolutePath).toString();
-    }
-  }
-
-  return pathToFileURL(absolutePath).toString();
-};
+import { resolvePublicAssetUrl } from "../support/resolve-public-asset-url";
 
 export class GenerateSaleOrderPdfUseCase {
   constructor(
@@ -122,7 +91,7 @@ export class GenerateSaleOrderPdfUseCase {
         name: company?.name ?? "N/A",
         ruc: company?.ruc ?? undefined,
         address: companyAddress || undefined,
-        logoUrl: await resolveLogoUrl(company?.logoPath ?? undefined),
+        logoUrl: await resolvePublicAssetUrl(company?.logoPath ?? undefined),
       },
       client: {
         name: client.fullName ?? "N/A",

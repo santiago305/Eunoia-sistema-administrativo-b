@@ -71,6 +71,7 @@ import { AddRecurringPurchaseExportPermission20260712120000 } from "./migrations
 import { AddAgencyDescription20260713000000 } from "./migrations/20260713000000-add-agency-description";
 import { CreateLogisticsPayables20260714010000 } from "./migrations/20260714010000-create-logistics-payables";
 import { NormalizeFileStorageKeys20260714020000 } from "./migrations/20260714020000-normalize-file-storage-keys";
+import { CreateProductionAttachments20260715090000 } from "./migrations/20260715090000-create-production-attachments";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -164,6 +165,7 @@ export const getMigrationDataSourceOptions = (): DataSourceOptions => ({
     AddAgencyDescription20260713000000,
     CreateLogisticsPayables20260714010000,
     NormalizeFileStorageKeys20260714020000,
+    CreateProductionAttachments20260715090000,
   ],
 });
 

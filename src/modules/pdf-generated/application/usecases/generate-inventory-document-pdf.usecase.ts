@@ -1,7 +1,4 @@
 import { BadRequestException, Inject } from "@nestjs/common";
-import { join } from "path";
-import { pathToFileURL } from "url";
-import sharp from "sharp";
 import { WarehouseId } from "src/modules/warehouses/domain/value-objects/warehouse-id.vo";
 import { COMPANY_REPOSITORY, CompanyRepository } from "src/modules/companies/domain/ports/company.repository";
 import { PDF_RENDERER, PdfRendererPort } from "src/modules/pdf-generated/domain/ports/pdf-renderer.port";
@@ -20,35 +17,7 @@ import { PRODUCT_CATALOG_INVENTORY_DOCUMENT_REPOSITORY, ProductCatalogInventoryD
 import { ProductCatalogStockItem } from "src/modules/product-catalog/domain/entities/stock-item";
 import { ProductCatalogSkuWithAttributes } from "src/modules/product-catalog/domain/ports/sku.repository";
 import { ProductCatalogProduct } from "src/modules/product-catalog/domain/entities/product";
-
-const resolveLogoUrl = async (logoPath?: string) => {
-  if (!logoPath) return undefined;
-  if (/^(https?:|data:|file:)/i.test(logoPath)) return logoPath;
-
-  const normalized = logoPath.replace(/\\/g, "/");
-  let relative = normalized;
-
-  if (normalized.startsWith("/api/assets/")) {
-    relative = normalized.replace(/^\/api\/assets\//, "");
-  } else if (normalized.startsWith("/assets/")) {
-    relative = normalized.replace(/^\/assets\//, "");
-  } else {
-    relative = normalized.replace(/^\/+/, "");
-  }
-
-  const absolutePath = join(process.cwd(), "assets", relative);
-
-  if (/\.webp$/i.test(absolutePath)) {
-    try {
-      const pngBuffer = await sharp(absolutePath).png().toBuffer();
-      return `data:image/png;base64,${pngBuffer.toString("base64")}`;
-    } catch {
-      return pathToFileURL(absolutePath).toString();
-    }
-  }
-
-  return pathToFileURL(absolutePath).toString();
-};
+import { resolvePublicAssetUrl } from "../support/resolve-public-asset-url";
 
 const formatUnitLabel = (code?: string | null, name?: string | null) => {
   const label = [code, name].filter(Boolean).join(" - ");
@@ -220,7 +189,7 @@ export class GenerateInventoryDocumentPdfUseCase {
         name: company?.name ?? "N/A",
         ruc: company?.ruc ?? undefined,
         address: companyAddress || undefined,
-        logoUrl: await resolveLogoUrl(company?.logoPath ?? undefined),
+        logoUrl: await resolvePublicAssetUrl(company?.logoPath ?? undefined),
       },
       document: {
         documentType: DOC_TYPE_LABEL[doc.docType] ?? doc.docType,

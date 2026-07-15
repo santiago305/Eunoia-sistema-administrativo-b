@@ -35,8 +35,9 @@ import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/
 import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
 import { AccessControlService } from "src/modules/access-control/application/services/access-control.service";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
-import { EntityManager, Repository } from "typeorm";
+import { EntityManager, IsNull, Repository } from "typeorm";
 import { ProductionHistoryEventEntity } from "../../out/persistence/typeorm/entities/production-history-event.entity";
+import { ProductionAttachmentEntity } from "../../out/persistence/typeorm/entities/production-attachment.entity";
 import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
 import { HttpProductionHistoryListQueryDto } from "../dtos/production-order/http-production-history-list.dto";
 import { ApprovalRequestEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/approval-request.entity";
@@ -73,6 +74,8 @@ export class ProductionOrdersController {
     private readonly listingSearchStorage: ListingSearchStorageRepository,
     @InjectRepository(ProductionHistoryEventEntity)
     private readonly productionHistoryRepository: Repository<ProductionHistoryEventEntity>,
+    @InjectRepository(ProductionAttachmentEntity)
+    private readonly productionAttachmentRepository: Repository<ProductionAttachmentEntity>,
     @InjectRepository(ApprovalRequestEntity)
     private readonly approvalRequestRepository: Repository<ApprovalRequestEntity>,
     @InjectEntityManager()
@@ -1119,7 +1122,14 @@ export class ProductionOrdersController {
     const userPermissions = await this.getPermissionSet(user);
     const canUploadExtraImage =
       userPermissions.has("*") || userPermissions.has("production.image.upload_extra");
-    if ((order.imageProdution?.length ?? 0) > 0 && !canUploadExtraImage) {
+    const activeAttachmentCount = await this.productionAttachmentRepository.count({
+      where: { productionId: id, deletedAt: IsNull() },
+    });
+    const currentImageCount = Math.max(
+      activeAttachmentCount,
+      order.imageProdution?.length ?? 0,
+    );
+    if (currentImageCount > 0 && !canUploadExtraImage) {
       throw new BadRequestException("No tienes permiso para agregar fotos adicionales en esta orden");
     }
 
@@ -1134,24 +1144,47 @@ export class ProductionOrdersController {
         maxOutputBytes: 2 * 1024 * 1024,
       });
 
-      const { relativePath } = await this.fileStorage.save({
+      const stored = await this.fileStorage.save({
         area: "public",
-        directory: "production",
+        directory: `production-attachments/${id}`,
         buffer: preparedFile.buffer,
         extension: preparedFile.extension,
         filenamePrefix: `production-${id}`,
       });
+      const relativePath = stored.relativePath;
       savedRelativePath = relativePath;
 
-      const urls = [...(order.imageProdution ?? []), relativePath];
-      const updated = await this.orderRepo.update({
+      const attachment = await this.productionAttachmentRepository.save(
+        this.productionAttachmentRepository.create({
+          productionId: id,
+          type: "EVIDENCE_PHOTO",
+          filename: stored.filename,
+          originalName: file.originalname,
+          mimeType: preparedFile.mimeType,
+          sizeBytes: preparedFile.sizeBytes,
+          url: relativePath,
+          storagePath: relativePath,
+          uploadedByUserId: user.id,
+        }),
+      );
+
+      const attachments = await this.productionAttachmentRepository.find({
+        where: { productionId: id, deletedAt: IsNull() },
+        order: { createdAt: "ASC" },
+      });
+      const attachmentUrls = attachments.map((item) => item.url);
+      if (!attachmentUrls.includes(attachment.url)) {
+        attachmentUrls.push(attachment.url);
+      }
+      const urls = Array.from(
+        new Set([...attachmentUrls, ...(order.imageProdution ?? [])]),
+      );
+
+      const updated = {
+        ...order,
         productionId: id,
         imageProdution: urls,
-      });
-
-      if (!updated) {
-        throw new BadRequestException("No se pudo guardar la imagen en la orden");
-      }
+      };
 
       await this.recordHistory({
         productionId: id,
@@ -1159,10 +1192,11 @@ export class ProductionOrdersController {
         description: "Se subio evidencia fotografica de produccion.",
         performedByUserId: user.id,
         targetUserId: order.createdBy ?? null,
-        oldValues: { imageCount: order.imageProdution?.length ?? 0 },
+        oldValues: { imageCount: currentImageCount },
         newValues: { imageCount: updated.imageProdution?.length ?? 0 },
         metadata: {
           imagePath: relativePath,
+          attachmentId: attachment.id,
           imageCount: updated.imageProdution?.length ?? 0,
         },
       });

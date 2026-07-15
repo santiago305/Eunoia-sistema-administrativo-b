@@ -1,7 +1,4 @@
 import { BadRequestException, Inject } from "@nestjs/common";
-import { join } from "path";
-import { pathToFileURL } from "url";
-import sharp from "sharp";
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
 import { PURCHASE_ORDER_ITEM, PurchaseOrderItemRepository } from "src/modules/purchases/domain/ports/purchase-order-item.port.repository";
 import { SUPPLIER_REPOSITORY, SupplierRepository } from "src/modules/suppliers/domain/ports/supplier.repository";
@@ -18,35 +15,7 @@ import { PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY, ProductCatalogStockItemRepositor
 import { ProductCatalogStockItem } from "src/modules/product-catalog/domain/entities/stock-item";
 import { ProductCatalogSkuWithAttributes } from "src/modules/product-catalog/domain/ports/sku.repository";
 import { ProductCatalogProduct } from "src/modules/product-catalog/domain/entities/product";
-
-const resolveLogoUrl = async (logoPath?: string) => {
-  if (!logoPath) return undefined;
-  if (/^(https?:|data:|file:)/i.test(logoPath)) return logoPath;
-
-  const normalized = logoPath.replace(/\\/g, "/");
-  let relative = normalized;
-
-  if (normalized.startsWith("/api/assets/")) {
-    relative = normalized.replace(/^\/api\/assets\//, "");
-  } else if (normalized.startsWith("/assets/")) {
-    relative = normalized.replace(/^\/assets\//, "");
-  } else {
-    relative = normalized.replace(/^\/+/, "");
-  }
-
-  const absolutePath = join(process.cwd(), "assets", relative);
-
-  if (/\.webp$/i.test(absolutePath)) {
-    try {
-      const pngBuffer = await sharp(absolutePath).png().toBuffer();
-      return `data:image/png;base64,${pngBuffer.toString("base64")}`;
-    } catch {
-      return pathToFileURL(absolutePath).toString();
-    }
-  }
-
-  return pathToFileURL(absolutePath).toString();
-};
+import { resolvePublicAssetUrl } from "../support/resolve-public-asset-url";
 
 const formatNameWithSku = (name: string, sku?: string | null) => (sku ? `${name} (${sku})` : name);
 
@@ -179,7 +148,7 @@ export class GeneratePurchaseOrderPdfUseCase {
         name: company?.name ?? "N/A",
         ruc: company?.ruc ?? undefined,
         address: companyAddress || undefined,
-        logoUrl: await resolveLogoUrl(company?.logoPath ?? undefined),
+        logoUrl: await resolvePublicAssetUrl(company?.logoPath ?? undefined),
       },
       supplier: {
         name: supplierName,
