@@ -53,6 +53,7 @@ import { ACCESS_CONTROL_PORT } from '../application/ports/access-control.port';
 import { AccessControlAdapter } from '../adapters/out/access-control/access-control.adapter';
 import { IMAGE_PROCESSOR } from 'src/shared/application/ports/image-processor.port';
 import { SharpImageProcessorService } from 'src/shared/utilidades/services/sharp-image-processor.service';
+import { StorageModule } from 'src/shared/storage/storage.module';
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { SharpImageProcessorService } from 'src/shared/utilidades/services/sharp
       User,
     ]),
     AccessControlModule,
+    StorageModule,
   ],
   controllers: [NotificationsController],
   providers: [
