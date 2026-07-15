@@ -1,4 +1,8 @@
 import "reflect-metadata";
+jest.mock("src/modules/mail/application/use-cases/notifications.service", () => ({
+  NotificationsService: class NotificationsService {},
+}));
+
 import { BadRequestException, CanActivate, ExecutionContext, INestApplication, Injectable, ValidationPipe } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
@@ -348,5 +352,41 @@ describe("PurchaseOrdersController", () => {
       type: PurchaseAttachmentType.PRODUCT_PHOTO,
     });
     expect(uploadAttachment.execute).not.toHaveBeenCalled();
+  });
+
+  it("stores new legacy purchase evidence through purchase attachments only", async () => {
+    const poId = "11111111-1111-4111-8111-111111111111";
+    purchaseRepo.findById.mockResolvedValue({
+      poId,
+      serie: "OC",
+      correlative: 18,
+      imageProdution: [],
+    });
+    uploadAttachment.execute.mockResolvedValue({
+      attachmentId: "attachment-1",
+      url: "/api/assets/purchase-attachments/purchase-1/products.webp",
+    });
+
+    const response = await request(app.getHttpServer())
+      .patch(`/purchases/orders/${poId}/image-prodution`)
+      .attach("file", Buffer.from("image"), {
+        filename: "products.png",
+        contentType: "image/png",
+      })
+      .expect(200);
+
+    expect(uploadAttachment.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        purchaseId: poId,
+        type: PurchaseAttachmentType.PRODUCT_PHOTO,
+      }),
+      "user-1",
+    );
+    expect(purchaseRepo.update).not.toHaveBeenCalledWith(
+      expect.objectContaining({ imageProdution: expect.any(Array) }),
+    );
+    expect(response.body.imageProdution).toEqual([
+      "/api/assets/purchase-attachments/purchase-1/products.webp",
+    ]);
   });
 });

@@ -80,9 +80,13 @@ export class GetPurchaseOrderUsecase {
       purchaseId: order.poId,
       type: PurchaseAttachmentType.PRODUCT_PHOTO,
     });
-    const imageProdution = (order.imageProdution?.length ?? 0) > 0
-      ? order.imageProdution
-      : productPhotos.map((attachment) => attachment.url).filter(Boolean).slice(0, 1);
+    const productPhotoUrls = productPhotos
+      .map((attachment) => attachment.url)
+      .filter(Boolean)
+      .slice(0, 1);
+    const imageProdution = productPhotoUrls.length > 0
+      ? productPhotoUrls
+      : order.imageProdution ?? [];
 
     return {
       ...PurchaseOrderOutputMapper.toDetailOutput({
