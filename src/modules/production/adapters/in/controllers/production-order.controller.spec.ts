@@ -55,6 +55,7 @@ describe("ProductionOrdersController", () => {
   const cancelOrder = { execute: jest.fn() };
   const orderRepo = { findById: jest.fn(), update: jest.fn() };
   const accessControlService = { getEffectivePermissions: jest.fn() };
+  const fileStorage = { save: jest.fn(), delete: jest.fn() };
 
   beforeEach(async () => {
     listOrders.execute.mockResolvedValue({ items: [], total: 0, page: 1, limit: 20 });
@@ -91,7 +92,7 @@ describe("ProductionOrdersController", () => {
         { provide: PRODUCTION_ORDER_REPOSITORY, useValue: orderRepo },
         { provide: ProductionOrderExpectedScheduler, useValue: { schedule: jest.fn() } },
         { provide: IMAGE_PROCESSOR, useValue: { toWebp: jest.fn() } },
-        { provide: FILE_STORAGE, useValue: { save: jest.fn(), delete: jest.fn() } },
+        { provide: FILE_STORAGE, useValue: fileStorage },
         { provide: ExportProductionOrdersExcelUsecase, useValue: { execute: jest.fn(), getAvailableColumns: jest.fn().mockReturnValue([]) } },
         { provide: LISTING_SEARCH_STORAGE, useValue: { listState: jest.fn().mockResolvedValue({ metrics: [] }), createMetric: jest.fn(), deleteMetric: jest.fn() } },
         { provide: getRepositoryToken(ProductionHistoryEventEntity), useValue: { create: jest.fn((value) => value), save: jest.fn(), createQueryBuilder: jest.fn() } },
@@ -203,5 +204,36 @@ describe("ProductionOrdersController", () => {
       .expect(403);
 
     expect(cancelOrder.execute).not.toHaveBeenCalled();
+  });
+
+  it("saves uploaded production images in the public storage area", async () => {
+    const productionId = "44444444-4444-4444-8444-444444444444";
+    orderRepo.findById.mockResolvedValue({
+      productionId,
+      status: ProductionStatus.IN_PROGRESS,
+      imageProdution: [],
+      createdBy: "user-1",
+    });
+    orderRepo.update.mockResolvedValue({
+      productionId,
+      imageProdution: ["/api/assets/production/photo.webp"],
+    });
+    fileStorage.save.mockResolvedValue({
+      filename: "photo.webp",
+      relativePath: "/api/assets/production/photo.webp",
+    });
+
+    await request(app.getHttpServer())
+      .patch(`/production-orders/${productionId}/image-prodution`)
+      .attach("file", Buffer.from("image"), {
+        filename: "photo.png",
+        contentType: "image/png",
+      })
+      .expect(200);
+
+    expect(fileStorage.save).toHaveBeenCalledWith(expect.objectContaining({
+      area: "public",
+      directory: "production",
+    }));
   });
 });

@@ -106,6 +106,7 @@ export class UploadPurchaseAttachmentUsecase {
     });
 
     const saved = await this.fileStorage.save({
+      area: "public",
       directory: `purchase-attachments/${input.purchaseId}`,
       buffer: preparedFile.buffer,
       extension: preparedFile.extension,

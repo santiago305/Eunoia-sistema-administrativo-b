@@ -100,6 +100,7 @@ export class UploadSaleOrderAttachmentUsecase {
     });
 
     const savedFile = await this.fileStorage.save({
+      area: 'public',
       directory: `sale-order-attachments/${input.saleOrderId}`,
       buffer: preparedFile.buffer,
       extension: preparedFile.extension,

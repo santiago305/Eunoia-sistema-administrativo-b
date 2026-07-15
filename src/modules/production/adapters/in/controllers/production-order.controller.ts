@@ -1135,6 +1135,7 @@ export class ProductionOrdersController {
       });
 
       const { relativePath } = await this.fileStorage.save({
+        area: "public",
         directory: "production",
         buffer: preparedFile.buffer,
         extension: preparedFile.extension,

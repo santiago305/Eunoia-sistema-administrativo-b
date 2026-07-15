@@ -187,6 +187,7 @@ describe('SaveSaleOrderWithClientUsecase', () => {
       buffer: paymentPhoto.buffer,
     }));
     expect(f.fileStorage.save).toHaveBeenCalledWith(expect.objectContaining({
+      area: 'public',
       buffer: Buffer.from('webp'),
       extension: 'webp',
     }));
@@ -218,6 +219,7 @@ describe('SaveSaleOrderWithClientUsecase', () => {
 
     expect(f.imageProcessor.toWebp).not.toHaveBeenCalled();
     expect(f.fileStorage.save).toHaveBeenCalledWith(expect.objectContaining({
+      area: 'public',
       buffer: shippingPhoto.buffer,
       extension: 'png',
     }));

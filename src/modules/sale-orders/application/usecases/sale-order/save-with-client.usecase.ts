@@ -298,6 +298,7 @@ export class SaveSaleOrderWithClientUsecase {
     });
 
     const stored = await this.fileStorage.save({
+      area: 'public',
       directory: `sale-order-attachments/${saleOrderId}`,
       buffer: preparedFile.buffer,
       extension: preparedFile.extension,
