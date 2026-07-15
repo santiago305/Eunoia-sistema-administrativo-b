@@ -1,5 +1,5 @@
 import { envs } from '../config/envs';
-import { readdirSync } from 'fs';
+import { readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 import {
   getMigrationDataSourceOptions,
@@ -69,5 +69,53 @@ describe('getTypeOrmModuleOptions', () => {
         'AddRecurringPurchaseExportPermission20260712120000',
       ]),
     );
+  });
+
+  it('keeps migration SQL aware of every runtime entity table', () => {
+    const migrationsDir = join(__dirname, 'migrations');
+    const migrationSql = readdirSync(migrationsDir)
+      .filter((file) => file.endsWith('.ts') && !file.endsWith('.spec.ts'))
+      .map((file) => readFileSync(join(migrationsDir, file), 'utf8'))
+      .join('\n');
+
+    const runtimeTables = [
+      'approval_requests',
+      'deleted_mail_audit_logs',
+      'deleted_mail_message_user_states',
+      'deleted_mail_messages',
+      'document_series',
+      'mail_attachment_user_refs',
+      'mail_message_action_recipients',
+      'mail_message_actions',
+      'mail_storage_quotas',
+      'message_label_assignments',
+      'message_labels',
+      'message_message_labels',
+      'message_user_states',
+      'notification_module_label_configs',
+      'pc_attributes',
+      'pc_catalog_publications',
+      'pc_equivalences',
+      'pc_inventory_document_items',
+      'pc_inventory_documents',
+      'pc_inventory_ledger',
+      'pc_products',
+      'pc_recipe_items',
+      'pc_recipes',
+      'pc_sku_attribute_values',
+      'pc_units',
+      'production_order_items',
+      'products',
+      'purchase_history_events',
+      'purchase_processing_approvals',
+      'security_ip_bans',
+      'security_ip_violations',
+      'security_reason_catalog',
+      'supplier_skus',
+    ];
+
+    for (const table of runtimeTables) {
+      expect(migrationSql).toContain(table);
+    }
   });
 });
