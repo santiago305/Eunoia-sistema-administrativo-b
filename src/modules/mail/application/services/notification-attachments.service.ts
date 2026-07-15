@@ -1,7 +1,6 @@
 import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, IsNull, Repository } from 'typeorm';
-import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { MessageAttachmentEntity } from '../../adapters/out/persistence/typeorm/entities/message-attachment.entity';
 import { MessageEntity } from '../../adapters/out/persistence/typeorm/entities/message.entity';
@@ -9,7 +8,7 @@ import { MailAttachmentUserRefEntity } from '../../adapters/out/persistence/type
 import { ACCESS_CONTROL_PORT, AccessControlPort } from '../ports/access-control.port';
 import { MessageAccessService } from './message-access.service';
 import { MailStorageQuotaService } from './mail-storage-quota.service';
-import { envs } from 'src/infrastructure/config/envs';
+import { FILE_STORAGE, FileStorage } from 'src/shared/application/ports/file-storage.port';
 import { IMAGE_PROCESSOR, ImageProcessor } from 'src/shared/application/ports/image-processor.port';
 import { prepareImageForStorage } from 'src/shared/utilidades/utils/prepare-image-for-storage';
 
@@ -27,8 +26,6 @@ type DetectedAttachmentSignature =
 
 @Injectable()
 export class NotificationAttachmentsService {
-  private readonly attachmentStorageDir = path.resolve(process.cwd(), envs.mail.attachmentsDir);
-  private readonly deletedAttachmentStorageDir = path.resolve(process.cwd(), envs.mail.attachmentsDeletedDir);
   private readonly allowedAttachmentMimeTypes = new Set([
     'application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -62,6 +59,8 @@ export class NotificationAttachmentsService {
     private readonly accessControlPort: AccessControlPort,
     private readonly messageAccessService: MessageAccessService,
     private readonly mailStorageQuotaService: MailStorageQuotaService,
+    @Inject(FILE_STORAGE)
+    private readonly fileStorage: FileStorage,
     @Inject(IMAGE_PROCESSOR)
     private readonly imageProcessor: ImageProcessor,
   ) {}
@@ -233,10 +232,15 @@ export class NotificationAttachmentsService {
 
     await this.mailStorageQuotaService.assertCanAddBytes(input.userId, preparedFile.sizeBytes);
 
-    await fs.mkdir(this.attachmentStorageDir, { recursive: true });
     const storedName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${preparedFile.extension}`;
-    const storageKey = path.join(this.attachmentStorageDir, storedName);
-    await fs.writeFile(storageKey, preparedFile.buffer);
+    const stored = await this.fileStorage.save({
+      area: 'private',
+      directory: 'mail-attachments',
+      buffer: preparedFile.buffer,
+      extension: preparedFile.extension,
+      filename: storedName,
+    });
+    const storageKey = stored.key;
 
     const saved = await this.messageAttachmentRepository.save(this.messageAttachmentRepository.create({
       messageId: input.messageId ?? null,
@@ -259,25 +263,7 @@ export class NotificationAttachmentsService {
   }
 
   private async moveAttachmentToDeletedArea(attachment: MessageAttachmentEntity) {
-    try {
-      await fs.access(attachment.storageKey);
-    } catch {
-      return;
-    }
-
-    await fs.mkdir(this.deletedAttachmentStorageDir, { recursive: true });
-    const targetPath = path.join(this.deletedAttachmentStorageDir, `${Date.now()}-${attachment.storedName}`);
-
-    try {
-      await fs.rename(attachment.storageKey, targetPath);
-      return;
-    } catch (error) {
-      const code = (error as NodeJS.ErrnoException)?.code;
-      if (code !== 'EXDEV') throw error;
-    }
-
-    await fs.copyFile(attachment.storageKey, targetPath);
-    await fs.unlink(attachment.storageKey);
+    await this.fileStorage.moveToDeleted(attachment.storageKey, 'mail-attachments');
   }
 
   async purgeDraftAttachments(
@@ -312,7 +298,7 @@ export class NotificationAttachmentsService {
     await this.ensureAttachmentAccessOrFail(userId, attachment, modulePermissions);
     let fileBuffer: Buffer;
     try {
-      fileBuffer = await fs.readFile(attachment.storageKey);
+      fileBuffer = await this.fileStorage.read(attachment.storageKey);
     } catch (error) {
       if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') {
         throw new NotFoundException('ATTACHMENT_UNAVAILABLE');

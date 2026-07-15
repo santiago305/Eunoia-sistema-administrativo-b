@@ -1,5 +1,4 @@
 import { BadRequestException } from '@nestjs/common';
-import { promises as fs } from 'node:fs';
 import { NotificationAttachmentsService } from './notification-attachments.service';
 
 const createRepository = () => ({
@@ -19,6 +18,7 @@ describe('NotificationAttachmentsService', () => {
   let attachmentUserRefRepository: ReturnType<typeof createRepository>;
   let service: NotificationAttachmentsService;
   let imageProcessor: { toWebp: jest.Mock };
+  let fileStorage: { save: jest.Mock; read: jest.Mock; moveToDeleted: jest.Mock };
 
   beforeEach(() => {
     attachmentRepository = createRepository();
@@ -35,8 +35,25 @@ describe('NotificationAttachmentsService', () => {
       createdAt: new Date('2026-05-20T10:00:00.000Z'),
       ...value,
     }));
-    jest.spyOn(fs, 'mkdir').mockResolvedValue(undefined);
-    jest.spyOn(fs, 'writeFile').mockResolvedValue(undefined);
+    fileStorage = {
+      save: jest.fn().mockResolvedValue({
+        key: 'private/mail-attachments/one.webp',
+        filename: 'one.webp',
+        relativePath: 'private/mail-attachments/one.webp',
+        publicUrl: null,
+        absolutePath: 'C:\\app\\storage\\private\\mail-attachments\\one.webp',
+        area: 'private',
+      }),
+      read: jest.fn(),
+      moveToDeleted: jest.fn().mockResolvedValue({
+        key: 'deleted/mail-attachments/one.webp',
+        filename: 'one.webp',
+        relativePath: 'deleted/mail-attachments/one.webp',
+        publicUrl: null,
+        absolutePath: 'C:\\app\\storage\\deleted\\mail-attachments\\one.webp',
+        area: 'deleted',
+      }),
+    };
     imageProcessor = {
       toWebp: jest.fn().mockResolvedValue({
         buffer: Buffer.from('webp'),
@@ -58,6 +75,7 @@ describe('NotificationAttachmentsService', () => {
         syncAttachmentRefsToMessage: jest.fn(),
         releaseAttachmentRefs: jest.fn(),
       } as any,
+      fileStorage as any,
       imageProcessor as any,
     );
   });
@@ -82,7 +100,7 @@ describe('NotificationAttachmentsService', () => {
     await expect(upload({ size: 5 * 1024 * 1024 + 1 })).rejects.toThrow(
       new BadRequestException('ATTACHMENT_TOO_LARGE'),
     );
-    expect(fs.writeFile).not.toHaveBeenCalled();
+    expect(fileStorage.save).not.toHaveBeenCalled();
   });
 
   it('stores a png uploaded as file without converting it to inline image', async () => {
@@ -116,16 +134,20 @@ describe('NotificationAttachmentsService', () => {
     expect(imageProcessor.toWebp).toHaveBeenCalledWith(expect.objectContaining({
       buffer: Buffer.from([0xff, 0xd8, 0xff, 0xdb]),
     }));
-    expect(fs.writeFile).toHaveBeenCalledWith(
-      expect.stringMatching(/\.webp$/),
-      Buffer.from('webp'),
-    );
+    expect(fileStorage.save).toHaveBeenCalledWith(expect.objectContaining({
+      area: 'private',
+      directory: 'mail-attachments',
+      buffer: Buffer.from('webp'),
+      extension: 'webp',
+      filename: expect.stringMatching(/\.webp$/),
+    }));
     expect(attachmentRepository.save).toHaveBeenCalledWith(
       expect.objectContaining({
         originalName: 'foto.jpg',
         storedName: expect.stringMatching(/\.webp$/),
         mimeType: 'image/webp',
         sizeBytes: '4',
+        storageKey: 'private/mail-attachments/one.webp',
         attachmentKind: 'image',
       }),
     );
@@ -135,7 +157,7 @@ describe('NotificationAttachmentsService', () => {
     await expect(upload({ kind: 'image' as any })).rejects.toThrow(
       new BadRequestException('ATTACHMENT_IMAGE_MIME_REQUIRED'),
     );
-    expect(fs.writeFile).not.toHaveBeenCalled();
+    expect(fileStorage.save).not.toHaveBeenCalled();
   });
 
   it('rejects spoofed files when extension/mime do not match binary signature', async () => {
@@ -146,24 +168,27 @@ describe('NotificationAttachmentsService', () => {
         buffer: Buffer.from('%PDF-1.7\nthis-is-not-png'),
       }),
     ).rejects.toThrow(new BadRequestException('ATTACHMENT_SIGNATURE_MISMATCH'));
-    expect(fs.writeFile).not.toHaveBeenCalled();
+    expect(fileStorage.save).not.toHaveBeenCalled();
   });
 
   it('purges draft attachments by moving binaries, releasing refs and deleting rows', async () => {
     const attachments = [
-      { id: 'att-1', draftId, uploadedByUserId: userId, storedName: 'one.pdf', storageKey: 'c:/tmp/one.pdf' },
-      { id: 'att-2', draftId, uploadedByUserId: userId, storedName: 'two.pdf', storageKey: 'c:/tmp/two.pdf' },
+      { id: 'att-1', draftId, uploadedByUserId: userId, storedName: 'one.pdf', storageKey: 'private/mail-attachments/one.pdf' },
+      { id: 'att-2', draftId, uploadedByUserId: userId, storedName: 'two.pdf', storageKey: 'private/mail-attachments/two.pdf' },
     ];
     attachmentRepository.find.mockResolvedValue(attachments);
     attachmentRepository.delete.mockResolvedValue({ affected: 2 });
 
-    const moveSpy = jest
-      .spyOn(service as any, 'moveAttachmentToDeletedArea')
-      .mockResolvedValue(undefined);
-
     const result = await service.purgeDraftAttachments(userId, draftId);
 
-    expect(moveSpy).toHaveBeenCalledTimes(2);
+    expect(fileStorage.moveToDeleted).toHaveBeenCalledWith(
+      'private/mail-attachments/one.pdf',
+      'mail-attachments',
+    );
+    expect(fileStorage.moveToDeleted).toHaveBeenCalledWith(
+      'private/mail-attachments/two.pdf',
+      'mail-attachments',
+    );
     expect((service as any).mailStorageQuotaService.releaseAttachmentRefs).toHaveBeenCalledWith({
       attachmentIds: ['att-1', 'att-2'],
       userId,
@@ -181,5 +206,24 @@ describe('NotificationAttachmentsService', () => {
     expect((service as any).mailStorageQuotaService.releaseAttachmentRefs).not.toHaveBeenCalled();
     expect(attachmentRepository.delete).not.toHaveBeenCalled();
     expect(result).toEqual({ deleted: 0 });
+  });
+
+  it('downloads attachment content through file storage', async () => {
+    const attachment = {
+      id: 'att-1',
+      messageId: null,
+      draftId,
+      uploadedByUserId: userId,
+      storedName: 'one.webp',
+      storageKey: 'private/mail-attachments/one.webp',
+    };
+    attachmentRepository.findOne.mockResolvedValue(attachment);
+    attachmentUserRefRepository.findOne.mockResolvedValue({ id: 'ref-1' });
+    fileStorage.read.mockResolvedValue(Buffer.from('mail-file'));
+
+    const result = await service.downloadAttachment(userId, 'att-1', {});
+
+    expect(fileStorage.read).toHaveBeenCalledWith('private/mail-attachments/one.webp');
+    expect(result.buffer).toEqual(Buffer.from('mail-file'));
   });
 });
