@@ -19,7 +19,10 @@ async function bootstrap() {
     app.set('trust proxy', 1);
   }
 
-  //  Servir la carpeta de imAgenes pAblicas
+  // Servir archivos publicos desde storage unificado y mantener assets legacy.
+  app.useStaticAssets(join(process.cwd(), envs.files.publicDir), {
+    prefix: '/api/assets/',
+  });
   app.useStaticAssets(join(process.cwd(), 'assets'), {
     prefix: '/api/assets/',
   });
