@@ -120,6 +120,7 @@ export class CompanyController {
           });
 
       const { relativePath } = await this.fileStorage.save({
+        area: "public",
         directory: "company",
         buffer: logoFile.buffer,
         extension: logoFile.extension,
@@ -180,6 +181,7 @@ export class CompanyController {
           });
 
       const { relativePath } = await this.fileStorage.save({
+        area: "public",
         directory: "company",
         buffer: isotypeFile.buffer,
         extension: isotypeFile.extension,
@@ -224,6 +226,7 @@ export class CompanyController {
 
     try {
       const { relativePath } = await this.fileStorage.save({
+        area: "public",
         directory: "company",
         buffer: file.buffer,
         extension,

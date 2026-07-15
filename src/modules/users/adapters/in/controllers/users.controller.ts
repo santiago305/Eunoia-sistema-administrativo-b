@@ -249,6 +249,7 @@ export class UsersController {
       });
 
       const { relativePath } = await this.fileStorage.save({
+        area: 'public',
         directory: 'users',
         buffer: processed.buffer,
         extension: processed.extension,

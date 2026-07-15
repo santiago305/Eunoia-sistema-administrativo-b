@@ -209,6 +209,7 @@ describe('UploadSaleOrderAttachmentUsecase', () => {
       buffer: jpg.buffer,
     }));
     expect(fileStorage.save).toHaveBeenCalledWith(expect.objectContaining({
+      area: 'public',
       buffer: Buffer.from('webp'),
       extension: 'webp',
     }));
@@ -279,6 +280,7 @@ describe('UploadSaleOrderAttachmentUsecase', () => {
 
     expect(imageProcessor.toWebp).not.toHaveBeenCalled();
     expect(fileStorage.save).toHaveBeenCalledWith(expect.objectContaining({
+      area: 'public',
       buffer: png.buffer,
       extension: 'png',
     }));
