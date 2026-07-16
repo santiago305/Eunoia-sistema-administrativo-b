@@ -12,8 +12,17 @@ import { AddSkuImageColumn20260502000000 } from "./migrations/20260502000000-add
 import { CreatePurchaseApprovalHistory20260506010000 } from "./migrations/20260506010000-create-purchase-approval-history";
 import { CreateClientsCore20260519000000 } from "./migrations/20260519000000-create-clients-core";
 import { CreateCorporateMessagingCore20260511000000 } from "./migrations/20260511000000-create-corporate-messaging-core";
+import { CreateMailCenterFoundation20260512090000 } from "./migrations/20260512090000-create-mail-center-foundation";
+import { CreateMessageMessageLabels20260512103000 } from "./migrations/20260512103000-create-message-message-labels";
+import { CreateMailPartitions20260514093000 } from "./migrations/20260514093000-create-mail-partitions";
+import { AlignMailModel20260515113000 } from "./migrations/20260515113000-align-mail-model";
+import { CreateMailPartitioningStatusLogs20260515121500 } from "./migrations/20260515121500-create-mail-partitioning-status-logs";
+import { CreateNotificationModuleLabelConfigs20260516093000 } from "./migrations/20260516093000-create-notification-module-label-configs";
 import { CreatePacksCore20260519010000 } from "./migrations/20260519010000-create-packs-core";
 import { AddClientsNoneDocType20260520020000 } from "./migrations/20260520020000-add-clients-none-doc-type";
+import { CreateMailMessageActions20260520113000 } from "./migrations/20260520113000-create-mail-message-actions";
+import { CreateMailStorageQuotas20260522183000 } from "./migrations/20260522183000-create-mail-storage-quotas";
+import { CreateDeletedMailArchive20260522190000 } from "./migrations/20260522190000-create-deleted-mail-archive";
 import { CreateLogisticsCatalogs20260523000000 } from "./migrations/20260523000000-create-logistics-catalogs";
 import { CreateAgenciesCore20260524000000 } from "./migrations/20260524000000-create-agencies-core";
 import { CreateSaleOrdersCore20260525000000 } from "./migrations/20260525000000-create-sale-orders-core";
@@ -109,9 +118,18 @@ export const getMigrationDataSourceOptions = (): DataSourceOptions => ({
     AddSkuImageColumn20260502000000,
     CreatePurchaseApprovalHistory20260506010000,
     CreateCorporateMessagingCore20260511000000,
+    CreateMailCenterFoundation20260512090000,
+    CreateMessageMessageLabels20260512103000,
+    CreateMailPartitions20260514093000,
+    AlignMailModel20260515113000,
+    CreateMailPartitioningStatusLogs20260515121500,
+    CreateNotificationModuleLabelConfigs20260516093000,
     CreateClientsCore20260519000000,
     CreatePacksCore20260519010000,
     AddClientsNoneDocType20260520020000,
+    CreateMailMessageActions20260520113000,
+    CreateMailStorageQuotas20260522183000,
+    CreateDeletedMailArchive20260522190000,
     CreateLogisticsCatalogs20260523000000,
     CreateAgenciesCore20260524000000,
     CreateSaleOrdersCore20260525000000,
