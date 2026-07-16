@@ -50,6 +50,7 @@ import { AddSaleOrderStatisticsIndexes20260609000000 } from "./migrations/202606
 import { AddWorkflowAutomaticBranches20260612000000 } from "./migrations/20260612000000-add-workflow-automatic-branches";
 import { CreateProductCatalogCore20260618000000 } from "./migrations/20260618000000-create-product-catalog-core";
 import { CreateSecurityAuditCore20260618100000 } from "./migrations/20260618100000-create-security-audit-core";
+import { CreateProductionCore20260618110000 } from "./migrations/20260618110000-create-production-core";
 import { CreateInventoryAlertSettings20260619000000 } from "./migrations/20260619000000-create-inventory-alert-settings";
 import { RemoveOutOrdersPagePermission20260620000000 } from "./migrations/20260620000000-remove-out-orders-page-permission";
 import { CreateProductionHistoryEvents20260621000000 } from "./migrations/20260621000000-create-production-history-events";
@@ -157,6 +158,7 @@ export const getMigrationDataSourceOptions = (): DataSourceOptions => ({
     AddWorkflowAutomaticBranches20260612000000,
     CreateProductCatalogCore20260618000000,
     CreateSecurityAuditCore20260618100000,
+    CreateProductionCore20260618110000,
     CreateInventoryAlertSettings20260619000000,
     RemoveOutOrdersPagePermission20260620000000,
     CreateProductionHistoryEvents20260621000000,
