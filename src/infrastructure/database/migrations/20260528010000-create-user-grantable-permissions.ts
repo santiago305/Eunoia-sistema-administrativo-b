@@ -32,6 +32,93 @@ export class CreateUserGrantablePermissions20260528010000 implements MigrationIn
     `);
 
     await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS role_permissions (
+        role_permission_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        role_id uuid NOT NULL,
+        permission_id uuid NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+
+    await queryRunner.query(`
+      CREATE TABLE IF NOT EXISTS user_permission_overrides (
+        user_permission_override_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id uuid NOT NULL,
+        permission_id uuid NOT NULL,
+        effect varchar(10) NOT NULL,
+        reason varchar NULL,
+        created_by varchar NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+
+    await queryRunner.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'uq_role_permissions_role_permission'
+        ) THEN
+          ALTER TABLE role_permissions
+          ADD CONSTRAINT uq_role_permissions_role_permission UNIQUE (role_id, permission_id);
+        END IF;
+      END $$;
+    `);
+
+    await queryRunner.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'fk_role_permissions_role'
+        ) THEN
+          ALTER TABLE role_permissions
+          ADD CONSTRAINT fk_role_permissions_role
+          FOREIGN KEY (role_id) REFERENCES roles(role_id) ON DELETE CASCADE;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'fk_role_permissions_permission'
+        ) THEN
+          ALTER TABLE role_permissions
+          ADD CONSTRAINT fk_role_permissions_permission
+          FOREIGN KEY (permission_id) REFERENCES permissions(permission_id) ON DELETE CASCADE;
+        END IF;
+      END $$;
+    `);
+
+    await queryRunner.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'uq_user_permission_override_user_permission'
+        ) THEN
+          ALTER TABLE user_permission_overrides
+          ADD CONSTRAINT uq_user_permission_override_user_permission UNIQUE (user_id, permission_id);
+        END IF;
+      END $$;
+    `);
+
+    await queryRunner.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'fk_user_permission_overrides_user'
+        ) THEN
+          ALTER TABLE user_permission_overrides
+          ADD CONSTRAINT fk_user_permission_overrides_user
+          FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE;
+        END IF;
+
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'fk_user_permission_overrides_permission'
+        ) THEN
+          ALTER TABLE user_permission_overrides
+          ADD CONSTRAINT fk_user_permission_overrides_permission
+          FOREIGN KEY (permission_id) REFERENCES permissions(permission_id) ON DELETE CASCADE;
+        END IF;
+      END $$;
+    `);
+
+    await queryRunner.query(`
       DO $$
       BEGIN
         IF NOT EXISTS (
@@ -105,6 +192,26 @@ export class CreateUserGrantablePermissions20260528010000 implements MigrationIn
     await queryRunner.query(`
       CREATE INDEX IF NOT EXISTS idx_user_grantable_permissions_permission_id
       ON user_grantable_permissions(permission_id);
+    `);
+
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS idx_role_permissions_role_id
+      ON role_permissions(role_id);
+    `);
+
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS idx_role_permissions_permission_id
+      ON role_permissions(permission_id);
+    `);
+
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS idx_user_permission_overrides_user_id
+      ON user_permission_overrides(user_id);
+    `);
+
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS idx_user_permission_overrides_permission_id
+      ON user_permission_overrides(permission_id);
     `);
   }
 

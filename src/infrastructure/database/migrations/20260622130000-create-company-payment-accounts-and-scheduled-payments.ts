@@ -8,7 +8,7 @@ export class CreateCompanyPaymentAccountsAndScheduledPayments20260622130000 impl
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS company_payment_accounts (
         company_payment_account_id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-        company_id uuid NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+        company_id uuid NOT NULL REFERENCES companies(company_id) ON DELETE CASCADE,
         type varchar(30) NOT NULL,
         name varchar(150) NOT NULL,
         bank_name varchar(120) NULL,

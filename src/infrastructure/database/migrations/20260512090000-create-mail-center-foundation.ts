@@ -13,6 +13,9 @@ ALTER TABLE messages
   ADD COLUMN IF NOT EXISTS last_autosaved_at timestamp NULL,
   ADD COLUMN IF NOT EXISTS scheduled_at timestamp NULL;
 
+ALTER TABLE messages
+  ALTER COLUMN scheduled_at TYPE timestamptz USING scheduled_at AT TIME ZONE 'UTC';
+
 ALTER TABLE message_threads
   ADD COLUMN IF NOT EXISTS origin_module varchar(60) NULL,
   ADD COLUMN IF NOT EXISTS source_entity_type varchar(80) NULL,
@@ -57,6 +60,10 @@ CREATE TABLE IF NOT EXISTS message_attachments (
   uploaded_by_user_id uuid NOT NULL REFERENCES users(user_id),
   created_at timestamp NOT NULL DEFAULT now()
 );
+
+ALTER TABLE message_attachments
+  ADD COLUMN IF NOT EXISTS draft_id uuid NULL REFERENCES messages(id) ON DELETE CASCADE,
+  ADD COLUMN IF NOT EXISTS attachment_kind varchar(20) NOT NULL DEFAULT 'file';
 
 -- 4) Etiquetas
 CREATE TABLE IF NOT EXISTS message_labels (
@@ -105,6 +112,9 @@ CREATE TABLE IF NOT EXISTS message_audit_logs (
   created_at timestamp NOT NULL DEFAULT now()
 );
 
+ALTER TABLE message_audit_logs
+  ADD COLUMN IF NOT EXISTS thread_id uuid NULL REFERENCES message_threads(id) ON DELETE SET NULL;
+
 -- 7) Indices principales
 CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_messages_sent_at ON messages (sent_at DESC);
@@ -152,29 +162,45 @@ CREATE INDEX IF NOT EXISTS idx_messages_fts_subject_body
 
 -- 9) Labels de sistema iniciales (idempotente)
 INSERT INTO message_labels (owner_user_id, key, name, type, color, icon, is_visible, sort_order)
-VALUES
-  (NULL, 'inbox', 'Recibidos', 'SYSTEM', NULL, 'Inbox', true, 10),
-  (NULL, 'sent', 'Enviados', 'SYSTEM', NULL, 'Send', true, 20),
-  (NULL, 'drafts', 'Borradores', 'SYSTEM', NULL, 'FileText', true, 30),
-  (NULL, 'starred', 'Destacados', 'SYSTEM', NULL, 'Star', true, 40),
-  (NULL, 'snoozed', 'Postergados', 'SYSTEM', NULL, 'Clock', true, 50),
-  (NULL, 'archived', 'Archivados', 'SYSTEM', NULL, 'Archive', true, 60),
-  (NULL, 'trash', 'Papelera', 'SYSTEM', NULL, 'Trash2', true, 70),
-  (NULL, 'all', 'Todos', 'SYSTEM', NULL, 'List', true, 80)
-ON CONFLICT (owner_user_id, key) DO NOTHING;
+SELECT seed.owner_user_id, seed.key, seed.name, seed.type, seed.color, seed.icon, seed.is_visible, seed.sort_order
+FROM (
+  VALUES
+    (NULL::uuid, 'inbox', 'Recibidos', 'SYSTEM', NULL, 'Inbox', true, 10),
+    (NULL::uuid, 'sent', 'Enviados', 'SYSTEM', NULL, 'Send', true, 20),
+    (NULL::uuid, 'drafts', 'Borradores', 'SYSTEM', NULL, 'FileText', true, 30),
+    (NULL::uuid, 'starred', 'Destacados', 'SYSTEM', NULL, 'Star', true, 40),
+    (NULL::uuid, 'snoozed', 'Postergados', 'SYSTEM', NULL, 'Clock', true, 50),
+    (NULL::uuid, 'archived', 'Archivados', 'SYSTEM', NULL, 'Archive', true, 60),
+    (NULL::uuid, 'trash', 'Papelera', 'SYSTEM', NULL, 'Trash2', true, 70),
+    (NULL::uuid, 'all', 'Todos', 'SYSTEM', NULL, 'List', true, 80)
+) AS seed(owner_user_id, key, name, type, color, icon, is_visible, sort_order)
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM message_labels existing
+  WHERE existing.owner_user_id IS NULL
+    AND existing.key = seed.key
+);
 
 -- 10) Labels de modulo iniciales (idempotente)
 INSERT INTO message_labels (owner_user_id, key, name, type, color, icon, is_visible, sort_order)
-VALUES
-  (NULL, 'purchases', 'Compras', 'MODULE', NULL, 'ShoppingCart', true, 100),
-  (NULL, 'production', 'Produccion', 'MODULE', NULL, 'Factory', true, 110),
-  (NULL, 'warehouse', 'Almacen', 'MODULE', NULL, 'Warehouse', true, 120),
-  (NULL, 'catalog', 'Catalogo', 'MODULE', NULL, 'PackageSearch', true, 130),
-  (NULL, 'supplies', 'Suministros', 'MODULE', NULL, 'Boxes', true, 140),
-  (NULL, 'security', 'Seguridad', 'MODULE', NULL, 'Shield', true, 150),
-  (NULL, 'roles', 'Roles', 'MODULE', NULL, 'Users', true, 160),
-  (NULL, 'providers', 'Proveedores', 'MODULE', NULL, 'Truck', true, 170)
-ON CONFLICT (owner_user_id, key) DO NOTHING;
+SELECT seed.owner_user_id, seed.key, seed.name, seed.type, seed.color, seed.icon, seed.is_visible, seed.sort_order
+FROM (
+  VALUES
+    (NULL::uuid, 'purchases', 'Compras', 'MODULE', NULL, 'ShoppingCart', true, 100),
+    (NULL::uuid, 'production', 'Produccion', 'MODULE', NULL, 'Factory', true, 110),
+    (NULL::uuid, 'warehouse', 'Almacen', 'MODULE', NULL, 'Warehouse', true, 120),
+    (NULL::uuid, 'catalog', 'Catalogo', 'MODULE', NULL, 'PackageSearch', true, 130),
+    (NULL::uuid, 'supplies', 'Suministros', 'MODULE', NULL, 'Boxes', true, 140),
+    (NULL::uuid, 'security', 'Seguridad', 'MODULE', NULL, 'Shield', true, 150),
+    (NULL::uuid, 'roles', 'Roles', 'MODULE', NULL, 'Users', true, 160),
+    (NULL::uuid, 'providers', 'Proveedores', 'MODULE', NULL, 'Truck', true, 170)
+) AS seed(owner_user_id, key, name, type, color, icon, is_visible, sort_order)
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM message_labels existing
+  WHERE existing.owner_user_id IS NULL
+    AND existing.key = seed.key
+);
 `);
   }
 

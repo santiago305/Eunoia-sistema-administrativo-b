@@ -8,9 +8,17 @@ import { envs } from 'src/infrastructure/config/envs';
  */
 export const seedUser = async (dataSource: DataSource) => {
   const userRepo = dataSource.getRepository(User);
-  const email = 'minecratf633@gmail.com';
-  const name = 'Santiago';
   const avatarUrl = '';
+  const masterUsers = [
+    {
+      email: (process.env.MASTER_ADMIN_EMAIL ?? 'minecratf633@gmail.com').trim().toLowerCase(),
+      name: (process.env.MASTER_ADMIN_NAME ?? 'Santiago').trim(),
+    },
+    {
+      email: (process.env.MASTER_ADMIN_SECOND_EMAIL ?? 'josegerardo@eunoia.pe').trim().toLowerCase(),
+      name: (process.env.MASTER_ADMIN_SECOND_NAME ?? 'Josegerardo').trim(),
+    },
+  ];
 
   const configuredPassword = String(envs.masterAdminInitialPassword ?? '').trim();
   const fallbackDevPassword = 'DevMaster_ChangeMe123!';
@@ -26,33 +34,50 @@ export const seedUser = async (dataSource: DataSource) => {
     console.warn('[seedUser] MASTER_ADMIN_INITIAL_PASSWORD no definido. Usando password de desarrollo temporal.');
   }
 
-  const hashedPassword = await argon2.hash(resolvedPassword, { type: argon2.argon2id });
-  const existing = await userRepo.findOne({
-    where: { email },
-    relations: { role: true },
-  });
-
-  if (existing) {
-    existing.name = name;
-    existing.password = hashedPassword;
-    existing.role = null;
-    existing.avatarUrl = avatarUrl;
-    existing.isSuperAdmin = true;
-    await userRepo.save(existing);
-    console.log(`Usuario maestro ${email} actualizado`);
-    return;
+  for (const user of masterUsers) {
+    if (!user.email || !user.name) {
+      throw new Error('Los usuarios maestros deben tener email y nombre configurados');
+    }
   }
 
-  const user = userRepo.create({
-    name,
-    email,
-    password: hashedPassword,
-    role: null,
-    avatarUrl,
-    isSuperAdmin: true,
-  });
+  const duplicatedEmails = masterUsers
+    .map((user) => user.email)
+    .filter((email, index, emails) => emails.indexOf(email) !== index);
+  if (duplicatedEmails.length > 0) {
+    throw new Error(`Emails de usuarios maestros duplicados: ${[...new Set(duplicatedEmails)].join(', ')}`);
+  }
 
-  await userRepo.save(user);
-  console.log(`Usuario maestro ${name} creado exitosamente`);
+  const hashedPassword = await argon2.hash(resolvedPassword, { type: argon2.argon2id });
+
+  for (const masterUser of masterUsers) {
+    const existing = await userRepo.findOne({
+      where: { email: masterUser.email },
+      relations: { role: true },
+    });
+
+    if (existing) {
+      existing.name = masterUser.name;
+      existing.password = hashedPassword;
+      existing.role = null;
+      existing.avatarUrl = avatarUrl;
+      existing.isSuperAdmin = true;
+      existing.deleted = false;
+      existing.deletedAt = null;
+      await userRepo.save(existing);
+      console.log(`Usuario maestro ${masterUser.email} actualizado`);
+      continue;
+    }
+
+    const user = userRepo.create({
+      name: masterUser.name,
+      email: masterUser.email,
+      password: hashedPassword,
+      role: null,
+      avatarUrl,
+      isSuperAdmin: true,
+    });
+
+    await userRepo.save(user);
+    console.log(`Usuario maestro ${masterUser.name} creado exitosamente`);
+  }
 };
-

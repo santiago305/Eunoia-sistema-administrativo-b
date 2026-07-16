@@ -37,26 +37,26 @@ import { ProductCatalogDocumentSerieEntity } from './src/modules/product-catalog
 import { ProductCatalogUnitEntity } from './src/modules/product-catalog/adapters/out/persistence/typeorm/entities/unit.entity';
 import { ProductCatalogEquivalencesEntity } from './src/modules/product-catalog/adapters/out/persistence/typeorm/entities/equivalences.entity';
 import { seedUser } from './src/modules/users/infrastructure/seed/user.seeder';
-import { seedSecurityReasonCatalog } from './src/modules/security/infrastructure/seed/security-reason-catalog.seeder';
-import { seedSecurityIpActivity } from './src/modules/security/infrastructure/seed/security-ip-activity.seeder';
-import { seedUnits } from './src/modules/product-catalog/infrastructure/seed/unit.seeder';
-import { seedWarehouses } from './src/modules/warehouses/infrastructure/seed/warehouse.seeder';
-import { seedDocumentSeries } from './src/modules/product-catalog/infrastructure/seed/document-serie.seeder';
-import { seedPaymentMethods } from './src/modules/payment-methods/infrastructure/seed/payment-method.seeder';
-import { seedSuppliers } from './src/modules/suppliers/infrastructure/seed/supplier.seeder';
-import { seedSupplierSkus } from './src/modules/suppliers/infrastructure/seed/supplier-sku.seeder';
-import { seedProductCatalog } from './src/modules/product-catalog/infrastructure/seed/product-catalog.seeder';
-import { seedProductCatalogRecipes } from './src/modules/product-catalog/infrastructure/seed/product-catalog-recipe.seeder';
-import { seedProductCatalogInventory } from './src/modules/product-catalog/infrastructure/seed/inventory.seeder';
-import { seedProductCatalogEquivalences } from './src/modules/product-catalog/infrastructure/seed/equivalence.seeder';
-import { seedCompany } from './src/modules/companies/infrastructure/seed/company.seeder';
+//import { seedSecurityReasonCatalog } from './src/modules/security/infrastructure/seed/security-reason-catalog.seeder';
+//import { seedUnits } from './src/modules/product-catalog/infrastructure/seed/unit.seeder';
+//import { seedSecurityIpActivity } from './src/modules/security/infrastructure/seed/security-ip-activity.seeder';
+//import { seedWarehouses } from './src/modules/warehouses/infrastructure/seed/warehouse.seeder';
+//import { seedDocumentSeries } from './src/modules/product-catalog/infrastructure/seed/document-serie.seeder';
+//import { seedPaymentMethods } from './src/modules/payment-methods/infrastructure/seed/payment-method.seeder';
+//import { seedSuppliers } from './src/modules/suppliers/infrastructure/seed/supplier.seeder';
+//import { seedSupplierSkus } from './src/modules/suppliers/infrastructure/seed/supplier-sku.seeder';
+//import { seedProductCatalog } from './src/modules/product-catalog/infrastructure/seed/product-catalog.seeder';
+//import { seedProductCatalogRecipes } from './src/modules/product-catalog/infrastructure/seed/product-catalog-recipe.seeder';
+//import { seedProductCatalogInventory } from './src/modules/product-catalog/infrastructure/seed/inventory.seeder';
+//import { seedProductCatalogEquivalences } from './src/modules/product-catalog/infrastructure/seed/equivalence.seeder';
+//import { seedCompany } from './src/modules/companies/infrastructure/seed/company.seeder';
 import { UbigeoDepartmentEntity } from './src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-department.entity';
 import { UbigeoProvinceEntity } from './src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-province.entity';
 import { UbigeoDistrictEntity } from './src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-district.entity';
 import { seedUbigeo } from './src/modules/ubigeo/infrastructure/seed/ubigeo.seeder';
-import { seedInventoryDocuments } from 'src/modules/product-catalog/infrastructure/seed/document-inventory.seeder';
-import { seedInventoryTransfers } from 'src/modules/product-catalog/infrastructure/seed/document-transfer.seeder';
-import { seedInventoryAdjustments } from 'src/modules/product-catalog/infrastructure/seed/document-adjustment.seeder';
+//import { seedInventoryDocuments } from 'src/modules/product-catalog/infrastructure/seed/document-inventory.seeder';
+//import { seedInventoryTransfers } from 'src/modules/product-catalog/infrastructure/seed/document-transfer.seeder';
+//import { seedInventoryAdjustments } from 'src/modules/product-catalog/infrastructure/seed/document-adjustment.seeder';
 import { MessageEntity } from 'src/modules/mail/adapters/out/persistence/typeorm/entities/message.entity';
 import { MessageThread } from 'src/modules/mail/adapters/out/persistence/typeorm/entities/message-thread.entity';
 import { MessageUserStateEntity } from 'src/modules/mail/adapters/out/persistence/typeorm/entities/message-user-state.entity';
@@ -66,15 +66,15 @@ import { SaleOrderItemEntity } from 'src/modules/sale-orders/adapters/out/persis
 import { SaleOrderItemComponentEntity } from 'src/modules/sale-orders/adapters/out/persistence/typeorm/entities/sale-order-item-component.entity';
 import { SalePaymentEntity } from 'src/modules/sale-orders/adapters/out/persistence/typeorm/entities/sale-payment.entity';
 import { SaleOrderStatesEntity } from 'src/modules/workflow/adapters/out/persistence/typeorm/entities/sale-order-states.entity';
-import { seedSaleOrderStates } from 'src/modules/sale-orders/infrastructure/jobs/sale-order-states.seeder';
+//import { seedSaleOrderStates } from 'src/modules/sale-orders/infrastructure/jobs/sale-order-states.seeder';
 import { WorkflowEntity } from 'src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow.entity';
 import { WorkflowStateEntity } from 'src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow-state.entity';
 import { WorkflowTransitionEntity } from 'src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow-transition.entity';
 import { WorkflowConditionEntity } from 'src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow-condition.entity';
 import { WorkflowActionEntity } from 'src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow-action.entity';
-import { seedWorkflows } from 'src/modules/workflow/infrastructure/seed/workflow.seeder';
+//import { seedWorkflows } from 'src/modules/workflow/infrastructure/seed/workflow.seeder';
 import { CompanyPaymentAccountEntity } from 'src/modules/company-payment-accounts/adapters/out/persistence/typeorm/entities/company-payment-account.entity';
-import { seedCompanyPaymentAccounts } from 'src/modules/company-payment-accounts/infrastructure/seed/company-payment-account.seeder';
+//import { seedCompanyPaymentAccounts } from 'src/modules/company-payment-accounts/infrastructure/seed/company-payment-account.seeder';
 
 const entities = [
   Role,
@@ -151,55 +151,55 @@ dataSource
     console.log('Iniciando seed...');
 
     await seedUser(dataSource);
-    await seedCompany(dataSource);
-    await seedCompanyPaymentAccounts(dataSource);
     await seedUbigeo(dataSource);
-    await seedSecurityReasonCatalog(dataSource);
-    await seedSecurityIpActivity(dataSource);
-    await seedUnits(dataSource);
-    await seedProductCatalog(dataSource);
-    await seedProductCatalogEquivalences(dataSource);
-    await seedProductCatalogRecipes(dataSource);
-    await seedSaleOrderStates(dataSource);
-    const warehouses = await seedWarehouses(dataSource);
-    await seedWorkflows(dataSource);
+    // Seeders de datos base/demo deshabilitados para producción.
+    // await seedCompany(dataSource);
+    // await seedCompanyPaymentAccounts(dataSource);
+    // await seedSecurityReasonCatalog(dataSource);
+    // await seedSecurityIpActivity(dataSource);
+    // await seedUnits(dataSource);
+    // await seedProductCatalog(dataSource);
+    // await seedProductCatalogEquivalences(dataSource);
+    // await seedProductCatalogRecipes(dataSource);
+    // await seedSaleOrderStates(dataSource);
+    // const warehouses = await seedWarehouses(dataSource);
+    // await seedWorkflows(dataSource);
 
-    await seedProductCatalogInventory(dataSource);
-    for (const wh of warehouses) {
-      await seedDocumentSeries(dataSource, wh.id);
-    }
+    // await seedProductCatalogInventory(dataSource);
+    // for (const wh of warehouses) {
+    //   await seedDocumentSeries(dataSource, wh.id);
+    // }
 
+    // await seedInventoryDocuments(dataSource, warehouses, {
+    //   totalDocs: 30,
+    //   minItemsPerDoc: 2,
+    //   maxItemsPerDoc: 8,
+    //   monthsBack: 4,
+    //   createdBy: null,
+    //   allowNegativeStock: false,
+    // });
 
-    await seedInventoryDocuments(dataSource, warehouses, {
-      totalDocs: 30,
-      minItemsPerDoc: 2,
-      maxItemsPerDoc: 8,
-      monthsBack: 4,
-      createdBy: null,
-      allowNegativeStock: false,
-    });
+    // await seedInventoryTransfers(dataSource, warehouses, {
+    //   totalDocs: 2,
+    //   minItemsPerDoc: 2,
+    //   maxItemsPerDoc: 5,
+    //   monthsBack: 4,
+    //   createdBy: null,
+    //   allowNegativeStock: false,
+    // });
 
-    await seedInventoryTransfers(dataSource, warehouses, {
-      totalDocs: 2,
-      minItemsPerDoc: 2,
-      maxItemsPerDoc: 5,
-      monthsBack: 4,
-      createdBy: null,
-      allowNegativeStock: false,
-    });
+    // await seedInventoryAdjustments(dataSource, warehouses, {
+    //   totalDocs: 2,
+    //   minItemsPerDoc: 2,
+    //   maxItemsPerDoc: 5,
+    //   monthsBack: 4,
+    //   createdBy: null,
+    //   allowNegativeStock: false,
+    // });
 
-    await seedInventoryAdjustments(dataSource, warehouses, {
-      totalDocs: 2,
-      minItemsPerDoc: 2,
-      maxItemsPerDoc: 5,
-      monthsBack: 4,
-      createdBy: null,
-      allowNegativeStock: false,
-    });
-
-    await seedPaymentMethods(dataSource);
-    await seedSuppliers(dataSource, 10);
-    await seedSupplierSkus(dataSource);
+    // await seedPaymentMethods(dataSource);
+    // await seedSuppliers(dataSource, 10);
+    // await seedSupplierSkus(dataSource);
     await dataSource.destroy();
     console.log('Seeding completo!');
   })

@@ -9,7 +9,7 @@ export class CreateBankAccounts20260527010000 implements MigrationInterface {
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS bank_accounts (
         id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-        company_id uuid NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+        company_id uuid NOT NULL REFERENCES companies(company_id) ON DELETE CASCADE,
         name varchar(150) NOT NULL,
         number varchar(100),
         is_active boolean NOT NULL DEFAULT true
