@@ -59,9 +59,20 @@ describe('AccessControlService (fase 6 reglas finales)', () => {
 
       const result = await service.getEffectivePermissions('master');
 
-      expect(result).toEqual(['catalog.read', 'users.create']);
+      expect(result).toEqual(['*', 'catalog.read', 'users.create']);
       expect(rolePermissionRepository.find).not.toHaveBeenCalled();
       expect(userPermissionOverrideRepository.find).not.toHaveBeenCalled();
+    });
+
+    it('superadmin conserva permiso total aunque falte un permiso concreto en catalogo', async () => {
+      userRepository.findOne.mockResolvedValue({
+        id: 'master',
+        isSuperAdmin: true,
+        role: null,
+      });
+      permissionRepository.find.mockResolvedValue([{ code: 'users.create' }]);
+
+      await expect(service.userHasAllPermissions('master', ['company.manage'])).resolves.toBe(true);
     });
 
     it('usuario sin rol usa solo overrides ALLOW', async () => {

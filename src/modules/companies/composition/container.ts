@@ -6,6 +6,7 @@ import { TypeormUnitOfWork } from "src/shared/infrastructure/typeorm/typeorm.uni
 import { CLOCK } from "src/shared/application/ports/clock.port";
 import { IMAGE_PROCESSOR } from "src/shared/application/ports/image-processor.port";
 import { SharpImageProcessorService } from "src/shared/utilidades/services/sharp-image-processor.service";
+import { FirstCompanyCreationGuard } from "../adapters/in/http/guards/first-company-creation.guard";
 
 export const companiesModuleProviders = [
   ...companyUsecasesProviders,
@@ -13,5 +14,6 @@ export const companiesModuleProviders = [
   { provide: UNIT_OF_WORK, useClass: TypeormUnitOfWork },
   { provide: CLOCK, useValue: { now: () => new Date() } },
   { provide: IMAGE_PROCESSOR, useClass: SharpImageProcessorService },
+  FirstCompanyCreationGuard,
 ];
 

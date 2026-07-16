@@ -196,7 +196,7 @@ export class AccessControlService {
         where: { isActive: true },
         select: ['code'],
       });
-      return all.map((permission) => permission.code).sort();
+      return ['*', ...all.map((permission) => permission.code)].sort();
     }
 
     const rolePermissions = await this.rolePermissionRepository.find({
@@ -283,6 +283,7 @@ export class AccessControlService {
   async userHasAllPermissions(userId: string, requiredPermissions: string[]): Promise<boolean> {
     if (!requiredPermissions?.length) return true;
     const effective = await this.getEffectivePermissions(userId);
+    if (effective.includes('*')) return true;
     return requiredPermissions.every((permission) => effective.includes(permission));
   }
 

@@ -18,6 +18,7 @@ import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard
 import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
 import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
 import { CsrfGuard } from "src/shared/utilidades/guards/csrf.guard";
+import { FirstCompanyCreationGuard } from "../guards/first-company-creation.guard";
 import { CreateCompanyUsecase } from "src/modules/companies/application/usecases/create.usecase";
 import { GetCompanyUsecase } from "src/modules/companies/application/usecases/get.usecase";
 import { GetCompanyBrandingUsecase } from "src/modules/companies/application/usecases/get-branding.usecase";
@@ -54,8 +55,7 @@ export class CompanyController {
   ) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard, PermissionsGuard, CsrfGuard)
-  @RequirePermissions("company.manage")
+  @UseGuards(JwtAuthGuard, FirstCompanyCreationGuard, CsrfGuard)
   async create(@Body() dto: HttpCreateCompanyDto) {
     return this.createCompanyUsecase.execute(
       CompanyHttpMapper.toCreateInput(dto),

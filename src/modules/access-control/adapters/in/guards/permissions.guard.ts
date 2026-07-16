@@ -41,7 +41,7 @@ export class PermissionsGuard implements CanActivate {
 
     const effective = await this.accessControlService.getEffectivePermissions(userId);
     const effectiveSet = new Set(effective);
-    const hasPermission = (permission: string) => effectiveSet.has(permission);
+    const hasPermission = (permission: string) => effectiveSet.has('*') || effectiveSet.has(permission);
 
     const staticAllowed = !requiredPermissions?.length || requiredPermissions.every(hasPermission);
     const groupAllowed =
