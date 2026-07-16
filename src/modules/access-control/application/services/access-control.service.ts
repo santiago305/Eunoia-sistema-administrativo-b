@@ -214,7 +214,7 @@ export class AccessControlService {
         where: { isActive: true },
         select: ['code'],
       });
-      return all.map((permission) => permission.code);
+      return ['*', ...all.map((permission) => permission.code)].sort();
     }
 
     const overrides = await this.userPermissionOverrideRepository.find({

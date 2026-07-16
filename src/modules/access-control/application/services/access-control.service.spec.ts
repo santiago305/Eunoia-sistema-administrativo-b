@@ -115,6 +115,18 @@ describe('AccessControlService (fase 6 reglas finales)', () => {
 
       expect(result).toEqual(['catalog.read']);
     });
+
+    it('rol con wildcard conserva permiso total aunque falte un permiso concreto en catalogo', async () => {
+      userRepository.findOne.mockResolvedValue({
+        id: 'u-master-role',
+        isSuperAdmin: false,
+        role: { roleId: 'role-master' },
+      });
+      rolePermissionRepository.find.mockResolvedValue([{ permission: { code: '*' } }]);
+      permissionRepository.find.mockResolvedValue([{ code: 'users.create' }]);
+
+      await expect(service.userHasAllPermissions('u-master-role', ['company.manage'])).resolves.toBe(true);
+    });
   });
 
   describe('upsertUserPermissionOverride', () => {
