@@ -1,6 +1,11 @@
 ﻿-- =========================================================
+-- LEGACY REFERENCE ONLY.
+-- Production schema must be created with pnpm run migrate.
+-- Do not apply this file directly to production.
+
 -- STOCK + CATiLOGO (PostgreSQL)
 -- con USERS/ROLES y auditori­a de movimientos
+
 -- =========================================================
 -- Esta BD cubre:
 -- - Catalogo (familias Product e items Sku)
