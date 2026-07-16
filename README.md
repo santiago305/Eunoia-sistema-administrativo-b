@@ -1,139 +1,82 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Eunoia Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+API administrativa construida con NestJS, TypeORM, PostgreSQL y Redis.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Requisitos
 
-## Description
+- Node.js 20+
+- npm
+- PostgreSQL 16+
+- Redis 7+
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Configuracion local
 
-## Project setup
+1. Copia `.env.example` a `.env`.
+2. Ajusta las credenciales de base de datos y Redis.
+3. Define los origenes permitidos para CORS:
 
-```bash
-$ pnpm install
+```env
+CORS_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 ```
 
-## Compile and run the project
+En produccion agrega el dominio del frontend, separado por comas si hay mas de uno.
+
+## Instalacion
 
 ```bash
-# development
-$ pnpm run start
-
-# watch mode
-$ pnpm run start:dev
-
-# production mode
-$ pnpm run start:prod
+npm install
 ```
 
-## Run tests
+## Ejecutar
 
 ```bash
-# unit tests
-$ pnpm run test
-
-# e2e tests
-$ pnpm run test:e2e
-
-# test coverage
-$ pnpm run test:cov
+npm run start:dev
 ```
 
-## Deployment
+La API queda disponible en `http://localhost:3000/api`.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Scripts utiles
 
 ```bash
-$ pnpm install -g mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
-
-
-ackend: tests completos
-cd C:\proyectos\eunoia\Eunoia-sistema-administrativo-b
-npm test -- --runInBand
-powershell
-
-# Backend: build TypeScript/Nest
-cd C:\proyectos\eunoia\Eunoia-sistema-administrativo-b
 npm run build
-powershell
+npm test
+npm run test:e2e
+npm run migrate
+npm run seed
+```
 
-# Frontend: build TypeScript/Vite
-cd C:\proyectos\eunoia\Eunoia-sistema-administrativo-f
-npm run build
-powershell
+## Docker
 
-# Frontend: tests completos
-cd C:\proyectos\eunoia\Eunoia-sistema-administrativo-f
-npm run test:unit
-Tests solo fase 0:
+Desde la raiz del workspace (`D:\eunoia`):
 
-powershell
+```bash
+docker compose up --build
+```
 
-cd C:\proyectos\eunoia\Eunoia-sistema-administrativo-b
-npm test -- auth.controller.spec.ts envs.spec.ts typeorm.config.spec.ts roles.guard.spec.ts create-user.dto.spec.ts --runInBand
-powershell
+Servicios expuestos:
 
-cd C:\proyectos\eunoia\Eunoia-sistema-administrativo-f
-npm run test:unit -- src/shared/schemas/userSchemas.test.ts
-Para buscar rápido archivos con fallos actuales:
+- Backend: `http://localhost:3000/api`
+- PostgreSQL: `localhost:5432`
+- Redis: `localhost:6379`
 
-powershell
+El compose raiz sobrescribe `DB_HOST=db` y `REDIS_HOST=redis` para que el backend use los servicios internos.
+Los valores `COOKIE_SECRET` y `JWT_SECRET` del compose son placeholders para desarrollo; cambialos antes de usar ese archivo en un entorno compartido o productivo.
 
-cd C:\proyectos\eunoia\Eunoia-sistema-administrativo-f
-npm run build
-powershell
+## Variables principales
 
-cd C:\proyectos\eunoia\Eunoia-sistema-administrativo-b
-npm test -- --runInBand
+- `PORT`: puerto HTTP del backend.
+- `NODE_ENV`: `development`, `test` o `production`.
+- `CORS_ORIGINS`: lista separada por comas de origenes permitidos.
+- `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, `DB_NAME`: conexion PostgreSQL.
+- `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`, `REDIS_DB`: conexion Redis.
+- `JWT_SECRET`, `JWT_EXPIRES_IN`, `JWT_ISSUER`, `JWT_REFRESH_EXPIRES_IN`: autenticacion.
+- `COOKIE_SECRET`: firma de cookies.
+- `MAIL_STORAGE_ACTIVE_DIR`, `MAIL_STORAGE_DELETED_DIR`: almacenamiento de adjuntos de correo.
+
+## Estructura
+
+- `src/main.ts`: arranque HTTP, CORS, middleware global y assets publicos.
+- `src/infrastructure/config/envs.ts`: validacion y normalizacion de variables de entorno.
+- `src/infrastructure/database`: TypeORM, migraciones y configuracion de base de datos.
+- `src/modules`: modulos de negocio.
+- `test`: pruebas e2e.

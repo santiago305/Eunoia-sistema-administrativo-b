@@ -4,7 +4,7 @@ import { SaleOrdersRealtimeService } from "src/modules/sale-orders/infrastructur
 import { RunAutomaticWorkflowTransitionsJob } from "src/modules/workflow/application/jobs/run-automatic-workflow-transitions.job";
 import { envs } from "src/infrastructure/config/envs";
 
-const AUTOMATIC_WORKFLOW_FALLBACK_MS =14_400_000;;
+const AUTOMATIC_WORKFLOW_FALLBACK_MS = 60_000;
 
 @Injectable()
 export class SaleOrdersJobsScheduler implements OnModuleInit, OnModuleDestroy {

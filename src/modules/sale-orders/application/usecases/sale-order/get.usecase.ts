@@ -21,6 +21,7 @@ export class GetSaleOrderUsecase {
       id: order.id,
       workflowId: order.workflow?.id ?? null,
       currentStateId: order.currentState?.id ?? null,
+      reserveBool: order.reserveBool,
     });
     return { ...order, editPolicy };
   }

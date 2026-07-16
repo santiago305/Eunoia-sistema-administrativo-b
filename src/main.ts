@@ -42,7 +42,7 @@ async function bootstrap() {
   enableCookieParser(app);
   // habilitamos el cors
   app.enableCors({
-    origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+    origin: envs.corsOrigins,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
       'Content-Type',
@@ -64,7 +64,7 @@ async function bootstrap() {
   // Habilitar el uso de cookies
 
   await app.listen(envs.port || 3000);
-  console.log(`Server is running on port ${envs.port || 3000}`);
+  //console.log(`Server is running on port ${envs.port || 3000}`);
 }
 bootstrap();
 

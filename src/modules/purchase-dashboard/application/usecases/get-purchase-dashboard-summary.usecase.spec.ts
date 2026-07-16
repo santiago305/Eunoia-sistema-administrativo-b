@@ -20,11 +20,21 @@ describe("GetPurchaseDashboardSummaryUsecase", () => {
       from: "2026-06-01",
       to: "2026-06-30",
       supplierId: "supplier-1",
+      supplierIds: ["supplier-1"],
       purchaseType: "SERVICE",
+      purchaseTypes: ["SERVICE"],
+      status: undefined,
       paymentStatus: "PARTIAL",
+      paymentStatuses: ["PARTIAL"],
+      userId: undefined,
+      userIds: undefined,
       warehouseId: "warehouse-1",
+      warehouseIds: ["warehouse-1"],
       paymentMethodId: "method-1",
+      paymentMethodIds: ["method-1"],
       companyPaymentAccountId: "account-1",
+      companyPaymentAccountIds: ["account-1"],
+      limit: undefined,
     });
 
     expect(repo.getSummary).toHaveBeenCalledWith({

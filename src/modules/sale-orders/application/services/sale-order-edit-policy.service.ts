@@ -43,14 +43,18 @@ export class SaleOrderEditPolicyService {
   async resolve(
     order: Pick<
       SaleOrder,
-      'id' | 'workflowId' | 'currentStateId'
+      'id' | 'workflowId' | 'currentStateId' | 'reserveBool'
     >,
     tx?: TransactionContext,
   ): Promise<SaleOrderEditPolicy> {
-    const [stockStatus, isFinal] = await Promise.all([
+    const [resolvedStockStatus, isFinal] = await Promise.all([
       this.resolveStockStatus(order.id, tx),
       this.resolveFinalState(order, tx),
     ]);
+    const stockStatus =
+      resolvedStockStatus === 'RESERVED' && order.reserveBool === false
+        ? 'NONE'
+        : resolvedStockStatus;
 
     const productsEditable =
       !isFinal && stockStatus !== 'RESERVED';

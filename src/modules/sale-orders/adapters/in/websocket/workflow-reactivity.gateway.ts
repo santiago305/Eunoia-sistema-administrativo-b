@@ -9,12 +9,13 @@ import {
   WebSocketServer,
 } from "@nestjs/websockets";
 import { Server, Socket } from "socket.io";
+import { envs } from "src/infrastructure/config/envs";
 import { WorkflowReactivityRealtimeService } from "src/modules/sale-orders/infrastructure/realtime/workflow-reactivity-realtime.service";
 
 @WebSocketGateway({
   namespace: "/workflow-reactivity",
   cors: {
-    origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
+    origin: envs.corsOrigins,
     credentials: true,
   },
 })

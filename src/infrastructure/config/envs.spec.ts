@@ -69,4 +69,34 @@ describe('envs validation', () => {
       );
     });
   });
+
+  it('uses localhost CORS origins by default', () => {
+    process.env.JWT_SECRET = 'j'.repeat(32);
+    process.env.COOKIE_SECRET = 'c'.repeat(32);
+    delete process.env.CORS_ORIGINS;
+
+    jest.isolateModules(() => {
+      const { envs } = require('./envs');
+
+      expect(envs.corsOrigins).toEqual([
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+      ]);
+    });
+  });
+
+  it('parses CORS origins from a comma-separated env value', () => {
+    process.env.JWT_SECRET = 'j'.repeat(32);
+    process.env.COOKIE_SECRET = 'c'.repeat(32);
+    process.env.CORS_ORIGINS = 'https://app.eunoia.pe, https://admin.eunoia.pe';
+
+    jest.isolateModules(() => {
+      const { envs } = require('./envs');
+
+      expect(envs.corsOrigins).toEqual([
+        'https://app.eunoia.pe',
+        'https://admin.eunoia.pe',
+      ]);
+    });
+  });
 });

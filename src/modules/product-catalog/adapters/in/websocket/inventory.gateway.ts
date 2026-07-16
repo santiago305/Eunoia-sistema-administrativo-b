@@ -10,6 +10,7 @@ import {
 } from "@nestjs/websockets";
 import { Subscription } from "rxjs";
 import { Server, Socket } from "socket.io";
+import { envs } from "src/infrastructure/config/envs";
 import {
   INVENTORY_REALTIME,
   InventoryRealtime,
@@ -19,7 +20,7 @@ import { InventorySocketRealtimeService } from "src/modules/product-catalog/infr
 @WebSocketGateway({
   namespace: "/inventory",
   cors: {
-    origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
+    origin: envs.corsOrigins,
     credentials: true,
   },
 })

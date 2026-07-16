@@ -9,12 +9,13 @@ import {
 } from "@nestjs/websockets";
 import { Logger } from "@nestjs/common";
 import { Server, Socket } from "socket.io";
+import { envs } from "src/infrastructure/config/envs";
 import { SaleOrdersRealtimeService } from "src/modules/sale-orders/infrastructure/realtime/sale-orders-realtime.service";
 
 @WebSocketGateway({
   namespace: "/sale-orders",
   cors: {
-    origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
+    origin: envs.corsOrigins,
     credentials: true,
   },
 })

@@ -29,6 +29,7 @@ jest.mock('./infrastructure/config/envs', () => ({
     },
     port: 3000,
     trustProxy: false,
+    corsOrigins: ['http://localhost:5173', 'http://127.0.0.1:5173'],
   },
 }));
 
@@ -68,6 +69,18 @@ describe('bootstrap static assets', () => {
       2,
       join(process.cwd(), 'assets'),
       { prefix: '/api/assets/' },
+    );
+  });
+
+  it('enables CORS using configured origins', async () => {
+    await import('./main');
+    await new Promise(process.nextTick);
+
+    expect(appMock.enableCors).toHaveBeenCalledWith(
+      expect.objectContaining({
+        origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+        credentials: true,
+      }),
     );
   });
 });

@@ -7,6 +7,7 @@ interface EnvVars {
     PORT: number;
     NODE_ENV?: 'development' | 'production' | 'test';
     TRUST_PROXY?: boolean;
+    CORS_ORIGINS?: string;
     DB_HOST: string;
     DB_PORT: number;
     DB_USERNAME: string;
@@ -52,6 +53,7 @@ const envsSchema = joi.object({
     PORT: joi.number().required(),
     NODE_ENV: joi.string().valid('development', 'production', 'test').optional(),
     TRUST_PROXY: joi.boolean().optional(),
+    CORS_ORIGINS: joi.string().optional(),
     DB_HOST: joi.string().required(),
     DB_PORT: joi.number().required(),
     DB_USERNAME: joi.string().required(),
@@ -107,11 +109,16 @@ const filesRootDir = envsVars.FILES_STORAGE_ROOT ?? 'storage';
 const filesPublicDir = envsVars.FILES_PUBLIC_DIR ?? `${filesRootDir}/public`;
 const filesPrivateDir = envsVars.FILES_PRIVATE_DIR ?? `${filesRootDir}/private`;
 const filesDeletedDir = envsVars.FILES_DELETED_DIR ?? `${filesRootDir}/deleted`;
+const corsOrigins = (envsVars.CORS_ORIGINS ?? 'http://localhost:5173,http://127.0.0.1:5173')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 export const envs = {
     port: envsVars.PORT,
     nodeEnv: envsVars.NODE_ENV ?? 'development',
     trustProxy: envsVars.TRUST_PROXY ?? false,
+    corsOrigins,
     cookieSecret: envsVars.COOKIE_SECRET,
     jwt: {
         secret: envsVars.JWT_SECRET,

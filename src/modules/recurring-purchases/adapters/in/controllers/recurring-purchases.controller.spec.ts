@@ -15,7 +15,13 @@ describe("RecurringPurchasesController", () => {
     const getSearchState = { execute: jest.fn(async () => ({ recent: [], saved: [], catalogs: { suppliers: [] } })) };
     const saveSearchMetric = { execute: jest.fn(async () => ({ type: "success", message: "Metrica guardada" })) };
     const deleteSearchMetric = { execute: jest.fn(async () => ({ type: "success", message: "Metrica eliminada" })) };
+    const listingSearchStorage = {
+      listState: jest.fn(async () => ({ metrics: [] })),
+      createMetric: jest.fn(async () => ({ type: "success", message: "Preset guardado" })),
+      deleteMetric: jest.fn(async () => ({ type: "success", message: "Preset eliminado" })),
+    };
     const controller = new RecurringPurchasesController(
+      {} as any,
       {} as any,
       listRecurringPurchases as any,
       {} as any,
@@ -23,9 +29,11 @@ describe("RecurringPurchasesController", () => {
       {} as any,
       {} as any,
       registerRecurringPayment as any,
+      {} as any,
       getSearchState as any,
       saveSearchMetric as any,
       deleteSearchMetric as any,
+      listingSearchStorage as any,
     );
 
     return { controller, registerRecurringPayment, listRecurringPurchases, getSearchState, saveSearchMetric, deleteSearchMetric };
