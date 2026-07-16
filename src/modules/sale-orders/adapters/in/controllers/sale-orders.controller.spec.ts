@@ -35,6 +35,7 @@ import { SaveSaleOrderWithClientUsecase } from "src/modules/sale-orders/applicat
 import { BulkAssignSaleOrdersUsecase } from "src/modules/sale-orders/application/usecases/sale-order/bulk-assign.usecase";
 import { BulkChangeSaleOrderStateUsecase } from "src/modules/sale-orders/application/usecases/sale-order/bulk-change-state.usecase";
 import { ExportSaleOrdersExcelUsecase } from "src/modules/sale-orders/application/usecases/sale-order/export-excel.usecase";
+import { GetSaleOrderEditorCatalogsUsecase } from "src/modules/sale-orders/application/usecases/sale-order/get-editor-catalogs.usecase";
 import { LISTING_SEARCH_STORAGE } from "src/shared/listing-search/domain/listing-search.repository";
 import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
 
@@ -79,6 +80,7 @@ describe("SaleOrdersController", () => {
   const saveWithClient = { execute: jest.fn() };
   const bulkAssignSaleOrders = { execute: jest.fn() };
   const bulkChangeSaleOrderState = { execute: jest.fn() };
+  const editorCatalogs = { execute: jest.fn() };
   const exportExcel = {
     getAvailableColumns: jest.fn(),
     execute: jest.fn(),
@@ -100,6 +102,16 @@ describe("SaleOrdersController", () => {
     listSaleOrders.execute.mockResolvedValue({ items: [], total: 0, page: 1, limit: 10 });
     getStatistics.execute.mockResolvedValue(statisticsPayload);
     getSearchState.execute.mockResolvedValue({ recent: [], saved: [], catalogs: { paymentStatuses: [] } });
+    editorCatalogs.execute.mockResolvedValue({
+      clients: [],
+      warehouses: [],
+      subsidiaries: [],
+      sources: [],
+      workflows: [],
+      advisers: [],
+      paymentMethods: [],
+      companyPaymentAccounts: [],
+    });
     getComponents.execute.mockResolvedValue({ saleOrderId: "x", items: [] });
     getItemComponents.execute.mockResolvedValue({ saleOrderItemId: "x", components: [] });
     updateSaleOrder.execute.mockResolvedValue({ orderId: "x" });
@@ -215,6 +227,7 @@ describe("SaleOrdersController", () => {
         { provide: UpdateSaleOrderUsecase, useValue: updateSaleOrder },
         { provide: BulkAssignSaleOrdersUsecase, useValue: bulkAssignSaleOrders },
         { provide: BulkChangeSaleOrderStateUsecase, useValue: bulkChangeSaleOrderState },
+        { provide: GetSaleOrderEditorCatalogsUsecase, useValue: editorCatalogs },
         { provide: ExportSaleOrdersExcelUsecase, useValue: exportExcel },
         { provide: LISTING_SEARCH_STORAGE, useValue: listingSearchStorage },
         { provide: GetSaleOrderSearchStateUsecase, useValue: getSearchState },
@@ -559,6 +572,34 @@ describe("SaleOrdersController", () => {
   it("returns search-state catalogs", async () => {
     const response = await request(app.getHttpServer()).get("/sale-orders/search-state").expect(200);
     expect(response.body).toHaveProperty("catalogs");
+  });
+
+  it("returns sale-order editor catalogs in one request", async () => {
+    editorCatalogs.execute.mockResolvedValueOnce({
+      clients: [{ id: "client-1", fullName: "Cliente Uno", docNumber: "12345678" }],
+      warehouses: [{ warehouseId: "warehouse-1", name: "Principal" }],
+      subsidiaries: [{ id: "subsidiary-1", alias: "Agencia", address: "Av. 1", basePrice: 8 }],
+      sources: [{ id: "source-1", name: "Facebook" }],
+      workflows: [{ id: "workflow-1", name: "Venta", isActive: true }],
+      advisers: [{ id: "adviser-1", name: "Ana", email: "ana@example.com" }],
+      paymentMethods: [{ companyMethodId: "cm-1", methodId: "method-1", name: "EFECTIVO", isActive: true }],
+      companyPaymentAccounts: [{ id: "account-1", companyId: "company-1", type: "CASH", name: "Caja", currency: "PEN", isActive: true, isDefault: true }],
+    });
+
+    const response = await request(app.getHttpServer())
+      .get("/sale-orders/editor-catalogs")
+      .query({ companyId: "11111111-1111-4111-8111-111111111111" })
+      .expect(200);
+
+    expect(editorCatalogs.execute).toHaveBeenCalledWith({
+      companyId: "11111111-1111-4111-8111-111111111111",
+    });
+    expect(response.body).toEqual(expect.objectContaining({
+      clients: [expect.objectContaining({ id: "client-1" })],
+      subsidiaries: [expect.objectContaining({ id: "subsidiary-1" })],
+      workflows: [expect.objectContaining({ id: "workflow-1" })],
+      companyPaymentAccounts: [expect.objectContaining({ id: "account-1" })],
+    }));
   });
 
   it("returns export columns", async () => {

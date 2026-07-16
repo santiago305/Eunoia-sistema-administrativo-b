@@ -48,6 +48,7 @@ import { parseSaleOrderMultipart } from "../support/sale-order-multipart.parser"
 import { BulkAssignSaleOrdersDto } from "../dtos/bulk-assign-sale-orders.dto";
 import { BulkChangeSaleOrderStateDto } from "../dtos/bulk-change-sale-order-state.dto";
 import { ExportSaleOrdersExcelUsecase } from "src/modules/sale-orders/application/usecases/sale-order/export-excel.usecase";
+import { GetSaleOrderEditorCatalogsUsecase } from "src/modules/sale-orders/application/usecases/sale-order/get-editor-catalogs.usecase";
 import { HttpExportSaleOrdersDto } from "../dtos/http-export-sale-orders.dto";
 import { LISTING_SEARCH_STORAGE, ListingSearchStorageRepository } from "src/shared/listing-search/domain/listing-search.repository";
 import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
@@ -84,6 +85,7 @@ export class SaleOrdersController {
     private readonly realtimePayload: SaleOrderRealtimePayloadService,
     private readonly saveWithClient: SaveSaleOrderWithClientUsecase,
     private readonly exportExcel: ExportSaleOrdersExcelUsecase,
+    private readonly getEditorCatalogs: GetSaleOrderEditorCatalogsUsecase,
     @Inject(LISTING_SEARCH_STORAGE)
     private readonly listingSearchStorage: ListingSearchStorageRepository,
   ) {}
@@ -529,6 +531,11 @@ export class SaleOrdersController {
   @Get("search-state")
   getSearchStateForUser(@CurrentUser() user: { id: string }) {
     return this.getSearchState.execute(user.id);
+  }
+
+  @Get("editor-catalogs")
+  getSaleOrderEditorCatalogs(@Query("companyId") companyId?: string) {
+    return this.getEditorCatalogs.execute({ companyId });
   }
 
   @Post("search-metrics")
