@@ -1,7 +1,7 @@
 import { BadRequestException, Inject } from "@nestjs/common";
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
 import { PURCHASE_ORDER_ITEM, PurchaseOrderItemRepository } from "src/modules/purchases/domain/ports/purchase-order-item.port.repository";
-import { ParseDateLocal } from "src/shared/utilidades/utils/ParseDates";
+import { ParseDateLocal } from "src/shared/utilidades/utils/parseDates";
 import { PurchaseOrderOutputMapper } from "../../mappers/purchase-order-output.mapper";
 import { sanitizePurchaseSearchFilters } from "../../support/purchase-search.utils";
 import { XlsxBuilderService, type XlsxColumn } from "src/shared/application/services/xlsx-builder.service";

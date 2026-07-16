@@ -48,6 +48,7 @@ import { PurchaseDashboardModule } from './modules/purchase-dashboard/purchase-d
 import { IncomeModule } from './modules/income/income.module';
 import { LogisticsPayablesModule } from './modules/logistics-payables/logistics-payables.module';
 import { AdminFinanceModule } from './modules/admin-finance/admin-finance.module';
+import { HealthController } from './health.controller';
 
 const redisAuth = envs.redis.password ? `:${encodeURIComponent(envs.redis.password)}@` : '';
 const redisUrl = `redis://${redisAuth}${envs.redis.host}:${envs.redis.port}/${envs.redis.db}`;
@@ -104,6 +105,7 @@ const redisUrl = `redis://${redisAuth}${envs.redis.host}:${envs.redis.port}/${en
     AccessControlModule,
     AdvisersModule,
   ],
+  controllers: [HealthController],
   providers: [
     {
       provide: getStorageToken(),

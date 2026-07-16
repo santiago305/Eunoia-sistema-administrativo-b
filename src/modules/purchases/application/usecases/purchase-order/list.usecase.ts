@@ -1,6 +1,6 @@
 import { Inject } from "@nestjs/common";
 import { PaginatedResult } from "src/shared/utilidades/dto/paginateResult";
-import { ParseDateLocal } from "src/shared/utilidades/utils/ParseDates";
+import { ParseDateLocal } from "src/shared/utilidades/utils/parseDates";
 import { PURCHASE_ORDER, PurchaseOrderRepository } from "src/modules/purchases/domain/ports/purchase-order.port.repository";
 import { PURCHASE_SEARCH, PurchaseSearchRepository } from "src/modules/purchases/domain/ports/purchase-search.repository";
 import { ListPurchaseOrdersInput } from "../../dtos/purchase-order/input/list.input";

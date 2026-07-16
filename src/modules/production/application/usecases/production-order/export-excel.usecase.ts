@@ -1,6 +1,6 @@
 import { BadRequestException, Inject } from "@nestjs/common";
 import { PRODUCTION_ORDER_REPOSITORY, ProductionOrderRepository } from "../../ports/production-order.repository";
-import { ParseDateLocal } from "src/shared/utilidades/utils/ParseDates";
+import { ParseDateLocal } from "src/shared/utilidades/utils/parseDates";
 import { XlsxBuilderService, type XlsxColumn } from "src/shared/application/services/xlsx-builder.service";
 import { PRODUCT_CATALOG_STOCK_ITEM_REPOSITORY, ProductCatalogStockItemRepository } from "src/modules/product-catalog/domain/ports/stock-item.repository";
 import { PRODUCT_CATALOG_SKU_REPOSITORY, ProductCatalogSkuRepository } from "src/modules/product-catalog/domain/ports/sku.repository";

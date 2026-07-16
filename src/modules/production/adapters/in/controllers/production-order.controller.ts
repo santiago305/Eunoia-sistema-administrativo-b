@@ -18,7 +18,7 @@ import { HttpCreateProductionOrderDto } from "../dtos/production-order/http-prod
 import { HttpUpdateProductionOrderDto } from "../dtos/production-order/http-production-order-update.dto";
 import { HttpListProductionOrdersQueryDto } from "../dtos/production-order/http-production-order-list.dto";
 import { HttpCreateProductionSearchMetricDto } from "../dtos/production-order/http-production-search-metric-create.dto";
-import { ParseDateLocal } from "src/shared/utilidades/utils/ParseDates";
+import { ParseDateLocal } from "src/shared/utilidades/utils/parseDates";
 import { User as CurrentUser } from 'src/shared/utilidades/decorators/user.decorator';
 import { ProductionOrderHttpMapper } from "src/modules/production/application/mappers/production-order-http.mapper";
 import { sanitizeProductionSearchSnapshot } from "src/modules/production/application/support/production-search.utils";
