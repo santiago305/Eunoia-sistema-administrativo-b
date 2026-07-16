@@ -1,6 +1,7 @@
 import { TypeOrmModuleOptions } from "@nestjs/typeorm";
 import { DataSource, DataSourceOptions } from "typeorm";
 import { envs } from "../config/envs";
+import { CreateFoundationSchema20260410000000 } from "./migrations/20260410000000-create-foundation-schema";
 import { EnableUnaccentExtension20260411000000 } from "./migrations/20260411000000-enable-unaccent-extension";
 import { AddListingIndexes20260412000000 } from "./migrations/20260412000000-add-listing-indexes";
 import { ExpandPaymentMethodRelations20260414000000 } from "./migrations/20260414000000-expand-payment-method-relations";
@@ -95,6 +96,7 @@ export const getMigrationDataSourceOptions = (): DataSourceOptions => ({
   entities: [],
   migrationsTableName: "typeorm_migrations",
   migrations: [
+    CreateFoundationSchema20260410000000,
     EnableUnaccentExtension20260411000000,
     AddListingIndexes20260412000000,
     ExpandPaymentMethodRelations20260414000000,
