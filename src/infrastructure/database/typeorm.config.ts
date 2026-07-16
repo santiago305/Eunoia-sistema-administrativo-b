@@ -86,6 +86,7 @@ import { AddAgencyDescription20260713000000 } from "./migrations/20260713000000-
 import { CreateLogisticsPayables20260714010000 } from "./migrations/20260714010000-create-logistics-payables";
 import { NormalizeFileStorageKeys20260714020000 } from "./migrations/20260714020000-normalize-file-storage-keys";
 import { CreateProductionAttachments20260715090000 } from "./migrations/20260715090000-create-production-attachments";
+import { AlignCompaniesCurrentSchema20260716092000 } from "./migrations/20260716092000-align-companies-current-schema";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -99,7 +100,7 @@ export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({
   ...getBaseTypeOrmOptions(),
-  synchronize: envs.nodeEnv === "development",
+  synchronize: false,
   migrationsRun: envs.nodeEnv === "production",
   autoLoadEntities: true,
 });
@@ -194,6 +195,7 @@ export const getMigrationDataSourceOptions = (): DataSourceOptions => ({
     CreateLogisticsPayables20260714010000,
     NormalizeFileStorageKeys20260714020000,
     CreateProductionAttachments20260715090000,
+    AlignCompaniesCurrentSchema20260716092000,
   ],
 });
 

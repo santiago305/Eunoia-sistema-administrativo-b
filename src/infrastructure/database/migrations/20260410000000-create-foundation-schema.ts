@@ -92,12 +92,14 @@ export class CreateFoundationSchema20260410000000 implements MigrationInterface 
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS sessions (
-        session_id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+        id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
         user_id uuid NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-        token_hash varchar(255) NOT NULL,
-        user_agent text,
-        ip_address varchar(80),
-        revoked_at timestamptz,
+        refresh_token_hash varchar(500) NOT NULL,
+        user_agent varchar(500),
+        ip varchar(45),
+        device_name varchar(120),
+        last_used_at timestamp,
+        revoked_at timestamp,
         expires_at timestamptz NOT NULL,
         created_at timestamptz NOT NULL DEFAULT now()
       );

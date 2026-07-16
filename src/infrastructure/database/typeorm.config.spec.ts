@@ -13,13 +13,13 @@ describe('getTypeOrmModuleOptions', () => {
     (envs as { nodeEnv: string }).nodeEnv = previousNodeEnv;
   });
 
-  it('keeps synchronize enabled in development', () => {
+  it('keeps synchronize disabled in development', () => {
     (envs as { nodeEnv: string }).nodeEnv = 'development';
 
-    expect(getTypeOrmModuleOptions().synchronize).toBe(true);
+    expect(getTypeOrmModuleOptions().synchronize).toBe(false);
   });
 
-  it('disables synchronize outside development', () => {
+  it('keeps synchronize disabled in production', () => {
     (envs as { nodeEnv: string }).nodeEnv = 'production';
 
     expect(getTypeOrmModuleOptions().synchronize).toBe(false);
@@ -111,11 +111,36 @@ describe('getTypeOrmModuleOptions', () => {
       'security_ip_bans',
       'security_ip_violations',
       'security_reason_catalog',
+      'sessions',
       'supplier_skus',
     ];
 
     for (const table of runtimeTables) {
       expect(migrationSql).toContain(table);
     }
+  });
+
+  it('keeps the sessions migration aligned with the runtime session entity', () => {
+    const migrationSql = readFileSync(
+      join(__dirname, 'migrations', '20260410000000-create-foundation-schema.ts'),
+      'utf8',
+    );
+
+    for (const column of [
+      'id uuid PRIMARY KEY',
+      'refresh_token_hash',
+      'last_used_at',
+      'expires_at',
+      'revoked_at',
+      'ip varchar',
+      'user_agent varchar',
+      'device_name',
+    ]) {
+      expect(migrationSql).toContain(column);
+    }
+
+    expect(migrationSql).not.toMatch(/\bsession_id\s+uuid\s+PRIMARY KEY/);
+    expect(migrationSql).not.toMatch(/\btoken_hash\s+varchar/);
+    expect(migrationSql).not.toMatch(/\bip_address\s+varchar/);
   });
 });

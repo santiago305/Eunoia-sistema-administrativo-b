@@ -8,7 +8,7 @@ import {
 
 @Entity({ name: "companies" })
 export class CompanyEntity {
-  @PrimaryGeneratedColumn("uuid")
+  @PrimaryGeneratedColumn("uuid", { name: "company_id" })
   id!: string;
 
   @Column({ type: "varchar", length: 150 })
@@ -41,33 +41,33 @@ export class CompanyEntity {
   @Column({ type: "varchar", length: 150, nullable: true })
   email!: string | null;
 
-  @Column({ type: "varchar", length: 50, nullable: true })
+  @Column({ name: "cod_local", type: "varchar", length: 50, nullable: true })
   codLocal!: string | null;
 
-  @Column({ type: "varchar", length: 100, nullable: true })
+  @Column({ name: "sol_user", type: "varchar", length: 100, nullable: true })
   solUser!: string | null;
 
-  @Column({ type: "varchar", length: 255, nullable: true })
+  @Column({ name: "sol_pass", type: "varchar", length: 255, nullable: true })
   solPass!: string | null;
 
-  @Column({ type: "varchar", length: 255, nullable: true })
+  @Column({ name: "logo_path", type: "varchar", length: 255, nullable: true })
   logoPath!: string | null;
 
-  @Column({ type: "varchar", length: 255, nullable: true })
+  @Column({ name: "isotype_path", type: "varchar", length: 255, nullable: true })
   isotypePath!: string | null;
 
-  @Column({ type: "varchar", length: 255, nullable: true })
+  @Column({ name: "cert_path", type: "varchar", length: 255, nullable: true })
   certPath!: string | null;
 
   @Column({ type: "boolean", default: true })
   production!: boolean;
 
-  @Column({ type: "boolean", default: true })
+  @Column({ name: "is_active", type: "boolean", default: true })
   isActive!: boolean;
 
-  @CreateDateColumn({ type: "timestamp" })
+  @CreateDateColumn({ name: "created_at", type: "timestamp" })
   createdAt!: Date;
 
-  @UpdateDateColumn({ type: "timestamp" })
+  @UpdateDateColumn({ name: "updated_at", type: "timestamp" })
   updatedAt!: Date;
 }
