@@ -13,6 +13,7 @@ import { WarehouseEntity } from "src/modules/warehouses/adapters/out/persistence
 import { SourceEntity } from "src/modules/sources/adapters/out/persistence/typeorm/entities/source.entity";
 import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
 import { CompanyPaymentAccountEntity } from "src/modules/company-payment-accounts/adapters/out/persistence/typeorm/entities/company-payment-account.entity";
+import { CompanyMethodEntity } from "src/modules/payment-methods/adapters/out/persistence/typeorm/entities/company-method.entity";
 import { ProductCatalogSkuEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku.entity";
 import { saleOrdersModuleProviders } from "./composition/container";
 import { SaleOrdersController } from "./adapters/in/controllers/sale-orders.controller";
@@ -26,6 +27,7 @@ import { SaleOrderStatesEntity } from "../workflow/adapters/out/persistence/type
 import { UsersModule } from "../users/infrastructure/users.module";
 import { WarehousesModule } from "../warehouses/warehouses.module";
 import { AdviserEntity } from "../advisers/adapters/out/persistence/typeorm/entities/adviser.entity";
+import { SubsidiaryEntity } from "../agencies/adapters/out/persistence/typeorm/entities/subsidiary.entity";
 import { AdviserMembershipService } from "./application/services/adviser-membership.service";
 import { SaleOrderAttachmentsModule } from "../sale-order-attachments";
 import { AccessControlModule } from "../access-control/infrastructure/access-control.module";
@@ -44,11 +46,13 @@ import { AccessControlModule } from "../access-control/infrastructure/access-con
       SourceEntity,
       User,
       CompanyPaymentAccountEntity,
+      CompanyMethodEntity,
       ProductCatalogSkuEntity,
       WorkflowEntity,
       WorkflowStateEntity,
       SaleOrderStatesEntity,
       AdviserEntity,
+      SubsidiaryEntity,
     ]),
     PacksModule,
     ProductCatalogModule,
