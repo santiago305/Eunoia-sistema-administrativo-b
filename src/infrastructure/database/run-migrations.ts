@@ -6,10 +6,12 @@ const requiredTables = [
   "message_user_states",
   "message_attachments",
   "production_orders",
+  "sale_orders",
+  "recurring_purchase_templates",
 ];
 
-async function assertRequiredTablesExist() {
-  const rows = await migrationDataSource.query(
+export async function assertRequiredTablesExist(dataSource = migrationDataSource) {
+  const rows = await dataSource.query(
     `
       SELECT table_name
       FROM information_schema.tables
@@ -32,7 +34,7 @@ async function assertRequiredTablesExist() {
   }
 }
 
-async function runMigrations() {
+export async function runMigrations() {
   console.log("Running database migrations...");
   await migrationDataSource.initialize();
 
@@ -52,7 +54,9 @@ async function runMigrations() {
   }
 }
 
-runMigrations().catch((error) => {
-  console.error("Error ejecutando migraciones:", error);
-  process.exit(1);
-});
+if (require.main === module) {
+  runMigrations().catch((error) => {
+    console.error("Error ejecutando migraciones:", error);
+    process.exit(1);
+  });
+}

@@ -9,9 +9,12 @@ import helmet from 'helmet';
 import compression from 'compression';
 import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { runMigrations } from './infrastructure/database/run-migrations';
 
 
 async function bootstrap() {
+  await runMigrations();
+
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   if (envs.trustProxy) {
