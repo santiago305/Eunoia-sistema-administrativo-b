@@ -98,18 +98,7 @@ export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   logging: false,
 });
 
-export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({
-  ...getBaseTypeOrmOptions(),
-  synchronize: false,
-  migrationsRun: envs.nodeEnv === "production",
-  autoLoadEntities: true,
-});
-
-export const getMigrationDataSourceOptions = (): DataSourceOptions => ({
-  ...getBaseTypeOrmOptions(),
-  entities: [],
-  migrationsTableName: "typeorm_migrations",
-  migrations: [
+export const databaseMigrations = [
     CreateFoundationSchema20260410000000,
     EnableUnaccentExtension20260411000000,
     AddListingIndexes20260412000000,
@@ -196,7 +185,22 @@ export const getMigrationDataSourceOptions = (): DataSourceOptions => ({
     NormalizeFileStorageKeys20260714020000,
     CreateProductionAttachments20260715090000,
     AlignCompaniesCurrentSchema20260716092000,
-  ],
+];
+
+export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({
+  ...getBaseTypeOrmOptions(),
+  synchronize: false,
+  migrationsRun: envs.nodeEnv === "production",
+  migrationsTableName: "typeorm_migrations",
+  migrations: databaseMigrations,
+  autoLoadEntities: true,
+});
+
+export const getMigrationDataSourceOptions = (): DataSourceOptions => ({
+  ...getBaseTypeOrmOptions(),
+  entities: [],
+  migrationsTableName: "typeorm_migrations",
+  migrations: databaseMigrations,
 });
 
 export const migrationDataSource = new DataSource(getMigrationDataSourceOptions());
