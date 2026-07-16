@@ -9,6 +9,7 @@ import { AddPartialProductionStatus20260418000000 } from "./migrations/202604180
 import { CreateListingSearchTables20260421000000 } from "./migrations/20260421000000-create-listing-search-tables";
 import { CreateUbigeoTables20260421010000 } from "./migrations/20260421010000-create-ubigeo-tables";
 import { AddSkuImageColumn20260502000000 } from "./migrations/20260502000000-add-sku-image-column";
+import { CreatePurchaseApprovalHistory20260506010000 } from "./migrations/20260506010000-create-purchase-approval-history";
 import { CreateClientsCore20260519000000 } from "./migrations/20260519000000-create-clients-core";
 import { CreateCorporateMessagingCore20260511000000 } from "./migrations/20260511000000-create-corporate-messaging-core";
 import { CreatePacksCore20260519010000 } from "./migrations/20260519010000-create-packs-core";
@@ -106,6 +107,7 @@ export const getMigrationDataSourceOptions = (): DataSourceOptions => ({
     CreateListingSearchTables20260421000000,
     CreateUbigeoTables20260421010000,
     AddSkuImageColumn20260502000000,
+    CreatePurchaseApprovalHistory20260506010000,
     CreateCorporateMessagingCore20260511000000,
     CreateClientsCore20260519000000,
     CreatePacksCore20260519010000,
