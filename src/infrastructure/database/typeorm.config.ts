@@ -87,6 +87,8 @@ import { CreateLogisticsPayables20260714010000 } from "./migrations/202607140100
 import { NormalizeFileStorageKeys20260714020000 } from "./migrations/20260714020000-normalize-file-storage-keys";
 import { CreateProductionAttachments20260715090000 } from "./migrations/20260715090000-create-production-attachments";
 import { AlignCompaniesCurrentSchema20260716092000 } from "./migrations/20260716092000-align-companies-current-schema";
+import { AlignSuppliersCurrentSchema20260717090000 } from "./migrations/20260717090000-align-suppliers-current-schema";
+import { AlignPurchaseApprovalAndSupplierSkuSchema20260717100000 } from "./migrations/20260717100000-align-purchase-approval-and-supplier-sku-schema";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -185,6 +187,8 @@ export const databaseMigrations = [
     NormalizeFileStorageKeys20260714020000,
     CreateProductionAttachments20260715090000,
     AlignCompaniesCurrentSchema20260716092000,
+    AlignSuppliersCurrentSchema20260717090000,
+    AlignPurchaseApprovalAndSupplierSkuSchema20260717100000,
 ];
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({
