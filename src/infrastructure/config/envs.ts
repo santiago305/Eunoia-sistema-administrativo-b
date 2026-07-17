@@ -13,6 +13,7 @@ interface EnvVars {
     DB_USERNAME: string;
     DB_PASSWORD: string;
     DB_NAME: string;
+    COOKIE_DOMAIN?: string;
     COOKIE_SECRET: string;
     JWT_SECRET: string;
     JWT_EXPIRES_IN: StringValue;
@@ -59,6 +60,7 @@ const envsSchema = joi.object({
     DB_USERNAME: joi.string().required(),
     DB_PASSWORD: joi.string().allow('').required(), 
     DB_NAME: joi.string().required(),
+    COOKIE_DOMAIN: joi.string().allow('').optional(),
     COOKIE_SECRET: joi.string().min(32).required(),
     JWT_SECRET: joi.string().min(32).required(),
     JWT_EXPIRES_IN: joi.string().required(),
@@ -119,6 +121,7 @@ export const envs = {
     nodeEnv: envsVars.NODE_ENV ?? 'development',
     trustProxy: envsVars.TRUST_PROXY ?? false,
     corsOrigins,
+    cookieDomain: envsVars.COOKIE_DOMAIN?.trim() || undefined,
     cookieSecret: envsVars.COOKIE_SECRET,
     jwt: {
         secret: envsVars.JWT_SECRET,

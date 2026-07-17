@@ -23,8 +23,13 @@ import { CsrfGuard } from 'src/shared/utilidades/guards/csrf.guard';
 import { randomBytes } from 'crypto';
 import { RevokeSessionUseCase } from 'src/modules/sessions/application/use-cases/revoke-session.usecase';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
-import { envs } from 'src/infrastructure/config/envs';
 import { SkipCsrf } from 'src/shared/utilidades/decorators';
+import {
+  authCookieOptions,
+  clearAuthResponseCookies,
+  clearLegacyHostOnlyCsrfCookie,
+  csrfCookieOptions,
+} from '../utils/auth-cookie-options';
 
 @Controller('auth')
 export class AuthController {
@@ -36,9 +41,7 @@ export class AuthController {
   ) {}
 
   private clearAuthCookies(res: Response) {
-    res.clearCookie('refresh_token');
-    res.clearCookie('access_token');
-    res.clearCookie('csrf_token');
+    clearAuthResponseCookies(res);
   }
 
   @Post('login')
@@ -64,26 +67,26 @@ export class AuthController {
 
     const { access_token, refresh_token } = result;
     const csrfToken = randomBytes(32).toString('hex');
-    const secureCookie = envs.nodeEnv === 'production';
-    res.cookie('refresh_token', refresh_token, {
-      httpOnly: true,
-      secure: secureCookie,
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
 
-    res.cookie('access_token', access_token, {
-      httpOnly: true,
-      secure: secureCookie,
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 1000,
-    });
-    res.cookie('csrf_token', csrfToken, {
-      httpOnly: false,
-      secure: secureCookie,
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    clearLegacyHostOnlyCsrfCookie(res);
+
+    res.cookie(
+      'refresh_token',
+      refresh_token,
+      authCookieOptions(7 * 24 * 60 * 60 * 1000),
+    );
+
+    res.cookie(
+      'access_token',
+      access_token,
+      authCookieOptions(60 * 60 * 1000),
+    );
+
+    res.cookie(
+      'csrf_token',
+      csrfToken,
+      csrfCookieOptions(7 * 24 * 60 * 60 * 1000),
+    );
 
     return { message: 'Iniciado sesión correctamente' };
   }
@@ -107,9 +110,7 @@ export class AuthController {
       }
     }
 
-    res.clearCookie('refresh_token');
-    res.clearCookie('access_token');
-    res.clearCookie('csrf_token');
+    clearAuthResponseCookies(res);
     return successResponse('Sesion cerrada correctamente');
   }
 
@@ -134,27 +135,26 @@ export class AuthController {
 
     const { access_token, refresh_token } = result;
     const csrfToken = randomBytes(32).toString('hex');
-    const secureCookie = envs.nodeEnv === 'production';
 
-    res.cookie('access_token', access_token, {
-      httpOnly: true,
-      secure: secureCookie,
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 1000, // 1h
-    });
+    clearLegacyHostOnlyCsrfCookie(res);
 
-    res.cookie('refresh_token', refresh_token, {
-      httpOnly: true,
-      secure: secureCookie,
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-    res.cookie('csrf_token', csrfToken, {
-      httpOnly: false,
-      secure: secureCookie,
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    res.cookie(
+      'access_token',
+      access_token,
+      authCookieOptions(60 * 60 * 1000),
+    );
+
+    res.cookie(
+      'refresh_token',
+      refresh_token,
+      authCookieOptions(7 * 24 * 60 * 60 * 1000),
+    );
+
+    res.cookie(
+      'csrf_token',
+      csrfToken,
+      csrfCookieOptions(7 * 24 * 60 * 60 * 1000),
+    );
 
     return { message: 'OK' };
   }

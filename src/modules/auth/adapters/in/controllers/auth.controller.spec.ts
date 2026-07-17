@@ -60,7 +60,9 @@ describe('AuthController security defaults', () => {
   it('sets auth cookies as secure only in production', async () => {
     const { controller } = makeController();
     const previousNodeEnv = envs.nodeEnv;
+    const previousCookieDomain = envs.cookieDomain;
     (envs as { nodeEnv: string }).nodeEnv = 'production';
+    (envs as { cookieDomain: string | undefined }).cookieDomain = undefined;
     const res = makeResponse();
 
     try {
@@ -71,6 +73,7 @@ describe('AuthController security defaults', () => {
       );
     } finally {
       (envs as { nodeEnv: string }).nodeEnv = previousNodeEnv;
+      (envs as { cookieDomain: string | undefined }).cookieDomain = previousCookieDomain;
     }
 
     expect(res.cookie).toHaveBeenCalledWith(
@@ -108,6 +111,42 @@ describe('AuthController security defaults', () => {
     );
   });
 
+  it('applies cookie domain only to csrf cookie when configured', async () => {
+    const { controller } = makeController();
+    const previousNodeEnv = envs.nodeEnv;
+    const previousCookieDomain = envs.cookieDomain;
+    (envs as { nodeEnv: string }).nodeEnv = 'production';
+    (envs as { cookieDomain: string | undefined }).cookieDomain = 'eunoiacosmetica.com';
+    const res = makeResponse();
+
+    try {
+      await controller.login(
+        { email: 'ana@example.com', password: 'Password1234' },
+        { headers: {}, ip: '10.0.0.5' } as any,
+        res as any,
+      );
+    } finally {
+      (envs as { nodeEnv: string }).nodeEnv = previousNodeEnv;
+      (envs as { cookieDomain: string | undefined }).cookieDomain = previousCookieDomain;
+    }
+
+    expect(res.cookie).toHaveBeenCalledWith(
+      'csrf_token',
+      expect.any(String),
+      expect.objectContaining({ domain: 'eunoiacosmetica.com' }),
+    );
+    expect(res.cookie).toHaveBeenCalledWith(
+      'access_token',
+      'access-token',
+      expect.not.objectContaining({ domain: expect.any(String) }),
+    );
+    expect(res.cookie).toHaveBeenCalledWith(
+      'refresh_token',
+      'refresh-token',
+      expect.not.objectContaining({ domain: expect.any(String) }),
+    );
+  });
+
   it('clears auth cookies when refresh token is invalid', async () => {
     const { controller, refreshAuthUseCase } = makeController();
     const res = makeResponse();
@@ -126,9 +165,18 @@ describe('AuthController security defaults', () => {
       type: status.UNAUTHORIZED,
       message: 'Sesion invalida o expirada',
     });
-    expect(res.clearCookie).toHaveBeenCalledWith('refresh_token');
-    expect(res.clearCookie).toHaveBeenCalledWith('access_token');
-    expect(res.clearCookie).toHaveBeenCalledWith('csrf_token');
+    expect(res.clearCookie).toHaveBeenCalledWith(
+      'refresh_token',
+      expect.objectContaining({ httpOnly: true, path: '/' }),
+    );
+    expect(res.clearCookie).toHaveBeenCalledWith(
+      'access_token',
+      expect.objectContaining({ httpOnly: true, path: '/' }),
+    );
+    expect(res.clearCookie).toHaveBeenCalledWith(
+      'csrf_token',
+      expect.objectContaining({ httpOnly: false, path: '/' }),
+    );
   });
 
   it('allows login and refresh to run with stale cookies that no longer have csrf', () => {

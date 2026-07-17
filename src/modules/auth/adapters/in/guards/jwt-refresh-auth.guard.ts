@@ -2,6 +2,7 @@
 import { ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Response } from 'express';
+import { clearAuthResponseCookies } from '../utils/auth-cookie-options';
 
 /**
  * Guard que asegura que el request contiene un JWT de refresco valido.
@@ -30,8 +31,6 @@ export class JwtRefreshAuthGuard extends AuthGuard('jwt-refresh') {
   }
 
   private clearAuthCookies(res: Response) {
-    res.clearCookie('refresh_token');
-    res.clearCookie('access_token');
-    res.clearCookie('csrf_token');
+    clearAuthResponseCookies(res);
   }
 }

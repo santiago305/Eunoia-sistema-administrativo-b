@@ -14,8 +14,17 @@ describe('JwtRefreshAuthGuard', () => {
     expect(() => guard.handleRequest(new Error('jwt expired'), null, undefined, context)).toThrow(
       UnauthorizedException,
     );
-    expect(clearCookie).toHaveBeenCalledWith('refresh_token');
-    expect(clearCookie).toHaveBeenCalledWith('access_token');
-    expect(clearCookie).toHaveBeenCalledWith('csrf_token');
+    expect(clearCookie).toHaveBeenCalledWith(
+      'refresh_token',
+      expect.objectContaining({ httpOnly: true, path: '/' }),
+    );
+    expect(clearCookie).toHaveBeenCalledWith(
+      'access_token',
+      expect.objectContaining({ httpOnly: true, path: '/' }),
+    );
+    expect(clearCookie).toHaveBeenCalledWith(
+      'csrf_token',
+      expect.objectContaining({ httpOnly: false, path: '/' }),
+    );
   });
 });
