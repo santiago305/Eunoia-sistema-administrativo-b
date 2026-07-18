@@ -66,13 +66,13 @@ import { SaleOrderItemEntity } from 'src/modules/sale-orders/adapters/out/persis
 import { SaleOrderItemComponentEntity } from 'src/modules/sale-orders/adapters/out/persistence/typeorm/entities/sale-order-item-component.entity';
 import { SalePaymentEntity } from 'src/modules/sale-orders/adapters/out/persistence/typeorm/entities/sale-payment.entity';
 import { SaleOrderStatesEntity } from 'src/modules/workflow/adapters/out/persistence/typeorm/entities/sale-order-states.entity';
-//import { seedSaleOrderStates } from 'src/modules/sale-orders/infrastructure/jobs/sale-order-states.seeder';
+import { seedSaleOrderStates } from 'src/modules/sale-orders/infrastructure/jobs/sale-order-states.seeder';
 import { WorkflowEntity } from 'src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow.entity';
 import { WorkflowStateEntity } from 'src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow-state.entity';
 import { WorkflowTransitionEntity } from 'src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow-transition.entity';
 import { WorkflowConditionEntity } from 'src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow-condition.entity';
 import { WorkflowActionEntity } from 'src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow-action.entity';
-//import { seedWorkflows } from 'src/modules/workflow/infrastructure/seed/workflow.seeder';
+import { seedWorkflows } from 'src/modules/workflow/infrastructure/seed/workflow.seeder';
 import { CompanyPaymentAccountEntity } from 'src/modules/company-payment-accounts/adapters/out/persistence/typeorm/entities/company-payment-account.entity';
 //import { seedCompanyPaymentAccounts } from 'src/modules/company-payment-accounts/infrastructure/seed/company-payment-account.seeder';
 
@@ -161,9 +161,9 @@ dataSource
     // await seedProductCatalog(dataSource);
     // await seedProductCatalogEquivalences(dataSource);
     // await seedProductCatalogRecipes(dataSource);
-    // await seedSaleOrderStates(dataSource);
+    await seedSaleOrderStates(dataSource);
     // const warehouses = await seedWarehouses(dataSource);
-    // await seedWorkflows(dataSource);
+    await seedWorkflows(dataSource);
 
     // await seedProductCatalogInventory(dataSource);
     // for (const wh of warehouses) {
