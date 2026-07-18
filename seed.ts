@@ -74,6 +74,7 @@ import { WorkflowConditionEntity } from 'src/modules/workflow/adapters/out/persi
 import { WorkflowActionEntity } from 'src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow-action.entity';
 import { seedWorkflows } from 'src/modules/workflow/infrastructure/seed/workflow.seeder';
 import { CompanyPaymentAccountEntity } from 'src/modules/company-payment-accounts/adapters/out/persistence/typeorm/entities/company-payment-account.entity';
+import { seedUnits } from 'src/modules/product-catalog/infrastructure/seed/unit.seeder';
 //import { seedCompanyPaymentAccounts } from 'src/modules/company-payment-accounts/infrastructure/seed/company-payment-account.seeder';
 
 const entities = [
@@ -157,7 +158,7 @@ dataSource
     // await seedCompanyPaymentAccounts(dataSource);
     // await seedSecurityReasonCatalog(dataSource);
     // await seedSecurityIpActivity(dataSource);
-    // await seedUnits(dataSource);
+    await seedUnits(dataSource);
     // await seedProductCatalog(dataSource);
     // await seedProductCatalogEquivalences(dataSource);
     // await seedProductCatalogRecipes(dataSource);
