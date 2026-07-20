@@ -23,6 +23,7 @@ ENV PORT=3000
 COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --prod --frozen-lockfile && pnpm store prune
 COPY --from=build --chown=node:node /app/dist ./dist
+COPY --from=build --chown=node:node /app/src/modules/ubigeo/infrastructure/seed/data ./dist/modules/ubigeo/infrastructure/seed/data
 RUN mkdir -p storage/public storage/private storage/deleted storage/mail-attachments storage/mail-attachments-deleted assets \
   && chown -R node:node storage assets
 USER node
