@@ -61,6 +61,19 @@ export class ProductCatalogEquivalenceTypeormRepository implements ProductCatalo
     return row ? this.toDomain(row) : null;
   }
 
+  async findByProductAndUnits(
+    productId: string,
+    fromUnitId: string,
+    toUnitId: string,
+    tx?: TransactionContext,
+  ): Promise<ProductCatalogEquivalence | null> {
+    const row = await this.getRepo(tx).findOne({
+      where: { productId, fromUnitId, toUnitId },
+      relations: { product: true, fromUnit: true, toUnit: true },
+    });
+    return row ? this.toDomain(row) : null;
+  }
+
   async listByProductId(productId: string, tx?: TransactionContext): Promise<ProductCatalogEquivalence[]> {
     const rows = await this.getRepo(tx).find({
       where: { productId },

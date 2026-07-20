@@ -7,5 +7,11 @@ export interface ProductCatalogEquivalenceRepository {
   create(input: ProductCatalogEquivalence, tx?: TransactionContext): Promise<ProductCatalogEquivalence>;
   delete(id: string, tx?: TransactionContext): Promise<void>;
   findById(id: string, tx?: TransactionContext): Promise<ProductCatalogEquivalence | null>;
+  findByProductAndUnits(
+    productId: string,
+    fromUnitId: string,
+    toUnitId: string,
+    tx?: TransactionContext,
+  ): Promise<ProductCatalogEquivalence | null>;
   listByProductId(productId: string, tx?: TransactionContext): Promise<ProductCatalogEquivalence[]>;
 }

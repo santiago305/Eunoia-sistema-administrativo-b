@@ -1,4 +1,4 @@
-import { IsNumber, IsUUID } from "class-validator";
+import { IsNumber, IsPositive, IsUUID } from "class-validator";
 
 export class CreateProductCatalogEquivalenceDto {
   @IsUUID()
@@ -7,6 +7,7 @@ export class CreateProductCatalogEquivalenceDto {
   @IsUUID()
   toUnitId: string;
 
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 6 })
+  @IsPositive()
   factor: number;
 }
