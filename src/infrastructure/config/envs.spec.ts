@@ -50,6 +50,52 @@ describe('envs validation', () => {
     }).not.toThrow();
   });
 
+  it('rejects missing production secrets', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.JWT_SECRET = 'Jwt_Production_2026!'.repeat(2);
+    process.env.COOKIE_SECRET = 'Cookie_Production_2026!'.repeat(2);
+    delete process.env.DB_PASSWORD;
+    delete process.env.REDIS_PASSWORD;
+    delete process.env.MASTER_ADMIN_INITIAL_PASSWORD;
+
+    expect(() => {
+      jest.isolateModules(() => {
+        require('./envs');
+      });
+    }).toThrow(/DB_PASSWORD|REDIS_PASSWORD|MASTER_ADMIN_INITIAL_PASSWORD/);
+  });
+
+  it('rejects local fallbacks and placeholders in production', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.DB_PASSWORD = 'eunoia-local-postgres';
+    process.env.REDIS_PASSWORD = 'eunoia-local-redis';
+    process.env.JWT_SECRET = 'local-jwt-secret-change-before-production-123456';
+    process.env.COOKIE_SECRET =
+      'local-cookie-secret-change-before-production-1234';
+    process.env.MASTER_ADMIN_INITIAL_PASSWORD = 'DevMaster_ChangeMe123!';
+
+    expect(() => {
+      jest.isolateModules(() => {
+        require('./envs');
+      });
+    }).toThrow(/secretos de producción ausentes, débiles o de ejemplo/);
+  });
+
+  it('accepts strong production secrets', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.DB_PASSWORD = 'Db_9fH2!mQ7#vL4@xP8';
+    process.env.REDIS_PASSWORD = 'Redis_6!zN3@qW8#kT2';
+    process.env.JWT_SECRET = 'Jwt_Production_9fH2!mQ7#vL4@xP8$zN3';
+    process.env.COOKIE_SECRET = 'Cookie_Production_6zN3@qW8#kT2!mQ7';
+    process.env.MASTER_ADMIN_INITIAL_PASSWORD = 'Root_8#xP2!vL6';
+
+    expect(() => {
+      jest.isolateModules(() => {
+        require('./envs');
+      });
+    }).not.toThrow();
+  });
+
   it('uses unified storage defaults for files and mail attachments', () => {
     process.env.JWT_SECRET = 'j'.repeat(32);
     process.env.COOKIE_SECRET = 'c'.repeat(32);

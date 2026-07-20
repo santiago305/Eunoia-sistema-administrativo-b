@@ -107,6 +107,49 @@ if (error) {
 
 const envsVars:EnvVars = value
 
+const productionSecrets = [
+    { name: 'DB_PASSWORD', value: envsVars.DB_PASSWORD, minLength: 16 },
+    { name: 'REDIS_PASSWORD', value: envsVars.REDIS_PASSWORD, minLength: 16 },
+    { name: 'COOKIE_SECRET', value: envsVars.COOKIE_SECRET, minLength: 32 },
+    { name: 'JWT_SECRET', value: envsVars.JWT_SECRET, minLength: 32 },
+    {
+        name: 'MASTER_ADMIN_INITIAL_PASSWORD',
+        value: envsVars.MASTER_ADMIN_INITIAL_PASSWORD,
+        minLength: 12,
+    },
+];
+const insecureSecretMarker =
+  /(change[-_ ]?(me|before)|placeholder|example|eunoia[-_ ]?local|development|dev[-_ ]?secret|your[-_ ]|replace[-_ ])/i;
+const commonWeakSecrets = new Set([
+    'admin',
+    'changeme',
+    'password',
+    'password123',
+    'postgres',
+    'redis',
+    'secret',
+]);
+
+if (envsVars.NODE_ENV === 'production') {
+    const invalidSecrets = productionSecrets
+      .filter(({ value, minLength }) => {
+          const normalizedValue = value?.trim() ?? '';
+
+          return (
+            normalizedValue.length < minLength ||
+            insecureSecretMarker.test(normalizedValue) ||
+            commonWeakSecrets.has(normalizedValue.toLowerCase())
+          );
+      })
+      .map(({ name, minLength }) => `${name} (mínimo ${minLength} caracteres)`);
+
+    if (invalidSecrets.length > 0) {
+        throw new Error(
+          `Config validation error: secretos de producción ausentes, débiles o de ejemplo: ${invalidSecrets.join(', ')}`,
+        );
+    }
+}
+
 const filesRootDir = envsVars.FILES_STORAGE_ROOT ?? 'storage';
 const filesPublicDir = envsVars.FILES_PUBLIC_DIR ?? `${filesRootDir}/public`;
 const filesPrivateDir = envsVars.FILES_PRIVATE_DIR ?? `${filesRootDir}/private`;
