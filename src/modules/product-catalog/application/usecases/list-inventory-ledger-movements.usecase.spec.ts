@@ -24,4 +24,22 @@ describe("ListProductCatalogInventoryLedgerMovements", () => {
       }),
     );
   });
+
+  it("maps warehouse, sku and direction filters to the kardex query", async () => {
+    const repo = { listMovementsPaged: jest.fn().mockResolvedValue({ items: [], total: 0 }) };
+    const searchStorage = { touchRecentSearch: jest.fn() };
+    const usecase = new ListProductCatalogInventoryLedgerMovements(repo as any, searchStorage as any);
+
+    await usecase.execute({
+      filters: [
+        { field: "warehouseId", operator: "IN", values: ["warehouse-a"] },
+        { field: "sku", operator: "IN", values: ["sku-a"] },
+        { field: "direction", operator: "IN", values: ["OUT"] },
+      ] as any,
+    });
+
+    expect(repo.listMovementsPaged).toHaveBeenCalledWith(expect.objectContaining({
+      warehouseIdsIn: ["warehouse-a"], skuIdsIn: ["sku-a"], directionIn: ["OUT"],
+    }));
+  });
 });

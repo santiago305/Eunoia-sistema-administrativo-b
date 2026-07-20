@@ -24,4 +24,17 @@ describe("ListProductCatalogInventoryDocuments", () => {
       }),
     );
   });
+
+  it("merges warehouse aliases and preserves the selected product type", async () => {
+    const repo = { list: jest.fn().mockResolvedValue({ items: [], total: 0, page: 1, limit: 20 }) };
+    const searchStorage = { touchRecentSearch: jest.fn() };
+    const usecase = new ListProductCatalogInventoryDocuments(repo as any, searchStorage as any);
+
+    await usecase.execute({ page: 1, warehouseIds: ["warehouse-a"], warehouseIdsIn: ["warehouse-a", "warehouse-b"], productType: "MATERIAL" as any });
+
+    expect(repo.list).toHaveBeenCalledWith(expect.objectContaining({
+      warehouseIdsIn: ["warehouse-a", "warehouse-b"],
+      productType: "MATERIAL",
+    }));
+  });
 });

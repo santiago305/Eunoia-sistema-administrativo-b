@@ -12,4 +12,8 @@ describe("validateInventoryBalance", () => {
   it("accepts a valid balance", () => {
     expect(() => validateInventoryBalance({ onHand: 10, reserved: 4 })).not.toThrow();
   });
+
+  it("accepts an empty balance without treating it as negative stock", () => {
+    expect(() => validateInventoryBalance({ onHand: 0, reserved: 0 })).not.toThrow();
+  });
 });
