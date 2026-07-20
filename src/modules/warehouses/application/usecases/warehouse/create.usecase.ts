@@ -1,4 +1,5 @@
-import { BadRequestException, Inject, InternalServerErrorException } from "@nestjs/common";
+import { BadRequestException, Inject, InternalServerErrorException, Logger } from "@nestjs/common";
+import { randomUUID } from "crypto";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { Warehouse } from "src/modules/warehouses/domain/entities/warehouse";
 import { CreateWarehouseInput } from "../../dtos/warehouse/input/create.input";
@@ -10,6 +11,8 @@ import { CLOCK, ClockPort } from "src/shared/application/ports/clock.port";
 import { WAREHOUSE_REPOSITORY, WarehouseRepository } from "../../ports/warehouse.repository.port";
 
 export class CreateWarehouseUsecase {
+  private readonly logger = new Logger(CreateWarehouseUsecase.name);
+
   constructor(
     @Inject(UNIT_OF_WORK)
     private readonly uow: UnitOfWork,
@@ -36,8 +39,8 @@ export class CreateWarehouseUsecase {
       let created: Warehouse;
       try {
         created = await this.warehouseRepo.create(warehouse, tx);
-      } catch {
-        throw new BadRequestException("No se pudo crear el almacen");
+      } catch (error) {
+        this.throwSafeError("No se pudo crear el almacen", "WAREHOUSE_CREATE_FAILED", error, BadRequestException);
       }
 
       const defaults = [
@@ -59,10 +62,10 @@ export class CreateWarehouseUsecase {
             padding: 6,
             separator: "-",
             isActive: true,
-          });
+          }, tx);
         }
-      } catch {
-        throw new InternalServerErrorException("No se pudieron crear series por defecto");
+      } catch (error) {
+        this.throwSafeError("No se pudieron crear series por defecto", "WAREHOUSE_DEFAULT_SERIES_FAILED", error, InternalServerErrorException);
       }
 
       try {
@@ -73,11 +76,27 @@ export class CreateWarehouseUsecase {
           },
           tx,
         );
-      } catch {
-        throw new InternalServerErrorException("No se pudo crear la ubicacion inicial");
+      } catch (error) {
+        this.throwSafeError("No se pudo crear la ubicacion inicial", "WAREHOUSE_INITIAL_LOCATION_FAILED", error, InternalServerErrorException);
       }
 
       return successResponse("Almacen creado con exito");
     });
+  }
+
+  private throwSafeError(
+    message: string,
+    errorCode: string,
+    cause: unknown,
+    Exception: typeof BadRequestException | typeof InternalServerErrorException,
+  ): never {
+    const errorRef = randomUUID();
+    this.logger.error({
+      event: "warehouse_creation_failed",
+      errorCode,
+      errorRef,
+      cause: cause instanceof Error ? { name: cause.name, message: cause.message, stack: cause.stack } : cause,
+    });
+    throw new Exception({ message, errorCode, errorRef });
   }
 }

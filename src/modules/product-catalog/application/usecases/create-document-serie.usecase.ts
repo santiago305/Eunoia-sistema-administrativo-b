@@ -5,6 +5,7 @@ import {
   ProductCatalogDocumentSerieRepository,
 } from "../../domain/ports/document-serie.repository";
 import { ProductCatalogDocumentSerie } from "../../domain/entities/document-serie";
+import { TransactionContext } from "src/shared/domain/ports/transaction-context.port";
 
 @Injectable()
 export class CreateProductCatalogDocumentSerieUseCase {
@@ -22,8 +23,8 @@ export class CreateProductCatalogDocumentSerieUseCase {
     padding?: number;
     separator?: string;
     isActive?: boolean;
-  }) {
+  }, tx?: TransactionContext) {
     const serie = ProductCatalogDocumentSerie.create(input);
-    return this.repo.create(serie);
+    return this.repo.create(serie, tx);
   }
 }
