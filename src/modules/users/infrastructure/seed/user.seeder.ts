@@ -9,15 +9,15 @@ import { envs } from 'src/infrastructure/config/envs';
 export const seedUser = async (dataSource: DataSource) => {
   const userRepo = dataSource.getRepository(User);
   const avatarUrl = '';
+  const primaryUser = {
+    email: (process.env.MASTER_ADMIN_EMAIL ?? 'root@eunoia.local').trim().toLowerCase(),
+    name: (process.env.MASTER_ADMIN_NAME ?? 'Administrador').trim(),
+  };
+  const secondEmail = process.env.MASTER_ADMIN_SECOND_EMAIL?.trim().toLowerCase();
+  const secondName = process.env.MASTER_ADMIN_SECOND_NAME?.trim();
   const masterUsers = [
-    {
-      email: (process.env.MASTER_ADMIN_EMAIL ?? 'minecratf633@gmail.com').trim().toLowerCase(),
-      name: (process.env.MASTER_ADMIN_NAME ?? 'Santiago').trim(),
-    },
-    {
-      email: (process.env.MASTER_ADMIN_SECOND_EMAIL ?? 'josegerardo@eunoia.pe').trim().toLowerCase(),
-      name: (process.env.MASTER_ADMIN_SECOND_NAME ?? 'Josegerardo').trim(),
-    },
+    primaryUser,
+    ...(secondEmail || secondName ? [{ email: secondEmail ?? '', name: secondName ?? '' }] : []),
   ];
 
   const configuredPassword = String(envs.masterAdminInitialPassword ?? '').trim();
@@ -27,6 +27,9 @@ export const seedUser = async (dataSource: DataSource) => {
   if (envs.nodeEnv === 'production' && !configuredPassword) {
     throw new Error('MASTER_ADMIN_INITIAL_PASSWORD es obligatorio en producción');
   }
+  if (envs.nodeEnv === 'production' && (!process.env.MASTER_ADMIN_EMAIL || !process.env.MASTER_ADMIN_NAME)) {
+    throw new Error('MASTER_ADMIN_EMAIL y MASTER_ADMIN_NAME son obligatorios en producción');
+  }
   if (resolvedPassword.length < 12) {
     throw new Error('MASTER_ADMIN_INITIAL_PASSWORD debe tener al menos 12 caracteres');
   }
@@ -35,7 +38,7 @@ export const seedUser = async (dataSource: DataSource) => {
   }
 
   for (const user of masterUsers) {
-    if (!user.email || !user.name) {
+    if (!user.email || !user.name || !/^\S+@\S+\.\S+$/.test(user.email)) {
       throw new Error('Los usuarios maestros deben tener email y nombre configurados');
     }
   }

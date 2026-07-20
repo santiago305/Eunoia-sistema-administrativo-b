@@ -21,16 +21,7 @@ const PROVINCE_NAME_OVERRIDES: Record<string, string> = {
 };
 
 const getUbigeoSeedRows = (): UbigeoSeedRow[] => {
-  const filePath = join(
-    process.cwd(),
-    "src",
-    "modules",
-    "ubigeo",
-    "infrastructure",
-    "seed",
-    "data",
-    "ubigeo-peru.json",
-  );
+  const filePath = join(__dirname, "data", "ubigeo-peru.json");
 
   return JSON.parse(readFileSync(filePath, "utf-8")) as UbigeoSeedRow[];
 };
