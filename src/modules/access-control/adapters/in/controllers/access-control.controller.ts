@@ -6,9 +6,10 @@ import { SetUserPermissionOverrideDto } from '../dtos/set-user-permission-overri
 import { PermissionsGuard } from '../guards/permissions.guard';
 import { RequirePermissions } from '../decorators/require-permissions.decorator';
 import { SetUserGrantablePermissionsDto } from '../dtos/set-user-grantable-permissions.dto';
+import { CsrfGuard } from 'src/shared/utilidades/guards/csrf.guard';
 
 @Controller('access-control')
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard, CsrfGuard)
 export class AccessControlController {
   constructor(private readonly accessControlService: AccessControlService) {}
 
