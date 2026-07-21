@@ -53,6 +53,9 @@ Modulo de seguridad IP para rate limit, bans progresivos y blacklist manual.
 - `IpBanGuard` y `SecurityThrottlerGuard` se registran como `APP_GUARD` en `AppModule`.
 - `ThrottlerModule` mantiene el limite global actual (`120/min`).
 - El storage del throttler es Redis (`RedisThrottlerStorage`), por lo que el contador se comparte entre instancias.
+- Cada 429 registra un evento JSON `rate_limit_exceeded` con IP, método, ruta, hits, límite y nivel de baneo; las respuestas exitosas registran `http_request_completed`.
+- `/health` usa `SkipThrottle` para que los healthchecks no consuman el presupuesto ni generen violaciones.
+- Con `TRUST_PROXY=true`, Express resuelve `req.ip` desde el proxy de confianza; sin esa opción se usa la dirección del socket para evitar confiar en cabeceras enviadas por el cliente.
 
 ## Endpoints (admin)
 Base: `/api/security`
