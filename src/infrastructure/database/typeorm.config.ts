@@ -90,6 +90,7 @@ import { AlignCompaniesCurrentSchema20260716092000 } from "./migrations/20260716
 import { AlignSuppliersCurrentSchema20260717090000 } from "./migrations/20260717090000-align-suppliers-current-schema";
 import { AlignPurchaseApprovalAndSupplierSkuSchema20260717100000 } from "./migrations/20260717100000-align-purchase-approval-and-supplier-sku-schema";
 import { StrengthenProductEquivalences20260720020000 } from "./migrations/20260720020000-strengthen-product-equivalences";
+import { AlignRolesCurrentSchema20260720010000 } from "./migrations/20260720010000-align-roles-current-schema";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -190,6 +191,7 @@ export const databaseMigrations = [
     AlignCompaniesCurrentSchema20260716092000,
     AlignSuppliersCurrentSchema20260717090000,
     AlignPurchaseApprovalAndSupplierSkuSchema20260717100000,
+    AlignRolesCurrentSchema20260720010000,
     StrengthenProductEquivalences20260720020000,
 ];
 
