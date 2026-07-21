@@ -22,6 +22,10 @@ jest.mock('./app.module', () => ({
   AppModule: class AppModule {},
 }));
 
+jest.mock('./infrastructure/database/run-migrations', () => ({
+  runMigrations: jest.fn().mockResolvedValue(undefined),
+}));
+
 jest.mock('./infrastructure/config/envs', () => ({
   envs: {
     files: {
