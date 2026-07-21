@@ -1,4 +1,4 @@
-import { ExecutionContext, Injectable } from '@nestjs/common';
+import { ExecutionContext, Injectable, Logger } from '@nestjs/common';
 import {
   InjectThrottlerOptions,
   InjectThrottlerStorage,
@@ -15,6 +15,8 @@ import { RegisterIpViolationAndApplyPolicyUseCase } from 'src/modules/security/a
 
 @Injectable()
 export class SecurityThrottlerGuard extends ThrottlerGuard {
+  private readonly logger = new Logger(SecurityThrottlerGuard.name);
+
   constructor(
     @InjectThrottlerOptions() options: ThrottlerModuleOptions,
     @InjectThrottlerStorage() storageService: ThrottlerStorage,
@@ -36,13 +38,27 @@ export class SecurityThrottlerGuard extends ThrottlerGuard {
     const req = context.switchToHttp().getRequest<Request>();
     const ip = this.resolveClientIpUseCase.execute(req);
 
-    await this.registerIpViolationAndApplyPolicyUseCase.execute({
+    const policy = await this.registerIpViolationAndApplyPolicyUseCase.execute({
       ip,
       reason: 'rate_limit_exceeded',
       path: req.path,
       method: req.method,
       userAgent: Array.isArray(req.headers['user-agent']) ? req.headers['user-agent'][0] : req.headers['user-agent'],
     });
+
+    this.logger.warn(
+      JSON.stringify({
+        event: 'rate_limit_exceeded',
+        ip,
+        method: req.method,
+        path: req.path,
+        totalHits: throttlerLimitDetail.totalHits,
+        limit: throttlerLimitDetail.limit,
+        retryAfterSeconds: throttlerLimitDetail.timeToBlockExpire,
+        banLevel: policy.banLevel,
+        bannedUntil: policy.bannedUntil?.toISOString() ?? null,
+      }),
+    );
 
     throw new ThrottlerException(
       `Demasiadas solicitudes desde ${throttlerLimitDetail.tracker}. Intenta mas tarde.`,

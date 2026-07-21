@@ -5,17 +5,14 @@ import { envs } from 'src/infrastructure/config/envs';
 @Injectable()
 export class ResolveClientIpUseCase {
   execute(req: Request): string {
-    const isDevelopment = envs.nodeEnv === 'development';
     const forwardedForHeader = req.headers['x-forwarded-for'];
     const forwardedFor = Array.isArray(forwardedForHeader) ? forwardedForHeader[0] : forwardedForHeader;
-    const firstForwardedIp = forwardedFor?.split(',')[0]?.trim();
-
-    const candidate = isDevelopment
-      ? firstForwardedIp || req.ip || req.socket?.remoteAddress || 'unknown'
-      : req.ip || req.socket?.remoteAddress || 'unknown';
+    const candidate = envs.trustProxy
+      ? req.ip || req.socket?.remoteAddress || 'unknown'
+      : req.socket?.remoteAddress || req.ip || 'unknown';
     const resolvedIp = this.normalizeIp(candidate);
 
-    if (isDevelopment) {
+    if (envs.nodeEnv === 'development') {
       console.log('[security][ip-resolver]', {
         path: req.path,
         method: req.method,
