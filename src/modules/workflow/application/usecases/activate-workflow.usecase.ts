@@ -38,7 +38,7 @@ export class ActivateWorkflowUseCase {
         if (!transition.isGlobal && !activeStates.some((state) => state.id === transition.fromStateId)) {
           throw new BadRequestException("Transicion con estado origen inactivo o inexistente");
         }
-        if (!activeStates.some((state) => state.id === transition.toStateId)) {
+        if (transition.effect === "MOVE_STATE" && !activeStates.some((state) => state.id === transition.toStateId)) {
           throw new BadRequestException("Transicion con estado destino inactivo o inexistente");
         }
         if (

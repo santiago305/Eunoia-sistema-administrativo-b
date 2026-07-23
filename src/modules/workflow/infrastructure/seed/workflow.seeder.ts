@@ -49,7 +49,8 @@ async function synchronizeWorkflow(manager: EntityManager, seed: WorkflowSeed): 
   const states = seed.states.map((state) => {
     const id = existingByCatalogId.get(state.saleOrderStateId) ?? seededId(workflowId, 'state', state.clientId);
     stateIdByRef.set(state.clientId, id);
-    const { clientId: _clientId, ...values } = state;
+    const { clientId, ...values } = state;
+    void clientId;
     return { ...values, id, workflowId };
   });
   await stateRepository.upsert(states, { conflictPaths: ['id'], skipUpdateIfNoValuesChanged: true });

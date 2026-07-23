@@ -105,17 +105,17 @@ describe('ABONADO workflow seed definitions', () => {
               type: 'ASSIGN_WAREHOUSE_BY_PROVINCE',
               config: expect.objectContaining({
                 mode: 'INCLUDE',
-                provinceIds: expect.arrayContaining(['2001', '2006', '1501']),
-                warehouseId: DEFAULT_WAREHOUSE_IDS.south,
+                provinceIds: expect.arrayContaining(['2001', '2006']),
+                warehouseId: DEFAULT_WAREHOUSE_IDS.piura,
               }),
               position: 0,
             }),
             expect.objectContaining({
               type: 'ASSIGN_WAREHOUSE_BY_PROVINCE',
               config: expect.objectContaining({
-                mode: 'INCLUDE',
-                provinceIds: expect.arrayContaining(['1401', '0401', '1301']),
-                warehouseId: DEFAULT_WAREHOUSE_IDS.north,
+                mode: 'EXCLUDE',
+                provinceIds: expect.arrayContaining(['2001', '2006']),
+                warehouseId: DEFAULT_WAREHOUSE_IDS.lima,
               }),
               position: 1,
             }),

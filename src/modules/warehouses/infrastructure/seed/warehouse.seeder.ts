@@ -8,37 +8,30 @@ type SeededWarehouse = {
 };
 
 export const DEFAULT_WAREHOUSE_IDS = {
-  central: "59179bc9-ff50-4816-bf16-801487c90e33",
-  north: "48d49c65-dfb8-4abf-8a77-e44bb5f313af",
-  south: "59190bfe-5738-4860-92c9-2b1c1394e6bc",
+  lima: "59179bc9-ff50-4816-bf16-801487c90e33",
+  piura: "59190bfe-5738-4860-92c9-2b1c1394e6bc",
 } as const;
 
 export const DEFAULT_WAREHOUSES = [
   {
-    id: DEFAULT_WAREHOUSE_IDS.central,
-    name: "Almacen Central",
-    department: "Lima",
-    province: "Lima",
-    district: "Cercado",
+    id: DEFAULT_WAREHOUSE_IDS.piura,
+    name: "Almacen Central (Piura)",
+    department: "Piura",
+    province: "Piura",
+    district: "Piura",
     address: "Av. Principal 123",
   },
   {
-    id: DEFAULT_WAREHOUSE_IDS.north,
-    name: "Almacen Norte",
+    id: DEFAULT_WAREHOUSE_IDS.lima,
+    name: "Almacen Central (Lima)",
     department: "Lima",
     province: "Lima",
-    district: "San Martin de Porres",
-    address: "Jr. Los Olivos 456",
-  },
-  {
-    id: DEFAULT_WAREHOUSE_IDS.south,
-    name: "Almacen Sur",
-    department: "Lima",
-    province: "Lima",
-    district: "Villa El Salvador",
-    address: "Av. Industrial 789",
+    district: "Cercado",
+    address: "Av. Principal 456",
   },
 ];
+
+const LEGACY_NORTH_WAREHOUSE_ID = "48d49c65-dfb8-4abf-8a77-e44bb5f313af";
 
 const DEFAULT_LOCATIONS = [
   { code: "A1", description: "Rack A1" },
@@ -57,7 +50,8 @@ export const seedWarehouses = async (dataSource: DataSource): Promise<SeededWare
       entity = await warehouseRepo.save(warehouseRepo.create({ ...wh, isActive: true }));
       console.log(`Almacen creado: ${entity.name}`);
     } else {
-      console.log(`Almacen ${entity.name} ya existe, omitiendo...`);
+      entity = await warehouseRepo.save({ ...entity, ...wh, isActive: true });
+      console.log(`Almacen ${entity.name} actualizado`);
     }
 
     for (const loc of DEFAULT_LOCATIONS) {
@@ -82,6 +76,12 @@ export const seedWarehouses = async (dataSource: DataSource): Promise<SeededWare
     }
 
     seeded.push({ id: entity.id, name: entity.name });
+  }
+
+  const legacyNorth = await warehouseRepo.findOne({ where: { id: LEGACY_NORTH_WAREHOUSE_ID } });
+  if (legacyNorth?.isActive) {
+    await warehouseRepo.save({ ...legacyNorth, isActive: false });
+    console.log(`Almacen legado ${legacyNorth.name} desactivado`);
   }
 
   return seeded;

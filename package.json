@@ -18,6 +18,8 @@
     "seed": "pnpm run seed:base:dev",
     "seed:base": "node dist/infrastructure/database/seed-base.js",
     "seed:base:dev": "ts-node -r tsconfig-paths/register seed.ts",
+    "seed:orders": "node dist/infrastructure/database/seed-orders.js",
+    "seed:orders:dev": "ts-node -r tsconfig-paths/register src/infrastructure/database/seed-orders.ts",
     "clear": "ts-node -r tsconfig-paths/register clear.ts",
     "refresh-data": "npm run clear && npm run seed",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",

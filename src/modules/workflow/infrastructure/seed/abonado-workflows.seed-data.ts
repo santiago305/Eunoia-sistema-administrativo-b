@@ -20,9 +20,14 @@ export type WorkflowSeed = { name: string; description: string | null; isActive:
 const ref = (id: string) => `state-${id}`;
 const action = (type: WorkflowActionType): WorkflowActionSeed => ({ type, config: {}, position: 0 });
 const condition = (type: WorkflowConditionType, config: Record<string, unknown> = {}, position = 0): WorkflowConditionSeed => ({ type, config, position });
-const assignWarehouseByProvince = (provinceIds: string[], warehouseId: string, position: number): WorkflowActionSeed => ({
+const assignWarehouseByProvince = (
+  provinceIds: string[],
+  warehouseId: string,
+  position: number,
+  mode: 'INCLUDE' | 'EXCLUDE' = 'INCLUDE',
+): WorkflowActionSeed => ({
   type: 'ASSIGN_WAREHOUSE_BY_PROVINCE',
-  config: { mode: 'INCLUDE', provinceIds, warehouseId },
+  config: { mode, provinceIds, warehouseId },
   position,
 });
 
@@ -67,8 +72,8 @@ const draftToCreatedTransition = (clientId: string, fromStateRef: string, toStat
   autoTrigger: true,
   conditions: [condition('SALE_ORDER_FIELD_REQUIRED', { field: 'client.provinceId' }, 0)],
   actions: [
-    assignWarehouseByProvince(['2001', '2006', '1501'], DEFAULT_WAREHOUSE_IDS.south, 0),
-    assignWarehouseByProvince(['1401', '0401', '1301'], DEFAULT_WAREHOUSE_IDS.north, 1),
+    assignWarehouseByProvince(['2001', '2006'], DEFAULT_WAREHOUSE_IDS.piura, 0),
+    assignWarehouseByProvince(['2001', '2006'], DEFAULT_WAREHOUSE_IDS.lima, 1, 'EXCLUDE'),
   ],
 });
 
