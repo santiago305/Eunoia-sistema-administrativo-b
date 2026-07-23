@@ -1,12 +1,21 @@
 /**
- * Compatibilidad para desarrollo.
+ * Seeder general para desarrollo.
  *
- * Los datos obligatorios se cargan con `pnpm run seed:base`. Los datos demo
- * deben ejecutarse desde un comando dedicado y nunca durante un despliegue.
+ * `seed:base` se mantiene como el seeder mínimo para despliegues. Este
+ * comando, en cambio, carga también los datos operativos necesarios para
+ * trabajar localmente: almacenes, estados de pedidos y workflows.
  */
 import { runBaseSeed } from './src/infrastructure/database/seed-base';
+import { runOrdersSeed } from './src/infrastructure/database/seed-orders';
 
-runBaseSeed().catch((error) => {
-  console.error('Error al cargar los datos base:', error);
-  process.exitCode = 1;
-});
+export async function runSeed(): Promise<void> {
+  await runBaseSeed();
+  await runOrdersSeed();
+}
+
+if (require.main === module) {
+  runSeed().catch((error) => {
+    console.error('Error al cargar los datos generales:', error);
+    process.exitCode = 1;
+  });
+}
