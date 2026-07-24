@@ -25,6 +25,7 @@ function makeImportUsecase(overrides: Record<string, any> = {}) {
   const normalizer = { normalize: jest.fn() };
   const clientResolver = { resolveOrCreate: jest.fn().mockResolvedValue("client-1") };
   const sourceResolver = { resolveOrCreate: jest.fn().mockResolvedValue("source-1") };
+  const adviserResolver = { resolveByName: jest.fn().mockResolvedValue(null) };
   const skuResolver = {
     resolveOrCreateSkus: jest.fn().mockResolvedValue([
       {
@@ -37,7 +38,7 @@ function makeImportUsecase(overrides: Record<string, any> = {}) {
     ]),
   };
 
-  const usecase = new CreateFromImportPreviewUseCase(
+  const usecase = new (CreateFromImportPreviewUseCase as any)(
     overrides.uow ?? (uow as any),
     overrides.saleOrderRepo ?? (saleOrderRepo as any),
     overrides.saleOrderItemRepo ?? (saleOrderItemRepo as any),
@@ -49,7 +50,8 @@ function makeImportUsecase(overrides: Record<string, any> = {}) {
     overrides.skuResolver ?? (skuResolver as any),
     overrides.workflowRepo ?? (workflowRepo as any),
     overrides.numbering ?? (numbering as any),
-  );
+    overrides.adviserResolver ?? (adviserResolver as any),
+  ) as CreateFromImportPreviewUseCase;
 
   return {
     usecase,
@@ -64,6 +66,7 @@ function makeImportUsecase(overrides: Record<string, any> = {}) {
     skuResolver,
     workflowRepo,
     numbering,
+    adviserResolver,
   };
 }
 
@@ -340,6 +343,72 @@ describe("CreateFromImportPreviewUseCase", () => {
           description: "Sin nombre",
         }),
       ],
+      expect.anything(),
+    );
+  });
+
+  it("stores null instead of the raw Confirmado por name when no adviser is resolved", async () => {
+    const f = makeImportUsecase();
+    f.normalizer.normalize.mockResolvedValue({
+      ok: true,
+      row: {
+        deliveryDate: "2026-07-06",
+        orderDate: "2026-07-04",
+        workflowName: null,
+        address: null,
+        productName: "Pack Aloe",
+        internalNote: null,
+        advertisingCode: null,
+        total: 120,
+        advance: 0,
+        deliveryCost: 0,
+        couponCode: null,
+        confirmedBy: "Analucia Pazos Arroyo",
+        parsedSkus: [],
+        clientResolution: { clientId: null, matchedBy: null },
+      },
+    });
+
+    await f.usecase.execute({ rows: [{ total: 120 } as any], userId: "user-1" });
+
+    expect(f.saleOrderRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        assignedBy: null,
+      }),
+      expect.anything(),
+    );
+  });
+
+  it("stores the adviser user id when Confirmado por matches an active adviser name", async () => {
+    const adviserResolver = { resolveByName: jest.fn().mockResolvedValue("adviser-user-1") };
+    const f = makeImportUsecase({ adviserResolver });
+    f.normalizer.normalize.mockResolvedValue({
+      ok: true,
+      row: {
+        deliveryDate: "2026-07-06",
+        orderDate: "2026-07-04",
+        workflowName: null,
+        address: null,
+        productName: "Pack Aloe",
+        internalNote: null,
+        advertisingCode: null,
+        total: 120,
+        advance: 0,
+        deliveryCost: 0,
+        couponCode: null,
+        confirmedBy: "Analucia Pazos Arroyo",
+        parsedSkus: [],
+        clientResolution: { clientId: null, matchedBy: null },
+      },
+    });
+
+    await f.usecase.execute({ rows: [{ total: 120 } as any], userId: "user-1" });
+
+    expect(adviserResolver.resolveByName).toHaveBeenCalledWith("Analucia Pazos Arroyo", f.tx);
+    expect(f.saleOrderRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        assignedBy: "adviser-user-1",
+      }),
       expect.anything(),
     );
   });

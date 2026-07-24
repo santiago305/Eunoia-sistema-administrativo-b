@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, Optional } from "@nestjs/common";
 import { SALE_ORDER_ITEM_COMPONENT_REPOSITORY, SaleOrderItemComponentRepository } from "src/modules/sale-orders/domain/ports/sale-order-item-component.repository";
 import { SALE_ORDER_ITEM_REPOSITORY, SaleOrderItemRepository } from "src/modules/sale-orders/domain/ports/sale-order-item.repository";
 import { SALE_ORDER_REPOSITORY, SaleOrderRepository } from "src/modules/sale-orders/domain/ports/sale-order.repository";
@@ -11,6 +11,7 @@ import { SaleOrderImportSourceResolverService } from "src/modules/sale-orders/ap
 import { TransactionContext, UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { WORKFLOW_REPOSITORY, WorkflowRepository } from "src/modules/workflow/domain/ports/workflow.repository";
 import { SaleOrderNumberingService } from "src/modules/sale-orders/application/services/sale-order-numbering.service";
+import { SaleOrderImportAdviserResolverService } from "src/modules/sale-orders/application/services/sale-order-import-adviser-resolver.service";
 
 type ImportDestination = {
   agencySubsidiaryId: string | null;
@@ -34,6 +35,8 @@ export class CreateFromImportPreviewUseCase {
     @Inject(WORKFLOW_REPOSITORY)
     private readonly workflowRepo: WorkflowRepository,
     private readonly numbering: SaleOrderNumberingService,
+    @Optional()
+    private readonly adviserResolver?: SaleOrderImportAdviserResolverService,
   ) {}
 
   async execute(input: { rows: SaleOrderImportPreviewCleanRow[]; userId: string }): Promise<CreateSaleOrdersFromImportPreviewOutput> {
@@ -109,6 +112,7 @@ export class CreateFromImportPreviewUseCase {
       advance: number;
       deliveryCost?:number;
       couponCode: string | null;
+      confirmedBy?:string | null;
     };
     destination: ImportDestination;
     clientId: string;
@@ -132,6 +136,7 @@ export class CreateFromImportPreviewUseCase {
     const resolvedWorkflow = normalizedWorkflowName
       ? await this.workflowRepo.findActiveByNormalizedName(normalizedWorkflowName, input.tx)
       : null;
+    const assignedBy = await this.resolveImportedAdviserId(input.row.confirmedBy, input.tx);
 
     const saleOrder = await this.saleOrderRepo.create(
       {
@@ -151,6 +156,7 @@ export class CreateFromImportPreviewUseCase {
         advertisingCode: input.row.advertisingCode,
         observation: null,
         sendAddress: input.destination.sendAddress,
+        assignedBy,
         createdBy: input.userId,
         createdAt,
         workflowId: resolvedWorkflow?.workflow.id ?? null,
@@ -238,4 +244,9 @@ export class CreateFromImportPreviewUseCase {
     const trimmed = String(value ?? "").trim().replace(/\s+/g, " ");
     return trimmed ? trimmed.toLocaleUpperCase("es-PE") : null;
   }
+
+  private async resolveImportedAdviserId(value: string | null | undefined, tx: TransactionContext) {
+    return this.adviserResolver?.resolveByName(value, tx) ?? null;
+  }
+
 }

@@ -37,6 +37,7 @@ import { SaleOrderImportClientResolverService } from "src/modules/sale-orders/ap
 import { SaleOrderImportRowNormalizerService } from "src/modules/sale-orders/application/services/sale-order-import-row-normalizer.service";
 import { SaleOrderImportSkuResolverService } from "src/modules/sale-orders/application/services/sale-order-import-sku-resolver.service";
 import { SaleOrderImportSourceResolverService } from "src/modules/sale-orders/application/services/sale-order-import-source-resolver.service";
+import { SaleOrderImportAdviserResolverService } from "src/modules/sale-orders/application/services/sale-order-import-adviser-resolver.service";
 import { CreateClientUsecase } from "src/modules/clients/application/usecases/client/create.usecase";
 import { CreateSourceUsecase } from "src/modules/sources/application/usecases/source/create.usecase";
 import { SaleOrderWorkflowTransitionService } from "src/modules/workflow/application/services/sale-order-workflow-transition.service";
@@ -108,6 +109,7 @@ export const saleOrdersModuleProviders = [
   SaleOrderImportRowNormalizerService,
   SaleOrderImportSkuResolverService,
   SaleOrderImportSourceResolverService,
+  SaleOrderImportAdviserResolverService,
   CreateClientUsecase,
   UpdateClientUsecase,
   SaleOrderClientCommandService,
