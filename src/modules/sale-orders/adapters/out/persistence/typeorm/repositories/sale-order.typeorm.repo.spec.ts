@@ -9,6 +9,8 @@ import { WorkflowEntity } from "src/modules/workflow/adapters/out/persistence/ty
 import { WorkflowStateEntity } from "src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow-state.entity";
 import { SaleOrderEntity } from "../entities/sale-order.entity";
 import { SalePaymentEntity } from "../entities/sale-payment.entity";
+import { SaleOrderItemComponentEntity } from "../entities/sale-order-item-component.entity";
+import { ProductCatalogSkuEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku.entity";
 
 const createStatsQueryBuilder = (rawMany: unknown[] = [], rawOne: unknown = {}) => ({
   leftJoin: jest.fn().mockReturnThis(),
@@ -25,6 +27,108 @@ const createStatsQueryBuilder = (rawMany: unknown[] = [], rawOne: unknown = {}) 
 });
 
 describe("SaleOrderTypeormRepository", () => {
+  it("builds SKUS and detail from item components in list items", async () => {
+    const orderRow = {
+      id: "order-1",
+      serie: "P001",
+      correlative: 12,
+      clientId: "client-1",
+      warehouseId: null,
+      sourceId: null,
+      agencySubsidiaryId: null,
+      agencyDetail: null,
+      assignedBy: null,
+      createdBy: "user-1",
+      workflowId: null,
+      currentStateId: null,
+      scheduleDate: null,
+      deliveryDate: null,
+      subTotal: 100,
+      deliveryCost: 0,
+      total: 100,
+      note: null,
+      advertisingCode: null,
+      observation: null,
+      invoiceSend: false,
+      reserveBool: false,
+      isActive: true,
+      createdAt: new Date("2026-07-24T10:00:00.000Z"),
+      updatedAt: null,
+      items: [
+        {
+          id: "item-1",
+          referencePackId: "pack-1",
+          description: "Pack prueba",
+          quantity: 1,
+          unitPrice: 100,
+          total: 100,
+          createdAt: new Date("2026-07-24T10:01:00.000Z"),
+        },
+      ],
+    };
+
+    const qb = {
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([[orderRow], 1]),
+    };
+
+    const componentRepo = {
+      find: jest.fn().mockResolvedValue([
+        {
+          id: "component-1",
+          saleOrderItemId: "item-1",
+          skuId: "sku-1",
+          quantity: 1,
+          createdAt: new Date("2026-07-24T10:02:00.000Z"),
+        },
+        {
+          id: "component-2",
+          saleOrderItemId: "item-1",
+          skuId: "sku-2",
+          quantity: 1,
+          createdAt: new Date("2026-07-24T10:03:00.000Z"),
+        },
+      ]),
+    };
+
+    const skuRepo = {
+      find: jest.fn().mockResolvedValue([
+        { id: "sku-1", customSku: "EVA01863", name: "AMPOLLA" },
+        { id: "sku-2", customSku: "EVA01893", name: "AZUFRE" },
+      ]),
+    };
+
+    const repositories = new Map<any, any>([
+      [SaleOrderEntity, { createQueryBuilder: jest.fn().mockReturnValue(qb) }],
+      [SalePaymentEntity, { find: jest.fn().mockResolvedValue([]) }],
+      [ClientEntity, { find: jest.fn().mockResolvedValue([]) }],
+      [TelephoneEntity, { find: jest.fn().mockResolvedValue([]) }],
+      [WarehouseEntity, { find: jest.fn().mockResolvedValue([]) }],
+      [SourceEntity, { find: jest.fn().mockResolvedValue([]) }],
+      [User, { find: jest.fn().mockResolvedValue([{ id: "user-1", name: "User", email: "user@test.com" }]) }],
+      [CompanyPaymentAccountEntity, { find: jest.fn().mockResolvedValue([]) }],
+      [WorkflowEntity, { find: jest.fn().mockResolvedValue([]) }],
+      [WorkflowStateEntity, { find: jest.fn().mockResolvedValue([]) }],
+      [SaleOrderItemComponentEntity, componentRepo],
+      [ProductCatalogSkuEntity, skuRepo],
+    ]);
+
+    const manager = {
+      getRepository: jest.fn((entity) => repositories.get(entity) ?? { find: jest.fn().mockResolvedValue([]) }),
+    };
+    const repository = new SaleOrderTypeormRepository({ manager } as any);
+
+    const result = await repository.list({ page: 1, limit: 10 });
+
+    expect(componentRepo.find).toHaveBeenCalled();
+    expect(skuRepo.find).toHaveBeenCalled();
+    expect(result.items[0].SKUS).toBe("EVA01863(1);EVA01893(1)");
+    expect(result.items[0].detail).toBe("AMPOLLA1AZUFRE1");
+  });
+
   it("returns assignedBy and agencyDetail in list items", async () => {
     const orderRow = {
       id: "order-1",
@@ -570,6 +674,8 @@ describe("SaleOrderTypeormRepository", () => {
     const result = await repository.findById("order-1");
     const component = result?.items[0]?.components[0];
 
+    expect(result?.SKUS).toBe("EVA01893(1)");
+    expect(result?.detail).toBe("JABONAZUFRE1");
     expect(component).toEqual(
       expect.objectContaining({
         stockItemId: "stock-1",
@@ -589,16 +695,16 @@ describe("SaleOrderTypeormRepository", () => {
     );
   });
 
-  it("returns statistics grouped by bank account payment amounts", async () => {
+  it("returns statistics grouped by bank account and payment description", async () => {
     const baseQb = createStatsQueryBuilder();
     const workflowQb = createStatsQueryBuilder([]);
     const stateQb = createStatsQueryBuilder([]);
     const clientTypeQb = createStatsQueryBuilder([]);
     const totalsQb = createStatsQueryBuilder([], {
       orders: "1",
-      total: "120",
-      collected: "80",
-      pending: "40",
+      total: "180",
+      collected: "180",
+      pending: "0",
       deliveryCostSum: "10",
     });
     const bankAccountQb = createStatsQueryBuilder([
@@ -606,8 +712,25 @@ describe("SaleOrderTypeormRepository", () => {
         id: "bank-1",
         label: "BCP Soles",
         number: "001",
+        description: "Anticipo",
         payments: "2",
         collected: "80",
+      },
+      {
+        id: "bank-1",
+        label: "BCP Soles",
+        number: "001",
+        description: "Saldo",
+        payments: "1",
+        collected: "40",
+      },
+      {
+        id: null,
+        label: "Sin cuenta",
+        number: null,
+        description: "Sin descripcion",
+        payments: "3",
+        collected: "60",
       },
     ]);
 
@@ -630,14 +753,40 @@ describe("SaleOrderTypeormRepository", () => {
         id: "bank-1",
         label: "BCP Soles",
         number: "001",
-        payments: 2,
-        collected: 80,
+        payments: 3,
+        collected: 120,
+        byDescription: [
+          { description: "Anticipo", label: "Anticipo", payments: 2, collected: 80 },
+          { description: "Saldo", label: "Saldo", payments: 1, collected: 40 },
+        ],
+      },
+      {
+        id: null,
+        label: "Sin cuenta",
+        number: null,
+        payments: 3,
+        collected: 60,
+        byDescription: [
+          {
+            description: "Sin descripcion",
+            label: "Sin descripcion",
+            payments: 3,
+            collected: 60,
+          },
+        ],
       },
     ]);
     expect(bankAccountQb.innerJoin).toHaveBeenCalledWith(
       expect.anything(),
       "payment",
       "payment.saleOrderId = so.id",
+    );
+    expect(bankAccountQb.addSelect).toHaveBeenCalledWith(
+      "COALESCE(NULLIF(TRIM(payment.note), ''), 'Sin descripcion')",
+      "description",
+    );
+    expect(bankAccountQb.addGroupBy).toHaveBeenCalledWith(
+      "COALESCE(NULLIF(TRIM(payment.note), ''), 'Sin descripcion')",
     );
   });
 

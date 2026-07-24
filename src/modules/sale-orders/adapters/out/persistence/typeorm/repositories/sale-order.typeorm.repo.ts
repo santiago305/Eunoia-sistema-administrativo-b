@@ -45,6 +45,7 @@ import { UbigeoDistrictEntity } from "src/modules/ubigeo/adapters/out/persistenc
 import { UbigeoProvinceEntity } from "src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-province.entity";
 import { SaleOrderAttachmentEntity } from "src/modules/sale-order-attachments/adapters/out/persistence/typeorm/entities/sale-order-attachment.entity";
 import { SaleOrderAttachmentType } from "src/modules/sale-order-attachments/domain/value-objects/sale-order-attachment-type";
+import { buildSaleOrderItemDisplayFields } from "src/modules/sale-orders/application/support/sale-order-item-display-fields";
 
 @Injectable()
 export class SaleOrderTypeormRepository implements SaleOrderRepository {
@@ -809,6 +810,9 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     if (!rows.length) return { items: [], total };
 
     const saleOrderIds = rows.map((row) => row.id);
+    const itemIds = rows
+      .flatMap((row) => row.items ?? [])
+      .map((item) => item.id);
     const clientIds = Array.from(new Set(rows.map((row) => row.clientId).filter(Boolean))) as string[];
     const warehouseIds = Array.from(new Set(rows.map((row) => row.warehouseId).filter(Boolean))) as string[];
     const sourceIds = Array.from(new Set(rows.map((row) => row.sourceId).filter(Boolean))) as string[];
@@ -816,7 +820,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     const workflowIds = Array.from(new Set(rows.map((row) => row.workflowId).filter(Boolean))) as string[];
     const stateIds = Array.from(new Set(rows.map((row) => row.currentStateId).filter(Boolean))) as string[];
 
-    const [payments, clients, mainTelephones, warehouses, sources, users, workflows, states] = await Promise.all([
+    const [payments, clients, mainTelephones, warehouses, sources, users, workflows, states, components] = await Promise.all([
       manager.getRepository(SalePaymentEntity).find({
         where: { saleOrderId: In(saleOrderIds) },
         order: { createdAt: "ASC" },
@@ -845,6 +849,12 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         ? manager.getRepository(WorkflowStateEntity).find({
             where: { id: In(stateIds) },
             relations: { saleOrderState: true },
+          })
+        : Promise.resolve([]),
+      itemIds.length
+        ? manager.getRepository(SaleOrderItemComponentEntity).find({
+            where: { saleOrderItemId: In(itemIds) },
+            order: { createdAt: "ASC" },
           })
         : Promise.resolve([]),
     ]);
@@ -880,6 +890,14 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     const bankAccounts = bankAccountIds.length
       ? await manager.getRepository(CompanyPaymentAccountEntity).find({ where: { id: In(bankAccountIds) } })
       : [];
+    const componentSkuIds = Array.from(
+      new Set(components.map((component) => component.skuId).filter(Boolean)),
+    ) as string[];
+    const componentSkus = componentSkuIds.length
+      ? await manager.getRepository(ProductCatalogSkuEntity).find({
+          where: { id: In(componentSkuIds) },
+        })
+      : [];
 
     const clientById = new Map(clients.map((row) => [row.id, row]));
     const mainTelephoneByClientId = new Map(mainTelephones.map((row) => [row.clientId, row.number]));
@@ -893,6 +911,38 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     const bankAccountById = new Map(bankAccounts.map((row) => [row.id, row]));
     const workflowById = new Map(workflows.map((row) => [row.id, row]));
     const stateById = new Map(states.map((row) => [row.id, row]));
+
+    const componentsByItemId = new Map<string, SaleOrderItemComponentEntity[]>();
+    for (const component of components) {
+      const list = componentsByItemId.get(component.saleOrderItemId) ?? [];
+      list.push(component);
+      componentsByItemId.set(component.saleOrderItemId, list);
+    }
+
+    const skuById = new Map(componentSkus.map((sku) => [sku.id, sku]));
+    const displayComponentsByOrderId = new Map<
+      string,
+      Array<{ customSku: string | null; name: string | null; quantity: number }>
+    >();
+
+    for (const row of rows) {
+      const orderedItems = [...(row.items ?? [])].sort(
+        (a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
+      );
+      const displayComponents = orderedItems.flatMap((item) =>
+        (componentsByItemId.get(item.id) ?? [])
+          .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+          .map((component) => {
+            const sku = skuById.get(component.skuId);
+            return {
+              customSku: sku?.customSku ?? null,
+              name: sku?.name ?? null,
+              quantity: Number(component.quantity ?? 0),
+            };
+          }),
+      );
+      displayComponentsByOrderId.set(row.id, displayComponents);
+    }
 
     const paymentsByOrderId = new Map<string, SalePaymentEntity[]>();
     for (const payment of payments) {
@@ -918,6 +968,9 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       const assignedUser = row.assignedBy ? userById.get(row.assignedBy) : undefined;
       const workflow = row.workflowId ? workflowById.get(row.workflowId) : undefined;
       const currentState = row.currentStateId ? stateById.get(row.currentStateId) : undefined;
+      const displayFields = buildSaleOrderItemDisplayFields(
+        displayComponentsByOrderId.get(row.id) ?? [],
+      );
 
       return {
         id: row.id,
@@ -1005,6 +1058,8 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
           total: Number(item.total ?? 0),
           createdAt: toIso(item.createdAt),
         })),
+        SKUS: displayFields.SKUS,
+        detail: displayFields.detail,
         payments: orderPayments.map((p) => ({
           id: p.id,
           bankAccount: p.bankAccountId
@@ -1028,6 +1083,53 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
   );
 
   return { items, total };
+  }
+
+  private toBankAccountStatistics(
+    rows: Array<{
+      id: string | null;
+      label: string;
+      number: string | null;
+      description: string;
+      payments: string;
+      collected: string;
+    }>,
+  ): SaleOrderStatisticsOutput["byBankAccount"] {
+    const byAccount = new Map<string, SaleOrderStatisticsOutput["byBankAccount"][number]>();
+
+    for (const row of rows) {
+      const key = row.id ?? "__without_bank_account__";
+      const account = byAccount.get(key) ?? {
+        id: row.id,
+        label: row.label,
+        number: row.number ?? null,
+        payments: 0,
+        collected: 0,
+        byDescription: [],
+      };
+
+      const payments = Number(row.payments);
+      const collected = Number(row.collected);
+      const description = row.description || "Sin descripcion";
+
+      account.payments += payments;
+      account.collected += collected;
+      account.byDescription.push({
+        description,
+        label: description,
+        payments,
+        collected,
+      });
+
+      byAccount.set(key, account);
+    }
+
+    return Array.from(byAccount.values())
+      .map((account) => ({
+        ...account,
+        byDescription: account.byDescription.sort((left, right) => right.collected - left.collected),
+      }))
+      .sort((left, right) => right.collected - left.collected);
   }
 
   async statistics(
@@ -1219,16 +1321,19 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         .select("bankAccount.id", "id")
         .addSelect("COALESCE(bankAccount.name, 'Sin cuenta')", "label")
         .addSelect("bankAccount.accountNumber", "number")
+        .addSelect("COALESCE(NULLIF(TRIM(payment.note), ''), 'Sin descripcion')", "description")
         .addSelect("COUNT(payment.id)", "payments")
         .addSelect("COALESCE(SUM(payment.amount), 0)", "collected")
         .groupBy("bankAccount.id")
         .addGroupBy("bankAccount.name")
         .addGroupBy("bankAccount.accountNumber")
+        .addGroupBy("COALESCE(NULLIF(TRIM(payment.note), ''), 'Sin descripcion')")
         .orderBy("collected", "DESC")
         .getRawMany<{
           id: string | null;
           label: string;
           number: string | null;
+          description: string;
           payments: string;
           collected: string;
         }>(),
@@ -1249,13 +1354,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         label: clientTypeLabels[row.type] ?? row.type,
         count: Number(row.count),
       })),
-      byBankAccount: bankAccountRows.map((row) => ({
-        id: row.id,
-        label: row.label,
-        number: row.number ?? null,
-        payments: Number(row.payments),
-        collected: Number(row.collected),
-      })),
+      byBankAccount: this.toBankAccountStatistics(bankAccountRows),
       totals: {
         orders: Number(totalsRow?.orders ?? 0),
         total: Number(totalsRow?.total ?? 0),
@@ -1496,6 +1595,15 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     compsByItemId.set(component.saleOrderItemId, list);
   }
 
+  const orderedDisplayComponents = items.flatMap((item) =>
+    (compsByItemId.get(item.id) ?? []).map((component) => ({
+      customSku: component.sku.customSku ?? null,
+      name: component.sku.name ?? null,
+      quantity: Number(component.quantity ?? 0),
+    })),
+  );
+  const displayFields = buildSaleOrderItemDisplayFields(orderedDisplayComponents);
+
   const totalPaid = payments.reduce((acc, payment) => acc + Number(payment.amount ?? 0), 0);
   const totalOrder = Number(row.total ?? 0);
   const pendingAmount = Math.max(totalOrder - totalPaid, 0);
@@ -1638,6 +1746,9 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       createdAt: toIso(item.createdAt),
       components: compsByItemId.get(item.id) ?? [],
     })),
+
+    SKUS: displayFields.SKUS,
+    detail: displayFields.detail,
 
     payments: payments.map((payment) => ({
       id: payment.id,

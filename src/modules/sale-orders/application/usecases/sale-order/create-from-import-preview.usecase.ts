@@ -19,6 +19,10 @@ type ImportDestination = {
   sendAddress: string | null;
   clientAddress: string | null;
 };
+export enum PaymentDescription {
+  ANTICIPO = "Anticipo",
+  SALDO = "Saldo"
+}
 
 @Injectable()
 export class CreateFromImportPreviewUseCase {
@@ -211,7 +215,7 @@ export class CreateFromImportPreviewUseCase {
             method: "import_adelanto" as any,
             operationNumber: null,
             amount: advance,
-            note: "ADELANTO",
+            note: PaymentDescription.ANTICIPO,
           },
         ],
         input.tx,

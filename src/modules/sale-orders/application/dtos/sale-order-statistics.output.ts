@@ -10,6 +10,12 @@ export type SaleOrderStatisticsOutput = {
     number: string | null;
     payments: number;
     collected: number;
+    byDescription: Array<{
+      description: string;
+      label: string;
+      payments: number;
+      collected: number;
+    }>;
   }>;
-  totals: { orders: number; total: number; collected: number; pending: number; deliveryCostSum:number };
+  totals: { orders: number; total: number; collected: number; pending: number; deliveryCostSum: number };
 };

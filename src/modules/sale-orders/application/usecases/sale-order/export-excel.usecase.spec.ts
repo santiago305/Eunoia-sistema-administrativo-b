@@ -131,6 +131,38 @@ describe("ExportSaleOrdersExcelUsecase", () => {
     expect(cell?.numFmt).toBe("@");
   });
 
+  it("exports SKUS and detail columns", async () => {
+    saleOrderRepo.list.mockResolvedValueOnce({
+      total: 1,
+      items: [
+        {
+          id: "order-1",
+          serie: "P001",
+          correlative: 12,
+          SKUS: "EVA01863(1);EVA01893(1)",
+          detail: "AMPOLLA1AZUFRE1",
+        },
+      ],
+    });
+    const usecase = new ExportSaleOrdersExcelUsecase(saleOrderRepo as any);
+
+    const result = await usecase.execute({
+      columns: [
+        { key: "SKUS", label: "SKUS" },
+        { key: "detail", label: "Detalle" },
+      ],
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(result.content);
+    const worksheet = workbook.getWorksheet("Pedidos");
+
+    expect(worksheet?.getCell("A1").value).toBe("SKUS");
+    expect(worksheet?.getCell("B1").value).toBe("Detalle");
+    expect(worksheet?.getCell("A2").value).toBe("EVA01863(1);EVA01893(1)");
+    expect(worksheet?.getCell("B2").value).toBe("AMPOLLA1AZUFRE1");
+  });
+
   it("rejects empty or unknown column selections", async () => {
     const usecase = new ExportSaleOrdersExcelUsecase(saleOrderRepo as any);
 

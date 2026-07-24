@@ -148,6 +148,8 @@ export type SaleOrderListItemOutput = {
     total: number;
     createdAt: string;
   }>;
+  SKUS: string;
+  detail: string;
   payments: SaleOrderPaymentOutput[];
   totalPaid: number;
   pendingAmount: number;
