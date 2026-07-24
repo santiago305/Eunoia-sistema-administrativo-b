@@ -30,7 +30,7 @@ export class SaleOrderStateHistoryTypeormRepository implements SaleOrderStateHis
       transitionId: row.transitionId ?? null,
       fromStateId: row.fromStateId ?? null,
       toStateId: row.toStateId,
-      executedBy: row.executedBy,
+      executedBy: row.executedBy ?? null,
       executedAt: row.executedAt,
       metadata: row.metadata ?? null,
     });

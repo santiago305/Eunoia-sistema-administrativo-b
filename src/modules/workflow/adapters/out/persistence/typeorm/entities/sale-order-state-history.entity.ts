@@ -20,8 +20,8 @@ export class SaleOrderStateHistoryEntity {
   @Column({ name: "to_state_id", type: "uuid" })
   toStateId: string;
 
-  @Column({ name: "executed_by", type: "uuid" })
-  executedBy: string;
+  @Column({ name: "executed_by", type: "uuid", nullable: true })
+  executedBy?: string | null;
 
   @CreateDateColumn({ name: "executed_at", type: "timestamptz" })
   executedAt: Date;

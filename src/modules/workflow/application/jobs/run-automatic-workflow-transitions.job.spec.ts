@@ -55,7 +55,7 @@ describe("RunAutomaticWorkflowTransitionsJob", () => {
     expect(saleOrderRepo.listIdsForAutomaticWorkflow).not.toHaveBeenCalled();
     expect(transitionService.advanceAutomatic).toHaveBeenCalledWith(
       "order-1",
-      "00000000-0000-0000-0000-000000000001",
+      null,
       { tx: true },
     );
     expect(transitionService.advanceAutomatic).toHaveBeenCalledTimes(2);

@@ -10,6 +10,111 @@ import { WorkflowState } from "../../domain/entities/workflow-state";
 import { WorkflowTransition } from "../../domain/entities/workflow-transition";
 
 describe("SaleOrderWorkflowTransitionService", () => {
+  it("records automatic history without an executor when no executor is provided", async () => {
+    const tx = {};
+    const order = {
+      id: "order-1",
+      workflowId: "workflow-1",
+      currentStateId: "state-created",
+      createdBy: "creator-1",
+    };
+    const updatedOrder = { ...order, currentStateId: "state-scheduled" };
+    const saleOrderRepo = {
+      findByIdForUpdate: jest.fn().mockResolvedValue(order),
+      updateWorkflowState: jest.fn().mockResolvedValue(updatedOrder),
+    };
+    const currentState = new WorkflowState({
+      id: "state-created",
+      workflowId: "workflow-1",
+      code: "CREATED",
+      name: "Creado",
+      color: "#64748b",
+      position: 0,
+      isInitial: true,
+      isFinal: false,
+      isActive: true,
+    });
+    const targetState = new WorkflowState({
+      id: "state-scheduled",
+      workflowId: "workflow-1",
+      code: "SCHEDULED",
+      name: "Programado",
+      color: "#0ea5e9",
+      position: 1,
+      isInitial: false,
+      isFinal: false,
+      isActive: true,
+    });
+    const workflowRepo = {
+      findDetailedById: jest.fn().mockResolvedValue({
+        workflow: new Workflow({
+          id: "workflow-1",
+          name: "Pedidos",
+          normalizedName: "PEDIDOS",
+          description: null,
+          isActive: true,
+          createdAt: new Date("2026-06-08T00:00:00.000Z"),
+          updatedAt: null,
+        }),
+        states: [currentState, targetState],
+        transitions: [],
+        conditions: [],
+        actions: [],
+      }),
+    };
+    const transition = new WorkflowTransition({
+      id: "transition-1",
+      workflowId: "workflow-1",
+      code: "AUTO_SCHEDULE",
+      name: "Programar",
+      effect: TRANSITION_EFFECTS.MOVE_STATE,
+      purpose: TRANSITION_PURPOSES.STANDARD,
+      fromStateId: "state-created",
+      toStateId: "state-scheduled",
+      isGlobal: false,
+      excludedStateIds: [],
+      isActive: true,
+      autoTrigger: true,
+    });
+    const workflowTransitionRepo = {
+      listFromState: jest.fn().mockResolvedValue([{ transition, conditions: [], actions: [] }]),
+      findDetailedById: jest.fn(),
+    };
+    const historyRepo = { append: jest.fn() };
+    const clock = { now: jest.fn(() => new Date("2026-06-08T10:00:00.000Z")) };
+    const contextService = { build: jest.fn().mockResolvedValue({}) };
+    const actionRunner = {
+      run: jest.fn().mockResolvedValue({ order, outcomes: [] }),
+    };
+    const service = new SaleOrderWorkflowTransitionService(
+      saleOrderRepo as any,
+      workflowRepo as any,
+      workflowTransitionRepo as any,
+      historyRepo as any,
+      clock,
+      contextService as any,
+      actionRunner as any,
+    );
+
+    await expect(service.advanceAutomatic("order-1", null, tx as any)).resolves.toEqual(updatedOrder);
+
+    expect(historyRepo.append).toHaveBeenCalledWith(
+      expect.objectContaining({
+        saleOrderId: "order-1",
+        transitionId: "transition-1",
+        fromStateId: "state-created",
+        toStateId: "state-scheduled",
+        executedBy: null,
+        metadata: {
+          source: "automatic-workflow",
+          branch: "THEN",
+          actionOutcomes: [],
+        },
+      }),
+      tx,
+    );
+  });
+
   it("runs a global action-only transition without changing the current state", async () => {
     const tx = {};
     const order = {

@@ -3,7 +3,6 @@ import { SALE_ORDER_REPOSITORY, SaleOrderRepository } from "src/modules/sale-ord
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { SaleOrderWorkflowTransitionService } from "../services/sale-order-workflow-transition.service";
 
-const SYSTEM_USER_ID = "00000000-0000-0000-0000-000000000001";
 const MAX_AUTOMATIC_STEPS_PER_ORDER = 20;
 
 @Injectable()
@@ -62,7 +61,7 @@ export class RunAutomaticWorkflowTransitionsJob {
 
     for (let step = 0; step < MAX_AUTOMATIC_STEPS_PER_ORDER; step += 1) {
       const result = await this.uow.runInTransaction((tx) =>
-        this.transitionService.advanceAutomatic(saleOrderId, SYSTEM_USER_ID, tx),
+        this.transitionService.advanceAutomatic(saleOrderId, null, tx),
       );
 
       if (!result) {

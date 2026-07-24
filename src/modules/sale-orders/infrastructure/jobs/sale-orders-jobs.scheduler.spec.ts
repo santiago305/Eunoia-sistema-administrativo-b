@@ -127,7 +127,7 @@ describe("SaleOrdersJobsScheduler", () => {
     );
 
     scheduler.onModuleInit();
-    expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 60_000);
+    expect(setIntervalSpy).toHaveBeenCalledWith(expect.any(Function), 3_600_000);
 
     scheduler.onModuleDestroy();
     setIntervalSpy.mockRestore();

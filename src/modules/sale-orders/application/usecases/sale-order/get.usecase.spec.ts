@@ -11,6 +11,8 @@ describe('GetSaleOrderUsecase', () => {
           id: 'client-1',
           telephones: [{ id: 'phone-1', number: '999', isMain: true }],
         },
+        SKUS: 'EVA01893(1)',
+        detail: 'JABONAZUFRE1',
         attachments: [],
         payments: [],
       }),
@@ -38,5 +40,7 @@ describe('GetSaleOrderUsecase', () => {
     });
     expect(result.editPolicy.stockStatus).toBe('RESERVED');
     expect(result.client?.telephones).toHaveLength(1);
+    expect(result.SKUS).toBe('EVA01893(1)');
+    expect(result.detail).toBe('JABONAZUFRE1');
   });
 });

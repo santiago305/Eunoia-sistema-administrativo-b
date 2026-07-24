@@ -194,7 +194,7 @@ export const envs = {
         ttlMs: envsVars.REDIS_TTL_MS ?? 60_000,
     },
     saleOrderJobs: {
-        automaticWorkflowIntervalMs: envsVars.SALE_ORDER_AUTOMATIC_WORKFLOW_INTERVAL_MS ?? 60_000,
+        automaticWorkflowIntervalMs: envsVars.SALE_ORDER_AUTOMATIC_WORKFLOW_INTERVAL_MS ?? 3_600_000,
         automaticWorkflowRunOnStart: envsVars.SALE_ORDER_AUTOMATIC_WORKFLOW_RUN_ON_START ?? true,
     },
     files: {

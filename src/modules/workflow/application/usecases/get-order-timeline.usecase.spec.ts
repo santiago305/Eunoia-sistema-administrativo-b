@@ -57,4 +57,47 @@ describe("GetOrderTimelineUseCase", () => {
     });
     expect(userRepo.findById).toHaveBeenCalledTimes(1);
   });
+
+  it("does not resolve a user for automatic history without an executor", async () => {
+    const saleOrderRepo = {
+      findById: jest.fn().mockResolvedValue({ id: "order-1" }),
+    };
+    const workflowRepo = {
+      findDetailedById: jest.fn().mockResolvedValue({
+        states: [{ id: "state-1" }, { id: "state-2" }],
+        transitions: [{ id: "transition-1" }],
+      }),
+    };
+    const historyRepo = {
+      listBySaleOrderId: jest.fn().mockResolvedValue([
+        {
+          id: "history-1",
+          workflowId: "workflow-1",
+          transitionId: "transition-1",
+          fromStateId: "state-1",
+          toStateId: "state-2",
+          executedBy: null,
+          executedAt: new Date("2026-06-11T12:00:00.000Z"),
+          metadata: { source: "automatic-workflow" },
+        },
+      ]),
+    };
+    const userRepo = {
+      findById: jest.fn(),
+    };
+    const useCase = new GetOrderTimelineUseCase(
+      saleOrderRepo as any,
+      workflowRepo as any,
+      historyRepo as any,
+      userRepo as any,
+    );
+
+    const result = await useCase.execute({ saleOrderId: "order-1" });
+
+    expect(result[0]).toMatchObject({
+      executedBy: null,
+      executedByUser: null,
+    });
+    expect(userRepo.findById).not.toHaveBeenCalled();
+  });
 });

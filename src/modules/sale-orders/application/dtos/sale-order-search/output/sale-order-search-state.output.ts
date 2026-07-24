@@ -163,6 +163,8 @@ export type SaleOrderGetOutput = {
       createdAt: string;
     }>;
   }>;
+  SKUS: string;
+  detail: string;
   payments: Array<{
     id: string;
     clientKey: string;

@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, Optional } from "@nestjs/common";
 import { SALE_ORDER_ITEM_COMPONENT_REPOSITORY, SaleOrderItemComponentRepository } from "src/modules/sale-orders/domain/ports/sale-order-item-component.repository";
 import { SALE_ORDER_ITEM_REPOSITORY, SaleOrderItemRepository } from "src/modules/sale-orders/domain/ports/sale-order-item.repository";
 import { SALE_ORDER_REPOSITORY, SaleOrderRepository } from "src/modules/sale-orders/domain/ports/sale-order.repository";
@@ -11,6 +11,7 @@ import { SaleOrderImportSourceResolverService } from "src/modules/sale-orders/ap
 import { TransactionContext, UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { WORKFLOW_REPOSITORY, WorkflowRepository } from "src/modules/workflow/domain/ports/workflow.repository";
 import { SaleOrderNumberingService } from "src/modules/sale-orders/application/services/sale-order-numbering.service";
+import { SaleOrderImportAdviserResolverService } from "src/modules/sale-orders/application/services/sale-order-import-adviser-resolver.service";
 
 type ImportDestination = {
   agencySubsidiaryId: string | null;
@@ -18,6 +19,10 @@ type ImportDestination = {
   sendAddress: string | null;
   clientAddress: string | null;
 };
+export enum PaymentDescription {
+  ANTICIPO = "Anticipo",
+  SALDO = "Saldo"
+}
 
 @Injectable()
 export class CreateFromImportPreviewUseCase {
@@ -34,6 +39,8 @@ export class CreateFromImportPreviewUseCase {
     @Inject(WORKFLOW_REPOSITORY)
     private readonly workflowRepo: WorkflowRepository,
     private readonly numbering: SaleOrderNumberingService,
+    @Optional()
+    private readonly adviserResolver?: SaleOrderImportAdviserResolverService,
   ) {}
 
   async execute(input: { rows: SaleOrderImportPreviewCleanRow[]; userId: string }): Promise<CreateSaleOrdersFromImportPreviewOutput> {
@@ -109,6 +116,7 @@ export class CreateFromImportPreviewUseCase {
       advance: number;
       deliveryCost?:number;
       couponCode: string | null;
+      confirmedBy?:string | null;
     };
     destination: ImportDestination;
     clientId: string;
@@ -127,11 +135,12 @@ export class CreateFromImportPreviewUseCase {
     const { serie, correlative } = await this.numbering.reserveNext(input.tx);
     const deliveryDate = input.row.deliveryDate;
     const orderDate = input.row.orderDate;
-    const createdAt = this.resolveCreatedAtFromOrderDate(orderDate);
+    const createdAt = null;
     const normalizedWorkflowName = this.normalizeWorkflowName(input.row.workflowName);
     const resolvedWorkflow = normalizedWorkflowName
       ? await this.workflowRepo.findActiveByNormalizedName(normalizedWorkflowName, input.tx)
       : null;
+    const assignedBy = await this.resolveImportedAdviserId(input.row.confirmedBy, input.tx);
 
     const saleOrder = await this.saleOrderRepo.create(
       {
@@ -151,6 +160,7 @@ export class CreateFromImportPreviewUseCase {
         advertisingCode: input.row.advertisingCode,
         observation: null,
         sendAddress: input.destination.sendAddress,
+        assignedBy,
         createdBy: input.userId,
         createdAt,
         workflowId: resolvedWorkflow?.workflow.id ?? null,
@@ -205,7 +215,7 @@ export class CreateFromImportPreviewUseCase {
             method: "import_adelanto" as any,
             operationNumber: null,
             amount: advance,
-            note: "ADELANTO",
+            note: PaymentDescription.ANTICIPO,
           },
         ],
         input.tx,
@@ -239,26 +249,8 @@ export class CreateFromImportPreviewUseCase {
     return trimmed ? trimmed.toLocaleUpperCase("es-PE") : null;
   }
 
-  private resolveCreatedAtFromOrderDate(value: string | null | undefined): Date | null {
-    if (!value) return null;
-    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-    if (!match) return null;
-
-    const year = Number(match[1]);
-    const month = Number(match[2]);
-    const day = Number(match[3]);
-    const localWallTime = new Date(Date.UTC(year, month - 1, day));
-
-    if (
-      localWallTime.getUTCFullYear() !== year ||
-      localWallTime.getUTCMonth() !== month - 1 ||
-      localWallTime.getUTCDate() !== day
-    ) {
-      return null;
-    }
-
-    // created_at is a timestamp without time zone. UTC components are used here
-    // only as a stable representation of Peru's local wall-clock midnight.
-    return localWallTime;
+  private async resolveImportedAdviserId(value: string | null | undefined, tx: TransactionContext) {
+    return this.adviserResolver?.resolveByName(value, tx) ?? null;
   }
+
 }
