@@ -1085,7 +1085,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
   return { items, total };
   }
 
-  private toBankAccountStatistics(
+  private toPaymentDescriptionStatistics(
     rows: Array<{
       id: string | null;
       label: string;
@@ -1094,40 +1094,39 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       payments: string;
       collected: string;
     }>,
-  ): SaleOrderStatisticsOutput["byBankAccount"] {
-    const byAccount = new Map<string, SaleOrderStatisticsOutput["byBankAccount"][number]>();
+  ): SaleOrderStatisticsOutput["byPaymentDescription"] {
+    const byDescription = new Map<string, SaleOrderStatisticsOutput["byPaymentDescription"][number]>();
 
     for (const row of rows) {
-      const key = row.id ?? "__without_bank_account__";
-      const account = byAccount.get(key) ?? {
-        id: row.id,
-        label: row.label,
-        number: row.number ?? null,
+      const description = row.description || "Sin descripcion";
+      const descriptionGroup = byDescription.get(description) ?? {
+        description,
+        label: description,
         payments: 0,
         collected: 0,
-        byDescription: [],
+        byBankAccount: [],
       };
 
       const payments = Number(row.payments);
       const collected = Number(row.collected);
-      const description = row.description || "Sin descripcion";
 
-      account.payments += payments;
-      account.collected += collected;
-      account.byDescription.push({
-        description,
-        label: description,
+      descriptionGroup.payments += payments;
+      descriptionGroup.collected += collected;
+      descriptionGroup.byBankAccount.push({
+        id: row.id,
+        label: row.label,
+        number: row.number ?? null,
         payments,
         collected,
       });
 
-      byAccount.set(key, account);
+      byDescription.set(description, descriptionGroup);
     }
 
-    return Array.from(byAccount.values())
-      .map((account) => ({
-        ...account,
-        byDescription: account.byDescription.sort((left, right) => right.collected - left.collected),
+    return Array.from(byDescription.values())
+      .map((descriptionGroup) => ({
+        ...descriptionGroup,
+        byBankAccount: descriptionGroup.byBankAccount.sort((left, right) => right.collected - left.collected),
       }))
       .sort((left, right) => right.collected - left.collected);
   }
@@ -1354,7 +1353,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         label: clientTypeLabels[row.type] ?? row.type,
         count: Number(row.count),
       })),
-      byBankAccount: this.toBankAccountStatistics(bankAccountRows),
+      byPaymentDescription: this.toPaymentDescriptionStatistics(bankAccountRows),
       totals: {
         orders: Number(totalsRow?.orders ?? 0),
         total: Number(totalsRow?.total ?? 0),
