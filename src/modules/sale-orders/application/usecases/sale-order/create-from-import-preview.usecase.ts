@@ -127,7 +127,7 @@ export class CreateFromImportPreviewUseCase {
     const { serie, correlative } = await this.numbering.reserveNext(input.tx);
     const deliveryDate = input.row.deliveryDate;
     const orderDate = input.row.orderDate;
-    const createdAt = this.resolveCreatedAtFromOrderDate(orderDate);
+    const createdAt = null;
     const normalizedWorkflowName = this.normalizeWorkflowName(input.row.workflowName);
     const resolvedWorkflow = normalizedWorkflowName
       ? await this.workflowRepo.findActiveByNormalizedName(normalizedWorkflowName, input.tx)
@@ -237,28 +237,5 @@ export class CreateFromImportPreviewUseCase {
   private normalizeWorkflowName(value: string | null | undefined): string | null {
     const trimmed = String(value ?? "").trim().replace(/\s+/g, " ");
     return trimmed ? trimmed.toLocaleUpperCase("es-PE") : null;
-  }
-
-  private resolveCreatedAtFromOrderDate(value: string | null | undefined): Date | null {
-    if (!value) return null;
-    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-    if (!match) return null;
-
-    const year = Number(match[1]);
-    const month = Number(match[2]);
-    const day = Number(match[3]);
-    const localWallTime = new Date(Date.UTC(year, month - 1, day));
-
-    if (
-      localWallTime.getUTCFullYear() !== year ||
-      localWallTime.getUTCMonth() !== month - 1 ||
-      localWallTime.getUTCDate() !== day
-    ) {
-      return null;
-    }
-
-    // created_at is a timestamp without time zone. UTC components are used here
-    // only as a stable representation of Peru's local wall-clock midnight.
-    return localWallTime;
   }
 }
