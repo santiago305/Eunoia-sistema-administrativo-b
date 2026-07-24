@@ -35,12 +35,14 @@ export class GetOrderTimelineUseCase {
     const transitions = new Map(
       aggregates.flatMap((aggregate) => aggregate?.transitions ?? []).map((transition) => [transition.id, transition]),
     );
-    const executedByIds = Array.from(new Set(history.map((entry) => entry.executedBy)));
+    const executedByIds = Array.from(
+      new Set(history.map((entry) => entry.executedBy).filter((userId): userId is string => Boolean(userId))),
+    );
     const users = await Promise.all(executedByIds.map((userId) => this.userRepo.findById(userId)));
     const usersById = new Map(users.filter((user) => user !== null).map((user) => [user.id, user]));
 
     return history.map((entry) => {
-      const executedByUser = usersById.get(entry.executedBy);
+      const executedByUser = entry.executedBy ? usersById.get(entry.executedBy) : null;
 
       return {
         id: entry.id,

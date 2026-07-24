@@ -162,7 +162,7 @@ export class SaleOrderWorkflowTransitionService {
     };
   }
 
-  async advanceAutomatic(saleOrderId: string, executedBy: string, tx: TransactionContext) {
+  async advanceAutomatic(saleOrderId: string, executedBy: string | null | undefined, tx: TransactionContext) {
     const order = await this.saleOrderRepo.findByIdForUpdate(saleOrderId, tx);
     if (!order?.workflowId || !order.currentStateId) {
       return null;
@@ -214,7 +214,7 @@ export class SaleOrderWorkflowTransitionService {
           transitionId: bundle.transition.id,
           fromStateId: order.currentStateId,
           toStateId: toStateId ?? order.currentStateId,
-          executedBy,
+          executedBy: executedBy ?? null,
           executedAt: this.clock.now(),
           metadata: {
             source: "automatic-workflow",

@@ -5,7 +5,7 @@ export type SaleOrderStateHistoryProps = {
   transitionId: string | null;
   fromStateId: string | null;
   toStateId: string;
-  executedBy: string;
+  executedBy: string | null;
   executedAt: Date;
   metadata: Readonly<Record<string, unknown>> | null;
 };
@@ -17,7 +17,7 @@ export class SaleOrderStateHistory {
   readonly transitionId: string | null;
   readonly fromStateId: string | null;
   readonly toStateId: string;
-  readonly executedBy: string;
+  readonly executedBy: string | null;
   readonly executedAt: Date;
   readonly metadata: Readonly<Record<string, unknown>> | null;
 
