@@ -695,7 +695,7 @@ describe("SaleOrderTypeormRepository", () => {
     );
   });
 
-  it("returns statistics grouped by bank account and payment description", async () => {
+  it("returns statistics grouped by payment description and bank account", async () => {
     const baseQb = createStatsQueryBuilder();
     const workflowQb = createStatsQueryBuilder([]);
     const stateQb = createStatsQueryBuilder([]);
@@ -748,30 +748,49 @@ describe("SaleOrderTypeormRepository", () => {
 
     const result = await repository.statistics({});
 
-    expect(result.byBankAccount).toEqual([
+    expect(result.byPaymentDescription).toEqual([
       {
-        id: "bank-1",
-        label: "BCP Soles",
-        number: "001",
-        payments: 3,
-        collected: 120,
-        byDescription: [
-          { description: "Anticipo", label: "Anticipo", payments: 2, collected: 80 },
-          { description: "Saldo", label: "Saldo", payments: 1, collected: 40 },
+        description: "Anticipo",
+        label: "Anticipo",
+        payments: 2,
+        collected: 80,
+        byBankAccount: [
+          {
+            id: "bank-1",
+            label: "BCP Soles",
+            number: "001",
+            payments: 2,
+            collected: 80,
+          },
         ],
       },
       {
-        id: null,
-        label: "Sin cuenta",
-        number: null,
+        description: "Sin descripcion",
+        label: "Sin descripcion",
         payments: 3,
         collected: 60,
-        byDescription: [
+        byBankAccount: [
           {
-            description: "Sin descripcion",
-            label: "Sin descripcion",
+            id: null,
+            label: "Sin cuenta",
+            number: null,
             payments: 3,
             collected: 60,
+          },
+        ],
+      },
+      {
+        description: "Saldo",
+        label: "Saldo",
+        payments: 1,
+        collected: 40,
+        byBankAccount: [
+          {
+            id: "bank-1",
+            label: "BCP Soles",
+            number: "001",
+            payments: 1,
+            collected: 40,
           },
         ],
       },

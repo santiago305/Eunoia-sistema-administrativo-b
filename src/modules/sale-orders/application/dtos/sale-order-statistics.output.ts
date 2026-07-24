@@ -4,15 +4,15 @@ export type SaleOrderStatisticsOutput = {
   byWorkflow: Array<{ id: string | null; label: string; count: number }>;
   byState: Array<{ id: string | null; label: string; color: string | null; count: number }>;
   byClientType: Array<{ type: ClientType; label: string; count: number }>;
-  byBankAccount: Array<{
-    id: string | null;
+  byPaymentDescription: Array<{
+    description: string;
     label: string;
-    number: string | null;
     payments: number;
     collected: number;
-    byDescription: Array<{
-      description: string;
+    byBankAccount: Array<{
+      id: string | null;
       label: string;
+      number: string | null;
       payments: number;
       collected: number;
     }>;

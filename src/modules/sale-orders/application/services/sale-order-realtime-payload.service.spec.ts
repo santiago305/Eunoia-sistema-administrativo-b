@@ -7,7 +7,7 @@ describe("SaleOrderRealtimePayloadService", () => {
       byWorkflow: [],
       byState: [],
       byClientType: [],
-      byBankAccount: [],
+      byPaymentDescription: [],
       totals: { orders: 1, total: 120, collected: 10, pending: 110, deliveryCostSum: 0 },
     };
     const repository = {
