@@ -12,6 +12,7 @@ export interface ProductCatalogProductListItem {
   baseUnit?: string | null;
   baseUnitCode?: string | null;
   isActive: boolean;
+  isDeleted: boolean;
   skuCount: number;
   inventoryTotal: number;
 }
@@ -65,7 +66,7 @@ export interface ProductCatalogProductRepository {
   create(product: ProductCatalogProduct): Promise<ProductCatalogProduct>;
   update(
     id: string,
-    patch: Partial<Pick<ProductCatalogProduct, "name" | "description" | "type" | "brand" | "baseUnitId" | "isActive">>,
+    patch: Partial<Pick<ProductCatalogProduct, "name" | "description" | "type" | "brand" | "baseUnitId" | "isActive" | "isDeleted">>,
   ): Promise<ProductCatalogProduct | null>;
   findById(id: string): Promise<ProductCatalogProduct | null>;
   findByName(name: string): Promise<ProductCatalogProduct | null>;

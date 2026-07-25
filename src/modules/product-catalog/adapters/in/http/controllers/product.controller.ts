@@ -191,18 +191,18 @@ const PRODUCT_EXPORT_LABELS: Record<string, string> = {
       return this.getProductDetail.execute(id, warehouseId);
     }
 
-    @RequireAnyPermissionGroups(["products.update", "materials.update"])
+    @RequireAnyPermissionGroups(["products.update", "materials.update", "products.delete", "materials.delete"])
     @Patch(":id")
     async update(
       @Param("id", ParseUUIDPipe) id: string,
       @Body() dto: UpdateProductCatalogProductDto,
       @CurrentUser() user: { id: string },
     ) {
-      await this.ensureProductPermission(user.id, id, "update");
+      await this.ensureProductPermission(user.id, id, dto.isDeleted ? "delete" : "update");
       return this.updateProduct.execute(id, dto);
     }
 
-    private async ensureProductPermission(userId: string, productId: string, action: "update") {
+    private async ensureProductPermission(userId: string, productId: string, action: "update" | "delete") {
       const { product } = await this.getProduct.execute(productId);
       const prefix = product.type === ProductCatalogProductType.MATERIAL ? "materials" : "products";
       const allowed = await this.accessControlService.userHasAllPermissions(userId, [`${prefix}.${action}`]);

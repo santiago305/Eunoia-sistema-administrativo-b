@@ -93,6 +93,7 @@ import { StrengthenProductEquivalences20260720020000 } from "./migrations/202607
 import { AlignRolesCurrentSchema20260720010000 } from "./migrations/20260720010000-align-roles-current-schema";
 import { AllowNullWorkflowHistoryExecutor20260720000000 } from "./migrations/20260720000000-allow-null-workflow-history-executor";
 import { FixProductionItemStockReference20260725120000 } from "./migrations/20260725120000-fix-production-item-stock-reference";
+import { AddProductLogicalDeletion20260725130000 } from "./migrations/20260725130000-add-product-logical-deletion";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -197,6 +198,7 @@ export const databaseMigrations = [
     StrengthenProductEquivalences20260720020000,
     AllowNullWorkflowHistoryExecutor20260720000000,
     FixProductionItemStockReference20260725120000,
+    AddProductLogicalDeletion20260725130000,
 ];
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({

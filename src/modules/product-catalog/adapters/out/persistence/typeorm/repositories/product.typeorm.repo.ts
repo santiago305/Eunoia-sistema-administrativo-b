@@ -185,6 +185,7 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
       row.isActive,
       row.createdAt,
       row.updatedAt,
+      row.isDeleted ?? false,
     );
   }
 
@@ -199,6 +200,24 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
    * entry with the provided product details.
    */
   async create(product: ProductCatalogProduct): Promise<ProductCatalogProduct> {
+    const existing = await this.repo.findOne({ where: { name: product.name } });
+
+    if (existing?.isDeleted) {
+      await this.repo.update(
+        { id: existing.id },
+        {
+          description: product.description,
+          type: product.type,
+          brand: product.brand,
+          baseUnitId: product.baseUnitId,
+          isActive: true,
+          isDeleted: false,
+        },
+      );
+      const restored = await this.repo.findOne({ where: { id: existing.id } });
+      if (restored) return this.toDomain(restored);
+    }
+
     const saved = await this.repo.save({
       name: product.name,
       description: product.description,
@@ -206,6 +225,7 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
       brand: product.brand,
       baseUnitId: product.baseUnitId,
       isActive: product.isActive,
+      isDeleted: false,
     });
     return this.toDomain(saved);
   }
@@ -217,7 +237,7 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
   "isActive">>` which contains the partial data to be updated for the product. */
   async update(
     id: string,
-    patch: Partial<Pick<ProductCatalogProduct, "name" | "description" | "type" | "brand" | "baseUnitId" | "isActive">>,
+    patch: Partial<Pick<ProductCatalogProduct, "name" | "description" | "type" | "brand" | "baseUnitId" | "isActive" | "isDeleted">>,
   ): Promise<ProductCatalogProduct | null> {
     await this.repo.update({ id }, patch);
     const updated = await this.repo.findOne({ where: { id } });
@@ -336,6 +356,7 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
     if (params.isActive !== undefined) {
       qb.andWhere("p.is_active = :isActive", { isActive: params.isActive });
     }
+    qb.andWhere("p.is_deleted = false");
     if (params.q?.trim()) {
       qb.andWhere("(LOWER(p.name) LIKE :q OR LOWER(COALESCE(p.description, '')) LIKE :q OR LOWER(COALESCE(p.brand, '')) LIKE :q)", {
         q: `%${params.q.trim().toLowerCase()}%`,
@@ -404,6 +425,7 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
             ? row.baseUnit.code
             : null,
           isActive: product.isActive,
+          isDeleted: product.isDeleted,
         };  
       }),
       total,

@@ -244,6 +244,8 @@ export class ProductCatalogSkuTypeormRepository implements ProductCatalogSkuRepo
       .leftJoinAndSelect("s.product", "p")
       .leftJoinAndSelect("p.baseUnit", "bu");
 
+    qb.andWhere("p.is_deleted = false");
+
     if (params.productType) {
       qb.andWhere("p.type = :productType", {
         productType: params.productType,

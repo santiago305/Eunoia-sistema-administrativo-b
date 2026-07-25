@@ -22,6 +22,7 @@ export class UpdateProductCatalogProduct {
       brand?: string | null;
       baseUnitId?: string | null;
       isActive?: boolean;
+      isDeleted?: boolean;
     },
   ) {
     const updated = await this.repo.update(id, patch);
