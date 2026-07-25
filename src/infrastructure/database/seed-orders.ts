@@ -11,6 +11,8 @@ import { WorkflowConditionEntity } from '../../modules/workflow/adapters/out/per
 import { WorkflowActionEntity } from '../../modules/workflow/adapters/out/persistence/typeorm/entities/workflow-action.entity';
 import { seedSaleOrderStates } from '../../modules/sale-orders/infrastructure/jobs/sale-order-states.seeder';
 import { seedWorkflows } from '../../modules/workflow/infrastructure/seed/workflow.seeder';
+import { ProductCatalogDocumentSerieEntity } from '../../modules/product-catalog/adapters/out/persistence/typeorm/entities/document-serie.entity';
+import { seedDocumentSeries } from '../../modules/product-catalog/infrastructure/seed/document-serie.seeder';
 
 const orderSeedEntities = [
   WarehouseEntity,
@@ -21,6 +23,7 @@ const orderSeedEntities = [
   WorkflowTransitionEntity,
   WorkflowConditionEntity,
   WorkflowActionEntity,
+  ProductCatalogDocumentSerieEntity,
 ];
 
 export const createOrdersSeedDataSource = (): DataSource =>
@@ -37,10 +40,13 @@ export async function runOrdersSeed(dataSource = createOrdersSeedDataSource()): 
   }
 
   try {
-    await seedWarehouses(dataSource);
+    const warehouses = await seedWarehouses(dataSource);
+    for (const warehouse of warehouses) {
+      await seedDocumentSeries(dataSource, warehouse.id);
+    }
     await seedSaleOrderStates(dataSource);
     await seedWorkflows(dataSource);
-    console.log('Almacenes, estados y workflows de pedidos cargados correctamente.');
+    console.log('Almacenes, series, estados y workflows de pedidos cargados correctamente.');
   } finally {
     if (mustDestroy && dataSource.isInitialized) {
       await dataSource.destroy();
