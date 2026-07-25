@@ -1,8 +1,9 @@
-import { Injectable, InternalServerErrorException } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { RunProductionTimeUsecase } from "../usecases/production-order/run-production-time.usecase";
 
 @Injectable()
 export class ProductionOrderExpectedScheduler {
+  private readonly logger = new Logger(ProductionOrderExpectedScheduler.name);
   private readonly timers = new Map<string, NodeJS.Timeout>();
   private readonly scheduleMeta = new Map<string, { expectedAtMs: number; scheduledAtMs: number }>();
   private readonly monitorIntervalMs = 30000;
@@ -21,25 +22,27 @@ export class ProductionOrderExpectedScheduler {
 
     this.scheduleMeta.set(productionId, { expectedAtMs, scheduledAtMs: scheduledAt });
     if (delay <= 0) {
-      this.runExpected.execute(productionId).catch((err) => {
-        throw new InternalServerErrorException(
-          err instanceof Error ? err.message : "Error al ejecutar producción esperada",
-        );
+      void this.runExpected.execute(productionId).catch((err) => {
+        this.logExecutionError(productionId, err);
       });
       return;
     }
 
     const timer = setTimeout(() => {
-      this.runExpected.execute(productionId).catch((err) => {
-        throw new InternalServerErrorException(
-          err instanceof Error ? err.message : "Error al ejecutar producción esperada",
-        );
+      void this.runExpected.execute(productionId).catch((err) => {
+        this.logExecutionError(productionId, err);
       });
       this.timers.delete(productionId);
       this.scheduleMeta.delete(productionId);
     }, delay);
 
     this.timers.set(productionId, timer);
+  }
+
+  private logExecutionError(productionId: string, error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack : undefined;
+    this.logger.error(`No se pudo ejecutar la producción esperada ${productionId}: ${message}`, stack);
   }
 
   cancel(productionId: string) {

@@ -35,7 +35,7 @@ import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/
 import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
 import { AccessControlService } from "src/modules/access-control/application/services/access-control.service";
 import { InjectEntityManager, InjectRepository } from "@nestjs/typeorm";
-import { EntityManager, IsNull, Repository } from "typeorm";
+import { EntityManager, In, IsNull, Repository } from "typeorm";
 import { ProductionHistoryEventEntity } from "../../out/persistence/typeorm/entities/production-history-event.entity";
 import { ProductionAttachmentEntity } from "../../out/persistence/typeorm/entities/production-attachment.entity";
 import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
@@ -220,6 +220,35 @@ export class ProductionOrdersController {
               createdAt: approval.createdAt,
             }
           : null,
+      };
+    });
+  }
+
+  private async attachProductionImages<
+    T extends { productionId?: string | null; id?: string | null; imageProdution?: string[] },
+  >(items: T[]) {
+    const productionIds = Array.from(
+      new Set(items.map((item) => item.productionId ?? item.id).filter(Boolean)),
+    ) as string[];
+    if (!productionIds.length) return items;
+
+    const attachments = await this.productionAttachmentRepository.find({
+      where: { productionId: In(productionIds), deletedAt: IsNull() },
+      order: { createdAt: "ASC" },
+    });
+    const urlsByProductionId = new Map<string, string[]>();
+    for (const attachment of attachments) {
+      const urls = urlsByProductionId.get(attachment.productionId) ?? [];
+      urls.push(attachment.url);
+      urlsByProductionId.set(attachment.productionId, urls);
+    }
+
+    return items.map((item) => {
+      const productionId = item.productionId ?? item.id;
+      const attachmentUrls = productionId ? urlsByProductionId.get(productionId) ?? [] : [];
+      return {
+        ...item,
+        imageProdution: Array.from(new Set([...(item.imageProdution ?? []), ...attachmentUrls])),
       };
     });
   }
@@ -478,9 +507,10 @@ export class ProductionOrdersController {
       canViewAll: permissions.has("*") || permissions.has("production.view_all"),
       canViewCreatedByOthers: permissions.has("production.view_created_by_others"),
     });
+    const itemsWithImages = await this.attachProductionImages(result.items ?? []);
     return {
       ...result,
-      items: await this.attachPendingApprovals(result.items ?? []),
+      items: await this.attachPendingApprovals(itemsWithImages),
     };
   }
 
@@ -1179,6 +1209,14 @@ export class ProductionOrdersController {
       const urls = Array.from(
         new Set([...attachmentUrls, ...(order.imageProdution ?? [])]),
       );
+
+      // Keep the legacy field synchronized so list responses and old clients
+      // do not lose the evidence after a reload. The attachment remains the
+      // source of truth for the detail view.
+      await this.orderRepo.update({
+        productionId: id,
+        imageProdution: urls,
+      });
 
       const updated = {
         ...order,

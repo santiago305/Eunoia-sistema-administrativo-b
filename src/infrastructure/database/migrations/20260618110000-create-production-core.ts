@@ -8,7 +8,7 @@ export class CreateProductionCore20260618110000 implements MigrationInterface {
       CREATE TABLE IF NOT EXISTS production_order_items (
         item_id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
         production_id uuid NOT NULL REFERENCES production_orders(production_id) ON DELETE CASCADE,
-        finished_item_id uuid NOT NULL REFERENCES pc_skus(sku_id),
+        finished_item_id uuid NOT NULL REFERENCES pc_stock_items(stock_item_id),
         from_location_id uuid REFERENCES warehouse_locations(id),
         to_location_id uuid REFERENCES warehouse_locations(id),
         quantity int NOT NULL,

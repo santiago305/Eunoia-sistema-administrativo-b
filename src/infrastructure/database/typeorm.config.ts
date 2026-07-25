@@ -92,6 +92,7 @@ import { AlignPurchaseApprovalAndSupplierSkuSchema20260717100000 } from "./migra
 import { StrengthenProductEquivalences20260720020000 } from "./migrations/20260720020000-strengthen-product-equivalences";
 import { AlignRolesCurrentSchema20260720010000 } from "./migrations/20260720010000-align-roles-current-schema";
 import { AllowNullWorkflowHistoryExecutor20260720000000 } from "./migrations/20260720000000-allow-null-workflow-history-executor";
+import { FixProductionItemStockReference20260725120000 } from "./migrations/20260725120000-fix-production-item-stock-reference";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -195,6 +196,7 @@ export const databaseMigrations = [
     AlignRolesCurrentSchema20260720010000,
     StrengthenProductEquivalences20260720020000,
     AllowNullWorkflowHistoryExecutor20260720000000,
+    FixProductionItemStockReference20260725120000,
 ];
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({
