@@ -60,6 +60,7 @@ const ENVIO_SCHEDULED = ref('805b9bd3-5efb-51a4-a93e-1c06ea49357a');
 const ENVIO_WAITING_STOCK = ref('ef609d8b-a3d0-597f-9345-60fe5c46ee38');
 const ENVIO_DELIVERED = ref('51db9539-a81c-5dab-93a9-0ecd49a28c23');
 const ENVIO_WAITING_PAYMENT = ref('35e95b95-3687-5caa-8bcd-fb27f1a193ee');
+const ENVIO_TO_SEND = ref('c92c0444-fff0-4002-a876-276daf5fa88b');
 
 const draftToCreatedTransition = (clientId: string, fromStateRef: string, toStateRef: string) => transition({
   clientId,
@@ -86,16 +87,20 @@ export const ABONADO_WORKFLOW_SEEDS: WorkflowSeed[] = [
       { clientId: ENVIO_CREATED, saleOrderStateId: 'ae9b51d9-9324-4d15-a648-626a5eabda3d', position: 2, positionX: -562.7316284179688, positionY: -309.2750778198242, isInitial: false, isFinal: false, isActive: true },
       { clientId: ENVIO_SCHEDULED, saleOrderStateId: '2b2b266c-fee2-447d-9bb6-45d90f4d2cc2', position: 3, positionX: -562.5, positionY: -97.93066406249999, isInitial: false, isFinal: false, isActive: true },
       { clientId: ENVIO_WAITING_STOCK, saleOrderStateId: 'f779f1bd-4c20-4fd9-abe5-dfb065b4f1f3', position: 4, positionX: -288.75, positionY: -161.40418207480303, isInitial: false, isFinal: false, isActive: true },
-      { clientId: ENVIO_DELIVERED, saleOrderStateId: 'b0ae3f76-f6cd-4f34-88b2-3d4c29aca53f', position: 5, positionX: -245.75334571140957, positionY: 46.33580887812987, isInitial: false, isFinal: true, isActive: true },
+      { clientId: ENVIO_DELIVERED, saleOrderStateId: 'b0ae3f76-f6cd-4f34-88b2-3d4c29aca53f', position: 5, positionX: 97.47007745132676, positionY: 36.33901014523463, isInitial: false, isFinal: true, isActive: true },
       { clientId: ENVIO_WAITING_PAYMENT, saleOrderStateId: '2f512296-827a-42cb-a6cf-5afa2e64798b', position: 6, positionX: -565.6874645370526, positionY: 51.421371502229064, isInitial: false, isFinal: false, isActive: true },
+      { clientId: ENVIO_TO_SEND, saleOrderStateId: '4f61e23c-2064-47b4-8860-ab722c28cdb2', position: 7, positionX: -234.47978177828276, positionY: 46.50291970941866, isInitial: false, isFinal: false, isActive: true },
     ],
     transitions: [
       transition({ clientId: 'transition-ba15a520-69ea-581f-919e-61f6875ed1b7', code: 'CANCEL', name: 'Cancelar', toStateRef: ENVIO_CANCELLED, isGlobal: true, excludedStateRefs: [ENVIO_CANCELLED, ENVIO_DELIVERED], purpose: 'CANCEL', actions: [action('REVERT_STOCK')] }),
       transition({ clientId: 'transition-2750c023-0dfc-5093-9bcc-a2994b8a9816', code: 'TRANSITION_1781572278618', name: 'Programado', fromStateRef: ENVIO_CREATED, toStateRef: ENVIO_SCHEDULED, sourceHandle: 'bottom', targetHandle: 'top', autoTrigger: true, conditions: scheduleConditions(['client.docNumber', 'agencyDetail', 'deliveryDate']), actions: [action('RESERVE_STOCK')], elseEffect: 'MOVE_STATE', elseToStateRef: ENVIO_WAITING_STOCK }),
       transition({ clientId: 'transition-25d0d533-69a8-55de-90ac-7afc1aafe385', code: 'TRANSITION_1781572317577', name: 'Programado', fromStateRef: ENVIO_WAITING_STOCK, toStateRef: ENVIO_SCHEDULED, sourceHandle: 'bottom', targetHandle: 'right', autoTrigger: true, conditions: scheduleConditions(['client.docNumber', 'agencyDetail', 'deliveryDate']), actions: [action('RESERVE_STOCK')] }),
       invoice('transition-b7921654-ac9e-5bc4-9553-5a5b4a0fd6a4'),
+      transition({ clientId: 'transition-78c0c3ec-9fe8-4818-8c61-7f40a6641012', code: 'GLOBAL_ACTION_1785028166923', name: 'Preparado', effect: 'RUN_ACTIONS', isGlobal: true, excludedStateRefs: [ENVIO_WAITING_PAYMENT, ENVIO_DRAFT, ENVIO_DELIVERED, ENVIO_WAITING_STOCK, ENVIO_SCHEDULED, ENVIO_CREATED], actions: [action('MARK_PREPARED')] }),
+      transition({ clientId: 'transition-dbe6b404-7fca-4f39-a3fe-e59faf1c705f', code: 'GLOBAL_ACTION_1785028192676', name: 'Preguía', effect: 'RUN_ACTIONS', isGlobal: true, actions: [action('MARK_PREGUIDE')] }),
       transition({ clientId: 'transition-066ebc76-9b33-4636-b61b-a757568cf3a4', code: 'TRANSITION_1782332299577', name: 'Esperando', fromStateRef: ENVIO_SCHEDULED, toStateRef: ENVIO_WAITING_PAYMENT, sourceHandle: 'bottom', targetHandle: 'top', autoTrigger: true, conditions: [zeroDayWindow()] }),
-      transition({ clientId: 'transition-140b19ac-050e-4457-828e-ca70d2c8a1ea', code: 'TRANSITION_1782332323009', name: 'Entregado', fromStateRef: ENVIO_WAITING_PAYMENT, toStateRef: ENVIO_DELIVERED, sourceHandle: 'right', targetHandle: 'left', autoTrigger: true, conditions: [condition('IS_PAID', {}, 0)], actions: [action('CONSUME_STOCK')] }),
+      transition({ clientId: 'transition-140b19ac-050e-4457-828e-ca70d2c8a1ea', code: 'TRANSITION_1782332323009', name: 'Entregado', fromStateRef: ENVIO_WAITING_PAYMENT, toStateRef: ENVIO_TO_SEND, sourceHandle: 'right', targetHandle: 'left', autoTrigger: true, conditions: [condition('IS_PAID', {}, 0)], actions: [action('CONSUME_STOCK')] }),
+      transition({ clientId: 'transition-626eb486-8d2b-46b7-b753-e0b50d40fb8c', code: 'TRANSITION_1785028143867', name: 'Entregado', fromStateRef: ENVIO_TO_SEND, toStateRef: ENVIO_DELIVERED, sourceHandle: 'right', targetHandle: 'left' }),
       draftToCreatedTransition('transition-4882525c-2421-4497-a83e-513cf3f4db5e', ENVIO_DRAFT, ENVIO_CREATED),
     ],
   },

@@ -38,14 +38,20 @@ describe('ABONADO workflow seed definitions', () => {
       expect.arrayContaining([
         expect.objectContaining({
           clientId: 'state-51db9539-a81c-5dab-93a9-0ecd49a28c23',
-          positionX: -245.75334571140957,
-          positionY: 46.33580887812987,
+          positionX: 97.47007745132676,
+          positionY: 36.33901014523463,
           isFinal: true,
         }),
         expect.objectContaining({
           clientId: 'state-35e95b95-3687-5caa-8bcd-fb27f1a193ee',
           positionX: -565.6874645370526,
           positionY: 51.421371502229064,
+        }),
+        expect.objectContaining({
+          clientId: 'state-c92c0444-fff0-4002-a876-276daf5fa88b',
+          saleOrderStateId: '4f61e23c-2064-47b4-8860-ab722c28cdb2',
+          positionX: -234.47978177828276,
+          positionY: 46.50291970941866,
         }),
       ]),
     );
@@ -64,10 +70,44 @@ describe('ABONADO workflow seed definitions', () => {
           code: 'TRANSITION_1782332323009',
           name: 'Entregado',
           fromStateRef: 'state-35e95b95-3687-5caa-8bcd-fb27f1a193ee',
-          toStateRef: 'state-51db9539-a81c-5dab-93a9-0ecd49a28c23',
+          toStateRef: 'state-c92c0444-fff0-4002-a876-276daf5fa88b',
           actions: [
             {
               type: 'CONSUME_STOCK',
+              config: {},
+              position: 0,
+            },
+          ],
+        }),
+        expect.objectContaining({
+          clientId: 'transition-626eb486-8d2b-46b7-b753-e0b50d40fb8c',
+          code: 'TRANSITION_1785028143867',
+          name: 'Entregado',
+          fromStateRef: 'state-c92c0444-fff0-4002-a876-276daf5fa88b',
+          toStateRef: 'state-51db9539-a81c-5dab-93a9-0ecd49a28c23',
+          autoTrigger: false,
+        }),
+        expect.objectContaining({
+          code: 'GLOBAL_ACTION_1785028166923',
+          name: 'Preparado',
+          effect: 'RUN_ACTIONS',
+          isGlobal: true,
+          actions: [
+            {
+              type: 'MARK_PREPARED',
+              config: {},
+              position: 0,
+            },
+          ],
+        }),
+        expect.objectContaining({
+          code: 'GLOBAL_ACTION_1785028192676',
+          name: 'Preguía',
+          effect: 'RUN_ACTIONS',
+          isGlobal: true,
+          actions: [
+            {
+              type: 'MARK_PREGUIDE',
               config: {},
               position: 0,
             },

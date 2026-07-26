@@ -32,6 +32,8 @@ export interface SaleOrderSearchStateOutput {
     districts: ListingSearchOptionOutput[];
     sources: ListingSearchOptionOutput[];
     invoiceStatuses: ListingSearchOptionOutput[];
+    preguideStatuses: ListingSearchOptionOutput[];
+    preparedStatuses: ListingSearchOptionOutput[];
   };
 }
 export type SaleOrderItemComponentOutput = {
@@ -137,6 +139,8 @@ export type SaleOrderGetOutput = {
   workflow: SaleOrderWorkflowOutput | null;
   currentState: SaleOrderWorkflowStateOutput | null;
   invoiceSend: boolean;
+  prepared: boolean | null;
+  preguide: boolean | null;
   reserveBool: boolean;
   isActive: boolean;
   createdAt: string;

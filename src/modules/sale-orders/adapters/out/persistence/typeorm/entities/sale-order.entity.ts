@@ -90,6 +90,12 @@ export class SaleOrderEntity {
   @Column({ name: "invoice_send", type: "boolean", default: false })
   invoiceSend: boolean;
 
+  @Column({ name: "prepared", type: "boolean", nullable: true, default: false })
+  prepared?: boolean | null;
+
+  @Column({ name: "preguide", type: "boolean", nullable: true, default: false })
+  preguide?: boolean | null;
+
   @Column({ name: "reserve_bool", type: "boolean", default: false })
   reserveBool: boolean;
 

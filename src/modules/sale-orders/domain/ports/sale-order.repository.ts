@@ -80,5 +80,7 @@ export interface SaleOrderRepository {
   ): Promise<SaleOrder>;
   countSaleOrdersByClientId(clientId: string, tx?: TransactionContext): Promise<number>;
   markInvoiceSent(saleOrderId: string, tx?: TransactionContext): Promise<void>;
+  markPreguide(saleOrderId: string, tx?: TransactionContext): Promise<void>;
+  markPrepared(saleOrderId: string, tx?: TransactionContext): Promise<void>;
   setReserveBool(input: { saleOrderId: string; reserveBool: boolean }, tx?: TransactionContext): Promise<void>;
 }

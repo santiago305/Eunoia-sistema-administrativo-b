@@ -117,6 +117,8 @@ export class WorkflowsController {
       { type: ACTIONS.CONSUME_STOCK, configSchema: {} },
       { type: ACTIONS.REVERT_STOCK, configSchema: {} },
       { type: ACTIONS.MARK_INVOICE_SENT, configSchema: {} },
+      { type: ACTIONS.MARK_PREGUIDE, configSchema: {} },
+      { type: ACTIONS.MARK_PREPARED, configSchema: {} },
       {
         type: ACTIONS.ASSIGN_WAREHOUSE_BY_PROVINCE,
         configSchema: {

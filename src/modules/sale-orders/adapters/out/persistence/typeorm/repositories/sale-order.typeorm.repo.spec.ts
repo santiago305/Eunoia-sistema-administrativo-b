@@ -332,6 +332,36 @@ describe("SaleOrderTypeormRepository", () => {
     );
   });
 
+  it("marks preguide true idempotently", async () => {
+    const update = jest.fn().mockResolvedValue({ affected: 1 });
+    const entityRepo = { update };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue(entityRepo) },
+    } as any);
+
+    await repository.markPreguide("order-1");
+
+    expect(update).toHaveBeenCalledWith(
+      { id: "order-1" },
+      { preguide: true },
+    );
+  });
+
+  it("marks prepared true idempotently", async () => {
+    const update = jest.fn().mockResolvedValue({ affected: 1 });
+    const entityRepo = { update };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue(entityRepo) },
+    } as any);
+
+    await repository.markPrepared("order-1");
+
+    expect(update).toHaveBeenCalledWith(
+      { id: "order-1" },
+      { prepared: true },
+    );
+  });
+
   it("updates reserveBool explicitly", async () => {
     const update = jest.fn().mockResolvedValue({ affected: 1 });
     const entityRepo = { update };
@@ -893,6 +923,35 @@ describe("SaleOrderTypeormRepository", () => {
     });
   });
 
+  it("applies preguide and prepared status filters to list queries", async () => {
+    const qb = {
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      leftJoin: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+    };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue({ createQueryBuilder: jest.fn().mockReturnValue(qb) }) },
+    } as any);
+
+    await repository.list({
+      filters: [
+        { field: "preguideStatus", operator: "in", values: ["WITH"] },
+        { field: "preparedStatus", operator: "in", values: ["PENDING"] },
+      ] as any,
+    });
+
+    expect(qb.andWhere).toHaveBeenCalledWith("COALESCE(so.preguide, false) IN (:...filter_0_value)", {
+      filter_0_value: [true],
+    });
+    expect(qb.andWhere).toHaveBeenCalledWith("COALESCE(so.prepared, false) IN (:...filter_1_value)", {
+      filter_1_value: [false],
+    });
+  });
+
   it("applies createdAt filters as full local Peru day ranges in list queries", async () => {
     const qb = {
       leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -948,6 +1007,35 @@ describe("SaleOrderTypeormRepository", () => {
     });
     expect(baseQb.andWhere).toHaveBeenCalledWith("so.assignedBy NOT IN (:...stats_filter_1_value)", {
       stats_filter_1_value: ["assignee-1"],
+    });
+  });
+
+  it("applies preguide and prepared status filters to statistics", async () => {
+    const baseQb = createStatsQueryBuilder();
+    baseQb.clone
+      .mockReturnValueOnce(createStatsQueryBuilder([]))
+      .mockReturnValueOnce(createStatsQueryBuilder([]))
+      .mockReturnValueOnce(createStatsQueryBuilder([]))
+      .mockReturnValueOnce(createStatsQueryBuilder([], {}))
+      .mockReturnValueOnce(createStatsQueryBuilder([]));
+
+    const entityRepo = { createQueryBuilder: jest.fn().mockReturnValue(baseQb) };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue(entityRepo) },
+    } as any);
+
+    await repository.statistics({
+      filters: [
+        { field: "preguideStatus", operator: "in", values: ["WITHOUT"] },
+        { field: "preparedStatus", operator: "in", mode: "exclude", values: ["PREPARED"] },
+      ] as any,
+    });
+
+    expect(baseQb.andWhere).toHaveBeenCalledWith("COALESCE(so.preguide, false) IN (:...stats_filter_0_value)", {
+      stats_filter_0_value: [false],
+    });
+    expect(baseQb.andWhere).toHaveBeenCalledWith("COALESCE(so.prepared, false) NOT IN (:...stats_filter_1_value)", {
+      stats_filter_1_value: [true],
     });
   });
 
