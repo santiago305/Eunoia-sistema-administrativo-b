@@ -14,6 +14,8 @@ import {
   SaleOrderPaymentStatus,
   SaleOrderPaymentStatusValues,
   SaleOrderListItemOutput,
+  SaleOrderPreguideStatusValues,
+  SaleOrderPreparedStatusValues,
   SaleOrderSearchFields,
   SaleOrderSearchOperators,
   SaleOrderSearchRule,
@@ -135,6 +137,8 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         createdAt: item.createdAt,
       })) ?? [],
       Boolean(row.invoiceSend),
+      row.prepared ?? false,
+      row.preguide ?? false,
       Boolean(row.reserveBool),
     );
   }
@@ -290,6 +294,22 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     );
   }
 
+  async markPreguide(saleOrderId: string, tx?: TransactionContext): Promise<void> {
+    const manager = this.getManager(tx);
+    await manager.getRepository(SaleOrderEntity).update(
+      { id: saleOrderId },
+      { preguide: true },
+    );
+  }
+
+  async markPrepared(saleOrderId: string, tx?: TransactionContext): Promise<void> {
+    const manager = this.getManager(tx);
+    await manager.getRepository(SaleOrderEntity).update(
+      { id: saleOrderId },
+      { prepared: true },
+    );
+  }
+
   async setReserveBool(input: { saleOrderId: string; reserveBool: boolean }, tx?: TransactionContext): Promise<void> {
     const manager = this.getManager(tx);
     await manager.getRepository(SaleOrderEntity).update(
@@ -319,6 +339,36 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
   private paymentStatusSql() {
     const paymentsSumSql = "(SELECT COALESCE(SUM(sp.amount), 0) FROM sale_payments sp WHERE sp.sale_order_id = so.id)";
     return `CASE WHEN ${paymentsSumSql} >= so.total THEN '${SaleOrderPaymentStatusValues.PAID}' ELSE '${SaleOrderPaymentStatusValues.PENDING}' END`;
+  }
+
+  private applyBooleanStatusFilter(
+    qb: SelectQueryBuilder<SaleOrderEntity>,
+    filter: SaleOrderSearchRule,
+    column: "so.preguide" | "so.prepared",
+    valuesParam: string,
+  ) {
+    if (!filter.values?.length) return;
+    const booleanValues = filter.values
+      .map((value) => {
+        if (filter.field === SaleOrderSearchFields.PREGUIDE_STATUS) {
+          if (value === SaleOrderPreguideStatusValues.WITH) return true;
+          if (value === SaleOrderPreguideStatusValues.WITHOUT) return false;
+        }
+
+        if (filter.field === SaleOrderSearchFields.PREPARED_STATUS) {
+          if (value === SaleOrderPreparedStatusValues.PREPARED) return true;
+          if (value === SaleOrderPreparedStatusValues.PENDING) return false;
+        }
+
+        return null;
+      })
+      .filter((value): value is boolean => value !== null);
+
+    if (!booleanValues.length) return;
+
+    qb.andWhere(`COALESCE(${column}, false) ${filter.mode === "exclude" ? "NOT IN" : "IN"} (:...${valuesParam})`, {
+      [valuesParam]: Array.from(new Set(booleanValues)),
+    });
   }
 
   private parseLocalDateBoundary(value: string | undefined, addDays = 0): string | null {
@@ -769,6 +819,12 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
             });
           }
           break;
+        case SaleOrderSearchFields.PREGUIDE_STATUS:
+          this.applyBooleanStatusFilter(qb, filter, "so.preguide", valueParam);
+          break;
+        case SaleOrderSearchFields.PREPARED_STATUS:
+          this.applyBooleanStatusFilter(qb, filter, "so.prepared", valueParam);
+          break;
         case SaleOrderSearchFields.SCHEDULE_DATE:
         case SaleOrderSearchFields.DELIVERY_DATE:
         case SaleOrderSearchFields.CREATED_AT:
@@ -1045,6 +1101,8 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
             }
           : null,
         invoiceSend: Boolean(row.invoiceSend),
+        prepared: row.prepared ?? false,
+        preguide: row.preguide ?? false,
         reserveBool: Boolean(row.reserveBool),
         isActive: Boolean(row.isActive),
         createdAt: toIso(row.createdAt),
@@ -1222,6 +1280,10 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         });
       } else if (filter.field === SaleOrderSearchFields.PAYMENT_STATUS) {
         this.applyPaymentStatusFilter(base, filter, valueParam);
+      } else if (filter.field === SaleOrderSearchFields.PREGUIDE_STATUS) {
+        this.applyBooleanStatusFilter(base, filter, "so.preguide", valueParam);
+      } else if (filter.field === SaleOrderSearchFields.PREPARED_STATUS) {
+        this.applyBooleanStatusFilter(base, filter, "so.prepared", valueParam);
       } else if (
         filter.field === SaleOrderSearchFields.SCHEDULE_DATE ||
         filter.field === SaleOrderSearchFields.DELIVERY_DATE ||
@@ -1730,6 +1792,8 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       : null,
 
     invoiceSend: Boolean(row.invoiceSend),
+    prepared: row.prepared ?? false,
+    preguide: row.preguide ?? false,
     reserveBool: Boolean(row.reserveBool),
     isActive: Boolean(row.isActive),
     createdAt: toIso(row.createdAt),

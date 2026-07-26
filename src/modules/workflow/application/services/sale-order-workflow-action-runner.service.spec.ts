@@ -20,6 +20,8 @@ describe("SaleOrderWorkflowActionRunnerService", () => {
     const lock = { lockSnapshots: jest.fn().mockResolvedValue(undefined) };
     const saleOrders = {
       markInvoiceSent: jest.fn().mockResolvedValue(undefined),
+      markPreguide: jest.fn().mockResolvedValue(undefined),
+      markPrepared: jest.fn().mockResolvedValue(undefined),
       setReserveBool: jest.fn().mockResolvedValue(undefined),
     };
     const history = {
@@ -152,6 +154,34 @@ describe("SaleOrderWorkflowActionRunnerService", () => {
     );
 
     expect(saleOrders.markInvoiceSent).toHaveBeenCalledWith("order-1", tx);
+    expect(requirements.resolve).not.toHaveBeenCalled();
+  });
+
+  it("marks preguide without requiring a warehouse", async () => {
+    const { runner, saleOrders, requirements } = setup();
+    const orderWithoutWarehouse = { id: "order-1", warehouseId: null } as any;
+
+    await runner.run(
+      orderWithoutWarehouse,
+      [{ id: "a1", transitionId: "t1", type: "MARK_PREGUIDE", config: {}, position: 0 } as any],
+      tx,
+    );
+
+    expect(saleOrders.markPreguide).toHaveBeenCalledWith("order-1", tx);
+    expect(requirements.resolve).not.toHaveBeenCalled();
+  });
+
+  it("marks prepared without requiring a warehouse", async () => {
+    const { runner, saleOrders, requirements } = setup();
+    const orderWithoutWarehouse = { id: "order-1", warehouseId: null } as any;
+
+    await runner.run(
+      orderWithoutWarehouse,
+      [{ id: "a1", transitionId: "t1", type: "MARK_PREPARED", config: {}, position: 0 } as any],
+      tx,
+    );
+
+    expect(saleOrders.markPrepared).toHaveBeenCalledWith("order-1", tx);
     expect(requirements.resolve).not.toHaveBeenCalled();
   });
 

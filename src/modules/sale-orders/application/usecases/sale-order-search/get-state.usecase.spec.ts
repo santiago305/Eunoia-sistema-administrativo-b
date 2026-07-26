@@ -27,6 +27,32 @@ describe("GetSaleOrderSearchStateUsecase", () => {
     ]);
   });
 
+  it("returns preguide and prepared status catalogs", async () => {
+    const repo = {
+      listState: jest.fn().mockResolvedValue({
+        recent: [],
+        metrics: [],
+        clients: [],
+        warehouses: [],
+        workflows: [],
+        states: [],
+        bankAccounts: [],
+      }),
+    };
+    const usecase = new GetSaleOrderSearchStateUsecase(repo as any);
+
+    const result = await usecase.execute("user-1");
+
+    expect(result.catalogs.preguideStatuses).toMatchObject([
+      { id: "WITH", label: "Con pregu\u00eda" },
+      { id: "WITHOUT", label: "Sin pregu\u00eda" },
+    ]);
+    expect(result.catalogs.preparedStatuses).toMatchObject([
+      { id: "PREPARED", label: "Preparado" },
+      { id: "PENDING", label: "Sin preparar" },
+    ]);
+  });
+
   it("returns creator and assignee catalogs and uses them in labels", async () => {
     const repo = {
       listState: jest.fn().mockResolvedValue({

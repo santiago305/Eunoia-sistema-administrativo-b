@@ -40,6 +40,18 @@ describe("sale order search utils", () => {
     ]);
   });
 
+  it("keeps preguide and prepared status catalog filters", () => {
+    expect(
+      sanitizeSaleOrderSearchFilters([
+        { field: "preguideStatus", operator: "in", values: ["WITH", "WITHOUT", "INVALID"] },
+        { field: "preparedStatus", operator: "in", mode: "exclude", values: ["PREPARED"] },
+      ] as any),
+    ).toEqual([
+      { field: "preguideStatus", operator: "in", mode: "include", values: ["WITH", "WITHOUT"] },
+      { field: "preparedStatus", operator: "in", mode: "exclude", values: ["PREPARED"] },
+    ]);
+  });
+
   it("uses workflow and state labels in saved searches", () => {
     const label = buildSaleOrderSearchLabel(
       {
@@ -95,6 +107,23 @@ describe("sale order search utils", () => {
     );
 
     expect(label).toBe("Creado por: Santiago | Asignado a: Ana - Luis");
+  });
+
+  it("uses preguide and prepared status labels in saved searches", () => {
+    const label = buildSaleOrderSearchLabel(
+      {
+        filters: [
+          { field: "preguideStatus", operator: "in", values: ["WITH"] },
+          { field: "preparedStatus", operator: "in", values: ["PENDING"] },
+        ],
+      } as any,
+      {
+        preguideStatuses: new Map([["WITH", "Con pregu\u00eda"]]),
+        preparedStatuses: new Map([["PENDING", "Sin preparar"]]),
+      } as any,
+    );
+
+    expect(label).toBe("Pregu\u00eda: Con pregu\u00eda | Preparado: Sin preparar");
   });
 
   it("normalizes calendar periods and preserves semantic labels", () => {

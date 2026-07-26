@@ -50,11 +50,20 @@ export class GetAvailableTransitionsUseCase {
       const bundles = await this.transitionRepo.listFromState(order.workflowId, order.currentStateId, tx);
 
       return bundles.filter((bundle) => {
-        if (!order.invoiceSend) {
-          return true;
-        }
+        const alreadyCompleted = bundle.actions.some((action) => {
+          if (action.type === ACTIONS.MARK_INVOICE_SENT) {
+            return order.invoiceSend;
+          }
+          if (action.type === ACTIONS.MARK_PREGUIDE) {
+            return order.preguide === true;
+          }
+          if (action.type === ACTIONS.MARK_PREPARED) {
+            return order.prepared === true;
+          }
+          return false;
+        });
 
-        return !bundle.actions.some((action) => action.type === ACTIONS.MARK_INVOICE_SENT);
+        return !alreadyCompleted;
       }).map((bundle) => {
         const targetState = aggregate.states.find((state) => state.id === bundle.transition.toStateId) ?? null;
         const decision = this.engine.canTransition({

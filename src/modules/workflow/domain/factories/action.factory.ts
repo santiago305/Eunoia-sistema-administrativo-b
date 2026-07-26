@@ -8,6 +8,8 @@ export class ActionFactory {
       case ACTIONS.CONSUME_STOCK:
       case ACTIONS.REVERT_STOCK:
       case ACTIONS.MARK_INVOICE_SENT:
+      case ACTIONS.MARK_PREGUIDE:
+      case ACTIONS.MARK_PREPARED:
         return;
       case ACTIONS.ASSIGN_WAREHOUSE_BY_PROVINCE:
         this.validateWarehouseAssignmentConfig(action.config);

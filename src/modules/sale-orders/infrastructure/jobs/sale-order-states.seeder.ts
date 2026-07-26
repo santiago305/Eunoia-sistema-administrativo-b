@@ -46,6 +46,12 @@ const SALE_ORDER_STATES: SaleOrderStateSeed[] = [
     color: '#A855F7',
   },
   {
+    id: '4f61e23c-2064-47b4-8860-ab722c28cdb2',
+    code: '1C304C40-CC11-474C-A070-177D6371C1A2',
+    name: 'Por enviar',
+    color: '#f59e0b',
+  },
+  {
     id: 'b0ae3f76-f6cd-4f34-88b2-3d4c29aca53f',
     code: 'DELIVERED',
     name: 'Entregado',

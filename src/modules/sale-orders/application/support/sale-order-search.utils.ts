@@ -4,6 +4,8 @@ import {
   SaleOrderPaymentStatusValue,
   SaleOrderPaymentStatusValues,
   SaleOrderInvoiceStatusValues,
+  SaleOrderPreguideStatusValues,
+  SaleOrderPreparedStatusValues,
   SaleOrderSearchField,
   SaleOrderSearchFields,
   SaleOrderSearchOperator,
@@ -28,6 +30,8 @@ type SearchCatalogMaps = {
   districts?: Map<string, string>;
   sources?: Map<string, string>;
   invoiceStatuses?: Map<string, string>;
+  preguideStatuses?: Map<string, string>;
+  preparedStatuses?: Map<string, string>;
 };
 
 const uniqueStrings = (values: string[] | undefined) =>
@@ -51,6 +55,8 @@ const FILTER_FIELD_ORDER: SaleOrderSearchField[] = [
   SaleOrderSearchFields.AGENCY_DETAIL,
   SaleOrderSearchFields.SOURCE_ID,
   SaleOrderSearchFields.INVOICE_STATUS,
+  SaleOrderSearchFields.PREGUIDE_STATUS,
+  SaleOrderSearchFields.PREPARED_STATUS,
   SaleOrderSearchFields.SCHEDULE_DATE,
   SaleOrderSearchFields.DELIVERY_DATE,
   SaleOrderSearchFields.CREATED_AT,
@@ -73,6 +79,8 @@ const CATALOG_FIELDS = new Set<SaleOrderSearchField>([
   SaleOrderSearchFields.CLIENT_DISTRICT_ID,
   SaleOrderSearchFields.SOURCE_ID,
   SaleOrderSearchFields.INVOICE_STATUS,
+  SaleOrderSearchFields.PREGUIDE_STATUS,
+  SaleOrderSearchFields.PREPARED_STATUS,
 ]);
 
 const DATE_FIELDS = new Set<SaleOrderSearchField>([
@@ -123,6 +131,8 @@ const SEARCH_FIELD_LABELS: Record<SaleOrderSearchField, string> = {
   [SaleOrderSearchFields.AGENCY_DETAIL]: "Agencia",
   [SaleOrderSearchFields.SOURCE_ID]: "Origen",
   [SaleOrderSearchFields.INVOICE_STATUS]: "Comprobante",
+  [SaleOrderSearchFields.PREGUIDE_STATUS]: "Pregu\u00eda",
+  [SaleOrderSearchFields.PREPARED_STATUS]: "Preparado",
   [SaleOrderSearchFields.SCHEDULE_DATE]: "F. Programada",
   [SaleOrderSearchFields.DELIVERY_DATE]: "F. Entrega",
   [SaleOrderSearchFields.CREATED_AT]: "F. Creacion",
@@ -154,6 +164,16 @@ export const SALE_ORDER_CLIENT_TYPE_SEARCH_OPTIONS: ListingSearchOptionOutput[] 
   { id: ClientType.LAGGING, label: "Rezagado", keywords: ["rezagado"] },
   { id: ClientType.REPURCHASE, label: "Recompra", keywords: ["recompra"] },
   { id: ClientType.UNDEFINED, label: "Sin definir", keywords: ["sin definir"] },
+];
+
+export const SALE_ORDER_PREGUIDE_STATUS_SEARCH_OPTIONS: ListingSearchOptionOutput[] = [
+  { id: SaleOrderPreguideStatusValues.WITH, label: "Con pregu\u00eda", keywords: ["con preguia", "preguia"] },
+  { id: SaleOrderPreguideStatusValues.WITHOUT, label: "Sin pregu\u00eda", keywords: ["sin preguia"] },
+];
+
+export const SALE_ORDER_PREPARED_STATUS_SEARCH_OPTIONS: ListingSearchOptionOutput[] = [
+  { id: SaleOrderPreparedStatusValues.PREPARED, label: "Preparado", keywords: ["preparado"] },
+  { id: SaleOrderPreparedStatusValues.PENDING, label: "Sin preparar", keywords: ["sin preparar", "pendiente"] },
 ];
 
 export function normalizeSearchText(value: string | undefined | null) {
@@ -350,6 +370,24 @@ function sanitizeSearchRule(rule?: Partial<SaleOrderSearchRule> | null): SaleOrd
       return { field, operator, mode, values: normalizedValues };
     }
 
+    if (field === SaleOrderSearchFields.PREGUIDE_STATUS) {
+      const allowed = new Set(Object.values(SaleOrderPreguideStatusValues));
+      const normalizedValues = values.filter((value) => allowed.has(
+        value as typeof SaleOrderPreguideStatusValues[keyof typeof SaleOrderPreguideStatusValues],
+      ));
+      if (!normalizedValues.length) return null;
+      return { field, operator, mode, values: normalizedValues };
+    }
+
+    if (field === SaleOrderSearchFields.PREPARED_STATUS) {
+      const allowed = new Set(Object.values(SaleOrderPreparedStatusValues));
+      const normalizedValues = values.filter((value) => allowed.has(
+        value as typeof SaleOrderPreparedStatusValues[keyof typeof SaleOrderPreparedStatusValues],
+      ));
+      if (!normalizedValues.length) return null;
+      return { field, operator, mode, values: normalizedValues };
+    }
+
     return { field, operator, mode, values };
   }
 
@@ -462,6 +500,10 @@ function getCatalogMap(field: SaleOrderSearchField, maps: SearchCatalogMaps) {
       return maps.sources;
     case SaleOrderSearchFields.INVOICE_STATUS:
       return maps.invoiceStatuses;
+    case SaleOrderSearchFields.PREGUIDE_STATUS:
+      return maps.preguideStatuses;
+    case SaleOrderSearchFields.PREPARED_STATUS:
+      return maps.preparedStatuses;
     default:
       return undefined;
   }

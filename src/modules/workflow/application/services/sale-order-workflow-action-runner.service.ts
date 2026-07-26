@@ -114,6 +114,12 @@ export class SaleOrderWorkflowActionRunnerService {
         if (action.type === ACTIONS.MARK_INVOICE_SENT) {
           await this.saleOrderRepo.markInvoiceSent(order.id, tx);
         }
+        if (action.type === ACTIONS.MARK_PREGUIDE) {
+          await this.saleOrderRepo.markPreguide(order.id, tx);
+        }
+        if (action.type === ACTIONS.MARK_PREPARED) {
+          await this.saleOrderRepo.markPrepared(order.id, tx);
+        }
       }
       return { order: effectiveOrder, outcomes };
     }
@@ -203,6 +209,14 @@ export class SaleOrderWorkflowActionRunnerService {
     for (const action of ordered) {
       if (action.type === ACTIONS.MARK_INVOICE_SENT) {
         await this.saleOrderRepo.markInvoiceSent(order.id, tx);
+        continue;
+      }
+      if (action.type === ACTIONS.MARK_PREGUIDE) {
+        await this.saleOrderRepo.markPreguide(order.id, tx);
+        continue;
+      }
+      if (action.type === ACTIONS.MARK_PREPARED) {
+        await this.saleOrderRepo.markPrepared(order.id, tx);
         continue;
       }
       if (action.type === ACTIONS.ASSIGN_WAREHOUSE_BY_PROVINCE) {

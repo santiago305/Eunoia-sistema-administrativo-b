@@ -16,6 +16,8 @@ export const SaleOrderSearchFields = {
   AGENCY_DETAIL: "agencyDetail",
   SOURCE_ID: "sourceId",
   INVOICE_STATUS: "invoiceStatus",
+  PREGUIDE_STATUS: "preguideStatus",
+  PREPARED_STATUS: "preparedStatus",
   SCHEDULE_DATE: "scheduleDate",
   DELIVERY_DATE: "deliveryDate",
   CREATED_AT: "createdAt",
@@ -57,6 +59,16 @@ export type SaleOrderPaymentStatusValue = typeof SaleOrderPaymentStatusValues[ke
 
 export const SaleOrderInvoiceStatusValues = {
   SENT: "SENT",
+  PENDING: "PENDING",
+} as const;
+
+export const SaleOrderPreguideStatusValues = {
+  WITH: "WITH",
+  WITHOUT: "WITHOUT",
+} as const;
+
+export const SaleOrderPreparedStatusValues = {
+  PREPARED: "PREPARED",
   PENDING: "PENDING",
 } as const;
 
@@ -135,6 +147,8 @@ export type SaleOrderListItemOutput = {
   workflow: SaleOrderWorkflowOutput | null;
   currentState: SaleOrderWorkflowStateOutput | null;
   invoiceSend: boolean;
+  prepared: boolean | null;
+  preguide: boolean | null;
   reserveBool: boolean;
   isActive: boolean;
   createdAt: string;
