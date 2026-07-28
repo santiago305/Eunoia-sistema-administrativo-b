@@ -31,6 +31,7 @@ export interface PurchaseOrderDetailOutput {
   quotas: CreditQuotaOutput[];
   payments: PaymentOutput[];
   note?: string;
+  description?: string;
   status: PurchaseOrderStatus;
   isActive: boolean;
   expectedAt?: Date;

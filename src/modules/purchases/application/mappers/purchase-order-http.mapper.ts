@@ -16,6 +16,7 @@ export class PurchaseOrderHttpMapper {
       ...dto,
       serie: dto.serie?.trim(),
       note: dto.note?.trim() || undefined,
+      description: dto.description?.trim() || undefined,
     };
   }
 
@@ -28,6 +29,7 @@ export class PurchaseOrderHttpMapper {
       poId,
       serie: dto.serie?.trim(),
       note: dto.note?.trim() || undefined,
+      description: dto.description?.trim() || undefined,
     };
   }
 

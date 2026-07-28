@@ -1,8 +1,9 @@
-import { Injectable, InternalServerErrorException } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { RunExpectedAtUsecase } from "../usecases/purchase-order/run-expected-at.usecase";
 
 @Injectable()
 export class PurchaseOrderExpectedScheduler {
+  private readonly logger = new Logger(PurchaseOrderExpectedScheduler.name);
   private readonly timers = new Map<string, NodeJS.Timeout>();
   private readonly scheduleMeta = new Map<string, { expectedAtMs: number; scheduledAtMs: number }>();
   private readonly monitorIntervalMs = 30000;
@@ -10,33 +11,37 @@ export class PurchaseOrderExpectedScheduler {
 
   constructor(private readonly runExpected: RunExpectedAtUsecase) {}
 
+  private async runScheduled(poId: string) {
+    try {
+      await this.runExpected.execute(poId);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      const trace = err instanceof Error ? err.stack : undefined;
+      this.logger.warn(
+        `No se pudo ejecutar expectedAt para compra ${poId}: ${message}`,
+        trace,
+      );
+    } finally {
+      this.timers.delete(poId);
+      this.scheduleMeta.delete(poId);
+    }
+  }
+
   schedule(poId: string, expectedAt: Date) {
     this.cancel(poId);
 
     const scheduledAt = Date.now();
     const expectedAtMs = expectedAt.getTime();
     const delay = expectedAtMs - scheduledAt;
-    
+
     this.scheduleMeta.set(poId, { expectedAtMs, scheduledAtMs: scheduledAt });
     if (delay <= 0) {
-      this.runExpected.execute(poId).catch((err) => {
-        throw new InternalServerErrorException({
-          type:'error',
-          message:err
-        });
-      });
+      void this.runScheduled(poId);
       return;
     }
 
-    const timer = setTimeout(() => {      
-      this.runExpected.execute(poId).catch((err) => {
-        throw new InternalServerErrorException({
-          type:'error',
-          message:err
-        });
-      });
-      this.timers.delete(poId);
-      this.scheduleMeta.delete(poId);
+    const timer = setTimeout(() => {
+      void this.runScheduled(poId);
     }, delay);
 
     this.timers.set(poId, timer);

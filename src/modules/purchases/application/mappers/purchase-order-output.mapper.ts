@@ -37,6 +37,7 @@ export class PurchaseOrderOutputMapper {
       purchaseValue: order.purchaseValue.getAmount(),
       total: order.total?.getAmount(),
       note: order.note,
+      description: order.description,
       status: order.status,
       purchaseType: order.purchaseType,
       receptionStatus: order.receptionStatus,

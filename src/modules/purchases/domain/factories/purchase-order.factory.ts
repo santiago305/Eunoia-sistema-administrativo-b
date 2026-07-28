@@ -36,6 +36,7 @@ export class PurchaseOrderFactory {
     currency?: CurrencyType;
     paymentForm?: PaymentFormType;
     note?: string;
+    description?: string;
     status?: PurchaseOrderStatus;
     purchaseType?: PurchaseType;
     receptionStatus?: ReceptionStatus;
@@ -90,6 +91,7 @@ export class PurchaseOrderFactory {
       currency,
       params.paymentForm,
       params.note,
+      params.description,
       params.status ?? PurchaseOrderStatus.DRAFT,
       params.purchaseType ?? PurchaseType.INVENTORY,
       params.receptionStatus ?? ReceptionStatus.PENDING,
@@ -132,6 +134,7 @@ export class PurchaseOrderFactory {
     currency?: CurrencyType;
     paymentForm?: PaymentFormType;
     note?: string;
+    description?: string;
     status: PurchaseOrderStatus;
     purchaseType?: PurchaseType;
     receptionStatus?: ReceptionStatus;
@@ -187,6 +190,7 @@ export class PurchaseOrderFactory {
       currency,
       params.paymentForm,
       params.note,
+      params.description,
       params.status,
       params.purchaseType ?? PurchaseType.INVENTORY,
       params.receptionStatus ?? ReceptionStatus.PENDING,

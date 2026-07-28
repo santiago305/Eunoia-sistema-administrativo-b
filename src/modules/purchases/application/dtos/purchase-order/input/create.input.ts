@@ -25,6 +25,7 @@ export interface CreatePurchaseOrderInput {
   purchaseValue?: number;
   total?: number;
   note?: string;
+  description?: string;
   status?: PurchaseOrderStatus;
   purchaseType?: PurchaseType;
   receptionStatus?: ReceptionStatus;

@@ -95,6 +95,7 @@ export class PurchaseOrderTypeormRepository implements PurchaseOrderRepository {
       purchaseValue?: Money;
       total?: Money;
       note?: string;
+      description?: string;
       status?: PurchaseOrderStatus;
       purchaseType?: PurchaseType;
       receptionStatus?: ReceptionStatus;
@@ -131,6 +132,7 @@ export class PurchaseOrderTypeormRepository implements PurchaseOrderRepository {
     if (params.purchaseValue !== undefined) patch.purchaseValue = params.purchaseValue.getAmount();
     if (params.total !== undefined) patch.total = params.total.getAmount();
     if (params.note !== undefined) patch.note = params.note;
+    if (params.description !== undefined) patch.description = params.description;
     if (params.status !== undefined) patch.status = params.status;
     if (params.purchaseType !== undefined) patch.purchaseType = params.purchaseType;
     if (params.receptionStatus !== undefined) patch.receptionStatus = params.receptionStatus;

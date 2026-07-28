@@ -96,14 +96,21 @@ export class UploadPurchaseAttachmentUsecase {
       }
     }
 
-    const preparedFile = await prepareImageForStorage(input.file, this.imageProcessor, {
-      maxWidth: 1920,
-      maxHeight: 1920,
-      quality: 80,
-      maxInputBytes: 15 * 1024 * 1024,
-      maxInputPixels: 20_000_000,
-      maxOutputBytes: 2 * 1024 * 1024,
-    });
+    const preparedFile = input.file.mimetype === "application/pdf"
+      ? {
+          buffer: input.file.buffer,
+          extension: "pdf",
+          mimeType: "application/pdf",
+          sizeBytes: input.file.size ?? input.file.buffer.length,
+        }
+      : await prepareImageForStorage(input.file, this.imageProcessor, {
+          maxWidth: 1920,
+          maxHeight: 1920,
+          quality: 80,
+          maxInputBytes: 15 * 1024 * 1024,
+          maxInputPixels: 20_000_000,
+          maxOutputBytes: 2 * 1024 * 1024,
+        });
 
     const saved = await this.fileStorage.save({
       area: "public",

@@ -47,6 +47,7 @@ export interface PurchaseOrderRepository{
             purchaseValue?: Money;
             total?: Money;
             note?: string;
+            description?: string;
             status?: PurchaseOrderStatus;
             purchaseType?: PurchaseType;
             receptionStatus?: ReceptionStatus;
