@@ -22,6 +22,7 @@ import { GetSaleOrderItemComponentsUsecase } from "src/modules/sale-orders/appli
 import { UpdateSaleOrderUsecase } from "src/modules/sale-orders/application/usecases/sale-order/update.usecase";
 import { BulkAssignSaleOrdersUsecase } from "../application/usecases/sale-order/bulk-assign.usecase";
 import { BulkChangeSaleOrderStateUsecase } from "../application/usecases/sale-order/bulk-change-state.usecase";
+import { BulkExecuteSaleOrderWorkflowUsecase } from "../application/usecases/sale-order/bulk-execute-workflow.usecase";
 import { GetSaleOrderSearchStateUsecase } from "src/modules/sale-orders/application/usecases/sale-order-search/get-state.usecase";
 import { SaveSaleOrderSearchMetricUsecase } from "src/modules/sale-orders/application/usecases/sale-order-search/save-metric.usecase";
 import { DeleteSaleOrderSearchMetricUsecase } from "src/modules/sale-orders/application/usecases/sale-order-search/delete-metric.usecase";
@@ -86,6 +87,7 @@ export const saleOrdersModuleProviders = [
   UpdateSaleOrderUsecase,
   BulkAssignSaleOrdersUsecase,
   BulkChangeSaleOrderStateUsecase,
+  BulkExecuteSaleOrderWorkflowUsecase,
   ListSaleOrdersUsecase,
   GetSaleOrderStatisticsUsecase,
   CancelSaleOrderUsecase,

@@ -59,6 +59,9 @@ export class PurchaseOrderEntity {
   @Column({ name: "note", type: "text", nullable: true })
   note?: string | null;
 
+  @Column({ name: "description", type: "text", nullable: true })
+  description?: string | null;
+
   @Column({ name: "status", type: "enum", enum: PurchaseOrderStatus, enumName: "po_status", default: PurchaseOrderStatus.DRAFT })
   status: PurchaseOrderStatus;
 

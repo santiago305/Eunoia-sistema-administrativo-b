@@ -171,4 +171,35 @@ describe("UploadPurchaseAttachmentUsecase", () => {
       extension: "png",
     }));
   });
+
+  it("accepts pdf files as payment proof attachments", async () => {
+    const { usecase, attachmentRepo, fileStorage, imageProcessor } = buildUsecase();
+    const pdf = {
+      buffer: Buffer.from("%PDF-1.4"),
+      mimetype: "application/pdf",
+      originalname: "pago.pdf",
+      size: 8,
+    } as Express.Multer.File;
+
+    await usecase.execute({
+      purchaseId: "purchase-1",
+      paymentId: "payment-1",
+      type: PurchaseAttachmentType.PAYMENT_PROOF,
+      file: pdf,
+    }, "user-1");
+
+    expect(imageProcessor.toWebp).not.toHaveBeenCalled();
+    expect(fileStorage.save).toHaveBeenCalledWith(expect.objectContaining({
+      area: "public",
+      buffer: pdf.buffer,
+      extension: "pdf",
+    }));
+    expect(attachmentRepo.create).toHaveBeenCalledWith(expect.objectContaining({
+      type: PurchaseAttachmentType.PAYMENT_PROOF,
+      paymentId: "payment-1",
+      originalName: "pago.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 8,
+    }));
+  });
 });

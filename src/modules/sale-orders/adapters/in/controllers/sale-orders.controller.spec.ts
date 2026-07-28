@@ -34,6 +34,7 @@ import { SaleOrderRealtimePayloadService } from "src/modules/sale-orders/applica
 import { SaveSaleOrderWithClientUsecase } from "src/modules/sale-orders/application/usecases/sale-order/save-with-client.usecase";
 import { BulkAssignSaleOrdersUsecase } from "src/modules/sale-orders/application/usecases/sale-order/bulk-assign.usecase";
 import { BulkChangeSaleOrderStateUsecase } from "src/modules/sale-orders/application/usecases/sale-order/bulk-change-state.usecase";
+import { BulkExecuteSaleOrderWorkflowUsecase } from "src/modules/sale-orders/application/usecases/sale-order/bulk-execute-workflow.usecase";
 import { ExportSaleOrdersExcelUsecase } from "src/modules/sale-orders/application/usecases/sale-order/export-excel.usecase";
 import { GetSaleOrderEditorCatalogsUsecase } from "src/modules/sale-orders/application/usecases/sale-order/get-editor-catalogs.usecase";
 import { LISTING_SEARCH_STORAGE } from "src/shared/listing-search/domain/listing-search.repository";
@@ -80,6 +81,7 @@ describe("SaleOrdersController", () => {
   const saveWithClient = { execute: jest.fn() };
   const bulkAssignSaleOrders = { execute: jest.fn() };
   const bulkChangeSaleOrderState = { execute: jest.fn() };
+  const bulkExecuteSaleOrderWorkflow = { execute: jest.fn() };
   const editorCatalogs = { execute: jest.fn() };
   const exportExcel = {
     getAvailableColumns: jest.fn(),
@@ -177,6 +179,26 @@ describe("SaleOrdersController", () => {
         ],
       },
     });
+    bulkExecuteSaleOrderWorkflow.execute.mockResolvedValue({
+      type: "success",
+      message: "Operacion masiva procesada",
+      data: {
+        mode: "global_action",
+        globalActionName: "Preguia",
+        requested: 1,
+        succeeded: 1,
+        failed: 0,
+        results: [
+          {
+            saleOrderId: "11111111-1111-4111-8111-111111111111",
+            transitionId: "33333333-3333-4333-8333-333333333333",
+            status: "success",
+            warnings: [],
+            actionOutcomes: [],
+          },
+        ],
+      },
+    });
     exportExcel.getAvailableColumns.mockReturnValue([{ key: "number", label: "Numero" }]);
     exportExcel.execute.mockResolvedValue({
       filename: "pedidos-2026-07-09.xlsx",
@@ -227,6 +249,7 @@ describe("SaleOrdersController", () => {
         { provide: UpdateSaleOrderUsecase, useValue: updateSaleOrder },
         { provide: BulkAssignSaleOrdersUsecase, useValue: bulkAssignSaleOrders },
         { provide: BulkChangeSaleOrderStateUsecase, useValue: bulkChangeSaleOrderState },
+        { provide: BulkExecuteSaleOrderWorkflowUsecase, useValue: bulkExecuteSaleOrderWorkflow },
         { provide: GetSaleOrderEditorCatalogsUsecase, useValue: editorCatalogs },
         { provide: ExportSaleOrdersExcelUsecase, useValue: exportExcel },
         { provide: LISTING_SEARCH_STORAGE, useValue: listingSearchStorage },
@@ -832,6 +855,36 @@ describe("SaleOrdersController", () => {
     );
     expect(response.body.data.succeeded).toBe(1);
     expect(response.body.data.partiallyCompleted).toBe(1);
+  });
+
+  it("bulk executes a global workflow action and notifies successful rows once", async () => {
+    const firstId = "11111111-1111-4111-8111-111111111111";
+    const globalActionName = "Preguia";
+
+    await request(app.getHttpServer())
+      .post("/sale-orders/bulk/execute-workflow")
+      .send({
+        saleOrderIds: [firstId],
+        mode: "global_action",
+        globalActionName,
+      })
+      .expect(201);
+
+    expect(bulkExecuteSaleOrderWorkflow.execute).toHaveBeenCalledWith({
+      saleOrderIds: [firstId],
+      mode: "global_action",
+      targetStateId: undefined,
+      transitionId: undefined,
+      globalActionName,
+      executedBy: "user-1",
+    });
+    expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
+      "sale-orders.updated",
+      expect.objectContaining({
+        saleOrderIds: [firstId],
+        source: "sale-orders-bulk-global-action",
+      }),
+    );
   });
 
   it("forwards order id to get usecase", async () => {

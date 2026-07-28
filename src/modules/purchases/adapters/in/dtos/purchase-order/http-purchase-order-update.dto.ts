@@ -83,6 +83,10 @@ export class HttpUpdatePurchaseOrderDto {
   note?: string;
 
   @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
   @IsEnum(PurchaseOrderStatus)
   status?: PurchaseOrderStatus;
 

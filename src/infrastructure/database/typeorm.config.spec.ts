@@ -71,6 +71,18 @@ describe('getTypeOrmModuleOptions', () => {
     );
   });
 
+  it('registers the purchase order description migration required by the runtime entity', () => {
+    const registeredMigrations = (getMigrationDataSourceOptions().migrations ??
+      []) as Array<string | Function>;
+    const registeredMigrationNames = registeredMigrations.map((migration) =>
+      typeof migration === 'function' ? migration.name : String(migration),
+    );
+
+    expect(registeredMigrationNames).toContain(
+      'AddPurchaseOrderDescription20260727120000',
+    );
+  });
+
   it('keeps migration SQL aware of every runtime entity table', () => {
     const migrationsDir = join(__dirname, 'migrations');
     const migrationSql = readdirSync(migrationsDir)

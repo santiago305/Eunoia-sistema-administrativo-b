@@ -30,6 +30,7 @@ export interface PurchaseOrderOutput {
   totalToPay?: number;
   payments?: PaymentOutput[];
   note?: string;
+  description?: string;
   status: PurchaseOrderStatus;
   purchaseType?: PurchaseType;
   receptionStatus?: ReceptionStatus;

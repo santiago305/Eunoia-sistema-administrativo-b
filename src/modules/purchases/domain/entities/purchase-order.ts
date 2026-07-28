@@ -25,6 +25,7 @@ export class PurchaseOrder {
     public readonly currency?: CurrencyType,
     public readonly paymentForm?: PaymentFormType,
     public readonly note?: string,
+    public readonly description?: string,
     public readonly status: PurchaseOrderStatus = PurchaseOrderStatus.DRAFT,
     public readonly purchaseType: PurchaseType = PurchaseType.INVENTORY,
     public readonly receptionStatus: ReceptionStatus = ReceptionStatus.PENDING,

@@ -15,6 +15,7 @@ import { HttpSaleOrderUpdateDto } from "src/modules/sale-orders/adapters/in/dtos
 import { UpdateSaleOrderUsecase } from "src/modules/sale-orders/application/usecases/sale-order/update.usecase";
 import { BulkAssignSaleOrdersUsecase } from "src/modules/sale-orders/application/usecases/sale-order/bulk-assign.usecase";
 import { BulkChangeSaleOrderStateUsecase } from "src/modules/sale-orders/application/usecases/sale-order/bulk-change-state.usecase";
+import { BulkExecuteSaleOrderWorkflowUsecase } from "src/modules/sale-orders/application/usecases/sale-order/bulk-execute-workflow.usecase";
 import { GetSaleOrderUsecase } from "src/modules/sale-orders/application/usecases/sale-order/get.usecase";
 import { GetSaleOrderSearchStateUsecase } from "src/modules/sale-orders/application/usecases/sale-order-search/get-state.usecase";
 import { SaveSaleOrderSearchMetricUsecase } from "src/modules/sale-orders/application/usecases/sale-order-search/save-metric.usecase";
@@ -47,6 +48,7 @@ import { SaveSaleOrderWithClientUsecase } from "src/modules/sale-orders/applicat
 import { parseSaleOrderMultipart } from "../support/sale-order-multipart.parser";
 import { BulkAssignSaleOrdersDto } from "../dtos/bulk-assign-sale-orders.dto";
 import { BulkChangeSaleOrderStateDto } from "../dtos/bulk-change-sale-order-state.dto";
+import { BulkExecuteSaleOrderWorkflowDto } from "../dtos/bulk-execute-sale-order-workflow.dto";
 import { ExportSaleOrdersExcelUsecase } from "src/modules/sale-orders/application/usecases/sale-order/export-excel.usecase";
 import { GetSaleOrderEditorCatalogsUsecase } from "src/modules/sale-orders/application/usecases/sale-order/get-editor-catalogs.usecase";
 import { HttpExportSaleOrdersDto } from "../dtos/http-export-sale-orders.dto";
@@ -67,6 +69,7 @@ export class SaleOrdersController {
     private readonly updateSaleOrder: UpdateSaleOrderUsecase,
     private readonly bulkAssignSaleOrders: BulkAssignSaleOrdersUsecase,
     private readonly bulkChangeSaleOrderState: BulkChangeSaleOrderStateUsecase,
+    private readonly bulkExecuteSaleOrderWorkflow: BulkExecuteSaleOrderWorkflowUsecase,
     private readonly getSearchState: GetSaleOrderSearchStateUsecase,
     private readonly saveSearchMetric: SaveSaleOrderSearchMetricUsecase,
     private readonly deleteSearchMetric: DeleteSaleOrderSearchMetricUsecase,
@@ -291,6 +294,36 @@ export class SaleOrdersController {
       await this.notifySaleOrdersUpdated(
         changedSaleOrderIds,
         "sale-orders-bulk-target-state",
+      );
+    }
+
+    return result;
+  }
+
+  @Post("bulk/execute-workflow")
+  async bulkExecuteWorkflow(
+    @Body() body: BulkExecuteSaleOrderWorkflowDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    const result = await this.bulkExecuteSaleOrderWorkflow.execute({
+      saleOrderIds: body.saleOrderIds,
+      mode: body.mode,
+      targetStateId: body.targetStateId,
+      transitionId: body.transitionId,
+      globalActionName: body.globalActionName,
+      executedBy: user.id,
+    });
+
+    const changedSaleOrderIds = body.mode === "state"
+      ? this.getChangedSaleOrderIds(result)
+      : (result.data?.results ?? [])
+          .filter((row: { status?: string }) => row.status === "success")
+          .map((row: { saleOrderId: string }) => row.saleOrderId);
+
+    if (changedSaleOrderIds.length) {
+      await this.notifySaleOrdersUpdated(
+        changedSaleOrderIds,
+        body.mode === "state" ? "sale-orders-bulk-target-state" : "sale-orders-bulk-global-action",
       );
     }
 

@@ -72,6 +72,10 @@ export class HttpCreatePurchaseOrderDto {
   @IsString()
   note?: string;
 
+  @IsOptional()
+  @IsString()
+  description?: string;
+
   @IsEnum(PurchaseOrderStatus)
   status: PurchaseOrderStatus;
 

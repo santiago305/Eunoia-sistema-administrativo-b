@@ -95,6 +95,7 @@ import { AllowNullWorkflowHistoryExecutor20260720000000 } from "./migrations/202
 import { FixProductionItemStockReference20260725120000 } from "./migrations/20260725120000-fix-production-item-stock-reference";
 import { AddProductLogicalDeletion20260725130000 } from "./migrations/20260725130000-add-product-logical-deletion";
 import { AddSaleOrderPreparedPreguide20260725000000 } from "./migrations/20260725000000-add-sale-order-prepared-preguide";
+import { AddPurchaseOrderDescription20260727120000 } from "./migrations/20260727120000-add-purchase-order-description";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -201,6 +202,7 @@ export const databaseMigrations = [
     AddSaleOrderPreparedPreguide20260725000000,
     FixProductionItemStockReference20260725120000,
     AddProductLogicalDeletion20260725130000,
+    AddPurchaseOrderDescription20260727120000,
 ];
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({

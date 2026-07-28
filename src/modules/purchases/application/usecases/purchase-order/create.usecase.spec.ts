@@ -195,6 +195,88 @@ describe("CreatePurchaseOrderUsecase", () => {
     ]);
   });
 
+  it("persiste la descripcion de cabecera de la compra", async () => {
+    const input = {
+      supplierId: "11111111-1111-4111-8111-111111111111",
+      warehouseId: "22222222-2222-4222-8222-222222222222",
+      documentType: VoucherDocType.FACTURA,
+      serie: "F001",
+      correlative: 15,
+      currency: CurrencyType.PEN,
+      paymentForm: PaymentFormType.CONTADO,
+      description: "Compra inicial con nota operativa",
+      totalTaxed: 100,
+      totalExempted: 0,
+      totalIgv: 18,
+      purchaseValue: 82,
+      total: 100,
+      status: PurchaseOrderStatus.DRAFT,
+      items: [],
+      payments: [],
+      quotas: [],
+    };
+
+    await usecase.execute(input as any, "user-1");
+
+    expect(purchaseRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: "Compra inicial con nota operativa",
+      }),
+      expect.anything(),
+    );
+  });
+
+  it("permite item manual sin sku cuando no afecta stock", async () => {
+    const input = {
+      supplierId: "11111111-1111-4111-8111-111111111111",
+      warehouseId: "22222222-2222-4222-8222-222222222222",
+      documentType: VoucherDocType.FACTURA,
+      serie: "F001",
+      correlative: 15,
+      currency: CurrencyType.PEN,
+      paymentForm: PaymentFormType.CONTADO,
+      totalTaxed: 100,
+      totalExempted: 0,
+      totalIgv: 18,
+      purchaseValue: 82,
+      total: 100,
+      status: PurchaseOrderStatus.DRAFT,
+      items: [
+        {
+          itemType: "PRODUCT",
+          description: "Compra manual sin SKU",
+          affectsStock: false,
+          unitBase: "NIU",
+          equivalence: "NIU",
+          factor: 1,
+          afectType: AfectIgvType.TAXED,
+          quantity: 1,
+          porcentageIgv: 18,
+          baseWithoutIgv: 84.75,
+          amountIgv: 15.25,
+          unitValue: 84.75,
+          unitPrice: 100,
+          purchaseValue: 84.75,
+        },
+      ],
+      payments: [],
+      quotas: [],
+    };
+
+    await usecase.execute(input as any, "user-1");
+
+    expect(stockItemRepo.findBySkuId).not.toHaveBeenCalled();
+    expect(createStockItem.execute).not.toHaveBeenCalled();
+    expect(itemRepo.add).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stockItemId: undefined,
+        description: "Compra manual sin SKU",
+        affectsStock: false,
+      }),
+      expect.anything(),
+    );
+  });
+
   it("registra en historial la compra creada y sus pagos iniciales", async () => {
     paymentDocRepo.create.mockResolvedValueOnce({
       payDocId: "payment-1",
