@@ -12,6 +12,7 @@ import { TransactionContext, UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/
 import { WORKFLOW_REPOSITORY, WorkflowRepository } from "src/modules/workflow/domain/ports/workflow.repository";
 import { SaleOrderNumberingService } from "src/modules/sale-orders/application/services/sale-order-numbering.service";
 import { SaleOrderImportAdviserResolverService } from "src/modules/sale-orders/application/services/sale-order-import-adviser-resolver.service";
+import { AssignImportLoteUsecase } from "./assign-import-lote.usecase";
 
 type ImportDestination = {
   agencySubsidiaryId: string | null;
@@ -39,6 +40,7 @@ export class CreateFromImportPreviewUseCase {
     @Inject(WORKFLOW_REPOSITORY)
     private readonly workflowRepo: WorkflowRepository,
     private readonly numbering: SaleOrderNumberingService,
+    private readonly assignImportLote: AssignImportLoteUsecase,
     @Optional()
     private readonly adviserResolver?: SaleOrderImportAdviserResolverService,
   ) {}
@@ -93,11 +95,17 @@ export class CreateFromImportPreviewUseCase {
       }
     }
 
+    const lote = await this.assignImportLote.execute({
+      saleOrderIds: createdRows.map((row) => row.saleOrderId),
+      createdBy: input.userId,
+    });
+
     return {
       totalRows: input.rows?.length ?? 0,
       processedRows: createdRows.length,
       importedRows: createdRows.length,
       failedRows: errors.length,
+      lote,
       rows: createdRows,
       errors,
     };

@@ -32,6 +32,7 @@ const orderNumber = (row: SaleOrderListItemOutput) =>
 
 const EXPORT_COLUMNS: ExportColumnDefinition[] = [
   { key: "number", label: "Numero", map: orderNumber },
+  { key: "lotes", label: "Lote", map: (row) => row.lotes ?? "" },
   { key: "SKUS", label: "SKUS", map: (row) => row.SKUS ?? "" },
   { key: "detail", label: "Detalle", map: (row) => row.detail ?? "" },
   { key: "clientName", label: "Cliente", map: (row) => row.client?.fullName ?? "" },

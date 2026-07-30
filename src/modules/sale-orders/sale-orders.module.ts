@@ -6,6 +6,8 @@ import { SaleOrderEntity } from "./adapters/out/persistence/typeorm/entities/sal
 import { SaleOrderItemEntity } from "./adapters/out/persistence/typeorm/entities/sale-order-item.entity";
 import { SaleOrderItemComponentEntity } from "./adapters/out/persistence/typeorm/entities/sale-order-item-component.entity";
 import { SalePaymentEntity } from "./adapters/out/persistence/typeorm/entities/sale-payment.entity";
+import { SaleOrderImportLoteEntity } from "./adapters/out/persistence/typeorm/entities/sale-order-import-lote.entity";
+import { SaleOrderImportLoteAuditEntity } from "./adapters/out/persistence/typeorm/entities/sale-order-import-lote-audit.entity";
 import { ListingSearchMetricEntity } from "src/shared/listing-search/adapters/out/persistence/typeorm/entities/listing-search-metric.entity";
 import { ListingSearchRecentEntity } from "src/shared/listing-search/adapters/out/persistence/typeorm/entities/listing-search-recent.entity";
 import { ClientEntity } from "src/modules/clients/adapters/out/persistence/typeorm/entities/client.entity";
@@ -40,6 +42,8 @@ import { LogisticsPayablesModule } from "../logistics-payables/logistics-payable
       SaleOrderItemEntity,
       SaleOrderItemComponentEntity,
       SalePaymentEntity,
+      SaleOrderImportLoteEntity,
+      SaleOrderImportLoteAuditEntity,
       ListingSearchRecentEntity,
       ListingSearchMetricEntity,
       ClientEntity,

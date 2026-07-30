@@ -51,6 +51,13 @@ export type CreateSaleOrdersFromImportPreviewOutput = {
   processedRows: number;
   importedRows: number;
   failedRows: number;
+  lote?: {
+    id: string;
+    lote: number;
+    createdAt: string;
+    createdBy: { id: string; name: string | null; email: string | null };
+    isActive: boolean;
+  } | null;
   rows: SaleOrderImportPreviewResultRow[];
   errors: SaleOrderImportPreviewErrorRow[];
 };

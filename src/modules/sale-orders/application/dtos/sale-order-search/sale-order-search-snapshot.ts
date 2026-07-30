@@ -1,5 +1,6 @@
 export const SaleOrderSearchFields = {
   NUMBER: "number",
+  LOTES: "lotes",
   CLIENT_ID: "clientId",
   CREATED_BY: "createdBy",
   ASSIGNED_BY: "assignedBy",
@@ -151,6 +152,7 @@ export type SaleOrderListItemOutput = {
   preguide: boolean | null;
   reserveBool: boolean;
   isActive: boolean;
+  lotes: number | null;
   createdAt: string;
   updatedAt: string | null;
   items: Array<{

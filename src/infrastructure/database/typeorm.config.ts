@@ -96,6 +96,7 @@ import { FixProductionItemStockReference20260725120000 } from "./migrations/2026
 import { AddProductLogicalDeletion20260725130000 } from "./migrations/20260725130000-add-product-logical-deletion";
 import { AddSaleOrderPreparedPreguide20260725000000 } from "./migrations/20260725000000-add-sale-order-prepared-preguide";
 import { AddPurchaseOrderDescription20260727120000 } from "./migrations/20260727120000-add-purchase-order-description";
+import { CreateSaleOrderImportLotes20260730090000 } from "./migrations/20260730090000-create-sale-order-import-lotes";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -203,6 +204,7 @@ export const databaseMigrations = [
     FixProductionItemStockReference20260725120000,
     AddProductLogicalDeletion20260725130000,
     AddPurchaseOrderDescription20260727120000,
+    CreateSaleOrderImportLotes20260730090000
 ];
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({

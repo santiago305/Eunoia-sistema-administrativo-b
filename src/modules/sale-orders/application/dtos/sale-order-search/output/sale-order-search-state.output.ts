@@ -143,6 +143,7 @@ export type SaleOrderGetOutput = {
   preguide: boolean | null;
   reserveBool: boolean;
   isActive: boolean;
+  lotes: number | null;
   createdAt: string;
   updatedAt: string | null;
   items: Array<{

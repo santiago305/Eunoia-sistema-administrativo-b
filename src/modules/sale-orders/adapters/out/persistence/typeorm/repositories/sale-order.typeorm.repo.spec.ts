@@ -20,6 +20,7 @@ const createStatsQueryBuilder = (rawMany: unknown[] = [], rawOne: unknown = {}) 
   groupBy: jest.fn().mockReturnThis(),
   addGroupBy: jest.fn().mockReturnThis(),
   orderBy: jest.fn().mockReturnThis(),
+  where: jest.fn().mockReturnThis(),
   andWhere: jest.fn().mockReturnThis(),
   clone: jest.fn(),
   getRawMany: jest.fn().mockResolvedValue(rawMany),
@@ -69,6 +70,7 @@ describe("SaleOrderTypeormRepository", () => {
 
     const qb = {
       leftJoinAndSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
       skip: jest.fn().mockReturnThis(),
       take: jest.fn().mockReturnThis(),
@@ -160,6 +162,7 @@ describe("SaleOrderTypeormRepository", () => {
 
     const qb = {
       leftJoinAndSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
       skip: jest.fn().mockReturnThis(),
       take: jest.fn().mockReturnThis(),
@@ -873,6 +876,7 @@ describe("SaleOrderTypeormRepository", () => {
     const qb = {
       leftJoinAndSelect: jest.fn().mockReturnThis(),
       leftJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
       skip: jest.fn().mockReturnThis(),
@@ -902,6 +906,7 @@ describe("SaleOrderTypeormRepository", () => {
     const qb = {
       leftJoinAndSelect: jest.fn().mockReturnThis(),
       leftJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
       skip: jest.fn().mockReturnThis(),
@@ -927,6 +932,7 @@ describe("SaleOrderTypeormRepository", () => {
     const qb = {
       leftJoinAndSelect: jest.fn().mockReturnThis(),
       leftJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
       skip: jest.fn().mockReturnThis(),
@@ -956,6 +962,7 @@ describe("SaleOrderTypeormRepository", () => {
     const qb = {
       leftJoinAndSelect: jest.fn().mockReturnThis(),
       leftJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
       andWhere: jest.fn().mockReturnThis(),
       orderBy: jest.fn().mockReturnThis(),
       skip: jest.fn().mockReturnThis(),
@@ -979,6 +986,52 @@ describe("SaleOrderTypeormRepository", () => {
         filter_0_range_end: "2026-07-10 00:00:00",
       },
     );
+  });
+
+  it("filters list queries to active sale orders", async () => {
+    const qb = {
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      leftJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+    };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue({ createQueryBuilder: jest.fn().mockReturnValue(qb) }) },
+    } as any);
+
+    await repository.list({ page: 1, limit: 10 });
+
+    expect(qb.where).toHaveBeenCalledWith("so.isActive = true");
+  });
+
+  it("applies lote text filters to list queries", async () => {
+    const qb = {
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      leftJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+    };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue({ createQueryBuilder: jest.fn().mockReturnValue(qb) }) },
+    } as any);
+
+    await repository.list({
+      filters: [
+        { field: "lotes", operator: "contains", value: "3" },
+      ] as any,
+    });
+
+    expect(qb.andWhere).toHaveBeenCalledWith("CAST(so.lotes AS text) ILIKE :filter_0_value", {
+      filter_0_value: "%3%",
+    });
   });
 
   it("applies creator and assigned user filters to statistics", async () => {
@@ -1074,6 +1127,47 @@ describe("SaleOrderTypeormRepository", () => {
         stats_filter_1_value_end: "2027-01-03",
       },
     );
+  });
+
+  it("filters statistics to active sale orders and supports lote filters", async () => {
+    const baseQb = createStatsQueryBuilder();
+    baseQb.clone
+      .mockReturnValueOnce(createStatsQueryBuilder([]))
+      .mockReturnValueOnce(createStatsQueryBuilder([]))
+      .mockReturnValueOnce(createStatsQueryBuilder([]))
+      .mockReturnValueOnce(createStatsQueryBuilder([], {}))
+      .mockReturnValueOnce(createStatsQueryBuilder([]));
+
+    const entityRepo = { createQueryBuilder: jest.fn().mockReturnValue(baseQb) };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue(entityRepo) },
+    } as any);
+
+    await repository.statistics({
+      filters: [
+        { field: "lotes", operator: "eq", value: "4" },
+      ] as any,
+    });
+
+    expect(baseQb.where).toHaveBeenCalledWith("so.isActive = true");
+    expect(baseQb.andWhere).toHaveBeenCalledWith("CAST(so.lotes AS text) = :stats_filter_0_value", {
+      stats_filter_0_value: "4",
+    });
+  });
+
+  it("loads sale order details only when the sale order is active", async () => {
+    const saleOrderRepo = {
+      findOne: jest.fn().mockResolvedValue(null),
+    };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue(saleOrderRepo) },
+    } as any);
+
+    await expect(repository.findById("order-1")).resolves.toBeNull();
+
+    expect(saleOrderRepo.findOne).toHaveBeenCalledWith({
+      where: { id: "order-1", isActive: true },
+    });
   });
 
   it("updates only assignedBy and returns the reloaded sale order", async () => {

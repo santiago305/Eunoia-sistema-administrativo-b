@@ -38,6 +38,7 @@ export class SaleOrder {
     public readonly workflowId: string | null,
     public readonly currentStateId: string | null,
     public readonly isActive: boolean,
+    public readonly lotes: number | null,
     public readonly createdAt: Date,
     public readonly updatedAt: Date | null,
     public readonly items: SaleOrderItem[] = [],
