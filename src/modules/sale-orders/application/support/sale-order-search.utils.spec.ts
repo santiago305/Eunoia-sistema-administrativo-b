@@ -158,11 +158,13 @@ describe("sale order search utils", () => {
         { field: "createdAt", operator: "on", value: "2026-07-01" },
         { field: "advertisingCode", operator: "contains", value: " META " },
         { field: "observation", operator: "eq", value: "Llamar antes" },
+        { field: "lotes", operator: "contains", value: " 3 " },
       ] as any),
     ).toEqual([
       { field: "createdAt", operator: "on", value: "2026-07-01" },
       { field: "advertisingCode", operator: "contains", value: "META" },
       { field: "observation", operator: "eq", value: "Llamar antes" },
+      { field: "lotes", operator: "contains", value: "3" },
     ]);
   });
 });

@@ -62,6 +62,7 @@ const FILTER_FIELD_ORDER: SaleOrderSearchField[] = [
   SaleOrderSearchFields.CREATED_AT,
   SaleOrderSearchFields.ADVERTISING_CODE,
   SaleOrderSearchFields.OBSERVATION,
+  SaleOrderSearchFields.LOTES,
 ];
 
 const CATALOG_FIELDS = new Set<SaleOrderSearchField>([
@@ -95,6 +96,7 @@ const TEXT_FIELDS = new Set<SaleOrderSearchField>([
   SaleOrderSearchFields.OBSERVATION,
   SaleOrderSearchFields.CLIENT_PHONE,
   SaleOrderSearchFields.AGENCY_DETAIL,
+  SaleOrderSearchFields.LOTES,
 ]);
 
 const DATE_OPERATORS = new Set<SaleOrderSearchOperator>([
@@ -138,6 +140,7 @@ const SEARCH_FIELD_LABELS: Record<SaleOrderSearchField, string> = {
   [SaleOrderSearchFields.CREATED_AT]: "F. Creacion",
   [SaleOrderSearchFields.ADVERTISING_CODE]: "Codigo publicitario",
   [SaleOrderSearchFields.OBSERVATION]: "Observacion",
+  [SaleOrderSearchFields.LOTES]: "Lote",
 };
 
 const SEARCH_OPERATOR_LABELS: Record<SaleOrderSearchOperator, string> = {

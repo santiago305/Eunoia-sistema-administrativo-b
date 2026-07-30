@@ -124,6 +124,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       row.workflowId ?? null,
       row.currentStateId ?? null,
       Boolean(row.isActive),
+      row.lotes ?? null,
       row.createdAt,
       row.updatedAt ?? null,
       row.items?.map((item) => ({
@@ -316,6 +317,44 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       { id: input.saleOrderId },
       { reserveBool: input.reserveBool },
     );
+  }
+
+  async setLoteByIds(input: { saleOrderIds: string[]; lote: number }, tx?: TransactionContext): Promise<number> {
+    const saleOrderIds = Array.from(new Set(input.saleOrderIds.filter(Boolean)));
+    if (!saleOrderIds.length) return 0;
+
+    const manager = this.getManager(tx);
+    const result = await manager
+      .getRepository(SaleOrderEntity)
+      .createQueryBuilder()
+      .update(SaleOrderEntity)
+      .set({ lotes: input.lote })
+      .where("id IN (:...saleOrderIds)", { saleOrderIds })
+      .execute();
+
+    return result.affected ?? 0;
+  }
+
+  async setActiveByLote(input: { lote: number; isActive: boolean }, tx?: TransactionContext): Promise<string[]> {
+    const manager = this.getManager(tx);
+    const repo = manager.getRepository(SaleOrderEntity);
+
+    const rows = await repo.find({
+      where: { lotes: input.lote },
+      select: { id: true },
+    });
+
+    const saleOrderIds = rows.map((row) => row.id);
+    if (!saleOrderIds.length) return [];
+
+    await repo
+      .createQueryBuilder()
+      .update(SaleOrderEntity)
+      .set({ isActive: input.isActive })
+      .where("id IN (:...saleOrderIds)", { saleOrderIds })
+      .execute();
+
+    return saleOrderIds;
   }
 
   private applyPaymentStatusFilter(
@@ -649,6 +688,8 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       .createQueryBuilder("so")
       .leftJoinAndSelect("so.items", "items");
 
+    qb.where("so.isActive = true");
+
     const q = params.q?.trim();
     if (q) {
       qb
@@ -725,6 +766,17 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
                 .orWhere("CAST(so.correlative AS text) ILIKE :num", { num: `%${raw}%` });
             }),
           );
+          break;
+        }
+        case SaleOrderSearchFields.LOTES: {
+          if (!filter.value) break;
+          const raw = filter.value.trim();
+          if (!raw) break;
+          const operator = filter.operator === SaleOrderSearchOperators.EQ ? "=" : "ILIKE";
+          const value = filter.operator === SaleOrderSearchOperators.EQ ? raw : `%${raw}%`;
+          qb.andWhere(`CAST(so.lotes AS text) ${operator} :${valueParam}`, {
+            [valueParam]: value,
+          });
           break;
         }
         case SaleOrderSearchFields.CLIENT_ID:
@@ -1105,6 +1157,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         preguide: row.preguide ?? false,
         reserveBool: Boolean(row.reserveBool),
         isActive: Boolean(row.isActive),
+        lotes: row.lotes ?? null,
         createdAt: toIso(row.createdAt),
         updatedAt: row.updatedAt ? toIso(row.updatedAt) : null,
         items: (row.items ?? []).map((item) => ({
@@ -1210,6 +1263,8 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         "payment_sum.sale_order_id = so.id",
       );
 
+    base.where("so.isActive = true");
+
     const q = params.q?.trim();
     if (q) {
       const matchedPaymentStatuses = matchSearchOptionIds(q, SALE_ORDER_PAYMENT_STATUS_SEARCH_OPTIONS);
@@ -1304,6 +1359,16 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
             : "concat(coalesce(so.serie, ''), '-', coalesce(so.correlative::text, '')) ILIKE :statsNumber",
           { statsNumber: filter.operator === SaleOrderSearchOperators.EQ ? filter.value : value },
         );
+      } else if (filter.field === SaleOrderSearchFields.LOTES && filter.value) {
+        const value = filter.value.trim();
+        if (value) {
+          base.andWhere(
+            filter.operator === SaleOrderSearchOperators.EQ
+              ? `CAST(so.lotes AS text) = :${valueParam}`
+              : `CAST(so.lotes AS text) ILIKE :${valueParam}`,
+            { [valueParam]: filter.operator === SaleOrderSearchOperators.EQ ? value : `%${value}%` },
+          );
+        }
       } else if (
         (filter.field === SaleOrderSearchFields.ADVERTISING_CODE ||
           filter.field === SaleOrderSearchFields.OBSERVATION ||
@@ -1430,7 +1495,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
   const manager = this.getManager(tx);
 
   const row = await manager.getRepository(SaleOrderEntity).findOne({
-    where: { id: saleOrderId },
+    where: { id: saleOrderId, isActive: true },
   });
 
   if (!row) return null;
@@ -1796,6 +1861,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     preguide: row.preguide ?? false,
     reserveBool: Boolean(row.reserveBool),
     isActive: Boolean(row.isActive),
+    lotes: row.lotes ?? null,
     createdAt: toIso(row.createdAt),
     updatedAt: row.updatedAt ? toIso(row.updatedAt) : null,
 

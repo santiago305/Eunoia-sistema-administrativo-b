@@ -59,6 +59,7 @@ describe("DashboardSaleOrdersTypeormRepository", () => {
       },
     });
     expect(manager.getRepository).toHaveBeenCalledWith(SaleOrderEntity);
+    expect(qb.where).toHaveBeenCalledWith("so.isActive = true");
     expect(qb.andWhere).toHaveBeenCalledWith(expect.stringContaining("so.scheduleDate >= :monthStart"), {
       monthStart: new Date("2026-06-01T00:00:00.000Z"),
       monthEnd: new Date("2026-07-01T00:00:00.000Z"),

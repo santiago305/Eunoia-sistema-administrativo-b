@@ -8,8 +8,10 @@ import { SALE_ORDER_REPOSITORY } from "src/modules/sale-orders/domain/ports/sale
 import { SALE_ORDER_SEARCH } from "src/modules/sale-orders/domain/ports/sale-order-search.repository";
 import { SALE_ORDER_ITEM_REPOSITORY } from "src/modules/sale-orders/domain/ports/sale-order-item.repository";
 import { SALE_ORDER_ITEM_COMPONENT_REPOSITORY } from "src/modules/sale-orders/domain/ports/sale-order-item-component.repository";
+import { SALE_ORDER_IMPORT_LOTE_REPOSITORY } from "src/modules/sale-orders/domain/ports/sale-order-import-lote.repository";
 import { SALE_PAYMENT_REPOSITORY } from "src/modules/sale-orders/domain/ports/sale-payment.repository";
 import { SaleOrderTypeormRepository } from "src/modules/sale-orders/adapters/out/persistence/typeorm/repositories/sale-order.typeorm.repo";
+import { SaleOrderImportLoteTypeormRepository } from "src/modules/sale-orders/adapters/out/persistence/typeorm/repositories/sale-order-import-lote.typeorm.repo";
 import { SaleOrderSearchTypeormRepository } from "src/modules/sale-orders/adapters/out/persistence/typeorm/repositories/sale-order-search.typeorm.repo";
 import { SaleOrderItemTypeormRepository } from "src/modules/sale-orders/adapters/out/persistence/typeorm/repositories/sale-order-item.typeorm.repo";
 import { SaleOrderItemComponentTypeormRepository } from "src/modules/sale-orders/adapters/out/persistence/typeorm/repositories/sale-order-item-component.typeorm.repo";
@@ -34,6 +36,10 @@ import { ListSaleOrderPaymentsUsecase } from "src/modules/sale-orders/applicatio
 import { AddSaleOrderPaymentUsecase } from "src/modules/sale-orders/application/usecases/sale-order/add-payment.usecase";
 import { DeleteSaleOrderPaymentUsecase } from "src/modules/sale-orders/application/usecases/sale-order/delete-payment.usecase";
 import { CreateFromImportPreviewUseCase } from "src/modules/sale-orders/application/usecases/sale-order/create-from-import-preview.usecase";
+import { AssignImportLoteUsecase } from "src/modules/sale-orders/application/usecases/sale-order/assign-import-lote.usecase";
+import { ListImportLotesUsecase } from "src/modules/sale-orders/application/usecases/sale-order/list-import-lotes.usecase";
+import { SetImportLoteActiveUsecase } from "src/modules/sale-orders/application/usecases/sale-order/set-import-lote-active.usecase";
+import { ListImportLoteAuditUsecase } from "src/modules/sale-orders/application/usecases/sale-order/list-import-lote-audit.usecase";
 import { SaleOrderImportClientResolverService } from "src/modules/sale-orders/application/services/sale-order-import-client-resolver.service";
 import { SaleOrderImportRowNormalizerService } from "src/modules/sale-orders/application/services/sale-order-import-row-normalizer.service";
 import { SaleOrderImportSkuResolverService } from "src/modules/sale-orders/application/services/sale-order-import-sku-resolver.service";
@@ -74,6 +80,7 @@ export const saleOrdersModuleProviders = [
   { provide: SALE_ORDER_REPOSITORY, useClass: SaleOrderTypeormRepository },
   { provide: SALE_ORDER_ITEM_REPOSITORY, useClass: SaleOrderItemTypeormRepository },
   { provide: SALE_ORDER_ITEM_COMPONENT_REPOSITORY, useClass: SaleOrderItemComponentTypeormRepository },
+  { provide: SALE_ORDER_IMPORT_LOTE_REPOSITORY, useClass: SaleOrderImportLoteTypeormRepository },
   { provide: SALE_PAYMENT_REPOSITORY, useClass: SalePaymentTypeormRepository },
   { provide: LISTING_SEARCH_STORAGE, useClass: ListingSearchTypeormRepository },
   { provide: SALE_ORDER_SEARCH, useClass: SaleOrderSearchTypeormRepository },
@@ -96,6 +103,10 @@ export const saleOrdersModuleProviders = [
   AddSaleOrderPaymentUsecase,
   DeleteSaleOrderPaymentUsecase,
   CreateFromImportPreviewUseCase,
+  AssignImportLoteUsecase,
+  ListImportLotesUsecase,
+  SetImportLoteActiveUsecase,
+  ListImportLoteAuditUsecase,
   SaleOrderWorkflowContextService,
   SaleOrderWorkflowTransitionService,
   AdvanceSaleOrderStateUseCase,

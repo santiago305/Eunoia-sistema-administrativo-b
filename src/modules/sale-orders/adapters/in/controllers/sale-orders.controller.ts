@@ -30,6 +30,9 @@ import { ListSaleOrderPaymentsUsecase } from "src/modules/sale-orders/applicatio
 import { AddSaleOrderPaymentDto } from "../dtos/add-sale-order-payment.dto";
 import { ConfirmSaleOrderDeliveryUsecase } from "src/modules/sale-orders/application/usecases/sale-order/confirm-delivery.usecase";
 import { CreateFromImportPreviewUseCase } from "src/modules/sale-orders/application/usecases/sale-order/create-from-import-preview.usecase";
+import { ListImportLotesUsecase } from "src/modules/sale-orders/application/usecases/sale-order/list-import-lotes.usecase";
+import { SetImportLoteActiveUsecase } from "src/modules/sale-orders/application/usecases/sale-order/set-import-lote-active.usecase";
+import { ListImportLoteAuditUsecase } from "src/modules/sale-orders/application/usecases/sale-order/list-import-lote-audit.usecase";
 import { CreateSaleOrdersFromImportPreviewInput } from "src/modules/sale-orders/application/dtos/import-preview/create-sale-orders-from-preview.input";
 import { AdvanceSaleOrderStateUseCase } from "src/modules/workflow/application/usecases/advance-sale-order-state.usecase";
 import { ChangeSaleOrderStateDto } from "../dtos/change-sale-order-state.dto";
@@ -83,6 +86,9 @@ export class SaleOrdersController {
     private readonly deletePayment: DeleteSaleOrderPaymentUsecase,
     private readonly listPayments: ListSaleOrderPaymentsUsecase,
     private readonly createFromImportPreview: CreateFromImportPreviewUseCase,
+    private readonly listImportLotes: ListImportLotesUsecase,
+    private readonly setImportLoteActive: SetImportLoteActiveUsecase,
+    private readonly listImportLoteAudit: ListImportLoteAuditUsecase,
     private readonly realtimeService: SaleOrdersRealtimeService,
     private readonly automaticWorkflow: SaleOrderAutomaticWorkflowService,
     private readonly realtimePayload: SaleOrderRealtimePayloadService,
@@ -255,6 +261,14 @@ export class SaleOrdersController {
         importedSaleOrderIdsWithoutAutomaticWorkflow,
         SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_IMPORTED,
       );
+    }
+
+    if (result.lote) {
+      this.realtimeService.emitToAllConnected("sale-order-lotes.updated", {
+        lote: result.lote,
+        saleOrderIds: importedSaleOrderIds,
+        source: "sale-order-import-created",
+      });
     }
 
     return result;
@@ -569,6 +583,43 @@ export class SaleOrdersController {
   @Get("editor-catalogs")
   getSaleOrderEditorCatalogs(@Query("companyId") companyId?: string) {
     return this.getEditorCatalogs.execute({ companyId });
+  }
+
+  @Get("import-lotes")
+  listSaleOrderImportLotes() {
+    return this.listImportLotes.execute();
+  }
+
+  @Patch("import-lotes/:loteId/active")
+  async setSaleOrderImportLoteActive(
+    @Param("loteId", ParseUUIDPipe) loteId: string,
+    @Body() body: { isActive: boolean },
+    @CurrentUser() user: { id: string },
+  ) {
+    const result = await this.setImportLoteActive.execute({
+      loteId,
+      isActive: Boolean(body?.isActive),
+      executedBy: user.id,
+    });
+
+    this.realtimeService.emitToAllConnected("sale-order-lotes.updated", {
+      ...result,
+      source: result.lote.isActive ? "sale-order-import-lote-restored" : "sale-order-import-lote-deleted",
+    });
+
+    if (result.saleOrderIds.length) {
+      await this.notifySaleOrdersUpdated(
+        result.saleOrderIds,
+        result.lote.isActive ? "sale-order-import-lote-restored" : "sale-order-import-lote-deleted",
+      );
+    }
+
+    return result.lote;
+  }
+
+  @Get("import-lotes/:loteId/audit")
+  listSaleOrderImportLoteAudit(@Param("loteId", ParseUUIDPipe) loteId: string) {
+    return this.listImportLoteAudit.execute(loteId);
   }
 
   @Post("search-metrics")

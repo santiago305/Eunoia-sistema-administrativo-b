@@ -21,6 +21,9 @@ import { DeleteSaleOrderPaymentUsecase } from "src/modules/sale-orders/applicati
 import { ListSaleOrderPaymentsUsecase } from "src/modules/sale-orders/application/usecases/sale-order/list-payments.usecase";
 import { ConfirmSaleOrderDeliveryUsecase } from "src/modules/sale-orders/application/usecases/sale-order/confirm-delivery.usecase";
 import { CreateFromImportPreviewUseCase } from "src/modules/sale-orders/application/usecases/sale-order/create-from-import-preview.usecase";
+import { ListImportLotesUsecase } from "src/modules/sale-orders/application/usecases/sale-order/list-import-lotes.usecase";
+import { SetImportLoteActiveUsecase } from "src/modules/sale-orders/application/usecases/sale-order/set-import-lote-active.usecase";
+import { ListImportLoteAuditUsecase } from "src/modules/sale-orders/application/usecases/sale-order/list-import-lote-audit.usecase";
 import { AdvanceSaleOrderStateUseCase } from "src/modules/workflow/application/usecases/advance-sale-order-state.usecase";
 import { AssignSaleOrderWorkflowUseCase } from "src/modules/workflow/application/usecases/assign-sale-order-workflow.usecase";
 import { GetAvailableTransitionsUseCase } from "src/modules/workflow/application/usecases/get-available-transitions.usecase";
@@ -71,6 +74,9 @@ describe("SaleOrdersController", () => {
   const deletePayment = { execute: jest.fn() };
   const listPayments = { execute: jest.fn() };
   const createFromImportPreview = { execute: jest.fn() };
+  const listImportLotes = { execute: jest.fn() };
+  const setImportLoteActive = { execute: jest.fn() };
+  const listImportLoteAudit = { execute: jest.fn() };
   const advanceSaleOrderState = { execute: jest.fn() };
   const assignWorkflow = { execute: jest.fn() };
   const getAvailableTransitions = { execute: jest.fn() };
@@ -124,6 +130,34 @@ describe("SaleOrdersController", () => {
     deletePayment.execute.mockResolvedValue({ deleted: true });
     listPayments.execute.mockResolvedValue([{ id: "p1" }]);
     createFromImportPreview.execute.mockResolvedValue({ importedRows: 1, failedRows: 0, rows: [], errors: [] });
+    listImportLotes.execute.mockResolvedValue([
+      {
+        id: "11111111-1111-4111-8111-111111111111",
+        lote: 1,
+        createdAt: "2026-07-30T00:00:00.000Z",
+        createdBy: { id: "user-1", name: "User One", email: "user-one@example.test" },
+        isActive: true,
+      },
+    ]);
+    setImportLoteActive.execute.mockResolvedValue({
+      lote: {
+        id: "11111111-1111-4111-8111-111111111111",
+        lote: 1,
+        createdAt: "2026-07-30T00:00:00.000Z",
+        createdBy: { id: "user-1", name: "User One", email: "user-one@example.test" },
+        isActive: false,
+      },
+      saleOrderIds: ["22222222-2222-4222-8222-222222222222"],
+    });
+    listImportLoteAudit.execute.mockResolvedValue([
+      {
+        id: "33333333-3333-4333-8333-333333333333",
+        loteId: "11111111-1111-4111-8111-111111111111",
+        createdAt: "2026-07-30T00:00:00.000Z",
+        executedBy: { id: "user-1", name: "User One", email: "user-one@example.test" },
+        actionExecution: "delete",
+      },
+    ]);
     advanceSaleOrderState.execute.mockResolvedValue({
       order: { id: "x", currentStateId: "state-2" },
       warnings: [],
@@ -266,6 +300,9 @@ describe("SaleOrdersController", () => {
         { provide: DeleteSaleOrderPaymentUsecase, useValue: deletePayment },
         { provide: ListSaleOrderPaymentsUsecase, useValue: listPayments },
         { provide: CreateFromImportPreviewUseCase, useValue: createFromImportPreview },
+        { provide: ListImportLotesUsecase, useValue: listImportLotes },
+        { provide: SetImportLoteActiveUsecase, useValue: setImportLoteActive },
+        { provide: ListImportLoteAuditUsecase, useValue: listImportLoteAudit },
         { provide: SaleOrdersRealtimeService, useValue: realtimeService },
         { provide: SaleOrderAutomaticWorkflowService, useValue: automaticWorkflow },
         { provide: SaleOrderRealtimePayloadService, useValue: realtimePayload },
@@ -623,6 +660,67 @@ describe("SaleOrdersController", () => {
       workflows: [expect.objectContaining({ id: "workflow-1" })],
       companyPaymentAccounts: [expect.objectContaining({ id: "account-1" })],
     }));
+  });
+
+  it("lists sale order import lotes", async () => {
+    const response = await request(app.getHttpServer())
+      .get("/sale-orders/import-lotes")
+      .expect(200);
+
+    expect(listImportLotes.execute).toHaveBeenCalledTimes(1);
+    expect(response.body).toEqual([
+      expect.objectContaining({
+        id: "11111111-1111-4111-8111-111111111111",
+        lote: 1,
+        isActive: true,
+      }),
+    ]);
+  });
+
+  it("toggles a sale order import lote and emits realtime updates", async () => {
+    const loteId = "11111111-1111-4111-8111-111111111111";
+    const saleOrderId = "22222222-2222-4222-8222-222222222222";
+
+    await request(app.getHttpServer())
+      .patch(`/sale-orders/import-lotes/${loteId}/active`)
+      .send({ isActive: false })
+      .expect(200);
+
+    expect(setImportLoteActive.execute).toHaveBeenCalledWith({
+      loteId,
+      isActive: false,
+      executedBy: "user-1",
+    });
+    expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
+      "sale-order-lotes.updated",
+      expect.objectContaining({
+        saleOrderIds: [saleOrderId],
+        source: "sale-order-import-lote-deleted",
+      }),
+    );
+    expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
+      "sale-orders.updated",
+      expect.objectContaining({
+        saleOrderIds: [saleOrderId],
+        source: "sale-order-import-lote-deleted",
+      }),
+    );
+  });
+
+  it("lists sale order import lote audit records", async () => {
+    const loteId = "11111111-1111-4111-8111-111111111111";
+
+    const response = await request(app.getHttpServer())
+      .get(`/sale-orders/import-lotes/${loteId}/audit`)
+      .expect(200);
+
+    expect(listImportLoteAudit.execute).toHaveBeenCalledWith(loteId);
+    expect(response.body).toEqual([
+      expect.objectContaining({
+        loteId,
+        actionExecution: "delete",
+      }),
+    ]);
   });
 
   it("returns export columns", async () => {

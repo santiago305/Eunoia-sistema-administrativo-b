@@ -163,6 +163,30 @@ describe("ExportSaleOrdersExcelUsecase", () => {
     expect(worksheet?.getCell("B2").value).toBe("AMPOLLA1AZUFRE1");
   });
 
+  it("exports lote column", async () => {
+    saleOrderRepo.list.mockResolvedValueOnce({
+      total: 1,
+      items: [
+        {
+          id: "order-1",
+          lotes: 7,
+        },
+      ],
+    });
+    const usecase = new ExportSaleOrdersExcelUsecase(saleOrderRepo as any);
+
+    const result = await usecase.execute({
+      columns: [{ key: "lotes", label: "Lote" }],
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(result.content);
+    const worksheet = workbook.getWorksheet("Pedidos");
+
+    expect(worksheet?.getCell("A1").value).toBe("Lote");
+    expect(worksheet?.getCell("A2").value).toBe(7);
+  });
+
   it("rejects empty or unknown column selections", async () => {
     const usecase = new ExportSaleOrdersExcelUsecase(saleOrderRepo as any);
 
