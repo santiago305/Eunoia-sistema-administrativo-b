@@ -16,12 +16,14 @@ export class GetSaleOrderStatisticsUsecase {
     q?: string;
     filters?: SaleOrderSearchRule[];
     includeCancelled?: boolean;
+    isActive?: boolean;
   }) {
     const snapshot = sanitizeSaleOrderSearchSnapshot(input);
     return this.saleOrderRepo.statistics({
       q: snapshot.q,
       filters: snapshot.filters,
       includeCancelled: input.includeCancelled ?? false,
+      isActive: input.isActive ?? true,
     });
   }
 }

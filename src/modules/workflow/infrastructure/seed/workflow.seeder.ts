@@ -66,7 +66,8 @@ async function synchronizeWorkflow(manager: EntityManager, seed: WorkflowSeed): 
       id: transitionId, workflowId, code: transition.code, name: transition.name, effect: transition.effect,
       purpose: transition.purpose, fromStateId: resolve(transition.fromStateRef), toStateId: resolve(transition.toStateRef),
       isGlobal: transition.isGlobal, excludedStateIds: transition.excludedStateRefs.map((reference) => resolve(reference)!),
-      sourceHandle: transition.sourceHandle, targetHandle: transition.targetHandle, isActive: transition.isActive,
+      sourceHandle: transition.sourceHandle, targetHandle: transition.targetHandle,
+      positionX: transition.positionX, positionY: transition.positionY, isActive: transition.isActive,
       autoTrigger: transition.autoTrigger, priority: transition.priority, elseEffect: transition.elseEffect,
       elseToStateId: resolve(transition.elseToStateRef),
     }, { conflictPaths: ['id'], skipUpdateIfNoValuesChanged: true });

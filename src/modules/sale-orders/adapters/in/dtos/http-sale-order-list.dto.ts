@@ -1,5 +1,5 @@
 import { plainToInstance, Transform, Type } from "class-transformer";
-import { IsArray, IsEnum, IsInt, IsOptional, IsString, Max, Min, ValidateNested } from "class-validator";
+import { IsArray, IsBoolean, IsEnum, IsInt, IsOptional, IsString, Max, Min, ValidateNested } from "class-validator";
 import {
   SaleOrderSearchField,
   SaleOrderSearchFields,
@@ -26,6 +26,11 @@ export const toSaleOrderFiltersArray = (value: unknown) => {
   } catch {
     return undefined;
   }
+};
+
+export const toOptionalBoolean = (value: unknown) => {
+  if (value === undefined || value === null || value === "") return undefined;
+  return value === true || value === "true";
 };
 
 class HttpSaleOrderSearchRangeDto {
@@ -88,5 +93,10 @@ export class HttpListSaleOrdersQueryDto {
   @Min(1)
   @Max(100)
   limit?: number;
+
+  @IsOptional()
+  @Transform(({ value }) => toOptionalBoolean(value))
+  @IsBoolean()
+  isActive?: boolean;
 }
 

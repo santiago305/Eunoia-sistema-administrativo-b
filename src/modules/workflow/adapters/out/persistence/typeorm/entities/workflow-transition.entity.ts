@@ -43,6 +43,12 @@ export class WorkflowTransitionEntity {
   @Column({ name: "target_handle", type: "varchar", nullable: true })
   targetHandle?: string | null;
 
+  @Column({ name: "position_x", type: "double precision", nullable: true })
+  positionX?: number | null;
+
+  @Column({ name: "position_y", type: "double precision", nullable: true })
+  positionY?: number | null;
+
   @Column({ name: "is_active", type: "boolean", default: true })
   isActive: boolean;
 

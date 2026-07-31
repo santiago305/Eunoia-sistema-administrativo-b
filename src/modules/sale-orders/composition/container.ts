@@ -40,6 +40,8 @@ import { AssignImportLoteUsecase } from "src/modules/sale-orders/application/use
 import { ListImportLotesUsecase } from "src/modules/sale-orders/application/usecases/sale-order/list-import-lotes.usecase";
 import { SetImportLoteActiveUsecase } from "src/modules/sale-orders/application/usecases/sale-order/set-import-lote-active.usecase";
 import { ListImportLoteAuditUsecase } from "src/modules/sale-orders/application/usecases/sale-order/list-import-lote-audit.usecase";
+import { SetSaleOrdersActiveUsecase } from "src/modules/sale-orders/application/usecases/sale-order/set-sale-orders-active.usecase";
+import { ListSaleOrderAuditUsecase } from "src/modules/sale-orders/application/usecases/sale-order/list-sale-order-audit.usecase";
 import { SaleOrderImportClientResolverService } from "src/modules/sale-orders/application/services/sale-order-import-client-resolver.service";
 import { SaleOrderImportRowNormalizerService } from "src/modules/sale-orders/application/services/sale-order-import-row-normalizer.service";
 import { SaleOrderImportSkuResolverService } from "src/modules/sale-orders/application/services/sale-order-import-sku-resolver.service";
@@ -107,6 +109,8 @@ export const saleOrdersModuleProviders = [
   ListImportLotesUsecase,
   SetImportLoteActiveUsecase,
   ListImportLoteAuditUsecase,
+  SetSaleOrdersActiveUsecase,
+  ListSaleOrderAuditUsecase,
   SaleOrderWorkflowContextService,
   SaleOrderWorkflowTransitionService,
   AdvanceSaleOrderStateUseCase,

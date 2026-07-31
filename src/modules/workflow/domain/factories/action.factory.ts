@@ -14,6 +14,9 @@ export class ActionFactory {
       case ACTIONS.ASSIGN_WAREHOUSE_BY_PROVINCE:
         this.validateWarehouseAssignmentConfig(action.config);
         return;
+      case ACTIONS.ASSIGN_WAREHOUSE_BY_WORKFLOW:
+        this.validateWorkflowWarehouseAssignmentConfig(action.config);
+        return;
       default:
         throw new Error("Accion de workflow no soportada");
     }
@@ -28,9 +31,13 @@ export class ActionFactory {
     if (!stockPositions.length) return;
 
     const firstStockPosition = Math.min(...stockPositions);
+    const warehouseAssignmentActions = [
+      ACTIONS.ASSIGN_WAREHOUSE_BY_PROVINCE,
+      ACTIONS.ASSIGN_WAREHOUSE_BY_WORKFLOW,
+    ];
     const assignmentAfterStock = actions.some(
       (action) =>
-        action.type === ACTIONS.ASSIGN_WAREHOUSE_BY_PROVINCE &&
+        warehouseAssignmentActions.includes(action.type as any) &&
         action.position >= firstStockPosition,
     );
     if (assignmentAfterStock) {
@@ -42,7 +49,6 @@ export class ActionFactory {
     const mode = config.mode;
     const provinceIds = config.provinceIds;
     const warehouseId = config.warehouseId;
-    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     const validProvinceIds =
       Array.isArray(provinceIds) &&
       provinceIds.length > 0 &&
@@ -52,10 +58,20 @@ export class ActionFactory {
     if (
       !["INCLUDE", "EXCLUDE"].includes(String(mode)) ||
       !validProvinceIds ||
-      typeof warehouseId !== "string" ||
-      !uuidPattern.test(warehouseId)
+      !this.validateWarehouseId(warehouseId)
     ) {
       throw new Error("Configuracion de asignacion de almacen invalida");
     }
+  }
+
+  private static validateWorkflowWarehouseAssignmentConfig(config: Readonly<Record<string, unknown>>): void {
+    if (!this.validateWarehouseId(config.workflowId) || !this.validateWarehouseId(config.warehouseId)) {
+      throw new Error("Configuracion de asignacion de almacen invalida");
+    }
+  }
+
+  private static validateWarehouseId(value: unknown): boolean {
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    return typeof value === "string" && uuidPattern.test(value);
   }
 }

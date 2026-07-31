@@ -34,6 +34,8 @@ export type FullWorkflowTransitionInput = {
   excludedStateRefs?: string[];
   sourceHandle?: string | null;
   targetHandle?: string | null;
+  positionX?: number | null;
+  positionY?: number | null;
   isActive?: boolean;
   autoTrigger?: boolean;
   priority?: number;

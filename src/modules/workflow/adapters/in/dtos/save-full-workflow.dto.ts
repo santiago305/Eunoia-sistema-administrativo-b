@@ -138,6 +138,14 @@ class FullWorkflowTransitionDto {
   targetHandle?: string | null;
 
   @IsOptional()
+  @IsNumber()
+  positionX?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  positionY?: number | null;
+
+  @IsOptional()
   @IsBoolean()
   isActive?: boolean;
 

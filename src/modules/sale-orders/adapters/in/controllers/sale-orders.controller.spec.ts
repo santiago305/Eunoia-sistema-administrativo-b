@@ -24,6 +24,8 @@ import { CreateFromImportPreviewUseCase } from "src/modules/sale-orders/applicat
 import { ListImportLotesUsecase } from "src/modules/sale-orders/application/usecases/sale-order/list-import-lotes.usecase";
 import { SetImportLoteActiveUsecase } from "src/modules/sale-orders/application/usecases/sale-order/set-import-lote-active.usecase";
 import { ListImportLoteAuditUsecase } from "src/modules/sale-orders/application/usecases/sale-order/list-import-lote-audit.usecase";
+import { SetSaleOrdersActiveUsecase } from "src/modules/sale-orders/application/usecases/sale-order/set-sale-orders-active.usecase";
+import { ListSaleOrderAuditUsecase } from "src/modules/sale-orders/application/usecases/sale-order/list-sale-order-audit.usecase";
 import { AdvanceSaleOrderStateUseCase } from "src/modules/workflow/application/usecases/advance-sale-order-state.usecase";
 import { AssignSaleOrderWorkflowUseCase } from "src/modules/workflow/application/usecases/assign-sale-order-workflow.usecase";
 import { GetAvailableTransitionsUseCase } from "src/modules/workflow/application/usecases/get-available-transitions.usecase";
@@ -77,6 +79,8 @@ describe("SaleOrdersController", () => {
   const listImportLotes = { execute: jest.fn() };
   const setImportLoteActive = { execute: jest.fn() };
   const listImportLoteAudit = { execute: jest.fn() };
+  const setSaleOrdersActive = { execute: jest.fn() };
+  const listSaleOrderAudit = { execute: jest.fn() };
   const advanceSaleOrderState = { execute: jest.fn() };
   const assignWorkflow = { execute: jest.fn() };
   const getAvailableTransitions = { execute: jest.fn() };
@@ -154,6 +158,28 @@ describe("SaleOrdersController", () => {
         id: "33333333-3333-4333-8333-333333333333",
         loteId: "11111111-1111-4111-8111-111111111111",
         createdAt: "2026-07-30T00:00:00.000Z",
+        executedBy: { id: "user-1", name: "User One", email: "user-one@example.test" },
+        actionExecution: "delete",
+      },
+    ]);
+    setSaleOrdersActive.execute.mockResolvedValue({
+      type: "success",
+      message: "Operacion masiva procesada",
+      data: {
+        requested: 1,
+        succeeded: 1,
+        failed: 0,
+        partiallyCompleted: false,
+        results: [
+          { saleOrderId: "22222222-2222-4222-8222-222222222222", status: "success" },
+        ],
+      },
+    });
+    listSaleOrderAudit.execute.mockResolvedValue([
+      {
+        id: "44444444-4444-4444-8444-444444444444",
+        saleOrderId: "22222222-2222-4222-8222-222222222222",
+        createdAt: "2026-07-31T00:00:00.000Z",
         executedBy: { id: "user-1", name: "User One", email: "user-one@example.test" },
         actionExecution: "delete",
       },
@@ -303,6 +329,8 @@ describe("SaleOrdersController", () => {
         { provide: ListImportLotesUsecase, useValue: listImportLotes },
         { provide: SetImportLoteActiveUsecase, useValue: setImportLoteActive },
         { provide: ListImportLoteAuditUsecase, useValue: listImportLoteAudit },
+        { provide: SetSaleOrdersActiveUsecase, useValue: setSaleOrdersActive },
+        { provide: ListSaleOrderAuditUsecase, useValue: listSaleOrderAudit },
         { provide: SaleOrdersRealtimeService, useValue: realtimeService },
         { provide: SaleOrderAutomaticWorkflowService, useValue: automaticWorkflow },
         { provide: SaleOrderRealtimePayloadService, useValue: realtimePayload },
@@ -611,10 +639,24 @@ describe("SaleOrdersController", () => {
       .expect(200);
 
     expect(getStatistics.execute).toHaveBeenCalledWith({
-      q: "S01",
-      includeCancelled: true,
-      filters: [{ field: "workflowId", operator: "in", values: ["workflow-1"] }],
-    });
+        q: "S01",
+        includeCancelled: true,
+        isActive: true,
+        filters: [{ field: "workflowId", operator: "in", values: ["workflow-1"] }],
+      });
+  });
+
+  it("forwards inactive mode to statistics usecase", async () => {
+    await request(app.getHttpServer())
+      .get("/sale-orders/statistics")
+      .query({ isActive: "false" })
+      .expect(200);
+
+    expect(getStatistics.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        isActive: false,
+      }),
+    );
   });
 
   it("accepts import preview rows as direct array body", async () => {
@@ -707,6 +749,19 @@ describe("SaleOrdersController", () => {
     );
   });
 
+  it("forwards inactive mode to list usecase", async () => {
+    await request(app.getHttpServer())
+      .get("/sale-orders")
+      .query({ isActive: "false" })
+      .expect(200);
+
+    expect(listSaleOrders.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        isActive: false,
+      }),
+    );
+  });
+
   it("lists sale order import lote audit records", async () => {
     const loteId = "11111111-1111-4111-8111-111111111111";
 
@@ -718,6 +773,22 @@ describe("SaleOrdersController", () => {
     expect(response.body).toEqual([
       expect.objectContaining({
         loteId,
+        actionExecution: "delete",
+      }),
+    ]);
+  });
+
+  it("lists sale order audit records", async () => {
+    const saleOrderId = "22222222-2222-4222-8222-222222222222";
+
+    const response = await request(app.getHttpServer())
+      .get(`/sale-orders/${saleOrderId}/audit`)
+      .expect(200);
+
+    expect(listSaleOrderAudit.execute).toHaveBeenCalledWith(saleOrderId);
+    expect(response.body).toEqual([
+      expect.objectContaining({
+        saleOrderId,
         actionExecution: "delete",
       }),
     ]);
@@ -918,6 +989,61 @@ describe("SaleOrdersController", () => {
       expect.objectContaining({
         saleOrderIds: [firstId, secondId],
         source: "sale-orders-bulk-assigned-by",
+      }),
+    );
+  });
+
+  it("bulk deletes sale orders logically and emits one consolidated realtime update", async () => {
+    const saleOrderId = "22222222-2222-4222-8222-222222222222";
+
+    await request(app.getHttpServer())
+      .patch("/sale-orders/bulk/active")
+      .send({ saleOrderIds: [saleOrderId], isActive: false })
+      .expect(200);
+
+    expect(setSaleOrdersActive.execute).toHaveBeenCalledWith({
+      saleOrderIds: [saleOrderId],
+      isActive: false,
+      executedBy: "user-1",
+    });
+    expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
+      "sale-orders.updated",
+      expect.objectContaining({
+        saleOrderIds: [saleOrderId],
+        source: "sale-orders-bulk-deleted",
+      }),
+    );
+  });
+
+  it("restores one sale order logically and emits realtime update", async () => {
+    const saleOrderId = "22222222-2222-4222-8222-222222222222";
+    setSaleOrdersActive.execute.mockResolvedValueOnce({
+      type: "success",
+      message: "Operacion masiva procesada",
+      data: {
+        requested: 1,
+        succeeded: 1,
+        failed: 0,
+        partiallyCompleted: false,
+        results: [{ saleOrderId, status: "success" }],
+      },
+    });
+
+    await request(app.getHttpServer())
+      .patch(`/sale-orders/${saleOrderId}/active`)
+      .send({ isActive: true })
+      .expect(200);
+
+    expect(setSaleOrdersActive.execute).toHaveBeenCalledWith({
+      saleOrderIds: [saleOrderId],
+      isActive: true,
+      executedBy: "user-1",
+    });
+    expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
+      "sale-orders.updated",
+      expect.objectContaining({
+        saleOrderIds: [saleOrderId],
+        source: "sale-order-restored",
       }),
     );
   });

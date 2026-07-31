@@ -11,7 +11,8 @@ export type WorkflowTransitionSeed = {
   clientId: string; code: string; name: string; effect: WorkflowTransitionEffect;
   fromStateRef: string | null; toStateRef?: string | null; isGlobal: boolean;
   excludedStateRefs: string[]; purpose: WorkflowTransitionPurpose; sourceHandle: string | null;
-  targetHandle: string | null; isActive: boolean; autoTrigger: boolean; priority: number;
+  targetHandle: string | null; positionX: number | null; positionY: number | null;
+  isActive: boolean; autoTrigger: boolean; priority: number;
   conditions: WorkflowConditionSeed[]; actions: WorkflowActionSeed[];
   elseEffect: WorkflowTransitionEffect | null; elseToStateRef: string | null; elseActions: WorkflowActionSeed[];
 };
@@ -30,14 +31,24 @@ const assignWarehouseByProvince = (
   config: { mode, provinceIds, warehouseId },
   position,
 });
+const assignWarehouseByWorkflow = (
+  workflowId: string,
+  warehouseId: string,
+  position: number,
+): WorkflowActionSeed => ({
+  type: 'ASSIGN_WAREHOUSE_BY_WORKFLOW',
+  config: { workflowId, warehouseId },
+  position,
+});
 
 const transition = (value: Partial<WorkflowTransitionSeed> & Pick<WorkflowTransitionSeed, 'clientId' | 'code' | 'name'>): WorkflowTransitionSeed => ({
   effect: 'MOVE_STATE', fromStateRef: null, toStateRef: null, isGlobal: false, excludedStateRefs: [], purpose: 'STANDARD',
-  sourceHandle: null, targetHandle: null, isActive: true, autoTrigger: false, priority: 0, conditions: [], actions: [],
+  sourceHandle: null, targetHandle: null, positionX: null, positionY: null,
+  isActive: true, autoTrigger: false, priority: 0, conditions: [], actions: [],
   elseEffect: null, elseToStateRef: null, elseActions: [], ...value,
 });
 
-const invoice = (clientId: string) => transition({ clientId, code: 'GLOBAL_ACTION_1781572618528', name: 'Enviar comprobante', effect: 'RUN_ACTIONS', isGlobal: true, actions: [action('MARK_INVOICE_SENT')] });
+const invoice = (clientId: string, positionX: number | null = null, positionY: number | null = null) => transition({ clientId, code: 'GLOBAL_ACTION_1781572618528', name: 'Enviar comprobante', effect: 'RUN_ACTIONS', isGlobal: true, positionX, positionY, actions: [action('MARK_INVOICE_SENT')] });
 const zeroDayWindow = () => condition('SCHEDULE_DELIVERY_WINDOW', { minDaysBefore: 0, maxDaysBefore: 0 }, 0);
 const scheduleConditions = (fields: string[]) => [
   condition('SCHEDULE_DELIVERY_WINDOW', { maxDaysBefore: 1, minDaysBefore: 0 }, 0),
@@ -62,7 +73,15 @@ const ENVIO_DELIVERED = ref('51db9539-a81c-5dab-93a9-0ecd49a28c23');
 const ENVIO_WAITING_PAYMENT = ref('35e95b95-3687-5caa-8bcd-fb27f1a193ee');
 const ENVIO_TO_SEND = ref('c92c0444-fff0-4002-a876-276daf5fa88b');
 
-const draftToCreatedTransition = (clientId: string, fromStateRef: string, toStateRef: string) => transition({
+const draftToCreatedTransition = (
+  clientId: string,
+  fromStateRef: string,
+  toStateRef: string,
+  actions: WorkflowActionSeed[] = [
+    assignWarehouseByProvince(['2001'], DEFAULT_WAREHOUSE_IDS.piura, 0),
+    assignWarehouseByProvince(['1501'], DEFAULT_WAREHOUSE_IDS.lima, 1),
+  ],
+) => transition({
   clientId,
   code: 'TRANSITION_1783039714065',
   name: 'Creado',
@@ -72,10 +91,7 @@ const draftToCreatedTransition = (clientId: string, fromStateRef: string, toStat
   targetHandle: 'top',
   autoTrigger: true,
   conditions: [condition('SALE_ORDER_FIELD_REQUIRED', { field: 'client.provinceId' }, 0)],
-  actions: [
-    assignWarehouseByProvince(['2001', '2006'], DEFAULT_WAREHOUSE_IDS.piura, 0),
-    assignWarehouseByProvince(['2001', '2006'], DEFAULT_WAREHOUSE_IDS.lima, 1, 'EXCLUDE'),
-  ],
+  actions,
 });
 
 export const ABONADO_WORKFLOW_SEEDS: WorkflowSeed[] = [
@@ -83,7 +99,7 @@ export const ABONADO_WORKFLOW_SEEDS: WorkflowSeed[] = [
     name: 'ABONADO ENVIO', description: null, isActive: true,
     states: [
       { clientId: ENVIO_CANCELLED, saleOrderStateId: '21b5669b-fc3a-4bf2-9363-4b2d99c4c734', position: 0, positionX: -9999, positionY: -9999, isInitial: false, isFinal: false, isActive: true },
-      { clientId: ENVIO_DRAFT, saleOrderStateId: 'f24c85fa-28cc-412a-84d0-118e8d8f5059', position: 6, positionX: -737.0909722293843, positionY: -399.47405709586315, isInitial: true, isFinal: false, isActive: true },
+      { clientId: ENVIO_DRAFT, saleOrderStateId: 'f24c85fa-28cc-412a-84d0-118e8d8f5059', position: 6, positionX: -741.0909722293843, positionY: -439.47405709586315, isInitial: true, isFinal: false, isActive: true },
       { clientId: ENVIO_CREATED, saleOrderStateId: 'ae9b51d9-9324-4d15-a648-626a5eabda3d', position: 2, positionX: -562.7316284179688, positionY: -309.2750778198242, isInitial: false, isFinal: false, isActive: true },
       { clientId: ENVIO_SCHEDULED, saleOrderStateId: '2b2b266c-fee2-447d-9bb6-45d90f4d2cc2', position: 3, positionX: -562.5, positionY: -97.93066406249999, isInitial: false, isFinal: false, isActive: true },
       { clientId: ENVIO_WAITING_STOCK, saleOrderStateId: 'f779f1bd-4c20-4fd9-abe5-dfb065b4f1f3', position: 4, positionX: -288.75, positionY: -161.40418207480303, isInitial: false, isFinal: false, isActive: true },
@@ -92,23 +108,23 @@ export const ABONADO_WORKFLOW_SEEDS: WorkflowSeed[] = [
       { clientId: ENVIO_TO_SEND, saleOrderStateId: '4f61e23c-2064-47b4-8860-ab722c28cdb2', position: 7, positionX: -234.47978177828276, positionY: 46.50291970941866, isInitial: false, isFinal: false, isActive: true },
     ],
     transitions: [
-      transition({ clientId: 'transition-ba15a520-69ea-581f-919e-61f6875ed1b7', code: 'CANCEL', name: 'Cancelar', toStateRef: ENVIO_CANCELLED, isGlobal: true, excludedStateRefs: [ENVIO_CANCELLED, ENVIO_DELIVERED], purpose: 'CANCEL', actions: [action('REVERT_STOCK')] }),
+      transition({ clientId: 'transition-ba15a520-69ea-581f-919e-61f6875ed1b7', code: 'CANCEL', name: 'Cancelar', toStateRef: ENVIO_CANCELLED, isGlobal: true, excludedStateRefs: [ENVIO_CANCELLED, ENVIO_DELIVERED], purpose: 'CANCEL', positionX: -336, positionY: -294, actions: [action('REVERT_STOCK')] }),
       transition({ clientId: 'transition-2750c023-0dfc-5093-9bcc-a2994b8a9816', code: 'TRANSITION_1781572278618', name: 'Programado', fromStateRef: ENVIO_CREATED, toStateRef: ENVIO_SCHEDULED, sourceHandle: 'bottom', targetHandle: 'top', autoTrigger: true, conditions: scheduleConditions(['client.docNumber', 'agencyDetail', 'deliveryDate']), actions: [action('RESERVE_STOCK')], elseEffect: 'MOVE_STATE', elseToStateRef: ENVIO_WAITING_STOCK }),
       transition({ clientId: 'transition-25d0d533-69a8-55de-90ac-7afc1aafe385', code: 'TRANSITION_1781572317577', name: 'Programado', fromStateRef: ENVIO_WAITING_STOCK, toStateRef: ENVIO_SCHEDULED, sourceHandle: 'bottom', targetHandle: 'right', autoTrigger: true, conditions: scheduleConditions(['client.docNumber', 'agencyDetail', 'deliveryDate']), actions: [action('RESERVE_STOCK')] }),
-      invoice('transition-b7921654-ac9e-5bc4-9553-5a5b4a0fd6a4'),
-      transition({ clientId: 'transition-78c0c3ec-9fe8-4818-8c61-7f40a6641012', code: 'GLOBAL_ACTION_1785028166923', name: 'Preparado', effect: 'RUN_ACTIONS', isGlobal: true, excludedStateRefs: [ENVIO_WAITING_PAYMENT, ENVIO_DRAFT, ENVIO_DELIVERED, ENVIO_WAITING_STOCK, ENVIO_SCHEDULED, ENVIO_CREATED], actions: [action('MARK_PREPARED')] }),
-      transition({ clientId: 'transition-dbe6b404-7fca-4f39-a3fe-e59faf1c705f', code: 'GLOBAL_ACTION_1785028192676', name: 'Preguía', effect: 'RUN_ACTIONS', isGlobal: true, actions: [action('MARK_PREGUIDE')] }),
+      invoice('transition-b7921654-ac9e-5bc4-9553-5a5b4a0fd6a4', -132, -300),
+      transition({ clientId: 'transition-78c0c3ec-9fe8-4818-8c61-7f40a6641012', code: 'GLOBAL_ACTION_1785028166923', name: 'Preparado', effect: 'RUN_ACTIONS', isGlobal: true, excludedStateRefs: [ENVIO_WAITING_PAYMENT, ENVIO_DRAFT, ENVIO_DELIVERED, ENVIO_WAITING_STOCK, ENVIO_SCHEDULED, ENVIO_CREATED], positionX: -340, positionY: -400, actions: [action('MARK_PREPARED')] }),
+      transition({ clientId: 'transition-dbe6b404-7fca-4f39-a3fe-e59faf1c705f', code: 'GLOBAL_ACTION_1785028192676', name: 'Preguía', effect: 'RUN_ACTIONS', isGlobal: true, positionX: -136, positionY: -402, actions: [action('MARK_PREGUIDE')] }),
       transition({ clientId: 'transition-066ebc76-9b33-4636-b61b-a757568cf3a4', code: 'TRANSITION_1782332299577', name: 'Esperando', fromStateRef: ENVIO_SCHEDULED, toStateRef: ENVIO_WAITING_PAYMENT, sourceHandle: 'bottom', targetHandle: 'top', autoTrigger: true, conditions: [zeroDayWindow()] }),
       transition({ clientId: 'transition-140b19ac-050e-4457-828e-ca70d2c8a1ea', code: 'TRANSITION_1782332323009', name: 'Entregado', fromStateRef: ENVIO_WAITING_PAYMENT, toStateRef: ENVIO_TO_SEND, sourceHandle: 'right', targetHandle: 'left', autoTrigger: true, conditions: [condition('IS_PAID', {}, 0)], actions: [action('CONSUME_STOCK')] }),
       transition({ clientId: 'transition-626eb486-8d2b-46b7-b753-e0b50d40fb8c', code: 'TRANSITION_1785028143867', name: 'Entregado', fromStateRef: ENVIO_TO_SEND, toStateRef: ENVIO_DELIVERED, sourceHandle: 'right', targetHandle: 'left' }),
-      draftToCreatedTransition('transition-4882525c-2421-4497-a83e-513cf3f4db5e', ENVIO_DRAFT, ENVIO_CREATED),
+      draftToCreatedTransition('transition-4882525c-2421-4497-a83e-513cf3f4db5e', ENVIO_DRAFT, ENVIO_CREATED, [assignWarehouseByWorkflow('586dbaf8-a462-5c20-87ab-df20f1836c28', DEFAULT_WAREHOUSE_IDS.piura, 0)]),
     ],
   },
   {
     name: 'ABONADO CE', description: null, isActive: true,
     states: [
       { clientId: CE_CANCELLED, saleOrderStateId: '21b5669b-fc3a-4bf2-9363-4b2d99c4c734', position: 0, positionX: -9999, positionY: -9999, isInitial: false, isFinal: false, isActive: true },
-      { clientId: CE_DRAFT, saleOrderStateId: 'f24c85fa-28cc-412a-84d0-118e8d8f5059', position: 6, positionX: -737.0909722293843, positionY: -399.47405709586315, isInitial: true, isFinal: false, isActive: true },
+      { clientId: CE_DRAFT, saleOrderStateId: 'f24c85fa-28cc-412a-84d0-118e8d8f5059', position: 6, positionX: -763.7491021837716, positionY: -467.7855151039806, isInitial: true, isFinal: false, isActive: true },
       { clientId: CE_CREATED, saleOrderStateId: 'ae9b51d9-9324-4d15-a648-626a5eabda3d', position: 2, positionX: -562.7316284179688, positionY: -309.2750778198242, isInitial: false, isFinal: false, isActive: true },
       { clientId: CE_SCHEDULED, saleOrderStateId: '2b2b266c-fee2-447d-9bb6-45d90f4d2cc2', position: 3, positionX: -562.5, positionY: -97.93066406249999, isInitial: false, isFinal: false, isActive: true },
       { clientId: CE_WAITING_STOCK, saleOrderStateId: 'f779f1bd-4c20-4fd9-abe5-dfb065b4f1f3', position: 4, positionX: -288.75, positionY: -161.40418207480303, isInitial: false, isFinal: false, isActive: true },
@@ -116,10 +132,10 @@ export const ABONADO_WORKFLOW_SEEDS: WorkflowSeed[] = [
       { clientId: CE_DELIVERED, saleOrderStateId: 'b0ae3f76-f6cd-4f34-88b2-3d4c29aca53f', position: 5, positionX: -271.2462858797111, positionY: 80.3263957691985, isInitial: false, isFinal: true, isActive: true },
     ],
     transitions: [
-      transition({ clientId: 'transition-f852834f-6128-5a60-b86c-7e5f04f38d73', code: 'CANCEL', name: 'Cancelar', toStateRef: CE_CANCELLED, isGlobal: true, excludedStateRefs: [CE_CANCELLED, CE_DELIVERED], purpose: 'CANCEL', actions: [action('REVERT_STOCK')] }),
+      transition({ clientId: 'transition-f852834f-6128-5a60-b86c-7e5f04f38d73', code: 'CANCEL', name: 'Cancelar', toStateRef: CE_CANCELLED, isGlobal: true, excludedStateRefs: [CE_CANCELLED, CE_DELIVERED], purpose: 'CANCEL', positionX: -368.23939997978806, positionY: -465.6957459587233, actions: [action('REVERT_STOCK')] }),
       transition({ clientId: 'transition-0d5798d4-0bcc-5255-811f-5b7ce90c36fc', code: 'TRANSITION_1781572278618', name: 'Programado', fromStateRef: CE_CREATED, toStateRef: CE_SCHEDULED, sourceHandle: 'bottom', targetHandle: 'top', autoTrigger: true, conditions: scheduleConditions(['deliveryDate', 'client.districtId']), actions: [action('RESERVE_STOCK')], elseEffect: 'MOVE_STATE', elseToStateRef: CE_WAITING_STOCK }),
       transition({ clientId: 'transition-ce6f69fd-091b-59b3-9202-57fa60209518', code: 'TRANSITION_1781572317577', name: 'Programado', fromStateRef: CE_WAITING_STOCK, toStateRef: CE_SCHEDULED, sourceHandle: 'bottom', targetHandle: 'right', autoTrigger: true, conditions: scheduleConditions(['deliveryDate', 'client.districtId']), actions: [action('RESERVE_STOCK')] }),
-      invoice('transition-975ac69f-0f5b-5243-ad05-15a718071c86'),
+      invoice('transition-975ac69f-0f5b-5243-ad05-15a718071c86', -160.43890775916253, -465.5710535966142),
       transition({ clientId: 'transition-4b4fa96f-f2d0-4ec0-b979-e45ec54a9b82', code: 'TRANSITION_1782331809935', name: 'En curso', fromStateRef: CE_SCHEDULED, toStateRef: CE_WAITING_CE, sourceHandle: 'bottom', targetHandle: 'top', autoTrigger: true, conditions: [zeroDayWindow()] }),
       transition({ clientId: 'transition-1af5d252-51a8-4cf5-89a3-690adaf80646', code: 'TRANSITION_1782331894592', name: 'Entregado', fromStateRef: CE_WAITING_CE, toStateRef: CE_DELIVERED, sourceHandle: 'right', targetHandle: 'left', autoTrigger: true, conditions: [condition('IS_PAID', {}, 0)], actions: [action('CONSUME_STOCK')] }),
       draftToCreatedTransition('transition-4882525c-2421-4497-a83e-513cf3f4db5e', CE_DRAFT, CE_CREATED),
