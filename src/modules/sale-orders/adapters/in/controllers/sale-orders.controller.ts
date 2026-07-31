@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Inject, Optional, Param, ParseUUIDPipe, Patch, Post, Query, Res, UploadedFiles, UseGuards, UseInterceptors } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Inject, Logger, Optional, Param, ParseUUIDPipe, Patch, Post, Query, Res, UploadedFiles, UseGuards, UseInterceptors } from "@nestjs/common";
 import { AnyFilesInterceptor } from "@nestjs/platform-express";
 import { Response } from "express";
 import { memoryStorage } from "multer";
@@ -67,6 +67,8 @@ import { SetSaleOrdersTrackingUsecase } from "src/modules/sale-orders/applicatio
 @Controller("sale-orders")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
 export class SaleOrdersController {
+  private readonly logger = new Logger(SaleOrdersController.name);
+
   constructor(
     private readonly createSaleOrder: CreateSaleOrderUsecase,
     private readonly listSaleOrders: ListSaleOrdersUsecase,
@@ -121,6 +123,17 @@ export class SaleOrdersController {
     this.realtimeService.emitToAllConnected("sale-orders.updated", payload);
 
     return [];
+  }
+
+  private async notifyTrackingUpdatedSafely(saleOrderIds: string[], source: string) {
+    try {
+      await this.notifySaleOrdersUpdated(saleOrderIds, source);
+    } catch (error) {
+      this.logger.error(
+        `No se pudo emitir la actualización de seguimiento (${source})`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
   }
 
   private getSuccessfulSaleOrderIds(result: {
@@ -612,7 +625,7 @@ export class SaleOrdersController {
   async bulkTracking(@Body() dto: HttpSaleOrderTrackingDto, @CurrentUser() user: { id: string }) {
     const result = await this.setTracking!.execute({ ...dto, executedBy: user.id });
     const ids = this.getSuccessfulSaleOrderIds(result);
-    if (ids.length) await this.notifySaleOrdersUpdated(ids, "sale-orders-bulk-tracking-updated");
+    if (ids.length) await this.notifyTrackingUpdatedSafely(ids, "sale-orders-bulk-tracking-updated");
     return result;
   }
 
@@ -635,7 +648,7 @@ export class SaleOrdersController {
       executedBy: user.id,
     });
     const ids = this.getSuccessfulSaleOrderIds(result);
-    if (ids.length) await this.notifySaleOrderUpdated(saleOrderId, "sale-order-tracking-updated");
+    if (ids.length) await this.notifyTrackingUpdatedSafely(ids, "sale-order-tracking-updated");
     return result;
   }
 

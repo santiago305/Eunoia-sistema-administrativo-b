@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { CanActivate, ExecutionContext, INestApplication, Injectable, ValidationPipe } from "@nestjs/common";
+import { CanActivate, ExecutionContext, INestApplication, Injectable, Logger, ValidationPipe } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
@@ -44,6 +44,7 @@ import { ExportSaleOrdersExcelUsecase } from "src/modules/sale-orders/applicatio
 import { GetSaleOrderEditorCatalogsUsecase } from "src/modules/sale-orders/application/usecases/sale-order/get-editor-catalogs.usecase";
 import { LISTING_SEARCH_STORAGE } from "src/shared/listing-search/domain/listing-search.repository";
 import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
+import { SetSaleOrdersTrackingUsecase } from "src/modules/sale-orders/application/usecases/sale-order/set-sale-orders-tracking.usecase";
 
 @Injectable()
 class TestJwtAuthGuard implements CanActivate {
@@ -93,6 +94,7 @@ describe("SaleOrdersController", () => {
   const bulkChangeSaleOrderState = { execute: jest.fn() };
   const bulkExecuteSaleOrderWorkflow = { execute: jest.fn() };
   const editorCatalogs = { execute: jest.fn() };
+  const setTracking = { execute: jest.fn() };
   const exportExcel = {
     getAvailableColumns: jest.fn(),
     execute: jest.fn(),
@@ -273,6 +275,23 @@ describe("SaleOrdersController", () => {
       orderId: "11111111-1111-4111-8111-111111111111",
       clientId: "33333333-3333-4333-8333-333333333333",
     });
+    setTracking.execute.mockResolvedValue({
+      type: "success",
+      message: "Seguimiento actualizado",
+      data: {
+        requested: 1,
+        succeeded: 1,
+        failed: 0,
+        partiallyCompleted: false,
+        results: [
+          {
+            saleOrderId: "11111111-1111-4111-8111-111111111111",
+            status: "success",
+            changedFields: ["preguide_on"],
+          },
+        ],
+      },
+    });
     realtimePayload.build.mockImplementation(async (input: {
       updated?: number;
       saleOrderIds: string[];
@@ -335,6 +354,7 @@ describe("SaleOrdersController", () => {
         { provide: SaleOrderAutomaticWorkflowService, useValue: automaticWorkflow },
         { provide: SaleOrderRealtimePayloadService, useValue: realtimePayload },
         { provide: SaveSaleOrderWithClientUsecase, useValue: saveWithClient },
+        { provide: SetSaleOrdersTrackingUsecase, useValue: setTracking },
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -1249,5 +1269,30 @@ describe("SaleOrdersController", () => {
         statistics: statisticsPayload,
       }),
     );
+  });
+
+  it("keeps a successful tracking response when realtime payload creation fails", async () => {
+    const saleOrderId = "11111111-1111-4111-8111-111111111111";
+    const loggerError = jest.spyOn(Logger.prototype, "error").mockImplementation(() => undefined);
+    realtimePayload.build.mockRejectedValueOnce(new Error("socket payload failed"));
+
+    await request(app.getHttpServer())
+      .patch(`/sale-orders/${saleOrderId}/tracking`)
+      .send({ preguide: true })
+      .expect(200)
+      .expect(({ body }) => expect(body.data.succeeded).toBe(1));
+
+    expect(setTracking.execute).toHaveBeenCalledTimes(1);
+    expect(setTracking.execute).toHaveBeenCalledWith({
+      saleOrderIds: [saleOrderId],
+      preguide: true,
+      prepared: undefined,
+      executedBy: "user-1",
+    });
+    expect(loggerError).toHaveBeenCalledWith(
+      "No se pudo emitir la actualización de seguimiento (sale-order-tracking-updated)",
+      expect.stringContaining("socket payload failed"),
+    );
+    loggerError.mockRestore();
   });
 });
