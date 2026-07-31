@@ -29,6 +29,7 @@ describe("SaleOrderWorkflowContextService", () => {
     (overrides.workflowId as string | null) ?? "workflow-1",
     (overrides.currentStateId as string | null) ?? "state-1",
     (overrides.isActive as boolean) ?? true,
+    (overrides.lotes as number | null) ?? null,
     (overrides.createdAt as Date) ?? new Date("2026-06-06T00:00:00.000Z"),
     (overrides.updatedAt as Date | null) ?? null,
   );

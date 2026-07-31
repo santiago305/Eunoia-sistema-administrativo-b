@@ -97,6 +97,8 @@ import { AddProductLogicalDeletion20260725130000 } from "./migrations/2026072513
 import { AddSaleOrderPreparedPreguide20260725000000 } from "./migrations/20260725000000-add-sale-order-prepared-preguide";
 import { AddPurchaseOrderDescription20260727120000 } from "./migrations/20260727120000-add-purchase-order-description";
 import { CreateSaleOrderImportLotes20260730090000 } from "./migrations/20260730090000-create-sale-order-import-lotes";
+import { AddWorkflowTransitionPositions20260730180000 } from "./migrations/20260730180000-add-workflow-transition-positions";
+import { CreateSaleOrderAuditory20260731100000 } from "./migrations/20260731100000-create-sale-order-auditory";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -204,7 +206,9 @@ export const databaseMigrations = [
     FixProductionItemStockReference20260725120000,
     AddProductLogicalDeletion20260725130000,
     AddPurchaseOrderDescription20260727120000,
-    CreateSaleOrderImportLotes20260730090000
+    CreateSaleOrderImportLotes20260730090000,
+    AddWorkflowTransitionPositions20260730180000,
+    CreateSaleOrderAuditory20260731100000,
 ];
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({

@@ -90,13 +90,26 @@ export class SaleOrderWorkflowActionRunnerService {
     let effectiveOrder = order;
     const outcomes: WorkflowActionOutcome[] = [];
     for (const action of ordered) {
-      if (action.type !== ACTIONS.ASSIGN_WAREHOUSE_BY_PROVINCE) continue;
+      if (
+        action.type !== ACTIONS.ASSIGN_WAREHOUSE_BY_PROVINCE &&
+        action.type !== ACTIONS.ASSIGN_WAREHOUSE_BY_WORKFLOW
+      ) {
+        continue;
+      }
+
       ActionFactory.validate(action);
-      const result = await this.warehouseAssignment.assign(
-        effectiveOrder,
-        action.config as any,
-        tx,
-      );
+      const result =
+        action.type === ACTIONS.ASSIGN_WAREHOUSE_BY_PROVINCE
+          ? await this.warehouseAssignment.assign(
+              effectiveOrder,
+              action.config as any,
+              tx,
+            )
+          : await this.warehouseAssignment.assignByWorkflow(
+              effectiveOrder,
+              action.config as any,
+              tx,
+            );
       effectiveOrder = result.order;
       outcomes.push(result.outcome);
     }
@@ -219,7 +232,10 @@ export class SaleOrderWorkflowActionRunnerService {
         await this.saleOrderRepo.markPrepared(order.id, tx);
         continue;
       }
-      if (action.type === ACTIONS.ASSIGN_WAREHOUSE_BY_PROVINCE) {
+      if (
+        action.type === ACTIONS.ASSIGN_WAREHOUSE_BY_PROVINCE ||
+        action.type === ACTIONS.ASSIGN_WAREHOUSE_BY_WORKFLOW
+      ) {
         continue;
       }
       if (action.type === ACTIONS.CONSUME_STOCK) {

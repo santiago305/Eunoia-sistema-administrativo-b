@@ -161,6 +161,49 @@ describe("SaveFullWorkflowUseCase", () => {
     expect(result.actions[0]).toEqual(expect.objectContaining({ type: ACTIONS.MARK_INVOICE_SENT }));
   });
 
+  it("persists transition node coordinates", async () => {
+    const useCase = createUseCase();
+
+    const result = await useCase.execute({
+      name: "Pedidos",
+      states: [
+        {
+          clientId: "created",
+          code: "CREATED",
+          name: "Creado",
+          color: "#000000",
+          isInitial: true,
+        },
+        {
+          clientId: "delivered",
+          code: "DELIVERED",
+          name: "Entregado",
+          color: "#00ff00",
+          isFinal: true,
+        },
+      ],
+      transitions: [
+        {
+          clientId: "notify",
+          code: "NOTIFY_CLIENT",
+          name: "Notificar cliente",
+          effect: TRANSITION_EFFECTS.RUN_ACTIONS,
+          isGlobal: true,
+          positionX: -240.5,
+          positionY: 160,
+          actions: [{ type: ACTIONS.MARK_INVOICE_SENT }],
+        },
+      ],
+    });
+
+    expect(result.transitions[0]).toEqual(
+      expect.objectContaining({
+        positionX: -240.5,
+        positionY: 160,
+      }),
+    );
+  });
+
   it("rejects a non-global cancellation transition", async () => {
     await expect(
       createUseCase().execute({

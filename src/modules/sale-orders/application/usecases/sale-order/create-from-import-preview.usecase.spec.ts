@@ -12,6 +12,7 @@ import { SaleOrderImportSourceResolverService } from "src/modules/sale-orders/ap
 import { CreateFromImportPreviewUseCase } from "./create-from-import-preview.usecase";
 import { WORKFLOW_REPOSITORY } from "src/modules/workflow/domain/ports/workflow.repository";
 import { SaleOrderNumberingService } from "../../services/sale-order-numbering.service";
+import { AssignImportLoteUsecase } from "./assign-import-lote.usecase";
 
 function makeImportUsecase(overrides: Record<string, any> = {}) {
   const tx = overrides.tx ?? {};
@@ -22,6 +23,7 @@ function makeImportUsecase(overrides: Record<string, any> = {}) {
   const paymentRepo = { bulkCreate: jest.fn().mockResolvedValue([]) };
   const workflowRepo = { findActiveByNormalizedName: jest.fn().mockResolvedValue(null) };
   const numbering = { reserveNext: jest.fn().mockResolvedValue({ serie: "PE", correlative: 1 }) };
+  const assignImportLote = { execute: jest.fn().mockResolvedValue({ id: "lote-1", lote: 1 }) };
   const normalizer = { normalize: jest.fn() };
   const clientResolver = { resolveOrCreate: jest.fn().mockResolvedValue("client-1") };
   const sourceResolver = { resolveOrCreate: jest.fn().mockResolvedValue("source-1") };
@@ -50,6 +52,7 @@ function makeImportUsecase(overrides: Record<string, any> = {}) {
     overrides.skuResolver ?? (skuResolver as any),
     overrides.workflowRepo ?? (workflowRepo as any),
     overrides.numbering ?? (numbering as any),
+    overrides.assignImportLote ?? (assignImportLote as any),
     overrides.adviserResolver ?? (adviserResolver as any),
   ) as CreateFromImportPreviewUseCase;
 
@@ -66,6 +69,7 @@ function makeImportUsecase(overrides: Record<string, any> = {}) {
     skuResolver,
     workflowRepo,
     numbering,
+    assignImportLote,
     adviserResolver,
   };
 }
@@ -86,6 +90,7 @@ describe("CreateFromImportPreviewUseCase", () => {
     const numbering = {
       reserveNext: jest.fn().mockResolvedValue({ serie: "PE", correlative: 7 }),
     };
+    const assignImportLote = { execute: jest.fn().mockResolvedValue({ id: "lote-1", lote: 1 }) };
 
     const normalizer = { normalize: jest.fn() };
     const clientResolver = { resolveOrCreate: jest.fn() };
@@ -130,6 +135,7 @@ describe("CreateFromImportPreviewUseCase", () => {
         { provide: SaleOrderImportSkuResolverService, useValue: skuResolver },
         { provide: WORKFLOW_REPOSITORY, useValue: workflowRepo },
         { provide: SaleOrderNumberingService, useValue: numbering },
+        { provide: AssignImportLoteUsecase, useValue: assignImportLote },
       ],
     }).compile();
 
@@ -175,6 +181,10 @@ describe("CreateFromImportPreviewUseCase", () => {
         {
           provide: SaleOrderNumberingService,
           useValue: { reserveNext: jest.fn() },
+        },
+        {
+          provide: AssignImportLoteUsecase,
+          useValue: { execute: jest.fn() },
         },
       ],
     }).compile();
@@ -413,7 +423,7 @@ describe("CreateFromImportPreviewUseCase", () => {
     );
   });
 
-  it("uses the imported order date as the sale order creation date", async () => {
+  it("uses the imported order date as the sale order schedule date", async () => {
     const f = makeImportUsecase();
     f.normalizer.normalize.mockResolvedValue({
       ok: true,
@@ -439,7 +449,7 @@ describe("CreateFromImportPreviewUseCase", () => {
     expect(f.saleOrderRepo.create).toHaveBeenCalledWith(
       expect.objectContaining({
         scheduleDate: "2026-07-04",
-        createdAt: new Date("2026-07-04T00:00:00.000Z"),
+        createdAt: null,
       }),
       expect.anything(),
     );

@@ -140,29 +140,61 @@ describe('ABONADO workflow seed definitions', () => {
               position: 0,
             },
           ],
-          actions: expect.arrayContaining([
-            expect.objectContaining({
-              type: 'ASSIGN_WAREHOUSE_BY_PROVINCE',
-              config: expect.objectContaining({
-                mode: 'INCLUDE',
-                provinceIds: expect.arrayContaining(['2001', '2006']),
-                warehouseId: DEFAULT_WAREHOUSE_IDS.piura,
-              }),
-              position: 0,
-            }),
-            expect.objectContaining({
-              type: 'ASSIGN_WAREHOUSE_BY_PROVINCE',
-              config: expect.objectContaining({
-                mode: 'EXCLUDE',
-                provinceIds: expect.arrayContaining(['2001', '2006']),
-                warehouseId: DEFAULT_WAREHOUSE_IDS.lima,
-              }),
-              position: 1,
-            }),
-          ]),
+          actions:
+            workflow.name === 'ABONADO ENVIO'
+              ? [
+                  {
+                    type: 'ASSIGN_WAREHOUSE_BY_WORKFLOW',
+                    config: {
+                      workflowId: '586dbaf8-a462-5c20-87ab-df20f1836c28',
+                      warehouseId: DEFAULT_WAREHOUSE_IDS.piura,
+                    },
+                    position: 0,
+                  },
+                ]
+              : expect.arrayContaining([
+                  expect.objectContaining({
+                    type: 'ASSIGN_WAREHOUSE_BY_PROVINCE',
+                    config: expect.objectContaining({
+                      mode: 'INCLUDE',
+                      provinceIds: ['2001'],
+                      warehouseId: DEFAULT_WAREHOUSE_IDS.piura,
+                    }),
+                    position: 0,
+                  }),
+                  expect.objectContaining({
+                    type: 'ASSIGN_WAREHOUSE_BY_PROVINCE',
+                    config: expect.objectContaining({
+                      mode: 'INCLUDE',
+                      provinceIds: ['1501'],
+                      warehouseId: DEFAULT_WAREHOUSE_IDS.lima,
+                    }),
+                    position: 1,
+                  }),
+                ]),
         }),
       );
     }
+  });
+
+  it('keeps seeded global action positions', () => {
+    const envio = ABONADO_WORKFLOW_SEEDS.find(({ name }) => name === 'ABONADO ENVIO')!;
+    const ce = ABONADO_WORKFLOW_SEEDS.find(({ name }) => name === 'ABONADO CE')!;
+
+    expect(envio.transitions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'CANCEL', positionX: -336, positionY: -294 }),
+        expect.objectContaining({ code: 'GLOBAL_ACTION_1781572618528', positionX: -132, positionY: -300 }),
+        expect.objectContaining({ code: 'GLOBAL_ACTION_1785028166923', positionX: -340, positionY: -400 }),
+        expect.objectContaining({ code: 'GLOBAL_ACTION_1785028192676', positionX: -136, positionY: -402 }),
+      ]),
+    );
+    expect(ce.transitions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'CANCEL', positionX: -368.23939997978806, positionY: -465.6957459587233 }),
+        expect.objectContaining({ code: 'GLOBAL_ACTION_1781572618528', positionX: -160.43890775916253, positionY: -465.5710535966142 }),
+      ]),
+    );
   });
 
   it('defines only executable workflow actions', () => {
@@ -187,6 +219,8 @@ describe('materializeWorkflowSeed', () => {
 
     const stateIds = new Set(envio.states.map(({ id }) => id));
     for (const transition of envio.transitions) {
+      expect(transition).toHaveProperty('positionX');
+      expect(transition).toHaveProperty('positionY');
       for (const id of [transition.fromStateId, transition.toStateId, transition.elseToStateId].filter(Boolean)) {
         expect(stateIds.has(id as string)).toBe(true);
       }

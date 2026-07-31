@@ -143,6 +143,13 @@ describe("WorkflowsController", () => {
           warehouseId: { type: "warehouse-select", required: true },
         },
       },
+      {
+        type: "ASSIGN_WAREHOUSE_BY_WORKFLOW",
+        configSchema: {
+          workflowId: { type: "workflow-select", required: true },
+          warehouseId: { type: "warehouse-select", required: true },
+        },
+      },
     ]);
   });
 
@@ -220,6 +227,8 @@ describe("WorkflowsController", () => {
             name: "Notificar cliente",
             effect: TRANSITION_EFFECTS.RUN_ACTIONS,
             isGlobal: true,
+            positionX: -240,
+            positionY: 120,
             conditions: [{ type: CONDITIONS.NOT_CANCELLED }],
             actions: [{ type: ACTIONS.MARK_INVOICE_SENT }],
           },
@@ -232,6 +241,8 @@ describe("WorkflowsController", () => {
         transitions: [
           expect.objectContaining({
             effect: TRANSITION_EFFECTS.RUN_ACTIONS,
+            positionX: -240,
+            positionY: 120,
             conditions: [{ type: CONDITIONS.NOT_CANCELLED }],
             actions: [{ type: ACTIONS.MARK_INVOICE_SENT }],
           }),

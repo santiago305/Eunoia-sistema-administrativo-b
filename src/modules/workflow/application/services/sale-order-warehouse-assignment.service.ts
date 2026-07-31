@@ -19,6 +19,11 @@ export type AssignWarehouseByProvinceConfig = {
   warehouseId: string;
 };
 
+export type AssignWarehouseByWorkflowConfig = {
+  workflowId: string;
+  warehouseId: string;
+};
+
 export type WorkflowActionOutcome = {
   actionType: WorkflowActionType;
   status: "APPLIED" | "SKIPPED";
@@ -30,7 +35,8 @@ export type WarehouseAssignmentResult = {
   outcome: WorkflowActionOutcome;
 };
 
-const ACTION_TYPE = "ASSIGN_WAREHOUSE_BY_PROVINCE" as const;
+const ACTION_TYPE_BY_PROVINCE = "ASSIGN_WAREHOUSE_BY_PROVINCE" as const;
+const ACTION_TYPE_BY_WORKFLOW = "ASSIGN_WAREHOUSE_BY_WORKFLOW" as const;
 const EXISTING_WAREHOUSE_MESSAGE = "Ya hay un almacén seleccionado";
 
 @Injectable()
@@ -50,7 +56,7 @@ export class SaleOrderWarehouseAssignmentService {
     tx: TransactionContext,
   ): Promise<WarehouseAssignmentResult> {
     if (order.warehouseId) {
-      return this.skipped(order, EXISTING_WAREHOUSE_MESSAGE);
+      return this.skipped(order, ACTION_TYPE_BY_PROVINCE, EXISTING_WAREHOUSE_MESSAGE);
     }
 
     const client = await this.clientRepo.findById(order.clientId, tx);
@@ -59,13 +65,13 @@ export class SaleOrderWarehouseAssignmentService {
         ? client.provinceId
         : client?.provinceId?.value ?? null;
     if (!provinceId) {
-      return this.skipped(order);
+      return this.skipped(order, ACTION_TYPE_BY_PROVINCE);
     }
 
     const isListed = config.provinceIds.includes(provinceId);
     const matches = config.mode === "INCLUDE" ? isListed : !isListed;
     if (!matches) {
-      return this.skipped(order);
+      return this.skipped(order, ACTION_TYPE_BY_PROVINCE);
     }
 
     const warehouse = await this.warehouseRepo.findById(new WarehouseId(config.warehouseId), tx);
@@ -78,20 +84,56 @@ export class SaleOrderWarehouseAssignmentService {
       tx,
     );
     if (!assignedOrder) {
-      return this.skipped(order, EXISTING_WAREHOUSE_MESSAGE);
+      return this.skipped(order, ACTION_TYPE_BY_PROVINCE, EXISTING_WAREHOUSE_MESSAGE);
     }
 
     return {
       order: assignedOrder,
-      outcome: { actionType: ACTION_TYPE, status: "APPLIED" },
+      outcome: { actionType: ACTION_TYPE_BY_PROVINCE, status: "APPLIED" },
     };
   }
 
-  private skipped(order: SaleOrder, message?: string): WarehouseAssignmentResult {
+  async assignByWorkflow(
+    order: SaleOrder,
+    config: AssignWarehouseByWorkflowConfig,
+    tx: TransactionContext,
+  ): Promise<WarehouseAssignmentResult> {
+    if (order.warehouseId) {
+      return this.skipped(order, ACTION_TYPE_BY_WORKFLOW, EXISTING_WAREHOUSE_MESSAGE);
+    }
+
+    if (!order.workflowId || order.workflowId !== config.workflowId) {
+      return this.skipped(order, ACTION_TYPE_BY_WORKFLOW);
+    }
+
+    const warehouse = await this.warehouseRepo.findById(new WarehouseId(config.warehouseId), tx);
+    if (!warehouse?.isActive) {
+      throw new BadRequestException("El almacen configurado no existe o esta inactivo");
+    }
+
+    const assignedOrder = await this.saleOrderRepo.assignWarehouseIfEmpty(
+      { saleOrderId: order.id, warehouseId: config.warehouseId },
+      tx,
+    );
+    if (!assignedOrder) {
+      return this.skipped(order, ACTION_TYPE_BY_WORKFLOW, EXISTING_WAREHOUSE_MESSAGE);
+    }
+
+    return {
+      order: assignedOrder,
+      outcome: { actionType: ACTION_TYPE_BY_WORKFLOW, status: "APPLIED" },
+    };
+  }
+
+  private skipped(
+    order: SaleOrder,
+    actionType: WorkflowActionType,
+    message?: string,
+  ): WarehouseAssignmentResult {
     return {
       order,
       outcome: {
-        actionType: ACTION_TYPE,
+        actionType,
         status: "SKIPPED",
         ...(message ? { message } : {}),
       },

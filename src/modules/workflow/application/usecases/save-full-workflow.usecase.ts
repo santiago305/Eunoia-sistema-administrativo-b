@@ -236,6 +236,8 @@ export class SaveFullWorkflowUseCase {
         excludedStateIds,
         sourceHandle: transition.sourceHandle ?? null,
         targetHandle: transition.targetHandle ?? null,
+        positionX: transition.positionX ?? null,
+        positionY: transition.positionY ?? null,
         isActive: transition.isActive ?? true,
         autoTrigger: transition.autoTrigger ?? false,
         priority: transition.priority ?? 0,

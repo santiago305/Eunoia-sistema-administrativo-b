@@ -20,6 +20,8 @@ export type WorkflowTransitionProps = {
   excludedStateIds?: string[];
   sourceHandle?: string | null;
   targetHandle?: string | null;
+  positionX?: number | null;
+  positionY?: number | null;
   isActive: boolean;
   autoTrigger?: boolean;
   priority?: number;
@@ -40,6 +42,8 @@ export class WorkflowTransition {
   readonly excludedStateIds: string[];
   readonly sourceHandle: string | null;
   readonly targetHandle: string | null;
+  readonly positionX: number | null;
+  readonly positionY: number | null;
   readonly isActive: boolean;
   readonly autoTrigger: boolean;
   readonly priority: number;
@@ -59,6 +63,8 @@ export class WorkflowTransition {
     this.excludedStateIds = [...(props.excludedStateIds ?? [])];
     this.sourceHandle = props.sourceHandle ?? null;
     this.targetHandle = props.targetHandle ?? null;
+    this.positionX = props.positionX ?? null;
+    this.positionY = props.positionY ?? null;
     this.isActive = props.isActive;
     this.autoTrigger = props.autoTrigger ?? false;
     this.priority = props.priority ?? 0;

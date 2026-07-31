@@ -45,6 +45,13 @@ describe("SaleOrderWorkflowActionRunnerService", () => {
           status: "APPLIED",
         },
       })),
+      assignByWorkflow: jest.fn().mockImplementation(async (_order, _config) => ({
+        order: { ..._order, warehouseId: _config.warehouseId },
+        outcome: {
+          actionType: "ASSIGN_WAREHOUSE_BY_WORKFLOW",
+          status: "APPLIED",
+        },
+      })),
     };
     return {
       runner: new SaleOrderWorkflowActionRunnerService(
@@ -121,6 +128,55 @@ describe("SaleOrderWorkflowActionRunnerService", () => {
     expect(result.order.warehouseId).toBe("22222222-2222-4222-8222-222222222222");
     expect(result.outcomes).toEqual([
       { actionType: "ASSIGN_WAREHOUSE_BY_PROVINCE", status: "APPLIED" },
+    ]);
+  });
+
+  it("uses a workflow-assigned warehouse for a subsequent stock action", async () => {
+    const { runner, inventory, warehouseAssignment } = setup();
+    warehouseAssignment.assignByWorkflow = jest.fn().mockImplementation(async (_order, _config) => ({
+      order: { ..._order, warehouseId: _config.warehouseId },
+      outcome: {
+        actionType: "ASSIGN_WAREHOUSE_BY_WORKFLOW",
+        status: "APPLIED",
+      },
+    }));
+    const orderWithoutWarehouse = {
+      id: "order-1",
+      workflowId: "11111111-1111-4111-8111-111111111111",
+      warehouseId: null,
+    } as any;
+
+    const result = await runner.run(
+      orderWithoutWarehouse,
+      [
+        {
+          id: "a1",
+          transitionId: "t1",
+          type: "ASSIGN_WAREHOUSE_BY_WORKFLOW",
+          config: {
+            workflowId: "11111111-1111-4111-8111-111111111111",
+            warehouseId: "22222222-2222-4222-8222-222222222222",
+          },
+          position: 0,
+        } as any,
+        { id: "a2", transitionId: "t1", type: "RESERVE_STOCK", config: {}, position: 1 } as any,
+      ],
+      tx,
+    );
+
+    expect(warehouseAssignment.assignByWorkflow).toHaveBeenCalled();
+    expect(inventory.incrementReserved).toHaveBeenCalledWith(
+      {
+        warehouseId: "22222222-2222-4222-8222-222222222222",
+        stockItemId: "stock-1",
+        locationId: null,
+        delta: 3,
+      },
+      tx,
+    );
+    expect(result.order.warehouseId).toBe("22222222-2222-4222-8222-222222222222");
+    expect(result.outcomes).toEqual([
+      { actionType: "ASSIGN_WAREHOUSE_BY_WORKFLOW", status: "APPLIED" },
     ]);
   });
 

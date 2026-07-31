@@ -2,6 +2,7 @@ import { Transform, Type } from "class-transformer";
 import { IsArray, IsBoolean, IsOptional, IsString, ValidateNested } from "class-validator";
 import {
   HttpSaleOrderSearchRuleDto,
+  toOptionalBoolean,
   toSaleOrderFiltersArray,
 } from "./http-sale-order-list.dto";
 
@@ -21,4 +22,9 @@ export class HttpSaleOrderStatisticsQueryDto {
   @Transform(({ value }) => value === true || value === "true")
   @IsBoolean()
   includeCancelled?: boolean;
+
+  @IsOptional()
+  @Transform(({ value }) => toOptionalBoolean(value))
+  @IsBoolean()
+  isActive?: boolean;
 }

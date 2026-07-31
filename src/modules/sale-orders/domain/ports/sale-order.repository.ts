@@ -9,6 +9,16 @@ import { SaleOrderStatisticsOutput } from "../../application/dtos/sale-order-sta
 
 export const SALE_ORDER_REPOSITORY = Symbol("SALE_ORDER_REPOSITORY");
 
+export type SaleOrderAuditRecord = {
+  id: string;
+  saleOrderId: string;
+  createdAt: Date;
+  executedBy: string;
+  executedByName: string | null;
+  executedByEmail: string | null;
+  actionExecution: "delete" | "restore";
+};
+
 type SaleOrderWrite = {
   warehouseId: string | null;
   clientId: string;
@@ -62,11 +72,11 @@ export interface SaleOrderRepository {
     tx?: TransactionContext,
   ): Promise<string[]>;
   list(
-    params: { q?: string; filters?: SaleOrderSearchRule[]; page?: number; limit?: number },
+    params: { q?: string; filters?: SaleOrderSearchRule[]; page?: number; limit?: number; isActive?: boolean },
     tx?: TransactionContext,
   ): Promise<{ items: SaleOrderListItemOutput[]; total: number }>;
   statistics(
-    params: { q?: string; filters?: SaleOrderSearchRule[]; includeCancelled?: boolean },
+    params: { q?: string; filters?: SaleOrderSearchRule[]; includeCancelled?: boolean; isActive?: boolean },
     tx?: TransactionContext,
   ): Promise<SaleOrderStatisticsOutput>;
   findById(saleOrderId: string): Promise<SaleOrderGetOutput | null>;
@@ -85,4 +95,7 @@ export interface SaleOrderRepository {
   setReserveBool(input: { saleOrderId: string; reserveBool: boolean }, tx?: TransactionContext): Promise<void>;
   setLoteByIds(input: { saleOrderIds: string[]; lote: number }, tx?: TransactionContext): Promise<number>;
   setActiveByLote(input: { lote: number; isActive: boolean }, tx?: TransactionContext): Promise<string[]>;
+  setActiveByIds(input: { saleOrderIds: string[]; isActive: boolean }, tx?: TransactionContext): Promise<string[]>;
+  createAudit(input: { saleOrderId: string; executedBy: string; actionExecution: "delete" | "restore" }, tx?: TransactionContext): Promise<void>;
+  listAudit(saleOrderId: string, tx?: TransactionContext): Promise<SaleOrderAuditRecord[]>;
 }

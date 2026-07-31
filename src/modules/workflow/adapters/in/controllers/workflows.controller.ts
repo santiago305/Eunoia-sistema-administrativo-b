@@ -127,6 +127,13 @@ export class WorkflowsController {
           warehouseId: { type: "warehouse-select", required: true },
         },
       },
+      {
+        type: ACTIONS.ASSIGN_WAREHOUSE_BY_WORKFLOW,
+        configSchema: {
+          workflowId: { type: "workflow-select", required: true },
+          warehouseId: { type: "warehouse-select", required: true },
+        },
+      },
     ];
   }
 

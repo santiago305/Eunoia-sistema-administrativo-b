@@ -33,6 +33,8 @@ import { CreateFromImportPreviewUseCase } from "src/modules/sale-orders/applicat
 import { ListImportLotesUsecase } from "src/modules/sale-orders/application/usecases/sale-order/list-import-lotes.usecase";
 import { SetImportLoteActiveUsecase } from "src/modules/sale-orders/application/usecases/sale-order/set-import-lote-active.usecase";
 import { ListImportLoteAuditUsecase } from "src/modules/sale-orders/application/usecases/sale-order/list-import-lote-audit.usecase";
+import { SetSaleOrdersActiveUsecase } from "src/modules/sale-orders/application/usecases/sale-order/set-sale-orders-active.usecase";
+import { ListSaleOrderAuditUsecase } from "src/modules/sale-orders/application/usecases/sale-order/list-sale-order-audit.usecase";
 import { CreateSaleOrdersFromImportPreviewInput } from "src/modules/sale-orders/application/dtos/import-preview/create-sale-orders-from-preview.input";
 import { AdvanceSaleOrderStateUseCase } from "src/modules/workflow/application/usecases/advance-sale-order-state.usecase";
 import { ChangeSaleOrderStateDto } from "../dtos/change-sale-order-state.dto";
@@ -89,6 +91,8 @@ export class SaleOrdersController {
     private readonly listImportLotes: ListImportLotesUsecase,
     private readonly setImportLoteActive: SetImportLoteActiveUsecase,
     private readonly listImportLoteAudit: ListImportLoteAuditUsecase,
+    private readonly setSaleOrdersActive: SetSaleOrdersActiveUsecase,
+    private readonly listSaleOrderAudit: ListSaleOrderAuditUsecase,
     private readonly realtimeService: SaleOrdersRealtimeService,
     private readonly automaticWorkflow: SaleOrderAutomaticWorkflowService,
     private readonly realtimePayload: SaleOrderRealtimePayloadService,
@@ -558,6 +562,7 @@ export class SaleOrdersController {
       page: query.page,
       limit: query.limit,
       requestedBy: user?.id,
+      isActive: query.isActive ?? true,
     });
   }
 
@@ -567,6 +572,7 @@ export class SaleOrdersController {
       q: query.q,
       filters: query.filters,
       includeCancelled: query.includeCancelled,
+      isActive: query.isActive ?? true,
     });
   }
 
@@ -620,6 +626,54 @@ export class SaleOrdersController {
   @Get("import-lotes/:loteId/audit")
   listSaleOrderImportLoteAudit(@Param("loteId", ParseUUIDPipe) loteId: string) {
     return this.listImportLoteAudit.execute(loteId);
+  }
+
+  @Patch("bulk/active")
+  async bulkSetSaleOrdersActive(
+    @Body() body: { saleOrderIds?: string[]; isActive: boolean },
+    @CurrentUser() user: { id: string },
+  ) {
+    const isActive = Boolean(body?.isActive);
+    const result = await this.setSaleOrdersActive.execute({
+      saleOrderIds: body?.saleOrderIds ?? [],
+      isActive,
+      executedBy: user.id,
+    });
+    const saleOrderIds = this.getSuccessfulSaleOrderIds(result);
+    if (saleOrderIds.length) {
+      await this.notifySaleOrdersUpdated(
+        saleOrderIds,
+        isActive ? "sale-orders-bulk-restored" : "sale-orders-bulk-deleted",
+      );
+    }
+    return result;
+  }
+
+  @Patch(":saleOrderId/active")
+  async setSaleOrderActive(
+    @Param("saleOrderId", ParseUUIDPipe) saleOrderId: string,
+    @Body() body: { isActive: boolean },
+    @CurrentUser() user: { id: string },
+  ) {
+    const isActive = Boolean(body?.isActive);
+    const result = await this.setSaleOrdersActive.execute({
+      saleOrderIds: [saleOrderId],
+      isActive,
+      executedBy: user.id,
+    });
+    const saleOrderIds = this.getSuccessfulSaleOrderIds(result);
+    if (saleOrderIds.length) {
+      await this.notifySaleOrdersUpdated(
+        saleOrderIds,
+        isActive ? "sale-order-restored" : "sale-order-deleted",
+      );
+    }
+    return result;
+  }
+
+  @Get(":saleOrderId/audit")
+  getSaleOrderAudit(@Param("saleOrderId", ParseUUIDPipe) saleOrderId: string) {
+    return this.listSaleOrderAudit.execute(saleOrderId);
   }
 
   @Post("search-metrics")

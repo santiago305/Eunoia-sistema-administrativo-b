@@ -1008,6 +1008,102 @@ describe("SaleOrderTypeormRepository", () => {
     expect(qb.where).toHaveBeenCalledWith("so.isActive = true");
   });
 
+  it("filters list queries to inactive sale orders when requested", async () => {
+    const qb = {
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      leftJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+    };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue({ createQueryBuilder: jest.fn().mockReturnValue(qb) }) },
+    } as any);
+
+    await repository.list({ page: 1, limit: 10, isActive: false });
+
+    expect(qb.where).toHaveBeenCalledWith("so.isActive = false");
+  });
+
+  it("sets active state by existing sale order ids", async () => {
+    const execute = jest.fn().mockResolvedValue({ affected: 2 });
+    const qb = {
+      update: jest.fn().mockReturnThis(),
+      set: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      execute,
+    };
+    const entityRepo = {
+      find: jest.fn().mockResolvedValue([{ id: "order-1" }, { id: "order-2" }]),
+      createQueryBuilder: jest.fn().mockReturnValue(qb),
+    };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue(entityRepo) },
+    } as any);
+
+    const result = await repository.setActiveByIds({
+      saleOrderIds: ["order-1", "order-1", "order-2"],
+      isActive: false,
+    });
+
+    expect(result).toEqual(["order-1", "order-2"]);
+    expect(entityRepo.find).toHaveBeenCalledWith({
+      where: { id: expect.any(Object) },
+      select: { id: true },
+    });
+    expect(qb.set).toHaveBeenCalledWith({ isActive: false });
+    expect(qb.where).toHaveBeenCalledWith("id IN (:...saleOrderIds)", {
+      saleOrderIds: ["order-1", "order-2"],
+    });
+  });
+
+  it("creates and lists sale order audit rows with executor data", async () => {
+    const save = jest.fn().mockResolvedValue(undefined);
+    const find = jest.fn().mockResolvedValue([
+      {
+        id: "audit-1",
+        saleOrderId: "order-1",
+        createdAt: new Date("2026-07-31T10:00:00.000Z"),
+        executedBy: "user-1",
+        executor: { name: "Admin", email: "admin@example.test" },
+        actionExecution: "delete",
+      },
+    ]);
+    const manager = {
+      getRepository: jest.fn().mockReturnValue({ save, find }),
+    };
+    const repository = new SaleOrderTypeormRepository({ manager } as any);
+
+    await repository.createAudit({
+      saleOrderId: "order-1",
+      executedBy: "user-1",
+      actionExecution: "delete",
+    });
+    const rows = await repository.listAudit("order-1");
+
+    expect(save).toHaveBeenCalledWith({
+      saleOrderId: "order-1",
+      executedBy: "user-1",
+      actionExecution: "delete",
+    });
+    expect(find).toHaveBeenCalledWith({
+      where: { saleOrderId: "order-1" },
+      relations: { executor: true },
+      order: { createdAt: "DESC" },
+    });
+    expect(rows).toEqual([
+      expect.objectContaining({
+        saleOrderId: "order-1",
+        executedByName: "Admin",
+        executedByEmail: "admin@example.test",
+        actionExecution: "delete",
+      }),
+    ]);
+  });
+
   it("applies lote text filters to list queries", async () => {
     const qb = {
       leftJoinAndSelect: jest.fn().mockReturnThis(),

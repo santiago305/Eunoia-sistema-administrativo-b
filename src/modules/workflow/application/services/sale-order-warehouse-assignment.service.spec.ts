@@ -142,4 +142,105 @@ describe("SaleOrderWarehouseAssignmentService", () => {
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
+
+  describe("assignByWorkflow", () => {
+    const workflowConfig = {
+      workflowId: "workflow-1",
+      warehouseId: "22222222-2222-4222-8222-222222222222",
+    };
+
+    it("assigns the configured warehouse when the order belongs to a workflow", async () => {
+      const { service, saleOrders, clients } = setup();
+
+      const result = await service.assignByWorkflow(
+        {
+          id: "order-1",
+          clientId: "client-1",
+          workflowId: "workflow-1",
+          warehouseId: null,
+        } as any,
+        workflowConfig,
+        tx,
+      );
+
+      expect(clients.findById).not.toHaveBeenCalled();
+      expect(saleOrders.assignWarehouseIfEmpty).toHaveBeenCalledWith(
+        { saleOrderId: "order-1", warehouseId: workflowConfig.warehouseId },
+        tx,
+      );
+      expect(result.outcome).toEqual({
+        actionType: "ASSIGN_WAREHOUSE_BY_WORKFLOW",
+        status: "APPLIED",
+      });
+      expect(result.order.warehouseId).toBe(workflowConfig.warehouseId);
+    });
+
+    it("skips workflow assignment when the order already has a warehouse", async () => {
+      const { service, warehouses, saleOrders } = setup();
+
+      const result = await service.assignByWorkflow(
+        {
+          id: "order-1",
+          workflowId: "workflow-1",
+          warehouseId: "warehouse-existing",
+        } as any,
+        workflowConfig,
+        tx,
+      );
+
+      expect(result.outcome).toEqual({
+        actionType: "ASSIGN_WAREHOUSE_BY_WORKFLOW",
+        status: "SKIPPED",
+        message: "Ya hay un almacén seleccionado",
+      });
+      expect(warehouses.findById).not.toHaveBeenCalled();
+      expect(saleOrders.assignWarehouseIfEmpty).not.toHaveBeenCalled();
+    });
+
+    it("skips workflow assignment when the order has no workflow", async () => {
+      const { service, warehouses, saleOrders } = setup();
+
+      const result = await service.assignByWorkflow(
+        { id: "order-1", workflowId: null, warehouseId: null } as any,
+        workflowConfig,
+        tx,
+      );
+
+      expect(result.outcome).toEqual({
+        actionType: "ASSIGN_WAREHOUSE_BY_WORKFLOW",
+        status: "SKIPPED",
+      });
+      expect(warehouses.findById).not.toHaveBeenCalled();
+      expect(saleOrders.assignWarehouseIfEmpty).not.toHaveBeenCalled();
+    });
+
+    it("skips workflow assignment when the order belongs to a different workflow", async () => {
+      const { service, warehouses, saleOrders } = setup();
+
+      const result = await service.assignByWorkflow(
+        { id: "order-1", workflowId: "workflow-2", warehouseId: null } as any,
+        workflowConfig,
+        tx,
+      );
+
+      expect(result.outcome).toEqual({
+        actionType: "ASSIGN_WAREHOUSE_BY_WORKFLOW",
+        status: "SKIPPED",
+      });
+      expect(warehouses.findById).not.toHaveBeenCalled();
+      expect(saleOrders.assignWarehouseIfEmpty).not.toHaveBeenCalled();
+    });
+
+    it("rejects an inactive workflow warehouse", async () => {
+      const { service } = setup({ warehouseActive: false });
+
+      await expect(
+        service.assignByWorkflow(
+          { id: "order-1", workflowId: "workflow-1", warehouseId: null } as any,
+          workflowConfig,
+          tx,
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+  });
 });

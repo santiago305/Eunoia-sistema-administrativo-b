@@ -14,6 +14,7 @@ describe("GetSaleOrderStatisticsUsecase", () => {
       q: "S01",
       filters: [{ field: "workflowId", operator: "in", mode: "include", values: ["workflow-1"] }],
       includeCancelled: false,
+      isActive: true,
     });
   });
 });

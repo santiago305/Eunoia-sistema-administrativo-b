@@ -4,7 +4,10 @@ import { Brackets, EntityManager, In, IsNull, Repository, SelectQueryBuilder } f
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
 import { SaleOrderEntity } from "../entities/sale-order.entity";
-import { SaleOrderRepository } from "src/modules/sale-orders/domain/ports/sale-order.repository";
+import {
+  SaleOrderAuditRecord,
+  SaleOrderRepository,
+} from "src/modules/sale-orders/domain/ports/sale-order.repository";
 import { SaleOrder } from "src/modules/sale-orders/domain/entities/sale-order";
 import { ClientEntity } from "src/modules/clients/adapters/out/persistence/typeorm/entities/client.entity";
 import { WarehouseEntity } from "src/modules/warehouses/adapters/out/persistence/typeorm/entities/warehouse";
@@ -48,6 +51,7 @@ import { UbigeoProvinceEntity } from "src/modules/ubigeo/adapters/out/persistenc
 import { SaleOrderAttachmentEntity } from "src/modules/sale-order-attachments/adapters/out/persistence/typeorm/entities/sale-order-attachment.entity";
 import { SaleOrderAttachmentType } from "src/modules/sale-order-attachments/domain/value-objects/sale-order-attachment-type";
 import { buildSaleOrderItemDisplayFields } from "src/modules/sale-orders/application/support/sale-order-item-display-fields";
+import { SaleOrderAuditEntity } from "../entities/sale-order-audit.entity";
 
 @Injectable()
 export class SaleOrderTypeormRepository implements SaleOrderRepository {
@@ -355,6 +359,59 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       .execute();
 
     return saleOrderIds;
+  }
+
+  async setActiveByIds(input: { saleOrderIds: string[]; isActive: boolean }, tx?: TransactionContext): Promise<string[]> {
+    const saleOrderIds = [...new Set(input.saleOrderIds.filter(Boolean))];
+    if (!saleOrderIds.length) return [];
+
+    const manager = this.getManager(tx);
+    const repo = manager.getRepository(SaleOrderEntity);
+    const rows = await repo.find({
+      where: { id: In(saleOrderIds) },
+      select: { id: true },
+    });
+    const existingIds = rows.map((row) => row.id);
+    if (!existingIds.length) return [];
+
+    await repo
+      .createQueryBuilder()
+      .update(SaleOrderEntity)
+      .set({ isActive: input.isActive })
+      .where("id IN (:...saleOrderIds)", { saleOrderIds: existingIds })
+      .execute();
+
+    return existingIds;
+  }
+
+  async createAudit(
+    input: { saleOrderId: string; executedBy: string; actionExecution: "delete" | "restore" },
+    tx?: TransactionContext,
+  ): Promise<void> {
+    const manager = this.getManager(tx);
+    await manager.getRepository(SaleOrderAuditEntity).save({
+      saleOrderId: input.saleOrderId,
+      executedBy: input.executedBy,
+      actionExecution: input.actionExecution,
+    });
+  }
+
+  async listAudit(saleOrderId: string, tx?: TransactionContext): Promise<SaleOrderAuditRecord[]> {
+    const manager = this.getManager(tx);
+    const rows = await manager.getRepository(SaleOrderAuditEntity).find({
+      where: { saleOrderId },
+      relations: { executor: true },
+      order: { createdAt: "DESC" },
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      saleOrderId: row.saleOrderId,
+      createdAt: row.createdAt,
+      executedBy: row.executedBy,
+      executedByName: row.executor?.name ?? null,
+      executedByEmail: row.executor?.email ?? null,
+      actionExecution: row.actionExecution,
+    }));
   }
 
   private applyPaymentStatusFilter(
@@ -680,7 +737,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
   }
 
   async list(
-    params: { q?: string; filters?: SaleOrderSearchRule[]; page?: number; limit?: number },
+    params: { q?: string; filters?: SaleOrderSearchRule[]; page?: number; limit?: number; isActive?: boolean },
     tx?: TransactionContext,
   ): Promise<{ items: SaleOrderListItemOutput[]; total: number }> {
     const manager = this.getManager(tx);
@@ -688,7 +745,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       .createQueryBuilder("so")
       .leftJoinAndSelect("so.items", "items");
 
-    qb.where("so.isActive = true");
+    qb.where(`so.isActive = ${params.isActive === false ? "false" : "true"}`);
 
     const q = params.q?.trim();
     if (q) {
@@ -1243,7 +1300,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
   }
 
   async statistics(
-    params: { q?: string; filters?: SaleOrderSearchRule[]; includeCancelled?: boolean },
+    params: { q?: string; filters?: SaleOrderSearchRule[]; includeCancelled?: boolean; isActive?: boolean },
     tx?: TransactionContext,
   ): Promise<SaleOrderStatisticsOutput> {
     const manager = this.getManager(tx);
@@ -1263,7 +1320,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         "payment_sum.sale_order_id = so.id",
       );
 
-    base.where("so.isActive = true");
+    base.where(`so.isActive = ${params.isActive === false ? "false" : "true"}`);
 
     const q = params.q?.trim();
     if (q) {

@@ -27,6 +27,7 @@ export class ListSaleOrdersUsecase {
     page?: number;
     limit?: number;
     requestedBy?: string;
+    isActive?: boolean;
   }): Promise<PaginatedResult<SaleOrderListItemOutput>> {
     const page = input.page && input.page > 0 ? input.page : 1;
     const limit = input.limit && input.limit > 0 ? input.limit : 10;
@@ -41,6 +42,7 @@ export class ListSaleOrdersUsecase {
       filters: snapshot.filters,
       page,
       limit,
+      isActive: input.isActive ?? true,
     });
 
     if (input.requestedBy && hasSaleOrderSearchCriteria(snapshot)) {
