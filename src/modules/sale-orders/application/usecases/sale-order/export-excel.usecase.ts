@@ -10,6 +10,7 @@ import {
 } from "../../dtos/sale-order-search/sale-order-search-snapshot";
 import { sanitizeSaleOrderSearchSnapshot } from "../../support/sale-order-search.utils";
 import { XlsxBuilderService, type XlsxColumn } from "src/shared/application/services/xlsx-builder.service";
+import { SaleOrderAccessPolicyService } from "../../services/sale-order-access-policy.service";
 
 type ExportColumnDefinition = {
   key: string;
@@ -69,12 +70,14 @@ export type ExportSaleOrdersInput = {
   q?: string;
   filters?: Record<string, unknown>[];
   useDateRange?: boolean;
+  requestedBy?: string;
 };
 
 export class ExportSaleOrdersExcelUsecase {
   constructor(
     @Inject(SALE_ORDER_REPOSITORY)
     private readonly saleOrderRepo: SaleOrderRepository,
+    private readonly accessPolicy?: SaleOrderAccessPolicyService,
   ) {}
 
   getAvailableColumns(): Array<{ key: string; label: string }> {
@@ -103,22 +106,40 @@ export class ExportSaleOrdersExcelUsecase {
       ? snapshot.filters.filter((rule) => !TOOLBAR_DATE_FIELDS.has(rule.field))
       : snapshot.filters;
 
+    const readContext = input.requestedBy && this.accessPolicy
+      ? await this.accessPolicy.resolveReadContext(input.requestedBy)
+      : undefined;
     const { items } = await this.saleOrderRepo.list({
       q: snapshot.q,
       filters,
       page: 1,
       limit: 20000,
+      readContext,
     });
+
+    const isColumnAllowed = (key: string) => {
+      if (!readContext) return true;
+      const customerColumns = new Set(["clientDocumentNumber", "clientPhone", "clientDepartment", "clientProvince", "clientDistrict"]);
+      const amountColumns = new Set(["subTotal", "deliveryCost", "discount", "total", "totalPaid", "totalToPay", "paymentStatus"]);
+      const productColumns = new Set(["SKUS", "detail"]);
+      return (!customerColumns.has(key) || readContext.includeCustomerData)
+        && (!amountColumns.has(key) || readContext.includeAmounts)
+        && (!productColumns.has(key) || readContext.includeProducts);
+    };
+    const authorizedSelected = selected.filter(({ source }) => isColumnAllowed(source.key));
+    if (!authorizedSelected.length) {
+      throw new BadRequestException("No hay columnas autorizadas para exportar");
+    }
 
     const rows = items.map((item) => {
       const output: Record<string, unknown> = {};
-      selected.forEach(({ requested, source }) => {
+      authorizedSelected.forEach(({ requested, source }) => {
         output[requested.key] = source.map(item);
       });
       return output;
     });
 
-    const excelColumns: XlsxColumn[] = selected.map(({ requested }) => ({
+    const excelColumns: XlsxColumn[] = authorizedSelected.map(({ requested }) => ({
       key: requested.key,
       header: requested.label,
       format: requested.key === "number" ? "text" : undefined,

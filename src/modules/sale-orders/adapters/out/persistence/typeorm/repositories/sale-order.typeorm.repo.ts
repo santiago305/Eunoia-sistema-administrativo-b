@@ -52,6 +52,7 @@ import { SaleOrderAttachmentEntity } from "src/modules/sale-order-attachments/ad
 import { SaleOrderAttachmentType } from "src/modules/sale-order-attachments/domain/value-objects/sale-order-attachment-type";
 import { buildSaleOrderItemDisplayFields } from "src/modules/sale-orders/application/support/sale-order-item-display-fields";
 import { SaleOrderAuditEntity } from "../entities/sale-order-audit.entity";
+import { SaleOrderReadContext } from "src/modules/sale-orders/application/services/sale-order-access-policy.service";
 
 @Injectable()
 export class SaleOrderTypeormRepository implements SaleOrderRepository {
@@ -672,6 +673,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         "wt.workflow_id = so.workflow_id AND (wt.is_global = true OR wt.from_state_id = so.current_state_id)",
       )
       .where("so.workflow_id IS NOT NULL")
+      .andWhere("so.is_active = true")
       .andWhere("so.current_state_id IS NOT NULL")
       .andWhere("currentState.isFinal = false")
       .andWhere("upper(globalState.code) <> :cancelledCode", {
@@ -737,7 +739,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
   }
 
   async list(
-    params: { q?: string; filters?: SaleOrderSearchRule[]; page?: number; limit?: number; isActive?: boolean },
+    params: { q?: string; filters?: SaleOrderSearchRule[]; page?: number; limit?: number; isActive?: boolean; readContext?: SaleOrderReadContext },
     tx?: TransactionContext,
   ): Promise<{ items: SaleOrderListItemOutput[]; total: number }> {
     const manager = this.getManager(tx);
@@ -746,6 +748,11 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       .leftJoinAndSelect("so.items", "items");
 
     qb.where(`so.isActive = ${params.isActive === false ? "false" : "true"}`);
+    if (params.readContext && !params.readContext.viewAll) {
+      qb.andWhere("(so.createdBy = :readUserId OR so.assignedBy = :readUserId)", {
+        readUserId: params.readContext.userId,
+      });
+    }
 
     const q = params.q?.trim();
     if (q) {
@@ -1250,7 +1257,39 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     }),
   );
 
-  return { items, total };
+  const visibleItems = params.readContext
+    ? items.map((item) => this.redactListItem(item, params.readContext!))
+    : items;
+  return { items: visibleItems, total };
+  }
+
+  private redactListItem(item: SaleOrderListItemOutput, context: SaleOrderReadContext): SaleOrderListItemOutput {
+    const output = { ...item } as SaleOrderListItemOutput & Record<string, unknown>;
+    if (!context.includeCustomerData && output.client) {
+      output.client = {
+        ...output.client,
+        docNumber: null,
+        reference: null,
+        mainPhone: null,
+        department: null,
+        province: null,
+        district: null,
+      };
+    }
+    if (!context.includeAmounts) {
+      (output as any).subTotal = null;
+      (output as any).deliveryCost = null;
+      (output as any).total = null;
+      (output as any).totalPaid = null;
+      (output as any).pendingAmount = null;
+      (output as any).payments = [];
+    }
+    if (!context.includeProducts) {
+      (output as any).items = [];
+      (output as any).SKUS = "";
+      (output as any).detail = "";
+    }
+    return output;
   }
 
   private toPaymentDescriptionStatistics(
@@ -1300,7 +1339,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
   }
 
   async statistics(
-    params: { q?: string; filters?: SaleOrderSearchRule[]; includeCancelled?: boolean; isActive?: boolean },
+    params: { q?: string; filters?: SaleOrderSearchRule[]; includeCancelled?: boolean; isActive?: boolean; readContext?: SaleOrderReadContext },
     tx?: TransactionContext,
   ): Promise<SaleOrderStatisticsOutput> {
     const manager = this.getManager(tx);
@@ -1321,6 +1360,11 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       );
 
     base.where(`so.isActive = ${params.isActive === false ? "false" : "true"}`);
+    if (params.readContext && !params.readContext.viewAll) {
+      base.andWhere("(so.createdBy = :readUserId OR so.assignedBy = :readUserId)", {
+        readUserId: params.readContext.userId,
+      });
+    }
 
     const q = params.q?.trim();
     if (q) {
@@ -1548,12 +1592,22 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     };
   }
 
-  async findById(saleOrderId: string, tx?: TransactionContext): Promise<SaleOrderGetOutput | null> {
+  async findById(saleOrderId: string, readContext?: SaleOrderReadContext, tx?: TransactionContext): Promise<SaleOrderGetOutput | null> {
   const manager = this.getManager(tx);
 
-  const row = await manager.getRepository(SaleOrderEntity).findOne({
-    where: { id: saleOrderId, isActive: true },
-  });
+  let row: SaleOrderEntity | null;
+  if (!readContext) {
+    row = await manager.getRepository(SaleOrderEntity).findOne({
+      where: { id: saleOrderId, isActive: true },
+    });
+  } else {
+    const query = manager.getRepository(SaleOrderEntity).createQueryBuilder("so").where("so.id = :saleOrderId", { saleOrderId });
+    if (!readContext.includeDeleted) query.andWhere("so.isActive = true");
+    if (!readContext.viewAll) {
+      query.andWhere("(so.createdBy = :readUserId OR so.assignedBy = :readUserId)", { readUserId: readContext.userId });
+    }
+    row = await query.getOne();
+  }
 
   if (!row) return null;
 
@@ -1792,7 +1846,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
   const pendingAmount = Math.max(totalOrder - totalPaid, 0);
   const paymentStatus: SaleOrderPaymentStatus = totalPaid >= totalOrder ? "PAID" : "PENDING";
 
-  return {
+  const output: SaleOrderGetOutput = {
     id: row.id,
     serie: row.serie ?? null,
     correlative: row.correlative ?? null,
@@ -1987,5 +2041,24 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     pendingAmount,
     paymentStatus,
   };
+  if (readContext) {
+    if (!readContext.includeCustomerData && output.client) {
+      output.client = { ...output.client, docNumber: null, address: null, reference: null, mainPhone: null, telephones: [], department: null, province: null, district: null };
+    }
+    if (!readContext.includeAmounts) {
+      (output as any).subTotal = null;
+      (output as any).deliveryCost = null;
+      (output as any).total = null;
+      (output as any).totalPaid = null;
+      (output as any).pendingAmount = null;
+      output.payments = [];
+    }
+    if (!readContext.includeProducts) {
+      output.items = [];
+      output.SKUS = "";
+      output.detail = "";
+    }
+  }
+  return output;
 }
 }

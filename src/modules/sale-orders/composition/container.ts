@@ -71,6 +71,7 @@ import { WorkflowReactivityOrchestratorService } from "src/modules/sale-orders/a
 import { SaleOrderRealtimePayloadService } from "src/modules/sale-orders/application/services/sale-order-realtime-payload.service";
 import { SaleOrderWarehouseAssignmentService } from "src/modules/workflow/application/services/sale-order-warehouse-assignment.service";
 import { SaleOrderEditPolicyService } from "../application/services/sale-order-edit-policy.service";
+import { SaleOrderAccessPolicyService } from "../application/services/sale-order-access-policy.service";
 import { UpdateClientUsecase } from "src/modules/clients/application/usecases/client/update.usecase";
 import { SaleOrderClientCommandService } from "../application/services/sale-order-client-command.service";
 import { SaleOrderPaymentReconcilerService } from "../application/services/sale-order-payment-reconciler.service";
@@ -92,6 +93,7 @@ export const saleOrdersModuleProviders = [
   CreateSaleOrderUsecase,
   SaleOrderNumberingService,
   SaleOrderEditPolicyService,
+  SaleOrderAccessPolicyService,
   GetSaleOrderUsecase,
   UpdateSaleOrderUsecase,
   BulkAssignSaleOrdersUsecase,

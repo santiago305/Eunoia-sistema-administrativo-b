@@ -567,12 +567,13 @@ export class SaleOrdersController {
   }
 
   @Get("statistics")
-  statistics(@Query() query: HttpSaleOrderStatisticsQueryDto) {
+  statistics(@Query() query: HttpSaleOrderStatisticsQueryDto, @CurrentUser() user: { id: string }) {
     return this.getSaleOrderStatistics.execute({
       q: query.q,
       filters: query.filters,
       includeCancelled: query.includeCancelled,
       isActive: query.isActive ?? true,
+      requestedBy: user.id,
     });
   }
 
@@ -741,12 +742,14 @@ export class SaleOrdersController {
   async exportOrdersExcel(
     @Body() dto: HttpExportSaleOrdersDto,
     @Res() res: Response,
+    @CurrentUser() user: { id: string },
   ) {
     const file = await this.exportExcel.execute({
       columns: dto.columns,
       q: dto.q,
       filters: dto.filters,
       useDateRange: dto.useDateRange,
+      requestedBy: user.id,
     });
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
@@ -760,7 +763,7 @@ export class SaleOrdersController {
   }
 
   @Get(":id")
-  getById(@Param("id", ParseUUIDPipe) saleOrderId: string) {
-    return this.getSaleOrder.execute({ saleOrderId });
+  getById(@Param("id", ParseUUIDPipe) saleOrderId: string, @CurrentUser() user: { id: string }) {
+    return this.getSaleOrder.execute({ saleOrderId, requestedBy: user.id });
   }
 }

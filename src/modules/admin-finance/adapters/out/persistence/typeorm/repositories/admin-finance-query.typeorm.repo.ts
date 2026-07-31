@@ -25,7 +25,7 @@ export class AdminFinanceQueryTypeormRepository implements AdminFinanceQueryRepo
         GROUP BY sale_order_id
       )
       SELECT
-        COALESCE((SELECT SUM(sp.amount) FROM sale_payments sp WHERE ($1::date IS NULL OR sp.date::date >= $1::date) AND ($2::date IS NULL OR sp.date::date <= $2::date)), 0) AS collected,
+        COALESCE((SELECT SUM(sp.amount) FROM sale_payments sp JOIN sale_orders so_payment ON so_payment.id = sp.sale_order_id WHERE so_payment.is_active = true AND ($1::date IS NULL OR sp.date::date >= $1::date) AND ($2::date IS NULL OR sp.date::date <= $2::date)), 0) AS collected,
         COALESCE(SUM(GREATEST(so.total - COALESCE(pt.collected, 0), 0)), 0) AS pending
       FROM sale_orders so
       LEFT JOIN payment_totals pt ON pt.sale_order_id = so.id

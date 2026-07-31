@@ -6,6 +6,7 @@ import {
 } from "src/modules/sale-orders/application/dtos/sale-order-search/sale-order-search-snapshot";
 import { SaleOrderGetOutput } from "../../application/dtos/sale-order-search/output/sale-order-search-state.output";
 import { SaleOrderStatisticsOutput } from "../../application/dtos/sale-order-statistics.output";
+import { SaleOrderReadContext } from "../../application/services/sale-order-access-policy.service";
 
 export const SALE_ORDER_REPOSITORY = Symbol("SALE_ORDER_REPOSITORY");
 
@@ -72,14 +73,14 @@ export interface SaleOrderRepository {
     tx?: TransactionContext,
   ): Promise<string[]>;
   list(
-    params: { q?: string; filters?: SaleOrderSearchRule[]; page?: number; limit?: number; isActive?: boolean },
+    params: { q?: string; filters?: SaleOrderSearchRule[]; page?: number; limit?: number; isActive?: boolean; readContext?: SaleOrderReadContext },
     tx?: TransactionContext,
   ): Promise<{ items: SaleOrderListItemOutput[]; total: number }>;
   statistics(
-    params: { q?: string; filters?: SaleOrderSearchRule[]; includeCancelled?: boolean; isActive?: boolean },
+    params: { q?: string; filters?: SaleOrderSearchRule[]; includeCancelled?: boolean; isActive?: boolean; readContext?: SaleOrderReadContext },
     tx?: TransactionContext,
   ): Promise<SaleOrderStatisticsOutput>;
-  findById(saleOrderId: string): Promise<SaleOrderGetOutput | null>;
+  findById(saleOrderId: string, readContext?: SaleOrderReadContext): Promise<SaleOrderGetOutput | null>;
   updateWorkflowState(
     input: {
       saleOrderId: string;
