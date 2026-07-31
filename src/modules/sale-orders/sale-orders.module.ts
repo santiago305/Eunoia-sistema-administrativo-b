@@ -35,6 +35,7 @@ import { AdviserMembershipService } from "./application/services/adviser-members
 import { SaleOrderAttachmentsModule } from "../sale-order-attachments";
 import { AccessControlModule } from "../access-control/infrastructure/access-control.module";
 import { LogisticsPayablesModule } from "../logistics-payables/logistics-payables.module";
+import { AuthModule } from "../auth/infrastructure/auth.module";
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { LogisticsPayablesModule } from "../logistics-payables/logistics-payable
     SaleOrderAttachmentsModule,
     AccessControlModule,
     LogisticsPayablesModule,
+    AuthModule,
   ],
   controllers: [SaleOrdersController],
   providers: [...saleOrdersModuleProviders, AdviserMembershipService],

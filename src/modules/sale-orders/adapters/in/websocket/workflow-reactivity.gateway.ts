@@ -11,6 +11,7 @@ import {
 import { Server, Socket } from "socket.io";
 import { envs } from "src/infrastructure/config/envs";
 import { WorkflowReactivityRealtimeService } from "src/modules/sale-orders/infrastructure/realtime/workflow-reactivity-realtime.service";
+import { SocketSessionAuthorizerService } from "src/modules/auth/application/services/socket-session-authorizer.service";
 
 @WebSocketGateway({
   namespace: "/workflow-reactivity",
@@ -25,20 +26,22 @@ export class WorkflowReactivityGateway implements OnGatewayConnection, OnGateway
   @WebSocketServer()
   server: Server;
 
-  constructor(private readonly realtimeService: WorkflowReactivityRealtimeService) {}
+  constructor(private readonly realtimeService: WorkflowReactivityRealtimeService, private readonly authorizer?: SocketSessionAuthorizerService) {}
 
-  handleConnection(client: Socket) {
-    const userId = String(client.handshake.auth?.userId ?? "").trim();
-
-    if (!userId) {
+  async handleConnection(client: Socket) {
+    const identity = this.authorizer
+      ? await this.authorizer.authorize(client.handshake, "workflow-reactivity")
+      : null;
+    if (!identity) {
       client.disconnect(true);
       return;
     }
 
-    client.data.userId = userId;
-    this.realtimeService.registerConnection(userId, client);
+    client.data.userId = identity.userId;
+    client.data.sessionId = identity.sessionId;
+    this.realtimeService.registerConnection(identity.userId, client);
     this.realtimeService.logStats();
-    this.logger.debug(`workflow-reactivity socket connected userId=${userId} socketId=${client.id}`);
+    this.logger.debug(`workflow-reactivity socket connected userId=${identity.userId} socketId=${client.id}`);
   }
 
   handleDisconnect(client: Socket) {

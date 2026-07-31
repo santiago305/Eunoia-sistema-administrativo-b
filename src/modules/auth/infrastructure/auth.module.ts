@@ -9,6 +9,7 @@ import { authModuleProviders } from '../composition/container';
 import { AccessControlModule } from 'src/modules/access-control/infrastructure/access-control.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from 'src/modules/users/adapters/out/persistence/typeorm/entities/user.entity';
+import { SocketSessionAuthorizerService } from '../application/services/socket-session-authorizer.service';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { User } from 'src/modules/users/adapters/out/persistence/typeorm/entitie
     }),
   ],
   controllers: [AuthController],
-  providers: [...authModuleProviders],
+  providers: [...authModuleProviders, SocketSessionAuthorizerService],
+  exports: [SocketSessionAuthorizerService],
 })
 export class AuthModule {}

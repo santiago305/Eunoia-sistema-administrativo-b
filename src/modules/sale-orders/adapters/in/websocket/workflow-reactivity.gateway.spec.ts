@@ -2,7 +2,7 @@ import { WorkflowReactivityGateway } from "./workflow-reactivity.gateway";
 
 const createClient = (userId?: string) => ({
   id: "socket-1",
-  handshake: { auth: userId ? { userId } : {} },
+  handshake: { headers: userId ? { cookie: "access_token=jwt" } : {}, auth: userId ? { userId: "attacker" } : {} },
   data: {} as Record<string, unknown>,
   disconnect: jest.fn(),
   emit: jest.fn(),
@@ -14,16 +14,18 @@ describe("WorkflowReactivityGateway", () => {
     unregisterConnection: jest.fn(),
     logStats: jest.fn(),
   };
+  const authorizer = { authorize: jest.fn() };
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it("registers connections with a userId from handshake auth", () => {
-    const gateway = new WorkflowReactivityGateway(realtimeService as any);
+  it("registers connections with the signed socket identity", async () => {
+    authorizer.authorize.mockResolvedValue({ userId: "user-1", sessionId: "session-1" });
+    const gateway = new WorkflowReactivityGateway(realtimeService as any, authorizer as any);
     const client = createClient("user-1");
 
-    gateway.handleConnection(client as any);
+    await gateway.handleConnection(client as any);
 
     expect(client.disconnect).not.toHaveBeenCalled();
     expect(client.data.userId).toBe("user-1");
@@ -31,18 +33,19 @@ describe("WorkflowReactivityGateway", () => {
     expect(realtimeService.logStats).toHaveBeenCalled();
   });
 
-  it("disconnects connections without userId", () => {
-    const gateway = new WorkflowReactivityGateway(realtimeService as any);
+  it("disconnects connections without userId", async () => {
+    authorizer.authorize.mockResolvedValue(null);
+    const gateway = new WorkflowReactivityGateway(realtimeService as any, authorizer as any);
     const client = createClient();
 
-    gateway.handleConnection(client as any);
+    await gateway.handleConnection(client as any);
 
     expect(client.disconnect).toHaveBeenCalledWith(true);
     expect(realtimeService.registerConnection).not.toHaveBeenCalled();
   });
 
   it("unregisters disconnected clients", () => {
-    const gateway = new WorkflowReactivityGateway(realtimeService as any);
+    const gateway = new WorkflowReactivityGateway(realtimeService as any, authorizer as any);
     const client = createClient("user-1");
     client.data.userId = "user-1";
 

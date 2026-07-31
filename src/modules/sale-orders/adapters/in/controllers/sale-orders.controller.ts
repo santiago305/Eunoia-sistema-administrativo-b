@@ -120,7 +120,7 @@ export class SaleOrdersController {
     });
     this.realtimeService.emitToAllConnected("sale-orders.updated", payload);
 
-    return payload.saleOrders ?? [];
+    return [];
   }
 
   private getSuccessfulSaleOrderIds(result: {
