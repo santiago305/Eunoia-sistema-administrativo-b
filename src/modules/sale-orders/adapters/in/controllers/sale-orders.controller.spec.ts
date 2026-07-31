@@ -643,6 +643,7 @@ describe("SaleOrdersController", () => {
         includeCancelled: true,
         isActive: true,
         filters: [{ field: "workflowId", operator: "in", values: ["workflow-1"] }],
+        requestedBy: "user-1",
       });
   });
 
@@ -867,6 +868,7 @@ describe("SaleOrdersController", () => {
       q: "SO",
       filters: [{ field: "createdAt", operator: "between", range: { start: "2026-07-01", end: "2026-07-09" } }],
       useDateRange: true,
+      requestedBy: "user-1",
     });
   });
 
@@ -1114,7 +1116,7 @@ describe("SaleOrdersController", () => {
   it("forwards order id to get usecase", async () => {
     const saleOrderId = "11111111-1111-4111-8111-111111111111";
     await request(app.getHttpServer()).get(`/sale-orders/${saleOrderId}`).expect(200);
-    expect(getSaleOrder.execute).toHaveBeenCalledWith({ saleOrderId });
+    expect(getSaleOrder.execute).toHaveBeenCalledWith({ saleOrderId, requestedBy: "user-1" });
   });
 
   it("advances state through a workflow transition", async () => {

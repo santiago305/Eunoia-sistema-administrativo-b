@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Inject, Param, ParseUUIDPipe, Patch, Post, Query, Res, UploadedFiles, UseGuards, UseInterceptors } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Inject, Optional, Param, ParseUUIDPipe, Patch, Post, Query, Res, UploadedFiles, UseGuards, UseInterceptors } from "@nestjs/common";
 import { AnyFilesInterceptor } from "@nestjs/platform-express";
 import { Response } from "express";
 import { memoryStorage } from "multer";
@@ -60,6 +60,9 @@ import { HttpExportSaleOrdersDto } from "../dtos/http-export-sale-orders.dto";
 import { LISTING_SEARCH_STORAGE, ListingSearchStorageRepository } from "src/shared/listing-search/domain/listing-search.repository";
 import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
 import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
+import { RequireAnyPermissionGroups, RequireDynamicPermissionGroups } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
+import { HttpSaleOrderTrackingDto } from "../dtos/http-sale-order-tracking.dto";
+import { SetSaleOrdersTrackingUsecase } from "src/modules/sale-orders/application/usecases/sale-order/set-sale-orders-tracking.usecase";
 
 @Controller("sale-orders")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
@@ -101,6 +104,7 @@ export class SaleOrdersController {
     private readonly getEditorCatalogs: GetSaleOrderEditorCatalogsUsecase,
     @Inject(LISTING_SEARCH_STORAGE)
     private readonly listingSearchStorage: ListingSearchStorageRepository,
+    @Optional() private readonly setTracking?: SetSaleOrdersTrackingUsecase,
   ) {}
 
   private async notifySaleOrderUpdated(saleOrderId: string, source: string, saleOrder?: unknown) {
@@ -147,6 +151,7 @@ export class SaleOrdersController {
   }
 
   @Post()
+  @RequirePermissions("sale_orders.create")
   async create(@Body() dto: HttpSaleOrderCreateDto, @CurrentUser() user: { id: string }) {
     const result = await this.createSaleOrder.execute(
       {
@@ -208,6 +213,7 @@ export class SaleOrdersController {
   }
 
   @Post("with-client")
+  @RequirePermissions("sale_orders.create")
   @UseInterceptors(
     AnyFilesInterceptor({
       storage: memoryStorage(),
@@ -233,6 +239,7 @@ export class SaleOrdersController {
   }
 
   @Post("import-preview")
+  @RequirePermissions("sale_orders.import")
   async createFromPreview(
     @Body() dto: CreateSaleOrdersFromImportPreviewInput | CreateSaleOrdersFromImportPreviewInput["rows"],
     @CurrentUser() user: { id: string },
@@ -279,6 +286,7 @@ export class SaleOrdersController {
   }
 
   @Patch("bulk/assigned-by")
+  @RequirePermissions("sale_orders.assign_adviser")
   async bulkAssignBy(@Body() dto: BulkAssignSaleOrdersDto) {
     const result = await this.bulkAssignSaleOrders.execute({
       saleOrderIds: dto.saleOrderIds,
@@ -297,6 +305,7 @@ export class SaleOrdersController {
   }
 
   @Post("bulk/change-state")
+  @RequirePermissions("sale_orders.change_state")
   async bulkChangeState(
     @Body() body: BulkChangeSaleOrderStateDto,
     @CurrentUser() user: { id: string },
@@ -319,6 +328,9 @@ export class SaleOrdersController {
   }
 
   @Post("bulk/execute-workflow")
+  @RequireDynamicPermissionGroups(({ body }) => [
+    [body?.mode === "global_action" ? "sale_orders.execute_workflow_action" : "sale_orders.change_state"],
+  ])
   async bulkExecuteWorkflow(
     @Body() body: BulkExecuteSaleOrderWorkflowDto,
     @CurrentUser() user: { id: string },
@@ -349,6 +361,7 @@ export class SaleOrdersController {
   }
 
   @Post(":saleOrderId/change-state")
+  @RequirePermissions("sale_orders.change_state")
   async changeState(
     @Param("saleOrderId", ParseUUIDPipe) saleOrderId: string,
     @Body() body: ChangeSaleOrderStateDto,
@@ -375,6 +388,7 @@ export class SaleOrdersController {
   }
 
   @Post(":saleOrderId/assign-workflow")
+  @RequirePermissions("sale_orders.assign_workflow")
   async assignSaleOrderWorkflow(
     @Param("saleOrderId", ParseUUIDPipe) saleOrderId: string,
     @Body() body: AssignWorkflowDto,
@@ -393,11 +407,13 @@ export class SaleOrdersController {
   }
 
   @Get(":saleOrderId/available-transitions")
+  @RequirePermissions("sale_orders.workflows.view")
   availableTransitions(@Param("saleOrderId", ParseUUIDPipe) saleOrderId: string) {
     return this.getAvailableTransitions.execute({ saleOrderId });
   }
 
   @Get(":saleOrderId/history")
+  @RequirePermissions("sale_orders.view_history")
   history(
     @Param("saleOrderId", ParseUUIDPipe) saleOrderId: string,
     @CurrentUser() user: { id: string },
@@ -406,6 +422,7 @@ export class SaleOrdersController {
   }
 
   @Patch(":saleOrderId/cancel")
+  @RequirePermissions("sale_orders.cancel")
   async cancel(@Param("saleOrderId", ParseUUIDPipe) saleOrderId: string) {
     const result = await this.cancelSaleOrder.execute({ saleOrderId });
     await this.evaluateAutomaticWorkflowThenNotify(
@@ -416,6 +433,7 @@ export class SaleOrdersController {
   }
 
   @Patch(":saleOrderId/confirm-delivery")
+  @RequirePermissions("sale_orders.confirm_delivery")
   async confirmDeliveryForSaleOrder(@Param("saleOrderId", ParseUUIDPipe) saleOrderId: string) {
     const result = await this.confirmDelivery.execute({ saleOrderId });
     await this.evaluateAutomaticWorkflowThenNotify(
@@ -426,11 +444,13 @@ export class SaleOrdersController {
   }
 
   @Get(":saleOrderId/payments")
+  @RequirePermissions("sale_orders.payments.view")
   listSaleOrderPayments(@Param("saleOrderId", ParseUUIDPipe) saleOrderId: string) {
     return this.listPayments.execute({ saleOrderId });
   }
 
   @Post(":saleOrderId/payments")
+  @RequirePermissions("sale_orders.payments.create")
   async addSaleOrderPayment(
     @Param("saleOrderId", ParseUUIDPipe) saleOrderId: string,
     @Body() dto: AddSaleOrderPaymentDto,
@@ -454,6 +474,7 @@ export class SaleOrdersController {
   }
 
   @Delete(":saleOrderId/payments/:paymentId")
+  @RequirePermissions("sale_orders.payments.delete")
   async deleteSaleOrderPayment(
     @Param("saleOrderId", ParseUUIDPipe) saleOrderId: string,
     @Param("paymentId", ParseUUIDPipe) paymentId: string,
@@ -467,6 +488,7 @@ export class SaleOrdersController {
   }
 
   @Patch(":id")
+  @RequirePermissions("sale_orders.update")
   async update(
     @Param("id", ParseUUIDPipe) saleOrderId: string,
     @Body() dto: HttpSaleOrderUpdateDto,
@@ -528,6 +550,7 @@ export class SaleOrdersController {
   }
 
   @Patch(":saleOrderId/with-client")
+  @RequirePermissions("sale_orders.update")
   @UseInterceptors(
     AnyFilesInterceptor({
       storage: memoryStorage(),
@@ -555,6 +578,7 @@ export class SaleOrdersController {
   }
 
   @Get()
+  @RequirePermissions("sale_orders.view")
   list(@Query() query: HttpListSaleOrdersQueryDto, @CurrentUser() user: { id: string }) {
     return this.listSaleOrders.execute({
       q: query.q,
@@ -567,6 +591,7 @@ export class SaleOrdersController {
   }
 
   @Get("statistics")
+  @RequirePermissions("sale_orders.view_statistics")
   statistics(@Query() query: HttpSaleOrderStatisticsQueryDto, @CurrentUser() user: { id: string }) {
     return this.getSaleOrderStatistics.execute({
       q: query.q,
@@ -577,7 +602,45 @@ export class SaleOrdersController {
     });
   }
 
+  @Patch("bulk/tracking")
+  @RequireDynamicPermissionGroups(({ body }) => {
+    const groups: string[][] = [];
+    if (body?.preguide !== undefined) groups.push(["sale_orders.preguide.update"]);
+    if (body?.prepared !== undefined) groups.push(["sale_orders.prepared.update"]);
+    return groups;
+  })
+  async bulkTracking(@Body() dto: HttpSaleOrderTrackingDto, @CurrentUser() user: { id: string }) {
+    const result = await this.setTracking!.execute({ ...dto, executedBy: user.id });
+    const ids = this.getSuccessfulSaleOrderIds(result);
+    if (ids.length) await this.notifySaleOrdersUpdated(ids, "sale-orders-bulk-tracking-updated");
+    return result;
+  }
+
+  @Patch(":saleOrderId/tracking")
+  @RequireDynamicPermissionGroups(({ body }) => {
+    const groups: string[][] = [];
+    if (body?.preguide !== undefined) groups.push(["sale_orders.preguide.update"]);
+    if (body?.prepared !== undefined) groups.push(["sale_orders.prepared.update"]);
+    return groups;
+  })
+  async tracking(
+    @Param("saleOrderId", ParseUUIDPipe) saleOrderId: string,
+    @Body() body: Omit<HttpSaleOrderTrackingDto, "saleOrderIds">,
+    @CurrentUser() user: { id: string },
+  ) {
+    const result = await this.setTracking!.execute({
+      saleOrderIds: [saleOrderId],
+      preguide: body.preguide,
+      prepared: body.prepared,
+      executedBy: user.id,
+    });
+    const ids = this.getSuccessfulSaleOrderIds(result);
+    if (ids.length) await this.notifySaleOrderUpdated(saleOrderId, "sale-order-tracking-updated");
+    return result;
+  }
+
   @Get("items/:itemId/components")
+  @RequireAnyPermissionGroups(["sale_orders.view_detail", "sale_orders.products.view"])
   listItemComponents(@Param("itemId", ParseUUIDPipe) saleOrderItemId: string) {
     return this.getItemComponents.execute({ saleOrderItemId: saleOrderItemId });
   }
@@ -588,16 +651,19 @@ export class SaleOrdersController {
   }
 
   @Get("editor-catalogs")
+  @RequireAnyPermissionGroups(["sale_orders.create", "sale_orders.update"])
   getSaleOrderEditorCatalogs(@Query("companyId") companyId?: string) {
     return this.getEditorCatalogs.execute({ companyId });
   }
 
   @Get("import-lotes")
+  @RequirePermissions("sale_orders.import_lotes.view")
   listSaleOrderImportLotes() {
     return this.listImportLotes.execute();
   }
 
   @Patch("import-lotes/:loteId/active")
+  @RequirePermissions("sale_orders.import_lotes.manage")
   async setSaleOrderImportLoteActive(
     @Param("loteId", ParseUUIDPipe) loteId: string,
     @Body() body: { isActive: boolean },
@@ -625,11 +691,18 @@ export class SaleOrdersController {
   }
 
   @Get("import-lotes/:loteId/audit")
+  @RequirePermissions("sale_orders.import_lotes.view")
   listSaleOrderImportLoteAudit(@Param("loteId", ParseUUIDPipe) loteId: string) {
     return this.listImportLoteAudit.execute(loteId);
   }
 
   @Patch("bulk/active")
+  @RequireDynamicPermissionGroups(({ body }) => {
+    const restore = Boolean(body?.isActive);
+    return restore
+      ? [["sale_orders.view_deleted"], ["sale_orders.restore"]]
+      : [["sale_orders.delete"]];
+  })
   async bulkSetSaleOrdersActive(
     @Body() body: { saleOrderIds?: string[]; isActive: boolean },
     @CurrentUser() user: { id: string },
@@ -651,6 +724,9 @@ export class SaleOrdersController {
   }
 
   @Patch(":saleOrderId/active")
+  @RequireDynamicPermissionGroups(({ body }) => Boolean(body?.isActive)
+    ? [["sale_orders.view_deleted"], ["sale_orders.restore"]]
+    : [["sale_orders.delete"]])
   async setSaleOrderActive(
     @Param("saleOrderId", ParseUUIDPipe) saleOrderId: string,
     @Body() body: { isActive: boolean },
@@ -673,6 +749,7 @@ export class SaleOrdersController {
   }
 
   @Get(":saleOrderId/audit")
+  @RequirePermissions("sale_orders.view_audit")
   getSaleOrderAudit(@Param("saleOrderId", ParseUUIDPipe) saleOrderId: string) {
     return this.listSaleOrderAudit.execute(saleOrderId);
   }
@@ -695,11 +772,13 @@ export class SaleOrdersController {
   }
 
   @Get("export-columns")
+  @RequirePermissions("sale_orders.export")
   getExportColumns() {
     return this.exportExcel.getAvailableColumns();
   }
 
   @Get("export-presets")
+  @RequirePermissions("sale_orders.export")
   async getExportPresets(@CurrentUser() user: { id: string }) {
     const state = await this.listingSearchStorage.listState({
       userId: user.id,
@@ -709,6 +788,7 @@ export class SaleOrdersController {
   }
 
   @Post("export-presets")
+  @RequirePermissions("sale_orders.export")
   saveExportPreset(
     @CurrentUser() user: { id: string },
     @Body() body: { name: string; columns: Array<{ key: string; label: string }>; useDateRange?: boolean },
@@ -726,6 +806,7 @@ export class SaleOrdersController {
   }
 
   @Delete("export-presets/:metricId")
+  @RequirePermissions("sale_orders.export")
   deleteExportPreset(
     @CurrentUser() user: { id: string },
     @Param("metricId", ParseUUIDPipe) metricId: string,
@@ -758,11 +839,13 @@ export class SaleOrdersController {
   }
 
   @Get(":id/components")
+  @RequireAnyPermissionGroups(["sale_orders.view_detail"], ["sale_orders.products.view"])
   listComponents(@Param("id", ParseUUIDPipe) saleOrderId: string) {
     return this.getComponents.execute({ saleOrderId });
   }
 
   @Get(":id")
+  @RequirePermissions("sale_orders.view_detail")
   getById(@Param("id", ParseUUIDPipe) saleOrderId: string, @CurrentUser() user: { id: string }) {
     return this.getSaleOrder.execute({ saleOrderId, requestedBy: user.id });
   }

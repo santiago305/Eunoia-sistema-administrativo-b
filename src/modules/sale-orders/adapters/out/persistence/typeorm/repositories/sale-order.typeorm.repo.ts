@@ -1263,6 +1263,36 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
   return { items: visibleItems, total };
   }
 
+  async setTrackingByIds(
+    input: { saleOrderIds: string[]; preguide?: boolean; prepared?: boolean },
+    executedBy: string,
+    tx?: TransactionContext,
+  ) {
+    const manager = this.getManager(tx);
+    const repo = manager.getRepository(SaleOrderEntity);
+    const rows = await repo.find({ where: { id: In(input.saleOrderIds), isActive: true } });
+    const changed: Array<{ saleOrderId: string; changedFields: string[] }> = [];
+    for (const row of rows) {
+      const changedFields: string[] = [];
+      const update: Partial<SaleOrderEntity> = {};
+      if (input.preguide !== undefined && Boolean(row.preguide) !== input.preguide) {
+        update.preguide = input.preguide;
+        changedFields.push(input.preguide ? 'preguide_on' : 'preguide_off');
+      }
+      if (input.prepared !== undefined && Boolean(row.prepared) !== input.prepared) {
+        update.prepared = input.prepared;
+        changedFields.push(input.prepared ? 'prepared_on' : 'prepared_off');
+      }
+      if (!changedFields.length) continue;
+      await repo.update({ id: row.id }, update);
+      for (const actionExecution of changedFields) {
+        await this.createAudit({ saleOrderId: row.id, executedBy, actionExecution: actionExecution as any }, tx);
+      }
+      changed.push({ saleOrderId: row.id, changedFields });
+    }
+    return changed;
+  }
+
   private redactListItem(item: SaleOrderListItemOutput, context: SaleOrderReadContext): SaleOrderListItemOutput {
     const output = { ...item } as SaleOrderListItemOutput & Record<string, unknown>;
     if (!context.includeCustomerData && output.client) {

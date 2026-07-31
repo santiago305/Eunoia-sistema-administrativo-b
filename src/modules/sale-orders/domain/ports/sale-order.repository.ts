@@ -17,7 +17,12 @@ export type SaleOrderAuditRecord = {
   executedBy: string;
   executedByName: string | null;
   executedByEmail: string | null;
-  actionExecution: "delete" | "restore";
+  actionExecution: "delete" | "restore" | "preguide_on" | "preguide_off" | "prepared_on" | "prepared_off";
+};
+
+export type SaleOrderTrackingChange = {
+  saleOrderId: string;
+  changedFields: string[];
 };
 
 type SaleOrderWrite = {
@@ -94,9 +99,10 @@ export interface SaleOrderRepository {
   markPreguide(saleOrderId: string, tx?: TransactionContext): Promise<void>;
   markPrepared(saleOrderId: string, tx?: TransactionContext): Promise<void>;
   setReserveBool(input: { saleOrderId: string; reserveBool: boolean }, tx?: TransactionContext): Promise<void>;
+  setTrackingByIds(input: { saleOrderIds: string[]; preguide?: boolean; prepared?: boolean }, executedBy: string, tx?: TransactionContext): Promise<SaleOrderTrackingChange[]>;
   setLoteByIds(input: { saleOrderIds: string[]; lote: number }, tx?: TransactionContext): Promise<number>;
   setActiveByLote(input: { lote: number; isActive: boolean }, tx?: TransactionContext): Promise<string[]>;
   setActiveByIds(input: { saleOrderIds: string[]; isActive: boolean }, tx?: TransactionContext): Promise<string[]>;
-  createAudit(input: { saleOrderId: string; executedBy: string; actionExecution: "delete" | "restore" }, tx?: TransactionContext): Promise<void>;
+  createAudit(input: { saleOrderId: string; executedBy: string; actionExecution: SaleOrderAuditRecord['actionExecution'] }, tx?: TransactionContext): Promise<void>;
   listAudit(saleOrderId: string, tx?: TransactionContext): Promise<SaleOrderAuditRecord[]>;
 }

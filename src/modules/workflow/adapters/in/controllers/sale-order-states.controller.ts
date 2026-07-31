@@ -7,9 +7,11 @@ import { ListSaleOrderStatesUseCase } from "../../../application/usecases/list-s
 import { UpdateSaleOrderStateUseCase } from "../../../application/usecases/update-sale-order-state.usecase";
 import { CreateSaleOrderStateDto } from "../dtos/create-sale-order-state.dto";
 import { UpdateSaleOrderStateDto } from "../dtos/update-sale-order-state.dto";
+import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
+import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
 
 @Controller("sale-order-states")
-@UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
+@UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
 export class SaleOrderStatesController {
   constructor(
     private readonly createSaleOrderState: CreateSaleOrderStateUseCase,
@@ -19,21 +21,25 @@ export class SaleOrderStatesController {
   ) {}
 
   @Post()
+  @RequirePermissions("sale_orders.workflows.manage")
   create(@Body() dto: CreateSaleOrderStateDto) {
     return this.createSaleOrderState.execute({ code: dto.code, name: dto.name, color: dto.color });
   }
 
   @Get()
+  @RequirePermissions("sale_orders.workflows.view")
   list() {
     return this.listSaleOrderStates.execute();
   }
 
   @Get(":id")
+  @RequirePermissions("sale_orders.workflows.view")
   getById(@Param("id", ParseUUIDPipe) saleOrderStateId: string) {
     return this.getSaleOrderState.execute({ saleOrderStateId });
   }
 
   @Patch(":id")
+  @RequirePermissions("sale_orders.workflows.manage")
   update(@Param("id", ParseUUIDPipe) saleOrderStateId: string, @Body() dto: UpdateSaleOrderStateDto) {
     return this.updateSaleOrderState.execute({ saleOrderStateId, name: dto.name, color: dto.color, code: dto.code });
   }

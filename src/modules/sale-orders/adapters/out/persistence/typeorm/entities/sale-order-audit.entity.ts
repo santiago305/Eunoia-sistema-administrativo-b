@@ -2,7 +2,7 @@ import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGenerat
 import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
 import { SaleOrderEntity } from "./sale-order.entity";
 
-export type SaleOrderAuditAction = "delete" | "restore";
+export type SaleOrderAuditAction = "delete" | "restore" | "preguide_on" | "preguide_off" | "prepared_on" | "prepared_off";
 
 @Entity("sale_order_auditory")
 export class SaleOrderAuditEntity {

@@ -21,9 +21,11 @@ import { UpdateWorkflowStateDto } from "../dtos/update-workflow-state.dto";
 import { UpdateWorkflowStatePositionsDto } from "../dtos/update-workflow-state-positions.dto";
 import { SaveFullWorkflowUseCase } from "../../../application/usecases/save-full-workflow.usecase";
 import { SaveFullWorkflowDto } from "../dtos/save-full-workflow.dto";
+import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
+import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
 
 @Controller("workflows")
-@UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
+@UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
 export class WorkflowsController {
   constructor(
     private readonly createWorkflow: CreateWorkflowUseCase,
@@ -39,6 +41,7 @@ export class WorkflowsController {
   ) {}
 
   @Post()
+  @RequirePermissions("sale_orders.workflows.manage")
   create(@Body() dto: CreateWorkflowDto) {
     return this.createWorkflow.execute({
       name: dto.name,
@@ -47,6 +50,7 @@ export class WorkflowsController {
   }
 
   @Patch(":id/states/positions")
+  @RequirePermissions("sale_orders.workflows.manage")
   updateStatePositions(
     @Param("id", ParseUUIDPipe) workflowId: string,
     @Body() dto: UpdateWorkflowStatePositionsDto,
@@ -58,6 +62,7 @@ export class WorkflowsController {
   }
 
   @Patch(":id/states/:stateId")
+  @RequirePermissions("sale_orders.workflows.manage")
   updateState(
     @Param("id", ParseUUIDPipe) workflowId: string,
     @Param("stateId", ParseUUIDPipe) stateId: string,
@@ -77,11 +82,13 @@ export class WorkflowsController {
   }
 
   @Get()
+  @RequirePermissions("sale_orders.workflows.view")
   list() {
     return this.listWorkflows.execute();
   }
 
   @Get("conditions")
+  @RequirePermissions("sale_orders.workflows.view")
   listConditionTypes() {
     return [
       { type: CONDITIONS.IS_PAID, configSchema: {} },
@@ -111,6 +118,7 @@ export class WorkflowsController {
   }
 
   @Get("actions")
+  @RequirePermissions("sale_orders.workflows.view")
   listActionTypes() {
     return [
       { type: ACTIONS.RESERVE_STOCK, configSchema: {} },
@@ -138,26 +146,31 @@ export class WorkflowsController {
   }
 
   @Post("full")
+  @RequirePermissions("sale_orders.workflows.manage")
   createFull(@Body() dto: SaveFullWorkflowDto) {
     return this.saveFullWorkflow.execute(dto);
   }
 
   @Patch(":id/full")
+  @RequirePermissions("sale_orders.workflows.manage")
   updateFull(@Param("id", ParseUUIDPipe) workflowId: string, @Body() dto: SaveFullWorkflowDto) {
     return this.saveFullWorkflow.execute({ ...dto, workflowId });
   }
 
   @Patch("full/:id")
+  @RequirePermissions("sale_orders.workflows.manage")
   updateFullCanonical(@Param("id", ParseUUIDPipe) workflowId: string, @Body() dto: SaveFullWorkflowDto) {
     return this.saveFullWorkflow.execute({ ...dto, workflowId });
   }
 
   @Get(":id")
+  @RequirePermissions("sale_orders.workflows.view")
   getById(@Param("id", ParseUUIDPipe) workflowId: string) {
     return this.getWorkflow.execute({ workflowId });
   }
 
   @Patch(":id")
+  @RequirePermissions("sale_orders.workflows.manage")
   update(@Param("id", ParseUUIDPipe) workflowId: string, @Body() dto: UpdateWorkflowDto) {
     return this.updateWorkflow.execute({
       workflowId,
@@ -168,11 +181,13 @@ export class WorkflowsController {
   }
 
   @Post(":id/activate")
+  @RequirePermissions("sale_orders.workflows.manage")
   activate(@Param("id", ParseUUIDPipe) workflowId: string) {
     return this.activateWorkflow.execute({ workflowId });
   }
 
   @Post(":id/states")
+  @RequirePermissions("sale_orders.workflows.manage")
   createState(@Param("id", ParseUUIDPipe) workflowId: string, @Body() dto: CreateWorkflowStateDto) {
     return this.createWorkflowState.execute({
       workflowId,
@@ -187,6 +202,7 @@ export class WorkflowsController {
   }
 
   @Post(":id/transitions")
+  @RequirePermissions("sale_orders.workflows.manage")
   createTransition(@Param("id", ParseUUIDPipe) workflowId: string, @Body() dto: CreateWorkflowTransitionDto) {
     return this.createWorkflowTransition.execute({
       workflowId,
