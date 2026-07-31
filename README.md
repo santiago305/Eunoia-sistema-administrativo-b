@@ -45,6 +45,10 @@ npm run migrate
 npm run seed
 ```
 
+## Permisos de Pedidos
+
+La matriz de roles y los códigos exactos de Pedidos están documentados en [`docs/sale-orders-role-matrix.md`](docs/sale-orders-role-matrix.md). La autorización se aplica en HTTP y WebSocket; los permisos de página, lista, detalle, datos sensibles, seguimiento, eliminación/restauración, importación, exportación y workflows son independientes.
+
 ## Docker
 
 Desde la raiz del workspace (`D:\eunoia`):
