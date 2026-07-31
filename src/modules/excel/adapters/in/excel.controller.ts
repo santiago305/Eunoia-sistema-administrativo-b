@@ -10,13 +10,16 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { PreviewOrdersImportUseCase } from "../../application/preview-orders-import.use-case";
 import { User as UserDecorator } from "src/shared/utilidades/decorators";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
+import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
+import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
 
 @Controller("imports")
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class ImportsController {
   constructor(private readonly previewOrdersImport: PreviewOrdersImportUseCase) {}
 
   @Post("orders/preview")
+  @RequirePermissions("sale_orders.import")
   @UseInterceptors(FileInterceptor("file"))
   previewOrders(
     @UploadedFile() file: Express.Multer.File,
@@ -34,6 +37,7 @@ export class ImportsController {
   }
 
   @Post("orders/create")
+  @RequirePermissions("sale_orders.import")
   @UseInterceptors(FileInterceptor("file"))
   createOrders(
     @UploadedFile() file: Express.Multer.File,

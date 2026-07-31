@@ -17,6 +17,8 @@ import { memoryStorage } from 'multer';
 import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard';
 import { CompanyConfiguredGuard } from 'src/shared/utilidades/guards/company-configured.guard';
 import { User as CurrentUser } from 'src/shared/utilidades/decorators/user.decorator';
+import { PermissionsGuard } from 'src/modules/access-control/adapters/in/guards/permissions.guard';
+import { RequirePermissions } from 'src/modules/access-control/adapters/in/decorators/require-permissions.decorator';
 import { DeleteSaleOrderAttachmentUsecase } from '../../../application/usecases/delete-sale-order-attachment.usecase';
 import { ListSaleOrderAttachmentsUsecase } from '../../../application/usecases/list-sale-order-attachments.usecase';
 import { UploadSaleOrderAttachmentUsecase } from '../../../application/usecases/upload-sale-order-attachment.usecase';
@@ -24,7 +26,7 @@ import { SaleOrderAttachmentType } from '../../../domain/value-objects/sale-orde
 import { HttpUploadSaleOrderAttachmentDto } from '../dtos/http-upload-sale-order-attachment.dto';
 
 @Controller('sale-order-attachments')
-@UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
+@UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
 export class SaleOrderAttachmentsController {
   constructor(
     private readonly uploadAttachment: UploadSaleOrderAttachmentUsecase,
@@ -33,6 +35,7 @@ export class SaleOrderAttachmentsController {
   ) {}
 
   @Post()
+  @RequirePermissions('sale_orders.attachments.upload')
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
@@ -68,6 +71,7 @@ export class SaleOrderAttachmentsController {
   }
 
   @Get()
+  @RequirePermissions('sale_orders.attachments.view')
   list(
     @Query('saleOrderId') saleOrderId?: string,
     @Query('saleOrderPaymentId') saleOrderPaymentId?: string,
@@ -81,6 +85,7 @@ export class SaleOrderAttachmentsController {
   }
 
   @Delete(':id')
+  @RequirePermissions('sale_orders.attachments.delete')
   async remove(@Param('id', ParseUUIDPipe) id: string) {
     await this.deleteAttachment.execute(id);
     return { type: 'success', message: 'Adjunto eliminado' };

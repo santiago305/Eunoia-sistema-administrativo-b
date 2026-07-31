@@ -28,13 +28,25 @@ export function productCatalogPermissionGroups(action: ProductScopedAction, lega
 }
 
 export function productCatalogPermissionGroupsFromRequest(action: ProductScopedAction, legacyPermission?: string) {
-  return (request: RequestLike) =>
-    resolveByProductType(action, legacyPermission, "products", "materials", getProductTypeFromRequest(request, "type"));
+  return (request: RequestLike) => {
+    const productType = getProductTypeFromRequest(request, "type");
+    const groups = resolveByProductType(action, legacyPermission, "products", "materials", productType);
+    if (productType === ProductCatalogProductType.PRODUCT && (action === "view" || action === "view_detail")) {
+      groups[0] = [...groups[0], "sale_orders.products.view"];
+    }
+    return groups;
+  };
 }
 
 export function inventoryPermissionGroupsFromRequest(action: InventoryAction) {
-  return (request: RequestLike) =>
-    resolveByProductType(action, "catalog.read", "inventory.products", "inventory.materials", getProductTypeFromRequest(request));
+  return (request: RequestLike) => {
+    const productType = getProductTypeFromRequest(request);
+    const groups = resolveByProductType(action, "catalog.read", "inventory.products", "inventory.materials", productType);
+    if (productType === ProductCatalogProductType.PRODUCT && action === "view") {
+      groups[0] = [...groups[0], "sale_orders.stock.view"];
+    }
+    return groups;
+  };
 }
 
 export function inventoryExportPermissionGroupsFromRequest() {

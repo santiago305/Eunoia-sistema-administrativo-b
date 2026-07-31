@@ -11,6 +11,7 @@ import { GenerateProductionOrderPdfUseCase } from "src/modules/pdf-generated/app
 import { GenerateInventoryDocumentPdfUseCase } from "src/modules/pdf-generated/application/usecases/generate-inventory-document-pdf.usecase";
 import { GenerateSaleOrderPdfUseCase } from "src/modules/pdf-generated/application/usecases/generate-sale-order-pdf.usecase";
 import { PdfGeneratedHttpMapper } from "src/modules/pdf-generated/application/mappers/pdf-generated-http.mapper";
+import { User as CurrentUser } from "src/shared/utilidades/decorators/user.decorator";
 
 @Controller("pdf-generated")
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -68,9 +69,10 @@ export class PdfGeneratedController {
   }
 
   @Get("sale-orders/:id/pdf")
-  async getSaleOrderPdf(@Param("id", ParseUUIDPipe) id: string, @Res() res: Response) {
+  @RequirePermissions("sale_orders.pdf.view")
+  async getSaleOrderPdf(@Param("id", ParseUUIDPipe) id: string, @Res() res: Response, @CurrentUser() user: { id: string }) {
     const buffer = await this.generateSaleOrderPdf.execute(
-      PdfGeneratedHttpMapper.toSaleOrderInput(id),
+      PdfGeneratedHttpMapper.toSaleOrderInput(id, user.id),
     );
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", "inline; filename=sale-order.pdf");

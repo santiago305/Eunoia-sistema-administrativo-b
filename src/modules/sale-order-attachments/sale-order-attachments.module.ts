@@ -13,6 +13,7 @@ import { DeleteSaleOrderAttachmentUsecase } from './application/usecases/delete-
 import { ListSaleOrderAttachmentsUsecase } from './application/usecases/list-sale-order-attachments.usecase';
 import { UploadSaleOrderAttachmentUsecase } from './application/usecases/upload-sale-order-attachment.usecase';
 import { SALE_ORDER_ATTACHMENT_REPOSITORY } from './domain/ports/sale-order-attachment.repository';
+import { AccessControlModule } from 'src/modules/access-control/infrastructure/access-control.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { SALE_ORDER_ATTACHMENT_REPOSITORY } from './domain/ports/sale-order-atta
       SaleOrderEntity,
       SalePaymentEntity,
     ]),
+    AccessControlModule,
   ],
   controllers: [SaleOrderAttachmentsController],
   providers: [

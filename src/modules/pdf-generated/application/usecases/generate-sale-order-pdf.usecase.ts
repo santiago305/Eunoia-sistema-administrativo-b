@@ -1,4 +1,4 @@
-import { BadRequestException, Inject } from "@nestjs/common";
+import { BadRequestException, Inject, Optional } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, Repository } from "typeorm";
 import { COMPANY_REPOSITORY, CompanyRepository } from "src/modules/companies/domain/ports/company.repository";
@@ -14,6 +14,7 @@ import { ClientEntity } from "src/modules/clients/adapters/out/persistence/typeo
 import { WarehouseEntity } from "src/modules/warehouses/adapters/out/persistence/typeorm/entities/warehouse";
 import { ProductCatalogSkuEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku.entity";
 import { resolvePublicAssetUrl } from "../support/resolve-public-asset-url";
+import { AccessControlService } from "src/modules/access-control/application/services/access-control.service";
 
 export class GenerateSaleOrderPdfUseCase {
   constructor(
@@ -35,10 +36,18 @@ export class GenerateSaleOrderPdfUseCase {
     private readonly companyRepo: CompanyRepository,
     @Inject(PDF_RENDERER)
     private readonly pdfRenderer: PdfRendererPort,
+    @Optional() private readonly accessControl?: AccessControlService,
   ) {}
 
   async execute(input: GenerateSaleOrderPdfInput): Promise<Buffer> {
-    const order = await this.orderRepo.findOne({ where: { id: input.saleOrderId } });
+    let order = await this.orderRepo.findOne({ where: { id: input.saleOrderId } });
+    if (order && input.requestedBy && this.accessControl) {
+      const permissions = new Set(await this.accessControl.getEffectivePermissions(input.requestedBy));
+      if (!permissions.has('*') && !permissions.has('sale_orders.view_all')) {
+        if (order.createdBy !== input.requestedBy && order.assignedBy !== input.requestedBy) order = null;
+      }
+      if (order && !permissions.has('*') && !permissions.has('sale_orders.view_deleted') && !order.isActive) order = null;
+    }
     if (!order) {
       throw new BadRequestException(new PdfGeneratedValidationError("Pedido no encontrado").message);
     }

@@ -51,11 +51,13 @@ import { SALE_PAYMENT_REPOSITORY } from "src/modules/sale-orders/domain/ports/sa
 import { SaleOrderImportClientResolverService } from "src/modules/sale-orders/application/services/sale-order-import-client-resolver.service";
 import { SaleOrderImportSourceResolverService } from "src/modules/sale-orders/application/services/sale-order-import-source-resolver.service";
 import { SaleOrderImportSkuResolverService } from "src/modules/sale-orders/application/services/sale-order-import-sku-resolver.service";
+import { AccessControlModule } from "src/modules/access-control/infrastructure/access-control.module";
 
 @Module({
   imports: [
     ClientsModule,
     UbigeoModule,
+    AccessControlModule,
     TypeOrmModule.forFeature([
       ProductCatalogProductEntity,
       ProductCatalogSkuEntity,

@@ -4,6 +4,7 @@ import {
   documentExportPermissionGroupsFromRequest,
   documentPermissionGroupsFromRequest,
   inventoryExportPermissionGroupsFromRequest,
+  inventoryPermissionGroupsFromRequest,
   ledgerExportPermissionGroupsFromRequest,
   productCatalogPermissionGroupsFromRequest,
 } from "./catalog-permission-groups";
@@ -48,5 +49,16 @@ describe("catalog permission group resolvers", () => {
         query: { docType: DocType.TRANSFER, productType: ProductCatalogProductType.MATERIAL },
       }),
     ).toEqual([["transfers.materials.export"]]);
+  });
+
+  it("allows sale-order product reads only for finished products", () => {
+    expect(productCatalogPermissionGroupsFromRequest("view_detail")({ query: { type: ProductCatalogProductType.PRODUCT } }))
+      .toEqual([["products.view_detail", "sale_orders.products.view"]]);
+    expect(productCatalogPermissionGroupsFromRequest("view_detail")({ query: { type: ProductCatalogProductType.MATERIAL } }))
+      .toEqual([["materials.view_detail"]]);
+    expect(inventoryPermissionGroupsFromRequest("view")({ query: { productType: ProductCatalogProductType.PRODUCT } }))
+      .toEqual([["inventory.products.view", "catalog.read", "sale_orders.stock.view"]]);
+    expect(inventoryPermissionGroupsFromRequest("view")({ query: { productType: ProductCatalogProductType.MATERIAL } }))
+      .toEqual([["inventory.materials.view", "catalog.read"]]);
   });
 });

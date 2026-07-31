@@ -113,10 +113,19 @@ export class ProductCatalogSkuController {
       productType: query.productType,
     });
   }
-  @RequireAnyPermissionGroups(["products.view_detail", "materials.view_detail", "catalog.read"])
+  @RequireAnyPermissionGroups(["products.view_detail", "materials.view_detail", "catalog.read", "sale_orders.products.view"])
   @Get("skus/:id")
-  getById(@Param("id", ParseUUIDPipe) id: string) {
-    return this.getSku.execute(id);
+  async getById(@Param("id", ParseUUIDPipe) id: string, @CurrentUser() user: { id: string }) {
+    const sku = await this.getSku.execute(id);
+    const saleOrderOnly = await this.accessControlService.userHasAllPermissions(user.id, ["sale_orders.products.view"]);
+    const fullCatalog = await this.accessControlService.userHasAllPermissions(user.id, ["catalog.read"]);
+    if (saleOrderOnly && !fullCatalog) {
+      const { product } = await this.getProduct.execute(sku.sku.productId);
+      if (product.type !== ProductCatalogProductType.PRODUCT) {
+        throw new ForbiddenException("Los pedidos solo pueden consultar productos terminados");
+      }
+    }
+    return sku;
   }
   
 

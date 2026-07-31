@@ -21,7 +21,7 @@ export class PdfGeneratedHttpMapper {
     return { docId };
   }
 
-  static toSaleOrderInput(saleOrderId: string): GenerateSaleOrderPdfInput {
-    return { saleOrderId };
+  static toSaleOrderInput(saleOrderId: string, requestedBy?: string): GenerateSaleOrderPdfInput {
+    return { saleOrderId, requestedBy };
   }
 }

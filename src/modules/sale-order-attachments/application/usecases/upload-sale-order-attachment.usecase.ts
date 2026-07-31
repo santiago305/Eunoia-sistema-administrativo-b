@@ -67,8 +67,9 @@ export class UploadSaleOrderAttachmentUsecase {
     const type = input.type as SaleOrderAttachmentType;
     const saleOrder = await this.entityManager
       .getRepository(SaleOrderEntity)
-      .findOne({ where: { id: input.saleOrderId }, select: ['id'] });
+      .findOne({ where: { id: input.saleOrderId }, select: ['id', 'isActive'] });
     if (!saleOrder) throw new NotFoundException('Pedido no encontrado');
+    if (!saleOrder.isActive) throw new BadRequestException('Los pedidos eliminados son de solo lectura');
 
     if (type === SaleOrderAttachmentType.PAYMENT_PROOF) {
       if (!input.saleOrderPaymentId) {
