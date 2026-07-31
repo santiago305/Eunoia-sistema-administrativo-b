@@ -43,8 +43,8 @@ export class SaleOrder {
     public readonly updatedAt: Date | null,
     public readonly items: SaleOrderItem[] = [],
     public readonly invoiceSend: boolean = false,
-    public readonly prepared: boolean | null = false,
-    public readonly preguide: boolean | null = false,
+    public readonly prepared: boolean = false,
+    public readonly preguide: boolean = false,
     public readonly reserveBool: boolean = false,
   ) {}
 }

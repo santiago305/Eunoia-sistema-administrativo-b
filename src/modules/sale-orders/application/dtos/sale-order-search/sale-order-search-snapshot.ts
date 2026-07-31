@@ -148,8 +148,8 @@ export type SaleOrderListItemOutput = {
   workflow: SaleOrderWorkflowOutput | null;
   currentState: SaleOrderWorkflowStateOutput | null;
   invoiceSend: boolean;
-  prepared: boolean | null;
-  preguide: boolean | null;
+  prepared: boolean;
+  preguide: boolean;
   reserveBool: boolean;
   isActive: boolean;
   lotes: number | null;

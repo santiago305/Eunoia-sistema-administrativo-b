@@ -99,6 +99,8 @@ import { AddPurchaseOrderDescription20260727120000 } from "./migrations/20260727
 import { CreateSaleOrderImportLotes20260730090000 } from "./migrations/20260730090000-create-sale-order-import-lotes";
 import { AddWorkflowTransitionPositions20260730180000 } from "./migrations/20260730180000-add-workflow-transition-positions";
 import { CreateSaleOrderAuditory20260731100000 } from "./migrations/20260731100000-create-sale-order-auditory";
+import { AddSaleOrdersPermissionMatrix20260731130000 } from "./migrations/20260731130000-add-sale-orders-permission-matrix";
+import { HardenSaleOrderTrackingFlags20260731131000 } from "./migrations/20260731131000-harden-sale-order-tracking-flags";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -209,6 +211,8 @@ export const databaseMigrations = [
     CreateSaleOrderImportLotes20260730090000,
     AddWorkflowTransitionPositions20260730180000,
     CreateSaleOrderAuditory20260731100000,
+    AddSaleOrdersPermissionMatrix20260731130000,
+    HardenSaleOrderTrackingFlags20260731131000,
 ];
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({

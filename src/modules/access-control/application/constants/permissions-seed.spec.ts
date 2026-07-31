@@ -1,5 +1,6 @@
 import { PERMISSIONS_SEED } from "./permissions-seed";
 import { DEPRECATED_PERMISSION_CODES } from "../../infrastructure/seed/access-control.seeder";
+import { SALE_ORDER_PERMISSION_CODES } from "../../../sale-orders/application/constants/sale-order-permissions";
 
 describe("permissions seed", () => {
   it("includes page.payments.view", () => {
@@ -199,6 +200,52 @@ describe("permissions seed", () => {
 
   it("does not export predefined role permission assignments", () => {
     expect(PERMISSIONS_SEED.some((item) => item.code === "*")).toBe(false);
+  });
+
+  it("includes the complete sale order permission contract", () => {
+    expect(SALE_ORDER_PERMISSION_CODES).toHaveLength(39);
+    expect(new Set(SALE_ORDER_PERMISSION_CODES).size).toBe(39);
+
+    for (const code of SALE_ORDER_PERMISSION_CODES) {
+      expect(PERMISSIONS_SEED).toEqual(
+        expect.arrayContaining([expect.objectContaining({ code, module: "sale_orders" })]),
+      );
+    }
+
+    expect(PERMISSIONS_SEED).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "page.sale-orders.view",
+          resource: "sale_orders",
+          action: "view",
+          type: "page",
+        }),
+        expect.objectContaining({
+          code: "sale_orders.delete",
+          resource: "sale_orders",
+          action: "delete",
+          type: "action",
+        }),
+        expect.objectContaining({
+          code: "sale_orders.preguide.update",
+          resource: "sale_order_tracking",
+          action: "update",
+          type: "action",
+        }),
+        expect.objectContaining({
+          code: "sale_orders.prepared.update",
+          resource: "sale_order_tracking",
+          action: "update",
+          type: "action",
+        }),
+        expect.objectContaining({
+          code: "sale_orders.workflows.manage",
+          resource: "sale_order_workflows",
+          action: "manage",
+          type: "action",
+        }),
+      ]),
+    );
   });
 });
 
