@@ -138,7 +138,11 @@ export const ABONADO_WORKFLOW_SEEDS: WorkflowSeed[] = [
       invoice('transition-975ac69f-0f5b-5243-ad05-15a718071c86', -160.43890775916253, -465.5710535966142),
       transition({ clientId: 'transition-4b4fa96f-f2d0-4ec0-b979-e45ec54a9b82', code: 'TRANSITION_1782331809935', name: 'En curso', fromStateRef: CE_SCHEDULED, toStateRef: CE_WAITING_CE, sourceHandle: 'bottom', targetHandle: 'top', autoTrigger: true, conditions: [zeroDayWindow()] }),
       transition({ clientId: 'transition-1af5d252-51a8-4cf5-89a3-690adaf80646', code: 'TRANSITION_1782331894592', name: 'Entregado', fromStateRef: CE_WAITING_CE, toStateRef: CE_DELIVERED, sourceHandle: 'right', targetHandle: 'left', autoTrigger: true, conditions: [condition('IS_PAID', {}, 0)], actions: [action('CONSUME_STOCK')] }),
-      draftToCreatedTransition('transition-4882525c-2421-4497-a83e-513cf3f4db5e', CE_DRAFT, CE_CREATED),
+      draftToCreatedTransition('transition-4882525c-2421-4497-a83e-513cf3f4db5e', CE_DRAFT, CE_CREATED, [
+        assignWarehouseByProvince(['2001'], DEFAULT_WAREHOUSE_IDS.piura, 0),
+        assignWarehouseByProvince(['1501'], DEFAULT_WAREHOUSE_IDS.lima, 1),
+        assignWarehouseByProvince(['1501', '2001'], DEFAULT_WAREHOUSE_IDS.piura, 2, 'EXCLUDE'),
+      ]),
     ],
   },
 ];
