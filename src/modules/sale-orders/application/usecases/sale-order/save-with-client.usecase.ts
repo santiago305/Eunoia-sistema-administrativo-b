@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Inject,
   Injectable,
+  Optional,
 } from '@nestjs/common';
 import {
   CLIENT_REALTIME,
@@ -32,6 +33,7 @@ import { SaleOrderClientCommandService } from '../../services/sale-order-client-
 import { SaleOrderPaymentReconcilerService } from '../../services/sale-order-payment-reconciler.service';
 import { CreateSaleOrderUsecase } from './create.usecase';
 import { UpdateSaleOrderUsecase } from './update.usecase';
+import { SaleOrderCommandAuthorizationService } from '../../services/sale-order-command-authorization.service';
 
 type SaveSaleOrderWithClientInput = {
   saleOrderId?: string;
@@ -58,9 +60,15 @@ export class SaveSaleOrderWithClientUsecase {
     private readonly clientRealtime: ClientRealtime,
     @Inject(IMAGE_PROCESSOR)
     private readonly imageProcessor: ImageProcessor,
+    @Optional() private readonly commandAuthorization?: SaleOrderCommandAuthorizationService,
   ) {}
 
   async execute(input: SaveSaleOrderWithClientInput) {
+    await this.commandAuthorization?.authorizeWithClient(
+      input.userId,
+      input.data as any,
+      input.saleOrderId ? 'update' : 'create',
+    );
     const newFilePaths: string[] = [];
     const staleFilePaths: string[] = [];
     let clientEvent: ClientUpdatedEvent | null = null;

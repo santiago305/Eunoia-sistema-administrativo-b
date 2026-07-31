@@ -14,6 +14,7 @@ import { WORKFLOW_STATE_REPOSITORY, WorkflowStateRepository } from "src/modules/
 import { SaleOrderNumberingService } from "../../services/sale-order-numbering.service";
 import { AdviserMembershipService } from "../../services/adviser-membership.service";
 import { CreateLogisticsPayableForSaleOrderUsecase } from "src/modules/logistics-payables/application/usecases/create-logistics-payable-for-sale-order.usecase";
+import { SaleOrderCommandAuthorizationService } from "../../services/sale-order-command-authorization.service";
 
 export type CreateSaleOrderInput = {
   warehouseId?: string;
@@ -84,9 +85,11 @@ export class CreateSaleOrderUsecase {
     private readonly workflowStateRepo: WorkflowStateRepository,
     @Optional() private readonly adviserMembership?: AdviserMembershipService,
     @Optional() private readonly createLogisticsPayable?: CreateLogisticsPayableForSaleOrderUsecase,
+    @Optional() private readonly commandAuthorization?: SaleOrderCommandAuthorizationService,
   ) {}
 
   async execute(input: CreateSaleOrderInput, createdBy: string) {
+    await this.commandAuthorization?.authorizeCreate(createdBy, input as any);
     return this.uow.runInTransaction((tx) =>
       this.executeInTransaction(input, createdBy, tx),
     );

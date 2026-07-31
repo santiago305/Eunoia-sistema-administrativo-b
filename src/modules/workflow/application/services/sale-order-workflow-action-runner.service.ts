@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from "@nestjs/common";
+import { BadRequestException, ConflictException, Inject, Injectable } from "@nestjs/common";
 import { SaleOrder } from "src/modules/sale-orders/domain/entities/sale-order";
 import {
   PRODUCT_CATALOG_INVENTORY_REPOSITORY,
@@ -85,6 +85,9 @@ export class SaleOrderWorkflowActionRunnerService {
     actions: WorkflowAction[],
     tx: TransactionContext,
   ): Promise<WorkflowActionRunResult> {
+    if (order.isActive === false) {
+      throw new ConflictException('Los pedidos eliminados son de solo lectura');
+    }
     if (!actions.length) return { order, outcomes: [] };
     const ordered = [...actions].sort((a, b) => a.position - b.position);
     let effectiveOrder = order;

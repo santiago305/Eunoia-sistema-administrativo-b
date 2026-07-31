@@ -1,9 +1,10 @@
-import { BadRequestException, Inject, Injectable } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, Optional } from "@nestjs/common";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import {
   SALE_ORDER_REPOSITORY,
   SaleOrderRepository,
 } from "src/modules/sale-orders/domain/ports/sale-order.repository";
+import { SaleOrderDeactivationService } from "../../services/sale-order-deactivation.service";
 
 type SaleOrderActiveResult = {
   saleOrderId: string;
@@ -16,6 +17,7 @@ export class SetSaleOrdersActiveUsecase {
   constructor(
     @Inject(UNIT_OF_WORK) private readonly uow: UnitOfWork,
     @Inject(SALE_ORDER_REPOSITORY) private readonly saleOrderRepo: SaleOrderRepository,
+    @Optional() private readonly deactivation?: SaleOrderDeactivationService,
   ) {}
 
   async execute(input: { saleOrderIds: string[]; isActive: boolean; executedBy: string }) {
@@ -25,6 +27,26 @@ export class SetSaleOrdersActiveUsecase {
     }
 
     const actionExecution = input.isActive ? "restore" : "delete";
+
+    if (!input.isActive && this.deactivation) {
+      const results: SaleOrderActiveResult[] = [];
+      for (const saleOrderId of saleOrderIds) {
+        try {
+          await this.uow.runInTransaction((tx) => this.deactivation!.deactivate(saleOrderId, input.executedBy, tx));
+          results.push({ saleOrderId, status: "success" });
+        } catch (error: any) {
+          results.push({ saleOrderId, status: "failed", message: error?.message ?? "No se pudo eliminar el pedido" });
+        }
+      }
+      const succeeded = results.filter((row) => row.status === "success").length;
+      return { type: "success" as const, message: "Operacion masiva procesada", data: {
+        requested: saleOrderIds.length,
+        succeeded,
+        failed: results.length - succeeded,
+        partiallyCompleted: succeeded > 0 && succeeded < results.length,
+        results,
+      }};
+    }
 
     const updatedIds = await this.uow.runInTransaction(async (tx) => {
       const ids = await this.saleOrderRepo.setActiveByIds({ saleOrderIds, isActive: input.isActive }, tx);

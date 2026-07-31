@@ -7,6 +7,7 @@ import { SaleOrderLogisticsPayableEntity } from "./adapters/out/persistence/type
 import { LogisticsPayablesTypeormRepository } from "./adapters/out/persistence/typeorm/repositories/logistics-payables.typeorm.repo";
 import { CreateLogisticsPayableForSaleOrderUsecase } from "./application/usecases/create-logistics-payable-for-sale-order.usecase";
 import { ReconcileLogisticsPayableForSaleOrderUsecase } from "./application/usecases/reconcile-logistics-payable-for-sale-order.usecase";
+import { DeactivateLogisticsPayableForSaleOrderUsecase } from "./application/usecases/deactivate-logistics-payable-for-sale-order.usecase";
 import { LOGISTICS_PAYABLES_REPOSITORY } from "./domain/ports/logistics-payables.repository";
 
 @Module({
@@ -21,8 +22,9 @@ import { LOGISTICS_PAYABLES_REPOSITORY } from "./domain/ports/logistics-payables
   providers: [
     CreateLogisticsPayableForSaleOrderUsecase,
     ReconcileLogisticsPayableForSaleOrderUsecase,
+    DeactivateLogisticsPayableForSaleOrderUsecase,
     { provide: LOGISTICS_PAYABLES_REPOSITORY, useClass: LogisticsPayablesTypeormRepository },
   ],
-  exports: [CreateLogisticsPayableForSaleOrderUsecase, ReconcileLogisticsPayableForSaleOrderUsecase],
+  exports: [CreateLogisticsPayableForSaleOrderUsecase, ReconcileLogisticsPayableForSaleOrderUsecase, DeactivateLogisticsPayableForSaleOrderUsecase],
 })
 export class LogisticsPayablesModule {}

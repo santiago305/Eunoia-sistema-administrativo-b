@@ -12,9 +12,11 @@ import { WORKFLOW_REPOSITORY, WorkflowRepository } from "src/modules/workflow/do
 import { AdviserMembershipService } from "../../services/adviser-membership.service";
 import { SaleOrderEditPolicyService } from "../../services/sale-order-edit-policy.service";
 import { ReconcileLogisticsPayableForSaleOrderUsecase } from "src/modules/logistics-payables/application/usecases/reconcile-logistics-payable-for-sale-order.usecase";
+import { SaleOrderCommandAuthorizationService } from "../../services/sale-order-command-authorization.service";
 
 export type UpdateSaleOrderInput = {
   saleOrderId: string;
+  userId?: string;
   workflowId?: string | null;
   warehouseId: string;
   clientId: string;
@@ -87,6 +89,7 @@ export class UpdateSaleOrderUsecase {
     private readonly editPolicy: SaleOrderEditPolicyService,
     @Optional() private readonly adviserMembership?: AdviserMembershipService,
     @Optional() private readonly reconcileLogisticsPayable?: ReconcileLogisticsPayableForSaleOrderUsecase,
+    @Optional() private readonly commandAuthorization?: SaleOrderCommandAuthorizationService,
   ) {}
 
   private buildComponentSignature(
@@ -141,6 +144,9 @@ export class UpdateSaleOrderUsecase {
   }
 
   async execute(input: UpdateSaleOrderInput) {
+    if (input.userId) {
+      await this.commandAuthorization?.authorizeUpdate(input.userId, input as any);
+    }
     return this.uow.runInTransaction((tx) =>
       this.executeInTransaction(input, tx),
     );
