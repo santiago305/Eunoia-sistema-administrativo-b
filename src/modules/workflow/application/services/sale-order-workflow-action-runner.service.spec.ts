@@ -22,6 +22,8 @@ describe("SaleOrderWorkflowActionRunnerService", () => {
       markInvoiceSent: jest.fn().mockResolvedValue(undefined),
       markPreguide: jest.fn().mockResolvedValue(undefined),
       markPrepared: jest.fn().mockResolvedValue(undefined),
+      unmarkPreguide: jest.fn().mockResolvedValue(undefined),
+      unmarkPrepared: jest.fn().mockResolvedValue(undefined),
       setTrackingByIds: jest.fn().mockResolvedValue(undefined),
       setReserveBool: jest.fn().mockResolvedValue(undefined),
     };
@@ -242,6 +244,50 @@ describe("SaleOrderWorkflowActionRunnerService", () => {
     expect(saleOrders.markPrepared).toHaveBeenCalledWith("order-1", tx);
     expect(saleOrders.setTrackingByIds).not.toHaveBeenCalled();
     expect(requirements.resolve).not.toHaveBeenCalled();
+  });
+
+  it("unmarks preguide without requiring a warehouse", async () => {
+    const { runner, saleOrders, requirements } = setup();
+    const orderWithoutWarehouse = { id: "order-1", warehouseId: null } as any;
+
+    await runner.run(
+      orderWithoutWarehouse,
+      [{ id: "a1", transitionId: "t1", type: "UNMARK_PREGUIDE", config: {}, position: 0 } as any],
+      tx,
+    );
+
+    expect(saleOrders.unmarkPreguide).toHaveBeenCalledWith("order-1", tx);
+    expect(requirements.resolve).not.toHaveBeenCalled();
+  });
+
+  it("unmarks prepared without requiring a warehouse", async () => {
+    const { runner, saleOrders, requirements } = setup();
+    const orderWithoutWarehouse = { id: "order-1", warehouseId: null } as any;
+
+    await runner.run(
+      orderWithoutWarehouse,
+      [{ id: "a1", transitionId: "t1", type: "UNMARK_PREPARED", config: {}, position: 0 } as any],
+      tx,
+    );
+
+    expect(saleOrders.unmarkPrepared).toHaveBeenCalledWith("order-1", tx);
+    expect(requirements.resolve).not.toHaveBeenCalled();
+  });
+
+  it("unmarks prepared when the transition also reserves stock", async () => {
+    const { runner, saleOrders, inventory } = setup();
+
+    await runner.run(
+      order,
+      [
+        { id: "a1", transitionId: "t1", type: "RESERVE_STOCK", config: {}, position: 0 } as any,
+        { id: "a2", transitionId: "t1", type: "UNMARK_PREPARED", config: {}, position: 1 } as any,
+      ],
+      tx,
+    );
+
+    expect(inventory.incrementReserved).toHaveBeenCalled();
+    expect(saleOrders.unmarkPrepared).toHaveBeenCalledWith("order-1", tx);
   });
 
   it("validates every snapshot before applying mutations", async () => {

@@ -136,6 +136,12 @@ export class SaleOrderWorkflowActionRunnerService {
         if (action.type === ACTIONS.MARK_PREPARED) {
           await this.saleOrderRepo.markPrepared(order.id, tx);
         }
+        if (action.type === ACTIONS.UNMARK_PREGUIDE) {
+          await this.saleOrderRepo.unmarkPreguide(order.id, tx);
+        }
+        if (action.type === ACTIONS.UNMARK_PREPARED) {
+          await this.saleOrderRepo.unmarkPrepared(order.id, tx);
+        }
       }
       return { order: effectiveOrder, outcomes };
     }
@@ -233,6 +239,14 @@ export class SaleOrderWorkflowActionRunnerService {
       }
       if (action.type === ACTIONS.MARK_PREPARED) {
         await this.saleOrderRepo.markPrepared(order.id, tx);
+        continue;
+      }
+      if (action.type === ACTIONS.UNMARK_PREGUIDE) {
+        await this.saleOrderRepo.unmarkPreguide(order.id, tx);
+        continue;
+      }
+      if (action.type === ACTIONS.UNMARK_PREPARED) {
+        await this.saleOrderRepo.unmarkPrepared(order.id, tx);
         continue;
       }
       if (
