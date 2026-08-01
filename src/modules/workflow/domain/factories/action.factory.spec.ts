@@ -9,6 +9,13 @@ describe("ActionFactory", () => {
     },
   );
 
+  it.each(["UNMARK_PREGUIDE", "UNMARK_PREPARED"] as const)(
+    "accepts the inverse tracking %s action",
+    (type) => {
+      expect(() => ActionFactory.validate({ type, config: {} } as any)).not.toThrow();
+    },
+  );
+
   it("rejects unsupported action types", () => {
     expect(() => ActionFactory.validate({ type: "UNKNOWN", config: {} } as any)).toThrow(
       "Accion de workflow no soportada",

@@ -10,6 +10,8 @@ export class ActionFactory {
       case ACTIONS.MARK_INVOICE_SENT:
       case ACTIONS.MARK_PREGUIDE:
       case ACTIONS.MARK_PREPARED:
+      case ACTIONS.UNMARK_PREGUIDE:
+      case ACTIONS.UNMARK_PREPARED:
         return;
       case ACTIONS.ASSIGN_WAREHOUSE_BY_PROVINCE:
         this.validateWarehouseAssignmentConfig(action.config);

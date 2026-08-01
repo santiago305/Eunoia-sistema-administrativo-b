@@ -135,6 +135,8 @@ describe("WorkflowsController", () => {
       { type: "MARK_INVOICE_SENT", configSchema: {} },
       { type: "MARK_PREGUIDE", configSchema: {} },
       { type: "MARK_PREPARED", configSchema: {} },
+      { type: "UNMARK_PREGUIDE", configSchema: {} },
+      { type: "UNMARK_PREPARED", configSchema: {} },
       {
         type: "ASSIGN_WAREHOUSE_BY_PROVINCE",
         configSchema: {

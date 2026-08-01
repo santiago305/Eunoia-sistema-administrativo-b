@@ -127,6 +127,8 @@ export class WorkflowsController {
       { type: ACTIONS.MARK_INVOICE_SENT, configSchema: {} },
       { type: ACTIONS.MARK_PREGUIDE, configSchema: {} },
       { type: ACTIONS.MARK_PREPARED, configSchema: {} },
+      { type: ACTIONS.UNMARK_PREGUIDE, configSchema: {} },
+      { type: ACTIONS.UNMARK_PREPARED, configSchema: {} },
       {
         type: ACTIONS.ASSIGN_WAREHOUSE_BY_PROVINCE,
         configSchema: {
