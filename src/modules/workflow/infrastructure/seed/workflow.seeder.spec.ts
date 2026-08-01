@@ -113,8 +113,46 @@ describe('ABONADO workflow seed definitions', () => {
             },
           ],
         }),
+        expect.objectContaining({
+          code: 'GLOBAL_ACTION_UNMARK_PREPARED',
+          name: 'Sin preparar',
+          effect: 'RUN_ACTIONS',
+          isGlobal: true,
+          actions: [
+            {
+              type: 'UNMARK_PREPARED',
+              config: {},
+              position: 0,
+            },
+          ],
+        }),
+        expect.objectContaining({
+          code: 'GLOBAL_ACTION_UNMARK_PREGUIDE',
+          name: 'Sin preguía',
+          effect: 'RUN_ACTIONS',
+          isGlobal: true,
+          actions: [
+            {
+              type: 'UNMARK_PREGUIDE',
+              config: {},
+              position: 0,
+            },
+          ],
+        }),
       ]),
     );
+
+    const ce = ABONADO_WORKFLOW_SEEDS.find(({ name }) => name === 'ABONADO CE')!;
+    const trackingTypes = new Set([
+      'MARK_PREGUIDE',
+      'UNMARK_PREGUIDE',
+      'MARK_PREPARED',
+      'UNMARK_PREPARED',
+    ]);
+    expect(
+      ce.transitions.flatMap(({ actions }) => actions.map(({ type }) => type))
+        .filter((type) => trackingTypes.has(type)),
+    ).toEqual([]);
   });
 
   it('starts ABONADO workflows in draft and assigns warehouse before created state', () => {
@@ -187,6 +225,8 @@ describe('ABONADO workflow seed definitions', () => {
         expect.objectContaining({ code: 'GLOBAL_ACTION_1781572618528', positionX: -132, positionY: -300 }),
         expect.objectContaining({ code: 'GLOBAL_ACTION_1785028166923', positionX: -340, positionY: -400 }),
         expect.objectContaining({ code: 'GLOBAL_ACTION_1785028192676', positionX: -136, positionY: -402 }),
+        expect.objectContaining({ code: 'GLOBAL_ACTION_UNMARK_PREPARED', positionX: -340, positionY: -506 }),
+        expect.objectContaining({ code: 'GLOBAL_ACTION_UNMARK_PREGUIDE', positionX: -136, positionY: -508 }),
       ]),
     );
     expect(ce.transitions).toEqual(
