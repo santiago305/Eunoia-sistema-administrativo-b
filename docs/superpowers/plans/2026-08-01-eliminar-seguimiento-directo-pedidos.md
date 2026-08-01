@@ -320,7 +320,7 @@ pnpm build
 
 Resultado: build aprobado y las 72 pruebas enfocadas de pedidos aprobadas. La suite completa aprobó 574 de 579 pruebas; los cinco fallos restantes corresponden a expectativas previas de estadísticas, tablas y una fecha fija de julio. El lint general conserva 3 errores y 16 advertencias previos, ninguno en los archivos modificados por esta tarea.
 
-- [ ] **Step 5: revisar estado y commits**
+- [x] **Step 5: revisar estado y commits**
 
 ```powershell
 git status --short
