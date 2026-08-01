@@ -41,7 +41,8 @@ Permisos: Consulta + `sale_orders.delete`.
 
 Permisos: Consulta + `sale_orders.workflows.view`, `sale_orders.change_state`, `sale_orders.execute_workflow_action`.
 
-- Confirmar que `Sin preguía`/`Con preguía` y `Sin preparar`/`Preparado` son etiquetas de solo lectura en tabla y detalle.
+- Confirmar que `Sin preguía`/`Con preguía` y `Sin preparar`/`Preparado` son etiquetas de solo lectura en la tabla.
+- Abrir el detalle/editor y confirmar que Envío no contiene el bloque `Seguimiento del envío` ni etiquetas de preguía/preparación.
 - Confirmar que no existen checkbox, clic de edición ni el modal masivo separado `Seguimiento`.
 - En un pedido de `ABONADO ENVIO` con ambos valores en `false`, abrir `Cambiar estado` y confirmar que aparecen `Preguía` y `Preparado`, pero no sus acciones inversas.
 - Ejecutar `Preguía`; comprobar que la etiqueta cambia a `Con preguía` y que la acción disponible pasa a ser `Sin preguía`.
