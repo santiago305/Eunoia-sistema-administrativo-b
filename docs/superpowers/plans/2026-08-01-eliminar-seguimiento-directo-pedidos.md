@@ -153,7 +153,7 @@ pnpm build
 
 Expected: todas las suites finalizan con código 0 y el build compila sin referencias a la vía directa.
 
-- [ ] **Step 8: commit backend**
+- [x] **Step 8: commit backend**
 
 ```powershell
 git add src test docs
@@ -168,7 +168,7 @@ git commit -m "refactor: use workflows for sale order tracking"
 - Modify: `src/features/sale-orders/components/editor/SaleOrderShippingSection.spec.tsx`
 - Modify: `src/features/sale-orders/permissions/saleOrderPermissions.spec.ts`
 
-- [ ] **Step 1: hacer fallar la barra masiva**
+- [x] **Step 1: hacer fallar la barra masiva**
 
 Con permisos legacy presentes en la sesión, exigir que no aparezca una acción separada de Seguimiento:
 
@@ -178,7 +178,7 @@ expect(screen.queryByRole('button', { name: /seguimiento/i })).not.toBeInTheDocu
 
 La prueba debe conservar `sale_orders.execute_workflow_action` y comprobar que “Cambiar estado” continúa disponible.
 
-- [ ] **Step 2: hacer fallar la columna interactiva**
+- [x] **Step 2: hacer fallar la columna interactiva**
 
 Renderizar el indicador con las propiedades legacy mediante un objeto tipado como `any`, para demostrar que ya no deben activar botones:
 
@@ -195,11 +195,11 @@ expect(screen.getByText('Sin preguía')).toBeInTheDocument();
 expect(screen.getByText('Sin preparar')).toBeInTheDocument();
 ```
 
-- [ ] **Step 3: hacer fallar Envío y permisos**
+- [x] **Step 3: hacer fallar Envío y permisos**
 
 Exigir que Envío muestre ambos estados sin botones y que el catálogo frontend no contenga `preguideUpdate` ni `preparedUpdate`.
 
-- [ ] **Step 4: ejecutar pruebas y confirmar RED**
+- [x] **Step 4: ejecutar pruebas y confirmar RED**
 
 Run:
 
@@ -228,7 +228,7 @@ Expected: FAIL porque siguen existiendo los controles directos y la acción masi
 - Modify: `src/shared/services/saleOrderService.ts`
 - Delete: `src/shared/services/saleOrderService.tracking.spec.ts`
 
-- [ ] **Step 1: convertir Seguimiento en visualización pura**
+- [x] **Step 1: convertir Seguimiento en visualización pura**
 
 Reducir `SaleOrderTrackingCell` a una interfaz sin permisos ni callbacks:
 
@@ -240,11 +240,11 @@ type SaleOrderTrackingCellProps = {
 
 Renderizar los mismos badges visuales “Con/Sin preguía” y “Preparado/Sin preparar”, sin `button`, debounce, loading, petición ni mutación optimista.
 
-- [ ] **Step 2: retirar la acción masiva paralela**
+- [x] **Step 2: retirar la acción masiva paralela**
 
 Eliminar estado `bulkTrackingOpen`, handler `handleBulkTracking`, import y render de `SaleOrderBulkTrackingModal`, además de `onOpenTracking` y `canTracking` en la barra. Mantener “Cambiar estado”, que ya contiene el modo `global_action`.
 
-- [ ] **Step 3: retirar controles directos del editor**
+- [x] **Step 3: retirar controles directos del editor**
 
 Eliminar `trackingCapabilities`, callbacks y estado mutable de seguimiento. Pasar al bloque Envío solo los valores del pedido:
 
@@ -257,11 +257,11 @@ tracking={{
 
 `SaleOrderShippingSection` renderiza `SaleOrderTrackingCell` únicamente como información.
 
-- [ ] **Step 4: retirar permisos y cliente HTTP**
+- [x] **Step 4: retirar permisos y cliente HTTP**
 
 Eliminar constantes/capacidades `preguideUpdate`, `preparedUpdate`, `canUpdatePreguide`, `canUpdatePrepared` y `canBulkUpdateTracking`. Eliminar `tracking`, `bulkTracking`, `setSaleOrderTracking` y `bulkSetSaleOrdersTracking` de servicios y API.
 
-- [ ] **Step 5: ejecutar pruebas frontend y confirmar GREEN**
+- [x] **Step 5: ejecutar pruebas frontend y confirmar GREEN**
 
 Run:
 
@@ -272,7 +272,7 @@ pnpm build
 
 Expected: pruebas y build terminan con código 0; no quedan llamadas a `/tracking`.
 
-- [ ] **Step 6: commit frontend**
+- [x] **Step 6: commit frontend**
 
 ```powershell
 git add src
@@ -285,13 +285,13 @@ git commit -m "refactor: show sale order tracking from workflows"
 - Modify: `docs/sale-orders-role-matrix.md`
 - Modify: `README.md`
 - Modify: `D:/eunoia/Eunoia-sistema-administrativo-f/README.md`
-- Modify: `D:/eunoia/docs/sale-orders-manual-verification.md`
+- Create: `docs/sale-orders-manual-verification.md`
 
-- [ ] **Step 1: actualizar documentación operativa**
+- [x] **Step 1: actualizar documentación operativa**
 
 Documentar que `sale_orders.execute_workflow_action` autoriza Preguía y Preparado, que los indicadores son de solo lectura y que la reversión se añadirá mediante acciones globales inversas. Eliminar referencias a los dos permisos y a `/tracking`.
 
-- [ ] **Step 2: ejecutar búsqueda residual**
+- [x] **Step 2: ejecutar búsqueda residual**
 
 Run desde `D:\eunoia`:
 
@@ -301,20 +301,24 @@ rg -n --hidden --glob '!node_modules' --glob '!dist' "bulk/tracking|/tracking|sa
 
 Expected: solo aparecen migraciones históricas, la lista de permisos obsoletos y documentos históricos que deban conservar trazabilidad; ninguna referencia ejecutable.
 
-- [ ] **Step 3: verificación completa backend**
+- [x] **Step 3: verificación completa backend**
 
 ```powershell
 pnpm test -- --runInBand
 pnpm build
 ```
 
-- [ ] **Step 4: verificación completa frontend**
+Resultado: build aprobado. La suite completa aprobó 1,013 de 1,020 pruebas; los siete fallos restantes pertenecen a producción y adjuntos y son independientes de este cambio. La inconsistencia relacionada de la migración histórica se corrigió y sus 17 pruebas de migración/seeder más las 2 pruebas e2e del contrato quedaron aprobadas.
+
+- [x] **Step 4: verificación completa frontend**
 
 ```powershell
 pnpm test:unit
 pnpm lint
 pnpm build
 ```
+
+Resultado: build aprobado y las 72 pruebas enfocadas de pedidos aprobadas. La suite completa aprobó 574 de 579 pruebas; los cinco fallos restantes corresponden a expectativas previas de estadísticas, tablas y una fecha fija de julio. El lint general conserva 3 errores y 16 advertencias previos, ninguno en los archivos modificados por esta tarea.
 
 - [ ] **Step 5: revisar estado y commits**
 
