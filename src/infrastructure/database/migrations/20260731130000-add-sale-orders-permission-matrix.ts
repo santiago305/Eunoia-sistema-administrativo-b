@@ -15,20 +15,20 @@ const HISTORICAL_TRACKING_PERMISSIONS: ReadonlyArray<
 > = [
   {
     code: 'sale_orders.preguide.update',
-    name: 'Cambiar preguia',
-    description: 'Marcar pedidos con o sin preguia',
+    name: 'Cambiar estado de preguia',
+    description: 'Marcar o desmarcar preguia individual o masivamente',
     module: 'sale_orders',
-    resource: 'sale_orders',
-    action: 'update_preguide',
+    resource: 'sale_order_tracking',
+    action: 'update',
     type: 'action',
   },
   {
     code: 'sale_orders.prepared.update',
-    name: 'Cambiar preparacion',
-    description: 'Marcar pedidos como preparados o no preparados',
+    name: 'Cambiar estado de preparacion',
+    description: 'Marcar o desmarcar preparacion individual o masivamente',
     module: 'sale_orders',
-    resource: 'sale_orders',
-    action: 'update_prepared',
+    resource: 'sale_order_tracking',
+    action: 'update',
     type: 'action',
   },
 ];

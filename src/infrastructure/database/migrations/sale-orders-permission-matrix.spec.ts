@@ -75,6 +75,12 @@ describe('AddSaleOrdersPermissionMatrix20260731130000', () => {
     expect(upSql).toContain("('sale_orders.export'");
     expect(upSql).toContain("('sale_orders.preguide.update'");
     expect(upSql).toContain("('sale_orders.prepared.update'");
+    expect(upSql).toContain(
+      "'Cambiar estado de preguia', 'Marcar o desmarcar preguia individual o masivamente', 'sale_orders', 'sale_order_tracking', 'update'",
+    );
+    expect(upSql).toContain(
+      "'Cambiar estado de preparacion', 'Marcar o desmarcar preparacion individual o masivamente', 'sale_orders', 'sale_order_tracking', 'update'",
+    );
     expect(upSql).toContain('is_active = true');
 
     queries.length = 0;
