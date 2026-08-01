@@ -93,6 +93,8 @@ export interface SaleOrderRepository {
   markInvoiceSent(saleOrderId: string, tx?: TransactionContext): Promise<void>;
   markPreguide(saleOrderId: string, tx?: TransactionContext): Promise<void>;
   markPrepared(saleOrderId: string, tx?: TransactionContext): Promise<void>;
+  unmarkPreguide(saleOrderId: string, tx?: TransactionContext): Promise<void>;
+  unmarkPrepared(saleOrderId: string, tx?: TransactionContext): Promise<void>;
   setReserveBool(input: { saleOrderId: string; reserveBool: boolean }, tx?: TransactionContext): Promise<void>;
   setLoteByIds(input: { saleOrderIds: string[]; lote: number }, tx?: TransactionContext): Promise<number>;
   setActiveByLote(input: { lote: number; isActive: boolean }, tx?: TransactionContext): Promise<string[]>;

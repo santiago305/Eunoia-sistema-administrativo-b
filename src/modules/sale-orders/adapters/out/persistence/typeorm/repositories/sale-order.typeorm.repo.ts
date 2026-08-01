@@ -316,6 +316,22 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     );
   }
 
+  async unmarkPreguide(saleOrderId: string, tx?: TransactionContext): Promise<void> {
+    const manager = this.getManager(tx);
+    await manager.getRepository(SaleOrderEntity).update(
+      { id: saleOrderId },
+      { preguide: false },
+    );
+  }
+
+  async unmarkPrepared(saleOrderId: string, tx?: TransactionContext): Promise<void> {
+    const manager = this.getManager(tx);
+    await manager.getRepository(SaleOrderEntity).update(
+      { id: saleOrderId },
+      { prepared: false },
+    );
+  }
+
   async setReserveBool(input: { saleOrderId: string; reserveBool: boolean }, tx?: TransactionContext): Promise<void> {
     const manager = this.getManager(tx);
     await manager.getRepository(SaleOrderEntity).update(

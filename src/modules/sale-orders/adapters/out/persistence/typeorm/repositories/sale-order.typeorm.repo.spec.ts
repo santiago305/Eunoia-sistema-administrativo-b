@@ -365,6 +365,36 @@ describe("SaleOrderTypeormRepository", () => {
     );
   });
 
+  it("unmarks preguide false idempotently", async () => {
+    const update = jest.fn().mockResolvedValue({ affected: 1 });
+    const entityRepo = { update };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue(entityRepo) },
+    } as any);
+
+    await repository.unmarkPreguide("order-1");
+
+    expect(update).toHaveBeenCalledWith(
+      { id: "order-1" },
+      { preguide: false },
+    );
+  });
+
+  it("unmarks prepared false idempotently", async () => {
+    const update = jest.fn().mockResolvedValue({ affected: 1 });
+    const entityRepo = { update };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue(entityRepo) },
+    } as any);
+
+    await repository.unmarkPrepared("order-1");
+
+    expect(update).toHaveBeenCalledWith(
+      { id: "order-1" },
+      { prepared: false },
+    );
+  });
+
   it("updates reserveBool explicitly", async () => {
     const update = jest.fn().mockResolvedValue({ affected: 1 });
     const entityRepo = { update };
