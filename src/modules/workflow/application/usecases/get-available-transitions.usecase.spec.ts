@@ -7,6 +7,81 @@ import { WorkflowTransition } from "../../domain/entities/workflow-transition";
 import { GetAvailableTransitionsUseCase } from "./get-available-transitions.usecase";
 
 describe("GetAvailableTransitionsUseCase", () => {
+  async function availableTrackingActionIds(
+    type: WorkflowAction["type"],
+    flags: { preguide: boolean; prepared: boolean },
+  ): Promise<string[]> {
+    const state = new WorkflowState({
+      id: "state-created",
+      workflowId: "workflow-1",
+      code: "CREATED",
+      name: "Creado",
+      color: "#64748b",
+      position: 0,
+      isInitial: true,
+      isFinal: false,
+      isActive: true,
+    });
+    const transition = new WorkflowTransition({
+      id: `transition-${type.toLowerCase()}`,
+      workflowId: "workflow-1",
+      code: type,
+      name: type,
+      effect: TRANSITION_EFFECTS.RUN_ACTIONS,
+      fromStateId: null,
+      toStateId: null,
+      isGlobal: true,
+      isActive: true,
+    });
+    const usecase = new GetAvailableTransitionsUseCase(
+      { runInTransaction: jest.fn((work) => work({ tx: true })) } as any,
+      {
+        findByIdForUpdate: jest.fn().mockResolvedValue({
+          id: "order-1",
+          workflowId: "workflow-1",
+          currentStateId: "state-created",
+          invoiceSend: false,
+          ...flags,
+        }),
+      } as any,
+      {
+        findDetailedById: jest.fn().mockResolvedValue({
+          workflow: new Workflow({
+            id: "workflow-1",
+            name: "Pedidos",
+            normalizedName: "PEDIDOS",
+            description: null,
+            isActive: true,
+            createdAt: new Date("2026-07-08T00:00:00.000Z"),
+            updatedAt: null,
+          }),
+          states: [state],
+        }),
+      } as any,
+      {
+        listFromState: jest.fn().mockResolvedValue([
+          {
+            transition,
+            conditions: [],
+            actions: [
+              new WorkflowAction({
+                id: `action-${type.toLowerCase()}`,
+                transitionId: transition.id,
+                type,
+                config: {},
+                position: 0,
+              }),
+            ],
+          },
+        ]),
+      } as any,
+      { build: jest.fn().mockResolvedValue({ invoiceSent: false }) } as any,
+    );
+
+    const result = await usecase.execute({ saleOrderId: "order-1" });
+    return result.map(({ id }) => id);
+  }
+
   it("hides the mark-invoice-sent transition when the invoice is already sent", async () => {
     const state = new WorkflowState({
       id: "state-created",
@@ -249,5 +324,21 @@ describe("GetAvailableTransitionsUseCase", () => {
     const result = await usecase.execute({ saleOrderId: "order-1" });
 
     expect(result).toEqual([]);
+  });
+
+  it.each([
+    [ACTIONS.UNMARK_PREGUIDE, { preguide: false, prepared: true }],
+    [ACTIONS.UNMARK_PREPARED, { preguide: true, prepared: false }],
+  ] as const)("hides %s when the tracking flag is already false", async (type, flags) => {
+    await expect(availableTrackingActionIds(type, flags)).resolves.toEqual([]);
+  });
+
+  it.each([
+    [ACTIONS.UNMARK_PREGUIDE, { preguide: true, prepared: false }],
+    [ACTIONS.UNMARK_PREPARED, { preguide: false, prepared: true }],
+  ] as const)("shows %s when the tracking flag is true", async (type, flags) => {
+    await expect(availableTrackingActionIds(type, flags)).resolves.toEqual([
+      `transition-${type.toLowerCase()}`,
+    ]);
   });
 });

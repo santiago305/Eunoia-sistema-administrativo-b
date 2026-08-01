@@ -60,6 +60,12 @@ export class GetAvailableTransitionsUseCase {
           if (action.type === ACTIONS.MARK_PREPARED) {
             return order.prepared === true;
           }
+          if (action.type === ACTIONS.UNMARK_PREGUIDE) {
+            return order.preguide !== true;
+          }
+          if (action.type === ACTIONS.UNMARK_PREPARED) {
+            return order.prepared !== true;
+          }
           return false;
         });
 
