@@ -5,6 +5,7 @@ import {
 } from "src/shared/listing-search/application/dtos/listing-search-state.output";
 import {
   SaleOrderSearchSnapshot,
+  SaleOrderTrackingCapabilities,
   SaleOrderWorkflowOutput,
   SaleOrderWorkflowStateOutput,
 } from "../sale-order-search-snapshot";
@@ -139,6 +140,7 @@ export type SaleOrderGetOutput = {
   workflow: SaleOrderWorkflowOutput | null;
   currentState: SaleOrderWorkflowStateOutput | null;
   invoiceSend: boolean;
+  trackingCapabilities: SaleOrderTrackingCapabilities;
   prepared: boolean;
   preguide: boolean;
   reserveBool: boolean;

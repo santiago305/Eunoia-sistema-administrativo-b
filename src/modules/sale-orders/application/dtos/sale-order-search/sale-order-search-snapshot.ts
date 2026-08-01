@@ -89,6 +89,12 @@ export interface SaleOrderSearchSnapshot {
 
 export type SaleOrderPaymentStatus = "PAID" | "PENDING";
 
+export type SaleOrderTrackingCapabilities = {
+  invoice: boolean;
+  preguide: boolean;
+  prepared: boolean;
+};
+
 export type SaleOrderWorkflowOutput = {
   id: string;
   name: string;
@@ -148,6 +154,7 @@ export type SaleOrderListItemOutput = {
   workflow: SaleOrderWorkflowOutput | null;
   currentState: SaleOrderWorkflowStateOutput | null;
   invoiceSend: boolean;
+  trackingCapabilities: SaleOrderTrackingCapabilities;
   prepared: boolean;
   preguide: boolean;
   reserveBool: boolean;
