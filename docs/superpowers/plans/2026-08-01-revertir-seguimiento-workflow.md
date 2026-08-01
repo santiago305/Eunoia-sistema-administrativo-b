@@ -19,7 +19,7 @@
 - Modify: `src/modules/workflow/adapters/in/controllers/workflows.controller.ts`
 - Test: `src/modules/workflow/adapters/in/controllers/workflows.controller.spec.ts`
 
-- [ ] **Step 1: escribir pruebas RED del catálogo y factory**
+- [x] **Step 1: escribir pruebas RED del catálogo y factory**
 
 Agregar casos que exijan los nuevos tipos sin configuración:
 
@@ -43,7 +43,7 @@ expect(controller.listActionTypes()).toEqual(
 );
 ```
 
-- [ ] **Step 2: verificar RED**
+- [x] **Step 2: verificar RED**
 
 Run:
 
@@ -53,7 +53,7 @@ pnpm test -- modules/workflow/domain/factories/action.factory.spec.ts modules/wo
 
 Expected: FAIL porque `ACTIONS.UNMARK_PREGUIDE`, `ACTIONS.UNMARK_PREPARED` y el catálogo HTTP todavía no existen.
 
-- [ ] **Step 3: implementar los tipos mínimos**
+- [x] **Step 3: implementar los tipos mínimos**
 
 Añadir al objeto `ACTIONS`:
 
@@ -69,11 +69,11 @@ Añadir ambos `case` sin configuración en `ActionFactory.validate` y ambos elem
 { type: ACTIONS.UNMARK_PREPARED, configSchema: {} },
 ```
 
-- [ ] **Step 4: verificar GREEN**
+- [x] **Step 4: verificar GREEN**
 
 Ejecutar el comando de Step 2. Expected: ambas suites pasan.
 
-- [ ] **Step 5: commit del contrato**
+- [x] **Step 5: commit del contrato**
 
 ```powershell
 git add src/modules/workflow/domain src/modules/workflow/adapters/in/controllers
@@ -87,7 +87,7 @@ git commit -m "feat: add inverse tracking workflow actions"
 - Modify: `src/modules/sale-orders/adapters/out/persistence/typeorm/repositories/sale-order.typeorm.repo.ts`
 - Test: `src/modules/sale-orders/adapters/out/persistence/typeorm/repositories/sale-order.typeorm.repo.spec.ts`
 
-- [ ] **Step 1: escribir pruebas RED del repositorio**
+- [x] **Step 1: escribir pruebas RED del repositorio**
 
 Agregar pruebas equivalentes a las existentes de `mark*`:
 
@@ -109,7 +109,7 @@ it('unmarks prepared false idempotently', async () => {
 });
 ```
 
-- [ ] **Step 2: verificar RED**
+- [x] **Step 2: verificar RED**
 
 Run:
 
@@ -119,7 +119,7 @@ pnpm test -- modules/sale-orders/adapters/out/persistence/typeorm/repositories/s
 
 Expected: FAIL porque los métodos no existen.
 
-- [ ] **Step 3: implementar puerto y repositorio**
+- [x] **Step 3: implementar puerto y repositorio**
 
 Añadir al puerto:
 
@@ -140,11 +140,11 @@ async unmarkPrepared(saleOrderId: string, tx?: TransactionContext): Promise<void
 }
 ```
 
-- [ ] **Step 4: verificar GREEN**
+- [x] **Step 4: verificar GREEN**
 
 Ejecutar el comando de Step 2. Expected: suite aprobada.
 
-- [ ] **Step 5: commit de persistencia**
+- [x] **Step 5: commit de persistencia**
 
 ```powershell
 git add src/modules/sale-orders/domain/ports/sale-order.repository.ts src/modules/sale-orders/adapters/out/persistence/typeorm/repositories
@@ -157,7 +157,7 @@ git commit -m "feat: persist inverse order tracking actions"
 - Modify: `src/modules/workflow/application/services/sale-order-workflow-action-runner.service.ts`
 - Test: `src/modules/workflow/application/services/sale-order-workflow-action-runner.service.spec.ts`
 
-- [ ] **Step 1: escribir pruebas RED sin acciones de stock**
+- [x] **Step 1: escribir pruebas RED sin acciones de stock**
 
 Añadir `unmarkPreguide` y `unmarkPrepared` a la doble del repositorio y crear dos casos:
 
@@ -169,7 +169,7 @@ await runner.run(order, [action(ACTIONS.UNMARK_PREPARED)], tx);
 expect(saleOrders.unmarkPrepared).toHaveBeenCalledWith('order-1', tx);
 ```
 
-- [ ] **Step 2: escribir prueba RED junto con stock**
+- [x] **Step 2: escribir prueba RED junto con stock**
 
 Crear una transición que contenga `RESERVE_STOCK` y `UNMARK_PREPARED`; exigir que, además de la operación de stock, llame:
 
@@ -177,7 +177,7 @@ Crear una transición que contenga `RESERVE_STOCK` y `UNMARK_PREPARED`; exigir q
 expect(saleOrders.unmarkPrepared).toHaveBeenCalledWith('order-1', tx);
 ```
 
-- [ ] **Step 3: verificar RED**
+- [x] **Step 3: verificar RED**
 
 Run:
 
@@ -187,7 +187,7 @@ pnpm test -- modules/workflow/application/services/sale-order-workflow-action-ru
 
 Expected: FAIL porque el runner ignora `UNMARK_*`.
 
-- [ ] **Step 4: implementar ambas rutas del runner**
+- [x] **Step 4: implementar ambas rutas del runner**
 
 En el bloque sin stock y en el bucle general añadir:
 
@@ -202,11 +202,11 @@ if (action.type === ACTIONS.UNMARK_PREPARED) {
 
 En el bucle general usar `continue` después de cada acción, igual que los `MARK_*` existentes.
 
-- [ ] **Step 5: verificar GREEN**
+- [x] **Step 5: verificar GREEN**
 
 Ejecutar el comando de Step 3. Expected: suite aprobada.
 
-- [ ] **Step 6: commit del runner**
+- [x] **Step 6: commit del runner**
 
 ```powershell
 git add src/modules/workflow/application/services/sale-order-workflow-action-runner.service.ts src/modules/workflow/application/services/sale-order-workflow-action-runner.service.spec.ts
@@ -219,7 +219,7 @@ git commit -m "feat: execute inverse tracking workflow actions"
 - Modify: `src/modules/workflow/application/usecases/get-available-transitions.usecase.ts`
 - Test: `src/modules/workflow/application/usecases/get-available-transitions.usecase.spec.ts`
 
-- [ ] **Step 1: escribir pruebas RED de Preguía**
+- [x] **Step 1: escribir pruebas RED de Preguía**
 
 Construir bundles globales con `MARK_PREGUIDE` y `UNMARK_PREGUIDE` y probar:
 
@@ -230,11 +230,11 @@ expect(namesFor({ preguide: true })).not.toContain('Preguía');
 expect(namesFor({ preguide: true })).toContain('Sin preguía');
 ```
 
-- [ ] **Step 2: escribir pruebas RED de Preparación**
+- [x] **Step 2: escribir pruebas RED de Preparación**
 
 Construir bundles con `MARK_PREPARED` y `UNMARK_PREPARED` y exigir la alternancia equivalente para `prepared=false/true`.
 
-- [ ] **Step 3: verificar RED**
+- [x] **Step 3: verificar RED**
 
 Run:
 
@@ -244,7 +244,7 @@ pnpm test -- modules/workflow/application/usecases/get-available-transitions.use
 
 Expected: FAIL porque las acciones inversas todavía se consideran disponibles cuando el valor ya es `false`.
 
-- [ ] **Step 4: implementar el filtro**
+- [x] **Step 4: implementar el filtro**
 
 Extender `alreadyCompleted`:
 
@@ -257,11 +257,11 @@ if (action.type === ACTIONS.UNMARK_PREPARED) {
 }
 ```
 
-- [ ] **Step 5: verificar GREEN**
+- [x] **Step 5: verificar GREEN**
 
 Ejecutar el comando de Step 3. Expected: suite aprobada y las pruebas existentes de `MARK_*` permanecen verdes.
 
-- [ ] **Step 6: commit de disponibilidad**
+- [x] **Step 6: commit de disponibilidad**
 
 ```powershell
 git add src/modules/workflow/application/usecases/get-available-transitions.usecase.ts src/modules/workflow/application/usecases/get-available-transitions.usecase.spec.ts
@@ -274,7 +274,7 @@ git commit -m "feat: alternate tracking workflow actions"
 - Modify: `src/modules/workflow/infrastructure/seed/abonado-workflows.seed-data.ts`
 - Test: `src/modules/workflow/infrastructure/seed/workflow.seeder.spec.ts`
 
-- [ ] **Step 1: escribir pruebas RED del alcance**
+- [x] **Step 1: escribir pruebas RED del alcance**
 
 Exigir cuatro acciones en ENVIO:
 
@@ -301,7 +301,7 @@ const ceTrackingTypes = ce.transitions.flatMap(({ actions }) => actions.map(({ t
 expect(ceTrackingTypes).toEqual([]);
 ```
 
-- [ ] **Step 2: verificar RED**
+- [x] **Step 2: verificar RED**
 
 Run:
 
@@ -311,7 +311,7 @@ pnpm test -- modules/workflow/infrastructure/seed/workflow.seeder.spec.ts --runI
 
 Expected: FAIL porque faltan las dos transiciones inversas de ENVIO.
 
-- [ ] **Step 3: agregar transiciones inversas solo a ENVIO**
+- [x] **Step 3: agregar transiciones inversas solo a ENVIO**
 
 Añadir junto a las positivas:
 
@@ -341,11 +341,11 @@ transition({
 
 No modificar el objeto `ABONADO CE`.
 
-- [ ] **Step 4: verificar GREEN e idempotencia**
+- [x] **Step 4: verificar GREEN e idempotencia**
 
 Ejecutar el comando de Step 2 y confirmar que `materializeWorkflowSeed` produce los mismos IDs en dos ejecuciones.
 
-- [ ] **Step 5: commit del seeder**
+- [x] **Step 5: commit del seeder**
 
 ```powershell
 git add src/modules/workflow/infrastructure/seed
@@ -359,7 +359,7 @@ git commit -m "feat: seed inverse tracking actions for envio"
 - Modify: `D:/eunoia/Eunoia-sistema-administrativo-f/src/features/workflows/components/WorkflowActionEditor.tsx`
 - Test: `D:/eunoia/Eunoia-sistema-administrativo-f/src/features/workflows/components/WorkflowActionEditor.spec.tsx`
 
-- [ ] **Step 1: escribir prueba RED de etiquetas**
+- [x] **Step 1: escribir prueba RED de etiquetas**
 
 Agregar ambos tipos al catálogo simulado y exigir:
 
@@ -368,7 +368,7 @@ expect(screen.getByText('Quitar preguía')).toBeInTheDocument();
 expect(screen.getByText('Marcar sin preparar')).toBeInTheDocument();
 ```
 
-- [ ] **Step 2: verificar RED**
+- [x] **Step 2: verificar RED**
 
 Run desde frontend:
 
@@ -378,7 +378,7 @@ pnpm test:unit -- src/features/workflows/components/WorkflowActionEditor.spec.ts
 
 Expected: FAIL porque el tipo y la etiqueta todavía no existen.
 
-- [ ] **Step 3: implementar tipos y etiquetas**
+- [x] **Step 3: implementar tipos y etiquetas**
 
 Añadir en `ACTIONS`:
 
@@ -394,11 +394,11 @@ UNMARK_PREGUIDE: 'Quitar preguía',
 UNMARK_PREPARED: 'Marcar sin preparar',
 ```
 
-- [ ] **Step 4: verificar GREEN**
+- [x] **Step 4: verificar GREEN**
 
 Ejecutar el comando de Step 2. Expected: suite aprobada.
 
-- [ ] **Step 5: commit frontend**
+- [x] **Step 5: commit frontend**
 
 ```powershell
 git add src/features/workflows/types/workflow.ts src/features/workflows/components/WorkflowActionEditor.tsx src/features/workflows/components/WorkflowActionEditor.spec.tsx
@@ -412,7 +412,7 @@ git commit -m "feat: label inverse tracking workflow actions"
 - Modify: `docs/sale-orders-manual-verification.md`
 - Modify: `docs/superpowers/plans/2026-08-01-revertir-seguimiento-workflow.md`
 
-- [ ] **Step 1: actualizar documentación operativa**
+- [x] **Step 1: actualizar documentación operativa**
 
 Reemplazar la nota que indica que la reversión no existe por la matriz definitiva:
 
@@ -423,7 +423,7 @@ Reemplazar la nota que indica que la reversión no existe por la matriz definiti
 
 Actualizar las pruebas manuales para ejecutar las cuatro acciones en un pedido ENVIO y confirmar que ninguna aparece en CE.
 
-- [ ] **Step 2: ejecutar búsqueda residual**
+- [x] **Step 2: ejecutar búsqueda residual**
 
 ```powershell
 rg -n --hidden --glob '!node_modules' --glob '!dist' "UNMARK_PREGUIDE|UNMARK_PREPARED|Sin preguía|Sin preparar" Eunoia-sistema-administrativo-b Eunoia-sistema-administrativo-f
@@ -431,7 +431,7 @@ rg -n --hidden --glob '!node_modules' --glob '!dist' "UNMARK_PREGUIDE|UNMARK_PRE
 
 Expected: tipos, runner, repositorio, disponibilidad, seeder ENVIO, frontend, pruebas y documentación; ninguna transición sembrada en el bloque CE.
 
-- [ ] **Step 3: verificación backend enfocada**
+- [x] **Step 3: verificación backend enfocada**
 
 ```powershell
 pnpm test -- modules/workflow/domain/factories/action.factory.spec.ts modules/workflow/adapters/in/controllers/workflows.controller.spec.ts modules/sale-orders/adapters/out/persistence/typeorm/repositories/sale-order.typeorm.repo.spec.ts modules/workflow/application/services/sale-order-workflow-action-runner.service.spec.ts modules/workflow/application/usecases/get-available-transitions.usecase.spec.ts modules/workflow/infrastructure/seed/workflow.seeder.spec.ts --runInBand
@@ -440,7 +440,7 @@ pnpm build
 
 Expected: todas las suites enfocadas y el build terminan con código 0.
 
-- [ ] **Step 4: verificación frontend enfocada**
+- [x] **Step 4: verificación frontend enfocada**
 
 ```powershell
 pnpm test:unit -- src/features/workflows/components/WorkflowActionEditor.spec.tsx src/features/sale-orders/components/bulk/SaleOrderBulkModals.spec.tsx
@@ -449,7 +449,7 @@ pnpm build
 
 Expected: pruebas y build terminan con código 0.
 
-- [ ] **Step 5: ejecutar las suites globales y registrar deuda previa**
+- [x] **Step 5: ejecutar las suites globales y registrar deuda previa**
 
 Backend:
 
@@ -466,7 +466,7 @@ pnpm lint
 
 Comparar con la línea base conocida y corregir únicamente regresiones atribuibles a estas acciones.
 
-- [ ] **Step 6: revisar estado final**
+- [x] **Step 6: revisar estado final**
 
 ```powershell
 git status --short
@@ -476,3 +476,12 @@ git -C ..\Eunoia-sistema-administrativo-f branch --show-current
 ```
 
 Expected: ambos repositorios en `master` y sin cambios pendientes después de los commits.
+
+## Resultado de ejecución
+
+- Backend enfocado: 6 suites y 102 pruebas aprobadas.
+- Frontend enfocado: 2 archivos y 22 pruebas aprobadas.
+- Builds de backend y frontend: aprobados.
+- Suite global backend: 1026 aprobadas y las mismas 5 fallas preexistentes en Producción/Adjuntos.
+- Suite global frontend: las mismas 5 fallas preexistentes en Estadísticas/Tabla/Fechas.
+- Lint frontend: mantiene la línea base de 3 errores y 16 advertencias; los archivos modificados no agregaron errores.

@@ -15,8 +15,9 @@ Esta matriz es una referencia para configurar roles; no asigna permisos automát
 
 - Restaurar requiere conjuntamente `sale_orders.view_deleted` y `sale_orders.restore`.
 - Un pedido inactivo es de solo lectura; únicamente restaurar puede modificarlo.
-- `MARK_PREGUIDE` y `MARK_PREPARED` son la única vía para marcar preguía y preparación; la tabla y el editor solo muestran su resultado.
-- La reversión todavía no está disponible. Se añadirá con acciones globales inversas, nunca mediante escritura directa de los booleanos.
+- Las acciones globales del workflow son la única vía para modificar preguía y preparación; la tabla y el editor solo muestran su resultado.
+- `ABONADO ENVIO` dispone de `Preguía`, `Sin preguía`, `Preparado` y `Sin preparar`. El motor alterna cada par según el valor actual para evitar acciones redundantes.
+- `ABONADO CE` no recibe acciones globales de seguimiento en el seeder.
 - Un DENY explícito del usuario prevalece sobre el permiso heredado por rol.
 - Los pedidos eliminados no participan en ventas, pagos, saldos, ingresos, estadísticas, exportaciones activas ni workflows automáticos.
 

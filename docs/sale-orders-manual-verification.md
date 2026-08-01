@@ -43,20 +43,22 @@ Permisos: Consulta + `sale_orders.workflows.view`, `sale_orders.change_state`, `
 
 - Confirmar que `Sin preguía`/`Con preguía` y `Sin preparar`/`Preparado` son etiquetas de solo lectura en tabla y detalle.
 - Confirmar que no existen checkbox, clic de edición ni el modal masivo separado `Seguimiento`.
-- Abrir `Cambiar estado`, elegir una acción global y comprobar las acciones configuradas para el flujo.
-- Ejecutar `MARK_PREGUIDE` y `MARK_PREPARED` individualmente; verificar que las etiquetas cambian después de refrescar o recibir realtime.
-- Seleccionar varios pedidos y ejecutar ambas acciones globales masivamente; solo deben cambiar los pedidos seleccionados y activos.
+- En un pedido de `ABONADO ENVIO` con ambos valores en `false`, abrir `Cambiar estado` y confirmar que aparecen `Preguía` y `Preparado`, pero no sus acciones inversas.
+- Ejecutar `Preguía`; comprobar que la etiqueta cambia a `Con preguía` y que la acción disponible pasa a ser `Sin preguía`.
+- Ejecutar `Preparado`; comprobar que la etiqueta cambia a `Preparado` y que la acción disponible pasa a ser `Sin preparar`.
+- Ejecutar `Sin preguía` y `Sin preparar`; comprobar que ambos valores regresan a `false` y reaparecen las acciones positivas.
+- Seleccionar varios pedidos de `ABONADO ENVIO` y ejecutar las cuatro acciones globales masivamente; solo deben cambiar los pedidos seleccionados, activos y compatibles con la acción.
+- En un pedido de `ABONADO CE`, confirmar que no aparece ninguna de las cuatro acciones de seguimiento.
 - En Network, confirmar que no se llama a `/api/sale-orders/:id/tracking` ni `/api/sale-orders/bulk/tracking`.
 - Confirmar que no aparece el `500` originado por la ruta directa eliminada.
 - Confirmar que pedidos eliminados muestran etiquetas sin interacción y no admiten acciones globales.
-- Confirmar que aún no existe reversión a `Sin preguía` o `Sin preparar`; se añadirá posteriormente como acción global inversa.
 
 ## 5. Cuenta Operaciones completas
 
 - Crear y editar un pedido.
 - Importar desde Excel y exportar con columnas autorizadas.
 - Asignar asesor y cambiar estado individual y masivamente.
-- Marcar preguía/preparado individual y masivamente mediante acciones globales.
+- Marcar y revertir preguía/preparación individual y masivamente mediante acciones globales de `ABONADO ENVIO`.
 - Eliminar un pedido reversible y verificar reservas/egresos.
 - Intentar eliminar un pedido con stock consumido o egreso pagado: debe bloquearse sin cambios parciales.
 - Restaurar con `sale_orders.view_deleted` + `sale_orders.restore`.
@@ -76,7 +78,7 @@ Permisos: Consulta + `sale_orders.view_amounts` y permisos de pagos.
 - Crear/editar flujos con `sale_orders.workflows.manage`.
 - Asignar workflow y ejecutar una transición normal con `sale_orders.change_state`.
 - Ejecutar una acción global masiva con `sale_orders.execute_workflow_action`.
-- Verificar que `MARK_PREGUIDE` y `MARK_PREPARED` no dependen de permisos directos de seguimiento.
+- Verificar que `MARK_PREGUIDE`, `UNMARK_PREGUIDE`, `MARK_PREPARED` y `UNMARK_PREPARED` no dependen de permisos directos de seguimiento.
 
 ## 8. DENY explícito
 
