@@ -365,6 +365,41 @@ describe("SaleOrderTypeormRepository", () => {
     );
   });
 
+  it("updates tracking and writes its audit inside one transaction", async () => {
+    const saleOrderRepo = {
+      find: jest.fn().mockResolvedValue([
+        { id: "order-1", isActive: true, preguide: false, prepared: false },
+      ]),
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
+    const auditRepo = { save: jest.fn().mockResolvedValue(undefined) };
+    const transactionManager = {
+      getRepository: jest.fn((entity) =>
+        entity === SaleOrderEntity ? saleOrderRepo : auditRepo,
+      ),
+    };
+    const manager = {
+      getRepository: jest.fn((entity) =>
+        entity === SaleOrderEntity ? saleOrderRepo : auditRepo,
+      ),
+      transaction: jest.fn(async (work) => work(transactionManager)),
+    };
+    const repository = new SaleOrderTypeormRepository({ manager } as any);
+
+    await repository.setTrackingByIds(
+      { saleOrderIds: ["order-1"], preguide: true },
+      "user-1",
+    );
+
+    expect(manager.transaction).toHaveBeenCalledTimes(1);
+    expect(transactionManager.getRepository).toHaveBeenCalledWith(SaleOrderEntity);
+    expect(auditRepo.save).toHaveBeenCalledWith({
+      saleOrderId: "order-1",
+      executedBy: "user-1",
+      actionExecution: "preguide_on",
+    });
+  });
+
   it("updates reserveBool explicitly", async () => {
     const update = jest.fn().mockResolvedValue({ affected: 1 });
     const entityRepo = { update };

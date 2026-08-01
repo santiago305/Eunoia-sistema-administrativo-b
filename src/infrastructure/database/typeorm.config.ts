@@ -101,6 +101,7 @@ import { AddWorkflowTransitionPositions20260730180000 } from "./migrations/20260
 import { CreateSaleOrderAuditory20260731100000 } from "./migrations/20260731100000-create-sale-order-auditory";
 import { AddSaleOrdersPermissionMatrix20260731130000 } from "./migrations/20260731130000-add-sale-orders-permission-matrix";
 import { HardenSaleOrderTrackingFlags20260731131000 } from "./migrations/20260731131000-harden-sale-order-tracking-flags";
+import { AllowSaleOrderTrackingAuditActions20260731132000 } from "./migrations/20260731132000-allow-sale-order-tracking-audit-actions";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -213,6 +214,7 @@ export const databaseMigrations = [
     CreateSaleOrderAuditory20260731100000,
     AddSaleOrdersPermissionMatrix20260731130000,
     HardenSaleOrderTrackingFlags20260731131000,
+    AllowSaleOrderTrackingAuditActions20260731132000,
 ];
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({

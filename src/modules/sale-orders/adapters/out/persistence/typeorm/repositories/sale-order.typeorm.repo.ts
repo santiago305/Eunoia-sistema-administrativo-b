@@ -386,7 +386,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
   }
 
   async createAudit(
-    input: { saleOrderId: string; executedBy: string; actionExecution: "delete" | "restore" },
+    input: { saleOrderId: string; executedBy: string; actionExecution: SaleOrderAuditRecord["actionExecution"] },
     tx?: TransactionContext,
   ): Promise<void> {
     const manager = this.getManager(tx);
@@ -1268,6 +1268,16 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     executedBy: string,
     tx?: TransactionContext,
   ) {
+    if (!tx) {
+      return this.repo.manager.transaction((manager) =>
+        this.setTrackingByIds(
+          input,
+          executedBy,
+          new TypeormTransactionContext(manager),
+        ),
+      );
+    }
+
     const manager = this.getManager(tx);
     const repo = manager.getRepository(SaleOrderEntity);
     const rows = await repo.find({ where: { id: In(input.saleOrderIds), isActive: true } });
@@ -1286,7 +1296,11 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       if (!changedFields.length) continue;
       await repo.update({ id: row.id }, update);
       for (const actionExecution of changedFields) {
-        await this.createAudit({ saleOrderId: row.id, executedBy, actionExecution: actionExecution as any }, tx);
+        await this.createAudit({
+          saleOrderId: row.id,
+          executedBy,
+          actionExecution: actionExecution as SaleOrderAuditRecord["actionExecution"],
+        }, tx);
       }
       changed.push({ saleOrderId: row.id, changedFields });
     }
