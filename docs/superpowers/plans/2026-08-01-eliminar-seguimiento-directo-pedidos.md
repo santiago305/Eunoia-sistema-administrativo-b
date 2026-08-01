@@ -18,7 +18,7 @@
 - Modify: `src/modules/sale-orders/adapters/in/controllers/sale-orders.controller.spec.ts`
 - Modify: `src/modules/workflow/application/services/sale-order-workflow-action-runner.service.spec.ts`
 
-- [ ] **Step 1: hacer fallar el catálogo de permisos**
+- [x] **Step 1: hacer fallar el catálogo de permisos**
 
 Cambiar las expectativas para exigir 37 permisos de Pedidos, ausencia de los dos códigos dedicados y presencia de ambos en `DEPRECATED_PERMISSION_CODES`:
 
@@ -32,7 +32,7 @@ expect(DEPRECATED_PERMISSION_CODES).toEqual(expect.arrayContaining([
 ]));
 ```
 
-- [ ] **Step 2: hacer fallar el contrato de rutas**
+- [x] **Step 2: hacer fallar el contrato de rutas**
 
 En la prueba del controlador, inspeccionar los métodos expuestos y exigir que ninguna ruta termine en `tracking`:
 
@@ -44,7 +44,7 @@ expect(trackingRoutes).not.toContain('bulk/tracking');
 expect(trackingRoutes).not.toContain(':id/tracking');
 ```
 
-- [ ] **Step 3: hacer fallar el contrato del ejecutor global**
+- [x] **Step 3: hacer fallar el contrato del ejecutor global**
 
 Configurar un repositorio doble que exponga tanto `setTrackingByIds` como los métodos históricos y exigir que la acción global invoque únicamente el método específico:
 
@@ -67,7 +67,7 @@ expect(saleOrders.setTrackingByIds).not.toHaveBeenCalled();
 
 Repetir para `MARK_PREPARED`.
 
-- [ ] **Step 4: ejecutar las pruebas y confirmar RED**
+- [x] **Step 4: ejecutar las pruebas y confirmar RED**
 
 Run:
 
@@ -94,7 +94,7 @@ Expected: FAIL porque los permisos, rutas y `setTrackingByIds` todavía existen.
 - Modify: `src/modules/sale-orders/adapters/out/persistence/typeorm/repositories/sale-order.typeorm.repo.spec.ts`
 - Modify: `src/modules/workflow/application/services/sale-order-workflow-action-runner.service.ts`
 
-- [ ] **Step 1: retirar permisos y marcarlos como obsoletos**
+- [x] **Step 1: retirar permisos y marcarlos como obsoletos**
 
 Eliminar ambas entradas de `SALE_ORDER_PERMISSIONS` y añadir sus códigos al arreglo de obsoletos:
 
@@ -107,11 +107,11 @@ export const DEPRECATED_PERMISSION_CODES = [
 
 Esto conserva relaciones históricas y hace que el seeder establezca `is_active=false`.
 
-- [ ] **Step 2: eliminar rutas, DTO y caso de uso**
+- [x] **Step 2: eliminar rutas, DTO y caso de uso**
 
 Retirar imports, inyección opcional y métodos `bulkTracking`/`setTracking` del controlador. Retirar `SetSaleOrdersTrackingUsecase` del contenedor y borrar los cuatro archivos dedicados.
 
-- [ ] **Step 3: retirar el método directo del repositorio**
+- [x] **Step 3: retirar el método directo del repositorio**
 
 Eliminar `setTrackingByIds` del puerto y de TypeORM, junto con las pruebas que validaban auditorías `preguide_on/off` y `prepared_on/off`. Mantener sin cambios:
 
@@ -120,7 +120,7 @@ markPreguide(saleOrderId: string, tx?: TransactionContext): Promise<void>;
 markPrepared(saleOrderId: string, tx?: TransactionContext): Promise<void>;
 ```
 
-- [ ] **Step 4: restaurar las acciones globales**
+- [x] **Step 4: restaurar las acciones globales**
 
 Simplificar el ejecutor para que no cree una identidad `'system'` ni invoque auditoría directa:
 
@@ -133,15 +133,15 @@ case 'MARK_PREPARED':
   break;
 ```
 
-- [ ] **Step 5: conservar la autorización de acciones globales**
+- [x] **Step 5: conservar la autorización de acciones globales**
 
 Mantener `sale_orders.execute_workflow_action` en `POST /sale-orders/bulk/execute-workflow` cuando `mode` sea `global_action`. No agregar los permisos retirados a ninguna acción de workflow.
 
-- [ ] **Step 6: conservar migraciones históricas**
+- [x] **Step 6: conservar migraciones históricas**
 
 No borrar `20260731131000-harden-sale-order-tracking-flags.ts` ni `20260731132000-allow-sale-order-tracking-audit-actions.ts`. Mantener ambas registradas en `typeorm.config.ts`, ya que pueden estar aplicadas y sus restricciones no habilitan una segunda vía HTTP.
 
-- [ ] **Step 7: ejecutar pruebas backend y confirmar GREEN**
+- [x] **Step 7: ejecutar pruebas backend y confirmar GREEN**
 
 Run:
 

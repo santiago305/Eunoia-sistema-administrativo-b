@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Inject, Logger, Optional, Param, ParseUUIDPipe, Patch, Post, Query, Res, UploadedFiles, UseGuards, UseInterceptors } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Inject, Param, ParseUUIDPipe, Patch, Post, Query, Res, UploadedFiles, UseGuards, UseInterceptors } from "@nestjs/common";
 import { AnyFilesInterceptor } from "@nestjs/platform-express";
 import { Response } from "express";
 import { memoryStorage } from "multer";
@@ -61,14 +61,10 @@ import { LISTING_SEARCH_STORAGE, ListingSearchStorageRepository } from "src/shar
 import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
 import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
 import { RequireAnyPermissionGroups, RequireDynamicPermissionGroups } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
-import { HttpSaleOrderTrackingDto } from "../dtos/http-sale-order-tracking.dto";
-import { SetSaleOrdersTrackingUsecase } from "src/modules/sale-orders/application/usecases/sale-order/set-sale-orders-tracking.usecase";
 
 @Controller("sale-orders")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
 export class SaleOrdersController {
-  private readonly logger = new Logger(SaleOrdersController.name);
-
   constructor(
     private readonly createSaleOrder: CreateSaleOrderUsecase,
     private readonly listSaleOrders: ListSaleOrdersUsecase,
@@ -106,7 +102,6 @@ export class SaleOrdersController {
     private readonly getEditorCatalogs: GetSaleOrderEditorCatalogsUsecase,
     @Inject(LISTING_SEARCH_STORAGE)
     private readonly listingSearchStorage: ListingSearchStorageRepository,
-    @Optional() private readonly setTracking?: SetSaleOrdersTrackingUsecase,
   ) {}
 
   private async notifySaleOrderUpdated(saleOrderId: string, source: string, saleOrder?: unknown) {
@@ -123,17 +118,6 @@ export class SaleOrdersController {
     this.realtimeService.emitToAllConnected("sale-orders.updated", payload);
 
     return [];
-  }
-
-  private async notifyTrackingUpdatedSafely(saleOrderIds: string[], source: string) {
-    try {
-      await this.notifySaleOrdersUpdated(saleOrderIds, source);
-    } catch (error) {
-      this.logger.error(
-        `No se pudo emitir la actualización de seguimiento (${source})`,
-        error instanceof Error ? error.stack : String(error),
-      );
-    }
   }
 
   private getSuccessfulSaleOrderIds(result: {
@@ -613,43 +597,6 @@ export class SaleOrdersController {
       isActive: query.isActive ?? true,
       requestedBy: user.id,
     });
-  }
-
-  @Patch("bulk/tracking")
-  @RequireDynamicPermissionGroups(({ body }) => {
-    const groups: string[][] = [];
-    if (body?.preguide !== undefined) groups.push(["sale_orders.preguide.update"]);
-    if (body?.prepared !== undefined) groups.push(["sale_orders.prepared.update"]);
-    return groups;
-  })
-  async bulkTracking(@Body() dto: HttpSaleOrderTrackingDto, @CurrentUser() user: { id: string }) {
-    const result = await this.setTracking!.execute({ ...dto, executedBy: user.id });
-    const ids = this.getSuccessfulSaleOrderIds(result);
-    if (ids.length) await this.notifyTrackingUpdatedSafely(ids, "sale-orders-bulk-tracking-updated");
-    return result;
-  }
-
-  @Patch(":saleOrderId/tracking")
-  @RequireDynamicPermissionGroups(({ body }) => {
-    const groups: string[][] = [];
-    if (body?.preguide !== undefined) groups.push(["sale_orders.preguide.update"]);
-    if (body?.prepared !== undefined) groups.push(["sale_orders.prepared.update"]);
-    return groups;
-  })
-  async tracking(
-    @Param("saleOrderId", ParseUUIDPipe) saleOrderId: string,
-    @Body() body: Omit<HttpSaleOrderTrackingDto, "saleOrderIds">,
-    @CurrentUser() user: { id: string },
-  ) {
-    const result = await this.setTracking!.execute({
-      saleOrderIds: [saleOrderId],
-      preguide: body.preguide,
-      prepared: body.prepared,
-      executedBy: user.id,
-    });
-    const ids = this.getSuccessfulSaleOrderIds(result);
-    if (ids.length) await this.notifyTrackingUpdatedSafely(ids, "sale-order-tracking-updated");
-    return result;
   }
 
   @Get("items/:itemId/components")

@@ -74,7 +74,6 @@ import { SaleOrderEditPolicyService } from "../application/services/sale-order-e
 import { SaleOrderAccessPolicyService } from "../application/services/sale-order-access-policy.service";
 import { SaleOrderCommandAuthorizationService } from "../application/services/sale-order-command-authorization.service";
 import { SaleOrderDeactivationService } from "../application/services/sale-order-deactivation.service";
-import { SetSaleOrdersTrackingUsecase } from "../application/usecases/sale-order/set-sale-orders-tracking.usecase";
 import { UpdateClientUsecase } from "src/modules/clients/application/usecases/client/update.usecase";
 import { SaleOrderClientCommandService } from "../application/services/sale-order-client-command.service";
 import { SaleOrderPaymentReconcilerService } from "../application/services/sale-order-payment-reconciler.service";
@@ -99,7 +98,6 @@ export const saleOrdersModuleProviders = [
   SaleOrderAccessPolicyService,
   SaleOrderCommandAuthorizationService,
   SaleOrderDeactivationService,
-  SetSaleOrdersTrackingUsecase,
   GetSaleOrderUsecase,
   UpdateSaleOrderUsecase,
   BulkAssignSaleOrdersUsecase,

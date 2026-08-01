@@ -54,16 +54,6 @@ export class SaleOrderWorkflowActionRunnerService {
     private readonly warehouseAssignment: SaleOrderWarehouseAssignmentService,
   ) {}
 
-  private async setTracking(orderId: string, field: 'preguide' | 'prepared', tx: TransactionContext) {
-    const repository = this.saleOrderRepo as any;
-    if (repository.setTrackingByIds) {
-      await repository.setTrackingByIds({ saleOrderIds: [orderId], [field]: true }, 'system', tx);
-      return;
-    }
-    if (field === 'preguide') await repository.markPreguide(orderId, tx);
-    else await repository.markPrepared(orderId, tx);
-  }
-
   private async hasActiveReservation(saleOrderId: string, tx: TransactionContext): Promise<boolean> {
     const history = await this.historyRepo.listBySaleOrderId(saleOrderId, tx);
     let active = false;
@@ -141,10 +131,10 @@ export class SaleOrderWorkflowActionRunnerService {
           await this.saleOrderRepo.markInvoiceSent(order.id, tx);
         }
         if (action.type === ACTIONS.MARK_PREGUIDE) {
-          await this.setTracking(order.id, 'preguide', tx);
+          await this.saleOrderRepo.markPreguide(order.id, tx);
         }
         if (action.type === ACTIONS.MARK_PREPARED) {
-          await this.setTracking(order.id, 'prepared', tx);
+          await this.saleOrderRepo.markPrepared(order.id, tx);
         }
       }
       return { order: effectiveOrder, outcomes };
@@ -238,11 +228,11 @@ export class SaleOrderWorkflowActionRunnerService {
         continue;
       }
       if (action.type === ACTIONS.MARK_PREGUIDE) {
-        await this.setTracking(order.id, 'preguide', tx);
+        await this.saleOrderRepo.markPreguide(order.id, tx);
         continue;
       }
       if (action.type === ACTIONS.MARK_PREPARED) {
-        await this.setTracking(order.id, 'prepared', tx);
+        await this.saleOrderRepo.markPrepared(order.id, tx);
         continue;
       }
       if (

@@ -203,8 +203,16 @@ describe("permissions seed", () => {
   });
 
   it("includes the complete sale order permission contract", () => {
-    expect(SALE_ORDER_PERMISSION_CODES).toHaveLength(39);
-    expect(new Set(SALE_ORDER_PERMISSION_CODES).size).toBe(39);
+    expect(SALE_ORDER_PERMISSION_CODES).toHaveLength(37);
+    expect(new Set(SALE_ORDER_PERMISSION_CODES).size).toBe(37);
+    expect(SALE_ORDER_PERMISSION_CODES).not.toContain("sale_orders.preguide.update");
+    expect(SALE_ORDER_PERMISSION_CODES).not.toContain("sale_orders.prepared.update");
+    expect(DEPRECATED_PERMISSION_CODES).toEqual(
+      expect.arrayContaining([
+        "sale_orders.preguide.update",
+        "sale_orders.prepared.update",
+      ]),
+    );
 
     for (const code of SALE_ORDER_PERMISSION_CODES) {
       expect(PERMISSIONS_SEED).toEqual(
@@ -224,18 +232,6 @@ describe("permissions seed", () => {
           code: "sale_orders.delete",
           resource: "sale_orders",
           action: "delete",
-          type: "action",
-        }),
-        expect.objectContaining({
-          code: "sale_orders.preguide.update",
-          resource: "sale_order_tracking",
-          action: "update",
-          type: "action",
-        }),
-        expect.objectContaining({
-          code: "sale_orders.prepared.update",
-          resource: "sale_order_tracking",
-          action: "update",
           type: "action",
         }),
         expect.objectContaining({

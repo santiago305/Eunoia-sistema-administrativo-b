@@ -11,6 +11,8 @@ export const DEPRECATED_PERMISSION_CODES = [
   'materials.skus.create',
   'materials.skus.update',
   'page.providers.view',
+  'sale_orders.preguide.update',
+  'sale_orders.prepared.update',
 ];
 
 @Injectable()

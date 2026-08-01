@@ -22,6 +22,7 @@ describe("SaleOrderWorkflowActionRunnerService", () => {
       markInvoiceSent: jest.fn().mockResolvedValue(undefined),
       markPreguide: jest.fn().mockResolvedValue(undefined),
       markPrepared: jest.fn().mockResolvedValue(undefined),
+      setTrackingByIds: jest.fn().mockResolvedValue(undefined),
       setReserveBool: jest.fn().mockResolvedValue(undefined),
     };
     const history = {
@@ -224,6 +225,7 @@ describe("SaleOrderWorkflowActionRunnerService", () => {
     );
 
     expect(saleOrders.markPreguide).toHaveBeenCalledWith("order-1", tx);
+    expect(saleOrders.setTrackingByIds).not.toHaveBeenCalled();
     expect(requirements.resolve).not.toHaveBeenCalled();
   });
 
@@ -238,6 +240,7 @@ describe("SaleOrderWorkflowActionRunnerService", () => {
     );
 
     expect(saleOrders.markPrepared).toHaveBeenCalledWith("order-1", tx);
+    expect(saleOrders.setTrackingByIds).not.toHaveBeenCalled();
     expect(requirements.resolve).not.toHaveBeenCalled();
   });
 

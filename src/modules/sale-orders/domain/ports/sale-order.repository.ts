@@ -20,11 +20,6 @@ export type SaleOrderAuditRecord = {
   actionExecution: "delete" | "restore" | "preguide_on" | "preguide_off" | "prepared_on" | "prepared_off";
 };
 
-export type SaleOrderTrackingChange = {
-  saleOrderId: string;
-  changedFields: string[];
-};
-
 type SaleOrderWrite = {
   warehouseId: string | null;
   clientId: string;
@@ -99,7 +94,6 @@ export interface SaleOrderRepository {
   markPreguide(saleOrderId: string, tx?: TransactionContext): Promise<void>;
   markPrepared(saleOrderId: string, tx?: TransactionContext): Promise<void>;
   setReserveBool(input: { saleOrderId: string; reserveBool: boolean }, tx?: TransactionContext): Promise<void>;
-  setTrackingByIds(input: { saleOrderIds: string[]; preguide?: boolean; prepared?: boolean }, executedBy: string, tx?: TransactionContext): Promise<SaleOrderTrackingChange[]>;
   setLoteByIds(input: { saleOrderIds: string[]; lote: number }, tx?: TransactionContext): Promise<number>;
   setActiveByLote(input: { lote: number; isActive: boolean }, tx?: TransactionContext): Promise<string[]>;
   setActiveByIds(input: { saleOrderIds: string[]; isActive: boolean }, tx?: TransactionContext): Promise<string[]>;
