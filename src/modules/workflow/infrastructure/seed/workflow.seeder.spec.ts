@@ -68,7 +68,7 @@ describe('ABONADO workflow seed definitions', () => {
         expect.objectContaining({
           clientId: 'transition-140b19ac-050e-4457-828e-ca70d2c8a1ea',
           code: 'TRANSITION_1782332323009',
-          name: 'Entregado',
+          name: 'Por enviar',
           fromStateRef: 'state-35e95b95-3687-5caa-8bcd-fb27f1a193ee',
           toStateRef: 'state-c92c0444-fff0-4002-a876-276daf5fa88b',
           actions: [
