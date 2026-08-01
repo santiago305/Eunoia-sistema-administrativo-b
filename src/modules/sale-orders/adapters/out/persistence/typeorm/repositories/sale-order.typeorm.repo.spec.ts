@@ -7,6 +7,7 @@ import { User } from "src/modules/users/adapters/out/persistence/typeorm/entitie
 import { WarehouseEntity } from "src/modules/warehouses/adapters/out/persistence/typeorm/entities/warehouse";
 import { WorkflowEntity } from "src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow.entity";
 import { WorkflowStateEntity } from "src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow-state.entity";
+import { WorkflowActionEntity } from "src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow-action.entity";
 import { SaleOrderEntity } from "../entities/sale-order.entity";
 import { SalePaymentEntity } from "../entities/sale-payment.entity";
 import { SaleOrderItemComponentEntity } from "../entities/sale-order-item-component.entity";
@@ -28,6 +29,153 @@ const createStatsQueryBuilder = (rawMany: unknown[] = [], rawOne: unknown = {}) 
 });
 
 describe("SaleOrderTypeormRepository", () => {
+  it("loads tracking capabilities once for orders that share a workflow", async () => {
+    const buildOrderRow = (id: string) => ({
+      id,
+      serie: "P001",
+      correlative: 1,
+      clientId: "client-1",
+      warehouseId: null,
+      sourceId: null,
+      assignedBy: null,
+      createdBy: "user-1",
+      workflowId: "workflow-1",
+      currentStateId: null,
+      scheduleDate: null,
+      deliveryDate: null,
+      subTotal: 100,
+      deliveryCost: 0,
+      total: 100,
+      invoiceSend: false,
+      prepared: false,
+      preguide: false,
+      reserveBool: false,
+      isActive: true,
+      createdAt: new Date("2026-08-01T10:00:00.000Z"),
+      updatedAt: null,
+      items: [],
+    });
+    const orderQb = {
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([
+        [buildOrderRow("order-1"), buildOrderRow("order-2")],
+        2,
+      ]),
+    };
+    const trackingActionQb = {
+      innerJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue([
+        { workflowId: "workflow-1", type: "MARK_INVOICE_SENT" },
+        { workflowId: "workflow-1", type: "UNMARK_PREPARED" },
+      ]),
+    };
+    const repositories = new Map<any, any>([
+      [SaleOrderEntity, { createQueryBuilder: jest.fn().mockReturnValue(orderQb) }],
+      [WorkflowActionEntity, { createQueryBuilder: jest.fn().mockReturnValue(trackingActionQb) }],
+      [WorkflowEntity, { find: jest.fn().mockResolvedValue([{ id: "workflow-1", name: "Flujo", isActive: true }]) }],
+      [SalePaymentEntity, { find: jest.fn().mockResolvedValue([]) }],
+      [ClientEntity, { find: jest.fn().mockResolvedValue([]) }],
+      [TelephoneEntity, { find: jest.fn().mockResolvedValue([]) }],
+      [WarehouseEntity, { find: jest.fn().mockResolvedValue([]) }],
+      [SourceEntity, { find: jest.fn().mockResolvedValue([]) }],
+      [User, { find: jest.fn().mockResolvedValue([]) }],
+      [WorkflowStateEntity, { find: jest.fn().mockResolvedValue([]) }],
+      [SaleOrderItemComponentEntity, { find: jest.fn().mockResolvedValue([]) }],
+      [CompanyPaymentAccountEntity, { find: jest.fn().mockResolvedValue([]) }],
+    ]);
+    const manager = {
+      getRepository: jest.fn((entity) => repositories.get(entity) ?? { find: jest.fn().mockResolvedValue([]) }),
+    };
+    const repository = new SaleOrderTypeormRepository({ manager } as any);
+
+    const result = await repository.list({ page: 1, limit: 10 });
+
+    expect(result.items.map((item) => item.trackingCapabilities)).toEqual([
+      { invoice: true, preguide: false, prepared: true },
+      { invoice: true, preguide: false, prepared: true },
+    ]);
+    expect(trackingActionQb.getRawMany).toHaveBeenCalledTimes(1);
+    expect(trackingActionQb.andWhere).toHaveBeenCalledWith("trackingWorkflow.isActive = true");
+    expect(trackingActionQb.andWhere).toHaveBeenCalledWith("trackingTransition.isActive = true");
+    expect(trackingActionQb.andWhere).toHaveBeenCalledWith("trackingTransition.isGlobal = true");
+    expect(trackingActionQb.andWhere).toHaveBeenCalledWith(
+      "trackingTransition.effect = :trackingEffect",
+      { trackingEffect: "RUN_ACTIONS" },
+    );
+  });
+
+  it("returns tracking capabilities in the detail read", async () => {
+    const trackingActionQb = {
+      innerJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue([
+        { workflowId: "workflow-1", type: "UNMARK_PREGUIDE" },
+      ]),
+    };
+    const repositories = new Map<any, any>();
+    const manager = {
+      getRepository: jest.fn((entity) => {
+        if (entity === SaleOrderEntity) {
+          return {
+            findOne: jest.fn().mockResolvedValue({
+              id: "order-1",
+              clientId: "client-1",
+              warehouseId: null,
+              sourceId: null,
+              assignedBy: null,
+              createdBy: "user-1",
+              workflowId: "workflow-1",
+              currentStateId: null,
+              total: 0,
+              subTotal: 0,
+              deliveryCost: 0,
+              invoiceSend: false,
+              prepared: false,
+              preguide: false,
+              isActive: true,
+              createdAt: new Date("2026-08-01T10:00:00.000Z"),
+            }),
+          };
+        }
+        if (entity === WorkflowActionEntity) {
+          return { createQueryBuilder: jest.fn().mockReturnValue(trackingActionQb) };
+        }
+        if (entity === WorkflowEntity) {
+          return {
+            findOne: jest.fn().mockResolvedValue({ id: "workflow-1", name: "Flujo", isActive: true }),
+          };
+        }
+        if (!repositories.has(entity)) {
+          repositories.set(entity, {
+            findOne: jest.fn().mockResolvedValue(null),
+            find: jest.fn().mockResolvedValue([]),
+          });
+        }
+        return repositories.get(entity);
+      }),
+    };
+    const repository = new SaleOrderTypeormRepository({ manager } as any);
+
+    const result = await repository.findById("order-1");
+
+    expect(result?.trackingCapabilities).toEqual({
+      invoice: false,
+      preguide: true,
+      prepared: false,
+    });
+  });
+
   it("builds SKUS and detail from item components in list items", async () => {
     const orderRow = {
       id: "order-1",

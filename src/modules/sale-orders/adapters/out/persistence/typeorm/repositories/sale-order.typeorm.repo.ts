@@ -19,6 +19,7 @@ import {
   SaleOrderListItemOutput,
   SaleOrderPreguideStatusValues,
   SaleOrderPreparedStatusValues,
+  SaleOrderTrackingCapabilities,
   SaleOrderSearchFields,
   SaleOrderSearchOperators,
   SaleOrderSearchRule,
@@ -41,6 +42,9 @@ import { SaleOrderItemEntity } from "../entities/sale-order-item.entity";
 import { SalePaymentEntity } from "../entities/sale-payment.entity";
 import { WorkflowEntity } from "src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow.entity";
 import { WorkflowStateEntity } from "src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow-state.entity";
+import { WorkflowActionEntity } from "src/modules/workflow/adapters/out/persistence/typeorm/entities/workflow-action.entity";
+import { ACTIONS } from "src/modules/workflow/domain/constants/workflow-action.constants";
+import { TRANSITION_EFFECTS } from "src/modules/workflow/domain/constants/workflow-transition-effect.constants";
 import { TelephoneEntity } from "src/modules/clients/adapters/out/persistence/typeorm/entities/telephone.entity";
 import { SaleOrderStatisticsOutput } from "src/modules/sale-orders/application/dtos/sale-order-statistics.output";
 import { ClientType } from "src/modules/clients/domain/object-values/client-type";
@@ -53,6 +57,7 @@ import { SaleOrderAttachmentType } from "src/modules/sale-order-attachments/doma
 import { buildSaleOrderItemDisplayFields } from "src/modules/sale-orders/application/support/sale-order-item-display-fields";
 import { SaleOrderAuditEntity } from "../entities/sale-order-audit.entity";
 import { SaleOrderReadContext } from "src/modules/sale-orders/application/services/sale-order-access-policy.service";
+import { buildSaleOrderTrackingCapabilities } from "src/modules/sale-orders/application/support/sale-order-tracking-capabilities";
 
 @Injectable()
 export class SaleOrderTypeormRepository implements SaleOrderRepository {
@@ -99,6 +104,66 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       map.set(row.sku_id, list);
     }
     return map;
+  }
+
+  private async loadTrackingCapabilities(
+    manager: EntityManager,
+    workflowIds: string[],
+  ): Promise<Map<string, SaleOrderTrackingCapabilities>> {
+    const capabilitiesByWorkflowId = new Map(
+      workflowIds.map((workflowId) => [
+        workflowId,
+        buildSaleOrderTrackingCapabilities([]),
+      ]),
+    );
+
+    if (!workflowIds.length) return capabilitiesByWorkflowId;
+
+    const trackedActionTypes = [
+      ACTIONS.MARK_INVOICE_SENT,
+      ACTIONS.MARK_PREGUIDE,
+      ACTIONS.UNMARK_PREGUIDE,
+      ACTIONS.MARK_PREPARED,
+      ACTIONS.UNMARK_PREPARED,
+    ];
+    const rows = await manager
+      .getRepository(WorkflowActionEntity)
+      .createQueryBuilder("trackingAction")
+      .innerJoin("trackingAction.transition", "trackingTransition")
+      .innerJoin("trackingTransition.workflow", "trackingWorkflow")
+      .where("trackingTransition.workflowId IN (:...trackingWorkflowIds)", {
+        trackingWorkflowIds: workflowIds,
+      })
+      .andWhere("trackingWorkflow.isActive = true")
+      .andWhere("trackingTransition.isActive = true")
+      .andWhere("trackingTransition.isGlobal = true")
+      .andWhere("trackingTransition.effect = :trackingEffect", {
+        trackingEffect: TRANSITION_EFFECTS.RUN_ACTIONS,
+      })
+      .andWhere("trackingAction.type IN (:...trackingActionTypes)", {
+        trackingActionTypes: trackedActionTypes,
+      })
+      .select("trackingTransition.workflowId", "workflowId")
+      .addSelect("trackingAction.type", "type")
+      .getRawMany<{ workflowId: string; type: string }>();
+
+    const actionTypesByWorkflowId = new Map<string, string[]>();
+    for (const row of rows) {
+      const actionTypes = actionTypesByWorkflowId.get(row.workflowId) ?? [];
+      actionTypes.push(row.type);
+      actionTypesByWorkflowId.set(row.workflowId, actionTypes);
+    }
+
+    for (const workflowId of workflowIds) {
+      capabilitiesByWorkflowId.set(
+        workflowId,
+        buildSaleOrderTrackingCapabilities(
+          actionTypesByWorkflowId.get(workflowId) ?? [],
+        ),
+      );
+    }
+
+    return capabilitiesByWorkflowId;
   }
 
   private toDomain(row: SaleOrderEntity): SaleOrder {
@@ -1008,7 +1073,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     const workflowIds = Array.from(new Set(rows.map((row) => row.workflowId).filter(Boolean))) as string[];
     const stateIds = Array.from(new Set(rows.map((row) => row.currentStateId).filter(Boolean))) as string[];
 
-    const [payments, clients, mainTelephones, warehouses, sources, users, workflows, states, components] = await Promise.all([
+    const [payments, clients, mainTelephones, warehouses, sources, users, workflows, states, components, trackingCapabilitiesByWorkflowId] = await Promise.all([
       manager.getRepository(SalePaymentEntity).find({
         where: { saleOrderId: In(saleOrderIds) },
         order: { createdAt: "ASC" },
@@ -1045,6 +1110,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
             order: { createdAt: "ASC" },
           })
         : Promise.resolve([]),
+      this.loadTrackingCapabilities(manager, workflowIds),
     ]);
     const departmentIds = Array.from(
       new Set(clients.map((client) => client.departmentId).filter(Boolean)),
@@ -1233,6 +1299,10 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
             }
           : null,
         invoiceSend: Boolean(row.invoiceSend),
+        trackingCapabilities: row.workflowId
+          ? trackingCapabilitiesByWorkflowId.get(row.workflowId) ??
+            buildSaleOrderTrackingCapabilities([])
+          : buildSaleOrderTrackingCapabilities([]),
         prepared: row.prepared ?? false,
         preguide: row.preguide ?? false,
         reserveBool: Boolean(row.reserveBool),
@@ -1638,6 +1708,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     creator,
     assignedUser,
     workflow,
+    trackingCapabilitiesByWorkflowId,
     currentState,
     attachments,
   ] = await Promise.all([
@@ -1698,6 +1769,11 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
           where: { id: row.workflowId },
         })
       : Promise.resolve(null),
+
+    this.loadTrackingCapabilities(
+      manager,
+      row.workflowId ? [row.workflowId] : [],
+    ),
 
     row.currentStateId
       ? manager.getRepository(WorkflowStateEntity).findOne({
@@ -1984,6 +2060,10 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       : null,
 
     invoiceSend: Boolean(row.invoiceSend),
+    trackingCapabilities: row.workflowId
+      ? trackingCapabilitiesByWorkflowId.get(row.workflowId) ??
+        buildSaleOrderTrackingCapabilities([])
+      : buildSaleOrderTrackingCapabilities([]),
     prepared: row.prepared ?? false,
     preguide: row.preguide ?? false,
     reserveBool: Boolean(row.reserveBool),
