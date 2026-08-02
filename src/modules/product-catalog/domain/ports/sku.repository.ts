@@ -33,6 +33,7 @@ export interface ProductCatalogSkuRepository {
     productId?: string;
     productType?: ProductCatalogProductType;
     warehouseId?: string;
+    hasStockItem?: boolean;
   }): Promise<{ items: ProductCatalogSkuWithAttributes[]; total: number }>;
   findByCustomSku(customSku: string): Promise<ProductCatalogSkuWithAttributes | null>;
   findByProductId(productId: string): Promise<ProductCatalogSkuWithAttributes[]>;

@@ -58,6 +58,7 @@ export class ProductCatalogSkuController {
       productType: query.productType,
       page: query.page ? Number(query.page) : 1,
       limit: query.limit ? Number(query.limit) : 10,
+      hasStockItem: query.hasStockItem === undefined ? undefined : query.hasStockItem === "true",
     });
   }
 
@@ -71,6 +72,7 @@ export class ProductCatalogSkuController {
       productType: query.productType,
       page: query.page ? Number(query.page) : 1,
       limit: query.limit ? Number(query.limit) : 10,
+      hasStockItem: query.hasStockItem === undefined ? undefined : query.hasStockItem === "true",
     });
   }
 

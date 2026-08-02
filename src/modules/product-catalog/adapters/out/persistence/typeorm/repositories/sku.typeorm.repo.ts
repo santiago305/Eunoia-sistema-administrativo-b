@@ -154,6 +154,15 @@ export class ProductCatalogSkuTypeormRepository implements ProductCatalogSkuRepo
         );
       }
 
+      let stockItemId: string | null = null;
+      if (input.sku.isStockTracked) {
+        const stockItem = await manager.getRepository(ProductCatalogStockItemEntity).save({
+          skuId: saved.id,
+          isActive: input.sku.isActive,
+        });
+        stockItemId = stockItem.id;
+      }
+
       return {
         sku: this.toDomain(saved),
         attributes: attributes.map((attribute) => ({
@@ -161,6 +170,7 @@ export class ProductCatalogSkuTypeormRepository implements ProductCatalogSkuRepo
           name: attribute.name,
           value: attribute.value,
         })),
+        stockItemId,
       };
     });
   }
@@ -238,6 +248,7 @@ export class ProductCatalogSkuTypeormRepository implements ProductCatalogSkuRepo
     productId?: string;
     productType?: ProductCatalogProductType;
     warehouseId?: string;
+    hasStockItem?: boolean;
   }): Promise<{ items: ProductCatalogSkuWithAttributes[]; total: number }> {
     const qb = this.repo
       .createQueryBuilder("s")
@@ -299,6 +310,16 @@ export class ProductCatalogSkuTypeormRepository implements ProductCatalogSkuRepo
           { warehouseName: `%${warehouseName}%` },
         );
       }
+    }
+
+    if (params.hasStockItem !== undefined) {
+      const stockItemExists = `EXISTS (
+        SELECT 1
+        FROM pc_stock_items si
+        WHERE si.sku_id = s.sku_id
+          AND si.is_active = true
+      )`;
+      qb.andWhere(params.hasStockItem ? stockItemExists : `NOT ${stockItemExists}`);
     }
 
     if (params.q?.trim()) {

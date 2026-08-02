@@ -25,4 +25,8 @@ export class ListProductCatalogSkusDto {
   @IsOptional()
   @IsString()
   limit?: string;
+
+  @IsOptional()
+  @IsString()
+  hasStockItem?: string;
 }

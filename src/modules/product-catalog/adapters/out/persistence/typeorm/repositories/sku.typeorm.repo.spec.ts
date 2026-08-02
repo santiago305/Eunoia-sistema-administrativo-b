@@ -4,6 +4,7 @@ import { ProductCatalogSkuAttributeValueEntity } from "../entities/sku-attribute
 import { ProductCatalogSkuEntity } from "../entities/sku.entity";
 import { ProductCatalogStockItemEntity } from "../entities/stock-item.entity";
 import { ProductCatalogSkuTypeormRepository } from "./sku.typeorm.repo";
+import { ProductCatalogSku } from "src/modules/product-catalog/domain/entities/sku";
 
 describe("ProductCatalogSkuTypeormRepository", () => {
   const createSkuQueryBuilder = (rows: ProductCatalogSkuEntity[] = [], total = rows.length) => {
@@ -95,6 +96,60 @@ describe("ProductCatalogSkuTypeormRepository", () => {
       ...overrides,
     }) as unknown as ProductCatalogSkuEntity;
 
+  const makeCreateRepository = () => {
+    const savedSku = makeSkuRow();
+    const skuSave = jest.fn().mockResolvedValue(savedSku);
+    const stockItemSave = jest.fn().mockResolvedValue({
+      id: "stock-item-1",
+      skuId: savedSku.id,
+      isActive: true,
+      createdAt: new Date("2026-08-01T00:00:00.000Z"),
+    });
+    const manager = {
+      getRepository: jest.fn((entity) => {
+        if (entity === ProductCatalogSkuEntity) return { save: skuSave };
+        if (entity === ProductCatalogStockItemEntity) return { save: stockItemSave };
+        return { save: jest.fn(), findOne: jest.fn() };
+      }),
+    };
+    const skuRepo = {
+      manager: {
+        transaction: jest.fn(async (work) => work(manager)),
+      },
+    } as unknown as Repository<ProductCatalogSkuEntity>;
+
+    return {
+      repo: new ProductCatalogSkuTypeormRepository(
+        skuRepo,
+        {} as Repository<ProductCatalogAttributeEntity>,
+        {} as Repository<ProductCatalogSkuAttributeValueEntity>,
+      ),
+      skuSave,
+      stockItemSave,
+      manager,
+    };
+  };
+
+  const makeSkuDomain = (isStockTracked: boolean) =>
+    new ProductCatalogSku(
+      undefined,
+      "product-1",
+      "00001",
+      null,
+      "Azucar refinada",
+      null,
+      null,
+      100,
+      80,
+      true,
+      true,
+      false,
+      isStockTracked,
+      true,
+      undefined,
+      undefined,
+    );
+
   it("lists recent skus when q is omitted", async () => {
     const skuQueryBuilder = createSkuQueryBuilder([makeSkuRow()], 1);
     const { repo } = makeRepository({ skuQueryBuilder });
@@ -138,5 +193,54 @@ describe("ProductCatalogSkuTypeormRepository", () => {
           params?.q === "%azucar%",
       ),
     ).toBe(true);
+  });
+
+  it("filters SKUs with an active stock item before pagination", async () => {
+    const skuQueryBuilder = createSkuQueryBuilder([makeSkuRow()], 1);
+    const { repo } = makeRepository({ skuQueryBuilder });
+
+    await repo.list({
+      page: 1,
+      limit: 10,
+      hasStockItem: true,
+    });
+
+    expect(
+      skuQueryBuilder.andWhere.mock.calls.some(
+        ([sql]) =>
+          typeof sql === "string" &&
+          sql.includes("FROM pc_stock_items si") &&
+          sql.includes("si.sku_id = s.sku_id") &&
+          sql.includes("si.is_active = true"),
+      ),
+    ).toBe(true);
+  });
+
+  it("creates and returns a stock item in the SKU transaction when stock is tracked", async () => {
+    const { repo, stockItemSave, manager } = makeCreateRepository();
+
+    const result = await repo.create({
+      sku: makeSkuDomain(true),
+      attributes: [],
+    });
+
+    expect(manager.getRepository).toHaveBeenCalledWith(ProductCatalogStockItemEntity);
+    expect(stockItemSave).toHaveBeenCalledWith({
+      skuId: "sku-1",
+      isActive: true,
+    });
+    expect(result.stockItemId).toBe("stock-item-1");
+  });
+
+  it("does not create a stock item when the SKU does not track stock", async () => {
+    const { repo, stockItemSave } = makeCreateRepository();
+
+    const result = await repo.create({
+      sku: makeSkuDomain(false),
+      attributes: [],
+    });
+
+    expect(stockItemSave).not.toHaveBeenCalled();
+    expect(result.stockItemId).toBeNull();
   });
 });

@@ -102,6 +102,7 @@ import { CreateSaleOrderAuditory20260731100000 } from "./migrations/202607311000
 import { AddSaleOrdersPermissionMatrix20260731130000 } from "./migrations/20260731130000-add-sale-orders-permission-matrix";
 import { HardenSaleOrderTrackingFlags20260731131000 } from "./migrations/20260731131000-harden-sale-order-tracking-flags";
 import { AllowSaleOrderTrackingAuditActions20260731132000 } from "./migrations/20260731132000-allow-sale-order-tracking-audit-actions";
+import { BackfillSkuStockItems20260801000000 } from "./migrations/20260801000000-backfill-sku-stock-items";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -215,6 +216,7 @@ export const databaseMigrations = [
     AddSaleOrdersPermissionMatrix20260731130000,
     HardenSaleOrderTrackingFlags20260731131000,
     AllowSaleOrderTrackingAuditActions20260731132000,
+    BackfillSkuStockItems20260801000000,
 ];
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({

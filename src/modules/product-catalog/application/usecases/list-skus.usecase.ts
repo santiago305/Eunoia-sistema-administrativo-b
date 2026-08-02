@@ -9,7 +9,15 @@ export class ListProductCatalogSkus {
     private readonly repo: ProductCatalogSkuRepository,
   ) {}
 
-  execute(params: { page?: number; limit?: number; q?: string; isActive?: boolean; productId?: string; productType?: ProductCatalogProductType }) {
+  execute(params: {
+    page?: number;
+    limit?: number;
+    q?: string;
+    isActive?: boolean;
+    productId?: string;
+    productType?: ProductCatalogProductType;
+    hasStockItem?: boolean;
+  }) {
     return this.repo.list({
       page: params.page ?? 1,
       limit: params.limit ?? 20,
@@ -17,6 +25,7 @@ export class ListProductCatalogSkus {
       isActive: params.isActive,
       productId: params.productId,
       productType: params.productType,
+      hasStockItem: params.hasStockItem,
     });
   }
 }
