@@ -24,26 +24,6 @@ export class ScopeProductNameUniquenessByType20260804000000
         );
       $function$;
 
-      DELETE FROM pc_recipes r
-      WHERE EXISTS (
-        SELECT 1
-        FROM pc_skus s
-        JOIN pc_products p ON p.product_id = s.product_id
-        WHERE p.is_deleted = true
-          AND s.sku_id = r.sku_id
-      )
-      OR EXISTS (
-        SELECT 1
-        FROM pc_recipe_items ri
-        JOIN pc_skus material ON material.sku_id = ri.material_sku_id
-        JOIN pc_products p ON p.product_id = material.product_id
-        WHERE p.is_deleted = true
-          AND ri.recipe_id = r.recipe_id
-      );
-
-      DELETE FROM pc_products
-      WHERE is_deleted = true;
-
       DO $$
       DECLARE
         duplicate_names text;
@@ -53,12 +33,13 @@ export class ScopeProductNameUniquenessByType20260804000000
         FROM (
           SELECT type, normalize_product_name(name) AS normalized_name
           FROM pc_products
+          WHERE is_deleted = false
           GROUP BY type, normalize_product_name(name)
           HAVING count(*) > 1
         ) duplicates;
 
         IF duplicate_names IS NOT NULL THEN
-          RAISE EXCEPTION 'Active duplicate product names remain after deleted products cleanup: %', duplicate_names;
+          RAISE EXCEPTION 'Active duplicate product names prevent normalized uniqueness: %', duplicate_names;
         END IF;
       END $$;
 
@@ -78,10 +59,12 @@ export class ScopeProductNameUniquenessByType20260804000000
           lower(btrim(regexp_replace(name, '[[:space:]]+', ' ', 'g'))) AS formatted_name
         FROM pc_products
       ) formatted
-      WHERE formatted.product_id = pc_products.product_id;
+      WHERE formatted.product_id = pc_products.product_id
+        AND pc_products.is_deleted = false;
 
       CREATE UNIQUE INDEX IF NOT EXISTS ux_pc_products_type_name
-      ON pc_products (type, normalize_product_name(name));
+      ON pc_products (type, normalize_product_name(name))
+      WHERE is_deleted = false;
     `);
   }
 
