@@ -16,5 +16,6 @@ export class ProductCatalogSku {
     public readonly isActive: boolean,
     public readonly createdAt?: Date,
     public readonly updatedAt?: Date,
+    public readonly isDeleted: boolean = false,
   ) {}
 }

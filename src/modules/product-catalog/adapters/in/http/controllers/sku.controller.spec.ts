@@ -5,6 +5,7 @@ import { ProductCatalogSkuController } from "./sku.controller";
 describe("ProductCatalogSkuController permissions", () => {
   const createSku = { execute: jest.fn() };
   const updateSku = { execute: jest.fn() };
+  const deleteSku = { execute: jest.fn() };
   const listSkus = { execute: jest.fn() };
   const getSku = { execute: jest.fn() };
   const getStock = { execute: jest.fn() };
@@ -16,6 +17,7 @@ describe("ProductCatalogSkuController permissions", () => {
   const controller = new ProductCatalogSkuController(
     createSku as any,
     updateSku as any,
+    deleteSku as any,
     listSkus as any,
     getSku as any,
     getStock as any,
@@ -29,6 +31,7 @@ describe("ProductCatalogSkuController permissions", () => {
     jest.clearAllMocks();
     createSku.execute.mockResolvedValue({ id: "sku-1" });
     updateSku.execute.mockResolvedValue({ id: "sku-1" });
+    deleteSku.execute.mockResolvedValue(undefined);
     getProduct.execute.mockResolvedValue({ product: { id: "product-1", type: ProductCatalogProductType.PRODUCT } });
     getSku.execute.mockResolvedValue({ sku: { id: "sku-1", productId: "product-1" } });
   });
@@ -69,5 +72,22 @@ describe("ProductCatalogSkuController permissions", () => {
     expect(getSku.execute).toHaveBeenCalledWith("33333333-3333-4333-8333-333333333333");
     expect(accessControlService.userHasAllPermissions).toHaveBeenCalledWith("user-1", ["products.update"]);
     expect(updateSku.execute).not.toHaveBeenCalled();
+  });
+
+  it("logically deletes a SKU after checking its product permission", async () => {
+    accessControlService.userHasAllPermissions.mockResolvedValueOnce(true);
+
+    await controller.delete(
+      "33333333-3333-4333-8333-333333333333",
+      { id: "user-1" },
+    );
+
+    expect(accessControlService.userHasAllPermissions).toHaveBeenCalledWith(
+      "user-1",
+      ["products.update"],
+    );
+    expect(deleteSku.execute).toHaveBeenCalledWith(
+      "33333333-3333-4333-8333-333333333333",
+    );
   });
 });

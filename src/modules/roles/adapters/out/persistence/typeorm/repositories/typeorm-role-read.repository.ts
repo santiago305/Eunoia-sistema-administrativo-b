@@ -102,7 +102,7 @@ export class TypeormRoleReadRepository implements RoleReadRepository {
         'role.createdByUserId AS "createdByUserId"',
         'creator.name AS "createdByUserName"',
       ])
-      .where('role.description = :description', { description });
+      .where('normalize_role_description(role.description) = normalize_role_description(:description)', { description });
 
     if (!options?.includeDeleted) {
       query.andWhere('role.deleted = false');
@@ -130,9 +130,10 @@ export class TypeormRoleReadRepository implements RoleReadRepository {
   }
 
   async existsByDescription(description: string) {
-    const role = await this.ormRepository.findOne({
-      where: { description, deleted: false },
-    });
-    return !!role;
+    return this.ormRepository
+      .createQueryBuilder('role')
+      .where('normalize_role_description(role.description) = normalize_role_description(:description)', { description })
+      .andWhere('role.deleted = false')
+      .getExists();
   }
 }

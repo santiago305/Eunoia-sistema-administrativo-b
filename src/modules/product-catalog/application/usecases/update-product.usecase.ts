@@ -5,6 +5,7 @@ import {
   PRODUCT_CATALOG_PRODUCT_REPOSITORY,
   ProductCatalogProductRepository,
 } from "../../domain/ports/product.repository";
+import { normalizeProductName } from "../../domain/value-objects/product-name";
 
 @Injectable()
 export class UpdateProductCatalogProduct {
@@ -25,7 +26,10 @@ export class UpdateProductCatalogProduct {
       isDeleted?: boolean;
     },
   ) {
-    const updated = await this.repo.update(id, patch);
+    const normalizedPatch = patch.name === undefined
+      ? patch
+      : { ...patch, name: normalizeProductName(patch.name).displayName };
+    const updated = await this.repo.update(id, normalizedPatch);
     if (!updated) throw new NotFoundException(new ProductCatalogProductNotFoundError().message);
     return updated;
   }

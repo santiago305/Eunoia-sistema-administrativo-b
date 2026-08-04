@@ -3,7 +3,7 @@ import { SaleOrderImportSkuResolverService } from "./sale-order-import-sku-resol
 describe("SaleOrderImportSkuResolverService", () => {
   it("creates imported skus without variant attributes through catalog sku creation", async () => {
     const productRepo = {
-      findByName: jest.fn().mockResolvedValue(null),
+      findByNameAndType: jest.fn().mockResolvedValue(null),
     };
     const skuRepo = {
       findByCustomSku: jest.fn().mockResolvedValue(null),
@@ -55,6 +55,11 @@ describe("SaleOrderImportSkuResolverService", () => {
         },
       ],
       tx as any,
+    );
+
+    expect(productRepo.findByNameAndType).toHaveBeenCalledWith(
+      "Producto importado",
+      "PRODUCT",
     );
 
     expect(createProductCatalogSku.execute).toHaveBeenCalledWith(

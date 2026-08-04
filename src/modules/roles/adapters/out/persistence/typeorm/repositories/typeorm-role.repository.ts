@@ -28,9 +28,10 @@ export class TypeormRoleRepository implements RoleRepository {
   }
 
   async findByDescription(description: string): Promise<DomainRole | null> {
-    const role = await this.ormRepository.findOne({
-      where: { description },
-    });
+    const role = await this.ormRepository
+      .createQueryBuilder('role')
+      .where('normalize_role_description(role.description) = normalize_role_description(:description)', { description })
+      .getOne();
     return role ? RoleMapper.toDomain(role) : null;
   }
 

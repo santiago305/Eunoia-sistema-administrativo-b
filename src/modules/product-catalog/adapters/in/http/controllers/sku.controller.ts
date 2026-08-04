@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Get, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, ForbiddenException, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
 import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
 import { RequireAnyPermissionGroups, RequireDynamicPermissionGroups } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
@@ -7,6 +7,7 @@ import { CreateProductCatalogSku } from "src/modules/product-catalog/application
 import { GetProductCatalogSku } from "src/modules/product-catalog/application/usecases/get-sku.usecase";
 import { ListProductCatalogSkus } from "src/modules/product-catalog/application/usecases/list-skus.usecase";
 import { UpdateProductCatalogSku } from "src/modules/product-catalog/application/usecases/update-sku.usecase";
+import { DeleteProductCatalogSku } from "src/modules/product-catalog/application/usecases/delete-sku.usecase";
 import { CreateProductCatalogSkuDto } from "../dtos/create-sku.dto";
 import { ListProductCatalogSkusDto } from "../dtos/list-skus.dto";
 import { UpdateProductCatalogSkuDto } from "../dtos/update-sku.dto";
@@ -28,6 +29,7 @@ export class ProductCatalogSkuController {
   constructor(
     private readonly createSku: CreateProductCatalogSku,
     private readonly updateSku: UpdateProductCatalogSku,
+    private readonly deleteSku: DeleteProductCatalogSku,
     private readonly listSkus: ListProductCatalogSkus,
     private readonly getSku: GetProductCatalogSku,
     private readonly getStock: GetSnapshotInventory,
@@ -141,6 +143,18 @@ export class ProductCatalogSkuController {
     const sku = await this.getSku.execute(id);
     await this.ensureProductPermission(user.id, sku.sku.productId, "update");
     return this.updateSku.execute(id, dto);
+  }
+
+  @RequireAnyPermissionGroups(["products.update", "materials.update"])
+  @Delete("skus/:id")
+  @HttpCode(204)
+  async delete(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    const sku = await this.getSku.execute(id);
+    await this.ensureProductPermission(user.id, sku.sku.productId, "update");
+    await this.deleteSku.execute(id);
   }
 
   private async ensureProductPermission(userId: string, productId: string, action: "create" | "update") {

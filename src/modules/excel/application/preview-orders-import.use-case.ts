@@ -685,7 +685,10 @@ export class PreviewOrdersImportUseCase {
         });
 
         const existingSku = await this.skuRepo.findByCustomSku(item.customSku);
-        const existingProduct = await this.productRepo.findByName(item.productName);
+        const existingProduct = await this.productRepo.findByNameAndType(
+          item.productName,
+          ProductCatalogProductType.PRODUCT,
+        );
 
         this.debug("RESOLVE_PRODUCT_PREVIEW_ITEM_FOUND", {
           item,
@@ -791,7 +794,10 @@ export class PreviewOrdersImportUseCase {
       return { productId, skuId };
     }
 
-    let product = await this.productRepo.findByName(input.productName);
+    let product = await this.productRepo.findByNameAndType(
+      input.productName,
+      ProductCatalogProductType.PRODUCT,
+    );
 
     this.debug("EXISTING_PRODUCT_RESULT", {
       input,

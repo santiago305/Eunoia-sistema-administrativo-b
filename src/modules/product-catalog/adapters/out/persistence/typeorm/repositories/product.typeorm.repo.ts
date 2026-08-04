@@ -14,6 +14,7 @@ import { ProductCatalogProductEntity } from "../entities/product.entity";
 import { ProductCatalogSkuEntity } from "../entities/sku.entity";
 import { ProductCatalogStockItemEntity } from "../entities/stock-item.entity";
 import { WarehouseEntity } from "src/modules/warehouses/adapters/out/persistence/typeorm/entities/warehouse";
+import { normalizeProductName } from "src/modules/product-catalog/domain/value-objects/product-name";
 
 @Injectable()
 export class ProductCatalogProductTypeormRepository implements ProductCatalogProductRepository {
@@ -141,7 +142,7 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
       if (rule.field === "skuCount") {
         this.applyNumericRule(
           qb,
-          `(SELECT COUNT(DISTINCT s2.sku_id) FROM pc_skus s2 WHERE s2.product_id = p.product_id)`,
+          `(SELECT COUNT(DISTINCT s2.sku_id) FROM pc_skus s2 WHERE s2.product_id = p.product_id AND s2.is_deleted = false)`,
           rule,
           key,
         );
@@ -157,6 +158,7 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
             LEFT JOIN pc_stock_items si2 ON si2.sku_id = s2.sku_id
             LEFT JOIN pc_inventory i2 ON i2.stock_item_id = si2.stock_item_id
             WHERE s2.product_id = p.product_id
+              AND s2.is_deleted = false
           )`,
           rule,
           key,
@@ -200,12 +202,20 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
    * entry with the provided product details.
    */
   async create(product: ProductCatalogProduct): Promise<ProductCatalogProduct> {
-    const existing = await this.repo.findOne({ where: { name: product.name } });
+    const { displayName, normalizedName } = normalizeProductName(product.name);
+    const existing = await this.repo
+      .createQueryBuilder("product")
+      .where("product.type = :type", { type: product.type })
+      .andWhere("normalize_product_name(product.name) = :normalizedName", {
+        normalizedName,
+      })
+      .getOne();
 
     if (existing?.isDeleted) {
       await this.repo.update(
         { id: existing.id },
         {
+          name: displayName,
           description: product.description,
           type: product.type,
           brand: product.brand,
@@ -219,7 +229,7 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
     }
 
     const saved = await this.repo.save({
-      name: product.name,
+      name: displayName,
       description: product.description,
       type: product.type,
       brand: product.brand,
@@ -239,7 +249,12 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
     id: string,
     patch: Partial<Pick<ProductCatalogProduct, "name" | "description" | "type" | "brand" | "baseUnitId" | "isActive" | "isDeleted">>,
   ): Promise<ProductCatalogProduct | null> {
-    await this.repo.update({ id }, patch);
+    const persistencePatch = { ...patch };
+    if (patch.name !== undefined) {
+      const normalized = normalizeProductName(patch.name);
+      persistencePatch.name = normalized.displayName;
+    }
+    await this.repo.update({ id }, persistencePatch);
     const updated = await this.repo.findOne({ where: { id } });
     return updated ? this.toDomain(updated) : null;
   }
@@ -249,11 +264,20 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
     return row ? this.toDomain(row) : null;
   }
 
-  async findByName(name: string): Promise<ProductCatalogProduct | null> {
-    const normalizedName = name.trim();
+  async findByNameAndType(
+    name: string,
+    type: ProductCatalogProductType,
+  ): Promise<ProductCatalogProduct | null> {
+    const normalizedName = normalizeProductName(name).normalizedName;
     if (!normalizedName) return null;
 
-    const row = await this.repo.findOne({ where: { name: normalizedName } });
+    const row = await this.repo
+      .createQueryBuilder("product")
+      .where("product.type = :type", { type })
+      .andWhere("normalize_product_name(product.name) = :normalizedName", {
+        normalizedName,
+      })
+      .getOne();
     return row ? this.toDomain(row) : null;
   }
 
@@ -282,6 +306,7 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
       .leftJoin(ProductCatalogInventoryEntity, "i", "i.stock_item_id = si.stock_item_id")
       .leftJoin(WarehouseEntity, "w", "w.id = i.warehouse_id")
       .where("s.product_id = :id", { id })
+      .andWhere("s.is_deleted = false")
       .select([
         "s.sku_id as id",
         "s.backend_sku as sku",
@@ -380,6 +405,7 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
           .leftJoin(ProductCatalogStockItemEntity, "si", "si.sku_id = s.sku_id")
           .leftJoin(ProductCatalogInventoryEntity, "i", "i.stock_item_id = si.stock_item_id")
           .where("s.product_id IN (:...productIds)", { productIds })
+          .andWhere("s.is_deleted = false")
           .select([
             "s.product_id AS product_id",
             "COUNT(DISTINCT s.sku_id) AS sku_count",

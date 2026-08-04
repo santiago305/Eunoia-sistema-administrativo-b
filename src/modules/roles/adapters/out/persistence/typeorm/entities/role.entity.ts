@@ -7,7 +7,7 @@ export class Role {
   @PrimaryGeneratedColumn('uuid', { name: 'role_id' })
   roleId: string;
 
-  @Column({ unique: true })
+  @Column()
   description: string;
 
   @Column({ default: false })

@@ -16,6 +16,7 @@ import { RoleNotFoundApplicationError } from '../errors/role-not-found.error';
 import { MASTER_ROLE_DESCRIPTION, RoleType } from 'src/shared/constantes/constants';
 import { USER_READ_REPOSITORY, UserReadRepository } from 'src/modules/users/application/ports/user-read.repository';
 import { assertCanManageRoleByScope } from '../support/role-scope.util';
+import { formatRoleDescription, normalizeRoleDescription } from '../support/role-description.util';
 
 @Injectable()
 export class UpdateRoleUseCase {
@@ -32,8 +33,8 @@ export class UpdateRoleUseCase {
     if (dto.description === undefined) {
       throw new BadRequestException('Debe enviar al menos un campo para actualizar');
     }
-    const normalizedDescription = dto.description.trim().toLowerCase();
-    if (!normalizedDescription) {
+    const formattedDescription = formatRoleDescription(dto.description);
+    if (!formattedDescription) {
       throw new BadRequestException('La descripcion no puede quedar vacia');
     }
 
@@ -57,9 +58,10 @@ export class UpdateRoleUseCase {
       throw new BadRequestException('El rol maestro no puede renombrarse');
     }
 
-    const nextDescription = normalizedDescription;
-    const currentDescription = (role.description || '').trim().toLowerCase();
-    const isSemanticDescriptionChange = nextDescription !== currentDescription;
+    const nextDescription = formattedDescription;
+    const currentDescription = formatRoleDescription(role.description || '');
+    const isSemanticDescriptionChange =
+      normalizeRoleDescription(nextDescription) !== normalizeRoleDescription(currentDescription);
 
     if (isSemanticDescriptionChange) {
       const exists = await this.roleReadRepository.findByDescription(nextDescription, { includeDeleted: true });

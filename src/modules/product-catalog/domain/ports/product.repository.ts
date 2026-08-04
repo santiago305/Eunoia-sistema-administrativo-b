@@ -69,7 +69,10 @@ export interface ProductCatalogProductRepository {
     patch: Partial<Pick<ProductCatalogProduct, "name" | "description" | "type" | "brand" | "baseUnitId" | "isActive" | "isDeleted">>,
   ): Promise<ProductCatalogProduct | null>;
   findById(id: string): Promise<ProductCatalogProduct | null>;
-  findByName(name: string): Promise<ProductCatalogProduct | null>;
+  findByNameAndType(
+    name: string,
+    type: ProductCatalogProductType,
+  ): Promise<ProductCatalogProduct | null>;
   getDetail(id: string, warehouseId?: string): Promise<ProductCatalogProductDetail | null>;
   list(params: {
     page: number;

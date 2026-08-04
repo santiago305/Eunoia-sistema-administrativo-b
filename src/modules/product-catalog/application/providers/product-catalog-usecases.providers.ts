@@ -5,6 +5,7 @@ import { ListProductCatalogProducts } from "../usecases/list-products.usecase";
 import { GetProductCatalogProduct } from "../usecases/get-product.usecase";
 import { CreateProductCatalogSku } from "../usecases/create-sku.usecase";
 import { UpdateProductCatalogSku } from "../usecases/update-sku.usecase";
+import { DeleteProductCatalogSku } from "../usecases/delete-sku.usecase";
 import { GetProductCatalogSku } from "../usecases/get-sku.usecase";
 import { ListProductCatalogSkus } from "../usecases/list-skus.usecase";
 import { CreateProductCatalogRecipe } from "../usecases/create-recipe.usecase";
@@ -53,6 +54,7 @@ export const productCatalogUsecasesProviders: Provider[] = [
   GetProductCatalogProductDetail,
   CreateProductCatalogSku,
   UpdateProductCatalogSku,
+  DeleteProductCatalogSku,
   GetProductCatalogSku,
   ListProductCatalogSkus,
   CreateProductCatalogRecipe,

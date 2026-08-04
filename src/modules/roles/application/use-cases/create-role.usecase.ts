@@ -12,6 +12,7 @@ import { successResponse } from 'src/shared/response-standard/response';
 import { ROLE_READ_REPOSITORY, RoleReadRepository  } from '../ports/role-read.repository';
 import { RoleConflictApplicationError } from '../errors/role-conflict.error';
 import { RoleType } from 'src/shared/constantes/constants';
+import { formatRoleDescription } from '../support/role-description.util';
 
 @Injectable()
 export class CreateRoleUseCase {
@@ -23,12 +24,12 @@ export class CreateRoleUseCase {
   ) {}
 
   async execute(dto: CreateRoleDto, requester: { userId: string; role?: RoleType | null }) {
-    const normalizedDescription = dto.description.trim().toLowerCase();
-    if (!normalizedDescription) {
+    const formattedDescription = formatRoleDescription(dto.description);
+    if (!formattedDescription) {
       throw new BadRequestException('La descripcion no puede quedar vacia');
     }
 
-    const existing = await this.roleReadRepository.findByDescription(normalizedDescription, { includeDeleted: true });
+    const existing = await this.roleReadRepository.findByDescription(formattedDescription, { includeDeleted: true });
     if (existing && !existing.deleted) {
       throw new ConflictException(new RoleConflictApplicationError().message);
     }
@@ -47,7 +48,7 @@ export class CreateRoleUseCase {
     }
 
     const role = RoleFactory.createNew({
-      description: normalizedDescription,
+      description: formattedDescription,
       createdByUserId: requester.userId,
     });
 

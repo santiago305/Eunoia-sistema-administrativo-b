@@ -5,6 +5,7 @@ import {
   PRODUCT_CATALOG_PRODUCT_REPOSITORY,
   ProductCatalogProductRepository,
 } from "../../domain/ports/product.repository";
+import { normalizeProductName } from "../../domain/value-objects/product-name";
 
 export interface CreateProductCatalogProductInput {
   name: string;
@@ -23,10 +24,11 @@ export class CreateProductCatalogProduct {
   ) {}
 
   execute(input: CreateProductCatalogProductInput) {
+    const { displayName } = normalizeProductName(input.name);
     return this.repo.create(
       new ProductCatalogProduct(
         undefined,
-        input.name.trim(),
+        displayName,
         input.description ?? null,
         input.type,
         input.brand ?? null,

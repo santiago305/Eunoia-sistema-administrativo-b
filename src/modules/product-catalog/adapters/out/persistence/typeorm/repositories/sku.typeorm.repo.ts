@@ -42,6 +42,7 @@ export class ProductCatalogSkuTypeormRepository implements ProductCatalogSkuRepo
       row.isActive,
       row.createdAt,
       row.updatedAt,
+      row.isDeleted ?? false,
     );
   }
 
@@ -141,6 +142,7 @@ export class ProductCatalogSkuTypeormRepository implements ProductCatalogSkuRepo
         isManufacturable: input.sku.isManufacturable,
         isStockTracked: input.sku.isStockTracked,
         isActive: input.sku.isActive,
+        isDeleted: false,
       });
 
       const attributes = await this.ensureAttributes(manager, input.attributes);
@@ -215,12 +217,21 @@ export class ProductCatalogSkuTypeormRepository implements ProductCatalogSkuRepo
     });
   }
 
+  async softDelete(id: string): Promise<boolean> {
+    const result = await this.repo.update(
+      { id, isDeleted: false },
+      { isActive: false, isDeleted: true },
+    );
+    return Boolean(result.affected);
+  }
+
   async findById(id: string): Promise<ProductCatalogSkuWithAttributes | null> {
     const row = await this.repo
       .createQueryBuilder("s")
       .leftJoinAndSelect("s.product", "p")
       .leftJoinAndSelect("p.baseUnit", "bu")
       .where("s.id = :id", { id })
+      .andWhere("s.is_deleted = false")
       .getOne();
     return row ? this.toOutput(row) : null;
   }
@@ -234,6 +245,7 @@ export class ProductCatalogSkuTypeormRepository implements ProductCatalogSkuRepo
       .leftJoinAndSelect("s.product", "p")
       .leftJoinAndSelect("p.baseUnit", "bu")
       .where("s.custom_sku = :customSku", { customSku: normalizedCustomSku })
+      .andWhere("s.is_deleted = false")
       .getOne();
 
     return row ? this.toOutput(row) : null;
@@ -256,6 +268,7 @@ export class ProductCatalogSkuTypeormRepository implements ProductCatalogSkuRepo
       .leftJoinAndSelect("p.baseUnit", "bu");
 
     qb.andWhere("p.is_deleted = false");
+    qb.andWhere("s.is_deleted = false");
 
     if (params.productType) {
       qb.andWhere("p.type = :productType", {
@@ -373,7 +386,7 @@ export class ProductCatalogSkuTypeormRepository implements ProductCatalogSkuRepo
 
   async findByProductId(productId: string): Promise<ProductCatalogSkuWithAttributes[]> {
     const rows = await this.repo.find({
-      where: { productId },
+      where: { productId, isDeleted: false },
       order: { createdAt: "DESC" },
     });
     const skuIds = rows.map((row) => row.id);

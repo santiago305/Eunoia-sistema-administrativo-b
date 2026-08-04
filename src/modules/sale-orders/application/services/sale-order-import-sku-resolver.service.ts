@@ -68,7 +68,10 @@ export class SaleOrderImportSkuResolverService {
       return { productId, skuId };
     }
 
-    let product = await this.productRepo.findByName(input.productName);
+    let product = await this.productRepo.findByNameAndType(
+      input.productName,
+      ProductCatalogProductType.PRODUCT,
+    );
     if (!product) {
       if (!tx) throw new BadRequestException("No se puede crear producto sin transaccion");
       product = await this.createProductCatalogProduct.execute({

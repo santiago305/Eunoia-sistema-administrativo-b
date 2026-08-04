@@ -3,7 +3,6 @@ import { ProductCatalogProductType } from "src/modules/product-catalog/domain/va
 import { ProductCatalogUnitEntity } from "./unit.entity";
 
 @Entity("pc_products")
-@Index("ux_pc_products_name", ["name"], { unique: true })
 @Index("idx_pc_products_type", ["type"])
 export class ProductCatalogProductEntity {
   @PrimaryGeneratedColumn("uuid", { name: "product_id" })
