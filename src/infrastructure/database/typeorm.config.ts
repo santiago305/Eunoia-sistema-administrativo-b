@@ -103,6 +103,7 @@ import { AddSaleOrdersPermissionMatrix20260731130000 } from "./migrations/202607
 import { HardenSaleOrderTrackingFlags20260731131000 } from "./migrations/20260731131000-harden-sale-order-tracking-flags";
 import { AllowSaleOrderTrackingAuditActions20260731132000 } from "./migrations/20260731132000-allow-sale-order-tracking-audit-actions";
 import { BackfillSkuStockItems20260801000000 } from "./migrations/20260801000000-backfill-sku-stock-items";
+import { ResetFinishedProductsCatalog20260803590000 } from "./migrations/20260803590000-reset-finished-products-catalog";
 import { ScopeProductNameUniquenessByType20260804000000 } from "./migrations/20260804000000-scope-product-name-uniqueness-by-type";
 import { AddSkuLogicalDeletion20260804010000 } from "./migrations/20260804010000-add-sku-logical-deletion";
 import { NormalizeRoleDescriptionUniqueness20260804020000 } from "./migrations/20260804020000-normalize-role-description-uniqueness";
@@ -220,6 +221,7 @@ export const databaseMigrations = [
     HardenSaleOrderTrackingFlags20260731131000,
     AllowSaleOrderTrackingAuditActions20260731132000,
     BackfillSkuStockItems20260801000000,
+    ResetFinishedProductsCatalog20260803590000,
     ScopeProductNameUniquenessByType20260804000000,
     AddSkuLogicalDeletion20260804010000,
     NormalizeRoleDescriptionUniqueness20260804020000,
