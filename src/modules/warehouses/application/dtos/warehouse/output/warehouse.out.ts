@@ -8,5 +8,6 @@ export interface WarehouseOutput {
     district:string,
     address?:string,
     isActive:boolean,
+    isProductionDefault:boolean,
     createdAt:Date,
 }

@@ -16,6 +16,7 @@ import { DeleteWarehouseSearchMetricUsecase } from "src/modules/warehouses/appli
 import { GetWarehouseSearchStateUsecase } from "src/modules/warehouses/application/usecases/warehouse-search/get-state.usecase";
 import { SaveWarehouseSearchMetricUsecase } from "src/modules/warehouses/application/usecases/warehouse-search/save-metric.usecase";
 import { WarehousesController } from "./warehouse.controller";
+import { SetProductionDefaultWarehouseUsecase } from "src/modules/warehouses/application/usecases/warehouse/set-production-default.usecase";
 
 @Injectable()
 class TestJwtAuthGuard implements CanActivate {
@@ -37,6 +38,7 @@ describe("WarehousesController", () => {
   let app: INestApplication;
   const listWarehouses = { execute: jest.fn() };
   const getSearchState = { execute: jest.fn() };
+  const setProductionDefault = { execute: jest.fn() };
 
   beforeEach(async () => {
     listWarehouses.execute.mockResolvedValue({ items: [], total: 0 });
@@ -50,6 +52,7 @@ describe("WarehousesController", () => {
         districts: [],
       },
     });
+    setProductionDefault.execute.mockResolvedValue({ warehouseId: "11111111-1111-4111-8111-111111111111", isProductionDefault: true });
 
     const moduleRef = await Test.createTestingModule({
       controllers: [WarehousesController],
@@ -64,6 +67,7 @@ describe("WarehousesController", () => {
         { provide: GetWarehouseSearchStateUsecase, useValue: getSearchState },
         { provide: SaveWarehouseSearchMetricUsecase, useValue: { execute: jest.fn() } },
         { provide: DeleteWarehouseSearchMetricUsecase, useValue: { execute: jest.fn() } },
+        { provide: SetProductionDefaultWarehouseUsecase, useValue: setProductionDefault },
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -117,5 +121,11 @@ describe("WarehousesController", () => {
         ],
       }),
     );
+  });
+
+  it("sets the production default warehouse", async () => {
+    const id = "11111111-1111-4111-8111-111111111111";
+    await request(app.getHttpServer()).patch(`/warehouses/${id}/production-default`).expect(200);
+    expect(setProductionDefault.execute).toHaveBeenCalledWith(id);
   });
 });

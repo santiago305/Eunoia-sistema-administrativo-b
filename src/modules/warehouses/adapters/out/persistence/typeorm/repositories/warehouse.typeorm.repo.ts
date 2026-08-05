@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, OnModuleInit } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, Repository } from "typeorm";
 import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
@@ -20,11 +20,16 @@ import {
 import { WarehouseSearchFields, WarehouseSearchOperators, WarehouseSearchRule } from "src/modules/warehouses/application/dtos/warehouse-search/warehouse-search-snapshot";
 
 @Injectable()
-export class WarehouseTypeormRepo implements WarehouseRepository {
+export class WarehouseTypeormRepo implements WarehouseRepository, OnModuleInit {
   constructor(
     @InjectRepository(WarehouseEntity)
     private readonly repo: Repository<WarehouseEntity>
   ) {}
+
+  async onModuleInit(): Promise<void> {
+    await this.repo.query(`ALTER TABLE warehouses ADD COLUMN IF NOT EXISTS is_production_default boolean NOT NULL DEFAULT false`);
+    await this.repo.query(`CREATE UNIQUE INDEX IF NOT EXISTS ux_warehouses_production_default ON warehouses (is_production_default) WHERE is_production_default = true`);
+  }
 
   private getManager(tx?: TransactionContext): EntityManager {
     if (tx && (tx as TypeormTransactionContext).manager) {
@@ -46,6 +51,7 @@ export class WarehouseTypeormRepo implements WarehouseRepository {
       district: row.district,
       address: row.address ?? undefined,
       isActive: row.isActive,
+      isProductionDefault: row.isProductionDefault,
       createdAt: row.createdAt,
     });
   }
@@ -97,6 +103,7 @@ export class WarehouseTypeormRepo implements WarehouseRepository {
       district: warehouse.district,
       address: warehouse.address ?? null,
       isActive: warehouse.isActive ?? true,
+      isProductionDefault: warehouse.isProductionDefault ?? false,
       createdAt: warehouse.createdAt ?? undefined,
     });
 
@@ -134,6 +141,12 @@ export class WarehouseTypeormRepo implements WarehouseRepository {
 
   async setActive(warehouseId: WarehouseId, isActive: boolean, tx?: TransactionContext): Promise<void> {
     await this.getRepo(tx).update({ id: warehouseId.value }, { isActive });
+  }
+
+  async setProductionDefault(warehouseId: WarehouseId, tx?: TransactionContext): Promise<void> {
+    const repo = this.getRepo(tx);
+    await repo.update({ isProductionDefault: true }, { isProductionDefault: false });
+    await repo.update({ id: warehouseId.value }, { isProductionDefault: true });
   }
 
   async list(

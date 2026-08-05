@@ -13,6 +13,7 @@ export class WarehouseOutputMapper {
       district: warehouse.district,
       address: warehouse.address,
       isActive: warehouse.isActive ?? true,
+      isProductionDefault: warehouse.isProductionDefault ?? false,
       createdAt: warehouse.createdAt,
     };
   }

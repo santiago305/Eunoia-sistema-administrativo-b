@@ -21,6 +21,7 @@ import { User as CurrentUser } from "src/shared/utilidades/decorators/user.decor
 import { WarehouseId } from "src/modules/warehouses/domain/value-objects/warehouse-id.vo";
 import { WarehouseHttpMapper } from "src/modules/warehouses/application/mappers/warehouse-http.mapper";
 import { sanitizeWarehouseSearchSnapshot } from "src/modules/warehouses/application/support/warehouse-search.utils";
+import { SetProductionDefaultWarehouseUsecase } from "src/modules/warehouses/application/usecases/warehouse/set-production-default.usecase";
 
 @Controller("warehouses")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
@@ -35,6 +36,7 @@ export class WarehousesController {
     private readonly getSearchState: GetWarehouseSearchStateUsecase,
     private readonly saveSearchMetric: SaveWarehouseSearchMetricUsecase,
     private readonly deleteSearchMetric: DeleteWarehouseSearchMetricUsecase,
+    private readonly setProductionDefaultWarehouse: SetProductionDefaultWarehouseUsecase,
   ) {}
 
   @RequireAnyPermissionGroups(["warehouses.create"], ["warehouses.manage"])
@@ -117,5 +119,11 @@ export class WarehousesController {
     return this.setWarehouseActive.execute(
       WarehouseHttpMapper.toSetWarehouseActiveInput(id, dto.isActive),
     );
+  }
+
+  @RequireAnyPermissionGroups(["warehouses.update"], ["warehouses.manage"])
+  @Patch(":id/production-default")
+  setProductionDefault(@Param("id", ParseUUIDPipe) id: string) {
+    return this.setProductionDefaultWarehouse.execute(id);
   }
 }

@@ -12,6 +12,7 @@ export class WarehouseFactory {
     district: string;
     address?: string;
     isActive?: boolean;
+    isProductionDefault?: boolean;
     createdAt?: Date;
   }) {
     return Warehouse.create(params);

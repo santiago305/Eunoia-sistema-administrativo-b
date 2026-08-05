@@ -24,6 +24,9 @@ export class WarehouseEntity {
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;
 
+  @Column({ name: 'is_production_default', type: 'boolean', default: false })
+  isProductionDefault: boolean;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

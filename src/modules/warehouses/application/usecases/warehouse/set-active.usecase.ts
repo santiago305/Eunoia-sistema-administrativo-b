@@ -1,4 +1,4 @@
-import { Inject, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, NotFoundException } from "@nestjs/common";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { SetActiveWarehouse } from "../../dtos/warehouse/input/set-active.input";
 import { LOCATION_REPOSITORY, LocartionRepository } from "../../ports/location.repository.port";
@@ -21,6 +21,9 @@ export class SetWarehouseActiveUsecase {
 
       if (!warehouse) {
         throw new NotFoundException(new WarehouseNotFoundError().message);
+      }
+      if (!input.isActive && warehouse.isProductionDefault) {
+        throw new BadRequestException("No puedes desactivar el almacen predeterminado de produccion");
       }
 
       await this.warehouseRepo.setActive(input.warehouseId, input.isActive, tx);

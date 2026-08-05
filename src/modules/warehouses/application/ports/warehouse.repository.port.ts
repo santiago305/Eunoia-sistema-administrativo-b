@@ -33,6 +33,7 @@ export interface WarehouseRepository{
         isActive: boolean,
         tx?: TransactionContext
     ):Promise<void>;
+    setProductionDefault(warehouseId: WarehouseId, tx?: TransactionContext): Promise<void>;
     list(
         params:{
             filters?: WarehouseSearchRule[],

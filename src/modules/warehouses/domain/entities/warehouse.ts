@@ -12,6 +12,7 @@ export class Warehouse{
     public readonly district: string,
     public readonly address?: string,
     public readonly isActive?: boolean,
+    public readonly isProductionDefault?: boolean,
     public readonly createdAt?: Date,
   ) {}
 
@@ -23,6 +24,7 @@ export class Warehouse{
     district: string;
     address?: string;
     isActive?: boolean;
+    isProductionDefault?: boolean;
     createdAt?: Date;
   }) {
     const name = params.name.trim();
@@ -42,6 +44,7 @@ export class Warehouse{
       district,
       WarehouseDomainService.normalizeText(params.address),
       params.isActive ?? true,
+      params.isProductionDefault ?? false,
       params.createdAt,
     );
   }
