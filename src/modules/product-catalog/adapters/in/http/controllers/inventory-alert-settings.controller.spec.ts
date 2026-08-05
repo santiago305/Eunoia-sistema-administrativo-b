@@ -12,6 +12,7 @@ import {
   UpsertInventoryAlertSettingUsecase,
 } from "src/modules/product-catalog/application/usecases/inventory-alert-settings.usecase";
 import { InventoryAlertSettingsController } from "./inventory-alert-settings.controller";
+import { InventoryPredictiveAlertService } from "src/modules/product-catalog/application/services/inventory-predictive-alert.service";
 
 @Injectable()
 class TestJwtAuthGuard implements CanActivate {
@@ -34,6 +35,7 @@ describe("InventoryAlertSettingsController", () => {
   const listSettings = { execute: jest.fn() };
   const getSetting = { execute: jest.fn() };
   const upsertSetting = { execute: jest.fn() };
+  const predictiveAlerts = { evaluate: jest.fn(), getPolicy: jest.fn(), updatePolicy: jest.fn() };
 
   const stockItemId = "11111111-1111-4111-8111-111111111111";
   const warehouseId = "22222222-2222-4222-8222-222222222222";
@@ -58,6 +60,19 @@ describe("InventoryAlertSettingsController", () => {
       alertEnabled: true,
       isDefault: false,
     });
+    predictiveAlerts.evaluate.mockResolvedValue({
+      policy: { productType: "PRODUCT", historyDays: 3, coverageDays: 3, alertEnabled: true },
+      stockItemId,
+      warehouseId,
+      history: [],
+      averageDailyConsumption: 0,
+      availableStock: 20,
+      requiredStock: 0,
+      coverageDays: null,
+      shortage: 0,
+      level: "NORMAL",
+    });
+    predictiveAlerts.updatePolicy.mockResolvedValue({ productType: "PRODUCT", historyDays: 3, coverageDays: 4, alertEnabled: true });
 
     const moduleRef = await Test.createTestingModule({
       controllers: [InventoryAlertSettingsController],
@@ -65,6 +80,7 @@ describe("InventoryAlertSettingsController", () => {
         { provide: ListInventoryAlertSettingsUsecase, useValue: listSettings },
         { provide: GetInventoryAlertSettingUsecase, useValue: getSetting },
         { provide: UpsertInventoryAlertSettingUsecase, useValue: upsertSetting },
+        { provide: InventoryPredictiveAlertService, useValue: predictiveAlerts },
       ],
     })
       .overrideGuard(JwtAuthGuard)
@@ -86,7 +102,7 @@ describe("InventoryAlertSettingsController", () => {
   });
 
   it("protects all endpoints with inventory-alerts.configure", () => {
-    const methods = ["list", "get", "update"] as const;
+    const methods = ["list", "get", "update", "getPolicy", "updatePolicy"] as const;
 
     for (const method of methods) {
       expect(Reflect.getMetadata(PERMISSION_GROUPS_KEY, InventoryAlertSettingsController.prototype[method])).toEqual([
@@ -104,31 +120,29 @@ describe("InventoryAlertSettingsController", () => {
     expect(listSettings.execute).toHaveBeenCalledWith({ stockItemId, warehouseId });
   });
 
-  it("maps effective setting lookup to the get usecase", async () => {
+  it("maps effective setting lookup to the predictive evaluator", async () => {
     await request(app.getHttpServer())
       .get(`/inventory-alert-settings/${stockItemId}`)
       .query({ warehouseId })
       .expect(200);
 
-    expect(getSetting.execute).toHaveBeenCalledWith({ stockItemId, warehouseId });
+    expect(predictiveAlerts.evaluate).toHaveBeenCalledWith(stockItemId, warehouseId);
   });
 
-  it("maps update body to the upsert usecase", async () => {
+  it("updates the global product-type policy", async () => {
     await request(app.getHttpServer())
       .patch(`/inventory-alert-settings/${stockItemId}`)
       .send({
         warehouseId,
-        minStockAlertQty: 12,
-        alertThresholdDays: 4,
+        historyDays: 3,
+        coverageDays: 4,
         alertEnabled: true,
       })
       .expect(200);
 
-    expect(upsertSetting.execute).toHaveBeenCalledWith({
-      stockItemId,
-      warehouseId,
-      minStockAlertQty: 12,
-      alertThresholdDays: 4,
+    expect(predictiveAlerts.updatePolicy).toHaveBeenCalledWith("PRODUCT", {
+      historyDays: 3,
+      coverageDays: 4,
       alertEnabled: true,
     });
   });

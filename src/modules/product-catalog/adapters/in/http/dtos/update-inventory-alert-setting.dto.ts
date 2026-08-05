@@ -1,6 +1,16 @@
-import { IsBoolean, IsNumber, IsOptional, IsUUID, Min } from "class-validator";
+import { IsBoolean, IsInt, IsNumber, IsOptional, IsUUID, Min } from "class-validator";
 
 export class UpdateInventoryAlertSettingDto {
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  historyDays?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  coverageDays?: number;
+
   @IsOptional()
   @IsUUID()
   warehouseId?: string;

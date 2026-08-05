@@ -109,6 +109,7 @@ import { AddSkuLogicalDeletion20260804010000 } from "./migrations/20260804010000
 import { AddSaleOrderPackSnapshots20260804015000 } from "./migrations/20260804015000-add-sale-order-pack-snapshots";
 import { NormalizeRoleDescriptionUniqueness20260804020000 } from "./migrations/20260804020000-normalize-role-description-uniqueness";
 import { AlignProductEquivalencesToBaseUnit20260805000000 } from "./migrations/20260805000000-align-product-equivalences-to-base-unit";
+import { CreateInventoryAlertPolicies20260805010000 } from "./migrations/20260805010000-create-inventory-alert-policies";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -229,6 +230,7 @@ export const databaseMigrations = [
     AddSaleOrderPackSnapshots20260804015000,
     NormalizeRoleDescriptionUniqueness20260804020000,
     AlignProductEquivalencesToBaseUnit20260805000000,
+    CreateInventoryAlertPolicies20260805010000,
 ];
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({
