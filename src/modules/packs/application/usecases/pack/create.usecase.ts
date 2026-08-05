@@ -40,6 +40,11 @@ export class CreatePackUsecase {
         throw new BadRequestException(new DuplicatePackItemSkuError().message);
       }
 
+      const invalidSkuIds = await this.itemRepo.findInvalidSellableSkuIds?.(skuIds, tx) ?? [];
+      if (invalidSkuIds.length) {
+        throw new BadRequestException("El pack solo puede incluir productos y variantes activos");
+      }
+
       const computedCents = this.computeTotalCents(input.items);
       const inputTotalCents = this.toCents(input.total);
       if (computedCents !== inputTotalCents) {

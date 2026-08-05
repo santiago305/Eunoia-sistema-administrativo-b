@@ -15,6 +15,8 @@ import { ProductCatalogSkuEntity } from "../entities/sku.entity";
 import { ProductCatalogStockItemEntity } from "../entities/stock-item.entity";
 import { WarehouseEntity } from "src/modules/warehouses/adapters/out/persistence/typeorm/entities/warehouse";
 import { normalizeProductName } from "src/modules/product-catalog/domain/value-objects/product-name";
+import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
+import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
 
 @Injectable()
 export class ProductCatalogProductTypeormRepository implements ProductCatalogProductRepository {
@@ -22,6 +24,11 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
     @InjectRepository(ProductCatalogProductEntity)
     private readonly repo: Repository<ProductCatalogProductEntity>,
   ) {}
+
+  private getRepo(tx?: TransactionContext): Repository<ProductCatalogProductEntity> {
+    const manager = tx && (tx as TypeormTransactionContext).manager;
+    return manager ? manager.getRepository(ProductCatalogProductEntity) : this.repo;
+  }
 
   private escapeLike(value: string) {
     return value.replace(/[%_\\]/g, "\\$&");
@@ -248,14 +255,16 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
   async update(
     id: string,
     patch: Partial<Pick<ProductCatalogProduct, "name" | "description" | "type" | "brand" | "baseUnitId" | "isActive" | "isDeleted">>,
+    tx?: TransactionContext,
   ): Promise<ProductCatalogProduct | null> {
+    const repo = this.getRepo(tx);
     const persistencePatch = { ...patch };
     if (patch.name !== undefined) {
       const normalized = normalizeProductName(patch.name);
       persistencePatch.name = normalized.displayName;
     }
-    await this.repo.update({ id }, persistencePatch);
-    const updated = await this.repo.findOne({ where: { id } });
+    await repo.update({ id }, persistencePatch);
+    const updated = await repo.findOne({ where: { id } });
     return updated ? this.toDomain(updated) : null;
   }
 

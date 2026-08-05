@@ -151,6 +151,7 @@ export type SaleOrderGetOutput = {
   items: Array<{
     id: string;
     referencePackId: string | null;
+    packNameSnapshot: string | null;
     description: string | null;
     quantity: number;
     unitPrice: number;

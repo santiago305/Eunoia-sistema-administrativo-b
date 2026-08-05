@@ -12,6 +12,8 @@ import { ProductCatalogAttributeEntity } from "../entities/attribute.entity";
 import { ProductCatalogSkuAttributeValueEntity } from "../entities/sku-attribute-value.entity";
 import { ProductCatalogSkuEntity } from "../entities/sku.entity";
 import { ProductCatalogStockItemEntity } from "../entities/stock-item.entity";
+import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
+import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
 
 @Injectable()
 export class ProductCatalogSkuTypeormRepository implements ProductCatalogSkuRepository {
@@ -223,6 +225,16 @@ export class ProductCatalogSkuTypeormRepository implements ProductCatalogSkuRepo
       { isActive: false, isDeleted: true },
     );
     return Boolean(result.affected);
+  }
+
+  async softDeleteByProductId(productId: string, tx?: TransactionContext): Promise<number> {
+    const manager = tx && (tx as TypeormTransactionContext).manager;
+    const repo = manager ? manager.getRepository(ProductCatalogSkuEntity) : this.repo;
+    const result = await repo.update(
+      { productId, isDeleted: false },
+      { isActive: false, isDeleted: true },
+    );
+    return result.affected ?? 0;
   }
 
   async findById(id: string): Promise<ProductCatalogSkuWithAttributes | null> {

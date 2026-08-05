@@ -9,6 +9,8 @@ import { PackFactory } from "src/modules/packs/domain/factories/pack.factory";
 import { PackId } from "src/modules/packs/domain/value-objects/pack-id.vo";
 import { PackItemId } from "src/modules/packs/domain/value-objects/pack-item-id.vo";
 import { PackItemEntity } from "../entities/pack-item.entity";
+import { ProductCatalogSkuEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku.entity";
+import { ProductCatalogProductEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/product.entity";
 
 @Injectable()
 export class PackItemTypeormRepository implements PackItemRepository {
@@ -36,6 +38,25 @@ export class PackItemTypeormRepository implements PackItemRepository {
       quantity: Number(row.quantity ?? 0),
       price: Number(row.price ?? 0),
     });
+  }
+
+  async findInvalidSellableSkuIds(skuIds: string[], tx?: TransactionContext): Promise<string[]> {
+    const uniqueIds = Array.from(new Set(skuIds.filter(Boolean)));
+    if (!uniqueIds.length) return [];
+    const validRows = await this.getManager(tx)
+      .getRepository(ProductCatalogSkuEntity)
+      .createQueryBuilder("sku")
+      .innerJoin(ProductCatalogProductEntity, "product", "product.product_id = sku.product_id")
+      .where("sku.sku_id IN (:...skuIds)", { skuIds: uniqueIds })
+      .andWhere("sku.is_active = true")
+      .andWhere("sku.is_deleted = false")
+      .andWhere("product.is_active = true")
+      .andWhere("product.is_deleted = false")
+      .andWhere("product.type = 'PRODUCT'")
+      .select("sku.sku_id", "id")
+      .getRawMany<{ id: string }>();
+    const validIds = new Set(validRows.map((row) => row.id));
+    return uniqueIds.filter((id) => !validIds.has(id));
   }
 
   async createMany(items: PackItem[], tx?: TransactionContext): Promise<void> {

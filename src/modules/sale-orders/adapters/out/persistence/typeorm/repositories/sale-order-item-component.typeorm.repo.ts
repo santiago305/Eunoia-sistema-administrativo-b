@@ -33,6 +33,13 @@ export class SaleOrderItemComponentTypeormRepository implements SaleOrderItemCom
       row.saleOrderItemId,
       row.skuId,
       row.referencePackItemId ?? null,
+      row.skuNameSnapshot ?? null,
+      row.backendSkuSnapshot ?? null,
+      row.customSkuSnapshot ?? null,
+      row.barcodeSnapshot ?? null,
+      row.imageSnapshot ?? null,
+      row.productIdSnapshot ?? null,
+      row.attributesSnapshot ?? [],
       Number(row.quantity ?? 0),
       Number(row.unitPrice ?? 0),
       Number(row.total ?? 0),
@@ -138,12 +145,12 @@ export class SaleOrderItemComponentTypeormRepository implements SaleOrderItemCom
       saleOrderItemId: row.saleOrderItemId,
       sku: {
         id: sku.id,
-        productId: sku.productId,
-        name: sku.name,
-        backendSku: sku.backendSku,
-        customSku: sku.customSku ?? null,
-        barcode: sku.barcode ?? null,
-        image: sku.image ?? null,
+        productId: row.productIdSnapshot ?? sku.productId,
+        name: row.skuNameSnapshot ?? sku.name,
+        backendSku: row.backendSkuSnapshot ?? sku.backendSku,
+        customSku: row.customSkuSnapshot ?? sku.customSku ?? null,
+        barcode: row.barcodeSnapshot ?? sku.barcode ?? null,
+        image: row.imageSnapshot ?? sku.image ?? null,
         price: Number(sku.price ?? 0),
         cost: Number(sku.cost ?? 0),
         isSellable: Boolean(sku.isSellable),
@@ -161,7 +168,9 @@ export class SaleOrderItemComponentTypeormRepository implements SaleOrderItemCom
             code: unit.code,
           }
         : null,
-      attributes: attributesBySkuId.get(sku.id) ?? [],
+      attributes: row.attributesSnapshot?.length
+        ? row.attributesSnapshot
+        : attributesBySkuId.get(sku.id) ?? [],
       stockItemId: stockItemBySkuId.get(sku.id)?.id ?? null,
       referencePackItemId: row.referencePackItemId ?? null,
       quantity: Number(row.quantity ?? 0),
@@ -179,15 +188,29 @@ export class SaleOrderItemComponentTypeormRepository implements SaleOrderItemCom
 
     const manager = this.getManager(tx);
 
+    const skuIds = Array.from(new Set(input.map((row) => row.skuId).filter(Boolean)));
+    const { skuById, attributesBySkuId } = await this.getSkusWithAttributes(manager, skuIds);
+
     const saved = await manager.getRepository(SaleOrderItemComponentEntity).save(
-      input.map((row) => ({
-        saleOrderItemId: row.saleOrderItemId,
-        skuId: row.skuId,
-        referencePackItemId: row.referencePackItemId ?? null,
-        quantity: row.quantity,
-        unitPrice: row.unitPrice,
-        total: row.total,
-      })),
+      input.map((row) => {
+        const sku = skuById.get(row.skuId);
+        if (!sku) throw new BadRequestException("SKU no encontrado para componente");
+        return {
+          saleOrderItemId: row.saleOrderItemId,
+          skuId: row.skuId,
+          referencePackItemId: row.referencePackItemId ?? null,
+          skuNameSnapshot: sku.name,
+          backendSkuSnapshot: sku.backendSku,
+          customSkuSnapshot: sku.customSku ?? null,
+          barcodeSnapshot: sku.barcode ?? null,
+          imageSnapshot: sku.image ?? null,
+          productIdSnapshot: sku.productId,
+          attributesSnapshot: attributesBySkuId.get(sku.id) ?? [],
+          quantity: row.quantity,
+          unitPrice: row.unitPrice,
+          total: row.total,
+        };
+      }),
     );
 
     return saved.map((row) => this.toDomain(row));

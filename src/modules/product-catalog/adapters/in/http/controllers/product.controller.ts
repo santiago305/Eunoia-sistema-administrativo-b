@@ -186,6 +186,12 @@ const PRODUCT_EXPORT_LABELS: Record<string, string> = {
     }
 
     @RequireAnyPermissionGroups(["products.view_detail", "materials.view_detail", "catalog.read"])
+    @Get(":id/pack-impact")
+    async getPackImpact(@Param("id", ParseUUIDPipe) id: string) {
+      return this.updateProduct.getPackImpact(id);
+    }
+
+    @RequireAnyPermissionGroups(["products.view_detail", "materials.view_detail", "catalog.read"])
     @Get(":id/detail")
     getDetail(@Param("id", ParseUUIDPipe) id: string, @Query("warehouseId") warehouseId?: string) {
       return this.getProductDetail.execute(id, warehouseId);

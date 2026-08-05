@@ -1,5 +1,6 @@
 import { ProductCatalogProduct } from "../entities/product";
 import { ProductCatalogProductType } from "../value-objects/product-type";
+import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 
 export const PRODUCT_CATALOG_PRODUCT_REPOSITORY = Symbol("PRODUCT_CATALOG_PRODUCT_REPOSITORY");
 
@@ -67,6 +68,7 @@ export interface ProductCatalogProductRepository {
   update(
     id: string,
     patch: Partial<Pick<ProductCatalogProduct, "name" | "description" | "type" | "brand" | "baseUnitId" | "isActive" | "isDeleted">>,
+    tx?: TransactionContext,
   ): Promise<ProductCatalogProduct | null>;
   findById(id: string): Promise<ProductCatalogProduct | null>;
   findByNameAndType(

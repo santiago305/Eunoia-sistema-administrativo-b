@@ -201,6 +201,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         id: item.id,
         saleOrderId: item.saleOrderId,
         referencePackId: item.referencePackId ?? null,
+        packNameSnapshot: item.packNameSnapshot ?? null,
         description: item.description ?? null,
         quantity: Number(item.quantity ?? 0),
         unitPrice: Number(item.unitPrice ?? 0),
@@ -1189,8 +1190,8 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
           .map((component) => {
             const sku = skuById.get(component.skuId);
             return {
-              customSku: sku?.customSku ?? null,
-              name: sku?.name ?? null,
+              customSku: component.customSkuSnapshot ?? sku?.customSku ?? null,
+              name: component.skuNameSnapshot ?? sku?.name ?? null,
               quantity: Number(component.quantity ?? 0),
             };
           }),
@@ -1313,6 +1314,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         items: (row.items ?? []).map((item) => ({
           id: item.id,
           referencePackId: item.referencePackId ?? null,
+          packNameSnapshot: item.packNameSnapshot ?? null,
           description: item.description ?? null,
           quantity: Number(item.quantity ?? 0),
           unitPrice: Number(item.unitPrice ?? 0),
@@ -1889,12 +1891,12 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       saleOrderItemId: component.saleOrderItemId,
       sku: {
         id: sku.id,
-        productId: sku.productId,
-        name: sku.name,
-        backendSku: sku.backendSku,
-        customSku: sku.customSku ?? null,
-        barcode: sku.barcode ?? null,
-        image: sku.image ?? null,
+        productId: component.productIdSnapshot ?? sku.productId,
+        name: component.skuNameSnapshot ?? sku.name,
+        backendSku: component.backendSkuSnapshot ?? sku.backendSku,
+        customSku: component.customSkuSnapshot ?? sku.customSku ?? null,
+        barcode: component.barcodeSnapshot ?? sku.barcode ?? null,
+        image: component.imageSnapshot ?? sku.image ?? null,
         price: Number(sku.price ?? 0),
         cost: Number(sku.cost ?? 0),
         isSellable: Boolean(sku.isSellable),
@@ -1912,7 +1914,9 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
             code: unit.code,
           }
         : null,
-      attributes: attributesBySkuId.get(sku.id) ?? [],
+      attributes: component.attributesSnapshot?.length
+        ? component.attributesSnapshot
+        : attributesBySkuId.get(sku.id) ?? [],
       stockItemId: stockItemBySkuId.get(sku.id)?.id ?? null,
       referencePackItemId: component.referencePackItemId ?? null,
       quantity: Number(component.quantity ?? 0),
@@ -2075,6 +2079,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     items: items.map((item) => ({
       id: item.id,
       referencePackId: item.referencePackId ?? null,
+      packNameSnapshot: item.packNameSnapshot ?? null,
       description: item.description ?? null,
       quantity: Number(item.quantity ?? 0),
       unitPrice: Number(item.unitPrice ?? 0),

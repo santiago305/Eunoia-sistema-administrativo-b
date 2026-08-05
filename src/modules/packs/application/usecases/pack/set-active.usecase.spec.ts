@@ -3,6 +3,7 @@ import { Test } from "@nestjs/testing";
 import { NotFoundException } from "@nestjs/common";
 import { UNIT_OF_WORK } from "src/shared/domain/ports/unit-of-work.port";
 import { PACK_REPOSITORY } from "src/modules/packs/domain/ports/pack.repository";
+import { PACK_ITEM_REPOSITORY } from "src/modules/packs/domain/ports/pack-item.repository";
 import { SetPackActiveUsecase } from "./set-active.usecase";
 
 describe("SetPackActiveUsecase", () => {
@@ -17,6 +18,7 @@ describe("SetPackActiveUsecase", () => {
         SetPackActiveUsecase,
         { provide: UNIT_OF_WORK, useValue: { runInTransaction: (work: any) => work({}) } },
         { provide: PACK_REPOSITORY, useValue: packRepo },
+        { provide: PACK_ITEM_REPOSITORY, useValue: { listByPackId: jest.fn(), findInvalidSellableSkuIds: jest.fn() } },
       ],
     }).compile();
 

@@ -44,6 +44,85 @@ export class PackTypeormRepository implements PackRepository {
     });
   }
 
+  async listActiveByProductId(
+    productId: string,
+    tx?: TransactionContext,
+  ): Promise<Array<{ id: string; description: string; affectedItems: number }>> {
+    return this.getRepo(tx)
+      .createQueryBuilder("pack")
+      .innerJoin(PackItemEntity, "item", "item.pack_id = pack.id")
+      .innerJoin(ProductCatalogSkuEntity, "sku", "sku.sku_id = item.sku_id")
+      .where("pack.is_active = true")
+      .andWhere("sku.product_id = :productId", { productId })
+      .select("pack.id", "id")
+      .addSelect("pack.description", "description")
+      .addSelect("COUNT(item.id)", "affectedItems")
+      .groupBy("pack.id")
+      .addGroupBy("pack.description")
+      .orderBy("pack.description", "ASC")
+      .getRawMany<{ id: string; description: string; affectedItems: string }>()
+      .then((rows) => rows.map((row) => ({
+        id: row.id,
+        description: row.description,
+        affectedItems: Number(row.affectedItems),
+      })));
+  }
+
+  async listActiveBySkuId(
+    skuId: string,
+    tx?: TransactionContext,
+  ): Promise<Array<{ id: string; description: string }>> {
+    return this.getRepo(tx)
+      .createQueryBuilder("pack")
+      .innerJoin(PackItemEntity, "item", "item.pack_id = pack.id")
+      .where("pack.is_active = true")
+      .andWhere("item.sku_id = :skuId", { skuId })
+      .select("pack.id", "id")
+      .addSelect("pack.description", "description")
+      .orderBy("pack.description", "ASC")
+      .getRawMany<{ id: string; description: string }>();
+  }
+
+  async removeProductFromActivePacks(
+    productId: string,
+    tx?: TransactionContext,
+  ): Promise<Array<{ id: string; description: string; remainingItems: number; isActive: boolean }>> {
+    const manager = this.getManager(tx);
+    const affected = await this.listActiveByProductId(productId, tx);
+    if (!affected.length) return [];
+
+    await manager.query(
+      `DELETE FROM pack_items item
+       USING pc_skus sku, packs pack
+       WHERE sku.sku_id = item.sku_id
+         AND pack.id = item.pack_id
+         AND pack.is_active = true
+         AND sku.product_id = $1`,
+      [productId],
+    );
+
+    const results: Array<{ id: string; description: string; remainingItems: number; isActive: boolean }> = [];
+    for (const pack of affected) {
+      const remaining = await manager.getRepository(PackItemEntity).find({ where: { packId: pack.id } });
+      const total = remaining.reduce(
+        (sum, item) => sum + Number(item.quantity ?? 0) * Number(item.price ?? 0),
+        0,
+      );
+      const isActive = remaining.length > 0;
+      await manager.getRepository(PackEntity).update(
+        { id: pack.id },
+        { total: Math.round(total * 100) / 100, isActive },
+      );
+      results.push({
+        id: pack.id,
+        description: pack.description,
+        remainingItems: remaining.length,
+        isActive,
+      });
+    }
+    return results;
+  }
+
   async findById(packId: string, tx?: TransactionContext): Promise<Pack | null> {
     const row = await this.getRepo(tx).findOne({ where: { id: packId } });
     return row ? this.toDomain(row) : null;

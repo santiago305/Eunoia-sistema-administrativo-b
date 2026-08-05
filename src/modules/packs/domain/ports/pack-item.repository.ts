@@ -4,6 +4,7 @@ import { PackItem } from "../entities/pack-item";
 export const PACK_ITEM_REPOSITORY = Symbol("PACK_ITEM_REPOSITORY");
 
 export interface PackItemRepository {
+  findInvalidSellableSkuIds(skuIds: string[], tx?: TransactionContext): Promise<string[]>;
   createMany(items: PackItem[], tx?: TransactionContext): Promise<void>;
   listByPackId(
     packId: string,

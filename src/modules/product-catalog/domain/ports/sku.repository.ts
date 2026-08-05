@@ -24,6 +24,7 @@ export interface ProductCatalogSkuRepository {
     patch: Partial<Pick<ProductCatalogSku, "name" | "barcode" | "image" | "price" | "cost" | "customSku" | "isSellable" | "isPurchasable" | "isManufacturable" | "isStockTracked" | "isActive">> & { attributes?: SkuAttributeInput[] },
   ): Promise<ProductCatalogSkuWithAttributes | null>;
   softDelete(id: string): Promise<boolean>;
+  softDeleteByProductId(productId: string, tx?: import("src/shared/domain/ports/unit-of-work.port").TransactionContext): Promise<number>;
   findById(id: string): Promise<ProductCatalogSkuWithAttributes | null>;
   list(params: {
     page?: number;

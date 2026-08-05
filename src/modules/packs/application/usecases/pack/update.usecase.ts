@@ -48,6 +48,11 @@ export class UpdatePackUsecase {
         throw new BadRequestException("No se puede repetir un SKU");
       }
 
+      const invalidSkuIds = await this.itemRepo.findInvalidSellableSkuIds?.(skuIds, tx) ?? [];
+      if (invalidSkuIds.length) {
+        throw new BadRequestException("El pack solo puede incluir productos y variantes activos");
+      }
+
       const computedCents = this.computeTotalCents(itemsReplace);
       const inputTotalCents = this.toCents(input.total);
       if (computedCents !== inputTotalCents) {

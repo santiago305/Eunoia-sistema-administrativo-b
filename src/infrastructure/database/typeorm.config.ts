@@ -106,6 +106,7 @@ import { BackfillSkuStockItems20260801000000 } from "./migrations/20260801000000
 import { ResetFinishedProductsCatalog20260803590000 } from "./migrations/20260803590000-reset-finished-products-catalog";
 import { ScopeProductNameUniquenessByType20260804000000 } from "./migrations/20260804000000-scope-product-name-uniqueness-by-type";
 import { AddSkuLogicalDeletion20260804010000 } from "./migrations/20260804010000-add-sku-logical-deletion";
+import { AddSaleOrderPackSnapshots20260804015000 } from "./migrations/20260804015000-add-sale-order-pack-snapshots";
 import { NormalizeRoleDescriptionUniqueness20260804020000 } from "./migrations/20260804020000-normalize-role-description-uniqueness";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
@@ -224,6 +225,7 @@ export const databaseMigrations = [
     ResetFinishedProductsCatalog20260803590000,
     ScopeProductNameUniquenessByType20260804000000,
     AddSkuLogicalDeletion20260804010000,
+    AddSaleOrderPackSnapshots20260804015000,
     NormalizeRoleDescriptionUniqueness20260804020000,
 ];
 

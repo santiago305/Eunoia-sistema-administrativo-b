@@ -198,7 +198,7 @@ export class CreateSaleOrderUsecase {
         }
 
         const pack = await this.packRepo.findByIdWithItems(referencePackId, tx);
-        if (!pack) {
+        if (!pack || pack.pack?.isActive === false) {
           throw new BadRequestException("Pack inválido");
         }
 

@@ -3,6 +3,7 @@ export class SaleOrderItem {
     public readonly id: string,
     public readonly saleOrderId: string,
     public readonly referencePackId: string | null,
+    public readonly packNameSnapshot: string | null,
     public readonly description: string | null,
     public readonly quantity: number,
     public readonly unitPrice: number,

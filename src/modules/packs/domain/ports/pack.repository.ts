@@ -27,6 +27,22 @@ export type PackWithItems = {
 };
 
 export interface PackRepository {
+  listActiveByProductId(
+    productId: string,
+    tx?: TransactionContext,
+  ): Promise<Array<{ id: string; description: string; affectedItems: number }>>;
+  listActiveBySkuId(
+    skuId: string,
+    tx?: TransactionContext,
+  ): Promise<Array<{ id: string; description: string }>>;
+  listActiveBySkuId(
+    skuId: string,
+    tx?: TransactionContext,
+  ): Promise<Array<{ id: string; description: string }>>;
+  removeProductFromActivePacks(
+    productId: string,
+    tx?: TransactionContext,
+  ): Promise<Array<{ id: string; description: string; remainingItems: number; isActive: boolean }>>;
   findById(packId: string, tx?: TransactionContext): Promise<Pack | null>;
   findByIdWithItems(
     packId: string,

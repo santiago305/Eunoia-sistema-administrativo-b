@@ -72,6 +72,7 @@ import { ListProductCatalogInventoryLedgerMovements } from "./application/usecas
 import { WarehouseEntity } from "../warehouses/adapters/out/persistence/typeorm/entities/warehouse";
 import { User as UserEntity } from "../users/adapters/out/persistence/typeorm/entities/user.entity";
 import { AccessControlModule } from "src/modules/access-control/infrastructure/access-control.module";
+import { PacksModule } from "src/modules/packs/packs.module";
 
 @Module({
   imports: [
@@ -98,6 +99,7 @@ import { AccessControlModule } from "src/modules/access-control/infrastructure/a
       UserEntity,
     ]),
     AccessControlModule,
+    PacksModule,
   ],
   controllers: [
     ProductCatalogProductController,

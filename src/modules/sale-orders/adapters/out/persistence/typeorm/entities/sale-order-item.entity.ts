@@ -13,6 +13,9 @@ export class SaleOrderItemEntity {
   @Column({ name: "reference_pack_id", type: "uuid", nullable: true })
   referencePackId?: string | null;
 
+  @Column({ name: "pack_name_snapshot", type: "varchar", length: 255, nullable: true })
+  packNameSnapshot?: string | null;
+
   @Column({ name: "description", type: "varchar", length: 255, nullable: true })
   description?: string | null;
 

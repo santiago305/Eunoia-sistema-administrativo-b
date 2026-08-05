@@ -31,4 +31,8 @@ export class UpdateProductCatalogProductDto {
   @IsOptional()
   @IsBoolean()
   isDeleted?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  removeFromPacks?: boolean;
 }

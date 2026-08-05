@@ -8,6 +8,7 @@ export interface SaleOrderItemRepository {
     input: Array<{
       saleOrderId: string;
       referencePackId?: string | null;
+      packNameSnapshot?: string | null;
       description?: string | null;
       quantity: number;
       unitPrice: number;
