@@ -31,6 +31,12 @@ export class CreateProductCatalogEquivalence {
 
     const product = await this.productRepo.findById(input.productId);
     if (!product) throw new NotFoundException("Product not found");
+    if (!product.baseUnitId) {
+      throw new BadRequestException("El producto debe tener una unidad base para crear equivalencias");
+    }
+    if (input.toUnitId !== product.baseUnitId) {
+      throw new BadRequestException("La unidad destino debe ser la unidad base del producto");
+    }
     const fromUnit = await this.unitRepo.findById(input.fromUnitId);
     if (!fromUnit) throw new NotFoundException("From unit not found");
     const toUnit = await this.unitRepo.findById(input.toUnitId);

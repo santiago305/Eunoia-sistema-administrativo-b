@@ -50,13 +50,13 @@ describe("PurchaseUnitConversionService", () => {
     );
   });
 
-  it("devuelve 1000 cuando se compra KGM y la equivalencia guardada es GRM -> KGM (factor 1000)", async () => {
+  it("devuelve 1000 cuando se compra KGM y la equivalencia guardada es KGM -> GRM", async () => {
     equivalenceRepo.listByProductId.mockResolvedValueOnce([
       {
         id: "eq-1",
         productId: ids.productId,
-        fromUnitId: ids.unitGrmId,
-        toUnitId: ids.unitKgmId,
+        fromUnitId: ids.unitKgmId,
+        toUnitId: ids.unitGrmId,
         factor: 1000,
       },
     ]);

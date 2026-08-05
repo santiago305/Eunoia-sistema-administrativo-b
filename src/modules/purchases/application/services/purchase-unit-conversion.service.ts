@@ -102,20 +102,6 @@ export class PurchaseUnitConversionService {
       };
     }
 
-    const inverse = equivalences.find(
-      (row) => row.fromUnitId === baseUnit.id && row.toUnitId === fromUnit!.id,
-    );
-    if (inverse && Number(inverse.factor) > 0) {
-      // Regla de negocio histórica:
-      // si la equivalencia se almacena como BASE -> COMPRA (ej: GRM -> KGM con factor 1000),
-      // al comprar en KGM debemos devolver 1000 para convertir a la unidad base GRM.
-      return {
-        factor: Number(inverse.factor),
-        unitBase: fromUnit.code,
-        equivalence: `${fromUnit.code}->${baseUnit.code}`,
-      };
-    }
-
     throw new BadRequestException(
       `No existe equivalencia para convertir ${fromUnit.code} a ${baseUnit.code} en este producto`,
     );

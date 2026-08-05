@@ -9,6 +9,10 @@ import { normalizeProductName } from "../../domain/value-objects/product-name";
 import { PACK_REPOSITORY, PackRepository } from "src/modules/packs/domain/ports/pack.repository";
 import { PRODUCT_CATALOG_SKU_REPOSITORY, ProductCatalogSkuRepository } from "../../domain/ports/sku.repository";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
+import {
+  PRODUCT_CATALOG_EQUIVALENCE_REPOSITORY,
+  ProductCatalogEquivalenceRepository,
+} from "../../domain/ports/equivalence.repository";
 
 @Injectable()
 export class UpdateProductCatalogProduct {
@@ -17,6 +21,8 @@ export class UpdateProductCatalogProduct {
     private readonly repo: ProductCatalogProductRepository,
     @Inject(PRODUCT_CATALOG_SKU_REPOSITORY)
     private readonly skuRepo: ProductCatalogSkuRepository,
+    @Inject(PRODUCT_CATALOG_EQUIVALENCE_REPOSITORY)
+    private readonly equivalenceRepo: ProductCatalogEquivalenceRepository,
     @Inject(PACK_REPOSITORY)
     private readonly packRepo: PackRepository,
     @Inject(UNIT_OF_WORK)
@@ -51,6 +57,20 @@ export class UpdateProductCatalogProduct {
       : { ...productPatch, name: normalizeProductName(productPatch.name).displayName };
 
     if (!productPatch.isDeleted) {
+      if (productPatch.baseUnitId !== undefined) {
+        const product = await this.repo.findById(id);
+        if (!product) throw new NotFoundException(new ProductCatalogProductNotFoundError().message);
+
+        if (productPatch.baseUnitId !== product.baseUnitId) {
+          const equivalences = await this.equivalenceRepo.listByProductId(id);
+          if (equivalences.length > 0) {
+            throw new ConflictException(
+              "No se puede cambiar la unidad base mientras el producto tenga equivalencias registradas",
+            );
+          }
+        }
+      }
+
       const updated = await this.repo.update(id, normalizedPatch);
       if (!updated) throw new NotFoundException(new ProductCatalogProductNotFoundError().message);
       return updated;

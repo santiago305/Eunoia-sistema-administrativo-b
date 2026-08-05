@@ -108,6 +108,7 @@ import { ScopeProductNameUniquenessByType20260804000000 } from "./migrations/202
 import { AddSkuLogicalDeletion20260804010000 } from "./migrations/20260804010000-add-sku-logical-deletion";
 import { AddSaleOrderPackSnapshots20260804015000 } from "./migrations/20260804015000-add-sale-order-pack-snapshots";
 import { NormalizeRoleDescriptionUniqueness20260804020000 } from "./migrations/20260804020000-normalize-role-description-uniqueness";
+import { AlignProductEquivalencesToBaseUnit20260805000000 } from "./migrations/20260805000000-align-product-equivalences-to-base-unit";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -227,6 +228,7 @@ export const databaseMigrations = [
     AddSkuLogicalDeletion20260804010000,
     AddSaleOrderPackSnapshots20260804015000,
     NormalizeRoleDescriptionUniqueness20260804020000,
+    AlignProductEquivalencesToBaseUnit20260805000000,
 ];
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({
