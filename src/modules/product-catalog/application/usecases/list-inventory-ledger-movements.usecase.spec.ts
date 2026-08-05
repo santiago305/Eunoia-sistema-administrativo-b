@@ -8,7 +8,8 @@ describe("ListProductCatalogInventoryLedgerMovements", () => {
     const searchStorage = {
       touchRecentSearch: jest.fn(),
     };
-    const usecase = new ListProductCatalogInventoryLedgerMovements(repo as any, searchStorage as any);
+    const skuRepo = { findById: jest.fn() };
+    const usecase = new ListProductCatalogInventoryLedgerMovements(repo as any, skuRepo as any, searchStorage as any);
 
     await usecase.execute({
       page: 1,
@@ -28,7 +29,8 @@ describe("ListProductCatalogInventoryLedgerMovements", () => {
   it("maps warehouse, sku and direction filters to the kardex query", async () => {
     const repo = { listMovementsPaged: jest.fn().mockResolvedValue({ items: [], total: 0 }) };
     const searchStorage = { touchRecentSearch: jest.fn() };
-    const usecase = new ListProductCatalogInventoryLedgerMovements(repo as any, searchStorage as any);
+    const skuRepo = { findById: jest.fn() };
+    const usecase = new ListProductCatalogInventoryLedgerMovements(repo as any, skuRepo as any, searchStorage as any);
 
     await usecase.execute({
       filters: [
@@ -41,5 +43,26 @@ describe("ListProductCatalogInventoryLedgerMovements", () => {
     expect(repo.listMovementsPaged).toHaveBeenCalledWith(expect.objectContaining({
       warehouseIdsIn: ["warehouse-a"], skuIdsIn: ["sku-a"], directionIn: ["OUT"],
     }));
+  });
+
+  it("adds SKU attributes to movement rows", async () => {
+    const repo = {
+      listMovementsPaged: jest.fn().mockResolvedValue({
+        items: [{ sku: { id: "sku-a", name: "Arcilla" } }],
+        total: 1,
+      }),
+    };
+    const skuRepo = {
+      findById: jest.fn().mockResolvedValue({
+        sku: { id: "sku-a" },
+        attributes: [{ code: "variant", value: "Rosada" }],
+      }),
+    };
+    const searchStorage = { touchRecentSearch: jest.fn() };
+    const usecase = new ListProductCatalogInventoryLedgerMovements(repo as any, skuRepo as any, searchStorage as any);
+
+    const result = await usecase.execute({});
+
+    expect(result.items[0].sku.attributes).toEqual([{ code: "variant", value: "Rosada" }]);
   });
 });

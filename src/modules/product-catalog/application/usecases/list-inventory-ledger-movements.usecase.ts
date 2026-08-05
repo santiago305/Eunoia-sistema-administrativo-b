@@ -19,12 +19,19 @@ import {
   InventoryLedgerSearchOperators,
 } from "../dtos/inventory-ledger-search/inventory-ledger-search-snapshot";
 import { parseInventoryRangeDate } from "../support/inventory-date-range";
+import {
+  PRODUCT_CATALOG_SKU_REPOSITORY,
+  ProductCatalogSkuRepository,
+} from "../../domain/ports/sku.repository";
 
 @Injectable()
 export class ListProductCatalogInventoryLedgerMovements {
   constructor(
     @Inject(PRODUCT_CATALOG_INVENTORY_LEDGER_REPOSITORY)
     private readonly repo: ProductCatalogInventoryLedgerRepository,
+
+    @Inject(PRODUCT_CATALOG_SKU_REPOSITORY)
+    private readonly skuRepo: ProductCatalogSkuRepository,
 
     @Inject(LISTING_SEARCH_STORAGE)
     private readonly searchStorage: ListingSearchStorageRepository,
@@ -108,7 +115,24 @@ export class ListProductCatalogInventoryLedgerMovements {
       });
     }
 
-    return response;
+    const skuIds = Array.from(new Set(response.items.map((item) => item.sku.id)));
+    const skuDetails = await Promise.all(skuIds.map((skuId) => this.skuRepo.findById(skuId)));
+    const attributesBySkuId = new Map(
+      skuDetails
+        .filter((detail) => detail?.sku.id)
+        .map((detail) => [detail!.sku.id!, detail!.attributes ?? []]),
+    );
+
+    return {
+      ...response,
+      items: response.items.map((item) => ({
+        ...item,
+        sku: {
+          ...item.sku,
+          attributes: attributesBySkuId.get(item.sku.id) ?? [],
+        },
+      })),
+    };
   }
 
   private parseDate(value: string | undefined, fieldName: string): Date | undefined {
