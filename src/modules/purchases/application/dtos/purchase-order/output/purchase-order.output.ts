@@ -6,6 +6,7 @@ import { PurchaseType } from "src/modules/purchases/domain/value-objects/purchas
 import { ReceptionStatus } from "src/modules/purchases/domain/value-objects/reception-status";
 import { VoucherDocType } from "src/modules/purchases/domain/value-objects/voucher-doc-type";
 import { PaymentOutput } from "src/modules/payments/application/dtos/payment/output/payment.output";
+import { PurchaseOrderItemSummary } from "src/modules/purchases/domain/ports/purchase-order-item.port.repository";
 
 export interface PurchaseOrderOutput {
   poId: string;
@@ -49,4 +50,5 @@ export interface PurchaseOrderOutput {
   approvalStatus?: "NOT_REQUIRED" | "PENDING" | "APPROVED" | "REJECTED";
   processingApprovalStatus?: "PENDING" | "APPROVED" | "REJECTED" | null;
   imageProdution?: string[];
+  itemSummary?: PurchaseOrderItemSummary;
 }

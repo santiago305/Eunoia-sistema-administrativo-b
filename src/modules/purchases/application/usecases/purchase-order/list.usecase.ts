@@ -11,6 +11,7 @@ import {
   sanitizePurchaseSearchSnapshot,
 } from "../../support/purchase-search.utils";
 import { AccessControlService } from "src/modules/access-control/application/services/access-control.service";
+import { PURCHASE_ORDER_ITEM, PurchaseOrderItemRepository } from "src/modules/purchases/domain/ports/purchase-order-item.port.repository";
 
 const PURCHASE_SEARCH_TABLE_KEY = "purchase-orders";
 
@@ -18,6 +19,8 @@ export class ListPurchaseOrdersUsecase {
   constructor(
     @Inject(PURCHASE_ORDER)
     private readonly purchaseRepo: PurchaseOrderRepository,
+    @Inject(PURCHASE_ORDER_ITEM)
+    private readonly purchaseItemRepo: PurchaseOrderItemRepository,
     @Inject(PURCHASE_SEARCH)
     private readonly purchaseSearchRepo: PurchaseSearchRepository,
     private readonly accessControlService: AccessControlService,
@@ -55,6 +58,10 @@ export class ListPurchaseOrdersUsecase {
       canViewAll,
       purchaseIdsWhitelist: input.purchaseIdsWhitelist,
     });
+    const itemSummaries = await this.purchaseItemRepo.getSummariesByPurchaseIds(
+      items.map((row) => row.order.poId),
+      2,
+    );
 
     if (input.requestedBy && hasPurchaseSearchCriteria(snapshot)) {
       await this.purchaseSearchRepo.touchRecentSearch({
@@ -78,6 +85,7 @@ export class ListPurchaseOrdersUsecase {
           createdByUserId: canViewCreatorInfo ? row.createdByUserId : undefined,
           approvalStatus: row.approvalStatus ?? "NOT_REQUIRED",
           processingApprovalStatus: row.processingApprovalStatus ?? null,
+          itemSummary: itemSummaries.get(row.order.poId) ?? { total: 0, items: [] },
         };
       });
 
