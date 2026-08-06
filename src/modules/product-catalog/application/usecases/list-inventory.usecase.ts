@@ -110,15 +110,23 @@ export class ListProductCatalogInventory {
       });
     }
 
-    return {
-      items: items.map((row) => ({
-        sku: skuMap.get(row.skuId) ?? null,
+    const resolvedItems = items.flatMap((row) => {
+      const sku = skuMap.get(row.skuId);
+      if (!sku) return [];
+
+      return [{
+        stockItemId: row.stockItemId,
+        sku,
         warehouseId: row.warehouseId,
         warehouseName: row.warehouseName,
         onHand: row.onHand,
         reserved: row.reserved,
         available: row.available,
-      })),
+      }];
+    });
+
+    return {
+      items: resolvedItems,
       total,
       page: shouldPaginate ? page : undefined,
       limit: shouldPaginate ? limit : undefined,

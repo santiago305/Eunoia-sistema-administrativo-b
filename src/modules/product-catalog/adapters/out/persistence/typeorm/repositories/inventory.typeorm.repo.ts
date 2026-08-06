@@ -270,7 +270,9 @@ export class ProductCatalogInventoryTypeormRepository implements ProductCatalogI
       .innerJoin(ProductCatalogStockItemEntity, "si", "si.stock_item_id = i.stock_item_id")
       .innerJoin(ProductCatalogSkuEntity, "s", "s.sku_id = si.sku_id")
       .innerJoin(ProductCatalogProductEntity, "p", "p.product_id = s.product_id")
-      .innerJoin("warehouses", "w", "w.id = i.warehouse_id");
+      .innerJoin("warehouses", "w", "w.id = i.warehouse_id")
+      .andWhere("s.is_deleted = false")
+      .andWhere("p.is_deleted = false");
 
     const skuIdsIn = Array.from(new Set([...(input.skuIdsIn ?? []), ...(input.skuId ? [input.skuId] : [])]));
     if (skuIdsIn.length) {
