@@ -26,6 +26,7 @@ export interface ProductCatalogSkuRepository {
   softDelete(id: string): Promise<boolean>;
   softDeleteByProductId(productId: string, tx?: import("src/shared/domain/ports/unit-of-work.port").TransactionContext): Promise<number>;
   findById(id: string): Promise<ProductCatalogSkuWithAttributes | null>;
+  findByIds(ids: string[]): Promise<ProductCatalogSkuWithAttributes[]>;
   list(params: {
     page?: number;
     limit?: number;

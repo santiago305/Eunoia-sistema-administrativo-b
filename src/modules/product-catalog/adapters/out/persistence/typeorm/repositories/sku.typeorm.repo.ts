@@ -248,6 +248,29 @@ export class ProductCatalogSkuTypeormRepository implements ProductCatalogSkuRepo
     return row ? this.toOutput(row) : null;
   }
 
+  async findByIds(ids: string[]): Promise<ProductCatalogSkuWithAttributes[]> {
+    const uniqueIds = Array.from(new Set(ids.map((id) => id?.trim()).filter(Boolean)));
+    if (!uniqueIds.length) return [];
+
+    const rows = await this.repo
+      .createQueryBuilder("s")
+      .leftJoinAndSelect("s.product", "p")
+      .leftJoinAndSelect("p.baseUnit", "bu")
+      .where("s.id IN (:...ids)", { ids: uniqueIds })
+      .andWhere("s.is_deleted = false")
+      .getMany();
+    const skuIds = rows.map((row) => row.id);
+    const attributes = await this.loadAttributes(skuIds);
+    const stockItemBySkuId = await this.loadStockItemIds(skuIds);
+
+    return rows.map((row) => ({
+      sku: this.toDomain(row),
+      unit: row.product?.baseUnit,
+      attributes: attributes.get(row.id) ?? [],
+      stockItemId: stockItemBySkuId.get(row.id) ?? null,
+    }));
+  }
+
   async findByCustomSku(customSku: string): Promise<ProductCatalogSkuWithAttributes | null> {
     const normalizedCustomSku = customSku.trim();
     if (!normalizedCustomSku) return null;
