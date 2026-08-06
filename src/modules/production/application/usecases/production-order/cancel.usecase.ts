@@ -62,6 +62,7 @@ export class CancelProductionOrder {
               stockItemId: line.stockItemId,
               locationId: line.locationId,
               qty: line.qty,
+              materialLabel: line.materialLabel,
             })),
             reserveMode: false,
           });

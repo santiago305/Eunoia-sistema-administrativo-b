@@ -96,6 +96,7 @@ export class StartProductionOrder {
               stockItemId: line.stockItemId,
               locationId: line.locationId,
               qty: line.qty,
+              materialLabel: line.materialLabel,
             })),
             reserveMode: true,
           });

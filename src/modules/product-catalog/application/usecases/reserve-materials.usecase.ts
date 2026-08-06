@@ -1,6 +1,5 @@
 import { BadRequestException, Inject, Injectable } from "@nestjs/common";
 import { ProductCatalogInsufficientReservationError } from "../errors/product-catalog-insufficient-reservation.error";
-import { ProductCatalogInsufficientStockError } from "../errors/product-catalog-insufficient-stock.error";
 import {
   PRODUCT_CATALOG_INVENTORY_REPOSITORY,
   ProductCatalogInventoryRepository,
@@ -15,7 +14,7 @@ export class ReserveProductCatalogMaterials {
 
   async execute(params: {
     warehouseId: string;
-    consumption: Array<{ stockItemId: string; locationId?: string; qty: number }>;
+    consumption: Array<{ stockItemId: string; locationId?: string; qty: number; materialLabel?: string }>;
     reserveMode?: boolean;
   }) {
     for (const line of params.consumption) {
@@ -30,7 +29,11 @@ export class ReserveProductCatalogMaterials {
 
       if (params.reserveMode) {
         if (!snapshot || available < line.qty) {
-          throw new BadRequestException(new ProductCatalogInsufficientStockError().message);
+          const material = line.materialLabel?.trim() || "Materia prima sin identificar";
+          const onHand = snapshot?.onHand ?? 0;
+          throw new BadRequestException(
+            `Stock insuficiente para ${material}. Requerido: ${formatQuantity(line.qty)}. Stock: ${formatQuantity(onHand)}. Reservado: ${formatQuantity(reserved)}. Disponible: ${formatQuantity(available)}.`,
+          );
         }
       } else {
         if (reserved < line.qty) {
@@ -48,4 +51,8 @@ export class ReserveProductCatalogMaterials {
       });
     }
   }
+}
+
+function formatQuantity(value: number) {
+  return Number.isInteger(value) ? String(value) : Number(value.toFixed(6)).toString();
 }

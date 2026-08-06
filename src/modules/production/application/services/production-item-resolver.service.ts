@@ -19,6 +19,7 @@ export interface ResolvedConsumptionMaterial {
   stockItemId: string;
   skuId?: string;
   quantity: number;
+  materialLabel: string;
 }
 
 @Injectable()
@@ -75,13 +76,24 @@ export class ProductionItemResolverService {
 
     return Promise.all(
       activeRecipe.items.map(async (recipeItem) => {
-        const stockItem = await this.skuStockItemRepo.findBySkuId(recipeItem.materialSkuId);
+        const [stockItem, skuInfo] = await Promise.all([
+          this.skuStockItemRepo.findBySkuId(recipeItem.materialSkuId),
+          this.skuRepo.findById(recipeItem.materialSkuId),
+        ]);
         if (!stockItem?.id) throw new NotFoundException("Stock item de materia prima sku no encontrado");
+        const attributeValues = (skuInfo?.attributes ?? [])
+          .map((attribute) => attribute.value?.trim())
+          .filter((value): value is string => Boolean(value));
+        const materialLabel = Array.from(new Set([
+          skuInfo?.sku.name?.trim() || "Materia prima",
+          ...attributeValues,
+        ])).join(" ");
         return {
           mode: "sku" as const,
           stockItemId: stockItem.id,
           skuId: recipeItem.materialSkuId,
           quantity: recipeItem.quantity * quantity,
+          materialLabel,
         };
       }),
     );

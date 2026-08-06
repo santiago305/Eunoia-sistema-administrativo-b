@@ -11,6 +11,7 @@ export interface RecipeConsumptionLine {
   locationId?: string;
   qty: number;
   wasteQty?: number;
+  materialLabel?: string;
 }
 
 @Injectable()
@@ -49,6 +50,7 @@ export class BuildConsumptionFromRecipesUseCase {
             mode: material.mode,
             locationId,
             qty: material.quantity,
+            materialLabel: material.materialLabel,
           });
         }
       }
