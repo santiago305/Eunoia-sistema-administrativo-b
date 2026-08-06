@@ -111,6 +111,7 @@ import { NormalizeRoleDescriptionUniqueness20260804020000 } from "./migrations/2
 import { AlignProductEquivalencesToBaseUnit20260805000000 } from "./migrations/20260805000000-align-product-equivalences-to-base-unit";
 import { CreateInventoryAlertPolicies20260805010000 } from "./migrations/20260805010000-create-inventory-alert-policies";
 import { AddProductionDefaultWarehouse20260805020000 } from "./migrations/20260805020000-add-production-default-warehouse";
+import { AddProductionEvidenceStatus20260806090000 } from "./migrations/20260806090000-add-production-evidence-status";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -233,6 +234,7 @@ export const databaseMigrations = [
     AlignProductEquivalencesToBaseUnit20260805000000,
     CreateInventoryAlertPolicies20260805010000,
     AddProductionDefaultWarehouse20260805020000,
+    AddProductionEvidenceStatus20260806090000,
 ];
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({
