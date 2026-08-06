@@ -49,6 +49,33 @@ export class CreateFromImportPreviewUseCase {
     const errors: Array<{ rowNumber: number; message: string }> = [];
     const createdRows: CreateSaleOrdersFromImportPreviewOutput["rows"] = [];
 
+    const unknownProductErrors: Array<{ rowNumber: number; message: string }> = [];
+
+    for (let index = 0; index < (input.rows ?? []).length; index++) {
+      const rowNumber = index + 2;
+      const normalized = await this.importRowNormalizer.normalize(input.rows[index] ?? {}, rowNumber);
+      if (!normalized.ok) continue;
+
+      try {
+        await this.skuResolver.resolveOrCreateSkus(normalized.row.parsedSkus);
+      } catch (error) {
+        unknownProductErrors.push({
+          rowNumber,
+          message: error instanceof Error ? error.message : "Producto no registrado",
+        });
+      }
+    }
+
+    if (unknownProductErrors.length > 0) {
+      const details = unknownProductErrors
+        .map((error) => `fila ${error.rowNumber}: ${error.message}`)
+        .join(" | ");
+
+      throw new BadRequestException(
+        `No se puede importar el despacho porque existen productos no registrados. ${details}`,
+      );
+    }
+
     for (let index = 0; index < (input.rows ?? []).length; index++) {
       const rowNumber = index + 2;
       const cleanRow = input.rows[index] ?? {};

@@ -1,74 +1,48 @@
+import { BadRequestException } from "@nestjs/common";
 import { SaleOrderImportSkuResolverService } from "./sale-order-import-sku-resolver.service";
 
 describe("SaleOrderImportSkuResolverService", () => {
-  it("creates imported skus without variant attributes through catalog sku creation", async () => {
-    const productRepo = {
-      findByNameAndType: jest.fn().mockResolvedValue(null),
-    };
-    const skuRepo = {
-      findByCustomSku: jest.fn().mockResolvedValue(null),
-    };
-    const stockItemRepo = {
-      findBySkuId: jest.fn().mockResolvedValue({ id: "stock-1" }),
-    };
-    const inventoryRepo = {
-      listByStockItemId: jest.fn().mockResolvedValue([]),
-      upsert: jest.fn(),
-    };
-    const createProductCatalogProduct = {
-      execute: jest.fn().mockResolvedValue({ id: "product-1" }),
-    };
-    const createProductCatalogSku = {
-      execute: jest.fn().mockResolvedValue({ sku: { id: "sku-1" } }),
-    };
-    const createProductCatalogStockItem = {
-      execute: jest.fn(),
-    };
-    const tx = {
-      manager: {
-        query: jest
-          .fn()
-          .mockResolvedValueOnce([{ id: "unit-1" }])
-          .mockResolvedValueOnce([]),
-      },
-    };
+  const product = {
+    rawCode: "PRODUCTO-EVA001",
+    productName: "PRODUCTO",
+    variantName: null,
+    skuName: "PRODUCTO",
+    customSku: "EVA001",
+    quantity: 1,
+  };
 
-    const service = new SaleOrderImportSkuResolverService(
-      productRepo as any,
-      skuRepo as any,
-      stockItemRepo as any,
-      inventoryRepo as any,
-      createProductCatalogProduct as any,
-      createProductCatalogSku as any,
-      createProductCatalogStockItem as any,
-    );
+  const buildService = (existingSku: any) => {
+    const skuRepo = { findByCustomSku: jest.fn().mockResolvedValue(existingSku) };
+    const stockItemRepo = { findBySkuId: jest.fn().mockResolvedValue({ id: "stock-1" }) };
+    const inventoryRepo = { listByStockItemId: jest.fn().mockResolvedValue([]), upsert: jest.fn() };
+    const createStockItem = { execute: jest.fn() };
 
-    await service.resolveOrCreateSkus(
-      [
-        {
-          rawCode: "EVA001",
-          productName: "Producto importado",
-          variantName: "Azufre",
-          skuName: "Producto importado Azufre",
-          customSku: "EVA001",
-          quantity: 1,
-        },
-      ],
-      tx as any,
-    );
+    return {
+      service: new SaleOrderImportSkuResolverService(
+        skuRepo as any,
+        stockItemRepo as any,
+        inventoryRepo as any,
+        createStockItem as any,
+      ),
+      skuRepo,
+      createStockItem,
+    };
+  };
 
-    expect(productRepo.findByNameAndType).toHaveBeenCalledWith(
-      "Producto importado",
-      "PRODUCT",
-    );
+  it("uses an existing custom SKU even when the imported product name differs", async () => {
+    const { service } = buildService({ sku: { id: "sku-1", productId: "product-1" } });
 
-    expect(createProductCatalogSku.execute).toHaveBeenCalledWith(
-      expect.objectContaining({
-        productId: "product-1",
-        customSku: "EVA001",
-        name: "Producto importado Azufre",
-        attributes: [],
-      }),
+    await expect(service.resolveOrCreateSkus([product])).resolves.toEqual([
+      expect.objectContaining({ productId: "product-1", skuId: "sku-1", customSku: "EVA001" }),
+    ]);
+  });
+
+  it("rejects an unknown custom SKU without creating catalog records", async () => {
+    const { service, createStockItem } = buildService(null);
+
+    await expect(service.resolveOrCreateSkus([product])).rejects.toEqual(
+      expect.any(BadRequestException),
     );
+    expect(createStockItem.execute).not.toHaveBeenCalled();
   });
 });

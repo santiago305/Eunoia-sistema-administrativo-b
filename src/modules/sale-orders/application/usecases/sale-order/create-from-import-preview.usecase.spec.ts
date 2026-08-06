@@ -1,4 +1,5 @@
 import "reflect-metadata";
+import { BadRequestException } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { UNIT_OF_WORK } from "src/shared/domain/ports/unit-of-work.port";
 import { SALE_ORDER_ITEM_COMPONENT_REPOSITORY } from "src/modules/sale-orders/domain/ports/sale-order-item-component.repository";
@@ -75,6 +76,38 @@ function makeImportUsecase(overrides: Record<string, any> = {}) {
 }
 
 describe("CreateFromImportPreviewUseCase", () => {
+  it("rejects the complete dispatch before creating orders when any SKU is unknown", async () => {
+    const runInTransaction = jest.fn();
+    const f = makeImportUsecase({
+      uow: { runInTransaction },
+      skuResolver: {
+        resolveOrCreateSkus: jest
+          .fn()
+          .mockRejectedValue(new BadRequestException("El SKU personalizado EVA999 no existe en el catalogo")),
+      },
+    });
+    f.normalizer.normalize.mockResolvedValue({
+      ok: true,
+      row: {
+        parsedSkus: [
+          {
+            rawCode: "PRODUCTO-EVA999",
+            productName: "PRODUCTO",
+            variantName: null,
+            skuName: "PRODUCTO",
+            customSku: "EVA999",
+            quantity: 1,
+          },
+        ],
+      },
+    });
+
+    await expect(
+      f.usecase.execute({ rows: [{ productCodes: "PRODUCTO-EVA999" }], userId: "user-1" }),
+    ).rejects.toThrow("No se puede importar el despacho porque existen productos no registrados");
+    expect(runInTransaction).not.toHaveBeenCalled();
+  });
+
   it("imports a single valid row", async () => {
     const uow = { runInTransaction: (work: any) => work({}) };
     const saleOrderRepo = { create: jest.fn() };

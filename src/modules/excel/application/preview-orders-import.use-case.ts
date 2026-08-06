@@ -152,6 +152,22 @@ export class PreviewOrdersImportUseCase {
       rows.map((row, index) => this.buildPreviewRow(row, index + 2)),
     );
 
+    const unknownProducts = previewRows.flatMap((row) =>
+      row.productResolution
+        .filter((product) => product.action === "SKU_NOT_FOUND")
+        .map((product) => ({ rowNumber: row.rowNumber, customSku: product.customSku })),
+    );
+
+    if (unknownProducts.length > 0) {
+      const details = unknownProducts
+        .map((product) => `fila ${product.rowNumber}: ${product.customSku}`)
+        .join(", ");
+
+      throw new BadRequestException(
+        `No se puede importar el despacho porque existen productos no registrados: ${details}. Registre todos los SKU antes de importar.`,
+      );
+    }
+
     const response = {
       userId,
       totalRows: rows.length,
@@ -685,10 +701,9 @@ export class PreviewOrdersImportUseCase {
         });
 
         const existingSku = await this.skuRepo.findByCustomSku(item.customSku);
-        const existingProduct = await this.productRepo.findByNameAndType(
-          item.productName,
-          ProductCatalogProductType.PRODUCT,
-        );
+        const existingProduct = existingSku
+          ? (existingSku as any).product ?? (existingSku as any).sku?.product ?? null
+          : null;
 
         this.debug("RESOLVE_PRODUCT_PREVIEW_ITEM_FOUND", {
           item,
@@ -698,10 +713,15 @@ export class PreviewOrdersImportUseCase {
 
         const output = {
           ...item,
-          productExists: Boolean(existingProduct),
+          productExists: Boolean(existingSku),
           skuExists: Boolean(existingSku),
-          productId: existingProduct
-            ? this.getEntityId((existingProduct as any).id, "preview.existingProduct.id")
+          productId: existingSku
+            ? this.getEntityId(
+                (existingSku as any).sku?.productId ??
+                  (existingSku as any).productId ??
+                  (existingProduct as any)?.id,
+                "preview.existingSku.productId",
+              )
             : null,
           skuId: existingSku
             ? this.getEntityId(
@@ -712,11 +732,7 @@ export class PreviewOrdersImportUseCase {
                 "preview.existingSku.id",
               )
             : null,
-          action: existingSku
-            ? "USE_EXISTING_SKU"
-            : existingProduct
-              ? "CREATE_SKU"
-              : "CREATE_PRODUCT_AND_SKU",
+          action: existingSku ? "USE_EXISTING_SKU" : "SKU_NOT_FOUND",
         };
 
         this.debug("RESOLVE_PRODUCT_PREVIEW_ITEM_END", {
