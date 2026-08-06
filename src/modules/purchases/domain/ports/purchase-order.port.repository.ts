@@ -26,6 +26,13 @@ export interface PurchaseOrderListRecord {
 export interface PurchaseOrderRepository{
     create(purchase: PurchaseOrder, tx?: TransactionContext):Promise<PurchaseOrder>;
 
+    getNextCorrelative(
+        documentType: VoucherDocType,
+        serie: string,
+        tx?: TransactionContext,
+        lockSequence?: boolean,
+    ): Promise<number>;
+
     findById(poId: string, tx?: TransactionContext): Promise<PurchaseOrder | null>;
     listAllByStatus(status: PurchaseOrderStatus, tx?: TransactionContext): Promise<PurchaseOrder[]>;
 

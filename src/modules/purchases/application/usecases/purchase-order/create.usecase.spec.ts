@@ -7,7 +7,7 @@ import { CreatePurchaseOrderUsecase } from "./create.usecase";
 
 describe("CreatePurchaseOrderUsecase", () => {
   let uow: { runInTransaction: jest.Mock };
-  let purchaseRepo: { create: jest.Mock };
+  let purchaseRepo: { create: jest.Mock; getNextCorrelative: jest.Mock };
   let itemRepo: { add: jest.Mock };
   let paymentDocRepo: { create: jest.Mock };
   let creditQuotaRepo: { findById: jest.Mock; create: jest.Mock };
@@ -25,6 +25,7 @@ describe("CreatePurchaseOrderUsecase", () => {
       runInTransaction: jest.fn(async (cb) => cb({})),
     };
     purchaseRepo = {
+      getNextCorrelative: jest.fn().mockResolvedValue(15),
       create: jest.fn().mockResolvedValue({
         poId: "po-1",
         serie: "F001",

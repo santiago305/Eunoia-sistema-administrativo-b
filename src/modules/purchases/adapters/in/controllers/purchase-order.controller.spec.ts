@@ -63,7 +63,7 @@ describe("PurchaseOrdersController", () => {
   const createOrder = { execute: jest.fn() };
   const listOrders = { execute: jest.fn() };
   const getSearchState = { execute: jest.fn() };
-  const purchaseRepo = { findById: jest.fn(), update: jest.fn() };
+  const purchaseRepo = { findById: jest.fn(), update: jest.fn(), getNextCorrelative: jest.fn() };
   const uploadAttachment = { execute: jest.fn() };
   const listAttachments = { execute: jest.fn() };
   const purchaseHistoryRepository = { createQueryBuilder: jest.fn(), create: jest.fn(), save: jest.fn() };
@@ -77,6 +77,7 @@ describe("PurchaseOrdersController", () => {
     listOrders.execute.mockResolvedValue({ items: [], total: 0, page: 1, limit: 20 });
     purchaseRepo.findById.mockResolvedValue(null);
     purchaseRepo.update.mockResolvedValue(null);
+    purchaseRepo.getNextCorrelative.mockResolvedValue(16);
     uploadAttachment.execute.mockReset();
     listAttachments.execute.mockReset();
     listAttachments.execute.mockResolvedValue([]);
@@ -165,6 +166,16 @@ describe("PurchaseOrdersController", () => {
       }),
     );
     expect(getSearchState.execute).toHaveBeenCalledWith("user-1");
+  });
+
+  it("returns the next correlative for a document type and series", async () => {
+    const response = await request(app.getHttpServer())
+      .get("/purchases/orders/next-correlative")
+      .query({ documentType: "01", serie: " F001 " })
+      .expect(200);
+
+    expect(response.body).toEqual({ correlative: 16 });
+    expect(purchaseRepo.getNextCorrelative).toHaveBeenCalledWith("01", "F001");
   });
 
   it("returns a dedicated purchase history search-state shape", async () => {

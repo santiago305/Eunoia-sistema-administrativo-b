@@ -63,6 +63,10 @@ export class CreatePurchaseOrderUsecase {
   }> {
     const result = await this.uow.runInTransaction(async (tx) => {
       const currency = input.currency ?? "PEN";
+      const serie = input.serie?.trim();
+      const correlative = input.documentType && serie
+        ? await this.purchaseRepo.getNextCorrelative(input.documentType, serie, tx, true)
+        : input.correlative;
 
       let data: PurchaseOrder;
       try {
@@ -77,8 +81,8 @@ export class CreatePurchaseOrderUsecase {
           purchaseValue: input.purchaseValue ?? 0,
           total: input.total ?? 0,
           documentType: input.documentType,
-          serie: input.serie,
-          correlative: input.correlative,
+          serie,
+          correlative,
           currency: input.currency,
           paymentForm: input.paymentForm,
           note: input.note,

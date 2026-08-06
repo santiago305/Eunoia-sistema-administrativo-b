@@ -63,6 +63,33 @@ export class PurchaseOrderTypeormRepository implements PurchaseOrderRepository {
     const saved = await repo.save(row);
     return PurchaseOrderMapper.toDomain(saved);
   }
+
+  async getNextCorrelative(
+    documentType: VoucherDocType,
+    serie: string,
+    tx?: TransactionContext,
+    lockSequence = false,
+  ): Promise<number> {
+    const normalizedSerie = serie.trim();
+    const manager = this.getManager(tx);
+
+    if (lockSequence) {
+      await manager.query(
+        "SELECT pg_advisory_xact_lock(hashtext($1))",
+        [`purchase-order:${documentType}:${normalizedSerie}`],
+      );
+    }
+
+    const row = await manager
+      .getRepository(PurchaseOrderEntity)
+      .createQueryBuilder("po")
+      .select("COALESCE(MAX(po.correlative), 0)", "maximum")
+      .where("po.documentType = :documentType", { documentType })
+      .andWhere("po.serie = :serie", { serie: normalizedSerie })
+      .getRawOne<{ maximum: string | number }>();
+
+    return Number(row?.maximum ?? 0) + 1;
+  }
   async listAllByStatus(
     status: PurchaseOrderStatus,
     tx?: TransactionContext,

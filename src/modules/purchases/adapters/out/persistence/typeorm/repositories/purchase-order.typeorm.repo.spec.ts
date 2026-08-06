@@ -77,6 +77,30 @@ describe("PurchaseOrderTypeormRepository", () => {
     return { repo: new PurchaseOrderTypeormRepository(baseRepo), qb };
   };
 
+  it("calculates the next correlative by document type and series", async () => {
+    const qb = {
+      select: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getRawOne: jest.fn().mockResolvedValue({ maximum: "7" }),
+    };
+    const baseRepo = {
+      createQueryBuilder: jest.fn().mockReturnValue(qb),
+    } as unknown as Repository<PurchaseOrderEntity>;
+    const manager = {
+      getRepository: jest.fn().mockReturnValue(baseRepo),
+      query: jest.fn(),
+    };
+    (baseRepo as any).manager = manager;
+    const repo = new PurchaseOrderTypeormRepository(baseRepo);
+
+    await expect(repo.getNextCorrelative(VoucherDocType.FACTURA, " F001 ")).resolves.toBe(8);
+    expect(qb.where).toHaveBeenCalledWith("po.documentType = :documentType", {
+      documentType: VoucherDocType.FACTURA,
+    });
+    expect(qb.andWhere).toHaveBeenCalledWith("po.serie = :serie", { serie: "F001" });
+  });
+
   it("applies catalog filters for supplier, warehouse, status, documentType and paymentForm", async () => {
     const { repo, qb } = makeRepository();
 

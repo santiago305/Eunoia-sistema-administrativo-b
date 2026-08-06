@@ -48,6 +48,7 @@ import { UploadPurchaseAttachmentUsecase } from "src/modules/purchase-attachment
 import { ListPurchaseAttachmentsUsecase } from "src/modules/purchase-attachments/application/usecases/list-purchase-attachments.usecase";
 import { PurchaseAttachmentType } from "src/modules/purchase-attachments/domain/value-objects/purchase-attachment-type";
 import { PurchaseHistoryService } from "src/modules/purchases/application/services/purchase-history.service";
+import { VoucherDocType } from "src/modules/purchases/domain/value-objects/voucher-doc-type";
 
 @Controller("purchases/orders")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
@@ -383,6 +384,7 @@ export class PurchaseOrdersController {
   @UseGuards(PermissionsGuard)
   @RequirePermissions("purchases.create")
   async validatePurchaseNumber(
+    @Query("documentType") documentType?: VoucherDocType,
     @Query("serie") serie?: string,
     @Query("correlative") correlativeRaw?: string,
     @Query("excludePoId") excludePoId?: string,
@@ -400,12 +402,32 @@ export class PurchaseOrdersController {
       .where("po.serie = :serie", { serie: normalizedSerie })
       .andWhere("po.correlative = :correlative", { correlative });
 
+    if (documentType) {
+      qb.andWhere("po.documentType = :documentType", { documentType });
+    }
+
     if (excludePoId) {
       qb.andWhere("po.id <> :excludePoId", { excludePoId });
     }
 
     const exists = Boolean(await qb.getOne());
     return { exists };
+  }
+
+  @Get("next-correlative")
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions("purchases.create")
+  async getNextPurchaseCorrelative(
+    @Query("documentType") documentType?: VoucherDocType,
+    @Query("serie") serie?: string,
+  ) {
+    const normalizedSerie = (serie ?? "").trim();
+    if (!documentType || !normalizedSerie) {
+      throw new BadRequestException("El tipo de documento y la serie son obligatorios");
+    }
+
+    const correlative = await this.purchaseRepo.getNextCorrelative(documentType, normalizedSerie);
+    return { correlative };
   }
 
   @Post(":id/run-expected")
