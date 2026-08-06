@@ -4,13 +4,13 @@ import { CreateProductCatalogEquivalence } from "./create-equivalence.usecase";
 describe("CreateProductCatalogEquivalence", () => {
   const input = {
     productId: "product-1",
-    fromUnitId: "unit-kilogram",
-    toUnitId: "unit-gram",
-    factor: 1000,
+    fromUnitId: "unit-gram",
+    toUnitId: "unit-kilogram",
+    factor: 0.001,
   };
 
   const createUseCase = () => {
-    const productRepo = { findById: jest.fn().mockResolvedValue({ id: input.productId, baseUnitId: input.toUnitId }) };
+    const productRepo = { findById: jest.fn().mockResolvedValue({ id: input.productId }) };
     const unitRepo = { findById: jest.fn().mockResolvedValue({ id: input.fromUnitId }) };
     const equivalenceRepo = {
       findByProductAndUnits: jest.fn().mockResolvedValue(null),
@@ -32,19 +32,9 @@ describe("CreateProductCatalogEquivalence", () => {
         productId: input.productId,
         fromUnitId: input.fromUnitId,
         toUnitId: input.toUnitId,
-        factor: 1000,
+        factor: 0.001,
       }),
     );
-  });
-
-  it("rejects an equivalence whose destination is not the product base unit", async () => {
-    const { useCase, equivalenceRepo } = createUseCase();
-
-    await expect(
-      useCase.execute({ ...input, toUnitId: "unit-liter" }),
-    ).rejects.toThrow(BadRequestException);
-
-    expect(equivalenceRepo.create).not.toHaveBeenCalled();
   });
 
   it("rejects a non-positive factor or identical units before querying persistence", async () => {

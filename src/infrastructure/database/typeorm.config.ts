@@ -112,6 +112,7 @@ import { AlignProductEquivalencesToBaseUnit20260805000000 } from "./migrations/2
 import { CreateInventoryAlertPolicies20260805010000 } from "./migrations/20260805010000-create-inventory-alert-policies";
 import { AddProductionDefaultWarehouse20260805020000 } from "./migrations/20260805020000-add-production-default-warehouse";
 import { AddProductionEvidenceStatus20260806090000 } from "./migrations/20260806090000-add-production-evidence-status";
+import { RestoreLegacyProductEquivalenceDirection20260806110000 } from "./migrations/20260806110000-restore-legacy-product-equivalence-direction";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -235,6 +236,7 @@ export const databaseMigrations = [
     CreateInventoryAlertPolicies20260805010000,
     AddProductionDefaultWarehouse20260805020000,
     AddProductionEvidenceStatus20260806090000,
+    RestoreLegacyProductEquivalenceDirection20260806110000,
 ];
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({

@@ -102,6 +102,17 @@ export class PurchaseUnitConversionService {
       };
     }
 
+    const inverse = equivalences.find(
+      (row) => row.fromUnitId === baseUnit.id && row.toUnitId === fromUnit!.id,
+    );
+    if (inverse && Number(inverse.factor) > 0) {
+      return {
+        factor: Number(inverse.factor),
+        unitBase: fromUnit.code,
+        equivalence: `${fromUnit.code}->${baseUnit.code}`,
+      };
+    }
+
     throw new BadRequestException(
       `No existe equivalencia para convertir ${fromUnit.code} a ${baseUnit.code} en este producto`,
     );
