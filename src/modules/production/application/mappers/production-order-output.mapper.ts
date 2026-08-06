@@ -21,6 +21,7 @@ export class ProductionOrderOutputMapper {
       createdByName: null,
       createdAt: order.createdAt,
       imageProdution: order.imageProdution ?? [],
+      evidenceStatus: order.evidenceStatus,
     };
   }
 
@@ -55,6 +56,7 @@ export class ProductionOrderOutputMapper {
       toWarehouseId: item.order.toWarehouseId,
       createdAt: item.order.createdAt,
       imageProdution: item.order.imageProdution ?? [],
+      evidenceStatus: item.order.evidenceStatus,
       fromWarehouse: item.fromWarehouse,
       toWarehouse: item.toWarehouse,
       serie: item.serie,
@@ -80,6 +82,7 @@ export class ProductionOrderOutputMapper {
       createdByName: null,
       createdAt: params.order.createdAt,
       imageProdution: params.order.imageProdution ?? [],
+      evidenceStatus: params.order.evidenceStatus,
       items: params.items,
     };
   }

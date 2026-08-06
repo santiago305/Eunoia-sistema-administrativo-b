@@ -20,6 +20,7 @@ export class ProductionOrderMapper {
       updatedAt: orm.updatedAt ?? null,
       updatedBy: orm.updatedBy ?? null,
       imageProdution: orm.imageProdution ?? [],
+      evidenceStatus: orm.evidenceStatus,
     });
   }
 
@@ -38,6 +39,7 @@ export class ProductionOrderMapper {
       updatedBy: domain.updatedBy ?? null,
       updatedAt: domain.updatedAt ?? null,
       imageProdution: domain.imageProdution ?? [],
+      evidenceStatus: domain.evidenceStatus,
     };
   }
 }

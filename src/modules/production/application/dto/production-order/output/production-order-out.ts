@@ -1,4 +1,5 @@
 import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
+import { ProductionEvidenceStatus } from "src/modules/production/domain/value-objects/production-evidence-status.vo";
 
 export interface ProductionOrderOutput {
   id: string;
@@ -13,4 +14,5 @@ export interface ProductionOrderOutput {
   createdByName?: string | null;
   createdAt: Date;
   imageProdution?: string[];
+  evidenceStatus: ProductionEvidenceStatus;
 }

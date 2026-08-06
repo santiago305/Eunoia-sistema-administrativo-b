@@ -2,6 +2,7 @@ import { ProductionOrder } from "../entity/production-order.entity";
 import { ProductionDocType } from "../value-objects/doc-type.vo";
 import { ManufactureDate } from "../value-objects/manufacture-date.error";
 import { ProductionStatus } from "../value-objects/production-status.vo";
+import { ProductionEvidenceStatus } from "../value-objects/production-evidence-status.vo";
 
 
 export class ProductionOrderFactory {
@@ -49,6 +50,7 @@ export class ProductionOrderFactory {
     updatedAt?: Date | null;
     updatedBy?: string | null;
     imageProdution?: string[];
+    evidenceStatus?: ProductionEvidenceStatus;
   }): ProductionOrder {
     return new ProductionOrder(
       params.id,
@@ -64,7 +66,8 @@ export class ProductionOrderFactory {
       params.reference ?? null,
       params.updatedAt ?? null,
       params.updatedBy ?? null,
-      params.imageProdution ?? []
+      params.imageProdution ?? [],
+      params.evidenceStatus ?? ProductionEvidenceStatus.PENDING,
     );
   }
 }

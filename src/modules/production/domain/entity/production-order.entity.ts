@@ -4,6 +4,7 @@ import { InvalidQuantityError } from "../errors/invalid-quantity.error";
 import { ProductionDocType } from "../value-objects/doc-type.vo";
 import { ManufactureDate } from "../value-objects/manufacture-date.error";
 import { ProductionStatus } from "../value-objects/production-status.vo";
+import { ProductionEvidenceStatus } from "../value-objects/production-evidence-status.vo";
 
 export class ProductionOrder {
   constructor(
@@ -21,6 +22,7 @@ export class ProductionOrder {
     public readonly updatedAt?: Date | null,
     public readonly updatedBy?: string | null,
     public readonly imageProdution: string[] = [],
+    public readonly evidenceStatus: ProductionEvidenceStatus = ProductionEvidenceStatus.PENDING,
   ) {}
 
   assertCanAddItem(): void {

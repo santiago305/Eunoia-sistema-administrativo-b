@@ -43,6 +43,8 @@ import { HttpProductionHistoryListQueryDto } from "../dtos/production-order/http
 import { ApprovalRequestEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/approval-request.entity";
 import { NotificationsService } from "src/modules/mail/application/use-cases/notifications.service";
 import { PRODUCTION_NOTIFICATION_TYPES } from "src/modules/mail/domain/constants/production-notification-types";
+import { ProductionEvidenceStatus } from "src/modules/production/domain/value-objects/production-evidence-status.vo";
+import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
 
 type ProductionControllerUser = {
   id: string;
@@ -1120,6 +1122,40 @@ export class ProductionOrdersController {
     };
   }
 
+  @Post(":id/skip-evidence")
+  @RequirePermissions("production.image.upload")
+  async skipProductionEvidence(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() user: ProductionControllerUser,
+  ) {
+    const order = await this.orderRepo.findById(id);
+    if (!order) throw new BadRequestException("Orden de produccion no encontrada");
+    if (order.status !== ProductionStatus.COMPLETED) {
+      throw new BadRequestException("Solo se puede omitir la foto de una produccion completada");
+    }
+    if ((order.imageProdution?.length ?? 0) > 0) {
+      throw new BadRequestException("La produccion ya tiene evidencia fotografica");
+    }
+
+    await this.orderRepo.update({
+      productionId: id,
+      evidenceStatus: ProductionEvidenceStatus.SKIPPED,
+      updatedBy: user.id,
+      updatedAt: new Date(),
+    });
+    await this.recordHistory({
+      productionId: id,
+      eventType: "PRODUCTION_IMAGE_SKIPPED",
+      description: "Se confirmo el ingreso de la produccion sin evidencia fotografica.",
+      performedByUserId: user.id,
+      targetUserId: order.createdBy ?? null,
+      oldValues: { evidenceStatus: order.evidenceStatus },
+      newValues: { evidenceStatus: ProductionEvidenceStatus.SKIPPED },
+    });
+
+    return { type: "success", message: "Produccion ingresada sin foto" };
+  }
+
   @Patch(":id/image-prodution")
   @RequirePermissions("production.image.upload")
   @UseInterceptors(
@@ -1216,6 +1252,7 @@ export class ProductionOrdersController {
       await this.orderRepo.update({
         productionId: id,
         imageProdution: urls,
+        evidenceStatus: ProductionEvidenceStatus.UPLOADED,
       });
 
       const updated = {

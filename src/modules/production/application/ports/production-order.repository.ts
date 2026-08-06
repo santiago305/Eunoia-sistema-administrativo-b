@@ -4,6 +4,7 @@ import { ProductionOrderItem } from "../../domain/entity/production-order-item";
 import { ProductionOrderListItemRM, ProductionOrderListSerieRM } from "../../domain/read-models/production-order-list-item.rm";
 import { ProductionStatus } from "../../domain/value-objects/production-status.vo";
 import { ProductionSearchRule } from "../dto/production-search/production-search-snapshot";
+import { ProductionEvidenceStatus } from "../../domain/value-objects/production-evidence-status.vo";
 
 export const PRODUCTION_ORDER_REPOSITORY = Symbol('PRODUCTION_ORDER_REPOSITORY');
 
@@ -63,6 +64,7 @@ export interface ProductionOrderRepository {
       reference?: string;
       manufactureDate?: Date;
       imageProdution?: string[];
+      evidenceStatus?: ProductionEvidenceStatus;
       updatedBy?: string;
       updatedAt?: Date;
     },

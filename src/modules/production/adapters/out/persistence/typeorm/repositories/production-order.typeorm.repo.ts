@@ -8,6 +8,7 @@ import {
 import { ProductionOrder } from "src/modules/production/domain/entity/production-order.entity";
 import { ProductionOrderItem } from "src/modules/production/domain/entity/production-order-item";
 import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
+import { ProductionEvidenceStatus } from "src/modules/production/domain/value-objects/production-evidence-status.vo";
 import { ProductionOrderEntity } from "../entities/production_order.entity";
 import { ProductionOrderItemEntity } from "../entities/production_order_item.entity";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
@@ -164,6 +165,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
       createdBy: order.createdBy,
       updatedBy: order.updatedBy ?? null,
       imageProdution: order.imageProdution ?? [],
+      evidenceStatus: order.evidenceStatus,
     });
 
     return new ProductionOrder(
@@ -181,6 +183,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
       saved.updatedAt ?? null,
       saved.updatedBy ?? null,
       saved.imageProdution ?? [],
+      saved.evidenceStatus ?? ProductionEvidenceStatus.PENDING,
     );
   }
 
@@ -204,6 +207,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
       row.updatedAt?? null,
       row.updatedBy ?? null,
       row.imageProdution ?? [],
+      row.evidenceStatus ?? ProductionEvidenceStatus.PENDING,
     );
   }
 
@@ -227,6 +231,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
           row.updatedAt ?? null,
           row.updatedBy ?? null,
           row.imageProdution ?? [],
+          row.evidenceStatus ?? ProductionEvidenceStatus.PENDING,
         ),
     );
   }
@@ -541,9 +546,10 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
           row.createdAt,
           row.reference,
           row.updatedAt,
-          row.updatedBy ?? null,
-          row.imageProdution ?? [],
-        );
+       row.updatedBy ?? null,
+       row.imageProdution ?? [],
+       row.evidenceStatus ?? ProductionEvidenceStatus.PENDING,
+     );
 
         return {
           order,
@@ -569,6 +575,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
       reference?: string;
       manufactureDate?: Date;
       imageProdution?: string[];
+      evidenceStatus?: ProductionEvidenceStatus;
       updatedBy?: string;
       updatedAt?: Date;
     },
@@ -584,6 +591,7 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
     if (params.reference !== undefined) patch.reference = params.reference;
     if (params.manufactureDate !== undefined) patch.manufactureDate = params.manufactureDate;
     if (params.imageProdution !== undefined) patch.imageProdution = params.imageProdution;
+    if (params.evidenceStatus !== undefined) patch.evidenceStatus = params.evidenceStatus;
     if (params.updatedAt !== undefined) patch.updatedAt = params.updatedAt;
     if (params.updatedBy !== undefined) {
       (patch as any).updatedBy = params.updatedBy;

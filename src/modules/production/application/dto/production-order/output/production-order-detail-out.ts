@@ -2,6 +2,7 @@ import type { StockItemType } from "src/shared/domain/value-objects/stock-item-t
 import type { SkuAttributeInput } from "src/modules/product-catalog/domain/ports/sku.repository";
 import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
 import type { ProductionOrderListSerieOutput } from "./production-order-paginated";
+import { ProductionEvidenceStatus } from "src/modules/production/domain/value-objects/production-evidence-status.vo";
 
 export interface ProductionOrderLegacyProductOutput {
   id: string;
@@ -56,6 +57,7 @@ export interface ProductionOrderDetailOutput {
   createdByName?: string | null;
   createdAt: Date;
   imageProdution?: string[];
+  evidenceStatus: ProductionEvidenceStatus;
   items: ProductionOrderDetailItemOutput[];
 }
 

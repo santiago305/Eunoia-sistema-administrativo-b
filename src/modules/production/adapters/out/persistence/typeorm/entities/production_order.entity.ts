@@ -4,6 +4,7 @@ import { ProductionStatus } from "src/modules/production/domain/value-objects/pr
 import { ProductionOrderItemEntity } from "./production_order_item.entity";
 import { ProductionDocType } from "src/modules/production/domain/value-objects/doc-type.vo";
 import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
+import { ProductionEvidenceStatus } from "src/modules/production/domain/value-objects/production-evidence-status.vo";
 
 @Entity("production_orders")
 export class ProductionOrderEntity {
@@ -52,6 +53,9 @@ export class ProductionOrderEntity {
 
   @Column({ name: "image_prodution", type: "jsonb", default: () => "'[]'" })
   imageProdution: string[];
+
+  @Column({ name: "evidence_status", type: "varchar", length: 20, default: ProductionEvidenceStatus.PENDING })
+  evidenceStatus: ProductionEvidenceStatus;
 
   @OneToMany(() => ProductionOrderItemEntity, (item) => item.production)
   items?: ProductionOrderItemEntity[];
