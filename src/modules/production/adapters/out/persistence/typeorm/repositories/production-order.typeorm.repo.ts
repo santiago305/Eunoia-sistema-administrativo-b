@@ -1,7 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Brackets, In, Repository } from "typeorm";
-import { ProductionOrderRepository } from "src/modules/production/application/ports/production-order.repository";
+import {
+  ProductionOrderItemSummary,
+  ProductionOrderRepository,
+} from "src/modules/production/application/ports/production-order.repository";
 import { ProductionOrder } from "src/modules/production/domain/entity/production-order.entity";
 import { ProductionOrderItem } from "src/modules/production/domain/entity/production-order-item";
 import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
@@ -54,6 +57,79 @@ export class ProductionOrderTypeormRepository implements ProductionOrderReposito
 
   private getItemRepo(tx?: TransactionContext) {
     return this.getManager(tx).getRepository(ProductionOrderItemEntity);
+  }
+
+  async getItemSummariesByProductionIds(
+    productionIds: string[],
+    maxItems = 2,
+    tx?: TransactionContext,
+  ): Promise<Map<string, ProductionOrderItemSummary>> {
+    const uniqueIds = Array.from(new Set(productionIds.map((id) => id?.trim()).filter(Boolean)));
+    if (!uniqueIds.length) return new Map();
+    const safeMaxItems = Math.max(1, Math.min(10, Math.trunc(maxItems)));
+
+    const rows = await this.getManager(tx).query(
+      `
+        SELECT ranked.*
+        FROM (
+          SELECT
+            poi.production_id AS "productionId",
+            s.sku_id AS "skuId",
+            COALESCE(NULLIF(TRIM(s.name), ''), 'Articulo') AS name,
+            s.backend_sku AS "backendSku",
+            s.custom_sku AS "customSku",
+            selected_attribute.name AS "attributeName",
+            selected_attribute.value AS "attributeValue",
+            COUNT(*) OVER (PARTITION BY poi.production_id)::int AS total,
+            ROW_NUMBER() OVER (PARTITION BY poi.production_id ORDER BY poi.item_id)::int AS "itemRank"
+          FROM production_order_items poi
+          LEFT JOIN pc_stock_items si ON si.stock_item_id = poi.finished_item_id
+          LEFT JOIN pc_skus s ON s.sku_id = si.sku_id
+          LEFT JOIN LATERAL (
+            SELECT COALESCE(NULLIF(TRIM(a.name), ''), a.code) AS name, sav.value
+            FROM pc_sku_attribute_values sav
+            INNER JOIN pc_attributes a ON a.attribute_id = sav.attribute_id
+            WHERE sav.sku_id = s.sku_id
+              AND NULLIF(TRIM(sav.value), '') IS NOT NULL
+            ORDER BY
+              CASE
+                WHEN LOWER(a.code) IN ('presentation', 'presentacion') OR LOWER(COALESCE(a.name, '')) LIKE 'presentaci%' THEN 1
+                WHEN LOWER(a.code) IN ('variant', 'variante') OR LOWER(COALESCE(a.name, '')) = 'variante' THEN 2
+                WHEN LOWER(a.code) = 'color' OR LOWER(COALESCE(a.name, '')) = 'color' THEN 3
+                ELSE 4
+              END,
+              a.code ASC
+            LIMIT 1
+          ) selected_attribute ON TRUE
+          WHERE poi.production_id = ANY($1::uuid[])
+        ) ranked
+        WHERE ranked."itemRank" <= $2
+        ORDER BY ranked."productionId", ranked."itemRank"
+      `,
+      [uniqueIds, safeMaxItems],
+    ) as Array<{
+      productionId: string; skuId: string | null; name: string;
+      backendSku: string | null; customSku: string | null;
+      attributeName: string | null; attributeValue: string | null;
+      total: number | string;
+    }>;
+
+    const summaries = new Map<string, ProductionOrderItemSummary>();
+    uniqueIds.forEach((id) => summaries.set(id, { total: 0, items: [] }));
+    rows.forEach((row) => {
+      const summary = summaries.get(row.productionId) ?? { total: Number(row.total ?? 0), items: [] };
+      summary.total = Number(row.total ?? 0);
+      summary.items.push({
+        skuId: row.skuId ?? undefined,
+        name: row.name,
+        backendSku: row.backendSku ?? undefined,
+        customSku: row.customSku ?? undefined,
+        attributeName: row.attributeName ?? undefined,
+        attributeValue: row.attributeValue ?? undefined,
+      });
+      summaries.set(row.productionId, summary);
+    });
+    return summaries;
   }
 
   async findItemById(productionId: string, itemId: string, tx?: TransactionContext): Promise<ProductionOrderItem | null> {

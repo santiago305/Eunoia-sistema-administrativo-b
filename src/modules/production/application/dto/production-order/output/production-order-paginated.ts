@@ -1,5 +1,6 @@
 import { ProductionStatus } from "src/modules/production/domain/value-objects/production-status.vo";
 import { ProductionDocType } from "src/modules/production/domain/value-objects/doc-type.vo";
+import { ProductionOrderItemSummary } from "src/modules/production/application/ports/production-order.repository";
 
 export interface ProductionOrderListWarehouseOutput {
   id: string;
@@ -42,6 +43,7 @@ export interface ProductionOrderListItemOutput {
   fromWarehouse?: ProductionOrderListWarehouseOutput | null;
   toWarehouse?: ProductionOrderListWarehouseOutput | null;
   serie?: ProductionOrderListSerieOutput | null;
+  itemSummary?: ProductionOrderItemSummary;
 }
 
 export interface PaginatedProductionOrderOutput {

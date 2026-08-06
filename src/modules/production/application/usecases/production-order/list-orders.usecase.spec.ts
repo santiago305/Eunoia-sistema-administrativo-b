@@ -4,6 +4,7 @@ describe("ListProductionOrders", () => {
   const makeUseCase = (overrides?: { orderRepo?: any; searchStorage?: any }) => {
     const orderRepo = overrides?.orderRepo ?? {
       list: jest.fn().mockResolvedValue({ items: [], total: 0, page: 1, limit: 10 }),
+      getItemSummariesByProductionIds: jest.fn().mockResolvedValue(new Map()),
     };
     const searchStorage = overrides?.searchStorage ?? {
       touchRecentSearch: jest.fn().mockResolvedValue(undefined),
@@ -26,6 +27,66 @@ describe("ListProductionOrders", () => {
     });
 
     expect(searchStorage.touchRecentSearch).not.toHaveBeenCalled();
+  });
+
+  it("loads at most two SKU summaries for listed production orders", async () => {
+    const order = { productionId: "production-1" };
+    const summary = { total: 3, items: [{ name: "Jabon", attributeValue: "Curcuma" }] };
+    const orderRepo = {
+      list: jest.fn().mockResolvedValue({
+        items: [{ order, createdByName: null, fromWarehouse: null, toWarehouse: null, serie: null }],
+        total: 1,
+        page: 1,
+        limit: 10,
+      }),
+      getItemSummariesByProductionIds: jest.fn().mockResolvedValue(new Map([["production-1", summary]])),
+    };
+    const { useCase } = makeUseCase({ orderRepo });
+
+    const result = await useCase.execute({ page: 1, limit: 10 });
+
+    expect(orderRepo.getItemSummariesByProductionIds).toHaveBeenCalledWith(["production-1"], 2);
+    expect(result.items[0].itemSummary).toEqual(summary);
+  });
+
+  it("loads at most two SKU summaries for listed production orders", async () => {
+    const order = { productionId: "production-1" };
+    const summary = { total: 3, items: [{ name: "Jabon", attributeValue: "Curcuma" }] };
+    const orderRepo = {
+      list: jest.fn().mockResolvedValue({
+        items: [{ order, createdByName: null, fromWarehouse: null, toWarehouse: null, serie: null }],
+        total: 1,
+        page: 1,
+        limit: 10,
+      }),
+      getItemSummariesByProductionIds: jest.fn().mockResolvedValue(new Map([["production-1", summary]])),
+    };
+    const { useCase } = makeUseCase({ orderRepo });
+
+    const result = await useCase.execute({ page: 1, limit: 10 });
+
+    expect(orderRepo.getItemSummariesByProductionIds).toHaveBeenCalledWith(["production-1"], 2);
+    expect(result.items[0].itemSummary).toEqual(summary);
+  });
+
+  it("loads at most two SKU summaries for the listed production orders", async () => {
+    const order = { productionId: "production-1" };
+    const summary = { total: 3, items: [{ name: "Jabon", attributeValue: "Curcuma" }] };
+    const orderRepo = {
+      list: jest.fn().mockResolvedValue({
+        items: [{ order, createdByName: null, fromWarehouse: null, toWarehouse: null, serie: null }],
+        total: 1,
+        page: 1,
+        limit: 10,
+      }),
+      getItemSummariesByProductionIds: jest.fn().mockResolvedValue(new Map([["production-1", summary]])),
+    };
+    const { useCase } = makeUseCase({ orderRepo });
+
+    const result = await useCase.execute({ page: 1, limit: 10 });
+
+    expect(orderRepo.getItemSummariesByProductionIds).toHaveBeenCalledWith(["production-1"], 2);
+    expect(result.items[0].itemSummary).toEqual(summary);
   });
 
   it("persists recent search when q or filters are present", async () => {

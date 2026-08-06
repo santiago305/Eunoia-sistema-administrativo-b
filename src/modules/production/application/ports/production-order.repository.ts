@@ -7,6 +7,20 @@ import { ProductionSearchRule } from "../dto/production-search/production-search
 
 export const PRODUCTION_ORDER_REPOSITORY = Symbol('PRODUCTION_ORDER_REPOSITORY');
 
+export interface ProductionOrderItemSummaryEntry {
+  skuId?: string;
+  name: string;
+  backendSku?: string;
+  customSku?: string;
+  attributeName?: string;
+  attributeValue?: string;
+}
+
+export interface ProductionOrderItemSummary {
+  total: number;
+  items: ProductionOrderItemSummaryEntry[];
+}
+
 export interface ProductionOrderRepository {
   create(order: ProductionOrder, tx?: TransactionContext): Promise<ProductionOrder>;
   findById(id: string, tx?: TransactionContext): Promise<ProductionOrder | null>;
@@ -34,6 +48,11 @@ export interface ProductionOrderRepository {
     page: number;
     limit: number;
   }>;
+  getItemSummariesByProductionIds(
+    productionIds: string[],
+    maxItems?: number,
+    tx?: TransactionContext,
+  ): Promise<Map<string, ProductionOrderItemSummary>>;
   update(
     params: {
       productionId: string;

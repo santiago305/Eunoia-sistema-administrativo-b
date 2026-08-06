@@ -55,6 +55,10 @@ export class ListProductionOrders {
     };
 
     const result = await this.orderRepo.list(listInput);
+    const productionIds = result.items
+      .map((item) => item.order.productionId)
+      .filter((id): id is string => Boolean(id));
+    const summaries = await this.orderRepo.getItemSummariesByProductionIds(productionIds, 2);
 
     if (input.requestedBy && hasProductionSearchCriteria(snapshot)) {
       await this.searchStorage.touchRecentSearch({
@@ -65,7 +69,10 @@ export class ListProductionOrders {
     }
 
     return {
-      items: result.items.map((item) => ProductionOrderOutputMapper.toListItemOutput(item)),
+      items: result.items.map((item) => ({
+        ...ProductionOrderOutputMapper.toListItemOutput(item),
+        itemSummary: summaries.get(item.order.productionId!) ?? { total: 0, items: [] },
+      })),
       total: result.total,
       page: result.page,
       limit: result.limit,
