@@ -83,7 +83,10 @@ export class ProductCatalogInventoryTypeormRepository implements ProductCatalogI
         if (rule.operator === "IN") {
           const values = Array.from(new Set((rule.values ?? []).map((value) => value?.trim()).filter(Boolean)));
           if (!values.length) return;
-          qb.andWhere(`s.sku_id IN (:...${key})`, { [key]: values });
+          const condition = rule.mode === "exclude"
+            ? `s.sku_id NOT IN (:...${key})`
+            : `s.sku_id IN (:...${key})`;
+          qb.andWhere(condition, { [key]: values });
           return;
         }
 

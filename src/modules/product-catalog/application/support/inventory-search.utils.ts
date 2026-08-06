@@ -60,6 +60,17 @@ function sanitizeSearchRule(rule?: Partial<InventorySearchRule> | null): Invento
   }
 
   if (rule.field === InventorySearchFields.SKU) {
+    if (rule.operator === InventorySearchOperators.IN) {
+      const values = uniqueStrings(rule.values);
+      if (!values.length) return null;
+      return {
+        field: rule.field,
+        operator: rule.operator,
+        mode: rule.mode === "exclude" ? "exclude" : "include",
+        values,
+      };
+    }
+
     if (
       rule.operator !== InventorySearchOperators.CONTAINS &&
       rule.operator !== InventorySearchOperators.EQ
@@ -156,6 +167,12 @@ export function buildInventorySearchLabel(
     }
 
     if (rule.field === InventorySearchFields.SKU) {
+      if (rule.operator === InventorySearchOperators.IN) {
+        const prefix = rule.mode === "exclude" ? "Excluye" : getFieldLabel(rule.field, productType);
+        parts.push(`${prefix}: ${rule.values.join(" - ")}`);
+        return;
+      }
+
       const operatorLabel = rule.operator === InventorySearchOperators.CONTAINS ? "contiene" : "=";
       parts.push(`${getFieldLabel(rule.field, productType)}: ${operatorLabel} ${rule.value}`);
       return;

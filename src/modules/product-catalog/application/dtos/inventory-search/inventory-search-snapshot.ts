@@ -31,6 +31,12 @@ export type InventorySearchRule =
     }
   | {
       field: typeof InventorySearchFields.SKU;
+      operator: typeof InventorySearchOperators.IN;
+      mode?: "include" | "exclude";
+      values: string[];
+    }
+  | {
+      field: typeof InventorySearchFields.SKU;
       operator: typeof InventorySearchOperators.CONTAINS | typeof InventorySearchOperators.EQ;
       value: string;
     }
