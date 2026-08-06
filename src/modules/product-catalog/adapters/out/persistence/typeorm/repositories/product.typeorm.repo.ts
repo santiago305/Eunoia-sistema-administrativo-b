@@ -338,6 +338,26 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
       on_hand: number | null;
     }>();
 
+    const skuIds = Array.from(new Set(skus.map((row) => row.id).filter(Boolean)));
+    const attributeRows = skuIds.length
+      ? await this.repo.manager.query(
+          `
+            SELECT sav.sku_id AS "skuId", a.code, a.name, sav.value
+            FROM pc_sku_attribute_values sav
+            INNER JOIN pc_attributes a ON a.attribute_id = sav.attribute_id
+            WHERE sav.sku_id = ANY($1::uuid[])
+            ORDER BY a.code ASC
+          `,
+          [skuIds],
+        ) as Array<{ skuId: string; code: string; name: string | null; value: string }>
+      : [];
+    const attributesBySku = new Map<string, Array<{ code: string; name: string | null; value: string }>>();
+    attributeRows.forEach((attribute) => {
+      const current = attributesBySku.get(attribute.skuId) ?? [];
+      current.push({ code: attribute.code, name: attribute.name, value: attribute.value });
+      attributesBySku.set(attribute.skuId, current);
+    });
+
     const skusMap = new Map<string, any>();
     for (const row of skus) {
       if (!skusMap.has(row.id)) {
@@ -345,6 +365,7 @@ export class ProductCatalogProductTypeormRepository implements ProductCatalogPro
           id: row.id,
           sku: row.sku,
           name: row.name,
+          attributes: attributesBySku.get(row.id) ?? [],
           total: 0,
           inventory: [],
         });

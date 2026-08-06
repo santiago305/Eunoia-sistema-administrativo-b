@@ -54,6 +54,7 @@ export interface ProductCatalogProductDetail {
     id: string;
     sku: string;
     name: string;
+    attributes: Array<{ code: string; name?: string | null; value: string }>;
     total: number;
     inventory: Array<{
       warehouseId: string;
