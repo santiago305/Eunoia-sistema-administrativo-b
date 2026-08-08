@@ -30,7 +30,9 @@ export function resolveInventoryTableKey(params: {
 }
 
 function getItemFieldLabel(productType?: ProductCatalogProductType | null) {
-  return productType === ProductCatalogProductType.MATERIAL ? "Material" : "Producto (SKU)";
+  if (productType === ProductCatalogProductType.MATERIAL) return "Material";
+  if (productType === ProductCatalogProductType.SUPPLY) return "Insumo";
+  return "Producto (SKU)";
 }
 
 function getFieldLabel(field: InventorySearchField, productType?: ProductCatalogProductType | null) {

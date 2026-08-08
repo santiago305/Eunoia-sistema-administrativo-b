@@ -15,12 +15,13 @@ import { ProductCatalogProductType } from "src/modules/product-catalog/domain/va
 export const PRODUCT_CATALOG_SEARCH_TABLE_KEYS = {
   [ProductCatalogProductType.PRODUCT]: "catalog-products",
   [ProductCatalogProductType.MATERIAL]: "catalog-materials",
+  [ProductCatalogProductType.SUPPLY]: "catalog-supplies",
 } as const;
 
 export function resolveProductCatalogSearchTableKey(type?: ProductCatalogProductType | string | null) {
-  return type === ProductCatalogProductType.MATERIAL
-    ? PRODUCT_CATALOG_SEARCH_TABLE_KEYS[ProductCatalogProductType.MATERIAL]
-    : PRODUCT_CATALOG_SEARCH_TABLE_KEYS[ProductCatalogProductType.PRODUCT];
+  if (type === ProductCatalogProductType.MATERIAL) return PRODUCT_CATALOG_SEARCH_TABLE_KEYS[ProductCatalogProductType.MATERIAL];
+  if (type === ProductCatalogProductType.SUPPLY) return PRODUCT_CATALOG_SEARCH_TABLE_KEYS[ProductCatalogProductType.SUPPLY];
+  return PRODUCT_CATALOG_SEARCH_TABLE_KEYS[ProductCatalogProductType.PRODUCT];
 }
 
 const uniqueStrings = (values: string[] | undefined) =>

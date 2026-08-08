@@ -22,15 +22,22 @@ type DocumentAction = "view" | "create" | "process" | "cancel" | "export";
 
 const PRODUCT_TYPE_PRODUCT_VALUES = new Set(["PRODUCT", "FINISHED"]);
 const PRODUCT_TYPE_MATERIAL_VALUES = new Set(["MATERIAL", "PRIMA", "RAW_MATERIAL"]);
+const PRODUCT_TYPE_SUPPLY_VALUES = new Set(["SUPPLY", "SUPPLIES", "INSUMO", "INSUMOS"]);
+
+export function productTypePermissionPrefix(productType: ProductCatalogProductType): "products" | "materials" | "supplies" {
+  if (productType === ProductCatalogProductType.MATERIAL) return "materials";
+  if (productType === ProductCatalogProductType.SUPPLY) return "supplies";
+  return "products";
+}
 
 export function productCatalogPermissionGroups(action: ProductScopedAction, legacyPermission?: string): PermissionGroup[] {
-  return resolveByProductType(action, legacyPermission, "products", "materials");
+  return resolveByProductType(action, legacyPermission, "products", "materials", "supplies");
 }
 
 export function productCatalogPermissionGroupsFromRequest(action: ProductScopedAction, legacyPermission?: string) {
   return (request: RequestLike) => {
     const productType = getProductTypeFromRequest(request, "type");
-    const groups = resolveByProductType(action, legacyPermission, "products", "materials", productType);
+    const groups = resolveByProductType(action, legacyPermission, "products", "materials", "supplies", productType);
     if (productType === ProductCatalogProductType.PRODUCT && (action === "view" || action === "view_detail")) {
       groups[0] = [...groups[0], "sale_orders.products.view"];
     }
@@ -41,7 +48,7 @@ export function productCatalogPermissionGroupsFromRequest(action: ProductScopedA
 export function inventoryPermissionGroupsFromRequest(action: InventoryAction) {
   return (request: RequestLike) => {
     const productType = getProductTypeFromRequest(request);
-    const groups = resolveByProductType(action, "catalog.read", "inventory.products", "inventory.materials", productType);
+    const groups = resolveByProductType(action, "catalog.read", "inventory.products", "inventory.materials", "inventory.supplies", productType);
     if (productType === ProductCatalogProductType.PRODUCT && action === "view") {
       groups[0] = [...groups[0], "sale_orders.stock.view"];
     }
@@ -51,17 +58,17 @@ export function inventoryPermissionGroupsFromRequest(action: InventoryAction) {
 
 export function inventoryExportPermissionGroupsFromRequest() {
   return (request: RequestLike) =>
-    resolveByProductType("export", undefined, "inventory.products", "inventory.materials", getProductTypeFromRequest(request));
+    resolveByProductType("export", undefined, "inventory.products", "inventory.materials", "inventory.supplies", getProductTypeFromRequest(request));
 }
 
 export function ledgerPermissionGroupsFromRequest(action: LedgerAction) {
   return (request: RequestLike) =>
-    resolveByProductType(action, "catalog.read", "inventory-ledger.products", "inventory-ledger.materials", getProductTypeFromRequest(request));
+    resolveByProductType(action, "catalog.read", "inventory-ledger.products", "inventory-ledger.materials", "inventory-ledger.supplies", getProductTypeFromRequest(request));
 }
 
 export function ledgerExportPermissionGroupsFromRequest() {
   return (request: RequestLike) =>
-    resolveByProductType("export", undefined, "inventory-ledger.products", "inventory-ledger.materials", getProductTypeFromRequest(request));
+    resolveByProductType("export", undefined, "inventory-ledger.products", "inventory-ledger.materials", "inventory-ledger.supplies", getProductTypeFromRequest(request));
 }
 
 export function documentPermissionGroupsFromRequest(action: DocumentAction) {
@@ -70,13 +77,13 @@ export function documentPermissionGroupsFromRequest(action: DocumentAction) {
     const docType = normalizeDocType(getString(request.body?.docType) ?? getString(request.query?.docType));
 
     if (docType === DocType.TRANSFER) {
-      return resolveByProductType(action, undefined, "transfers.products", "transfers.materials", productType);
+      return resolveByProductType(action, undefined, "transfers.products", "transfers.materials", "transfers.supplies", productType);
     }
     if (docType === DocType.ADJUSTMENT) {
-      return resolveByProductType(action, undefined, "adjustments.products", "adjustments.materials", productType);
+      return resolveByProductType(action, undefined, "adjustments.products", "adjustments.materials", "adjustments.supplies", productType);
     }
 
-    return [[`transfers.products.${action}`, `transfers.materials.${action}`, `adjustments.products.${action}`, `adjustments.materials.${action}`]];
+    return [[`transfers.products.${action}`, `transfers.materials.${action}`, `transfers.supplies.${action}`, `adjustments.products.${action}`, `adjustments.materials.${action}`, `adjustments.supplies.${action}`]];
   };
 }
 
@@ -86,17 +93,19 @@ export function documentReadPermissionGroupsFromRequest() {
     const docType = normalizeDocType(getString(request.body?.docType) ?? getString(request.query?.docType));
 
     if (docType === DocType.TRANSFER) {
-      return resolveByProductType("view", "catalog.read", "transfers.products", "transfers.materials", productType);
+      return resolveByProductType("view", "catalog.read", "transfers.products", "transfers.materials", "transfers.supplies", productType);
     }
     if (docType === DocType.ADJUSTMENT) {
-      return resolveByProductType("view", "catalog.read", "adjustments.products", "adjustments.materials", productType);
+      return resolveByProductType("view", "catalog.read", "adjustments.products", "adjustments.materials", "adjustments.supplies", productType);
     }
 
     return [[
       "transfers.products.view",
       "transfers.materials.view",
+      "transfers.supplies.view",
       "adjustments.products.view",
       "adjustments.materials.view",
+      "adjustments.supplies.view",
       "catalog.read",
     ]];
   };
@@ -108,17 +117,19 @@ export function documentExportPermissionGroupsFromRequest() {
     const docType = normalizeDocType(getString(request.body?.docType) ?? getString(request.query?.docType));
 
     if (docType === DocType.TRANSFER) {
-      return resolveByProductType("export", undefined, "transfers.products", "transfers.materials", productType);
+      return resolveByProductType("export", undefined, "transfers.products", "transfers.materials", "transfers.supplies", productType);
     }
     if (docType === DocType.ADJUSTMENT) {
-      return resolveByProductType("export", undefined, "adjustments.products", "adjustments.materials", productType);
+      return resolveByProductType("export", undefined, "adjustments.products", "adjustments.materials", "adjustments.supplies", productType);
     }
 
     return [[
       "transfers.products.export",
       "transfers.materials.export",
+      "transfers.supplies.export",
       "adjustments.products.export",
       "adjustments.materials.export",
+      "adjustments.supplies.export",
     ]];
   };
 }
@@ -128,6 +139,7 @@ function resolveByProductType(
   legacyPermission: string | undefined,
   productPrefix: string,
   materialPrefix: string,
+  supplyPrefix: string,
   productType?: ProductCatalogProductType,
 ): PermissionGroup[] {
   const group = (permission: string): PermissionGroup =>
@@ -139,10 +151,14 @@ function resolveByProductType(
   if (productType === ProductCatalogProductType.PRODUCT) {
     return [group(`${productPrefix}.${action}`)];
   }
+  if (productType === ProductCatalogProductType.SUPPLY) {
+    return [group(`${supplyPrefix}.${action}`)];
+  }
 
   return [
     group(`${productPrefix}.${action}`),
     group(`${materialPrefix}.${action}`),
+    group(`${supplyPrefix}.${action}`),
   ];
 }
 
@@ -162,6 +178,7 @@ function normalizeProductType(value?: string): ProductCatalogProductType | undef
   if (!normalized) return undefined;
   if (PRODUCT_TYPE_MATERIAL_VALUES.has(normalized)) return ProductCatalogProductType.MATERIAL;
   if (PRODUCT_TYPE_PRODUCT_VALUES.has(normalized)) return ProductCatalogProductType.PRODUCT;
+  if (PRODUCT_TYPE_SUPPLY_VALUES.has(normalized)) return ProductCatalogProductType.SUPPLY;
   return undefined;
 }
 

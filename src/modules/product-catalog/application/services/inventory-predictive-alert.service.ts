@@ -61,7 +61,7 @@ export class InventoryPredictiveAlertService {
         )
       `).then(() => this.dataSource.query(`
         INSERT INTO pc_inventory_alert_policies (product_type)
-        VALUES ('PRODUCT'), ('MATERIAL') ON CONFLICT (product_type) DO NOTHING
+        VALUES ('PRODUCT'), ('MATERIAL'), ('SUPPLY') ON CONFLICT (product_type) DO NOTHING
       `)).then(() => undefined).catch((error) => {
         this.schemaReady = undefined;
         throw error;
@@ -139,7 +139,11 @@ export class InventoryPredictiveAlertService {
     const policy = await this.getPolicy(context.productType);
     const days = previousBusinessDays(policy.historyDays);
     const from = days[0];
-    const consumptionReferenceType = context.productType === ProductCatalogProductType.MATERIAL ? "PRODUCTION" : "SALE_ORDER";
+    const consumptionReferenceType = context.productType === ProductCatalogProductType.MATERIAL
+      ? "PRODUCTION"
+      : context.productType === ProductCatalogProductType.SUPPLY
+        ? "PURCHASE"
+        : "SALE_ORDER";
     const rows = await this.dataSource.query<Array<{ day: string; quantity: number | string }>>(`
       SELECT to_char(l.created_at AT TIME ZONE 'America/Bogota', 'YYYY-MM-DD') AS day,
              COALESCE(SUM(l.quantity), 0) AS quantity

@@ -115,6 +115,7 @@ import { AddProductionEvidenceStatus20260806090000 } from "./migrations/20260806
 import { RestoreLegacyProductEquivalenceDirection20260806110000 } from "./migrations/20260806110000-restore-legacy-product-equivalence-direction";
 import { PhysicallyDeleteSaleOrders20260806120000 } from "./migrations/20260806120000-physically-delete-sale-orders";
 import { PhysicallyDeleteLogicallyDeletedCatalog20260806130000 } from "./migrations/20260806130000-physically-delete-logically-deleted-catalog";
+import { AddSupplyCatalogType20260808010000 } from "./migrations/20260808010000-add-supply-catalog-type";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -241,6 +242,7 @@ export const databaseMigrations = [
     RestoreLegacyProductEquivalenceDirection20260806110000,
     PhysicallyDeleteSaleOrders20260806120000,
     PhysicallyDeleteLogicallyDeletedCatalog20260806130000,
+    AddSupplyCatalogType20260808010000,
 ];
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({

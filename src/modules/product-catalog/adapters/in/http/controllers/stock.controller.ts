@@ -68,6 +68,7 @@ import {
   inventoryPermissionGroupsFromRequest,
   ledgerExportPermissionGroupsFromRequest,
   ledgerPermissionGroupsFromRequest,
+  productTypePermissionPrefix,
 } from "./catalog-permission-groups";
 
 const INVENTORY_LEDGER_EXPORT_LABELS: Record<string, string> = {
@@ -136,7 +137,7 @@ export class ProductCatalogStockController {
     private readonly documentRepo: ProductCatalogInventoryDocumentRepository,
   ) {}
 
-  @RequireAnyPermissionGroups(["products.create", "materials.create"])
+  @RequireAnyPermissionGroups(["products.create", "materials.create", "supplies.create"])
   @Post("skus/:id/stock-item")
   async createForSku(
     @Param("id", ParseUUIDPipe) skuId: string,
@@ -148,25 +149,25 @@ export class ProductCatalogStockController {
     return this.createStockItem.execute({ skuId, ...dto });
   }
 
-  @RequireAnyPermissionGroups(["inventory.products.view", "inventory.materials.view", "catalog.read"])
+  @RequireAnyPermissionGroups(["inventory.products.view", "inventory.materials.view", "inventory.supplies.view", "catalog.read"])
   @Get("skus/:id/stock-item")
   getBySku(@Param("id", ParseUUIDPipe) skuId: string) {
     return this.getSkuStockItem.execute(skuId);
   }
 
-  @RequireAnyPermissionGroups(["inventory.products.view", "inventory.materials.view", "catalog.read"])
+  @RequireAnyPermissionGroups(["inventory.products.view", "inventory.materials.view", "inventory.supplies.view", "catalog.read"])
   @Get("stock-items/:id")
   getById(@Param("id", ParseUUIDPipe) id: string) {
     return this.getStockItem.execute(id);
   }
 
-  @RequireAnyPermissionGroups(["inventory.products.view", "inventory.materials.view", "catalog.read"])
+  @RequireAnyPermissionGroups(["inventory.products.view", "inventory.materials.view", "inventory.supplies.view", "catalog.read"])
   @Get("skus/:id/stock")
   listBySku(@Param("id", ParseUUIDPipe) skuId: string) {
     return this.listInventoryBySku.execute(skuId);
   }
 
-  @RequireAnyPermissionGroups(["adjustments.products.create", "adjustments.materials.create"])
+  @RequireAnyPermissionGroups(["adjustments.products.create", "adjustments.materials.create", "adjustments.supplies.create"])
   @Post("stock-items/:id/balances")
   upsertBalance(@Param("id", ParseUUIDPipe) stockItemId: string, @Body() dto: UpsertProductCatalogInventoryBalanceDto) {
     return this.upsertInventoryBalance.execute({ stockItemId, ...dto });
@@ -194,7 +195,7 @@ export class ProductCatalogStockController {
     return this.transferBetweenWarehouses.execute({ ...dto, createdBy: user.id, autoPost: false });
   }
 
-  @RequireAnyPermissionGroups(["transfers.products.process", "transfers.materials.process", "adjustments.products.process", "adjustments.materials.process"])
+  @RequireAnyPermissionGroups(["transfers.products.process", "transfers.materials.process", "transfers.supplies.process", "adjustments.products.process", "adjustments.materials.process", "adjustments.supplies.process"])
   @Post("inventory-documents/:id/process")
   processInventoryDocument(
     @Param("id", ParseUUIDPipe) docId: string,
@@ -207,7 +208,7 @@ export class ProductCatalogStockController {
 
   private async ensureProductPermission(userId: string, productId: string, action: "create") {
     const { product } = await this.getProduct.execute(productId);
-    const prefix = product.type === ProductCatalogProductType.MATERIAL ? "materials" : "products";
+    const prefix = productTypePermissionPrefix(product.type);
     const allowed = await this.accessControlService.userHasAllPermissions(userId, [`${prefix}.${action}`]);
     if (!allowed) throw new ForbiddenException("Acceso denegado: permisos insuficientes");
   }
@@ -215,7 +216,7 @@ export class ProductCatalogStockController {
   private async ensureDocumentProcessPermission(userId: string, docId: string) {
     const document = await this.documentRepo.findById(docId);
     if (!document) throw new NotFoundException("Documento de inventario no encontrado");
-    const productTypePrefix = document.productType === ProductCatalogProductType.MATERIAL ? "materials" : "products";
+    const productTypePrefix = document.productType ? productTypePermissionPrefix(document.productType) : "products";
     const documentPrefix = document.docType === DocType.ADJUSTMENT ? "adjustments" : "transfers";
     const permission = `${documentPrefix}.${productTypePrefix}.process`;
     const allowed = await this.accessControlService.userHasAllPermissions(userId, [permission]);
@@ -234,7 +235,7 @@ export class ProductCatalogStockController {
     return this.listDailyMovementBySku.execute(query);
   }
 
-  @RequireAnyPermissionGroups(["inventory-ledger.products.view", "inventory-ledger.materials.view", "catalog.read"])
+  @RequireAnyPermissionGroups(["inventory-ledger.products.view", "inventory-ledger.materials.view", "inventory-ledger.supplies.view", "catalog.read"])
   @Get("stock-items/:id/ledger")
   ledger(@Param("id", ParseUUIDPipe) stockItemId: string, @Query() query: ListProductCatalogInventoryLedgerDto) {
     return this.listLedger.execute({ stockItemId, ...query });

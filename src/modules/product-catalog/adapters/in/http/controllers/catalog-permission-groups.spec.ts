@@ -61,4 +61,14 @@ describe("catalog permission group resolvers", () => {
     expect(inventoryPermissionGroupsFromRequest("view")({ query: { productType: ProductCatalogProductType.MATERIAL } }))
       .toEqual([["inventory.materials.view", "catalog.read"]]);
   });
+
+  it("maps supplies to their own catalog, inventory and document permissions", () => {
+    expect(productCatalogPermissionGroupsFromRequest("create")({ body: { type: ProductCatalogProductType.SUPPLY } }))
+      .toEqual([["supplies.create"]]);
+    expect(inventoryPermissionGroupsFromRequest("view")({ query: { productType: ProductCatalogProductType.SUPPLY } }))
+      .toEqual([["inventory.supplies.view", "catalog.read"]]);
+    expect(documentPermissionGroupsFromRequest("process")({
+      body: { docType: DocType.TRANSFER, productType: ProductCatalogProductType.SUPPLY },
+    })).toEqual([["transfers.supplies.process"]]);
+  });
 });

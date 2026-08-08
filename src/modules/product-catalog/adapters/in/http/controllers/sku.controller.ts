@@ -17,7 +17,7 @@ import { ListProductCatalogInventorySnapshotsBySku } from "src/modules/product-c
 import { ListSkuStockSnapshotsDto } from "../dtos/list-sku-stock-snapshots.dto";
 import { ListSkuStockSnapshotsSearchDto } from "../dtos/list-sku-stock-snapshots-search.dto";
 import { ListAvailableStockUsecase } from "src/modules/product-catalog/application/usecases/list-available-stock";
-import { inventoryPermissionGroupsFromRequest, productCatalogPermissionGroupsFromRequest } from "./catalog-permission-groups";
+import { inventoryPermissionGroupsFromRequest, productCatalogPermissionGroupsFromRequest, productTypePermissionPrefix } from "./catalog-permission-groups";
 import { GetProductCatalogProduct } from "src/modules/product-catalog/application/usecases/get-product.usecase";
 import { ProductCatalogProductType } from "src/modules/product-catalog/domain/value-objects/product-type";
 import { AccessControlService } from "src/modules/access-control/application/services/access-control.service";
@@ -39,7 +39,7 @@ export class ProductCatalogSkuController {
     private readonly accessControlService: AccessControlService,
   ) {}
 
-  @RequireAnyPermissionGroups(["products.create", "materials.create"])
+  @RequireAnyPermissionGroups(["products.create", "materials.create", "supplies.create"])
   @Post("products/:id/skus")
   async create(
     @Param("id", ParseUUIDPipe) productId: string,
@@ -84,7 +84,7 @@ export class ProductCatalogSkuController {
     return this.getStock.execute(query);
   }
 
-  @RequireAnyPermissionGroups(["inventory.products.view", "inventory.materials.view", "catalog.read"])
+  @RequireAnyPermissionGroups(["inventory.products.view", "inventory.materials.view", "inventory.supplies.view", "catalog.read"])
   @Get("skus/:id/stock/snapshot")
   getSkuStockSnapshot(
     @Param("id", ParseUUIDPipe) skuId: string,
@@ -117,7 +117,7 @@ export class ProductCatalogSkuController {
       productType: query.productType,
     });
   }
-  @RequireAnyPermissionGroups(["products.view_detail", "materials.view_detail", "catalog.read", "sale_orders.products.view"])
+  @RequireAnyPermissionGroups(["products.view_detail", "materials.view_detail", "supplies.view_detail", "catalog.read", "sale_orders.products.view"])
   @Get("skus/:id")
   async getById(@Param("id", ParseUUIDPipe) id: string, @CurrentUser() user: { id: string }) {
     const sku = await this.getSku.execute(id);
@@ -133,7 +133,7 @@ export class ProductCatalogSkuController {
   }
   
 
-  @RequireAnyPermissionGroups(["products.update", "materials.update"])
+  @RequireAnyPermissionGroups(["products.update", "materials.update", "supplies.update"])
   @Patch("skus/:id")
   async update(
     @Param("id", ParseUUIDPipe) id: string,
@@ -145,7 +145,7 @@ export class ProductCatalogSkuController {
     return this.updateSku.execute(id, dto);
   }
 
-  @RequireAnyPermissionGroups(["products.update", "materials.update"])
+  @RequireAnyPermissionGroups(["products.update", "materials.update", "supplies.update"])
   @Delete("skus/:id")
   @HttpCode(204)
   async delete(
@@ -159,7 +159,7 @@ export class ProductCatalogSkuController {
 
   private async ensureProductPermission(userId: string, productId: string, action: "create" | "update") {
     const { product } = await this.getProduct.execute(productId);
-    const prefix = product.type === ProductCatalogProductType.MATERIAL ? "materials" : "products";
+    const prefix = productTypePermissionPrefix(product.type);
     const allowed = await this.accessControlService.userHasAllPermissions(userId, [`${prefix}.${action}`]);
     if (!allowed) throw new ForbiddenException("Acceso denegado: permisos insuficientes");
   }

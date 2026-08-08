@@ -20,7 +20,7 @@ import { Response } from "express";
   import { HttpCreateProductSearchMetricDto } from "../dtos/http-product-search-metric-create.dto";
   import { sanitizeProductCatalogProductSearchSnapshot } from "src/modules/product-catalog/application/support/product-search.utils";
   import { ProductCatalogProductType } from "src/modules/product-catalog/domain/value-objects/product-type";
-  import { productCatalogPermissionGroupsFromRequest } from "./catalog-permission-groups";
+  import { productCatalogPermissionGroupsFromRequest, productTypePermissionPrefix } from "./catalog-permission-groups";
   import { LISTING_SEARCH_STORAGE, ListingSearchStorageRepository } from "src/shared/listing-search/domain/listing-search.repository";
   import { XlsxBuilderService } from "src/shared/application/services/xlsx-builder.service";
   import { AccessControlService } from "src/modules/access-control/application/services/access-control.service";
@@ -167,8 +167,8 @@ const PRODUCT_EXPORT_LABELS: Record<string, string> = {
         ? body.columns
         : this.buildExportColumnsFromFirstRow(rows[0] ?? {}, PRODUCT_EXPORT_LABELS))
         .map((column) => ({ key: column.key, header: column.label }));
-      const sheetName = body.type === ProductCatalogProductType.MATERIAL ? "Materia prima" : "Productos";
-      const fileNamePrefix = body.type === ProductCatalogProductType.MATERIAL ? "materia-prima" : "productos";
+      const sheetName = body.type === ProductCatalogProductType.MATERIAL ? "Materia prima" : body.type === ProductCatalogProductType.SUPPLY ? "Insumos" : "Productos";
+      const fileNamePrefix = body.type === ProductCatalogProductType.MATERIAL ? "materia-prima" : body.type === ProductCatalogProductType.SUPPLY ? "insumos" : "productos";
       const buffer = await new XlsxBuilderService().build({
         sheetName,
         columns,
@@ -179,25 +179,25 @@ const PRODUCT_EXPORT_LABELS: Record<string, string> = {
       return res.status(200).send(buffer);
     }
 
-    @RequireAnyPermissionGroups(["products.view_detail", "materials.view_detail", "catalog.read"])
+    @RequireAnyPermissionGroups(["products.view_detail", "materials.view_detail", "supplies.view_detail", "catalog.read"])
     @Get(":id")
     getById(@Param("id", ParseUUIDPipe) id: string) {
       return this.getProduct.execute(id);
     }
 
-    @RequireAnyPermissionGroups(["products.view_detail", "materials.view_detail", "catalog.read"])
+    @RequireAnyPermissionGroups(["products.view_detail", "materials.view_detail", "supplies.view_detail", "catalog.read"])
     @Get(":id/pack-impact")
     async getPackImpact(@Param("id", ParseUUIDPipe) id: string) {
       return this.updateProduct.getPackImpact(id);
     }
 
-    @RequireAnyPermissionGroups(["products.view_detail", "materials.view_detail", "catalog.read"])
+    @RequireAnyPermissionGroups(["products.view_detail", "materials.view_detail", "supplies.view_detail", "catalog.read"])
     @Get(":id/detail")
     getDetail(@Param("id", ParseUUIDPipe) id: string, @Query("warehouseId") warehouseId?: string) {
       return this.getProductDetail.execute(id, warehouseId);
     }
 
-    @RequireAnyPermissionGroups(["products.update", "materials.update", "products.delete", "materials.delete"])
+    @RequireAnyPermissionGroups(["products.update", "materials.update", "supplies.update", "products.delete", "materials.delete", "supplies.delete"])
     @Patch(":id")
     async update(
       @Param("id", ParseUUIDPipe) id: string,
@@ -210,7 +210,7 @@ const PRODUCT_EXPORT_LABELS: Record<string, string> = {
 
     private async ensureProductPermission(userId: string, productId: string, action: "update" | "delete") {
       const { product } = await this.getProduct.execute(productId);
-      const prefix = product.type === ProductCatalogProductType.MATERIAL ? "materials" : "products";
+      const prefix = productTypePermissionPrefix(product.type);
       const allowed = await this.accessControlService.userHasAllPermissions(userId, [`${prefix}.${action}`]);
       if (!allowed) throw new ForbiddenException("Acceso denegado: permisos insuficientes");
     }
