@@ -23,7 +23,7 @@ export class WorkflowSupplyRecipeItemEntity {
   @JoinColumn({ name: 'supply_sku_id' })
   supplySku?: ProductCatalogSkuEntity;
 
-  @Column({ type: 'numeric', precision: 12, scale: 3 })
+  @Column({ type: 'numeric', precision: 12, scale: 2 })
   quantity: number;
 
   @Column({ name: 'unit_id', type: 'uuid' })

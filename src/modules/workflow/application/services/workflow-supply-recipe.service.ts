@@ -13,6 +13,14 @@ type SaveWorkflowSupplyRecipeInput = {
   items: Array<{ supplySkuId: string; quantity: number; unitId: string }>;
 };
 
+export const normalizeWorkflowSupplyQuantity = (quantity: number) => {
+  const normalized = Math.round((quantity + Number.EPSILON) * 100) / 100;
+  if (!Number.isFinite(quantity) || quantity < 0.01 || Math.abs(quantity - normalized) >= 1e-9) {
+    throw new BadRequestException('La cantidad debe ser mayor o igual a 0.01 y tener máximo 2 decimales');
+  }
+  return normalized;
+};
+
 @Injectable()
 export class WorkflowSupplyRecipeService {
   constructor(
@@ -42,16 +50,20 @@ export class WorkflowSupplyRecipeService {
   }
 
   async save(workflowId: string, input: SaveWorkflowSupplyRecipeInput) {
+    const normalizedItems = input.items.map((item) => ({
+      ...item,
+      quantity: normalizeWorkflowSupplyQuantity(item.quantity),
+    }));
     const workflow = await this.workflowRepo.findOne({ where: { id: workflowId } });
     if (!workflow) throw new NotFoundException('Flujo no encontrado');
 
-    const uniqueSkuIds = new Set(input.items.map((item) => item.supplySkuId));
-    if (uniqueSkuIds.size !== input.items.length) {
+    const uniqueSkuIds = new Set(normalizedItems.map((item) => item.supplySkuId));
+    if (uniqueSkuIds.size !== normalizedItems.length) {
       throw new BadRequestException('Un insumo no puede repetirse dentro de la receta');
     }
 
     const skuIds = [...uniqueSkuIds];
-    const unitIds = [...new Set(input.items.map((item) => item.unitId))];
+    const unitIds = [...new Set(normalizedItems.map((item) => item.unitId))];
     const [supplySkus, units] = await Promise.all([
       this.skuRepo.find({ where: { id: In(skuIds) }, relations: { product: true } }),
       this.unitRepo.findBy({ id: In(unitIds) }),
@@ -88,7 +100,7 @@ export class WorkflowSupplyRecipeService {
 
       await items.delete({ recipeId: saved.id });
       await items.save(
-        input.items.map((item) => ({
+        normalizedItems.map((item) => ({
           recipeId: saved.id,
           supplySkuId: item.supplySkuId,
           quantity: item.quantity,

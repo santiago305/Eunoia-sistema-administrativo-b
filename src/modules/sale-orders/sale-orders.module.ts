@@ -5,6 +5,7 @@ import { PacksModule } from "src/modules/packs/packs.module";
 import { SaleOrderEntity } from "./adapters/out/persistence/typeorm/entities/sale-order.entity";
 import { SaleOrderItemEntity } from "./adapters/out/persistence/typeorm/entities/sale-order-item.entity";
 import { SaleOrderItemComponentEntity } from "./adapters/out/persistence/typeorm/entities/sale-order-item-component.entity";
+import { SaleOrderSupplyItemEntity } from "./adapters/out/persistence/typeorm/entities/sale-order-supply-item.entity";
 import { SalePaymentEntity } from "./adapters/out/persistence/typeorm/entities/sale-payment.entity";
 import { SaleOrderImportLoteEntity } from "./adapters/out/persistence/typeorm/entities/sale-order-import-lote.entity";
 import { SaleOrderImportLoteAuditEntity } from "./adapters/out/persistence/typeorm/entities/sale-order-import-lote-audit.entity";
@@ -43,6 +44,7 @@ import { AuthModule } from "../auth/infrastructure/auth.module";
       SaleOrderEntity,
       SaleOrderItemEntity,
       SaleOrderItemComponentEntity,
+      SaleOrderSupplyItemEntity,
       SalePaymentEntity,
       SaleOrderImportLoteEntity,
       SaleOrderImportLoteAuditEntity,

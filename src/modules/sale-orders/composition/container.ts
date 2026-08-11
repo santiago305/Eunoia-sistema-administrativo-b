@@ -8,6 +8,7 @@ import { SALE_ORDER_REPOSITORY } from "src/modules/sale-orders/domain/ports/sale
 import { SALE_ORDER_SEARCH } from "src/modules/sale-orders/domain/ports/sale-order-search.repository";
 import { SALE_ORDER_ITEM_REPOSITORY } from "src/modules/sale-orders/domain/ports/sale-order-item.repository";
 import { SALE_ORDER_ITEM_COMPONENT_REPOSITORY } from "src/modules/sale-orders/domain/ports/sale-order-item-component.repository";
+import { SALE_ORDER_SUPPLY_ITEM_REPOSITORY } from "src/modules/sale-orders/domain/ports/sale-order-supply-item.repository";
 import { SALE_ORDER_IMPORT_LOTE_REPOSITORY } from "src/modules/sale-orders/domain/ports/sale-order-import-lote.repository";
 import { SALE_PAYMENT_REPOSITORY } from "src/modules/sale-orders/domain/ports/sale-payment.repository";
 import { SaleOrderTypeormRepository } from "src/modules/sale-orders/adapters/out/persistence/typeorm/repositories/sale-order.typeorm.repo";
@@ -15,6 +16,7 @@ import { SaleOrderImportLoteTypeormRepository } from "src/modules/sale-orders/ad
 import { SaleOrderSearchTypeormRepository } from "src/modules/sale-orders/adapters/out/persistence/typeorm/repositories/sale-order-search.typeorm.repo";
 import { SaleOrderItemTypeormRepository } from "src/modules/sale-orders/adapters/out/persistence/typeorm/repositories/sale-order-item.typeorm.repo";
 import { SaleOrderItemComponentTypeormRepository } from "src/modules/sale-orders/adapters/out/persistence/typeorm/repositories/sale-order-item-component.typeorm.repo";
+import { SaleOrderSupplyItemTypeormRepository } from "src/modules/sale-orders/adapters/out/persistence/typeorm/repositories/sale-order-supply-item.typeorm.repo";
 import { SalePaymentTypeormRepository } from "src/modules/sale-orders/adapters/out/persistence/typeorm/repositories/sale-payment.typeorm.repo";
 import { CreateSaleOrderUsecase } from "src/modules/sale-orders/application/usecases/sale-order/create.usecase";
 import { GetSaleOrderUsecase } from "src/modules/sale-orders/application/usecases/sale-order/get.usecase";
@@ -80,11 +82,13 @@ import { SaleOrderPaymentReconcilerService } from "../application/services/sale-
 import { SaveSaleOrderWithClientUsecase } from "../application/usecases/sale-order/save-with-client.usecase";
 import { ExportSaleOrdersExcelUsecase } from "../application/usecases/sale-order/export-excel.usecase";
 import { GetSaleOrderEditorCatalogsUsecase } from "../application/usecases/sale-order/get-editor-catalogs.usecase";
+import { SaleOrderSuppliesService } from "../application/services/sale-order-supplies.service";
 
 export const saleOrdersModuleProviders = [
   { provide: SALE_ORDER_REPOSITORY, useClass: SaleOrderTypeormRepository },
   { provide: SALE_ORDER_ITEM_REPOSITORY, useClass: SaleOrderItemTypeormRepository },
   { provide: SALE_ORDER_ITEM_COMPONENT_REPOSITORY, useClass: SaleOrderItemComponentTypeormRepository },
+  { provide: SALE_ORDER_SUPPLY_ITEM_REPOSITORY, useClass: SaleOrderSupplyItemTypeormRepository },
   { provide: SALE_ORDER_IMPORT_LOTE_REPOSITORY, useClass: SaleOrderImportLoteTypeormRepository },
   { provide: SALE_PAYMENT_REPOSITORY, useClass: SalePaymentTypeormRepository },
   { provide: LISTING_SEARCH_STORAGE, useClass: ListingSearchTypeormRepository },
@@ -137,6 +141,7 @@ export const saleOrdersModuleProviders = [
   UpdateClientUsecase,
   SaleOrderClientCommandService,
   SaleOrderPaymentReconcilerService,
+  SaleOrderSuppliesService,
   SaveSaleOrderWithClientUsecase,
   ExportSaleOrdersExcelUsecase,
   GetSaleOrderEditorCatalogsUsecase,

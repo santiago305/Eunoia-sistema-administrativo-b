@@ -118,6 +118,7 @@ import { PhysicallyDeleteLogicallyDeletedCatalog20260806130000 } from "./migrati
 import { AddSupplyCatalogType20260808010000 } from "./migrations/20260808010000-add-supply-catalog-type";
 import { PhysicallyDeleteClients20260810120000 } from "./migrations/20260810120000-physically-delete-clients";
 import { CreateWorkflowSupplyRecipes20260810130000 } from "./migrations/20260810130000-create-workflow-supply-recipes";
+import { CreateSaleOrderSupplyItems20260811100000 } from "./migrations/20260811100000-create-sale-order-supply-items";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -247,6 +248,7 @@ export const databaseMigrations = [
     AddSupplyCatalogType20260808010000,
     PhysicallyDeleteClients20260810120000,
     CreateWorkflowSupplyRecipes20260810130000,
+    CreateSaleOrderSupplyItems20260811100000,
 ];
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({

@@ -5,8 +5,8 @@ class WorkflowSupplyRecipeItemDto {
   @IsUUID()
   supplySkuId: string;
 
-  @IsNumber()
-  @Min(0.001)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01)
   quantity: number;
 
   @IsUUID()
