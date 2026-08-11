@@ -58,6 +58,7 @@ import { buildSaleOrderItemDisplayFields } from "src/modules/sale-orders/applica
 import { SaleOrderAuditEntity } from "../entities/sale-order-audit.entity";
 import { SaleOrderReadContext } from "src/modules/sale-orders/application/services/sale-order-access-policy.service";
 import { buildSaleOrderTrackingCapabilities } from "src/modules/sale-orders/application/support/sale-order-tracking-capabilities";
+import { SaleOrderSupplyItemEntity } from "../entities/sale-order-supply-item.entity";
 
 @Injectable()
 export class SaleOrderTypeormRepository implements SaleOrderRepository {
@@ -1713,6 +1714,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     trackingCapabilitiesByWorkflowId,
     currentState,
     attachments,
+    supplyItems,
   ] = await Promise.all([
     manager.getRepository(SaleOrderItemEntity).find({
       where: { saleOrderId: row.id },
@@ -1786,6 +1788,11 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
 
     manager.getRepository(SaleOrderAttachmentEntity).find({
       where: { saleOrderId: row.id, deletedAt: IsNull() },
+      order: { createdAt: "ASC" },
+    }),
+
+    manager.getRepository(SaleOrderSupplyItemEntity).find({
+      where: { saleOrderId: row.id },
       order: { createdAt: "ASC" },
     }),
   ]);
@@ -2088,6 +2095,22 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       components: compsByItemId.get(item.id) ?? [],
     })),
 
+    supplies: supplyItems.map((item) => ({
+      id: item.id,
+      supplySkuId: item.supplySkuId,
+      quantity: Number(item.quantity),
+      unitId: item.unitId,
+      referenceRecipeItemId: item.referenceRecipeItemId ?? null,
+      supplyName: item.supplyNameSnapshot,
+      skuName: item.skuNameSnapshot,
+      backendSku: item.backendSkuSnapshot,
+      customSku: item.customSkuSnapshot ?? null,
+      unitName: item.unitNameSnapshot,
+      unitCode: item.unitCodeSnapshot,
+      createdAt: toIso(item.createdAt),
+      updatedAt: toIso(item.updatedAt),
+    })),
+
     SKUS: displayFields.SKUS,
     detail: displayFields.detail,
 
@@ -2156,6 +2179,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     }
     if (!readContext.includeProducts) {
       output.items = [];
+      output.supplies = [];
       output.SKUS = "";
       output.detail = "";
     }

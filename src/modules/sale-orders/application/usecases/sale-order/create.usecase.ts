@@ -15,6 +15,7 @@ import { SaleOrderNumberingService } from "../../services/sale-order-numbering.s
 import { AdviserMembershipService } from "../../services/adviser-membership.service";
 import { CreateLogisticsPayableForSaleOrderUsecase } from "src/modules/logistics-payables/application/usecases/create-logistics-payable-for-sale-order.usecase";
 import { SaleOrderCommandAuthorizationService } from "../../services/sale-order-command-authorization.service";
+import { SaleOrderSuppliesService, SaleOrderSupplyInput } from "../../services/sale-order-supplies.service";
 
 export type CreateSaleOrderInput = {
   warehouseId?: string;
@@ -61,6 +62,7 @@ export type CreateSaleOrderInput = {
     note?: string;
     paymentPhoto?: string | null;
   }>;
+  supplies?: SaleOrderSupplyInput[];
 };
 
 @Injectable()
@@ -86,6 +88,7 @@ export class CreateSaleOrderUsecase {
     @Optional() private readonly adviserMembership?: AdviserMembershipService,
     @Optional() private readonly createLogisticsPayable?: CreateLogisticsPayableForSaleOrderUsecase,
     @Optional() private readonly commandAuthorization?: SaleOrderCommandAuthorizationService,
+    @Optional() private readonly suppliesService?: SaleOrderSuppliesService,
   ) {}
 
   async execute(input: CreateSaleOrderInput, createdBy: string) {
@@ -253,6 +256,14 @@ export class CreateSaleOrderUsecase {
       }
 
       await this.componentRepo.bulkCreate(componentsInput, tx);
+
+      if (this.suppliesService) {
+        if (input.supplies !== undefined) {
+          await this.suppliesService.replace(order.id, input.supplies, tx);
+        } else {
+          await this.suppliesService.copyFromWorkflowRecipe(order.id, workflow.id, tx);
+        }
+      }
 
       const paymentsInput = (input.payments ?? []).map((p) => {
         const date = p.date ? new Date(p.date) : new Date();

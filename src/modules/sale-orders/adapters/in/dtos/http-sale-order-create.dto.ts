@@ -113,6 +113,22 @@ export class HttpSalePaymentDto {
 
 }
 
+export class HttpSaleOrderSupplyDto {
+  @IsUUID()
+  supplySkuId: string;
+
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01)
+  quantity: number;
+
+  @IsUUID()
+  unitId: string;
+
+  @IsOptional()
+  @IsUUID()
+  referenceRecipeItemId?: string;
+}
+
 export class HttpSaleOrderCreateDto {
   @IsOptional()
   @Transform(({ value }) => (value === "" || value === null ? undefined : value))
@@ -200,6 +216,12 @@ export class HttpSaleOrderCreateDto {
   @ValidateNested({ each: true })
   @Type(() => HttpSalePaymentDto)
   payments?: HttpSalePaymentDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => HttpSaleOrderSupplyDto)
+  supplies?: HttpSaleOrderSupplyDto[];
   
   @IsOptional()
   currentState?:string;

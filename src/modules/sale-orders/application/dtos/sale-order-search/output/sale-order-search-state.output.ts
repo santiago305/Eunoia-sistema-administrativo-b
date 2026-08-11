@@ -171,6 +171,21 @@ export type SaleOrderGetOutput = {
       createdAt: string;
     }>;
   }>;
+  supplies: Array<{
+    id: string;
+    supplySkuId: string;
+    quantity: number;
+    unitId: string;
+    referenceRecipeItemId: string | null;
+    supplyName: string;
+    skuName: string;
+    backendSku: string;
+    customSku: string | null;
+    unitName: string;
+    unitCode: string;
+    createdAt: string;
+    updatedAt: string;
+  }>;
   SKUS: string;
   detail: string;
   payments: Array<{

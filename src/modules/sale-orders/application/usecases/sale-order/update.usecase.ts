@@ -13,6 +13,7 @@ import { AdviserMembershipService } from "../../services/adviser-membership.serv
 import { SaleOrderEditPolicyService } from "../../services/sale-order-edit-policy.service";
 import { ReconcileLogisticsPayableForSaleOrderUsecase } from "src/modules/logistics-payables/application/usecases/reconcile-logistics-payable-for-sale-order.usecase";
 import { SaleOrderCommandAuthorizationService } from "../../services/sale-order-command-authorization.service";
+import { SaleOrderSuppliesService, SaleOrderSupplyInput } from "../../services/sale-order-supplies.service";
 
 export type UpdateSaleOrderInput = {
   saleOrderId: string;
@@ -61,6 +62,7 @@ export type UpdateSaleOrderInput = {
     note?: string;
     paymentPhoto?: string | null;
   }>;
+  supplies?: SaleOrderSupplyInput[];
 };
 
 @Injectable()
@@ -90,6 +92,7 @@ export class UpdateSaleOrderUsecase {
     @Optional() private readonly adviserMembership?: AdviserMembershipService,
     @Optional() private readonly reconcileLogisticsPayable?: ReconcileLogisticsPayableForSaleOrderUsecase,
     @Optional() private readonly commandAuthorization?: SaleOrderCommandAuthorizationService,
+    @Optional() private readonly suppliesService?: SaleOrderSuppliesService,
   ) {}
 
   private buildComponentSignature(
@@ -169,17 +172,14 @@ export class UpdateSaleOrderUsecase {
 
       let workflowIdToSave = order.workflowId ?? null;
       let currentStateIdToSave = order.currentStateId ?? null;
+      const workflowChanged = Boolean(selectedWorkflowId && selectedWorkflowId !== order.workflowId);
 
-      if (selectedWorkflowId) {
-        const orderHasWorkflow = Boolean(order.workflowId || order.currentStateId);
-
-        if (orderHasWorkflow && selectedWorkflowId !== order.workflowId) {
+      if (selectedWorkflowId && workflowChanged) {
+        if (editPolicy.isFinal || editPolicy.stockStatus === "RESERVED" || editPolicy.stockStatus === "CONSUMED") {
           throw new BadRequestException(
-            "El pedido ya tiene flujo asignado. No debe cambiarlo",
+            "No se puede cambiar el flujo de un pedido finalizado o con stock reservado/consumido",
           );
         }
-
-        if (!orderHasWorkflow) {
           const resolved = await this.workflowRepo.findDetailedById(selectedWorkflowId, tx);
           const initialStates = resolved?.states.filter(
             (state) => state.isActive && state.isInitial,
@@ -193,7 +193,6 @@ export class UpdateSaleOrderUsecase {
 
           workflowIdToSave = resolved.workflow.id;
           currentStateIdToSave = initialState.id;
-        }
       }
 
       const existingItems = await this.saleOrderItemRepo.listBySaleOrderId(
@@ -453,6 +452,14 @@ export class UpdateSaleOrderUsecase {
 
       if (componentsToSave.length) {
         await this.componentRepo.bulkCreate(componentsToSave, tx);
+      }
+
+      if (this.suppliesService) {
+        if (input.supplies !== undefined) {
+          await this.suppliesService.replace(updated.id, input.supplies, tx);
+        } else if (workflowChanged && workflowIdToSave) {
+          await this.suppliesService.copyFromWorkflowRecipe(updated.id, workflowIdToSave, tx);
+        }
       }
 
       const paymentsInput = (input.payments ?? []).map((payment) => {

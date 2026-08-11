@@ -195,6 +195,12 @@ export class SaleOrdersController {
           note: p.note,
           paymentPhoto: p.paymentPhoto,
         })),
+        supplies: dto.supplies?.map((supply) => ({
+          supplySkuId: supply.supplySkuId,
+          quantity: supply.quantity,
+          unitId: supply.unitId,
+          referenceRecipeItemId: supply.referenceRecipeItemId,
+        })),
       },
       user.id,
     );
@@ -535,6 +541,12 @@ export class SaleOrdersController {
           operationNumber: p.operationNumber,
           note: p.note,
           paymentPhoto: p.paymentPhoto,
+        })),
+        supplies: dto.supplies?.map((supply) => ({
+          supplySkuId: supply.supplySkuId,
+          quantity: supply.quantity,
+          unitId: supply.unitId,
+          referenceRecipeItemId: supply.referenceRecipeItemId,
         })),
       },
     );

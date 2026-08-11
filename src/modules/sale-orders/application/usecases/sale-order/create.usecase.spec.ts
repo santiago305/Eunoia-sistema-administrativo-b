@@ -10,11 +10,16 @@ import { WORKFLOW_REPOSITORY } from "src/modules/workflow/domain/ports/workflow.
 import { WORKFLOW_STATE_REPOSITORY } from "src/modules/workflow/domain/ports/workflow-state.repository";
 import { CreateSaleOrderUsecase } from "./create.usecase";
 import { SaleOrderNumberingService } from "../../services/sale-order-numbering.service";
+import { SaleOrderSuppliesService } from "../../services/sale-order-supplies.service";
 
 describe("CreateSaleOrderUsecase", () => {
   it("persists components without reserving stock", async () => {
     const tx = { id: 'create-tx' };
     const componentRepo = { bulkCreate: jest.fn().mockResolvedValue([]) };
+    const suppliesService = {
+      replace: jest.fn(),
+      copyFromWorkflowRecipe: jest.fn(),
+    };
     const saleOrderRepo = {
       create: jest.fn().mockResolvedValue({
         id: "order-1",
@@ -42,6 +47,7 @@ describe("CreateSaleOrderUsecase", () => {
         { provide: SALE_PAYMENT_REPOSITORY, useValue: { bulkCreate: jest.fn() } },
         { provide: WORKFLOW_REPOSITORY, useValue: { findById: jest.fn().mockResolvedValue({ id: "workflow-1", isActive: true }) } },
         { provide: WORKFLOW_STATE_REPOSITORY, useValue: { findInitialByWorkflowId: jest.fn().mockResolvedValue({ id: "state-1" }) } },
+        { provide: SaleOrderSuppliesService, useValue: suppliesService },
       ],
     }).compile();
 
@@ -65,6 +71,7 @@ describe("CreateSaleOrderUsecase", () => {
     );
 
     expect(componentRepo.bulkCreate).toHaveBeenCalled();
+    expect(suppliesService.copyFromWorkflowRecipe).toHaveBeenCalledWith("order-1", "workflow-1", tx);
     expect(saleOrderRepo.create).toHaveBeenCalledWith(
       expect.objectContaining({
         subTotal: 10,

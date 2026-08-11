@@ -9,3 +9,10 @@ export type SaleOrderClientCommand =
       id: string;
       data: Omit<UpdateClientInput, 'clientId'>;
     };
+
+export type SaleOrderSupplyCommand = {
+  supplySkuId: string;
+  quantity: number;
+  unitId: string;
+  referenceRecipeItemId?: string | null;
+};

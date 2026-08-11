@@ -10,7 +10,7 @@ import {
   Min,
   ValidateNested,
 } from "class-validator";
-import { HttpSaleOrderItemComponentDto, HttpSaleOrderItemDto, HttpSalePaymentDto } from "./http-sale-order-create.dto";
+import { HttpSaleOrderItemComponentDto, HttpSaleOrderItemDto, HttpSaleOrderSupplyDto, HttpSalePaymentDto } from "./http-sale-order-create.dto";
 
 export class HttpSaleOrderUpdateDto {
   
@@ -107,10 +107,16 @@ export class HttpSaleOrderUpdateDto {
   @ValidateNested({ each: true })
   @Type(() => HttpSalePaymentDto)
   payments?: HttpSalePaymentDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => HttpSaleOrderSupplyDto)
+  supplies?: HttpSaleOrderSupplyDto[];
   
   @IsOptional()
   currentState?:string;
 }
 
-export { HttpSaleOrderItemComponentDto, HttpSaleOrderItemDto, HttpSalePaymentDto };
+export { HttpSaleOrderItemComponentDto, HttpSaleOrderItemDto, HttpSaleOrderSupplyDto, HttpSalePaymentDto };
 

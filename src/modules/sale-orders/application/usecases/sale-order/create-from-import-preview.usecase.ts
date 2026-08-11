@@ -13,6 +13,7 @@ import { WORKFLOW_REPOSITORY, WorkflowRepository } from "src/modules/workflow/do
 import { SaleOrderNumberingService } from "src/modules/sale-orders/application/services/sale-order-numbering.service";
 import { SaleOrderImportAdviserResolverService } from "src/modules/sale-orders/application/services/sale-order-import-adviser-resolver.service";
 import { AssignImportLoteUsecase } from "./assign-import-lote.usecase";
+import { SaleOrderSuppliesService } from "../../services/sale-order-supplies.service";
 
 type ImportDestination = {
   agencySubsidiaryId: string | null;
@@ -43,6 +44,8 @@ export class CreateFromImportPreviewUseCase {
     private readonly assignImportLote: AssignImportLoteUsecase,
     @Optional()
     private readonly adviserResolver?: SaleOrderImportAdviserResolverService,
+    @Optional()
+    private readonly suppliesService?: SaleOrderSuppliesService,
   ) {}
 
   async execute(input: { rows: SaleOrderImportPreviewCleanRow[]; userId: string }): Promise<CreateSaleOrdersFromImportPreviewOutput> {
@@ -239,6 +242,14 @@ export class CreateFromImportPreviewUseCase {
       })),
       input.tx,
     );
+
+    if (resolvedWorkflow && this.suppliesService) {
+      await this.suppliesService.copyFromWorkflowRecipe(
+        saleOrderId,
+        resolvedWorkflow.workflow.id,
+        input.tx,
+      );
+    }
 
     if (advance > 0) {
       await this.salePaymentRepo.bulkCreate(

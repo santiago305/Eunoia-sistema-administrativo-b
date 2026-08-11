@@ -91,15 +91,26 @@ describe("UpdateSaleOrderUsecase", () => {
       }),
     };
     const workflowRepo = {
-      findDetailedById: jest.fn().mockResolvedValue({
-        workflow: { id: "workflow-1", isActive: true },
-        states: [{
-          id: "state-1",
-          isActive: true,
-          isInitial: false,
-          isFinal: currentStateIsFinal,
-        }],
-      }),
+      findDetailedById: jest.fn().mockImplementation((workflowId: string) => Promise.resolve(
+        workflowId === "workflow-2"
+          ? {
+              workflow: { id: "workflow-2", isActive: true },
+              states: [{ id: "state-2", isActive: true, isInitial: true, isFinal: false }],
+            }
+          : {
+              workflow: { id: "workflow-1", isActive: true },
+              states: [{
+                id: "state-1",
+                isActive: true,
+                isInitial: false,
+                isFinal: currentStateIsFinal,
+              }],
+            },
+      )),
+    };
+    const suppliesService = {
+      replace: jest.fn(),
+      copyFromWorkflowRecipe: jest.fn(),
     };
     const editPolicy = new SaleOrderEditPolicyService(
       historyRepo as any,
@@ -115,6 +126,10 @@ describe("UpdateSaleOrderUsecase", () => {
       paymentRepo as any,
       workflowRepo as any,
       editPolicy,
+      undefined,
+      undefined,
+      undefined,
+      suppliesService as any,
     );
 
     return {
@@ -124,6 +139,7 @@ describe("UpdateSaleOrderUsecase", () => {
       componentRepo,
       paymentRepo,
       packRepo,
+      suppliesService,
     };
   };
 
@@ -192,15 +208,37 @@ describe("UpdateSaleOrderUsecase", () => {
     })).rejects.toThrow("No se pueden cambiar productos, packs, cantidades, precios ni almacén de un pedido finalizado.");
   });
 
-  it("keeps rejecting workflow changes when one is already assigned", async () => {
+  it("changes workflow, resets its state and copies the new recipe when supplies are omitted", async () => {
     const fixture = createFixture();
 
     await expect(fixture.usecase.execute({
       ...input,
       workflowId: "workflow-2",
-    })).rejects.toThrow(
-      "El pedido ya tiene flujo asignado. No debe cambiarlo",
+    })).resolves.toEqual(expect.objectContaining({ orderId: "order-1" }));
+
+    expect(fixture.saleOrderRepo.update).toHaveBeenCalledWith(
+      expect.objectContaining({ workflowId: "workflow-2", currentStateId: "state-2" }),
+      expect.anything(),
     );
+    expect(fixture.suppliesService.copyFromWorkflowRecipe).toHaveBeenCalledWith(
+      "order-1",
+      "workflow-2",
+      expect.anything(),
+    );
+  });
+
+  it("keeps existing supplies when neither supplies nor workflow change", async () => {
+    const fixture = createFixture();
+    await fixture.usecase.execute(input);
+    expect(fixture.suppliesService.replace).not.toHaveBeenCalled();
+    expect(fixture.suppliesService.copyFromWorkflowRecipe).not.toHaveBeenCalled();
+  });
+
+  it("replaces supplies when an explicit list is provided", async () => {
+    const fixture = createFixture();
+    const supplies = [{ supplySkuId: "supply-1", quantity: 1.25, unitId: "unit-1" }];
+    await fixture.usecase.execute({ ...input, supplies });
+    expect(fixture.suppliesService.replace).toHaveBeenCalledWith("order-1", supplies, expect.anything());
   });
 
   it("rejects changing warehouse while stock is reserved before deleting related data", async () => {

@@ -12,7 +12,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { SaleOrderClientCommand } from '../../../application/dtos/unified-sale-order.input';
-import { HttpSaleOrderItemDto } from './http-sale-order-create.dto';
+import { HttpSaleOrderItemDto, HttpSaleOrderSupplyDto } from './http-sale-order-create.dto';
 
 export class HttpUnifiedSalePaymentDto {
   @IsOptional()
@@ -131,6 +131,12 @@ export class HttpSaveSaleOrderWithClientDto {
   @ValidateNested({ each: true })
   @Type(() => HttpUnifiedSalePaymentDto)
   payments?: HttpUnifiedSalePaymentDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => HttpSaleOrderSupplyDto)
+  supplies?: HttpSaleOrderSupplyDto[];
 
   @IsOptional()
   @IsArray()

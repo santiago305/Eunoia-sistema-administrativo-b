@@ -14,6 +14,7 @@ import { CreateFromImportPreviewUseCase } from "./create-from-import-preview.use
 import { WORKFLOW_REPOSITORY } from "src/modules/workflow/domain/ports/workflow.repository";
 import { SaleOrderNumberingService } from "../../services/sale-order-numbering.service";
 import { AssignImportLoteUsecase } from "./assign-import-lote.usecase";
+import { SaleOrderSuppliesService } from "../../services/sale-order-supplies.service";
 
 function makeImportUsecase(overrides: Record<string, any> = {}) {
   const tx = overrides.tx ?? {};
@@ -29,6 +30,7 @@ function makeImportUsecase(overrides: Record<string, any> = {}) {
   const clientResolver = { resolveOrCreate: jest.fn().mockResolvedValue("client-1") };
   const sourceResolver = { resolveOrCreate: jest.fn().mockResolvedValue("source-1") };
   const adviserResolver = { resolveByName: jest.fn().mockResolvedValue(null) };
+  const suppliesService = { copyFromWorkflowRecipe: jest.fn().mockResolvedValue([]) };
   const skuResolver = {
     resolveOrCreateSkus: jest.fn().mockResolvedValue([
       {
@@ -55,6 +57,7 @@ function makeImportUsecase(overrides: Record<string, any> = {}) {
     overrides.numbering ?? (numbering as any),
     overrides.assignImportLote ?? (assignImportLote as any),
     overrides.adviserResolver ?? (adviserResolver as any),
+    overrides.suppliesService ?? (suppliesService as any),
   ) as CreateFromImportPreviewUseCase;
 
   return {
@@ -72,6 +75,7 @@ function makeImportUsecase(overrides: Record<string, any> = {}) {
     numbering,
     assignImportLote,
     adviserResolver,
+    suppliesService,
   };
 }
 
@@ -129,6 +133,7 @@ describe("CreateFromImportPreviewUseCase", () => {
     const clientResolver = { resolveOrCreate: jest.fn() };
     const sourceResolver = { resolveOrCreate: jest.fn() };
     const skuResolver = { resolveOrCreateSkus: jest.fn() };
+    const suppliesService = { copyFromWorkflowRecipe: jest.fn().mockResolvedValue([]) };
 
     normalizer.normalize.mockResolvedValue({
       ok: true,
@@ -169,6 +174,7 @@ describe("CreateFromImportPreviewUseCase", () => {
         { provide: WORKFLOW_REPOSITORY, useValue: workflowRepo },
         { provide: SaleOrderNumberingService, useValue: numbering },
         { provide: AssignImportLoteUsecase, useValue: assignImportLote },
+        { provide: SaleOrderSuppliesService, useValue: suppliesService },
       ],
     }).compile();
 
@@ -189,9 +195,53 @@ describe("CreateFromImportPreviewUseCase", () => {
         }),
         expect.anything(),
       );
+      expect(suppliesService.copyFromWorkflowRecipe).toHaveBeenCalledWith(
+        "order-1",
+        "workflow-1",
+        expect.anything(),
+      );
     } finally {
       await moduleRef.close();
     }
+  });
+
+  it("copies an independent workflow recipe for every imported order", async () => {
+    const f = makeImportUsecase();
+    f.normalizer.normalize.mockImplementation(async (row: any) => ({
+      ok: true,
+      row: {
+        deliveryDate: null,
+        orderDate: null,
+        workflowName: row.workflowName,
+        address: null,
+        productName: "Pack",
+        internalNote: null,
+        advertisingCode: null,
+        total: 100,
+        advance: 0,
+        parsedSkus: [{ rawCode: "X", productName: "A", variantName: null, skuName: "A", customSku: "EVA001", quantity: 1 }],
+      },
+    }));
+    f.saleOrderRepo.create
+      .mockResolvedValueOnce({ id: "order-envio" })
+      .mockResolvedValueOnce({ id: "order-ce" });
+    f.workflowRepo.findActiveByNormalizedName.mockImplementation(async (name: string) => ({
+      workflow: { id: name === "ABONO CE" ? "workflow-ce" : "workflow-envio" },
+      initialState: { id: name === "ABONO CE" ? "state-ce" : "state-envio" },
+    }));
+
+    const result = await f.usecase.execute({
+      rows: [{ workflowName: "ABONO ENVIO" }, { workflowName: "ABONO CE" }] as any,
+      userId: "user-1",
+    });
+
+    expect(result.importedRows).toBe(2);
+    expect(f.suppliesService.copyFromWorkflowRecipe).toHaveBeenNthCalledWith(
+      1, "order-envio", "workflow-envio", f.tx,
+    );
+    expect(f.suppliesService.copyFromWorkflowRecipe).toHaveBeenNthCalledWith(
+      2, "order-ce", "workflow-ce", f.tx,
+    );
   });
 
   it("reports normalization errors", async () => {
