@@ -91,6 +91,15 @@ export const SALE_ORDER_PERMISSIONS: ReadonlyArray<Readonly<SaleOrderPermissionS
     type: "action",
   },
   {
+    code: "sale_orders.supplies.view",
+    name: "Ver insumos en pedidos",
+    description: "Buscar y consultar insumos desde el editor de pedidos",
+    module: "sale_orders",
+    resource: "sale_order_supplies",
+    action: "view",
+    type: "action",
+  },
+  {
     code: "sale_orders.stock.view",
     name: "Ver stock en pedidos",
     description: "Consultar disponibilidad de productos terminados del pedido",

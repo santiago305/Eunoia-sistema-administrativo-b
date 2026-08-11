@@ -109,6 +109,7 @@ describe("UpdateSaleOrderUsecase", () => {
       )),
     };
     const suppliesService = {
+      listBySaleOrderId: jest.fn().mockResolvedValue([]),
       replace: jest.fn(),
       copyFromWorkflowRecipe: jest.fn(),
     };
@@ -239,6 +240,37 @@ describe("UpdateSaleOrderUsecase", () => {
     const supplies = [{ supplySkuId: "supply-1", quantity: 1.25, unitId: "unit-1" }];
     await fixture.usecase.execute({ ...input, supplies });
     expect(fixture.suppliesService.replace).toHaveBeenCalledWith("order-1", supplies, expect.anything());
+  });
+
+  it("rejects supply changes while stock is reserved", async () => {
+    const fixture = createFixture([ACTIONS.RESERVE_STOCK]);
+    fixture.suppliesService.listBySaleOrderId.mockResolvedValue([
+      { supplySkuId: "supply-1", quantity: 1, unitId: "unit-1" },
+    ]);
+
+    await expect(fixture.usecase.execute({
+      ...input,
+      supplies: [{ supplySkuId: "supply-1", quantity: 2, unitId: "unit-1" }],
+    })).rejects.toThrow("Este pedido ya tiene stock reservado");
+
+    expect(fixture.suppliesService.replace).not.toHaveBeenCalled();
+  });
+
+  it("rejects product and supply changes after stock was consumed", async () => {
+    const fixture = createFixture([ACTIONS.RESERVE_STOCK, ACTIONS.CONSUME_STOCK]);
+
+    await expect(fixture.usecase.execute({
+      ...input,
+      items: [{ ...input.items[0], components: [{ skuId: "sku-1", quantity: 2, unitPrice: 10, total: 20 }] }],
+    })).rejects.toThrow("Este pedido ya consumió stock");
+
+    fixture.suppliesService.listBySaleOrderId.mockResolvedValue([
+      { supplySkuId: "supply-1", quantity: 1, unitId: "unit-1" },
+    ]);
+    await expect(fixture.usecase.execute({
+      ...input,
+      supplies: [{ supplySkuId: "supply-1", quantity: 2, unitId: "unit-1" }],
+    })).rejects.toThrow("No se pueden cambiar insumos");
   });
 
   it("rejects changing warehouse while stock is reserved before deleting related data", async () => {

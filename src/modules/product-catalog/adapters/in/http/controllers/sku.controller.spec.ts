@@ -90,4 +90,21 @@ describe("ProductCatalogSkuController permissions", () => {
       "33333333-3333-4333-8333-333333333333",
     );
   });
+
+  it("allows an order editor to read a supply SKU without catalog access", async () => {
+    getProduct.execute.mockResolvedValueOnce({
+      product: { id: "supply-1", type: ProductCatalogProductType.SUPPLY },
+    });
+    getSku.execute.mockResolvedValueOnce({
+      sku: { id: "sku-1", productId: "supply-1" },
+    });
+    accessControlService.userHasAllPermissions
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
+
+    await expect(controller.getById("sku-1", { id: "user-1" })).resolves.toEqual({
+      sku: { id: "sku-1", productId: "supply-1" },
+    });
+  });
 });

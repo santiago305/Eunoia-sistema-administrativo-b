@@ -41,6 +41,9 @@ export function productCatalogPermissionGroupsFromRequest(action: ProductScopedA
     if (productType === ProductCatalogProductType.PRODUCT && (action === "view" || action === "view_detail")) {
       groups[0] = [...groups[0], "sale_orders.products.view"];
     }
+    if (productType === ProductCatalogProductType.SUPPLY && (action === "view" || action === "view_detail")) {
+      groups[0] = [...groups[0], "sale_orders.supplies.view"];
+    }
     return groups;
   };
 }

@@ -71,4 +71,10 @@ describe("catalog permission group resolvers", () => {
       body: { docType: DocType.TRANSFER, productType: ProductCatalogProductType.SUPPLY },
     })).toEqual([["transfers.supplies.process"]]);
   });
+
+  it("allows order editors to search supplies without catalog administration", () => {
+    expect(productCatalogPermissionGroupsFromRequest("view_detail")({
+      query: { productType: ProductCatalogProductType.SUPPLY },
+    })).toEqual([["supplies.view_detail", "sale_orders.supplies.view"]]);
+  });
 });

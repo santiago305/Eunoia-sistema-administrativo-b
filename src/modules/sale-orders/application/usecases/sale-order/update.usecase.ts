@@ -111,6 +111,20 @@ export class UpdateSaleOrderUsecase {
       .join("|");
   }
 
+  private buildSupplySignature(
+    supplies: Array<{ supplySkuId: string; quantity: number; unitId: string }>,
+  ): string {
+    return supplies
+      .map((supply) => ({
+        supplySkuId: supply.supplySkuId,
+        quantity: Number(supply.quantity ?? 0),
+        unitId: supply.unitId,
+      }))
+      .sort((a, b) => a.supplySkuId.localeCompare(b.supplySkuId))
+      .map((supply) => `${supply.supplySkuId}:${supply.unitId}:${supply.quantity}`)
+      .join('|');
+  }
+
   private buildCommercialItemSignature(
     items: Array<{
       referencePackId?: string | null;
@@ -353,7 +367,7 @@ export class UpdateSaleOrderUsecase {
           "No se puede cambiar el almacén porque el pedido ya consumió stock.",
         );
       }
-      if (stockLifecycleStatus === "RESERVED") {
+      if (stockLifecycleStatus === "RESERVED" || stockLifecycleStatus === "CONSUMED") {
         const existingComponents = await this.componentRepo.listBySaleOrderItemIds(
           existingItemIds,
           tx,
@@ -373,7 +387,30 @@ export class UpdateSaleOrderUsecase {
         );
         if (currentSignature !== nextSignature) {
           throw new BadRequestException(
-            "Este pedido ya tiene stock reservado. Para cambiar productos o cantidades, primero debes liberar la reserva del flujo.",
+            stockLifecycleStatus === "RESERVED"
+              ? "Este pedido ya tiene stock reservado. Para cambiar productos o cantidades, primero debes liberar la reserva del flujo."
+              : "Este pedido ya consumió stock. No se pueden cambiar productos o cantidades.",
+          );
+        }
+      }
+
+      if (
+        input.supplies !== undefined &&
+        this.suppliesService &&
+        (editPolicy.isFinal || stockLifecycleStatus === "RESERVED" || stockLifecycleStatus === "CONSUMED")
+      ) {
+        const currentSupplies = await this.suppliesService.listBySaleOrderId(
+          input.saleOrderId,
+          tx,
+        );
+        if (
+          this.buildSupplySignature(currentSupplies) !==
+          this.buildSupplySignature(input.supplies)
+        ) {
+          throw new BadRequestException(
+            stockLifecycleStatus === "RESERVED"
+              ? "Este pedido ya tiene stock reservado. Para cambiar insumos o cantidades, primero debes liberar la reserva del flujo."
+              : "No se pueden cambiar insumos de un pedido finalizado o con stock consumido.",
           );
         }
       }
