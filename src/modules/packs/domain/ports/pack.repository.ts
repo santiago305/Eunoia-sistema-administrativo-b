@@ -1,8 +1,8 @@
-import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
-import { Pack } from "../entities/pack";
-import { PackSearchRule } from "src/modules/packs/application/dtos/pack-search/pack-search-snapshot";
+import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
+import { Pack } from '../entities/pack';
+import { PackSearchRule } from 'src/modules/packs/application/dtos/pack-search/pack-search-snapshot';
 
-export const PACK_REPOSITORY = Symbol("PACK_REPOSITORY");
+export const PACK_REPOSITORY = Symbol('PACK_REPOSITORY');
 
 export type PackWithItems = {
   pack: Pack;
@@ -26,6 +26,11 @@ export type PackWithItems = {
   }>;
 };
 
+export type PackCompositionItem = {
+  skuId: string;
+  quantity: number;
+};
+
 export interface PackRepository {
   listActiveByProductId(
     productId: string,
@@ -42,17 +47,38 @@ export interface PackRepository {
   removeProductFromActivePacks(
     productId: string,
     tx?: TransactionContext,
-  ): Promise<Array<{ id: string; description: string; remainingItems: number; isActive: boolean }>>;
+  ): Promise<
+    Array<{
+      id: string;
+      description: string;
+      remainingItems: number;
+      isActive: boolean;
+    }>
+  >;
   findById(packId: string, tx?: TransactionContext): Promise<Pack | null>;
   findByIdWithItems(
     packId: string,
     tx?: TransactionContext,
   ): Promise<PackWithItems | null>;
+  findActiveByExactComposition(
+    composition: PackCompositionItem[],
+    tx?: TransactionContext,
+  ): Promise<PackWithItems[]>;
   create(pack: Pack, tx?: TransactionContext): Promise<Pack>;
   update(pack: Pack, tx?: TransactionContext): Promise<Pack>;
-  setActive(packId: string, isActive: boolean, tx?: TransactionContext): Promise<void>;
+  setActive(
+    packId: string,
+    isActive: boolean,
+    tx?: TransactionContext,
+  ): Promise<void>;
   list(
-    params: { q?: string; isActive?: boolean; filters?: PackSearchRule[]; page?: number; limit?: number },
+    params: {
+      q?: string;
+      isActive?: boolean;
+      filters?: PackSearchRule[];
+      page?: number;
+      limit?: number;
+    },
     tx?: TransactionContext,
   ): Promise<{ items: PackWithItems[]; total: number }>;
 }

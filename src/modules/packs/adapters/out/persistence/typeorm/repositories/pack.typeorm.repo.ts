@@ -1,19 +1,31 @@
-import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { EntityManager, In, Repository } from "typeorm";
-import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
-import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
-import { PackRepository, PackWithItems } from "src/modules/packs/domain/ports/pack.repository";
-import { Pack } from "src/modules/packs/domain/entities/pack";
-import { PackFactory } from "src/modules/packs/domain/factories/pack.factory";
-import { PackId } from "src/modules/packs/domain/value-objects/pack-id.vo";
-import { PackEntity } from "../entities/pack.entity";
-import { PackItemEntity } from "../entities/pack-item.entity";
-import { ProductCatalogSkuEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku.entity";
-import { ProductCatalogSkuAttributeValueEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku-attribute-value.entity";
-import { ProductCatalogAttributeEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/attribute.entity";
-import { PackSearchRule, PackSearchFields, PackSearchOperators } from "src/modules/packs/application/dtos/pack-search/pack-search-snapshot";
-import { matchSearchOptionIds, PACK_ACTIVE_STATE_SEARCH_OPTIONS, sanitizePackSearchFilters } from "src/modules/packs/application/support/pack-search.utils";
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { EntityManager, In, Repository } from 'typeorm';
+import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
+import { TypeormTransactionContext } from 'src/shared/domain/ports/typeorm-transaction-context';
+import {
+  PackCompositionItem,
+  PackRepository,
+  PackWithItems,
+} from 'src/modules/packs/domain/ports/pack.repository';
+import { Pack } from 'src/modules/packs/domain/entities/pack';
+import { PackFactory } from 'src/modules/packs/domain/factories/pack.factory';
+import { PackId } from 'src/modules/packs/domain/value-objects/pack-id.vo';
+import { PackEntity } from '../entities/pack.entity';
+import { PackItemEntity } from '../entities/pack-item.entity';
+import { ProductCatalogSkuEntity } from 'src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku.entity';
+import { ProductCatalogSkuAttributeValueEntity } from 'src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku-attribute-value.entity';
+import { ProductCatalogAttributeEntity } from 'src/modules/product-catalog/adapters/out/persistence/typeorm/entities/attribute.entity';
+import {
+  PackSearchRule,
+  PackSearchFields,
+  PackSearchOperators,
+} from 'src/modules/packs/application/dtos/pack-search/pack-search-snapshot';
+import {
+  matchSearchOptionIds,
+  PACK_ACTIVE_STATE_SEARCH_OPTIONS,
+  sanitizePackSearchFilters,
+} from 'src/modules/packs/application/support/pack-search.utils';
 
 @Injectable()
 export class PackTypeormRepository implements PackRepository {
@@ -47,25 +59,29 @@ export class PackTypeormRepository implements PackRepository {
   async listActiveByProductId(
     productId: string,
     tx?: TransactionContext,
-  ): Promise<Array<{ id: string; description: string; affectedItems: number }>> {
+  ): Promise<
+    Array<{ id: string; description: string; affectedItems: number }>
+  > {
     return this.getRepo(tx)
-      .createQueryBuilder("pack")
-      .innerJoin(PackItemEntity, "item", "item.pack_id = pack.id")
-      .innerJoin(ProductCatalogSkuEntity, "sku", "sku.sku_id = item.sku_id")
-      .where("pack.is_active = true")
-      .andWhere("sku.product_id = :productId", { productId })
-      .select("pack.id", "id")
-      .addSelect("pack.description", "description")
-      .addSelect("COUNT(item.id)", "affectedItems")
-      .groupBy("pack.id")
-      .addGroupBy("pack.description")
-      .orderBy("pack.description", "ASC")
+      .createQueryBuilder('pack')
+      .innerJoin(PackItemEntity, 'item', 'item.pack_id = pack.id')
+      .innerJoin(ProductCatalogSkuEntity, 'sku', 'sku.sku_id = item.sku_id')
+      .where('pack.is_active = true')
+      .andWhere('sku.product_id = :productId', { productId })
+      .select('pack.id', 'id')
+      .addSelect('pack.description', 'description')
+      .addSelect('COUNT(item.id)', 'affectedItems')
+      .groupBy('pack.id')
+      .addGroupBy('pack.description')
+      .orderBy('pack.description', 'ASC')
       .getRawMany<{ id: string; description: string; affectedItems: string }>()
-      .then((rows) => rows.map((row) => ({
-        id: row.id,
-        description: row.description,
-        affectedItems: Number(row.affectedItems),
-      })));
+      .then((rows) =>
+        rows.map((row) => ({
+          id: row.id,
+          description: row.description,
+          affectedItems: Number(row.affectedItems),
+        })),
+      );
   }
 
   async listActiveBySkuId(
@@ -73,20 +89,27 @@ export class PackTypeormRepository implements PackRepository {
     tx?: TransactionContext,
   ): Promise<Array<{ id: string; description: string }>> {
     return this.getRepo(tx)
-      .createQueryBuilder("pack")
-      .innerJoin(PackItemEntity, "item", "item.pack_id = pack.id")
-      .where("pack.is_active = true")
-      .andWhere("item.sku_id = :skuId", { skuId })
-      .select("pack.id", "id")
-      .addSelect("pack.description", "description")
-      .orderBy("pack.description", "ASC")
+      .createQueryBuilder('pack')
+      .innerJoin(PackItemEntity, 'item', 'item.pack_id = pack.id')
+      .where('pack.is_active = true')
+      .andWhere('item.sku_id = :skuId', { skuId })
+      .select('pack.id', 'id')
+      .addSelect('pack.description', 'description')
+      .orderBy('pack.description', 'ASC')
       .getRawMany<{ id: string; description: string }>();
   }
 
   async removeProductFromActivePacks(
     productId: string,
     tx?: TransactionContext,
-  ): Promise<Array<{ id: string; description: string; remainingItems: number; isActive: boolean }>> {
+  ): Promise<
+    Array<{
+      id: string;
+      description: string;
+      remainingItems: number;
+      isActive: boolean;
+    }>
+  > {
     const manager = this.getManager(tx);
     const affected = await this.listActiveByProductId(productId, tx);
     if (!affected.length) return [];
@@ -101,18 +124,28 @@ export class PackTypeormRepository implements PackRepository {
       [productId],
     );
 
-    const results: Array<{ id: string; description: string; remainingItems: number; isActive: boolean }> = [];
+    const results: Array<{
+      id: string;
+      description: string;
+      remainingItems: number;
+      isActive: boolean;
+    }> = [];
     for (const pack of affected) {
-      const remaining = await manager.getRepository(PackItemEntity).find({ where: { packId: pack.id } });
+      const remaining = await manager
+        .getRepository(PackItemEntity)
+        .find({ where: { packId: pack.id } });
       const total = remaining.reduce(
-        (sum, item) => sum + Number(item.quantity ?? 0) * Number(item.price ?? 0),
+        (sum, item) =>
+          sum + Number(item.quantity ?? 0) * Number(item.price ?? 0),
         0,
       );
       const isActive = remaining.length > 0;
-      await manager.getRepository(PackEntity).update(
-        { id: pack.id },
-        { total: Math.round(total * 100) / 100, isActive },
-      );
+      await manager
+        .getRepository(PackEntity)
+        .update(
+          { id: pack.id },
+          { total: Math.round(total * 100) / 100, isActive },
+        );
       results.push({
         id: pack.id,
         description: pack.description,
@@ -123,20 +156,28 @@ export class PackTypeormRepository implements PackRepository {
     return results;
   }
 
-  async findById(packId: string, tx?: TransactionContext): Promise<Pack | null> {
+  async findById(
+    packId: string,
+    tx?: TransactionContext,
+  ): Promise<Pack | null> {
     const row = await this.getRepo(tx).findOne({ where: { id: packId } });
     return row ? this.toDomain(row) : null;
   }
 
-  async findByIdWithItems(packId: string, tx?: TransactionContext): Promise<PackWithItems | null> {
+  async findByIdWithItems(
+    packId: string,
+    tx?: TransactionContext,
+  ): Promise<PackWithItems | null> {
     const manager = this.getManager(tx);
-    const packRow = await manager.getRepository(PackEntity).findOne({ where: { id: packId } });
+    const packRow = await manager
+      .getRepository(PackEntity)
+      .findOne({ where: { id: packId } });
     if (!packRow) return null;
 
     const itemRows = await manager.getRepository(PackItemEntity).find({
       where: { packId },
       relations: { sku: true },
-      order: { id: "ASC" },
+      order: { id: 'ASC' },
     });
 
     const skuIds = Array.from(
@@ -151,27 +192,82 @@ export class PackTypeormRepository implements PackRepository {
     };
   }
 
+  async findActiveByExactComposition(
+    composition: PackCompositionItem[],
+    tx?: TransactionContext,
+  ): Promise<PackWithItems[]> {
+    if (composition.length < 2) return [];
+
+    const query = this.getRepo(tx)
+      .createQueryBuilder('pack')
+      .innerJoin(PackItemEntity, 'item', 'item.pack_id = pack.id')
+      .where('pack.is_active = true')
+      .select('pack.id', 'id')
+      .groupBy('pack.id')
+      .having('COUNT(item.id) = :componentCount', {
+        componentCount: composition.length,
+      });
+
+    composition.forEach((component, index) => {
+      query.andHaving(
+        `COUNT(*) FILTER (
+          WHERE item.sku_id = :skuId_${index}
+            AND item.quantity = :quantity_${index}
+        ) = 1`,
+        {
+          [`skuId_${index}`]: component.skuId,
+          [`quantity_${index}`]: component.quantity,
+        },
+      );
+    });
+
+    const matches = await query
+      .orderBy('pack.id', 'ASC')
+      .limit(2)
+      .getRawMany<{ id: string }>();
+
+    const details = await Promise.all(
+      matches.map((match) => this.findByIdWithItems(match.id, tx)),
+    );
+
+    return details.filter((detail): detail is PackWithItems => Boolean(detail));
+  }
+
   private async loadSkuAttributes(
     manager: EntityManager,
     skuIds: string[],
-  ): Promise<Map<string, Array<{ code: string; name: string | null; value: string }>>> {
+  ): Promise<
+    Map<string, Array<{ code: string; name: string | null; value: string }>>
+  > {
     if (!skuIds.length) return new Map();
 
     const rows = await manager
       .getRepository(ProductCatalogSkuAttributeValueEntity)
-      .createQueryBuilder("sav")
-      .innerJoin(ProductCatalogAttributeEntity, "a", "a.attribute_id = sav.attribute_id")
-      .where("sav.sku_id IN (:...skuIds)", { skuIds })
+      .createQueryBuilder('sav')
+      .innerJoin(
+        ProductCatalogAttributeEntity,
+        'a',
+        'a.attribute_id = sav.attribute_id',
+      )
+      .where('sav.sku_id IN (:...skuIds)', { skuIds })
       .select([
-        "sav.sku_id AS sku_id",
-        "sav.value AS value",
-        "a.code AS code",
-        "a.name AS name",
+        'sav.sku_id AS sku_id',
+        'sav.value AS value',
+        'a.code AS code',
+        'a.name AS name',
       ])
-      .orderBy("a.code", "ASC")
-      .getRawMany<{ sku_id: string; code: string; name: string | null; value: string }>();
+      .orderBy('a.code', 'ASC')
+      .getRawMany<{
+        sku_id: string;
+        code: string;
+        name: string | null;
+        value: string;
+      }>();
 
-    const map = new Map<string, Array<{ code: string; name: string | null; value: string }>>();
+    const map = new Map<
+      string,
+      Array<{ code: string; name: string | null; value: string }>
+    >();
     for (const row of rows) {
       const list = map.get(row.sku_id) ?? [];
       list.push({ code: row.code, name: row.name, value: row.value });
@@ -193,10 +289,13 @@ export class PackTypeormRepository implements PackRepository {
 
   private toItemDetails(
     row: PackItemEntity,
-    attributesBySkuId: Map<string, Array<{ code: string; name: string | null; value: string }>>,
-  ): PackWithItems["items"][number] {
+    attributesBySkuId: Map<
+      string,
+      Array<{ code: string; name: string | null; value: string }>
+    >,
+  ): PackWithItems['items'][number] {
     if (!row.sku) {
-      throw new Error("SKU relation not loaded for pack item");
+      throw new Error('SKU relation not loaded for pack item');
     }
 
     const quantity = Number(row.quantity ?? 0);
@@ -261,29 +360,40 @@ export class PackTypeormRepository implements PackRepository {
     return this.toDomain(saved);
   }
 
-  async setActive(packId: string, isActive: boolean, tx?: TransactionContext): Promise<void> {
+  async setActive(
+    packId: string,
+    isActive: boolean,
+    tx?: TransactionContext,
+  ): Promise<void> {
     await this.getRepo(tx).update({ id: packId }, { isActive });
   }
 
   async list(
-    params: { q?: string; isActive?: boolean; filters?: PackSearchRule[]; page?: number; limit?: number },
+    params: {
+      q?: string;
+      isActive?: boolean;
+      filters?: PackSearchRule[];
+      page?: number;
+      limit?: number;
+    },
     tx?: TransactionContext,
   ): Promise<{ items: PackWithItems[]; total: number }> {
     const repo = this.getRepo(tx);
-    const qb = repo.createQueryBuilder("p");
+    const qb = repo.createQueryBuilder('p');
 
     if (params.isActive !== undefined) {
-      qb.andWhere("p.isActive = :isActive", { isActive: params.isActive });
+      qb.andWhere('p.isActive = :isActive', { isActive: params.isActive });
     }
 
     const filters = sanitizePackSearchFilters(params.filters ?? []);
     const q = params.q?.trim();
-    const needsSkuJoin = Boolean(q) || filters.some((filter) => filter.field === PackSearchFields.SKU_TEXT);
+    const needsSkuJoin =
+      Boolean(q) ||
+      filters.some((filter) => filter.field === PackSearchFields.SKU_TEXT);
 
     if (needsSkuJoin) {
-      qb
-        .leftJoin(PackItemEntity, "pi", "pi.packId = p.id")
-        .leftJoin(ProductCatalogSkuEntity, "sku", "sku.id = pi.skuId")
+      qb.leftJoin(PackItemEntity, 'pi', 'pi.packId = p.id')
+        .leftJoin(ProductCatalogSkuEntity, 'sku', 'sku.id = pi.skuId')
         .distinct(true);
     }
 
@@ -291,28 +401,34 @@ export class PackTypeormRepository implements PackRepository {
       const fieldParam = `filter_${index}`;
       const valuesParam = `${fieldParam}_values`;
       const valueParam = `${fieldParam}_value`;
-      const catalogOperator = filter.mode === "exclude" ? "NOT IN" : "IN";
+      const catalogOperator = filter.mode === 'exclude' ? 'NOT IN' : 'IN';
 
       switch (filter.field) {
         case PackSearchFields.IS_ACTIVE:
           if (filter.values?.length) {
             qb.andWhere(`p.isActive ${catalogOperator} (:...${valuesParam})`, {
-              [valuesParam]: filter.values.map((value) => value === "true"),
+              [valuesParam]: filter.values.map((value) => value === 'true'),
             });
           }
           break;
         case PackSearchFields.DESCRIPTION: {
           if (!filter.value) break;
-          const column = "p.description";
+          const column = 'p.description';
 
           if (filter.operator === PackSearchOperators.EQ) {
-            qb.andWhere(`unaccent(coalesce(${column}, '')) = unaccent(:${valueParam})`, {
-              [valueParam]: filter.value,
-            });
+            qb.andWhere(
+              `unaccent(coalesce(${column}, '')) = unaccent(:${valueParam})`,
+              {
+                [valueParam]: filter.value,
+              },
+            );
           } else {
-            qb.andWhere(`unaccent(coalesce(${column}, '')) ILIKE unaccent(:${valueParam})`, {
-              [valueParam]: `%${filter.value}%`,
-            });
+            qb.andWhere(
+              `unaccent(coalesce(${column}, '')) ILIKE unaccent(:${valueParam})`,
+              {
+                [valueParam]: `%${filter.value}%`,
+              },
+            );
           }
           break;
         }
@@ -334,13 +450,13 @@ export class PackTypeormRepository implements PackRepository {
           if (!filter.value) break;
           qb.andWhere(
             [
-              "(",
+              '(',
               "unaccent(coalesce(sku.name, '')) ILIKE unaccent(:skuText)",
               "OR unaccent(coalesce(sku.backendSku, '')) ILIKE unaccent(:skuText)",
               "OR unaccent(coalesce(sku.customSku, '')) ILIKE unaccent(:skuText)",
               "OR unaccent(coalesce(sku.barcode, '')) ILIKE unaccent(:skuText)",
-              ")",
-            ].join(" "),
+              ')',
+            ].join(' '),
             { skuText: `%${filter.value}%` },
           );
           break;
@@ -351,23 +467,42 @@ export class PackTypeormRepository implements PackRepository {
     });
 
     if (q) {
-      const matchedActiveStates = matchSearchOptionIds(q, PACK_ACTIVE_STATE_SEARCH_OPTIONS);
+      const matchedActiveStates = matchSearchOptionIds(
+        q,
+        PACK_ACTIVE_STATE_SEARCH_OPTIONS,
+      );
       qb.andWhere(
         [
-          "(",
+          '(',
           "unaccent(coalesce(p.description, '')) ILIKE unaccent(:q)",
-          "OR CAST(p.total AS text) ILIKE :q",
-          needsSkuJoin ? "OR unaccent(coalesce(sku.name, '')) ILIKE unaccent(:q)" : "",
-          needsSkuJoin ? "OR unaccent(coalesce(sku.backendSku, '')) ILIKE unaccent(:q)" : "",
-          needsSkuJoin ? "OR unaccent(coalesce(sku.customSku, '')) ILIKE unaccent(:q)" : "",
-          needsSkuJoin ? "OR unaccent(coalesce(sku.barcode, '')) ILIKE unaccent(:q)" : "",
-          matchedActiveStates.length ? "OR p.isActive IN (:...matchedActiveStates)" : "",
-          ")",
-        ].filter(Boolean).join(" "),
+          'OR CAST(p.total AS text) ILIKE :q',
+          needsSkuJoin
+            ? "OR unaccent(coalesce(sku.name, '')) ILIKE unaccent(:q)"
+            : '',
+          needsSkuJoin
+            ? "OR unaccent(coalesce(sku.backendSku, '')) ILIKE unaccent(:q)"
+            : '',
+          needsSkuJoin
+            ? "OR unaccent(coalesce(sku.customSku, '')) ILIKE unaccent(:q)"
+            : '',
+          needsSkuJoin
+            ? "OR unaccent(coalesce(sku.barcode, '')) ILIKE unaccent(:q)"
+            : '',
+          matchedActiveStates.length
+            ? 'OR p.isActive IN (:...matchedActiveStates)'
+            : '',
+          ')',
+        ]
+          .filter(Boolean)
+          .join(' '),
         {
           q: `%${q}%`,
           ...(matchedActiveStates.length
-            ? { matchedActiveStates: matchedActiveStates.map((value) => value === "true") }
+            ? {
+                matchedActiveStates: matchedActiveStates.map(
+                  (value) => value === 'true',
+                ),
+              }
             : {}),
         },
       );
@@ -377,7 +512,7 @@ export class PackTypeormRepository implements PackRepository {
     const limit = params.limit ?? 10;
 
     const [rows, total] = await qb
-      .orderBy("p.createdAt", "DESC")
+      .orderBy('p.createdAt', 'DESC')
       .skip((page - 1) * limit)
       .take(limit)
       .getManyAndCount();
@@ -392,10 +527,12 @@ export class PackTypeormRepository implements PackRepository {
     const itemRows = await manager.getRepository(PackItemEntity).find({
       where: { packId: In(packIds) },
       relations: { sku: true },
-      order: { packId: "ASC", id: "ASC" },
+      order: { packId: 'ASC', id: 'ASC' },
     });
 
-    const skuIds = Array.from(new Set(itemRows.map((row) => row.skuId).filter(Boolean))) as string[];
+    const skuIds = Array.from(
+      new Set(itemRows.map((row) => row.skuId).filter(Boolean)),
+    ) as string[];
     const attributesBySkuId = await this.loadSkuAttributes(manager, skuIds);
 
     const itemsByPackId = new Map<string, PackItemEntity[]>();

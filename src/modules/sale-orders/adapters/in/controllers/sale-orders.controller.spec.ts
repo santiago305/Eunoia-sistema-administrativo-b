@@ -1,56 +1,63 @@
-import "reflect-metadata";
-import { CanActivate, ExecutionContext, INestApplication, Injectable, ValidationPipe } from "@nestjs/common";
-import { Test } from "@nestjs/testing";
-import request from "supertest";
-import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
-import { CompanyConfiguredGuard } from "src/shared/utilidades/guards/company-configured.guard";
-import { SaleOrdersController } from "./sale-orders.controller";
-import { CreateSaleOrderUsecase } from "src/modules/sale-orders/application/usecases/sale-order/create.usecase";
-import { ListSaleOrdersUsecase } from "src/modules/sale-orders/application/usecases/sale-order/list.usecase";
-import { GetSaleOrderComponentsUsecase } from "src/modules/sale-orders/application/usecases/sale-order/get-components.usecase";
-import { GetSaleOrderItemComponentsUsecase } from "src/modules/sale-orders/application/usecases/sale-order/get-item-components.usecase";
-import { UpdateSaleOrderUsecase } from "src/modules/sale-orders/application/usecases/sale-order/update.usecase";
-import { GetSaleOrderUsecase } from "src/modules/sale-orders/application/usecases/sale-order/get.usecase";
-import { GetSaleOrderSearchStateUsecase } from "src/modules/sale-orders/application/usecases/sale-order-search/get-state.usecase";
-import { SaveSaleOrderSearchMetricUsecase } from "src/modules/sale-orders/application/usecases/sale-order-search/save-metric.usecase";
-import { DeleteSaleOrderSearchMetricUsecase } from "src/modules/sale-orders/application/usecases/sale-order-search/delete-metric.usecase";
-import { CancelSaleOrderUsecase } from "src/modules/sale-orders/application/usecases/sale-order/cancel.usecase";
-import { SaleOrdersRealtimeService } from "src/modules/sale-orders/infrastructure/realtime/sale-orders-realtime.service";
-import { AddSaleOrderPaymentUsecase } from "src/modules/sale-orders/application/usecases/sale-order/add-payment.usecase";
-import { DeleteSaleOrderPaymentUsecase } from "src/modules/sale-orders/application/usecases/sale-order/delete-payment.usecase";
-import { ListSaleOrderPaymentsUsecase } from "src/modules/sale-orders/application/usecases/sale-order/list-payments.usecase";
-import { ConfirmSaleOrderDeliveryUsecase } from "src/modules/sale-orders/application/usecases/sale-order/confirm-delivery.usecase";
-import { CreateFromImportPreviewUseCase } from "src/modules/sale-orders/application/usecases/sale-order/create-from-import-preview.usecase";
-import { ListImportLotesUsecase } from "src/modules/sale-orders/application/usecases/sale-order/list-import-lotes.usecase";
-import { SetImportLoteActiveUsecase } from "src/modules/sale-orders/application/usecases/sale-order/set-import-lote-active.usecase";
-import { ListImportLoteAuditUsecase } from "src/modules/sale-orders/application/usecases/sale-order/list-import-lote-audit.usecase";
-import { SetSaleOrdersActiveUsecase } from "src/modules/sale-orders/application/usecases/sale-order/set-sale-orders-active.usecase";
-import { ListSaleOrderAuditUsecase } from "src/modules/sale-orders/application/usecases/sale-order/list-sale-order-audit.usecase";
-import { AdvanceSaleOrderStateUseCase } from "src/modules/workflow/application/usecases/advance-sale-order-state.usecase";
-import { AssignSaleOrderWorkflowUseCase } from "src/modules/workflow/application/usecases/assign-sale-order-workflow.usecase";
-import { GetAvailableTransitionsUseCase } from "src/modules/workflow/application/usecases/get-available-transitions.usecase";
-import { GetOrderTimelineUseCase } from "src/modules/workflow/application/usecases/get-order-timeline.usecase";
-import { GetSaleOrderStatisticsUsecase } from "src/modules/sale-orders/application/usecases/sale-order/get-statistics.usecase";
+import 'reflect-metadata';
+import {
+  CanActivate,
+  ExecutionContext,
+  INestApplication,
+  Injectable,
+  ValidationPipe,
+} from '@nestjs/common';
+import { Test } from '@nestjs/testing';
+import request from 'supertest';
+import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard';
+import { CompanyConfiguredGuard } from 'src/shared/utilidades/guards/company-configured.guard';
+import { SaleOrdersController } from './sale-orders.controller';
+import { CreateSaleOrderUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/create.usecase';
+import { ListSaleOrdersUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/list.usecase';
+import { GetSaleOrderComponentsUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/get-components.usecase';
+import { GetSaleOrderItemComponentsUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/get-item-components.usecase';
+import { UpdateSaleOrderUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/update.usecase';
+import { GetSaleOrderUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/get.usecase';
+import { GetSaleOrderSearchStateUsecase } from 'src/modules/sale-orders/application/usecases/sale-order-search/get-state.usecase';
+import { SaveSaleOrderSearchMetricUsecase } from 'src/modules/sale-orders/application/usecases/sale-order-search/save-metric.usecase';
+import { DeleteSaleOrderSearchMetricUsecase } from 'src/modules/sale-orders/application/usecases/sale-order-search/delete-metric.usecase';
+import { CancelSaleOrderUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/cancel.usecase';
+import { SaleOrdersRealtimeService } from 'src/modules/sale-orders/infrastructure/realtime/sale-orders-realtime.service';
+import { AddSaleOrderPaymentUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/add-payment.usecase';
+import { DeleteSaleOrderPaymentUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/delete-payment.usecase';
+import { ListSaleOrderPaymentsUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/list-payments.usecase';
+import { ConfirmSaleOrderDeliveryUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/confirm-delivery.usecase';
+import { CreateFromImportPreviewUseCase } from 'src/modules/sale-orders/application/usecases/sale-order/create-from-import-preview.usecase';
+import { ListImportLotesUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/list-import-lotes.usecase';
+import { SetImportLoteActiveUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/set-import-lote-active.usecase';
+import { ListImportLoteAuditUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/list-import-lote-audit.usecase';
+import { SetSaleOrdersActiveUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/set-sale-orders-active.usecase';
+import { ListSaleOrderAuditUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/list-sale-order-audit.usecase';
+import { AdvanceSaleOrderStateUseCase } from 'src/modules/workflow/application/usecases/advance-sale-order-state.usecase';
+import { AssignSaleOrderWorkflowUseCase } from 'src/modules/workflow/application/usecases/assign-sale-order-workflow.usecase';
+import { GetAvailableTransitionsUseCase } from 'src/modules/workflow/application/usecases/get-available-transitions.usecase';
+import { GetOrderTimelineUseCase } from 'src/modules/workflow/application/usecases/get-order-timeline.usecase';
+import { GetSaleOrderStatisticsUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/get-statistics.usecase';
 import {
   SaleOrderAutomaticWorkflowService,
   SaleOrderAutomaticWorkflowTriggerEnum,
-} from "src/modules/sale-orders/application/services/sale-order-automatic-workflow.service";
-import { SaleOrderRealtimePayloadService } from "src/modules/sale-orders/application/services/sale-order-realtime-payload.service";
-import { SaveSaleOrderWithClientUsecase } from "src/modules/sale-orders/application/usecases/sale-order/save-with-client.usecase";
-import { BulkAssignSaleOrdersUsecase } from "src/modules/sale-orders/application/usecases/sale-order/bulk-assign.usecase";
-import { BulkChangeSaleOrderStateUsecase } from "src/modules/sale-orders/application/usecases/sale-order/bulk-change-state.usecase";
-import { BulkExecuteSaleOrderWorkflowUsecase } from "src/modules/sale-orders/application/usecases/sale-order/bulk-execute-workflow.usecase";
-import { ExportSaleOrdersExcelUsecase } from "src/modules/sale-orders/application/usecases/sale-order/export-excel.usecase";
-import { GetSaleOrderEditorCatalogsUsecase } from "src/modules/sale-orders/application/usecases/sale-order/get-editor-catalogs.usecase";
-import { LISTING_SEARCH_STORAGE } from "src/shared/listing-search/domain/listing-search.repository";
-import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
-import { PATH_METADATA } from "@nestjs/common/constants";
+} from 'src/modules/sale-orders/application/services/sale-order-automatic-workflow.service';
+import { SaleOrderRealtimePayloadService } from 'src/modules/sale-orders/application/services/sale-order-realtime-payload.service';
+import { SaveSaleOrderWithClientUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/save-with-client.usecase';
+import { BulkAssignSaleOrdersUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/bulk-assign.usecase';
+import { BulkChangeSaleOrderStateUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/bulk-change-state.usecase';
+import { BulkExecuteSaleOrderWorkflowUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/bulk-execute-workflow.usecase';
+import { ExportSaleOrdersExcelUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/export-excel.usecase';
+import { GetSaleOrderEditorCatalogsUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/get-editor-catalogs.usecase';
+import { LISTING_SEARCH_STORAGE } from 'src/shared/listing-search/domain/listing-search.repository';
+import { PermissionsGuard } from 'src/modules/access-control/adapters/in/guards/permissions.guard';
+import { PATH_METADATA } from '@nestjs/common/constants';
+import { SaleOrderPackMatcherService } from 'src/modules/sale-orders/application/services/sale-order-pack-matcher.service';
 
 @Injectable()
 class TestJwtAuthGuard implements CanActivate {
   canActivate(context: ExecutionContext) {
     const req = context.switchToHttp().getRequest();
-    req.user = { id: "user-1" };
+    req.user = { id: 'user-1' };
     return true;
   }
 }
@@ -62,14 +69,16 @@ class AllowGuard implements CanActivate {
   }
 }
 
-describe("SaleOrdersController", () => {
-  it("does not expose direct tracking routes", () => {
+describe('SaleOrdersController', () => {
+  it('does not expose direct tracking routes', () => {
     const paths = Object.getOwnPropertyNames(SaleOrdersController.prototype)
-      .map((key) => Reflect.getMetadata(PATH_METADATA, SaleOrdersController.prototype[key]))
-      .filter((path): path is string => typeof path === "string");
+      .map((key) =>
+        Reflect.getMetadata(PATH_METADATA, SaleOrdersController.prototype[key]),
+      )
+      .filter((path): path is string => typeof path === 'string');
 
-    expect(paths).not.toContain("bulk/tracking");
-    expect(paths).not.toContain(":saleOrderId/tracking");
+    expect(paths).not.toContain('bulk/tracking');
+    expect(paths).not.toContain(':saleOrderId/tracking');
   });
 
   let app: INestApplication;
@@ -103,6 +112,7 @@ describe("SaleOrdersController", () => {
   const bulkChangeSaleOrderState = { execute: jest.fn() };
   const bulkExecuteSaleOrderWorkflow = { execute: jest.fn() };
   const editorCatalogs = { execute: jest.fn() };
+  const packMatcher = { match: jest.fn() };
   const exportExcel = {
     getAvailableColumns: jest.fn(),
     execute: jest.fn(),
@@ -117,13 +127,28 @@ describe("SaleOrdersController", () => {
     byState: [],
     byClientType: [],
     byPaymentDescription: [],
-    totals: { orders: 1, total: 120, collected: 10, pending: 110, deliveryCostSum: 0 },
+    totals: {
+      orders: 1,
+      total: 120,
+      collected: 10,
+      pending: 110,
+      deliveryCostSum: 0,
+    },
   };
 
   beforeEach(async () => {
-    listSaleOrders.execute.mockResolvedValue({ items: [], total: 0, page: 1, limit: 10 });
+    listSaleOrders.execute.mockResolvedValue({
+      items: [],
+      total: 0,
+      page: 1,
+      limit: 10,
+    });
     getStatistics.execute.mockResolvedValue(statisticsPayload);
-    getSearchState.execute.mockResolvedValue({ recent: [], saved: [], catalogs: { paymentStatuses: [] } });
+    getSearchState.execute.mockResolvedValue({
+      recent: [],
+      saved: [],
+      catalogs: { paymentStatuses: [] },
+    });
     editorCatalogs.execute.mockResolvedValue({
       clients: [],
       warehouses: [],
@@ -134,178 +159,274 @@ describe("SaleOrdersController", () => {
       paymentMethods: [],
       companyPaymentAccounts: [],
     });
-    getComponents.execute.mockResolvedValue({ saleOrderId: "x", items: [] });
-    getItemComponents.execute.mockResolvedValue({ saleOrderItemId: "x", components: [] });
-    updateSaleOrder.execute.mockResolvedValue({ orderId: "x" });
-    getSaleOrder.execute.mockResolvedValue({ id: "x", items: [], payments: [], totalPaid: 0, pendingAmount: 0, paymentStatus: "PENDING" });
-    cancelSaleOrder.execute.mockResolvedValue({ saleOrderId: "x", currentStateId: "state-cancelled" });
-    confirmDelivery.execute.mockResolvedValue({ saleOrderId: "x", currentStateId: "state-delivered" });
-    addPayment.execute.mockResolvedValue({ paymentId: "p1" });
+    packMatcher.match.mockResolvedValue({
+      status: 'NONE',
+      composition: [],
+      matches: [],
+    });
+    getComponents.execute.mockResolvedValue({ saleOrderId: 'x', items: [] });
+    getItemComponents.execute.mockResolvedValue({
+      saleOrderItemId: 'x',
+      components: [],
+    });
+    updateSaleOrder.execute.mockResolvedValue({ orderId: 'x' });
+    getSaleOrder.execute.mockResolvedValue({
+      id: 'x',
+      items: [],
+      payments: [],
+      totalPaid: 0,
+      pendingAmount: 0,
+      paymentStatus: 'PENDING',
+    });
+    cancelSaleOrder.execute.mockResolvedValue({
+      saleOrderId: 'x',
+      currentStateId: 'state-cancelled',
+    });
+    confirmDelivery.execute.mockResolvedValue({
+      saleOrderId: 'x',
+      currentStateId: 'state-delivered',
+    });
+    addPayment.execute.mockResolvedValue({ paymentId: 'p1' });
     deletePayment.execute.mockResolvedValue({ deleted: true });
-    listPayments.execute.mockResolvedValue([{ id: "p1" }]);
-    createFromImportPreview.execute.mockResolvedValue({ importedRows: 1, failedRows: 0, rows: [], errors: [] });
+    listPayments.execute.mockResolvedValue([{ id: 'p1' }]);
+    createFromImportPreview.execute.mockResolvedValue({
+      importedRows: 1,
+      failedRows: 0,
+      rows: [],
+      errors: [],
+    });
     listImportLotes.execute.mockResolvedValue([
       {
-        id: "11111111-1111-4111-8111-111111111111",
+        id: '11111111-1111-4111-8111-111111111111',
         lote: 1,
-        createdAt: "2026-07-30T00:00:00.000Z",
-        createdBy: { id: "user-1", name: "User One", email: "user-one@example.test" },
+        createdAt: '2026-07-30T00:00:00.000Z',
+        createdBy: {
+          id: 'user-1',
+          name: 'User One',
+          email: 'user-one@example.test',
+        },
         isActive: true,
       },
     ]);
     setImportLoteActive.execute.mockResolvedValue({
       lote: {
-        id: "11111111-1111-4111-8111-111111111111",
+        id: '11111111-1111-4111-8111-111111111111',
         lote: 1,
-        createdAt: "2026-07-30T00:00:00.000Z",
-        createdBy: { id: "user-1", name: "User One", email: "user-one@example.test" },
+        createdAt: '2026-07-30T00:00:00.000Z',
+        createdBy: {
+          id: 'user-1',
+          name: 'User One',
+          email: 'user-one@example.test',
+        },
         isActive: false,
       },
-      saleOrderIds: ["22222222-2222-4222-8222-222222222222"],
+      saleOrderIds: ['22222222-2222-4222-8222-222222222222'],
     });
     listImportLoteAudit.execute.mockResolvedValue([
       {
-        id: "33333333-3333-4333-8333-333333333333",
-        loteId: "11111111-1111-4111-8111-111111111111",
-        createdAt: "2026-07-30T00:00:00.000Z",
-        executedBy: { id: "user-1", name: "User One", email: "user-one@example.test" },
-        actionExecution: "delete",
+        id: '33333333-3333-4333-8333-333333333333',
+        loteId: '11111111-1111-4111-8111-111111111111',
+        createdAt: '2026-07-30T00:00:00.000Z',
+        executedBy: {
+          id: 'user-1',
+          name: 'User One',
+          email: 'user-one@example.test',
+        },
+        actionExecution: 'delete',
       },
     ]);
     setSaleOrdersActive.execute.mockResolvedValue({
-      type: "success",
-      message: "Operacion masiva procesada",
+      type: 'success',
+      message: 'Operacion masiva procesada',
       data: {
         requested: 1,
         succeeded: 1,
         failed: 0,
         partiallyCompleted: false,
         results: [
-          { saleOrderId: "22222222-2222-4222-8222-222222222222", status: "success" },
+          {
+            saleOrderId: '22222222-2222-4222-8222-222222222222',
+            status: 'success',
+          },
         ],
       },
     });
     listSaleOrderAudit.execute.mockResolvedValue([
       {
-        id: "44444444-4444-4444-8444-444444444444",
-        saleOrderId: "22222222-2222-4222-8222-222222222222",
-        createdAt: "2026-07-31T00:00:00.000Z",
-        executedBy: { id: "user-1", name: "User One", email: "user-one@example.test" },
-        actionExecution: "delete",
+        id: '44444444-4444-4444-8444-444444444444',
+        saleOrderId: '22222222-2222-4222-8222-222222222222',
+        createdAt: '2026-07-31T00:00:00.000Z',
+        executedBy: {
+          id: 'user-1',
+          name: 'User One',
+          email: 'user-one@example.test',
+        },
+        actionExecution: 'delete',
       },
     ]);
     advanceSaleOrderState.execute.mockResolvedValue({
-      order: { id: "x", currentStateId: "state-2" },
+      order: { id: 'x', currentStateId: 'state-2' },
       warnings: [],
       actionOutcomes: [],
     });
-    assignWorkflow.execute.mockResolvedValue({ id: "x", workflowId: "workflow-1", currentStateId: "state-1" });
+    assignWorkflow.execute.mockResolvedValue({
+      id: 'x',
+      workflowId: 'workflow-1',
+      currentStateId: 'state-1',
+    });
     getAvailableTransitions.execute.mockResolvedValue([]);
     getOrderTimeline.execute.mockResolvedValue([]);
-    automaticWorkflow.evaluateAndNotify.mockResolvedValue({ updated: 0, failed: 0, saleOrderIds: [] });
+    automaticWorkflow.evaluateAndNotify.mockResolvedValue({
+      updated: 0,
+      failed: 0,
+      saleOrderIds: [],
+    });
     bulkAssignSaleOrders.execute.mockResolvedValue({
-      type: "success",
-      message: "Operacion masiva procesada",
+      type: 'success',
+      message: 'Operacion masiva procesada',
       data: {
         requested: 2,
         succeeded: 2,
         failed: 0,
         results: [
-          { saleOrderId: "11111111-1111-4111-8111-111111111111", status: "success" },
-          { saleOrderId: "22222222-2222-4222-8222-222222222222", status: "success" },
+          {
+            saleOrderId: '11111111-1111-4111-8111-111111111111',
+            status: 'success',
+          },
+          {
+            saleOrderId: '22222222-2222-4222-8222-222222222222',
+            status: 'success',
+          },
         ],
       },
     });
     bulkChangeSaleOrderState.execute.mockResolvedValue({
-      type: "success",
-      message: "Operacion masiva procesada",
+      type: 'success',
+      message: 'Operacion masiva procesada',
       data: {
-        targetStateId: "33333333-3333-4333-8333-333333333333",
+        targetStateId: '33333333-3333-4333-8333-333333333333',
         requested: 2,
         succeeded: 1,
         failed: 1,
         partiallyCompleted: 1,
         results: [
           {
-            saleOrderId: "11111111-1111-4111-8111-111111111111",
-            targetStateId: "33333333-3333-4333-8333-333333333333",
-            status: "success",
-            initialState: { workflowStateId: "state-1", saleOrderStateId: "global-created", code: "CREATED", name: "Creado" },
-            finalState: { workflowStateId: "state-2", saleOrderStateId: "global-packed", code: "PACKED", name: "Empacado" },
-            completedTransitions: [{ transitionId: "transition-1" }],
-            warnings: ["w1"],
+            saleOrderId: '11111111-1111-4111-8111-111111111111',
+            targetStateId: '33333333-3333-4333-8333-333333333333',
+            status: 'success',
+            initialState: {
+              workflowStateId: 'state-1',
+              saleOrderStateId: 'global-created',
+              code: 'CREATED',
+              name: 'Creado',
+            },
+            finalState: {
+              workflowStateId: 'state-2',
+              saleOrderStateId: 'global-packed',
+              code: 'PACKED',
+              name: 'Empacado',
+            },
+            completedTransitions: [{ transitionId: 'transition-1' }],
+            warnings: ['w1'],
           },
           {
-            saleOrderId: "22222222-2222-4222-8222-222222222222",
-            targetStateId: "33333333-3333-4333-8333-333333333333",
-            status: "failed",
-            message: "El DNI del cliente es obligatorio",
-            initialState: { workflowStateId: "state-1", saleOrderStateId: "global-created", code: "CREATED", name: "Creado" },
-            finalState: { workflowStateId: "state-2", saleOrderStateId: "global-packed", code: "PACKED", name: "Empacado" },
-            completedTransitions: [{ transitionId: "transition-2" }],
+            saleOrderId: '22222222-2222-4222-8222-222222222222',
+            targetStateId: '33333333-3333-4333-8333-333333333333',
+            status: 'failed',
+            message: 'El DNI del cliente es obligatorio',
+            initialState: {
+              workflowStateId: 'state-1',
+              saleOrderStateId: 'global-created',
+              code: 'CREATED',
+              name: 'Creado',
+            },
+            finalState: {
+              workflowStateId: 'state-2',
+              saleOrderStateId: 'global-packed',
+              code: 'PACKED',
+              name: 'Empacado',
+            },
+            completedTransitions: [{ transitionId: 'transition-2' }],
             warnings: [],
-            failure: { code: "CONDITION_FAILED", message: "El DNI del cliente es obligatorio" },
+            failure: {
+              code: 'CONDITION_FAILED',
+              message: 'El DNI del cliente es obligatorio',
+            },
           },
         ],
       },
     });
     bulkExecuteSaleOrderWorkflow.execute.mockResolvedValue({
-      type: "success",
-      message: "Operacion masiva procesada",
+      type: 'success',
+      message: 'Operacion masiva procesada',
       data: {
-        mode: "global_action",
-        globalActionName: "Preguia",
+        mode: 'global_action',
+        globalActionName: 'Preguia',
         requested: 1,
         succeeded: 1,
         failed: 0,
         results: [
           {
-            saleOrderId: "11111111-1111-4111-8111-111111111111",
-            transitionId: "33333333-3333-4333-8333-333333333333",
-            status: "success",
+            saleOrderId: '11111111-1111-4111-8111-111111111111',
+            transitionId: '33333333-3333-4333-8333-333333333333',
+            status: 'success',
             warnings: [],
             actionOutcomes: [],
           },
         ],
       },
     });
-    exportExcel.getAvailableColumns.mockReturnValue([{ key: "number", label: "Numero" }]);
+    exportExcel.getAvailableColumns.mockReturnValue([
+      { key: 'number', label: 'Numero' },
+    ]);
     exportExcel.execute.mockResolvedValue({
-      filename: "pedidos-2026-07-09.xlsx",
-      content: Buffer.from("excel"),
+      filename: 'pedidos-2026-07-09.xlsx',
+      content: Buffer.from('excel'),
     });
     listingSearchStorage.listState.mockResolvedValue({
-      metrics: [{ metricId: "metric-1", name: "Basico", snapshot: { columns: [{ key: "number", label: "Numero" }] } }],
+      metrics: [
+        {
+          metricId: 'metric-1',
+          name: 'Basico',
+          snapshot: { columns: [{ key: 'number', label: 'Numero' }] },
+        },
+      ],
     });
-    listingSearchStorage.createMetric.mockResolvedValue({ metricId: "metric-1" });
+    listingSearchStorage.createMetric.mockResolvedValue({
+      metricId: 'metric-1',
+    });
     listingSearchStorage.deleteMetric.mockResolvedValue(true);
     saveWithClient.execute.mockResolvedValue({
-      orderId: "11111111-1111-4111-8111-111111111111",
-      clientId: "33333333-3333-4333-8333-333333333333",
+      orderId: '11111111-1111-4111-8111-111111111111',
+      clientId: '33333333-3333-4333-8333-333333333333',
     });
-    realtimePayload.build.mockImplementation(async (input: {
-      updated?: number;
-      saleOrderIds: string[];
-      source: string;
-      trigger?: string;
-    }) => {
-      const saleOrders = (
-        await Promise.all(
-          input.saleOrderIds.map((saleOrderId) =>
-            getSaleOrder.execute({ saleOrderId }).catch(() => undefined),
-          ),
-        )
-      ).filter((saleOrder): saleOrder is NonNullable<typeof saleOrder> => Boolean(saleOrder));
+    realtimePayload.build.mockImplementation(
+      async (input: {
+        updated?: number;
+        saleOrderIds: string[];
+        source: string;
+        trigger?: string;
+      }) => {
+        const saleOrders = (
+          await Promise.all(
+            input.saleOrderIds.map((saleOrderId) =>
+              getSaleOrder.execute({ saleOrderId }).catch(() => undefined),
+            ),
+          )
+        ).filter((saleOrder): saleOrder is NonNullable<typeof saleOrder> =>
+          Boolean(saleOrder),
+        );
 
-      return {
-        updated: input.updated ?? input.saleOrderIds.length,
-        saleOrderIds: input.saleOrderIds,
-        source: input.source,
-        ...(input.trigger ? { trigger: input.trigger } : {}),
-        ...(saleOrders.length ? { saleOrders } : {}),
-        statistics: await getStatistics.execute({}),
-      };
-    });
+        return {
+          updated: input.updated ?? input.saleOrderIds.length,
+          saleOrderIds: input.saleOrderIds,
+          source: input.source,
+          ...(input.trigger ? { trigger: input.trigger } : {}),
+          ...(saleOrders.length ? { saleOrders } : {}),
+          statistics: await getStatistics.execute({}),
+        };
+      },
+    );
 
     const moduleRef = await Test.createTestingModule({
       controllers: [SaleOrdersController],
@@ -315,34 +436,68 @@ describe("SaleOrdersController", () => {
         { provide: GetSaleOrderStatisticsUsecase, useValue: getStatistics },
         { provide: GetSaleOrderUsecase, useValue: getSaleOrder },
         { provide: GetSaleOrderComponentsUsecase, useValue: getComponents },
-        { provide: GetSaleOrderItemComponentsUsecase, useValue: getItemComponents },
+        {
+          provide: GetSaleOrderItemComponentsUsecase,
+          useValue: getItemComponents,
+        },
         { provide: UpdateSaleOrderUsecase, useValue: updateSaleOrder },
-        { provide: BulkAssignSaleOrdersUsecase, useValue: bulkAssignSaleOrders },
-        { provide: BulkChangeSaleOrderStateUsecase, useValue: bulkChangeSaleOrderState },
-        { provide: BulkExecuteSaleOrderWorkflowUsecase, useValue: bulkExecuteSaleOrderWorkflow },
-        { provide: GetSaleOrderEditorCatalogsUsecase, useValue: editorCatalogs },
+        {
+          provide: BulkAssignSaleOrdersUsecase,
+          useValue: bulkAssignSaleOrders,
+        },
+        {
+          provide: BulkChangeSaleOrderStateUsecase,
+          useValue: bulkChangeSaleOrderState,
+        },
+        {
+          provide: BulkExecuteSaleOrderWorkflowUsecase,
+          useValue: bulkExecuteSaleOrderWorkflow,
+        },
+        {
+          provide: GetSaleOrderEditorCatalogsUsecase,
+          useValue: editorCatalogs,
+        },
+        { provide: SaleOrderPackMatcherService, useValue: packMatcher },
         { provide: ExportSaleOrdersExcelUsecase, useValue: exportExcel },
         { provide: LISTING_SEARCH_STORAGE, useValue: listingSearchStorage },
         { provide: GetSaleOrderSearchStateUsecase, useValue: getSearchState },
-        { provide: SaveSaleOrderSearchMetricUsecase, useValue: { execute: jest.fn() } },
-        { provide: DeleteSaleOrderSearchMetricUsecase, useValue: { execute: jest.fn() } },
-        { provide: AdvanceSaleOrderStateUseCase, useValue: advanceSaleOrderState },
+        {
+          provide: SaveSaleOrderSearchMetricUsecase,
+          useValue: { execute: jest.fn() },
+        },
+        {
+          provide: DeleteSaleOrderSearchMetricUsecase,
+          useValue: { execute: jest.fn() },
+        },
+        {
+          provide: AdvanceSaleOrderStateUseCase,
+          useValue: advanceSaleOrderState,
+        },
         { provide: AssignSaleOrderWorkflowUseCase, useValue: assignWorkflow },
-        { provide: GetAvailableTransitionsUseCase, useValue: getAvailableTransitions },
+        {
+          provide: GetAvailableTransitionsUseCase,
+          useValue: getAvailableTransitions,
+        },
         { provide: GetOrderTimelineUseCase, useValue: getOrderTimeline },
         { provide: CancelSaleOrderUsecase, useValue: cancelSaleOrder },
         { provide: ConfirmSaleOrderDeliveryUsecase, useValue: confirmDelivery },
         { provide: AddSaleOrderPaymentUsecase, useValue: addPayment },
         { provide: DeleteSaleOrderPaymentUsecase, useValue: deletePayment },
         { provide: ListSaleOrderPaymentsUsecase, useValue: listPayments },
-        { provide: CreateFromImportPreviewUseCase, useValue: createFromImportPreview },
+        {
+          provide: CreateFromImportPreviewUseCase,
+          useValue: createFromImportPreview,
+        },
         { provide: ListImportLotesUsecase, useValue: listImportLotes },
         { provide: SetImportLoteActiveUsecase, useValue: setImportLoteActive },
         { provide: ListImportLoteAuditUsecase, useValue: listImportLoteAudit },
         { provide: SetSaleOrdersActiveUsecase, useValue: setSaleOrdersActive },
         { provide: ListSaleOrderAuditUsecase, useValue: listSaleOrderAudit },
         { provide: SaleOrdersRealtimeService, useValue: realtimeService },
-        { provide: SaleOrderAutomaticWorkflowService, useValue: automaticWorkflow },
+        {
+          provide: SaleOrderAutomaticWorkflowService,
+          useValue: automaticWorkflow,
+        },
         { provide: SaleOrderRealtimePayloadService, useValue: realtimePayload },
         { provide: SaveSaleOrderWithClientUsecase, useValue: saveWithClient },
       ],
@@ -365,42 +520,172 @@ describe("SaleOrdersController", () => {
     jest.clearAllMocks();
   });
 
-  it("parses q/page/limit/filters and forwards to list usecase", async () => {
+  it('parses q/page/limit/filters and forwards to list usecase', async () => {
     await request(app.getHttpServer())
-      .get("/sale-orders")
+      .get('/sale-orders')
       .query({
-        q: "S01",
-        page: "2",
-        limit: "20",
-        filters: JSON.stringify([{ field: "paymentStatus", operator: "in", values: ["PAID"] }]),
+        q: 'S01',
+        page: '2',
+        limit: '20',
+        filters: JSON.stringify([
+          { field: 'paymentStatus', operator: 'in', values: ['PAID'] },
+        ]),
       })
       .expect(200);
 
     expect(listSaleOrders.execute).toHaveBeenCalledWith(
       expect.objectContaining({
-        q: "S01",
+        q: 'S01',
         page: 2,
         limit: 20,
-        requestedBy: "user-1",
-        filters: [{ field: "paymentStatus", operator: "in", values: ["PAID"] }],
+        requestedBy: 'user-1',
+        filters: [{ field: 'paymentStatus', operator: 'in', values: ['PAID'] }],
       }),
     );
   });
 
-  it("forwards import preview rows with current user", async () => {
+  it('forwards import preview rows with current user', async () => {
     await request(app.getHttpServer())
-      .post("/sale-orders/import-preview")
+      .post('/sale-orders/import-preview')
       .send({ rows: [{ total: 120 }] })
       .expect(201);
 
     expect(createFromImportPreview.execute).toHaveBeenCalledWith({
       rows: [{ total: 120 }],
-      userId: "user-1",
+      userId: 'user-1',
     });
   });
 
-  it("emits imported sale orders with currentState in the websocket payload", async () => {
-    const saleOrderId = "11111111-1111-4111-8111-111111111111";
+  it('matches a product composition and returns a lightweight registered pack', async () => {
+    const skuA = '11111111-1111-4111-8111-111111111111';
+    const skuB = '22222222-2222-4222-8222-222222222222';
+    packMatcher.match.mockResolvedValueOnce({
+      status: 'UNIQUE',
+      composition: [
+        { skuId: skuA, quantity: 1 },
+        { skuId: skuB, quantity: 2 },
+      ],
+      matches: [
+        {
+          pack: {
+            packId: { value: '33333333-3333-4333-8333-333333333333' },
+            description: 'Pack Exacto',
+            total: 50,
+            isActive: true,
+          },
+          items: [
+            {
+              id: '44444444-4444-4444-8444-444444444444',
+              skuId: skuA,
+              quantity: 1,
+              price: 20,
+              lineTotal: 20,
+            },
+            {
+              id: '55555555-5555-4555-8555-555555555555',
+              skuId: skuB,
+              quantity: 2,
+              price: 15,
+              lineTotal: 30,
+            },
+          ],
+        },
+      ],
+      pack: {
+        pack: {
+          packId: { value: '33333333-3333-4333-8333-333333333333' },
+          description: 'Pack Exacto',
+          total: 50,
+          isActive: true,
+        },
+        items: [
+          {
+            id: '44444444-4444-4444-8444-444444444444',
+            skuId: skuA,
+            quantity: 1,
+            price: 20,
+            lineTotal: 20,
+          },
+          {
+            id: '55555555-5555-4555-8555-555555555555',
+            skuId: skuB,
+            quantity: 2,
+            price: 15,
+            lineTotal: 30,
+          },
+        ],
+      },
+    });
+
+    const response = await request(app.getHttpServer())
+      .post('/sale-orders/products/match-pack')
+      .send({
+        components: [
+          { skuId: skuB, quantity: 2 },
+          { skuId: skuA, quantity: 1 },
+        ],
+      })
+      .expect(201);
+
+    expect(packMatcher.match).toHaveBeenCalledWith([
+      { skuId: skuB, quantity: 2 },
+      { skuId: skuA, quantity: 1 },
+    ]);
+    expect(response.body).toEqual({
+      status: 'UNIQUE',
+      composition: [
+        { skuId: skuA, quantity: 1 },
+        { skuId: skuB, quantity: 2 },
+      ],
+      matches: [
+        {
+          id: '33333333-3333-4333-8333-333333333333',
+          description: 'Pack Exacto',
+          total: 50,
+        },
+      ],
+      pack: {
+        id: '33333333-3333-4333-8333-333333333333',
+        description: 'Pack Exacto',
+        total: 50,
+        components: [
+          {
+            id: '44444444-4444-4444-8444-444444444444',
+            skuId: skuA,
+            quantity: 1,
+            price: 20,
+            lineTotal: 20,
+          },
+          {
+            id: '55555555-5555-4555-8555-555555555555',
+            skuId: skuB,
+            quantity: 2,
+            price: 15,
+            lineTotal: 30,
+          },
+        ],
+      },
+    });
+  });
+
+  it('rejects a pack match quantity with more than two decimals', async () => {
+    await request(app.getHttpServer())
+      .post('/sale-orders/products/match-pack')
+      .send({
+        components: [
+          {
+            skuId: '11111111-1111-4111-8111-111111111111',
+            quantity: 1.234,
+          },
+        ],
+      })
+      .expect(400);
+
+    expect(packMatcher.match).not.toHaveBeenCalled();
+  });
+
+  it('emits imported sale orders with currentState in the websocket payload', async () => {
+    const saleOrderId = '11111111-1111-4111-8111-111111111111';
     createFromImportPreview.execute.mockResolvedValueOnce({
       importedRows: 1,
       failedRows: 0,
@@ -409,132 +694,161 @@ describe("SaleOrdersController", () => {
     });
     getSaleOrder.execute.mockResolvedValueOnce({
       id: saleOrderId,
-      currentState: { code: "WAITING", name: "Esperando" },
+      currentState: { code: 'WAITING', name: 'Esperando' },
       items: [],
       payments: [],
       totalPaid: 0,
       pendingAmount: 0,
-      paymentStatus: "PENDING",
+      paymentStatus: 'PENDING',
     });
 
     await request(app.getHttpServer())
-      .post("/sale-orders/import-preview")
+      .post('/sale-orders/import-preview')
       .send({ rows: [{ total: 120 }] })
       .expect(201);
 
     expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
-      "sale-orders.updated",
+      'sale-orders.updated',
       expect.objectContaining({
         saleOrderIds: [saleOrderId],
-        saleOrders: [expect.objectContaining({
-          id: saleOrderId,
-          currentState: expect.objectContaining({ code: "WAITING" }),
-        })],
+        saleOrders: [
+          expect.objectContaining({
+            id: saleOrderId,
+            currentState: expect.objectContaining({ code: 'WAITING' }),
+          }),
+        ],
         statistics: statisticsPayload,
       }),
     );
   });
 
-  it("emits realtime and evaluates automatic workflow after creating a sale order", async () => {
-    const createSaleOrder = app.get(CreateSaleOrderUsecase) as { execute: jest.Mock };
-    createSaleOrder.execute.mockResolvedValueOnce({ orderId: "11111111-1111-4111-8111-111111111111" });
-    getSaleOrder.execute.mockResolvedValueOnce({ id: "11111111-1111-4111-8111-111111111111", items: [], payments: [], totalPaid: 0, pendingAmount: 0, paymentStatus: "PENDING" });
+  it('emits realtime and evaluates automatic workflow after creating a sale order', async () => {
+    const createSaleOrder = app.get(CreateSaleOrderUsecase) as {
+      execute: jest.Mock;
+    };
+    createSaleOrder.execute.mockResolvedValueOnce({
+      orderId: '11111111-1111-4111-8111-111111111111',
+    });
+    getSaleOrder.execute.mockResolvedValueOnce({
+      id: '11111111-1111-4111-8111-111111111111',
+      items: [],
+      payments: [],
+      totalPaid: 0,
+      pendingAmount: 0,
+      paymentStatus: 'PENDING',
+    });
 
     await request(app.getHttpServer())
-      .post("/sale-orders")
+      .post('/sale-orders')
       .send({
-        warehouseId: "22222222-2222-4222-8222-222222222222",
-        clientId: "33333333-3333-4333-8333-333333333333",
-        workflowId: "44444444-4444-4444-8444-444444444444",
+        warehouseId: '22222222-2222-4222-8222-222222222222',
+        clientId: '33333333-3333-4333-8333-333333333333',
+        workflowId: '44444444-4444-4444-8444-444444444444',
         subTotal: 10,
         total: 10,
-        items: [{
-          quantity: 1,
-          unitPrice: 10,
-          total: 10,
-          components: [{
-            skuId: "55555555-5555-4555-8555-555555555555",
+        items: [
+          {
             quantity: 1,
             unitPrice: 10,
             total: 10,
-          }],
-        }],
+            components: [
+              {
+                skuId: '55555555-5555-4555-8555-555555555555',
+                quantity: 1,
+                unitPrice: 10,
+                total: 10,
+              },
+            ],
+          },
+        ],
       })
       .expect(201);
 
     expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
-      "sale-orders.updated",
+      'sale-orders.updated',
       expect.objectContaining({
-        saleOrderIds: ["11111111-1111-4111-8111-111111111111"],
-        source: "sale-order-created",
+        saleOrderIds: ['11111111-1111-4111-8111-111111111111'],
+        source: 'sale-order-created',
         statistics: statisticsPayload,
       }),
     );
     expect(automaticWorkflow.evaluateAndNotify).toHaveBeenCalledWith(
-      "11111111-1111-4111-8111-111111111111",
+      '11111111-1111-4111-8111-111111111111',
       SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_CREATED,
     );
   });
 
-  it("accepts an empty warehouseId when creating a sale order", async () => {
-    const createSaleOrder = app.get(CreateSaleOrderUsecase) as { execute: jest.Mock };
-    createSaleOrder.execute.mockResolvedValueOnce({ orderId: "11111111-1111-4111-8111-111111111111" });
+  it('accepts an empty warehouseId when creating a sale order', async () => {
+    const createSaleOrder = app.get(CreateSaleOrderUsecase) as {
+      execute: jest.Mock;
+    };
+    createSaleOrder.execute.mockResolvedValueOnce({
+      orderId: '11111111-1111-4111-8111-111111111111',
+    });
 
     await request(app.getHttpServer())
-      .post("/sale-orders")
+      .post('/sale-orders')
       .send({
-        warehouseId: "",
-        clientId: "33333333-3333-4333-8333-333333333333",
-        workflowId: "44444444-4444-4444-8444-444444444444",
+        warehouseId: '',
+        clientId: '33333333-3333-4333-8333-333333333333',
+        workflowId: '44444444-4444-4444-8444-444444444444',
         subTotal: 10,
         total: 10,
-        items: [{
-          quantity: 1,
-          unitPrice: 10,
-          total: 10,
-          components: [{
-            skuId: "55555555-5555-4555-8555-555555555555",
+        items: [
+          {
             quantity: 1,
             unitPrice: 10,
             total: 10,
-          }],
-        }],
+            components: [
+              {
+                skuId: '55555555-5555-4555-8555-555555555555',
+                quantity: 1,
+                unitPrice: 10,
+                total: 10,
+              },
+            ],
+          },
+        ],
       })
       .expect(201);
 
     expect(createSaleOrder.execute).toHaveBeenCalledWith(
       expect.objectContaining({ warehouseId: undefined }),
-      "user-1",
+      'user-1',
     );
   });
 
-  it("accepts multipart unified creation and notifies only after save succeeds", async () => {
+  it('accepts multipart unified creation and notifies only after save succeeds', async () => {
     const payload = {
       client: {
-        mode: "existing",
-        id: "33333333-3333-4333-8333-333333333333",
+        mode: 'existing',
+        id: '33333333-3333-4333-8333-333333333333',
       },
-      workflowId: "44444444-4444-4444-8444-444444444444",
-      items: [{
-        quantity: 1,
-        unitPrice: 10,
-        total: 10,
-        components: [{
-          skuId: "55555555-5555-4555-8555-555555555555",
+      workflowId: '44444444-4444-4444-8444-444444444444',
+      items: [
+        {
           quantity: 1,
           unitPrice: 10,
           total: 10,
-        }],
-      }],
+          components: [
+            {
+              skuId: '55555555-5555-4555-8555-555555555555',
+              quantity: 1,
+              unitPrice: 10,
+              total: 10,
+            },
+          ],
+        },
+      ],
       payments: [],
     };
 
     await request(app.getHttpServer())
-      .post("/sale-orders/with-client")
-      .field("data", JSON.stringify(payload))
-      .attach("shippingPhoto", Buffer.from("image"), {
-        filename: "shipping.png",
-        contentType: "image/png",
+      .post('/sale-orders/with-client')
+      .field('data', JSON.stringify(payload))
+      .attach('shippingPhoto', Buffer.from('image'), {
+        filename: 'shipping.png',
+        contentType: 'image/png',
       })
       .expect(201);
 
@@ -542,21 +856,23 @@ describe("SaleOrdersController", () => {
       expect.objectContaining({
         data: payload,
         shippingPhoto: expect.objectContaining({
-          fieldname: "shippingPhoto",
-          mimetype: "image/png",
+          fieldname: 'shippingPhoto',
+          mimetype: 'image/png',
         }),
-        userId: "user-1",
+        userId: 'user-1',
       }),
     );
     expect(automaticWorkflow.evaluateAndNotify).toHaveBeenCalledWith(
-      "11111111-1111-4111-8111-111111111111",
+      '11111111-1111-4111-8111-111111111111',
       SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_CREATED,
     );
   });
 
-  it("does not emit the stale create event when automatic workflow already updated the order", async () => {
-    const createSaleOrder = app.get(CreateSaleOrderUsecase) as { execute: jest.Mock };
-    const saleOrderId = "11111111-1111-4111-8111-111111111111";
+  it('does not emit the stale create event when automatic workflow already updated the order', async () => {
+    const createSaleOrder = app.get(CreateSaleOrderUsecase) as {
+      execute: jest.Mock;
+    };
+    const saleOrderId = '11111111-1111-4111-8111-111111111111';
     createSaleOrder.execute.mockResolvedValueOnce({ orderId: saleOrderId });
     automaticWorkflow.evaluateAndNotify.mockResolvedValueOnce({
       updated: 1,
@@ -565,24 +881,28 @@ describe("SaleOrdersController", () => {
     });
 
     await request(app.getHttpServer())
-      .post("/sale-orders")
+      .post('/sale-orders')
       .send({
-        warehouseId: "22222222-2222-4222-8222-222222222222",
-        clientId: "33333333-3333-4333-8333-333333333333",
-        workflowId: "44444444-4444-4444-8444-444444444444",
+        warehouseId: '22222222-2222-4222-8222-222222222222',
+        clientId: '33333333-3333-4333-8333-333333333333',
+        workflowId: '44444444-4444-4444-8444-444444444444',
         subTotal: 10,
         total: 10,
-        items: [{
-          quantity: 1,
-          unitPrice: 10,
-          total: 10,
-          components: [{
-            skuId: "55555555-5555-4555-8555-555555555555",
+        items: [
+          {
             quantity: 1,
             unitPrice: 10,
             total: 10,
-          }],
-        }],
+            components: [
+              {
+                skuId: '55555555-5555-4555-8555-555555555555',
+                quantity: 1,
+                unitPrice: 10,
+                total: 10,
+              },
+            ],
+          },
+        ],
       })
       .expect(201);
 
@@ -593,13 +913,16 @@ describe("SaleOrdersController", () => {
     expect(realtimeService.emitToAllConnected).not.toHaveBeenCalled();
   });
 
-  it("emits imported sale orders without automatic workflow separately from automatic updates", async () => {
-    const automaticSaleOrderId = "11111111-1111-4111-8111-111111111111";
-    const unchangedSaleOrderId = "22222222-2222-4222-8222-222222222222";
+  it('emits imported sale orders without automatic workflow separately from automatic updates', async () => {
+    const automaticSaleOrderId = '11111111-1111-4111-8111-111111111111';
+    const unchangedSaleOrderId = '22222222-2222-4222-8222-222222222222';
     createFromImportPreview.execute.mockResolvedValueOnce({
       importedRows: 2,
       failedRows: 0,
-      rows: [{ saleOrderId: automaticSaleOrderId }, { saleOrderId: unchangedSaleOrderId }],
+      rows: [
+        { saleOrderId: automaticSaleOrderId },
+        { saleOrderId: unchangedSaleOrderId },
+      ],
       errors: [],
     });
     automaticWorkflow.evaluateAndNotify
@@ -615,21 +938,21 @@ describe("SaleOrdersController", () => {
       });
     getSaleOrder.execute.mockResolvedValueOnce({
       id: unchangedSaleOrderId,
-      currentState: { code: "WAITING", name: "Esperando" },
+      currentState: { code: 'WAITING', name: 'Esperando' },
       items: [],
       payments: [],
       totalPaid: 0,
       pendingAmount: 0,
-      paymentStatus: "PENDING",
+      paymentStatus: 'PENDING',
     });
 
     await request(app.getHttpServer())
-      .post("/sale-orders/import-preview")
+      .post('/sale-orders/import-preview')
       .send({ rows: [{ total: 120 }, { total: 80 }] })
       .expect(201);
 
     expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
-      "sale-orders.updated",
+      'sale-orders.updated',
       expect.objectContaining({
         saleOrderIds: [unchangedSaleOrderId],
         saleOrders: [expect.objectContaining({ id: unchangedSaleOrderId })],
@@ -638,29 +961,33 @@ describe("SaleOrdersController", () => {
     );
   });
 
-  it("forwards one filtered statistics query", async () => {
+  it('forwards one filtered statistics query', async () => {
     await request(app.getHttpServer())
-      .get("/sale-orders/statistics")
+      .get('/sale-orders/statistics')
       .query({
-        q: "S01",
-        includeCancelled: "true",
-        filters: JSON.stringify([{ field: "workflowId", operator: "in", values: ["workflow-1"] }]),
+        q: 'S01',
+        includeCancelled: 'true',
+        filters: JSON.stringify([
+          { field: 'workflowId', operator: 'in', values: ['workflow-1'] },
+        ]),
       })
       .expect(200);
 
     expect(getStatistics.execute).toHaveBeenCalledWith({
-        q: "S01",
-        includeCancelled: true,
-        isActive: true,
-        filters: [{ field: "workflowId", operator: "in", values: ["workflow-1"] }],
-        requestedBy: "user-1",
-      });
+      q: 'S01',
+      includeCancelled: true,
+      isActive: true,
+      filters: [
+        { field: 'workflowId', operator: 'in', values: ['workflow-1'] },
+      ],
+      requestedBy: 'user-1',
+    });
   });
 
-  it("forwards inactive mode to statistics usecase", async () => {
+  it('forwards inactive mode to statistics usecase', async () => {
     await request(app.getHttpServer())
-      .get("/sale-orders/statistics")
-      .query({ isActive: "false" })
+      .get('/sale-orders/statistics')
+      .query({ isActive: 'false' })
       .expect(200);
 
     expect(getStatistics.execute).toHaveBeenCalledWith(
@@ -670,69 +997,99 @@ describe("SaleOrdersController", () => {
     );
   });
 
-  it("accepts import preview rows as direct array body", async () => {
+  it('accepts import preview rows as direct array body', async () => {
     await request(app.getHttpServer())
-      .post("/sale-orders/import-preview")
+      .post('/sale-orders/import-preview')
       .send([{ total: 120 }])
       .expect(201);
 
     expect(createFromImportPreview.execute).toHaveBeenCalledWith({
       rows: [{ total: 120 }],
-      userId: "user-1",
+      userId: 'user-1',
     });
   });
 
-  it("returns search-state catalogs", async () => {
-    const response = await request(app.getHttpServer()).get("/sale-orders/search-state").expect(200);
-    expect(response.body).toHaveProperty("catalogs");
+  it('returns search-state catalogs', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/sale-orders/search-state')
+      .expect(200);
+    expect(response.body).toHaveProperty('catalogs');
   });
 
-  it("returns sale-order editor catalogs in one request", async () => {
+  it('returns sale-order editor catalogs in one request', async () => {
     editorCatalogs.execute.mockResolvedValueOnce({
-      clients: [{ id: "client-1", fullName: "Cliente Uno", docNumber: "12345678" }],
-      warehouses: [{ warehouseId: "warehouse-1", name: "Principal" }],
-      subsidiaries: [{ id: "subsidiary-1", alias: "Agencia", address: "Av. 1", basePrice: 8 }],
-      sources: [{ id: "source-1", name: "Facebook" }],
-      workflows: [{ id: "workflow-1", name: "Venta", isActive: true }],
-      advisers: [{ id: "adviser-1", name: "Ana", email: "ana@example.com" }],
-      paymentMethods: [{ companyMethodId: "cm-1", methodId: "method-1", name: "EFECTIVO", isActive: true }],
-      companyPaymentAccounts: [{ id: "account-1", companyId: "company-1", type: "CASH", name: "Caja", currency: "PEN", isActive: true, isDefault: true }],
+      clients: [
+        { id: 'client-1', fullName: 'Cliente Uno', docNumber: '12345678' },
+      ],
+      warehouses: [{ warehouseId: 'warehouse-1', name: 'Principal' }],
+      subsidiaries: [
+        {
+          id: 'subsidiary-1',
+          alias: 'Agencia',
+          address: 'Av. 1',
+          basePrice: 8,
+        },
+      ],
+      sources: [{ id: 'source-1', name: 'Facebook' }],
+      workflows: [{ id: 'workflow-1', name: 'Venta', isActive: true }],
+      advisers: [{ id: 'adviser-1', name: 'Ana', email: 'ana@example.com' }],
+      paymentMethods: [
+        {
+          companyMethodId: 'cm-1',
+          methodId: 'method-1',
+          name: 'EFECTIVO',
+          isActive: true,
+        },
+      ],
+      companyPaymentAccounts: [
+        {
+          id: 'account-1',
+          companyId: 'company-1',
+          type: 'CASH',
+          name: 'Caja',
+          currency: 'PEN',
+          isActive: true,
+          isDefault: true,
+        },
+      ],
     });
 
     const response = await request(app.getHttpServer())
-      .get("/sale-orders/editor-catalogs")
-      .query({ companyId: "11111111-1111-4111-8111-111111111111" })
+      .get('/sale-orders/editor-catalogs')
+      .query({ companyId: '11111111-1111-4111-8111-111111111111' })
       .expect(200);
 
     expect(editorCatalogs.execute).toHaveBeenCalledWith({
-      companyId: "11111111-1111-4111-8111-111111111111",
+      companyId: '11111111-1111-4111-8111-111111111111',
     });
-    expect(response.body).toEqual(expect.objectContaining({
-      clients: [expect.objectContaining({ id: "client-1" })],
-      subsidiaries: [expect.objectContaining({ id: "subsidiary-1" })],
-      workflows: [expect.objectContaining({ id: "workflow-1" })],
-      companyPaymentAccounts: [expect.objectContaining({ id: "account-1" })],
-    }));
+    expect(response.body).toEqual(
+      expect.objectContaining({
+        clients: [expect.objectContaining({ id: 'client-1' })],
+        subsidiaries: [expect.objectContaining({ id: 'subsidiary-1' })],
+        workflows: [expect.objectContaining({ id: 'workflow-1' })],
+        companyPaymentAccounts: [expect.objectContaining({ id: 'account-1' })],
+      }),
+    );
   });
 
-  it("lists sale order import lotes", async () => {
+  it('lists sale order import lotes', async () => {
     const response = await request(app.getHttpServer())
-      .get("/sale-orders/import-lotes")
+      .get('/sale-orders/import-lotes')
       .expect(200);
 
     expect(listImportLotes.execute).toHaveBeenCalledTimes(1);
     expect(response.body).toEqual([
       expect.objectContaining({
-        id: "11111111-1111-4111-8111-111111111111",
+        id: '11111111-1111-4111-8111-111111111111',
         lote: 1,
         isActive: true,
       }),
     ]);
   });
 
-  it("toggles a sale order import lote and emits realtime updates", async () => {
-    const loteId = "11111111-1111-4111-8111-111111111111";
-    const saleOrderId = "22222222-2222-4222-8222-222222222222";
+  it('toggles a sale order import lote and emits realtime updates', async () => {
+    const loteId = '11111111-1111-4111-8111-111111111111';
+    const saleOrderId = '22222222-2222-4222-8222-222222222222';
 
     await request(app.getHttpServer())
       .patch(`/sale-orders/import-lotes/${loteId}/active`)
@@ -742,28 +1099,28 @@ describe("SaleOrdersController", () => {
     expect(setImportLoteActive.execute).toHaveBeenCalledWith({
       loteId,
       isActive: false,
-      executedBy: "user-1",
+      executedBy: 'user-1',
     });
     expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
-      "sale-order-lotes.updated",
+      'sale-order-lotes.updated',
       expect.objectContaining({
         saleOrderIds: [saleOrderId],
-        source: "sale-order-import-lote-deleted",
+        source: 'sale-order-import-lote-deleted',
       }),
     );
     expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
-      "sale-orders.updated",
+      'sale-orders.updated',
       expect.objectContaining({
         saleOrderIds: [saleOrderId],
-        source: "sale-order-import-lote-deleted",
+        source: 'sale-order-import-lote-deleted',
       }),
     );
   });
 
-  it("forwards inactive mode to list usecase", async () => {
+  it('forwards inactive mode to list usecase', async () => {
     await request(app.getHttpServer())
-      .get("/sale-orders")
-      .query({ isActive: "false" })
+      .get('/sale-orders')
+      .query({ isActive: 'false' })
       .expect(200);
 
     expect(listSaleOrders.execute).toHaveBeenCalledWith(
@@ -773,8 +1130,8 @@ describe("SaleOrdersController", () => {
     );
   });
 
-  it("lists sale order import lote audit records", async () => {
-    const loteId = "11111111-1111-4111-8111-111111111111";
+  it('lists sale order import lote audit records', async () => {
+    const loteId = '11111111-1111-4111-8111-111111111111';
 
     const response = await request(app.getHttpServer())
       .get(`/sale-orders/import-lotes/${loteId}/audit`)
@@ -784,13 +1141,13 @@ describe("SaleOrdersController", () => {
     expect(response.body).toEqual([
       expect.objectContaining({
         loteId,
-        actionExecution: "delete",
+        actionExecution: 'delete',
       }),
     ]);
   });
 
-  it("lists sale order audit records", async () => {
-    const saleOrderId = "22222222-2222-4222-8222-222222222222";
+  it('lists sale order audit records', async () => {
+    const saleOrderId = '22222222-2222-4222-8222-222222222222';
 
     const response = await request(app.getHttpServer())
       .get(`/sale-orders/${saleOrderId}/audit`)
@@ -800,143 +1157,200 @@ describe("SaleOrdersController", () => {
     expect(response.body).toEqual([
       expect.objectContaining({
         saleOrderId,
-        actionExecution: "delete",
+        actionExecution: 'delete',
       }),
     ]);
   });
 
-  it("returns export columns", async () => {
-    const response = await request(app.getHttpServer()).get("/sale-orders/export-columns").expect(200);
+  it('returns export columns', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/sale-orders/export-columns')
+      .expect(200);
 
-    expect(response.body).toEqual([{ key: "number", label: "Numero" }]);
+    expect(response.body).toEqual([{ key: 'number', label: 'Numero' }]);
     expect(exportExcel.getAvailableColumns).toHaveBeenCalledTimes(1);
   });
 
-  it("uses sale-orders export table key for presets", async () => {
-    const response = await request(app.getHttpServer()).get("/sale-orders/export-presets").expect(200);
+  it('uses sale-orders export table key for presets', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/sale-orders/export-presets')
+      .expect(200);
 
     expect(response.body).toEqual([
-      { metricId: "metric-1", name: "Basico", snapshot: { columns: [{ key: "number", label: "Numero" }] } },
+      {
+        metricId: 'metric-1',
+        name: 'Basico',
+        snapshot: { columns: [{ key: 'number', label: 'Numero' }] },
+      },
     ]);
     expect(listingSearchStorage.listState).toHaveBeenCalledWith({
-      userId: "user-1",
-      tableKey: "sale-orders:export",
+      userId: 'user-1',
+      tableKey: 'sale-orders:export',
     });
   });
 
-  it("stores sale-orders export presets with selected columns", async () => {
+  it('stores sale-orders export presets with selected columns', async () => {
     await request(app.getHttpServer())
-      .post("/sale-orders/export-presets")
+      .post('/sale-orders/export-presets')
       .send({
-        name: "Basico",
-        columns: [{ key: "number", label: "Numero" }],
+        name: 'Basico',
+        columns: [{ key: 'number', label: 'Numero' }],
         useDateRange: true,
       })
       .expect(201);
 
     expect(listingSearchStorage.createMetric).toHaveBeenCalledWith({
-      userId: "user-1",
-      tableKey: "sale-orders:export",
-      name: "Basico",
+      userId: 'user-1',
+      tableKey: 'sale-orders:export',
+      name: 'Basico',
       snapshot: {
-        q: "",
+        q: '',
         filters: [],
-        name: "Basico",
-        columns: [{ key: "number", label: "Numero" }],
+        name: 'Basico',
+        columns: [{ key: 'number', label: 'Numero' }],
         useDateRange: true,
       },
     });
   });
 
-  it("deletes sale-orders export presets from the export table key", async () => {
-    const metricId = "11111111-1111-4111-8111-111111111111";
+  it('deletes sale-orders export presets from the export table key', async () => {
+    const metricId = '11111111-1111-4111-8111-111111111111';
 
-    await request(app.getHttpServer()).delete(`/sale-orders/export-presets/${metricId}`).expect(200);
+    await request(app.getHttpServer())
+      .delete(`/sale-orders/export-presets/${metricId}`)
+      .expect(200);
 
     expect(listingSearchStorage.deleteMetric).toHaveBeenCalledWith({
-      userId: "user-1",
-      tableKey: "sale-orders:export",
+      userId: 'user-1',
+      tableKey: 'sale-orders:export',
       metricId,
     });
   });
 
-  it("exports sale orders as an Excel attachment", async () => {
+  it('exports sale orders as an Excel attachment', async () => {
     const response = await request(app.getHttpServer())
-      .post("/sale-orders/export-excel")
+      .post('/sale-orders/export-excel')
       .send({
-        columns: [{ key: "number", label: "Numero" }],
-        q: "SO",
-        filters: [{ field: "createdAt", operator: "between", range: { start: "2026-07-01", end: "2026-07-09" } }],
+        columns: [{ key: 'number', label: 'Numero' }],
+        q: 'SO',
+        filters: [
+          {
+            field: 'createdAt',
+            operator: 'between',
+            range: { start: '2026-07-01', end: '2026-07-09' },
+          },
+        ],
         useDateRange: true,
       })
       .expect(200);
 
-    expect(response.headers["content-type"]).toBe("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    expect(response.headers["content-disposition"]).toBe('attachment; filename="pedidos-2026-07-09.xlsx"');
+    expect(response.headers['content-type']).toBe(
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    expect(response.headers['content-disposition']).toBe(
+      'attachment; filename="pedidos-2026-07-09.xlsx"',
+    );
     expect(exportExcel.execute).toHaveBeenCalledWith({
-      columns: [{ key: "number", label: "Numero" }],
-      q: "SO",
-      filters: [{ field: "createdAt", operator: "between", range: { start: "2026-07-01", end: "2026-07-09" } }],
+      columns: [{ key: 'number', label: 'Numero' }],
+      q: 'SO',
+      filters: [
+        {
+          field: 'createdAt',
+          operator: 'between',
+          range: { start: '2026-07-01', end: '2026-07-09' },
+        },
+      ],
       useDateRange: true,
-      requestedBy: "user-1",
+      requestedBy: 'user-1',
     });
   });
 
-  it("forwards order id to components usecase", async () => {
-    const saleOrderId = "11111111-1111-4111-8111-111111111111";
-    await request(app.getHttpServer()).get(`/sale-orders/${saleOrderId}/components`).expect(200);
+  it('forwards order id to components usecase', async () => {
+    const saleOrderId = '11111111-1111-4111-8111-111111111111';
+    await request(app.getHttpServer())
+      .get(`/sale-orders/${saleOrderId}/components`)
+      .expect(200);
     expect(getComponents.execute).toHaveBeenCalledWith({ saleOrderId });
   });
 
-  it("forwards item id to item components usecase", async () => {
-    const saleOrderItemId = "11111111-1111-4111-8111-111111111111";
-    await request(app.getHttpServer()).get(`/sale-orders/items/${saleOrderItemId}/components`).expect(200);
+  it('forwards item id to item components usecase', async () => {
+    const saleOrderItemId = '11111111-1111-4111-8111-111111111111';
+    await request(app.getHttpServer())
+      .get(`/sale-orders/items/${saleOrderItemId}/components`)
+      .expect(200);
     expect(getItemComponents.execute).toHaveBeenCalledWith({ saleOrderItemId });
   });
 
-  it("forwards payload to update usecase", async () => {
-    const saleOrderId = "11111111-1111-4111-8111-111111111111";
+  it('forwards payload to update usecase', async () => {
+    const saleOrderId = '11111111-1111-4111-8111-111111111111';
     await request(app.getHttpServer())
       .patch(`/sale-orders/${saleOrderId}`)
       .send({
-        warehouseId: "22222222-2222-4222-8222-222222222222",
-        clientId: "33333333-3333-4333-8333-333333333333",
-        items: [{ quantity: 1, unitPrice: 10, total: 10, components: [{ skuId: "44444444-4444-4444-8444-444444444444", quantity: 1, unitPrice: 10, total: 10 }] }],
-      })
-      .expect(200);
-
-    expect(updateSaleOrder.execute).toHaveBeenCalledWith(expect.objectContaining({ saleOrderId }));
-  });
-
-  it("emits realtime and evaluates automatic workflow after updating a sale order", async () => {
-    const saleOrderId = "11111111-1111-4111-8111-111111111111";
-    updateSaleOrder.execute.mockResolvedValueOnce({ orderId: saleOrderId });
-    getSaleOrder.execute.mockResolvedValueOnce({ id: saleOrderId, items: [], payments: [], totalPaid: 0, pendingAmount: 0, paymentStatus: "PENDING" });
-
-    await request(app.getHttpServer())
-      .patch(`/sale-orders/${saleOrderId}`)
-      .send({
-        warehouseId: "22222222-2222-4222-8222-222222222222",
-        clientId: "33333333-3333-4333-8333-333333333333",
-        items: [{
-          quantity: 1,
-          unitPrice: 10,
-          total: 10,
-          components: [{
-            skuId: "44444444-4444-4444-8444-444444444444",
+        warehouseId: '22222222-2222-4222-8222-222222222222',
+        clientId: '33333333-3333-4333-8333-333333333333',
+        items: [
+          {
             quantity: 1,
             unitPrice: 10,
             total: 10,
-          }],
-        }],
+            components: [
+              {
+                skuId: '44444444-4444-4444-8444-444444444444',
+                quantity: 1,
+                unitPrice: 10,
+                total: 10,
+              },
+            ],
+          },
+        ],
+      })
+      .expect(200);
+
+    expect(updateSaleOrder.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ saleOrderId }),
+    );
+  });
+
+  it('emits realtime and evaluates automatic workflow after updating a sale order', async () => {
+    const saleOrderId = '11111111-1111-4111-8111-111111111111';
+    updateSaleOrder.execute.mockResolvedValueOnce({ orderId: saleOrderId });
+    getSaleOrder.execute.mockResolvedValueOnce({
+      id: saleOrderId,
+      items: [],
+      payments: [],
+      totalPaid: 0,
+      pendingAmount: 0,
+      paymentStatus: 'PENDING',
+    });
+
+    await request(app.getHttpServer())
+      .patch(`/sale-orders/${saleOrderId}`)
+      .send({
+        warehouseId: '22222222-2222-4222-8222-222222222222',
+        clientId: '33333333-3333-4333-8333-333333333333',
+        items: [
+          {
+            quantity: 1,
+            unitPrice: 10,
+            total: 10,
+            components: [
+              {
+                skuId: '44444444-4444-4444-8444-444444444444',
+                quantity: 1,
+                unitPrice: 10,
+                total: 10,
+              },
+            ],
+          },
+        ],
       })
       .expect(200);
 
     expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
-      "sale-orders.updated",
+      'sale-orders.updated',
       expect.objectContaining({
         saleOrderIds: [saleOrderId],
-        source: "sale-order-updated",
+        source: 'sale-order-updated',
         saleOrders: [expect.objectContaining({ id: saleOrderId })],
         statistics: statisticsPayload,
       }),
@@ -947,8 +1361,8 @@ describe("SaleOrdersController", () => {
     );
   });
 
-  it("does not emit the stale update event when automatic workflow already updated the order", async () => {
-    const saleOrderId = "11111111-1111-4111-8111-111111111111";
+  it('does not emit the stale update event when automatic workflow already updated the order', async () => {
+    const saleOrderId = '11111111-1111-4111-8111-111111111111';
     updateSaleOrder.execute.mockResolvedValueOnce({ orderId: saleOrderId });
     automaticWorkflow.evaluateAndNotify.mockResolvedValueOnce({
       updated: 1,
@@ -959,19 +1373,23 @@ describe("SaleOrdersController", () => {
     await request(app.getHttpServer())
       .patch(`/sale-orders/${saleOrderId}`)
       .send({
-        warehouseId: "22222222-2222-4222-8222-222222222222",
-        clientId: "33333333-3333-4333-8333-333333333333",
-        items: [{
-          quantity: 1,
-          unitPrice: 10,
-          total: 10,
-          components: [{
-            skuId: "44444444-4444-4444-8444-444444444444",
+        warehouseId: '22222222-2222-4222-8222-222222222222',
+        clientId: '33333333-3333-4333-8333-333333333333',
+        items: [
+          {
             quantity: 1,
             unitPrice: 10,
             total: 10,
-          }],
-        }],
+            components: [
+              {
+                skuId: '44444444-4444-4444-8444-444444444444',
+                quantity: 1,
+                unitPrice: 10,
+                total: 10,
+              },
+            ],
+          },
+        ],
       })
       .expect(200);
 
@@ -982,13 +1400,13 @@ describe("SaleOrdersController", () => {
     expect(realtimeService.emitToAllConnected).not.toHaveBeenCalled();
   });
 
-  it("bulk assigns sale orders and emits one consolidated realtime update", async () => {
-    const firstId = "11111111-1111-4111-8111-111111111111";
-    const secondId = "22222222-2222-4222-8222-222222222222";
-    const assignedBy = "33333333-3333-4333-8333-333333333333";
+  it('bulk assigns sale orders and emits one consolidated realtime update', async () => {
+    const firstId = '11111111-1111-4111-8111-111111111111';
+    const secondId = '22222222-2222-4222-8222-222222222222';
+    const assignedBy = '33333333-3333-4333-8333-333333333333';
 
     await request(app.getHttpServer())
-      .patch("/sale-orders/bulk/assigned-by")
+      .patch('/sale-orders/bulk/assigned-by')
       .send({ saleOrderIds: [firstId, secondId], assignedBy })
       .expect(200);
 
@@ -997,47 +1415,47 @@ describe("SaleOrdersController", () => {
       assignedBy,
     });
     expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
-      "sale-orders.updated",
+      'sale-orders.updated',
       expect.objectContaining({
         saleOrderIds: [firstId, secondId],
-        source: "sale-orders-bulk-assigned-by",
+        source: 'sale-orders-bulk-assigned-by',
       }),
     );
   });
 
-  it("bulk deletes sale orders logically and emits one consolidated realtime update", async () => {
-    const saleOrderId = "22222222-2222-4222-8222-222222222222";
+  it('bulk deletes sale orders logically and emits one consolidated realtime update', async () => {
+    const saleOrderId = '22222222-2222-4222-8222-222222222222';
 
     await request(app.getHttpServer())
-      .patch("/sale-orders/bulk/active")
+      .patch('/sale-orders/bulk/active')
       .send({ saleOrderIds: [saleOrderId], isActive: false })
       .expect(200);
 
     expect(setSaleOrdersActive.execute).toHaveBeenCalledWith({
       saleOrderIds: [saleOrderId],
       isActive: false,
-      executedBy: "user-1",
+      executedBy: 'user-1',
     });
     expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
-      "sale-orders.updated",
+      'sale-orders.updated',
       expect.objectContaining({
         saleOrderIds: [saleOrderId],
-        source: "sale-orders-bulk-deleted",
+        source: 'sale-orders-bulk-deleted',
       }),
     );
   });
 
-  it("restores one sale order logically and emits realtime update", async () => {
-    const saleOrderId = "22222222-2222-4222-8222-222222222222";
+  it('restores one sale order logically and emits realtime update', async () => {
+    const saleOrderId = '22222222-2222-4222-8222-222222222222';
     setSaleOrdersActive.execute.mockResolvedValueOnce({
-      type: "success",
-      message: "Operacion masiva procesada",
+      type: 'success',
+      message: 'Operacion masiva procesada',
       data: {
         requested: 1,
         succeeded: 1,
         failed: 0,
         partiallyCompleted: false,
-        results: [{ saleOrderId, status: "success" }],
+        results: [{ saleOrderId, status: 'success' }],
       },
     });
 
@@ -1049,24 +1467,24 @@ describe("SaleOrdersController", () => {
     expect(setSaleOrdersActive.execute).toHaveBeenCalledWith({
       saleOrderIds: [saleOrderId],
       isActive: true,
-      executedBy: "user-1",
+      executedBy: 'user-1',
     });
     expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
-      "sale-orders.updated",
+      'sale-orders.updated',
       expect.objectContaining({
         saleOrderIds: [saleOrderId],
-        source: "sale-order-restored",
+        source: 'sale-order-restored',
       }),
     );
   });
 
-  it("bulk changes workflow state to one global target and notifies changed rows once", async () => {
-    const firstId = "11111111-1111-4111-8111-111111111111";
-    const secondId = "22222222-2222-4222-8222-222222222222";
-    const targetStateId = "33333333-3333-4333-8333-333333333333";
+  it('bulk changes workflow state to one global target and notifies changed rows once', async () => {
+    const firstId = '11111111-1111-4111-8111-111111111111';
+    const secondId = '22222222-2222-4222-8222-222222222222';
+    const targetStateId = '33333333-3333-4333-8333-333333333333';
 
     const response = await request(app.getHttpServer())
-      .post("/sale-orders/bulk/change-state")
+      .post('/sale-orders/bulk/change-state')
       .send({
         saleOrderIds: [firstId, secondId],
         targetStateId,
@@ -1076,86 +1494,93 @@ describe("SaleOrdersController", () => {
     expect(bulkChangeSaleOrderState.execute).toHaveBeenCalledWith({
       saleOrderIds: [firstId, secondId],
       targetStateId,
-      executedBy: "user-1",
+      executedBy: 'user-1',
     });
     expect(automaticWorkflow.evaluateAndNotify).not.toHaveBeenCalledWith(
       firstId,
       SaleOrderAutomaticWorkflowTriggerEnum.WORKFLOW_STATE_CHANGED,
     );
     expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
-      "sale-orders.updated",
+      'sale-orders.updated',
       expect.objectContaining({
         saleOrderIds: [firstId, secondId],
-        source: "sale-orders-bulk-target-state",
+        source: 'sale-orders-bulk-target-state',
       }),
     );
     expect(response.body.data.succeeded).toBe(1);
     expect(response.body.data.partiallyCompleted).toBe(1);
   });
 
-  it("bulk executes a global workflow action and notifies successful rows once", async () => {
-    const firstId = "11111111-1111-4111-8111-111111111111";
-    const globalActionName = "Preguia";
+  it('bulk executes a global workflow action and notifies successful rows once', async () => {
+    const firstId = '11111111-1111-4111-8111-111111111111';
+    const globalActionName = 'Preguia';
 
     await request(app.getHttpServer())
-      .post("/sale-orders/bulk/execute-workflow")
+      .post('/sale-orders/bulk/execute-workflow')
       .send({
         saleOrderIds: [firstId],
-        mode: "global_action",
+        mode: 'global_action',
         globalActionName,
       })
       .expect(201);
 
     expect(bulkExecuteSaleOrderWorkflow.execute).toHaveBeenCalledWith({
       saleOrderIds: [firstId],
-      mode: "global_action",
+      mode: 'global_action',
       targetStateId: undefined,
       transitionId: undefined,
       globalActionName,
-      executedBy: "user-1",
+      executedBy: 'user-1',
     });
     expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
-      "sale-orders.updated",
+      'sale-orders.updated',
       expect.objectContaining({
         saleOrderIds: [firstId],
-        source: "sale-orders-bulk-global-action",
+        source: 'sale-orders-bulk-global-action',
       }),
     );
   });
 
-  it("forwards order id to get usecase", async () => {
-    const saleOrderId = "11111111-1111-4111-8111-111111111111";
-    await request(app.getHttpServer()).get(`/sale-orders/${saleOrderId}`).expect(200);
-    expect(getSaleOrder.execute).toHaveBeenCalledWith({ saleOrderId, requestedBy: "user-1" });
+  it('forwards order id to get usecase', async () => {
+    const saleOrderId = '11111111-1111-4111-8111-111111111111';
+    await request(app.getHttpServer())
+      .get(`/sale-orders/${saleOrderId}`)
+      .expect(200);
+    expect(getSaleOrder.execute).toHaveBeenCalledWith({
+      saleOrderId,
+      requestedBy: 'user-1',
+    });
   });
 
-  it("advances state through a workflow transition", async () => {
-    const saleOrderId = "11111111-1111-4111-8111-111111111111";
-    const transitionId = "22222222-2222-4222-8222-222222222222";
+  it('advances state through a workflow transition', async () => {
+    const saleOrderId = '11111111-1111-4111-8111-111111111111';
+    const transitionId = '22222222-2222-4222-8222-222222222222';
     advanceSaleOrderState.execute.mockResolvedValueOnce({
-      order: { id: saleOrderId, currentStateId: "state-2" },
-      warnings: ["Ya hay un almacén seleccionado"],
+      order: { id: saleOrderId, currentStateId: 'state-2' },
+      warnings: ['Ya hay un almacén seleccionado'],
       actionOutcomes: [],
     });
 
     const response = await request(app.getHttpServer())
       .post(`/sale-orders/${saleOrderId}/change-state`)
-      .send({ transitionId, metadata: { source: "ux" } })
+      .send({ transitionId, metadata: { source: 'ux' } })
       .expect(201);
 
     expect(advanceSaleOrderState.execute).toHaveBeenCalledWith({
       saleOrderId,
       transitionId,
-      metadata: { source: "ux" },
-      executedBy: "user-1",
+      metadata: { source: 'ux' },
+      executedBy: 'user-1',
     });
-    expect(response.body.warnings).toEqual(["Ya hay un almacén seleccionado"]);
-    expect(response.body.data).toEqual(expect.objectContaining({ id: saleOrderId }));
+    expect(response.body.warnings).toEqual(['Ya hay un almacén seleccionado']);
+    expect(response.body.data).toEqual(
+      expect.objectContaining({ id: saleOrderId }),
+    );
   });
 
-  it("assigns a workflow to an order without workflow", async () => {
-    const saleOrderId = "11111111-1111-4111-8111-111111111111";
-    const workflowId = "22222222-2222-4222-8222-222222222222";
+  it('assigns a workflow to an order without workflow', async () => {
+    const saleOrderId = '11111111-1111-4111-8111-111111111111';
+    const workflowId = '22222222-2222-4222-8222-222222222222';
 
     await request(app.getHttpServer())
       .post(`/sale-orders/${saleOrderId}/assign-workflow`)
@@ -1165,74 +1590,93 @@ describe("SaleOrdersController", () => {
     expect(assignWorkflow.execute).toHaveBeenCalledWith({
       saleOrderId,
       workflowId,
-      executedBy: "user-1",
+      executedBy: 'user-1',
     });
   });
 
-  it("returns evaluated available transitions", async () => {
-    const saleOrderId = "11111111-1111-4111-8111-111111111111";
+  it('returns evaluated available transitions', async () => {
+    const saleOrderId = '11111111-1111-4111-8111-111111111111';
 
-    await request(app.getHttpServer()).get(`/sale-orders/${saleOrderId}/available-transitions`).expect(200);
+    await request(app.getHttpServer())
+      .get(`/sale-orders/${saleOrderId}/available-transitions`)
+      .expect(200);
 
-    expect(getAvailableTransitions.execute).toHaveBeenCalledWith({ saleOrderId });
+    expect(getAvailableTransitions.execute).toHaveBeenCalledWith({
+      saleOrderId,
+    });
   });
 
-  it("returns the workflow history timeline", async () => {
-    const saleOrderId = "11111111-1111-4111-8111-111111111111";
+  it('returns the workflow history timeline', async () => {
+    const saleOrderId = '11111111-1111-4111-8111-111111111111';
 
-    await request(app.getHttpServer()).get(`/sale-orders/${saleOrderId}/history`).expect(200);
+    await request(app.getHttpServer())
+      .get(`/sale-orders/${saleOrderId}/history`)
+      .expect(200);
 
     expect(getOrderTimeline.execute).toHaveBeenCalledWith({ saleOrderId });
   });
 
-  it("forwards order id to cancel usecase", async () => {
-    const saleOrderId = "11111111-1111-4111-8111-111111111111";
-    await request(app.getHttpServer()).patch(`/sale-orders/${saleOrderId}/cancel`).expect(200);
+  it('forwards order id to cancel usecase', async () => {
+    const saleOrderId = '11111111-1111-4111-8111-111111111111';
+    await request(app.getHttpServer())
+      .patch(`/sale-orders/${saleOrderId}/cancel`)
+      .expect(200);
     expect(cancelSaleOrder.execute).toHaveBeenCalledWith({ saleOrderId });
     expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
-      "sale-orders.updated",
+      'sale-orders.updated',
       expect.objectContaining({ saleOrderIds: [saleOrderId] }),
     );
   });
 
-  it("forwards order id to confirm delivery usecase", async () => {
-    const saleOrderId = "11111111-1111-4111-8111-111111111111";
-    await request(app.getHttpServer()).patch(`/sale-orders/${saleOrderId}/confirm-delivery`).expect(200);
+  it('forwards order id to confirm delivery usecase', async () => {
+    const saleOrderId = '11111111-1111-4111-8111-111111111111';
+    await request(app.getHttpServer())
+      .patch(`/sale-orders/${saleOrderId}/confirm-delivery`)
+      .expect(200);
     expect(confirmDelivery.execute).toHaveBeenCalledWith({ saleOrderId });
   });
 
-  it("lists payments for a saleOrderId", async () => {
-    const saleOrderId = "11111111-1111-4111-8111-111111111111";
-    await request(app.getHttpServer()).get(`/sale-orders/${saleOrderId}/payments`).expect(200);
+  it('lists payments for a saleOrderId', async () => {
+    const saleOrderId = '11111111-1111-4111-8111-111111111111';
+    await request(app.getHttpServer())
+      .get(`/sale-orders/${saleOrderId}/payments`)
+      .expect(200);
     expect(listPayments.execute).toHaveBeenCalledWith({ saleOrderId });
   });
 
-  it("adds payment and emits realtime", async () => {
-    const saleOrderId = "11111111-1111-4111-8111-111111111111";
-    getSaleOrder.execute.mockResolvedValueOnce({ id: saleOrderId, items: [], payments: [], totalPaid: 0, pendingAmount: 0, paymentStatus: "PENDING" });
+  it('adds payment and emits realtime', async () => {
+    const saleOrderId = '11111111-1111-4111-8111-111111111111';
+    getSaleOrder.execute.mockResolvedValueOnce({
+      id: saleOrderId,
+      items: [],
+      payments: [],
+      totalPaid: 0,
+      pendingAmount: 0,
+      paymentStatus: 'PENDING',
+    });
     await request(app.getHttpServer())
       .post(`/sale-orders/${saleOrderId}/payments`)
       .send({
-        bankAccountId: "22222222-2222-4222-8222-222222222222",
-        method: "cash",
+        bankAccountId: '22222222-2222-4222-8222-222222222222',
+        method: 'cash',
         amount: 10,
-        date: "2026-05-28T00:00:00.000Z",
-        operationNumber: "op-1",
-        note: "n",
+        date: '2026-05-28T00:00:00.000Z',
+        operationNumber: 'op-1',
+        note: 'n',
       })
       .expect(201);
 
     expect(addPayment.execute).toHaveBeenCalledWith(
       expect.objectContaining({
         saleOrderId,
-        bankAccountId: "22222222-2222-4222-8222-222222222222",
-        method: "cash",
+        bankAccountId: '22222222-2222-4222-8222-222222222222',
+        method: 'cash',
         amount: 10,
       }),
     );
 
     expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
-      "sale-orders.updated",
+      'sale-orders.updated',
       expect.objectContaining({
         saleOrderIds: [saleOrderId],
         saleOrders: [expect.objectContaining({ id: saleOrderId })],
@@ -1245,20 +1689,24 @@ describe("SaleOrdersController", () => {
     );
   });
 
-  it("deletes payment and emits realtime", async () => {
-    const saleOrderId = "11111111-1111-4111-8111-111111111111";
-    const paymentId = "22222222-2222-4222-8222-222222222222";
+  it('deletes payment and emits realtime', async () => {
+    const saleOrderId = '11111111-1111-4111-8111-111111111111';
+    const paymentId = '22222222-2222-4222-8222-222222222222';
 
-    await request(app.getHttpServer()).delete(`/sale-orders/${saleOrderId}/payments/${paymentId}`).expect(200);
+    await request(app.getHttpServer())
+      .delete(`/sale-orders/${saleOrderId}/payments/${paymentId}`)
+      .expect(200);
 
-    expect(deletePayment.execute).toHaveBeenCalledWith({ saleOrderId, paymentId });
+    expect(deletePayment.execute).toHaveBeenCalledWith({
+      saleOrderId,
+      paymentId,
+    });
     expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
-      "sale-orders.updated",
+      'sale-orders.updated',
       expect.objectContaining({
         saleOrderIds: [saleOrderId],
         statistics: statisticsPayload,
       }),
     );
   });
-
 });
