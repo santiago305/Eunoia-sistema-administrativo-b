@@ -1080,6 +1080,49 @@ describe("SaleOrderTypeormRepository", () => {
     });
   });
 
+  it("reuses one client join for chained department, province and district filters", async () => {
+    const aliases: Array<{ name: string }> = [];
+    const qb = {
+      expressionMap: { aliases },
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      leftJoin: jest.fn((_entity, alias: string) => {
+        aliases.push({ name: alias });
+        return qb;
+      }),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+    };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue({ createQueryBuilder: jest.fn().mockReturnValue(qb) }) },
+    } as any);
+
+    await repository.list({
+      filters: [
+        { field: "clientDepartmentId", operator: "in", values: ["20"] },
+        { field: "clientProvinceId", operator: "in", values: ["2001"] },
+        { field: "clientDistrictId", operator: "in", values: ["200101"] },
+      ] as any,
+    });
+
+    expect(qb.leftJoin).toHaveBeenCalledTimes(1);
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      "filterUbigeoClient.departmentId IN (:...filter_0_value)",
+      { filter_0_value: ["20"] },
+    );
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      "filterUbigeoClient.provinceId IN (:...filter_1_value)",
+      { filter_1_value: ["2001"] },
+    );
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      "filterUbigeoClient.districtId IN (:...filter_2_value)",
+      { filter_2_value: ["200101"] },
+    );
+  });
+
   it("applies workflow type filters to list queries", async () => {
     const qb = {
       leftJoinAndSelect: jest.fn().mockReturnThis(),

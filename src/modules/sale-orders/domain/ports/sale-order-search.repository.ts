@@ -46,8 +46,8 @@ export interface SaleOrderSearchStateRecord {
   creators?: SaleOrderSearchUserCatalogRecord[];
   assignees?: SaleOrderSearchUserCatalogRecord[];
   departments?: Array<{ id: string; label: string }>;
-  provinces?: Array<{ id: string; label: string }>;
-  districts?: Array<{ id: string; label: string }>;
+  provinces?: Array<{ id: string; label: string; departmentId: string }>;
+  districts?: Array<{ id: string; label: string; provinceId: string }>;
   sources?: Array<{ id: string; label: string }>;
 }
 

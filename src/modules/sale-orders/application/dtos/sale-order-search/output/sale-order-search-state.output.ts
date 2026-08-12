@@ -29,8 +29,8 @@ export interface SaleOrderSearchStateOutput {
     bankAccounts: ListingSearchOptionOutput[];
     clientTypes: ListingSearchOptionOutput[];
     departments: ListingSearchOptionOutput[];
-    provinces: ListingSearchOptionOutput[];
-    districts: ListingSearchOptionOutput[];
+    provinces: Array<ListingSearchOptionOutput & { departmentId: string }>;
+    districts: Array<ListingSearchOptionOutput & { provinceId: string }>;
     sources: ListingSearchOptionOutput[];
     invoiceStatuses: ListingSearchOptionOutput[];
     preguideStatuses: ListingSearchOptionOutput[];

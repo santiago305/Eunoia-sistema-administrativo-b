@@ -148,8 +148,16 @@ export class SaleOrderSearchTypeormRepository implements SaleOrderSearchReposito
         };
       }),
       departments: departments.map((row) => ({ id: row.id, label: row.name })),
-      provinces: provinces.map((row) => ({ id: row.id, label: row.name })),
-      districts: districts.map((row) => ({ id: row.id, label: row.name })),
+      provinces: provinces.map((row) => ({
+        id: row.id,
+        label: row.name,
+        departmentId: row.departmentId,
+      })),
+      districts: districts.map((row) => ({
+        id: row.id,
+        label: row.name,
+        provinceId: row.provinceId,
+      })),
       sources: sources.map((row) => ({ id: row.id, label: row.name })),
       creators: mapUserCatalog(creatorIds),
       assignees: mapUserCatalog(assigneeIds),

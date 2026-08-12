@@ -992,7 +992,9 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         case SaleOrderSearchFields.CLIENT_PROVINCE_ID:
         case SaleOrderSearchFields.CLIENT_DISTRICT_ID:
           if (filter.values?.length) {
-            qb.leftJoin(ClientEntity, "filterUbigeoClient", "filterUbigeoClient.id = so.clientId");
+            if (!qb.expressionMap.aliases.some((alias) => alias.name === "filterUbigeoClient")) {
+              qb.leftJoin(ClientEntity, "filterUbigeoClient", "filterUbigeoClient.id = so.clientId");
+            }
             const column = filter.field === SaleOrderSearchFields.CLIENT_DEPARTMENT_ID
               ? "filterUbigeoClient.departmentId"
               : filter.field === SaleOrderSearchFields.CLIENT_PROVINCE_ID

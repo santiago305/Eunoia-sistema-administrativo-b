@@ -1,6 +1,8 @@
 import { SaleOrderSearchTypeormRepository } from "./sale-order-search.typeorm.repo";
 import { SaleOrderEntity } from "src/modules/sale-orders/adapters/out/persistence/typeorm/entities/sale-order.entity";
 import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
+import { UbigeoProvinceEntity } from "src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-province.entity";
+import { UbigeoDistrictEntity } from "src/modules/ubigeo/adapters/out/persistence/typeorm/entities/ubigeo-district.entity";
 
 describe("SaleOrderSearchTypeormRepository", () => {
   it("uses active company payment accounts and sale order users for catalogs", async () => {
@@ -69,5 +71,32 @@ describe("SaleOrderSearchTypeormRepository", () => {
     expect(result.assignees).toEqual([
       { userId: "assignee-1", label: "Ana (a@test.com)" },
     ]);
+  });
+
+  it("preserves ubigeo parent ids for chained order filters", async () => {
+    const storage = { listState: jest.fn().mockResolvedValue({ recent: [], metrics: [] }) };
+    const manager = {
+      getRepository: jest.fn((entity) => {
+        if (entity === UbigeoProvinceEntity) return {
+          find: jest.fn().mockResolvedValue([{ id: "2001", name: "Piura", departmentId: "20" }]),
+        };
+        if (entity === UbigeoDistrictEntity) return {
+          find: jest.fn().mockResolvedValue([{ id: "200101", name: "Piura", provinceId: "2001" }]),
+        };
+        return { find: jest.fn().mockResolvedValue([]) };
+      }),
+    };
+    const repository = new SaleOrderSearchTypeormRepository(
+      storage as any,
+      { find: jest.fn().mockResolvedValue([]), manager } as any,
+      { find: jest.fn().mockResolvedValue([]) } as any,
+      { find: jest.fn().mockResolvedValue([]) } as any,
+      { find: jest.fn().mockResolvedValue([]) } as any,
+      { find: jest.fn().mockResolvedValue([]) } as any,
+    );
+
+    const result = await repository.listState({ userId: "user-1", tableKey: "sale-orders" });
+    expect(result.provinces).toEqual([{ id: "2001", label: "Piura", departmentId: "20" }]);
+    expect(result.districts).toEqual([{ id: "200101", label: "Piura", provinceId: "2001" }]);
   });
 });
