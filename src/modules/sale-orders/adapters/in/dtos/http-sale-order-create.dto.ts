@@ -1,4 +1,4 @@
-import { Transform, Type } from "class-transformer";
+import { Transform, Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
@@ -10,32 +10,32 @@ import {
   IsUUID,
   Min,
   ValidateNested,
-} from "class-validator";
+} from 'class-validator';
 
 export class HttpSaleOrderItemComponentDto {
   @IsUUID()
   @IsOptional()
   id?: string;
-  
+
   @IsUUID()
   skuId: string;
 
-  @IsNumber()
-  @Min(0.000001)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01)
   quantity: number;
 
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   unitPrice: number;
 
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   total: number;
 
   @IsOptional()
   @IsUUID()
   referencePackItemId?: string;
-  
+
   @IsOptional()
   @IsString()
   skuLabel?: string;
@@ -50,20 +50,19 @@ export class HttpSaleOrderItemComponentDto {
 }
 
 export class HttpSaleOrderItemDto {
-
   @IsUUID()
   @IsOptional()
   id?: string;
 
-  @IsNumber()
-  @Min(0.000001)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0.01)
   quantity: number;
 
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   unitPrice: number;
 
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 2 })
   @Min(0)
   total: number;
 
@@ -74,6 +73,10 @@ export class HttpSaleOrderItemDto {
   @IsOptional()
   @IsUUID()
   referencePackId?: string;
+
+  @IsOptional()
+  @IsString()
+  packNameSnapshot?: string | null;
 
   @IsOptional()
   @IsArray()
@@ -110,7 +113,6 @@ export class HttpSalePaymentDto {
   @IsOptional()
   @IsString()
   paymentPhoto?: string | null;
-
 }
 
 export class HttpSaleOrderSupplyDto {
@@ -131,7 +133,9 @@ export class HttpSaleOrderSupplyDto {
 
 export class HttpSaleOrderCreateDto {
   @IsOptional()
-  @Transform(({ value }) => (value === "" || value === null ? undefined : value))
+  @Transform(({ value }) =>
+    value === '' || value === null ? undefined : value,
+  )
   @IsUUID()
   warehouseId?: string;
 
@@ -157,16 +161,16 @@ export class HttpSaleOrderCreateDto {
   @IsOptional()
   @IsDateString()
   deliveryDate?: string;
-  
+
   @IsOptional()
   deliveryCost?: number;
 
   @IsOptional()
   logisticsCost?: number;
-  
+
   @IsOptional()
   subTotal?: number;
-  
+
   @IsOptional()
   total?: number;
 
@@ -222,7 +226,7 @@ export class HttpSaleOrderCreateDto {
   @ValidateNested({ each: true })
   @Type(() => HttpSaleOrderSupplyDto)
   supplies?: HttpSaleOrderSupplyDto[];
-  
+
   @IsOptional()
-  currentState?:string;
+  currentState?: string;
 }

@@ -1,21 +1,50 @@
-import { BadRequestException, Inject, Injectable, Optional } from "@nestjs/common";
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Optional,
+} from '@nestjs/common';
 import {
   TransactionContext,
   UNIT_OF_WORK,
   UnitOfWork,
-} from "src/shared/domain/ports/unit-of-work.port";
-import { PACK_REPOSITORY, PackRepository } from "src/modules/packs/domain/ports/pack.repository";
-import { SALE_ORDER_REPOSITORY, SaleOrderRepository } from "src/modules/sale-orders/domain/ports/sale-order.repository";
-import { SALE_ORDER_ITEM_REPOSITORY, SaleOrderItemRepository } from "src/modules/sale-orders/domain/ports/sale-order-item.repository";
-import { SALE_ORDER_ITEM_COMPONENT_REPOSITORY, SaleOrderItemComponentRepository } from "src/modules/sale-orders/domain/ports/sale-order-item-component.repository";
-import { SALE_PAYMENT_REPOSITORY, SalePaymentRepository } from "src/modules/sale-orders/domain/ports/sale-payment.repository";
-import { WORKFLOW_REPOSITORY, WorkflowRepository } from "src/modules/workflow/domain/ports/workflow.repository";
-import { WORKFLOW_STATE_REPOSITORY, WorkflowStateRepository } from "src/modules/workflow/domain/ports/workflow-state.repository";
-import { SaleOrderNumberingService } from "../../services/sale-order-numbering.service";
-import { AdviserMembershipService } from "../../services/adviser-membership.service";
-import { CreateLogisticsPayableForSaleOrderUsecase } from "src/modules/logistics-payables/application/usecases/create-logistics-payable-for-sale-order.usecase";
-import { SaleOrderCommandAuthorizationService } from "../../services/sale-order-command-authorization.service";
-import { SaleOrderSuppliesService, SaleOrderSupplyInput } from "../../services/sale-order-supplies.service";
+} from 'src/shared/domain/ports/unit-of-work.port';
+import {
+  PACK_REPOSITORY,
+  PackRepository,
+} from 'src/modules/packs/domain/ports/pack.repository';
+import {
+  SALE_ORDER_REPOSITORY,
+  SaleOrderRepository,
+} from 'src/modules/sale-orders/domain/ports/sale-order.repository';
+import {
+  SALE_ORDER_ITEM_REPOSITORY,
+  SaleOrderItemRepository,
+} from 'src/modules/sale-orders/domain/ports/sale-order-item.repository';
+import {
+  SALE_ORDER_ITEM_COMPONENT_REPOSITORY,
+  SaleOrderItemComponentRepository,
+} from 'src/modules/sale-orders/domain/ports/sale-order-item-component.repository';
+import {
+  SALE_PAYMENT_REPOSITORY,
+  SalePaymentRepository,
+} from 'src/modules/sale-orders/domain/ports/sale-payment.repository';
+import {
+  WORKFLOW_REPOSITORY,
+  WorkflowRepository,
+} from 'src/modules/workflow/domain/ports/workflow.repository';
+import {
+  WORKFLOW_STATE_REPOSITORY,
+  WorkflowStateRepository,
+} from 'src/modules/workflow/domain/ports/workflow-state.repository';
+import { SaleOrderNumberingService } from '../../services/sale-order-numbering.service';
+import { AdviserMembershipService } from '../../services/adviser-membership.service';
+import { CreateLogisticsPayableForSaleOrderUsecase } from 'src/modules/logistics-payables/application/usecases/create-logistics-payable-for-sale-order.usecase';
+import { SaleOrderCommandAuthorizationService } from '../../services/sale-order-command-authorization.service';
+import {
+  SaleOrderSuppliesService,
+  SaleOrderSupplyInput,
+} from '../../services/sale-order-supplies.service';
 
 export type CreateSaleOrderInput = {
   warehouseId?: string;
@@ -45,6 +74,7 @@ export type CreateSaleOrderInput = {
     total: number;
     description?: string;
     referencePackId?: string;
+    packNameSnapshot?: string | null;
     components?: Array<{
       skuId: string;
       quantity: number;
@@ -86,8 +116,10 @@ export class CreateSaleOrderUsecase {
     @Inject(WORKFLOW_STATE_REPOSITORY)
     private readonly workflowStateRepo: WorkflowStateRepository,
     @Optional() private readonly adviserMembership?: AdviserMembershipService,
-    @Optional() private readonly createLogisticsPayable?: CreateLogisticsPayableForSaleOrderUsecase,
-    @Optional() private readonly commandAuthorization?: SaleOrderCommandAuthorizationService,
+    @Optional()
+    private readonly createLogisticsPayable?: CreateLogisticsPayableForSaleOrderUsecase,
+    @Optional()
+    private readonly commandAuthorization?: SaleOrderCommandAuthorizationService,
     @Optional() private readonly suppliesService?: SaleOrderSuppliesService,
   ) {}
 
@@ -103,215 +135,187 @@ export class CreateSaleOrderUsecase {
     createdBy: string,
     tx: TransactionContext,
   ) {
-      await this.adviserMembership?.assertIsAdviser(input.assignedBy);
-      if (!input.workflowId) {
-        throw new BadRequestException("workflowId es obligatorio");
-      }
+    await this.adviserMembership?.assertIsAdviser(input.assignedBy);
+    if (!input.workflowId) {
+      throw new BadRequestException('workflowId es obligatorio');
+    }
 
-      const { serie, correlative } = await this.numbering.reserveNext(tx);
-      const workflow = await this.workflowRepo.findById(input.workflowId, tx);
-      const initialState = await this.workflowStateRepo.findInitialByWorkflowId(input.workflowId, tx);
-      if (!workflow?.isActive || !initialState) {
-        throw new BadRequestException("Workflow invalido para crear pedido");
-      }
+    const { serie, correlative } = await this.numbering.reserveNext(tx);
+    const workflow = await this.workflowRepo.findById(input.workflowId, tx);
+    const initialState = await this.workflowStateRepo.findInitialByWorkflowId(
+      input.workflowId,
+      tx,
+    );
+    if (!workflow?.isActive || !initialState) {
+      throw new BadRequestException('Workflow invalido para crear pedido');
+    }
 
-      const subTotal = input.items.reduce(
-        (sum, item) => sum + Number(item.total ?? 0),
-        0,
-      );
-      const deliveryCost = Number(input.deliveryCost ?? 0);
-      const discount = Number(input.discount ?? 0);
-      const total = Math.max(0, subTotal + deliveryCost - discount);
+    const subTotal = input.items.reduce(
+      (sum, item) => sum + Number(item.total ?? 0),
+      0,
+    );
+    const deliveryCost = Number(input.deliveryCost ?? 0);
+    const discount = Number(input.discount ?? 0);
+    const total = Math.max(0, subTotal + deliveryCost - discount);
 
-      const order = await this.saleOrderRepo.create(
-        {
-          serie,
-          correlative,
-          warehouseId: input.warehouseId,
-          clientId: input.clientId,
-          agencySubsidiaryId: input.agencySubsidiaryId ?? null,
-          agencyDetail: input.agencyDetail ?? null,
-          sourceId: input.sourceId ?? null,
-          scheduleDate: input.scheduleDate ?? null,
-          deliveryDate: input.deliveryDate ?? null,
-          subTotal,
-          deliveryCost,
-          discount,
-          total,
-          note: input.note ?? null,
-          advertisingCode: input.advertisingCode ?? null,
-          observation: input.observation ?? null,
-          sendDate: input.sendDate ? new Date(input.sendDate) : null,
-          sendPhoto: input.sendPhoto ?? null,
-          sendCode: input.sendCode ?? null,
-          sendAddress: input.sendAddress ?? null,
-          assignedBy: input.assignedBy ?? null,
-          createdBy,
-          workflowId: workflow.id,
-          currentStateId: initialState.id,
-          isActive: true,
-        },
-        tx,
-      );
+    const order = await this.saleOrderRepo.create(
+      {
+        serie,
+        correlative,
+        warehouseId: input.warehouseId,
+        clientId: input.clientId,
+        agencySubsidiaryId: input.agencySubsidiaryId ?? null,
+        agencyDetail: input.agencyDetail ?? null,
+        sourceId: input.sourceId ?? null,
+        scheduleDate: input.scheduleDate ?? null,
+        deliveryDate: input.deliveryDate ?? null,
+        subTotal,
+        deliveryCost,
+        discount,
+        total,
+        note: input.note ?? null,
+        advertisingCode: input.advertisingCode ?? null,
+        observation: input.observation ?? null,
+        sendDate: input.sendDate ? new Date(input.sendDate) : null,
+        sendPhoto: input.sendPhoto ?? null,
+        sendCode: input.sendCode ?? null,
+        sendAddress: input.sendAddress ?? null,
+        assignedBy: input.assignedBy ?? null,
+        createdBy,
+        workflowId: workflow.id,
+        currentStateId: initialState.id,
+        isActive: true,
+      },
+      tx,
+    );
 
-      const items = await this.saleOrderItemRepo.bulkCreate(
-        input.items.map((row) => ({
-          saleOrderId: order.id,
-          referencePackId: row.referencePackId ?? null,
-          description: row.description ?? null,
-          quantity: row.quantity,
-          unitPrice: row.unitPrice,
-          total: row.total,
-        })),
-        tx,
-      );
+    const items = await this.saleOrderItemRepo.bulkCreate(
+      input.items.map((row) => ({
+        saleOrderId: order.id,
+        referencePackId: row.referencePackId ?? null,
+        packNameSnapshot: row.packNameSnapshot,
+        description: row.description ?? null,
+        quantity: row.quantity,
+        unitPrice: row.unitPrice,
+        total: row.total,
+      })),
+      tx,
+    );
 
-      const componentsInput: Array<{
-        saleOrderItemId: string;
-        skuId: string;
-        referencePackItemId?: string | null;
-        quantity: number;
-        unitPrice: number;
-        total: number;
-      }> = [];
+    const componentsInput: Array<{
+      saleOrderItemId: string;
+      skuId: string;
+      referencePackItemId?: string | null;
+      quantity: number;
+      unitPrice: number;
+      total: number;
+    }> = [];
 
-      for (let index = 0; index < items.length; index += 1) {
-        const savedItem = items[index];
-        const requestedItem = input.items[index];
+    for (let index = 0; index < items.length; index += 1) {
+      const savedItem = items[index];
+      const requestedItem = input.items[index];
 
-        const referencePackId = requestedItem.referencePackId?.trim();
-        const requestedComponents = requestedItem.components ?? [];
+      const referencePackId = requestedItem.referencePackId?.trim();
+      const requestedComponents = requestedItem.components ?? [];
 
-        if (!requestedComponents.length && !referencePackId) {
-          throw new BadRequestException("Cada item debe incluir components[] o referencePackId");
-        }
-
-        if (!referencePackId) {
-          for (const c of requestedComponents) {
-            componentsInput.push({
-              saleOrderItemId: savedItem.id,
-              skuId: c.skuId,
-              referencePackItemId: c.referencePackItemId ?? null,
-              quantity: c.quantity,
-              unitPrice: c.unitPrice,
-              total: c.total,
-            });
-          }
-          continue;
-        }
-
-        const pack = await this.packRepo.findByIdWithItems(referencePackId, tx);
-        if (!pack || pack.pack?.isActive === false) {
-          throw new BadRequestException("Pack inválido");
-        }
-
-        const overridesBySkuId = new Map(
-          requestedComponents.map((c) => [
-            c.skuId,
-            {
-              skuId: c.skuId,
-              referencePackItemId: c.referencePackItemId ?? null,
-              quantity: c.quantity,
-              unitPrice: c.unitPrice,
-              total: c.total,
-            },
-          ]),
+      if (!requestedComponents.length && !referencePackId) {
+        throw new BadRequestException(
+          'Cada item debe incluir components[] o referencePackId',
         );
+      }
 
-        for (const packItem of pack.items) {
-          const override = overridesBySkuId.get(packItem.skuId);
-          if (override) {
-            componentsInput.push({
-              saleOrderItemId: savedItem.id,
-              skuId: override.skuId,
-              referencePackItemId: override.referencePackItemId ?? packItem.id,
-              quantity: override.quantity,
-              unitPrice: override.unitPrice,
-              total: override.total,
-            });
-            overridesBySkuId.delete(packItem.skuId);
-            continue;
-          }
-
+      if (requestedComponents.length) {
+        for (const c of requestedComponents) {
           componentsInput.push({
             saleOrderItemId: savedItem.id,
-            skuId: packItem.skuId,
-            referencePackItemId: packItem.id,
-            quantity: Number(savedItem.quantity) * Number(packItem.quantity),
-            unitPrice: Number(packItem.price ?? 0),
-            total: Number(packItem.lineTotal ?? 0) * Number(savedItem.quantity),
+            skuId: c.skuId,
+            referencePackItemId: c.referencePackItemId ?? null,
+            quantity: c.quantity,
+            unitPrice: c.unitPrice,
+            total: c.total,
           });
         }
-
-        for (const extra of overridesBySkuId.values()) {
-          componentsInput.push({
-            saleOrderItemId: savedItem.id,
-            skuId: extra.skuId,
-            referencePackItemId: null,
-            quantity: extra.quantity,
-            unitPrice: extra.unitPrice,
-            total: extra.total,
-          });
-        }
+        continue;
       }
 
-      await this.componentRepo.bulkCreate(componentsInput, tx);
-
-      if (this.suppliesService) {
-        if (input.supplies !== undefined) {
-          await this.suppliesService.replace(order.id, input.supplies, tx);
-        } else {
-          await this.suppliesService.copyFromWorkflowRecipe(order.id, workflow.id, tx);
-        }
+      const pack = await this.packRepo.findByIdWithItems(referencePackId, tx);
+      if (!pack || pack.pack?.isActive === false) {
+        throw new BadRequestException('Pack inválido');
       }
 
-      const paymentsInput = (input.payments ?? []).map((p) => {
-        const date = p.date ? new Date(p.date) : new Date();
-        if (Number.isNaN(date.getTime())) {
-          throw new BadRequestException("Fecha de pago inválida");
-        }
-        return {
-          saleOrderId: order.id,
-          bankAccountId: p.bankAccountId?.trim() ? p.bankAccountId.trim() : null,
-          date,
-          method: p.method,
-          operationNumber: p.operationNumber ?? null,
-          amount: p.amount,
-          note: p.note ?? null,
-          paymentPhoto: p.paymentPhoto ?? null,
-        };
-      });
-      try {
-        if (input.payments) {
-          await this.paymentRepo.bulkCreate(paymentsInput, tx);
-        }
-      } catch (error: any) {
-        if (error?.code === "23503") {
-          throw new BadRequestException("Cuenta bancaria inválida");
-        }
-        throw error;
+      for (const packItem of pack.items) {
+        componentsInput.push({
+          saleOrderItemId: savedItem.id,
+          skuId: packItem.skuId,
+          referencePackItemId: packItem.id,
+          quantity: Number(savedItem.quantity) * Number(packItem.quantity),
+          unitPrice: Number(packItem.price ?? 0),
+          total: Number(packItem.lineTotal ?? 0) * Number(savedItem.quantity),
+        });
       }
+    }
 
-      await this.createLogisticsPayable?.execute(
-        {
-          saleOrderId: order.id,
-          serie: order.serie ?? null,
-          correlative: order.correlative ?? null,
-          agencySubsidiaryId: order.agencySubsidiaryId ?? null,
-          deliveryCost: Number(input.logisticsCost ?? order.deliveryCost),
-          deliveryDate: order.deliveryDate ?? null,
-          scheduleDate: order.scheduleDate ?? null,
-          createdByUserId: createdBy,
-        },
-        tx,
-      );
+    await this.componentRepo.bulkCreate(componentsInput, tx);
 
+    if (this.suppliesService) {
+      if (input.supplies !== undefined) {
+        await this.suppliesService.replace(order.id, input.supplies, tx);
+      } else {
+        await this.suppliesService.copyFromWorkflowRecipe(
+          order.id,
+          workflow.id,
+          tx,
+        );
+      }
+    }
+
+    const paymentsInput = (input.payments ?? []).map((p) => {
+      const date = p.date ? new Date(p.date) : new Date();
+      if (Number.isNaN(date.getTime())) {
+        throw new BadRequestException('Fecha de pago inválida');
+      }
       return {
-        orderId: order.id,
-        serie: order.serie,
-        correlative: order.correlative,
-        workflowId: order.workflowId,
-        currentStateId: order.currentStateId,
+        saleOrderId: order.id,
+        bankAccountId: p.bankAccountId?.trim() ? p.bankAccountId.trim() : null,
+        date,
+        method: p.method,
+        operationNumber: p.operationNumber ?? null,
+        amount: p.amount,
+        note: p.note ?? null,
+        paymentPhoto: p.paymentPhoto ?? null,
       };
+    });
+    try {
+      if (input.payments) {
+        await this.paymentRepo.bulkCreate(paymentsInput, tx);
+      }
+    } catch (error: any) {
+      if (error?.code === '23503') {
+        throw new BadRequestException('Cuenta bancaria inválida');
+      }
+      throw error;
+    }
+
+    await this.createLogisticsPayable?.execute(
+      {
+        saleOrderId: order.id,
+        serie: order.serie ?? null,
+        correlative: order.correlative ?? null,
+        agencySubsidiaryId: order.agencySubsidiaryId ?? null,
+        deliveryCost: Number(input.logisticsCost ?? order.deliveryCost),
+        deliveryDate: order.deliveryDate ?? null,
+        scheduleDate: order.scheduleDate ?? null,
+        createdByUserId: createdBy,
+      },
+      tx,
+    );
+
+    return {
+      orderId: order.id,
+      serie: order.serie,
+      correlative: order.correlative,
+      workflowId: order.workflowId,
+      currentStateId: order.currentStateId,
+    };
   }
 }

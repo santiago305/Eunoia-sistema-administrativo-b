@@ -223,6 +223,7 @@ export class SaleOrdersController {
           total: item.total,
           description: item.description,
           referencePackId: item.referencePackId,
+          packNameSnapshot: item.packNameSnapshot,
           components: item.components?.map((c) => ({
             skuId: c.skuId,
             quantity: c.quantity,
@@ -625,6 +626,7 @@ export class SaleOrdersController {
         total: item.total,
         description: item.description,
         referencePackId: item.referencePackId,
+        packNameSnapshot: item.packNameSnapshot,
         components: item.components?.map((c) => ({
           skuId: c.skuId,
           quantity: c.quantity,

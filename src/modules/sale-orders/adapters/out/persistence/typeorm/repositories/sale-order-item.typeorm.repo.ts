@@ -1,12 +1,12 @@
-import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { EntityManager, In, Repository } from "typeorm";
-import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
-import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
-import { SaleOrderItemEntity } from "../entities/sale-order-item.entity";
-import { SaleOrderItemRepository } from "src/modules/sale-orders/domain/ports/sale-order-item.repository";
-import { SaleOrderItem } from "src/modules/sale-orders/domain/entities/sale-order-item";
-import { PackEntity } from "src/modules/packs/adapters/out/persistence/typeorm/entities/pack.entity";
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { EntityManager, In, Repository } from 'typeorm';
+import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
+import { TypeormTransactionContext } from 'src/shared/domain/ports/typeorm-transaction-context';
+import { SaleOrderItemEntity } from '../entities/sale-order-item.entity';
+import { SaleOrderItemRepository } from 'src/modules/sale-orders/domain/ports/sale-order-item.repository';
+import { SaleOrderItem } from 'src/modules/sale-orders/domain/entities/sale-order-item';
+import { PackEntity } from 'src/modules/packs/adapters/out/persistence/typeorm/entities/pack.entity';
 
 @Injectable()
 export class SaleOrderItemTypeormRepository implements SaleOrderItemRepository {
@@ -36,19 +36,38 @@ export class SaleOrderItemTypeormRepository implements SaleOrderItemRepository {
     );
   }
 
-  async bulkCreate(input: Parameters<SaleOrderItemRepository["bulkCreate"]>[0], tx?: TransactionContext): Promise<SaleOrderItem[]> {
+  async bulkCreate(
+    input: Parameters<SaleOrderItemRepository['bulkCreate']>[0],
+    tx?: TransactionContext,
+  ): Promise<SaleOrderItem[]> {
     if (!input.length) return [];
     const manager = this.getManager(tx);
-    const packIds = Array.from(new Set(input.map((row) => row.referencePackId).filter(Boolean))) as string[];
+    const packIds = Array.from(
+      new Set(
+        input
+          .filter((row) => row.packNameSnapshot === undefined)
+          .map((row) => row.referencePackId)
+          .filter(Boolean),
+      ),
+    ) as string[];
     const packs = packIds.length
       ? await manager.getRepository(PackEntity).findBy({ id: In(packIds) })
       : [];
-    const packNameById = new Map(packs.map((pack) => [pack.id, pack.description]));
+    const packNameById = new Map(
+      packs.map((pack) => [pack.id, pack.description]),
+    );
     const saved = await manager.getRepository(SaleOrderItemEntity).save(
       input.map((row) => ({
         saleOrderId: row.saleOrderId,
         referencePackId: row.referencePackId ?? null,
-        packNameSnapshot: row.referencePackId ? packNameById.get(row.referencePackId) ?? row.description ?? null : null,
+        packNameSnapshot:
+          row.packNameSnapshot !== undefined
+            ? row.packNameSnapshot
+            : row.referencePackId
+              ? (packNameById.get(row.referencePackId) ??
+                row.description ??
+                null)
+              : null,
         description: row.description ?? null,
         quantity: row.quantity,
         unitPrice: row.unitPrice,
@@ -58,16 +77,22 @@ export class SaleOrderItemTypeormRepository implements SaleOrderItemRepository {
     return saved.map((row) => this.toDomain(row));
   }
 
-  async listBySaleOrderId(saleOrderId: string, tx?: TransactionContext): Promise<SaleOrderItem[]> {
+  async listBySaleOrderId(
+    saleOrderId: string,
+    tx?: TransactionContext,
+  ): Promise<SaleOrderItem[]> {
     const manager = this.getManager(tx);
     const rows = await manager.getRepository(SaleOrderItemEntity).find({
       where: { saleOrderId },
-      order: { createdAt: "ASC" },
+      order: { createdAt: 'ASC' },
     });
     return rows.map((row) => this.toDomain(row));
   }
 
-  async deleteBySaleOrderId(saleOrderId: string, tx?: TransactionContext): Promise<void> {
+  async deleteBySaleOrderId(
+    saleOrderId: string,
+    tx?: TransactionContext,
+  ): Promise<void> {
     const manager = this.getManager(tx);
     await manager.getRepository(SaleOrderItemEntity).delete({ saleOrderId });
   }
