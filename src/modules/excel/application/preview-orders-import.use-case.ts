@@ -64,7 +64,7 @@ import {
   SalePaymentRepository,
 } from "src/modules/sale-orders/domain/ports/sale-payment.repository";
 import { ExcelRowAccessor } from "src/modules/excel/application/orders-import/excel-row-accessor";
-import { fixMojibake, normalizePhone, normalizeTextForMatch, parseNumber } from "src/modules/excel/application/orders-import/normalization";
+import { fixMojibake, normalizePhone, normalizeTextForMatch, parseDateOnly, parseNumber } from "src/modules/excel/application/orders-import/normalization";
 import { parseProductCodes } from "src/modules/excel/application/orders-import/product-codes";
 import { SaleOrderImportClientResolverService } from "src/modules/sale-orders/application/services/sale-order-import-client-resolver.service";
 import { SaleOrderImportSkuResolverService } from "src/modules/sale-orders/application/services/sale-order-import-sku-resolver.service";
@@ -1323,71 +1323,14 @@ export class PreviewOrdersImportUseCase {
   }
 
   private toDateOnly(value: unknown): string | null {
-    if (!value) {
-      this.debug("TO_DATE_ONLY", {
-        raw: value,
-        result: null,
-      });
-
-      return null;
-    }
-
-    if (value instanceof Date) {
-      const result = value.toISOString().slice(0, 10);
-
-      this.debug("TO_DATE_ONLY", {
-        raw: value,
-        result,
-      });
-
-      return result;
-    }
-
-    const text = this.toText(value);
-
-    if (!text) {
-      this.debug("TO_DATE_ONLY", {
-        raw: value,
-        text,
-        result: null,
-      });
-
-      return null;
-    }
-
-    const isoMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (isoMatch) {
-      const result = `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
-
-      this.debug("TO_DATE_ONLY", {
-        raw: value,
-        text,
-        result,
-      });
-
-      return result;
-    }
-
-    const dmyMatch = text.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
-    if (dmyMatch) {
-      const result = `${dmyMatch[3]}-${dmyMatch[2].padStart(2, "0")}-${dmyMatch[1].padStart(2, "0")}`;
-
-      this.debug("TO_DATE_ONLY", {
-        raw: value,
-        text,
-        result,
-      });
-
-      return result;
-    }
+    const result = parseDateOnly(value);
 
     this.debug("TO_DATE_ONLY", {
       raw: value,
-      text,
-      result: null,
+      result,
     });
 
-    return null;
+    return result;
   }
 
   private getEntityId(value: any, context = "UNKNOWN_CONTEXT"): string {

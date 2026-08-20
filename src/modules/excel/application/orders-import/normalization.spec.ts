@@ -1,4 +1,4 @@
-import { fixMojibake, normalizePhone, normalizeTextForMatch, parseNumber } from "./normalization";
+import { fixMojibake, normalizePhone, normalizeTextForMatch, parseDateOnly, parseNumber } from "./normalization";
 
 describe("orders-import normalization", () => {
   test("fixMojibake reverses common UTF8/latin1 mojibake", () => {
@@ -26,6 +26,22 @@ describe("orders-import normalization", () => {
     expect(parseNumber("S/ 1,234.50")).toBe(1234.5);
     expect(parseNumber("1.234,50")).toBe(1234.5);
     expect(parseNumber("  99 ")).toBe(99);
+  });
+
+  test.each([
+    ["20/08/2026", "2026-08-20"],
+    ["20/08/2026 14:30", "2026-08-20"],
+    ["20/08/26", "2026-08-20"],
+    ["8/20/26", "2026-08-20"],
+    ["2026-08-20T14:30:00-05:00", "2026-08-20"],
+    [46254, "2026-08-20"],
+  ])("parseDateOnly supports Excel date value %s", (value, expected) => {
+    expect(parseDateOnly(value)).toBe(expected);
+  });
+
+  test("parseDateOnly rejects impossible or unknown dates", () => {
+    expect(parseDateOnly("31/02/2026")).toBeNull();
+    expect(parseDateOnly("fecha pendiente")).toBeNull();
   });
 });
 

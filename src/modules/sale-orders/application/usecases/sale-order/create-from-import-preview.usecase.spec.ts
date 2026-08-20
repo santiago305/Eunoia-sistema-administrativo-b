@@ -1050,6 +1050,7 @@ describe('CreateFromImportPreviewUseCase', () => {
     expect(f.saleOrderRepo.create).toHaveBeenCalledWith(
       expect.objectContaining({
         scheduleDate: '2026-07-04',
+        deliveryDate: '2026-07-06',
         createdAt: null,
       }),
       expect.anything(),

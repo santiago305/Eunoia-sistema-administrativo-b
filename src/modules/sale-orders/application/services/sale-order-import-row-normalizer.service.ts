@@ -9,6 +9,7 @@ import {
   fixMojibake,
   normalizePhone,
   normalizeTextForMatch,
+  parseDateOnly,
   parseNumber,
 } from "src/modules/excel/application/orders-import/normalization";
 import { parseProductCodes } from "src/modules/excel/application/orders-import/product-codes";
@@ -106,10 +107,16 @@ export class SaleOrderImportRowNormalizerService {
     const total = this.toNumber(cleanRow.total);
     if (!(total >= 0)) errors.push("Total es obligatorio");
 
-    if (errors.length > 0) return { ok: false, rowNumber, errors };
+    const orderDate = parseDateOnly(cleanRow.orderDate);
+    const deliveryDate = parseDateOnly(cleanRow.deliveryDate);
+    if (this.toText(cleanRow.orderDate) && !orderDate) {
+      errors.push("Fecha de agenda no tiene un formato valido");
+    }
+    if (this.toText(cleanRow.deliveryDate) && !deliveryDate) {
+      errors.push("Fecha de entrega no tiene un formato valido");
+    }
 
-    const orderDate = this.toDateOnly(cleanRow.orderDate);
-    const deliveryDate = this.toDateOnly(cleanRow.deliveryDate);
+    if (errors.length > 0) return { ok: false, rowNumber, errors };
     const workflowName = this.toText(cleanRow.workflowName) || null;
     const address = this.toText(cleanRow.address) || null;
     const deliveryNote = this.toText(cleanRow.deliveryNote) || null;
@@ -209,22 +216,6 @@ export class SaleOrderImportRowNormalizerService {
 
   private toNumber(value: unknown) {
     return parseNumber(value);
-  }
-
-  private toDateOnly(value: unknown): string | null {
-    if (!value) return null;
-    if (value instanceof Date) return value.toISOString().slice(0, 10);
-
-    const text = this.toText(value);
-    if (!text) return null;
-
-    const isoMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
-
-    const dmyMatch = text.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
-    if (dmyMatch) return `${dmyMatch[3]}-${dmyMatch[2].padStart(2, "0")}-${dmyMatch[1].padStart(2, "0")}`;
-
-    return null;
   }
 
   private async resolveClient(input: {

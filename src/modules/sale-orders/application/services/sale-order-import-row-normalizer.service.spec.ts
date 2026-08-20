@@ -90,6 +90,8 @@ describe("SaleOrderImportRowNormalizerService", () => {
           productCodes: "AMPOLLA - ROJO - EVA001",
           total: 120,
           quantity: 2,
+          orderDate: "18/08/2026 10:15",
+          deliveryDate: "8/20/26 14:30",
           internalNote: "FB RECOMPRA 120243801710520154",
         } as any,
         2,
@@ -100,6 +102,8 @@ describe("SaleOrderImportRowNormalizerService", () => {
         expect(result.row.ubigeo?.districtId).toBe("dist-1");
         expect(result.row.clientResolution.clientId).toBe("client-1");
         expect(result.row.parsedSkus.length).toBeGreaterThan(0);
+        expect(result.row.orderDate).toBe("2026-08-18");
+        expect(result.row.deliveryDate).toBe("2026-08-20");
         expect(result.row.advertisingCode).toBe("RECOMPRA 120243801710520154");
       }
     } finally {
