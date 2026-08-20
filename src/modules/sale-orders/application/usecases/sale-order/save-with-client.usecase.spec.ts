@@ -140,6 +140,48 @@ describe('SaveSaleOrderWithClientUsecase', () => {
     );
   });
 
+  it('requires a workflow when creating a new order', async () => {
+    const f = fixture();
+
+    await expect(
+      f.usecase.execute({
+        data: { ...data, workflowId: undefined },
+        paymentPhotoByClientKey: new Map(),
+        userId: 'user-1',
+      }),
+    ).rejects.toThrow('El tipo de pedido es requerido');
+
+    expect(f.clientCommands.execute).not.toHaveBeenCalled();
+    expect(f.createOrder.executeInTransaction).not.toHaveBeenCalled();
+  });
+
+  it('preserves a missing workflow when updating a legacy imported order', async () => {
+    const f = fixture();
+    f.updateOrder.executeInTransaction.mockResolvedValue({
+      orderId: 'legacy-order-1',
+      serie: 'PE',
+      correlative: 28,
+      workflowId: null,
+      currentStateId: null,
+    });
+
+    await f.usecase.execute({
+      saleOrderId: 'legacy-order-1',
+      data: { ...data, workflowId: undefined },
+      paymentPhotoByClientKey: new Map(),
+      userId: 'user-1',
+    });
+
+    expect(f.updateOrder.executeInTransaction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        saleOrderId: 'legacy-order-1',
+        workflowId: undefined,
+      }),
+      tx,
+    );
+    expect(f.createOrder.executeInTransaction).not.toHaveBeenCalled();
+  });
+
   it('deletes newly written files when the database transaction fails', async () => {
     const f = fixture();
     f.attachmentRepo.create.mockRejectedValueOnce(new Error('db failed'));

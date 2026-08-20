@@ -54,8 +54,9 @@ export class HttpSaveSaleOrderWithClientDto {
   @IsUUID()
   warehouseId?: string;
 
+  @IsOptional()
   @IsUUID()
-  workflowId: string;
+  workflowId?: string;
 
   @IsOptional()
   @IsUUID()

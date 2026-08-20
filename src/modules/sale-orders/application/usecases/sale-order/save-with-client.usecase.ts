@@ -64,6 +64,10 @@ export class SaveSaleOrderWithClientUsecase {
   ) {}
 
   async execute(input: SaveSaleOrderWithClientInput) {
+    if (!input.saleOrderId && !input.data.workflowId?.trim()) {
+      throw new BadRequestException('El tipo de pedido es requerido');
+    }
+
     await this.commandAuthorization?.authorizeWithClient(
       input.userId,
       input.data as any,
@@ -102,6 +106,7 @@ export class SaveSaleOrderWithClientUsecase {
           : await this.createOrder.executeInTransaction(
               {
                 ...orderFields,
+                workflowId: orderFields.workflowId!,
                 clientId: clientResult.clientId,
                 payments: undefined,
               },
