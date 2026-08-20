@@ -43,11 +43,6 @@ export class CreateSaleOrderSkuRecognitionCodeDto {
     message: "El código solo puede contener letras y números",
   })
   code: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(180)
-  description?: string | null;
 }
 
 export class UpdateSaleOrderSkuRecognitionCodeDto extends CreateSaleOrderSkuRecognitionCodeDto {

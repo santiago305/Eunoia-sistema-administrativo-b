@@ -40,7 +40,6 @@ describe("SourceRecognitionCodeService", () => {
       id: "code-id",
       sourceId: "source-old",
       code: "FB",
-      description: "Anterior",
       isActive: false,
       isDeleted: true,
       deletedAt: new Date(),
@@ -51,13 +50,11 @@ describe("SourceRecognitionCodeService", () => {
     await expect(service.create({
       sourceId: "source-facebook",
       code: "fb",
-      description: "Facebook",
       userId: "user-id",
     })).resolves.toMatchObject({
       id: "code-id",
       sourceId: "source-facebook",
       code: "FB",
-      description: "Facebook",
       isActive: true,
       isDeleted: false,
       deletedAt: null,

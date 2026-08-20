@@ -27,9 +27,6 @@ export class SourceRecognitionCodeEntity {
   @Column({ type: "varchar", length: 80 })
   code: string;
 
-  @Column({ type: "varchar", length: 180, nullable: true })
-  description: string | null;
-
   @Column({ name: "is_active", type: "boolean", default: true })
   isActive: boolean;
 

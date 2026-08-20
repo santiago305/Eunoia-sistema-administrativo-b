@@ -16,7 +16,6 @@ import {
 type SaveRecognitionCodeInput = {
   sourceId: string;
   code: string;
-  description?: string | null;
   isActive?: boolean;
   replaceDeleted?: boolean;
   userId: string;
@@ -40,10 +39,7 @@ export class SourceRecognitionCodeService {
 
     const [items, total] = await this.repository.findAndCount({
       where: q
-        ? [
-            { sourceId: input.sourceId, isDeleted: false, code: ILike(`%${q}%`) },
-            { sourceId: input.sourceId, isDeleted: false, description: ILike(`%${q}%`) },
-          ]
+        ? { sourceId: input.sourceId, isDeleted: false, code: ILike(`%${q}%`) }
         : { sourceId: input.sourceId, isDeleted: false },
       order: { code: "ASC" },
       skip: (page - 1) * limit,
@@ -91,7 +87,6 @@ export class SourceRecognitionCodeService {
 
     if (existing) {
       existing.sourceId = input.sourceId;
-      existing.description = this.normalizeDescription(input.description);
       existing.isActive = true;
       existing.isDeleted = false;
       existing.deletedAt = null;
@@ -103,7 +98,6 @@ export class SourceRecognitionCodeService {
       this.repository.create({
         sourceId: input.sourceId,
         code,
-        description: this.normalizeDescription(input.description),
         isActive: true,
         isDeleted: false,
         createdBy: input.userId,
@@ -145,7 +139,6 @@ export class SourceRecognitionCodeService {
 
       if (conflicting) {
         conflicting.sourceId = input.sourceId;
-        conflicting.description = this.normalizeDescription(input.description);
         conflicting.isActive = input.isActive ?? true;
         conflicting.isDeleted = false;
         conflicting.deletedAt = null;
@@ -161,7 +154,6 @@ export class SourceRecognitionCodeService {
       }
 
       current.code = code;
-      current.description = this.normalizeDescription(input.description);
       current.isActive = input.isActive ?? current.isActive;
       current.updatedBy = input.userId;
       return repository.save(current);
@@ -185,11 +177,6 @@ export class SourceRecognitionCodeService {
 
   private normalizeCode(value: string) {
     return normalizeSourceRecognitionCode(value);
-  }
-
-  private normalizeDescription(value: string | null | undefined) {
-    const description = String(value ?? "").trim();
-    return description || null;
   }
 
   private async assertSourceExists(sourceId: string) {

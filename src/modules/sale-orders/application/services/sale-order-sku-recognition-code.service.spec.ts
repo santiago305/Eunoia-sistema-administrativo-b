@@ -29,7 +29,6 @@ describe("SaleOrderSkuRecognitionCodeService", () => {
     const deleted = {
       id: "rod-id",
       code: "ROD",
-      description: "Anterior",
       isActive: false,
       isDeleted: true,
       deletedAt: new Date(),
@@ -39,14 +38,12 @@ describe("SaleOrderSkuRecognitionCodeService", () => {
 
     const result = await service.create({
       code: "rod",
-      description: "Restaurado",
       userId: "user-id",
     });
 
     expect(result).toMatchObject({
       id: "rod-id",
       code: "ROD",
-      description: "Restaurado",
       isActive: true,
       isDeleted: false,
       deletedAt: null,
@@ -70,7 +67,6 @@ describe("SaleOrderSkuRecognitionCodeService", () => {
     const current = {
       id: "rode-id",
       code: "RODE",
-      description: null,
       isActive: true,
       isDeleted: false,
       deletedAt: null,
@@ -79,7 +75,6 @@ describe("SaleOrderSkuRecognitionCodeService", () => {
     const deletedTarget = {
       id: "rod-id",
       code: "ROD",
-      description: "Anterior",
       isActive: false,
       isDeleted: true,
       deletedAt: new Date(),
@@ -91,7 +86,6 @@ describe("SaleOrderSkuRecognitionCodeService", () => {
 
     const result = await service.update("rode-id", {
       code: "ROD",
-      description: "Corregido",
       replaceDeleted: true,
       userId: "user-id",
     });
@@ -100,7 +94,6 @@ describe("SaleOrderSkuRecognitionCodeService", () => {
     expect(result).toMatchObject({
       id: "rod-id",
       code: "ROD",
-      description: "Corregido",
       isActive: true,
       isDeleted: false,
       deletedAt: null,

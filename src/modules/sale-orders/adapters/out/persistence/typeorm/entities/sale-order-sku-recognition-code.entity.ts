@@ -16,9 +16,6 @@ export class SaleOrderSkuRecognitionCodeEntity {
   @Column({ type: "varchar", length: 20 })
   code: string;
 
-  @Column({ type: "varchar", length: 180, nullable: true })
-  description: string | null;
-
   @Column({ name: "is_active", type: "boolean", default: true })
   isActive: boolean;
 

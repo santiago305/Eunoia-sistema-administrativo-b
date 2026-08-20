@@ -44,11 +44,6 @@ export class CreateSourceRecognitionCodeDto {
     message: "El código solo puede contener letras, números y espacios simples",
   })
   code: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(180)
-  description?: string | null;
 }
 
 export class UpdateSourceRecognitionCodeDto extends CreateSourceRecognitionCodeDto {

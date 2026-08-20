@@ -9,7 +9,6 @@ import { SaleOrderSkuRecognitionCodeEntity } from "../../adapters/out/persistenc
 
 type SaveRecognitionCodeInput = {
   code: string;
-  description?: string | null;
   isActive?: boolean;
   replaceDeleted?: boolean;
   userId: string;
@@ -30,10 +29,7 @@ export class SaleOrderSkuRecognitionCodeService {
 
     const [items, total] = await this.repository.findAndCount({
       where: q
-        ? [
-            { isDeleted: false, code: ILike(`%${q}%`) },
-            { isDeleted: false, description: ILike(`%${q}%`) },
-          ]
+        ? { isDeleted: false, code: ILike(`%${q}%`) }
         : { isDeleted: false },
       order: { code: "ASC" },
       skip: (page - 1) * limit,
@@ -71,7 +67,6 @@ export class SaleOrderSkuRecognitionCodeService {
     }
 
     if (existing) {
-      existing.description = this.normalizeDescription(input.description);
       existing.isActive = true;
       existing.isDeleted = false;
       existing.deletedAt = null;
@@ -82,7 +77,6 @@ export class SaleOrderSkuRecognitionCodeService {
     return this.repository.save(
       this.repository.create({
         code,
-        description: this.normalizeDescription(input.description),
         isActive: true,
         isDeleted: false,
         createdBy: input.userId,
@@ -119,7 +113,6 @@ export class SaleOrderSkuRecognitionCodeService {
       }
 
       if (conflicting) {
-        conflicting.description = this.normalizeDescription(input.description);
         conflicting.isActive = input.isActive ?? true;
         conflicting.isDeleted = false;
         conflicting.deletedAt = null;
@@ -135,7 +128,6 @@ export class SaleOrderSkuRecognitionCodeService {
       }
 
       current.code = code;
-      current.description = this.normalizeDescription(input.description);
       current.isActive = input.isActive ?? current.isActive;
       current.updatedBy = input.userId;
       return repository.save(current);
@@ -159,8 +151,4 @@ export class SaleOrderSkuRecognitionCodeService {
     return String(value ?? "").trim().toUpperCase();
   }
 
-  private normalizeDescription(value: string | null | undefined) {
-    const description = String(value ?? "").trim();
-    return description || null;
-  }
 }

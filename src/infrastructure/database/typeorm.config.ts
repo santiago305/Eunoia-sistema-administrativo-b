@@ -122,6 +122,7 @@ import { CreateSaleOrderSupplyItems20260811100000 } from "./migrations/202608111
 import { CreateSaleOrderSkuRecognitionCodes20260819090000 } from "./migrations/20260819090000-create-sale-order-sku-recognition-codes";
 import { CreateSourceRecognitionCodes20260820120000 } from "./migrations/20260820120000-create-source-recognition-codes";
 import { AddSourceRecognitionCodePermissions20260820121000 } from "./migrations/20260820121000-add-source-recognition-code-permissions";
+import { DropRecognitionCodeDescriptions20260820122000 } from "./migrations/20260820122000-drop-recognition-code-descriptions";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -255,6 +256,7 @@ export const databaseMigrations = [
     CreateSaleOrderSkuRecognitionCodes20260819090000,
     CreateSourceRecognitionCodes20260820120000,
     AddSourceRecognitionCodePermissions20260820121000,
+    DropRecognitionCodeDescriptions20260820122000,
 ];
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({
