@@ -573,7 +573,11 @@ export class PreviewOrdersImportUseCase {
     const errors: string[] = [];
 
     if (!this.toText(recipientName)) errors.push("Nombre del destinatario es obligatorio");
-    if (!normalizedPhone) errors.push("Número de teléfono es obligatorio");
+    if (!this.toText(phone)) {
+      errors.push("Número de teléfono es obligatorio");
+    } else if (!normalizedPhone) {
+      errors.push("El teléfono debe tener 9 dígitos y comenzar con 9");
+    }
     if (!this.toText(departmentNameFromExcel)) errors.push("Provincia/Ciudad es obligatoria");
     if (!this.toText(provinceNameFromExcel)) errors.push("Distrito es obligatorio");
     if (!this.toText(districtNameFromExcel)) errors.push("Comuna/Pueblo es obligatorio");

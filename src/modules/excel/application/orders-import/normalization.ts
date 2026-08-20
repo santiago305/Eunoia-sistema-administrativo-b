@@ -21,9 +21,15 @@ export function normalizeTextForMatch(value: unknown): string {
     .toLowerCase();
 }
 
-export function normalizePhone(value: unknown, minDigits = 7): string {
+export function normalizePhone(value: unknown): string {
   const digits = fixMojibake(String(value ?? "")).replace(/\D/g, "");
-  return digits.length >= minDigits ? digits : "";
+  const withoutCountryCode = digits.startsWith("0051")
+    ? digits.slice(4)
+    : digits.startsWith("51")
+      ? digits.slice(2)
+      : digits;
+
+  return /^9\d{8}$/.test(withoutCountryCode) ? withoutCountryCode : "";
 }
 
 export function parseNumber(value: unknown): number {

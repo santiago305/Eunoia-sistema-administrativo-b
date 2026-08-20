@@ -91,14 +91,17 @@ export class SaleOrderImportRowNormalizerService {
     const productCodesText = this.toText(cleanRow.productCodes);
 
     if (!recipientName) errors.push("Nombre del destinatario es obligatorio");
-    if (!this.toText(phoneRaw)) errors.push("Numero de telefono es obligatorio");
+    const hasPhone = Boolean(this.toText(phoneRaw));
+    if (!hasPhone) errors.push("Numero de telefono es obligatorio");
     if (!departmentName) errors.push("Departamento es obligatorio");
     if (!provinceName) errors.push("Provincia es obligatorio");
     if (!districtName) errors.push("Distrito es obligatorio");
     if (!productCodesText) errors.push("Incluye codigos de producto es obligatorio");
 
     const normalizedPhone = this.normalizePhone(phoneRaw);
-    if (!normalizedPhone) errors.push("Numero de telefono no es valido");
+    if (hasPhone && !normalizedPhone) {
+      errors.push("El telefono debe tener 9 digitos y comenzar con 9");
+    }
 
     const total = this.toNumber(cleanRow.total);
     if (!(total >= 0)) errors.push("Total es obligatorio");

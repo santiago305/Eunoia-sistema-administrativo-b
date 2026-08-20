@@ -9,9 +9,17 @@ describe("orders-import normalization", () => {
     expect(normalizeTextForMatch("  Dirección   detallada ")).toBe("direccion detallada");
   });
 
-  test("normalizePhone keeps only digits and enforces min length", () => {
-    expect(normalizePhone("+51 999-888-777")).toBe("51999888777");
-    expect(normalizePhone("12", 7)).toBe("");
+  test("normalizePhone returns a canonical 9-digit Peruvian mobile", () => {
+    expect(normalizePhone("+51 999-888-777")).toBe("999888777");
+    expect(normalizePhone("51 999-888-777")).toBe("999888777");
+    expect(normalizePhone("0051 999-888-777")).toBe("999888777");
+    expect(normalizePhone("999-888-777")).toBe("999888777");
+  });
+
+  test("normalizePhone rejects non-mobile or malformed numbers", () => {
+    expect(normalizePhone("899888777")).toBe("");
+    expect(normalizePhone("99988877")).toBe("");
+    expect(normalizePhone("519998887770")).toBe("");
   });
 
   test("parseNumber supports currency and comma/point formats", () => {

@@ -307,7 +307,7 @@ describe("SaleOrderImportRowNormalizerService", () => {
         expect(clientRepo.findByReference).toHaveBeenCalledWith(
           "-12.067073487054728 -76.95337387116433",
         );
-        expect(telephoneRepo.findByNumber).toHaveBeenCalledWith("51995622971");
+        expect(telephoneRepo.findByNumber).toHaveBeenCalledWith("995622971");
         expect(result.row.clientResolution.clientId).toBe("old-client-with-empty-reference");
         expect(result.row.clientResolution.matchedBy).toBe("PHONE");
       }
@@ -364,7 +364,7 @@ describe("SaleOrderImportRowNormalizerService", () => {
         expect(clientRepo.findByReference).toHaveBeenCalledWith(
           "-12.067073487054728 -76.95337387116433",
         );
-        expect(telephoneRepo.findByNumber).toHaveBeenCalledWith("51995622971");
+        expect(telephoneRepo.findByNumber).toHaveBeenCalledWith("995622971");
         expect(result.row.parsedDocument.docType).toBe("NONE");
         expect(result.row.parsedDocument.reference).toBe(
           "-12.067073487054728, -76.95337387116433",
