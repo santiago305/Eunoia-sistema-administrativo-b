@@ -15,6 +15,16 @@ import { parseProductCodes } from "src/modules/excel/application/orders-import/p
 import { extractAdvertisingCode } from "src/modules/sale-orders/application/support/extract-advertising-code";
 import { SaleOrderSkuRecognitionCodeService } from "./sale-order-sku-recognition-code.service";
 
+const PROVINCE_NAME_ALIASES_BY_DEPARTMENT: Readonly<
+  Record<string, Readonly<Record<string, string>>>
+> = {
+  "07": {
+    "prov const del callao": "callao",
+    "prov constitucional del callao": "callao",
+    "provincia constitucional del callao": "callao",
+  },
+};
+
 export type NormalizedSaleOrderImportPreviewRow = {
   rowNumber: number;
   productName: string | null;
@@ -257,7 +267,13 @@ export class SaleOrderImportRowNormalizerService {
     if (!department) return null;
 
     const provinces = await this.ubigeoRepo.listProvincesByDepartmentIds([department.id]);
-    const province = provinces.find((item) => this.normalizeText(item.name) === provinceNormalizedName);
+    const canonicalProvinceName = this.resolveProvinceNameAlias(
+      department.id,
+      provinceNormalizedName,
+    );
+    const province = provinces.find(
+      (item) => this.normalizeText(item.name) === canonicalProvinceName,
+    );
     if (!province) return null;
 
     const districts = await this.ubigeoRepo.listDistrictsByProvinceIds([province.id]);
@@ -265,6 +281,19 @@ export class SaleOrderImportRowNormalizerService {
     if (!district) return null;
 
     return { department, province, district };
+  }
+
+  private resolveProvinceNameAlias(
+    departmentId: string,
+    normalizedProvinceName: string,
+  ): string {
+    const aliasKey = normalizedProvinceName
+      .replace(/[.,;:_-]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    return PROVINCE_NAME_ALIASES_BY_DEPARTMENT[departmentId]?.[aliasKey]
+      ?? normalizedProvinceName;
   }
 
   private getClientType(note: unknown) {
