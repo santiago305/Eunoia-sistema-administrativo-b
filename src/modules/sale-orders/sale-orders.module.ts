@@ -37,6 +37,8 @@ import { SaleOrderAttachmentsModule } from "../sale-order-attachments";
 import { AccessControlModule } from "../access-control/infrastructure/access-control.module";
 import { LogisticsPayablesModule } from "../logistics-payables/logistics-payables.module";
 import { AuthModule } from "../auth/infrastructure/auth.module";
+import { SaleOrderSkuRecognitionCodeEntity } from "./adapters/out/persistence/typeorm/entities/sale-order-sku-recognition-code.entity";
+import { SaleOrderSkuRecognitionCodeService } from "./application/services/sale-order-sku-recognition-code.service";
 
 @Module({
   imports: [
@@ -63,6 +65,7 @@ import { AuthModule } from "../auth/infrastructure/auth.module";
       SaleOrderStatesEntity,
       AdviserEntity,
       SubsidiaryEntity,
+      SaleOrderSkuRecognitionCodeEntity,
     ]),
     PacksModule,
     ProductCatalogModule,
@@ -78,6 +81,10 @@ import { AuthModule } from "../auth/infrastructure/auth.module";
     AuthModule,
   ],
   controllers: [SaleOrdersController],
-  providers: [...saleOrdersModuleProviders, AdviserMembershipService],
+  providers: [
+    ...saleOrdersModuleProviders,
+    AdviserMembershipService,
+    SaleOrderSkuRecognitionCodeService,
+  ],
 })
 export class SaleOrdersModule {}

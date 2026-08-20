@@ -203,8 +203,8 @@ describe("permissions seed", () => {
   });
 
   it("includes the complete sale order permission contract", () => {
-    expect(SALE_ORDER_PERMISSION_CODES).toHaveLength(38);
-    expect(new Set(SALE_ORDER_PERMISSION_CODES).size).toBe(38);
+    expect(SALE_ORDER_PERMISSION_CODES).toHaveLength(40);
+    expect(new Set(SALE_ORDER_PERMISSION_CODES).size).toBe(40);
     expect(SALE_ORDER_PERMISSION_CODES).not.toContain("sale_orders.preguide.update");
     expect(SALE_ORDER_PERMISSION_CODES).not.toContain("sale_orders.prepared.update");
     expect(DEPRECATED_PERMISSION_CODES).toEqual(

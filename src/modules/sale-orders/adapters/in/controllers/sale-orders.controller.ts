@@ -84,6 +84,12 @@ import {
 } from 'src/modules/access-control/adapters/in/decorators/require-permissions.decorator';
 import { SaleOrderPackMatcherService } from 'src/modules/sale-orders/application/services/sale-order-pack-matcher.service';
 import { HttpSaleOrderMatchPackDto } from '../dtos/http-sale-order-match-pack.dto';
+import { SaleOrderSkuRecognitionCodeService } from 'src/modules/sale-orders/application/services/sale-order-sku-recognition-code.service';
+import {
+  CreateSaleOrderSkuRecognitionCodeDto,
+  ListSaleOrderSkuRecognitionCodesDto,
+  UpdateSaleOrderSkuRecognitionCodeDto,
+} from '../dtos/sale-order-sku-recognition-code.dto';
 
 @Controller('sale-orders')
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
@@ -124,6 +130,7 @@ export class SaleOrdersController {
     private readonly exportExcel: ExportSaleOrdersExcelUsecase,
     private readonly getEditorCatalogs: GetSaleOrderEditorCatalogsUsecase,
     private readonly packMatcher: SaleOrderPackMatcherService,
+    private readonly skuRecognitionCodes: SaleOrderSkuRecognitionCodeService,
     @Inject(LISTING_SEARCH_STORAGE)
     private readonly listingSearchStorage: ListingSearchStorageRepository,
   ) {}
@@ -736,6 +743,40 @@ export class SaleOrdersController {
   @RequireAnyPermissionGroups(['sale_orders.create', 'sale_orders.update'])
   getSaleOrderEditorCatalogs(@Query('companyId') companyId?: string) {
     return this.getEditorCatalogs.execute({ companyId });
+  }
+
+  @Get('sku-recognition-codes')
+  @RequirePermissions('sale_orders.sku_recognition_codes.view')
+  listSkuRecognitionCodes(@Query() query: ListSaleOrderSkuRecognitionCodesDto) {
+    return this.skuRecognitionCodes.list(query);
+  }
+
+  @Post('sku-recognition-codes')
+  @RequirePermissions('sale_orders.sku_recognition_codes.manage')
+  createSkuRecognitionCode(
+    @Body() body: CreateSaleOrderSkuRecognitionCodeDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.skuRecognitionCodes.create({ ...body, userId: user.id });
+  }
+
+  @Patch('sku-recognition-codes/:id')
+  @RequirePermissions('sale_orders.sku_recognition_codes.manage')
+  updateSkuRecognitionCode(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: UpdateSaleOrderSkuRecognitionCodeDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.skuRecognitionCodes.update(id, { ...body, userId: user.id });
+  }
+
+  @Delete('sku-recognition-codes/:id')
+  @RequirePermissions('sale_orders.sku_recognition_codes.manage')
+  deleteSkuRecognitionCode(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.skuRecognitionCodes.remove(id, user.id);
   }
 
   @Get('import-lotes')

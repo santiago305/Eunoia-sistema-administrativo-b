@@ -4,8 +4,12 @@ import { UBIGEO_REPOSITORY } from "src/modules/ubigeo/domain/ports/ubigeo.reposi
 import { CLIENT_REPOSITORY } from "src/modules/clients/domain/ports/client.repository";
 import { TELEPHONE_REPOSITORY } from "src/modules/clients/domain/ports/telephone.repository";
 import { SaleOrderImportRowNormalizerService } from "./sale-order-import-row-normalizer.service";
+import { SaleOrderSkuRecognitionCodeService } from "./sale-order-sku-recognition-code.service";
 
 describe("SaleOrderImportRowNormalizerService", () => {
+  const skuRecognitionCodes = {
+    listActiveCodes: jest.fn().mockResolvedValue(["EVA"]),
+  };
   it("returns validation errors for missing required fields", async () => {
     const ubigeoRepo = { listDepartments: jest.fn(), listProvincesByDepartmentIds: jest.fn(), listDistrictsByProvinceIds: jest.fn() };
     const clientRepo = { findByDocument: jest.fn(), findByReference: jest.fn() };
@@ -17,6 +21,7 @@ describe("SaleOrderImportRowNormalizerService", () => {
         { provide: UBIGEO_REPOSITORY, useValue: ubigeoRepo },
         { provide: CLIENT_REPOSITORY, useValue: clientRepo },
         { provide: TELEPHONE_REPOSITORY, useValue: telephoneRepo },
+        { provide: SaleOrderSkuRecognitionCodeService, useValue: skuRecognitionCodes },
       ],
     }).compile();
 
@@ -56,6 +61,7 @@ describe("SaleOrderImportRowNormalizerService", () => {
         { provide: UBIGEO_REPOSITORY, useValue: ubigeoRepo },
         { provide: CLIENT_REPOSITORY, useValue: clientRepo },
         { provide: TELEPHONE_REPOSITORY, useValue: telephoneRepo },
+        { provide: SaleOrderSkuRecognitionCodeService, useValue: skuRecognitionCodes },
       ],
     }).compile();
 
@@ -88,7 +94,7 @@ describe("SaleOrderImportRowNormalizerService", () => {
     }
   });
 
-  it("returns the Excel row and original product text when the EVA code is missing", async () => {
+  it("returns the Excel row and original product text when no configured code matches", async () => {
     const ubigeoRepo = {
       listDepartments: jest.fn().mockResolvedValue([]),
       listProvincesByDepartmentIds: jest.fn(),
@@ -103,6 +109,7 @@ describe("SaleOrderImportRowNormalizerService", () => {
         { provide: UBIGEO_REPOSITORY, useValue: ubigeoRepo },
         { provide: CLIENT_REPOSITORY, useValue: clientRepo },
         { provide: TELEPHONE_REPOSITORY, useValue: telephoneRepo },
+        { provide: SaleOrderSkuRecognitionCodeService, useValue: skuRecognitionCodes },
       ],
     }).compile();
 
@@ -125,9 +132,53 @@ describe("SaleOrderImportRowNormalizerService", () => {
         ok: false,
         rowNumber: 8,
         errors: [
-          "Código EVA no encontrado en fila 8: AMPOLLA ANTI MANCHAS-EUN001",
+          "Código de reconocimiento no encontrado en fila 8: AMPOLLA ANTI MANCHAS-EUN001",
         ],
       });
+    } finally {
+      await moduleRef.close();
+    }
+  });
+
+  it("recognizes a newly configured prefix without changing the parser", async () => {
+    const ubigeoRepo = {
+      listDepartments: jest.fn().mockResolvedValue([]),
+      listProvincesByDepartmentIds: jest.fn(),
+      listDistrictsByProvinceIds: jest.fn(),
+    };
+    const clientRepo = { findByDocument: jest.fn(), findByReference: jest.fn() };
+    const telephoneRepo = { findByNumber: jest.fn().mockResolvedValue(null) };
+    skuRecognitionCodes.listActiveCodes.mockResolvedValueOnce(["EVA", "EUN"]);
+
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        SaleOrderImportRowNormalizerService,
+        { provide: UBIGEO_REPOSITORY, useValue: ubigeoRepo },
+        { provide: CLIENT_REPOSITORY, useValue: clientRepo },
+        { provide: TELEPHONE_REPOSITORY, useValue: telephoneRepo },
+        { provide: SaleOrderSkuRecognitionCodeService, useValue: skuRecognitionCodes },
+      ],
+    }).compile();
+
+    try {
+      const svc = moduleRef.get(SaleOrderImportRowNormalizerService);
+      const result = await svc.normalize(
+        {
+          recipientName: "Juan Perez",
+          phone: "999999999",
+          departmentName: "LIMA",
+          provinceName: "LIMA",
+          districtName: "MIRAFLORES",
+          productCodes: "AMPOLLA ANTI MANCHAS-EUN001",
+          total: 120,
+        } as any,
+        8,
+      );
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.row.parsedSkus[0]?.customSku).toBe("EUN001");
+      }
     } finally {
       await moduleRef.close();
     }
@@ -155,6 +206,7 @@ describe("SaleOrderImportRowNormalizerService", () => {
         { provide: UBIGEO_REPOSITORY, useValue: ubigeoRepo },
         { provide: CLIENT_REPOSITORY, useValue: clientRepo },
         { provide: TELEPHONE_REPOSITORY, useValue: telephoneRepo },
+        { provide: SaleOrderSkuRecognitionCodeService, useValue: skuRecognitionCodes },
       ],
     }).compile();
 
@@ -210,6 +262,7 @@ describe("SaleOrderImportRowNormalizerService", () => {
         { provide: UBIGEO_REPOSITORY, useValue: ubigeoRepo },
         { provide: CLIENT_REPOSITORY, useValue: clientRepo },
         { provide: TELEPHONE_REPOSITORY, useValue: telephoneRepo },
+        { provide: SaleOrderSkuRecognitionCodeService, useValue: skuRecognitionCodes },
       ],
     }).compile();
 

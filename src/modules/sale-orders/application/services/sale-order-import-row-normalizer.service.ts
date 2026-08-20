@@ -13,6 +13,7 @@ import {
 } from "src/modules/excel/application/orders-import/normalization";
 import { parseProductCodes } from "src/modules/excel/application/orders-import/product-codes";
 import { extractAdvertisingCode } from "src/modules/sale-orders/application/support/extract-advertising-code";
+import { SaleOrderSkuRecognitionCodeService } from "./sale-order-sku-recognition-code.service";
 
 export type NormalizedSaleOrderImportPreviewRow = {
   rowNumber: number;
@@ -65,6 +66,7 @@ export class SaleOrderImportRowNormalizerService {
     @Inject(UBIGEO_REPOSITORY) private readonly ubigeoRepo: UbigeoRepository,
     @Inject(CLIENT_REPOSITORY) private readonly clientRepo: ClientRepository,
     @Inject(TELEPHONE_REPOSITORY) private readonly telephoneRepo: TelephoneRepository,
+    private readonly skuRecognitionCodes: SaleOrderSkuRecognitionCodeService,
   ) {}
 
   async normalize(cleanRow: SaleOrderImportPreviewCleanRow, rowNumber: number): Promise<RowNormalizationResult> {
@@ -115,10 +117,14 @@ export class SaleOrderImportRowNormalizerService {
       parsedDocument,
     });
 
+    const recognitionCodes = await this.skuRecognitionCodes.listActiveCodes();
     let parsedSkus: NormalizedSaleOrderImportPreviewRow["parsedSkus"];
     try {
       parsedSkus = parseProductCodes(productCodesText, (code) => {
-        const { rawCode, ...rest } = this.parseExternalProductCode(code) as any;
+        const { rawCode, ...rest } = this.parseExternalProductCode(
+          code,
+          recognitionCodes,
+        ) as any;
         return rest;
       });
     } catch (error) {
@@ -284,7 +290,7 @@ export class SaleOrderImportRowNormalizerService {
     return { docType: ClientDocType.NONE, docNumber: "", reference: text || null };
   }
 
-  private parseExternalProductCode(rawCode: string) {
+  private parseExternalProductCode(rawCode: string, recognitionCodes: string[]) {
     const clean = fixMojibake(String(rawCode ?? "")).trim().toUpperCase();
 
     const parts = clean
@@ -292,25 +298,29 @@ export class SaleOrderImportRowNormalizerService {
       .map((part) => part.trim())
       .filter(Boolean);
 
-    const evaCode = parts.find((part) => part.startsWith("EVA"));
-    if (!evaCode) throw new Error(`Código EVA no encontrado en: ${rawCode}`);
+    const recognitionCode = parts.find((part) =>
+      recognitionCodes.some((prefix) => part.startsWith(prefix)),
+    );
+    if (!recognitionCode) {
+      throw new Error(`Código de reconocimiento no encontrado en: ${rawCode}`);
+    }
 
     const productName = parts[0];
     if (!productName) throw new Error(`Producto no encontrado en: ${rawCode}`);
 
-    const variantParts = parts.filter((part) => part !== productName && part !== evaCode);
+    const variantParts = parts.filter((part) => part !== productName && part !== recognitionCode);
     const variantName = variantParts.length ? variantParts.join(" ") : null;
     const skuName = variantName ? `${productName} ${variantName}` : productName;
 
-    return { rawCode: clean, productName, variantName, skuName, customSku: evaCode };
+    return { rawCode: clean, productName, variantName, skuName, customSku: recognitionCode };
   }
 
   private formatProductCodeError(message: string, rowNumber: number): string {
-    const evaPrefix = "Código EVA no encontrado en:";
-    if (message.startsWith(evaPrefix)) {
+    const recognitionPrefix = "Código de reconocimiento no encontrado en:";
+    if (message.startsWith(recognitionPrefix)) {
       return message.replace(
-        evaPrefix,
-        `Código EVA no encontrado en fila ${rowNumber}:`,
+        recognitionPrefix,
+        `Código de reconocimiento no encontrado en fila ${rowNumber}:`,
       );
     }
 

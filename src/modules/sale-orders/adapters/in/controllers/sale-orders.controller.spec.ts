@@ -52,6 +52,7 @@ import { LISTING_SEARCH_STORAGE } from 'src/shared/listing-search/domain/listing
 import { PermissionsGuard } from 'src/modules/access-control/adapters/in/guards/permissions.guard';
 import { PATH_METADATA } from '@nestjs/common/constants';
 import { SaleOrderPackMatcherService } from 'src/modules/sale-orders/application/services/sale-order-pack-matcher.service';
+import { SaleOrderSkuRecognitionCodeService } from 'src/modules/sale-orders/application/services/sale-order-sku-recognition-code.service';
 
 @Injectable()
 class TestJwtAuthGuard implements CanActivate {
@@ -113,6 +114,12 @@ describe('SaleOrdersController', () => {
   const bulkExecuteSaleOrderWorkflow = { execute: jest.fn() };
   const editorCatalogs = { execute: jest.fn() };
   const packMatcher = { match: jest.fn() };
+  const skuRecognitionCodes = {
+    list: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    remove: jest.fn(),
+  };
   const exportExcel = {
     getAvailableColumns: jest.fn(),
     execute: jest.fn(),
@@ -458,6 +465,7 @@ describe('SaleOrdersController', () => {
           useValue: editorCatalogs,
         },
         { provide: SaleOrderPackMatcherService, useValue: packMatcher },
+        { provide: SaleOrderSkuRecognitionCodeService, useValue: skuRecognitionCodes },
         { provide: ExportSaleOrdersExcelUsecase, useValue: exportExcel },
         { provide: LISTING_SEARCH_STORAGE, useValue: listingSearchStorage },
         { provide: GetSaleOrderSearchStateUsecase, useValue: getSearchState },
