@@ -117,6 +117,39 @@ describe('SaleOrderPackMatcherService', () => {
     );
   });
 
+  it('extracts the largest possible pack quantity and returns leftovers', async () => {
+    const pack = {
+      ...makePack('pack-1'),
+      items: [
+        { id: 'pi-1', skuId: 'sku-a', quantity: 1 },
+        { id: 'pi-2', skuId: 'sku-b', quantity: 1 },
+        { id: 'pi-3', skuId: 'sku-c', quantity: 1 },
+      ],
+    } as any;
+    const packRepo = {
+      findActiveByExactComposition: jest.fn().mockResolvedValue([]),
+      findActiveContainedInComposition: jest.fn().mockResolvedValue([pack]),
+    };
+    const service = new SaleOrderPackMatcherService(packRepo as any);
+
+    await expect(
+      service.decompose([
+        { skuId: 'sku-a', quantity: 2 },
+        { skuId: 'sku-b', quantity: 1 },
+        { skuId: 'sku-c', quantity: 3 },
+      ]),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        status: 'UNIQUE',
+        packQuantity: 1,
+        leftovers: [
+          { skuId: 'sku-a', quantity: 1 },
+          { skuId: 'sku-c', quantity: 2 },
+        ],
+      }),
+    );
+  });
+
   it.each([
     [[{ skuId: '', quantity: 1 }], 'SKU'],
     [[{ skuId: 'sku-a', quantity: 0 }], 'cantidad'],

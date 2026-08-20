@@ -38,7 +38,7 @@ function makeImportUsecase(overrides: Record<string, any> = {}) {
     execute: jest.fn().mockResolvedValue({ id: 'lote-1', lote: 1 }),
   };
   const packMatcher = {
-    match: jest.fn().mockResolvedValue({
+    decompose: jest.fn().mockResolvedValue({
       status: 'NONE',
       composition: [],
       matches: [],
@@ -185,7 +185,7 @@ describe('CreateFromImportPreviewUseCase', () => {
     const assignImportLote = {
       execute: jest.fn().mockResolvedValue({ id: 'lote-1', lote: 1 }),
     };
-    const packMatcher = { match: jest.fn() };
+    const packMatcher = { decompose: jest.fn() };
 
     const normalizer = { normalize: jest.fn() };
     const clientResolver = { resolveOrCreate: jest.fn() };
@@ -380,7 +380,7 @@ describe('CreateFromImportPreviewUseCase', () => {
     });
 
     expect(result.importedRows).toBe(1);
-    expect(f.packMatcher.match).not.toHaveBeenCalled();
+    expect(f.packMatcher.decompose).not.toHaveBeenCalled();
     expect(f.saleOrderItemRepo.bulkCreate).toHaveBeenCalledWith(
       [
         expect.objectContaining({
@@ -437,10 +437,12 @@ describe('CreateFromImportPreviewUseCase', () => {
       ],
     };
     const packMatcher = {
-      match: jest.fn().mockResolvedValue({
+      decompose: jest.fn().mockResolvedValue({
         status: 'UNIQUE',
         composition: skus.map(({ skuId, quantity }) => ({ skuId, quantity })),
         pack: matchedPack,
+        packQuantity: 1,
+        leftovers: [],
         matches: [matchedPack],
       }),
     };
@@ -458,7 +460,7 @@ describe('CreateFromImportPreviewUseCase', () => {
       userId: 'user-1',
     });
 
-    expect(packMatcher.match).toHaveBeenCalledWith(
+    expect(packMatcher.decompose).toHaveBeenCalledWith(
       [
         { skuId: 'sku-a', quantity: 1 },
         { skuId: 'sku-b', quantity: 2 },
@@ -498,6 +500,78 @@ describe('CreateFromImportPreviewUseCase', () => {
     );
   });
 
+  it('extracts a contained pack and stores surplus SKUs as independent products', async () => {
+    const skus = [
+      { productId: 'p1', skuId: 'sku-a', skuName: 'Producto 1', customSku: 'EVA001', quantity: 2 },
+      { productId: 'p2', skuId: 'sku-b', skuName: 'Producto 2', customSku: 'EVA002', quantity: 1 },
+      { productId: 'p3', skuId: 'sku-c', skuName: 'Producto 3', customSku: 'EVA003', quantity: 3 },
+    ];
+    const matchedPack = {
+      pack: {
+        packId: { value: 'pack-amor-propio' },
+        description: 'Pack Amor Propio',
+        total: 140,
+        isActive: true,
+      },
+      items: [
+        { id: 'pi-a', skuId: 'sku-a', quantity: 1, price: 20, lineTotal: 20 },
+        { id: 'pi-b', skuId: 'sku-b', quantity: 1, price: 20, lineTotal: 20 },
+        { id: 'pi-c', skuId: 'sku-c', quantity: 1, price: 20, lineTotal: 20 },
+      ],
+    };
+    const f = makeImportUsecase({
+      skuResolver: { resolveOrCreateSkus: jest.fn().mockResolvedValue(skus) },
+      packMatcher: {
+        decompose: jest.fn().mockResolvedValue({
+          status: 'UNIQUE',
+          composition: [],
+          pack: matchedPack,
+          packQuantity: 1,
+          leftovers: [
+            { skuId: 'sku-a', quantity: 1 },
+            { skuId: 'sku-c', quantity: 2 },
+          ],
+          matches: [matchedPack],
+        }),
+      },
+    });
+    f.saleOrderItemRepo.bulkCreate.mockResolvedValue([
+      { id: 'item-pack' },
+      { id: 'item-a' },
+      { id: 'item-c' },
+    ]);
+    f.normalizer.normalize.mockResolvedValue({
+      ok: true,
+      row: makeNormalizedImportRow({ total: 200 }),
+    });
+
+    await f.usecase.execute({ rows: [{ total: 200 }] as any, userId: 'user-1' });
+
+    expect(f.saleOrderItemRepo.bulkCreate).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          referencePackId: 'pack-amor-propio',
+          description: 'Pack Amor Propio',
+          quantity: 1,
+          total: 140,
+        }),
+        expect.objectContaining({
+          referencePackId: null,
+          description: 'Producto 1',
+          quantity: 1,
+          total: 20,
+        }),
+        expect.objectContaining({
+          referencePackId: null,
+          description: 'Producto 3',
+          quantity: 2,
+          total: 40,
+        }),
+      ],
+      f.tx,
+    );
+  });
+
   it('stores two unmatched SKUs as one unknown pack with exact cent totals', async () => {
     const skus = [
       {
@@ -516,7 +590,7 @@ describe('CreateFromImportPreviewUseCase', () => {
       },
     ];
     const packMatcher = {
-      match: jest.fn().mockResolvedValue({
+      decompose: jest.fn().mockResolvedValue({
         status: 'NONE',
         composition: [],
         matches: [],
@@ -591,7 +665,7 @@ describe('CreateFromImportPreviewUseCase', () => {
       },
     ];
     const packMatcher = {
-      match: jest.fn().mockResolvedValue({
+      decompose: jest.fn().mockResolvedValue({
         status: 'AMBIGUOUS',
         composition: [],
         matches: [{}, {}],
@@ -676,7 +750,7 @@ describe('CreateFromImportPreviewUseCase', () => {
         },
         {
           provide: SaleOrderPackMatcherService,
-          useValue: { match: jest.fn() },
+            useValue: { decompose: jest.fn() },
         },
       ],
     }).compile();

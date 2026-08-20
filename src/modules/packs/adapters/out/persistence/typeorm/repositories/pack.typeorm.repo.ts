@@ -233,6 +233,32 @@ export class PackTypeormRepository implements PackRepository {
     return details.filter((detail): detail is PackWithItems => Boolean(detail));
   }
 
+  async findActiveContainedInComposition(
+    composition: PackCompositionItem[],
+    tx?: TransactionContext,
+  ): Promise<PackWithItems[]> {
+    if (composition.length < 2) return [];
+
+    const availableBySkuId = new Map(
+      composition.map((component) => [component.skuId, component.quantity]),
+    );
+    const { items } = await this.list(
+      { isActive: true, page: 1, limit: 10_000 },
+      tx,
+    );
+
+    return items.filter(
+      (candidate) =>
+        candidate.items.length >= 2 &&
+        candidate.items.every(
+          (item) =>
+            Number(item.quantity) > 0 &&
+            Number(availableBySkuId.get(item.skuId) ?? 0) >=
+              Number(item.quantity),
+        ),
+    );
+  }
+
   private async loadSkuAttributes(
     manager: EntityManager,
     skuIds: string[],

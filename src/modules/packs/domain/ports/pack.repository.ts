@@ -64,6 +64,10 @@ export interface PackRepository {
     composition: PackCompositionItem[],
     tx?: TransactionContext,
   ): Promise<PackWithItems[]>;
+  findActiveContainedInComposition(
+    composition: PackCompositionItem[],
+    tx?: TransactionContext,
+  ): Promise<PackWithItems[]>;
   create(pack: Pack, tx?: TransactionContext): Promise<Pack>;
   update(pack: Pack, tx?: TransactionContext): Promise<Pack>;
   setActive(

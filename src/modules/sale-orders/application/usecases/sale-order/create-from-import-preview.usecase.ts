@@ -306,7 +306,7 @@ export class CreateFromImportPreviewUseCase {
     );
 
     const itemDescription = input.row.productName?.trim() || 'Sin nombre';
-    const itemPlan = await this.buildImportedItemPlan({
+    const itemPlans = await this.buildImportedItemPlans({
       description: itemDescription,
       subTotal,
       skus: input.skus,
@@ -314,30 +314,29 @@ export class CreateFromImportPreviewUseCase {
     });
 
     const items = await this.saleOrderItemRepo.bulkCreate(
-      [
-        {
-          saleOrderId,
-          referencePackId: itemPlan.referencePackId,
-          description: itemPlan.description,
-          quantity: itemPlan.quantity,
-          unitPrice: itemPlan.unitPrice,
-          total: itemPlan.total,
-        },
-      ],
-      input.tx,
-    );
-
-    const saleOrderItemId = this.getEntityId(
-      (items[0] as any)?.saleOrderItemId ?? (items[0] as any)?.id,
-    );
-
-    await this.saleOrderItemComponentRepo.bulkCreate(
-      itemPlan.components.map((component) => ({
-        saleOrderItemId,
-        ...component,
+      itemPlans.map((itemPlan) => ({
+        saleOrderId,
+        referencePackId: itemPlan.referencePackId,
+        description: itemPlan.description,
+        quantity: itemPlan.quantity,
+        unitPrice: itemPlan.unitPrice,
+        total: itemPlan.total,
       })),
       input.tx,
     );
+
+    for (let index = 0; index < itemPlans.length; index++) {
+      const saleOrderItemId = this.getEntityId(
+        (items[index] as any)?.saleOrderItemId ?? (items[index] as any)?.id,
+      );
+      await this.saleOrderItemComponentRepo.bulkCreate(
+        itemPlans[index].components.map((component) => ({
+          saleOrderItemId,
+          ...component,
+        })),
+        input.tx,
+      );
+    }
 
     if (resolvedWorkflow && this.suppliesService) {
       await this.suppliesService.copyFromWorkflowRecipe(
@@ -367,12 +366,12 @@ export class CreateFromImportPreviewUseCase {
     return saleOrderId;
   }
 
-  private async buildImportedItemPlan(input: {
+  private async buildImportedItemPlans(input: {
     description: string;
     subTotal: number;
     skus: ResolvedImportSku[];
     tx: TransactionContext;
-  }): Promise<ImportedItemPlan> {
+  }): Promise<ImportedItemPlan[]> {
     const skus = this.aggregateImportedSkus(input.skus);
 
     if (skus.length === 0) {
@@ -386,7 +385,7 @@ export class CreateFromImportPreviewUseCase {
       const total = this.roundMoney(input.subTotal);
       const unitPrice = this.divideMoney(total, sku.quantity);
 
-      return {
+      return [{
         referencePackId: null,
         description: input.description,
         quantity: sku.quantity,
@@ -401,10 +400,10 @@ export class CreateFromImportPreviewUseCase {
             total,
           },
         ],
-      };
+      }];
     }
 
-    const match = await this.packMatcher.match(
+    const match = await this.packMatcher.decompose(
       skus.map((sku) => ({
         skuId: sku.skuId,
         quantity: sku.quantity,
@@ -412,12 +411,116 @@ export class CreateFromImportPreviewUseCase {
       input.tx,
     );
 
-    return this.buildGroupedItemPlan({
+    if (match.status !== 'UNIQUE' || match.leftovers.length === 0) {
+      return [this.buildGroupedItemPlan({
+        description: input.description,
+        subTotal: input.subTotal,
+        skus,
+        match:
+          match.status === 'UNIQUE'
+            ? {
+                status: 'UNIQUE',
+                composition: match.composition,
+                pack: match.pack,
+                matches: match.matches,
+              }
+            : match,
+      })];
+    }
+
+    return this.buildPartialPackItemPlans({
       description: input.description,
       subTotal: input.subTotal,
       skus,
       match,
     });
+  }
+
+  private buildPartialPackItemPlans(input: {
+    description: string;
+    subTotal: number;
+    skus: ResolvedImportSku[];
+    match: Extract<
+      Awaited<ReturnType<SaleOrderPackMatcherService['decompose']>>,
+      { status: 'UNIQUE' }
+    >;
+  }): ImportedItemPlan[] {
+    const packTotal = this.roundMoney(
+      Number(input.match.pack.pack.total ?? 0) * input.match.packQuantity,
+    );
+    if (packTotal > this.roundMoney(input.subTotal)) {
+      throw new BadRequestException(
+        `El precio del pack ${input.match.pack.pack.description} supera el subtotal importado`,
+      );
+    }
+
+    const packComponentWeights = input.match.pack.items.map((item) =>
+      Number(item.lineTotal ?? 0) * input.match.packQuantity,
+    );
+    const packComponentTotals = this.allocateMoney(
+      packTotal,
+      packComponentWeights,
+    );
+    const packPlan: ImportedItemPlan = {
+      referencePackId: input.match.pack.pack.packId.value,
+      description: input.match.pack.pack.description,
+      quantity: input.match.packQuantity,
+      unitPrice: this.divideMoney(packTotal, input.match.packQuantity),
+      total: packTotal,
+      components: input.match.pack.items.map((item, index) => {
+        const quantity = this.roundQuantity(
+          Number(item.quantity) * input.match.packQuantity,
+        );
+        const total = packComponentTotals[index] ?? 0;
+        return {
+          skuId: item.skuId,
+          referencePackItemId: item.id,
+          quantity,
+          unitPrice: this.divideMoney(total, quantity),
+          total,
+        };
+      }),
+    };
+
+    const remainingTotal = this.roundMoney(input.subTotal - packTotal);
+    const packItemBySkuId = new Map(
+      input.match.pack.items.map((item) => [item.skuId, item]),
+    );
+    const leftoverWeights = input.match.leftovers.map((leftover) => {
+      const unitWeight = Number(
+        packItemBySkuId.get(leftover.skuId)?.price ?? 0,
+      );
+      return unitWeight > 0
+        ? unitWeight * leftover.quantity
+        : leftover.quantity;
+    });
+    const leftoverTotals = this.allocateMoney(remainingTotal, leftoverWeights);
+    const skuById = new Map(input.skus.map((sku) => [sku.skuId, sku]));
+
+    return [
+      packPlan,
+      ...input.match.leftovers.map((leftover, index) => {
+        const total = leftoverTotals[index] ?? 0;
+        const sku = skuById.get(leftover.skuId);
+        const description = sku?.skuName?.trim() || input.description;
+        return {
+          referencePackId: null,
+          description,
+          quantity: leftover.quantity,
+          unitPrice: this.divideMoney(total, leftover.quantity),
+          total,
+          components: [
+            {
+              skuId: leftover.skuId,
+              referencePackItemId: null,
+              quantity: leftover.quantity,
+              unitPrice: this.divideMoney(total, leftover.quantity),
+              total,
+            },
+          ],
+        };
+      }),
+    ];
   }
 
   private buildGroupedItemPlan(input: {
