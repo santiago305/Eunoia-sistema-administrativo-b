@@ -115,10 +115,23 @@ export class SaleOrderImportRowNormalizerService {
       parsedDocument,
     });
 
-    const parsedSkus = parseProductCodes(productCodesText, (code) => {
-      const { rawCode, ...rest } = this.parseExternalProductCode(code) as any;
-      return rest;
-    });
+    let parsedSkus: NormalizedSaleOrderImportPreviewRow["parsedSkus"];
+    try {
+      parsedSkus = parseProductCodes(productCodesText, (code) => {
+        const { rawCode, ...rest } = this.parseExternalProductCode(code) as any;
+        return rest;
+      });
+    } catch (error) {
+      const message = error instanceof Error
+        ? error.message
+        : "Código de producto no reconocido";
+
+      return {
+        ok: false,
+        rowNumber,
+        errors: [this.formatProductCodeError(message, rowNumber)],
+      };
+    }
 
     return {
       ok: true,
@@ -290,5 +303,25 @@ export class SaleOrderImportRowNormalizerService {
     const skuName = variantName ? `${productName} ${variantName}` : productName;
 
     return { rawCode: clean, productName, variantName, skuName, customSku: evaCode };
+  }
+
+  private formatProductCodeError(message: string, rowNumber: number): string {
+    const evaPrefix = "Código EVA no encontrado en:";
+    if (message.startsWith(evaPrefix)) {
+      return message.replace(
+        evaPrefix,
+        `Código EVA no encontrado en fila ${rowNumber}:`,
+      );
+    }
+
+    const productPrefix = "Producto no encontrado en:";
+    if (message.startsWith(productPrefix)) {
+      return message.replace(
+        productPrefix,
+        `Producto no encontrado en fila ${rowNumber}:`,
+      );
+    }
+
+    return `Error de producto en fila ${rowNumber}: ${message}`;
   }
 }

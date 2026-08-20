@@ -88,6 +88,51 @@ describe("SaleOrderImportRowNormalizerService", () => {
     }
   });
 
+  it("returns the Excel row and original product text when the EVA code is missing", async () => {
+    const ubigeoRepo = {
+      listDepartments: jest.fn().mockResolvedValue([]),
+      listProvincesByDepartmentIds: jest.fn(),
+      listDistrictsByProvinceIds: jest.fn(),
+    };
+    const clientRepo = { findByDocument: jest.fn(), findByReference: jest.fn() };
+    const telephoneRepo = { findByNumber: jest.fn().mockResolvedValue(null) };
+
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        SaleOrderImportRowNormalizerService,
+        { provide: UBIGEO_REPOSITORY, useValue: ubigeoRepo },
+        { provide: CLIENT_REPOSITORY, useValue: clientRepo },
+        { provide: TELEPHONE_REPOSITORY, useValue: telephoneRepo },
+      ],
+    }).compile();
+
+    try {
+      const svc = moduleRef.get(SaleOrderImportRowNormalizerService);
+      const result = await svc.normalize(
+        {
+          recipientName: "Juan Perez",
+          phone: "999999999",
+          departmentName: "LIMA",
+          provinceName: "LIMA",
+          districtName: "MIRAFLORES",
+          productCodes: "AMPOLLA ANTI MANCHAS-EUN001",
+          total: 120,
+        } as any,
+        8,
+      );
+
+      expect(result).toEqual({
+        ok: false,
+        rowNumber: 8,
+        errors: [
+          "Código EVA no encontrado en fila 8: AMPOLLA ANTI MANCHAS-EUN001",
+        ],
+      });
+    } finally {
+      await moduleRef.close();
+    }
+  });
+
   it("resolves by delivery note reference before falling back to phone", async () => {
     const ubigeoRepo = {
       listDepartments: jest.fn(),
