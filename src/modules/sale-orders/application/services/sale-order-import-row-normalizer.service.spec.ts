@@ -5,10 +5,14 @@ import { CLIENT_REPOSITORY } from "src/modules/clients/domain/ports/client.repos
 import { TELEPHONE_REPOSITORY } from "src/modules/clients/domain/ports/telephone.repository";
 import { SaleOrderImportRowNormalizerService } from "./sale-order-import-row-normalizer.service";
 import { SaleOrderSkuRecognitionCodeService } from "./sale-order-sku-recognition-code.service";
+import { SourceRecognitionCodeService } from "src/modules/sources/application/services/source-recognition-code.service";
 
 describe("SaleOrderImportRowNormalizerService", () => {
   const skuRecognitionCodes = {
     listActiveCodes: jest.fn().mockResolvedValue(["EVA"]),
+  };
+  const sourceRecognitionCodes = {
+    recognize: jest.fn().mockResolvedValue(null),
   };
   it("returns validation errors for missing required fields", async () => {
     const ubigeoRepo = { listDepartments: jest.fn(), listProvincesByDepartmentIds: jest.fn(), listDistrictsByProvinceIds: jest.fn() };
@@ -22,6 +26,7 @@ describe("SaleOrderImportRowNormalizerService", () => {
         { provide: CLIENT_REPOSITORY, useValue: clientRepo },
         { provide: TELEPHONE_REPOSITORY, useValue: telephoneRepo },
         { provide: SaleOrderSkuRecognitionCodeService, useValue: skuRecognitionCodes },
+        { provide: SourceRecognitionCodeService, useValue: sourceRecognitionCodes },
       ],
     }).compile();
 
@@ -62,8 +67,16 @@ describe("SaleOrderImportRowNormalizerService", () => {
         { provide: CLIENT_REPOSITORY, useValue: clientRepo },
         { provide: TELEPHONE_REPOSITORY, useValue: telephoneRepo },
         { provide: SaleOrderSkuRecognitionCodeService, useValue: skuRecognitionCodes },
+        { provide: SourceRecognitionCodeService, useValue: sourceRecognitionCodes },
       ],
     }).compile();
+
+    sourceRecognitionCodes.recognize.mockResolvedValueOnce({
+      sourceId: "source-facebook",
+      sourceName: "FACEBOOK",
+      code: "FB",
+      advertisingCode: "RECOMPRA 120243801710520154",
+    });
 
     try {
       const svc = moduleRef.get(SaleOrderImportRowNormalizerService);
@@ -87,7 +100,7 @@ describe("SaleOrderImportRowNormalizerService", () => {
         expect(result.row.ubigeo?.districtId).toBe("dist-1");
         expect(result.row.clientResolution.clientId).toBe("client-1");
         expect(result.row.parsedSkus.length).toBeGreaterThan(0);
-        expect(result.row.advertisingCode).toBe("120243801710520154");
+        expect(result.row.advertisingCode).toBe("RECOMPRA 120243801710520154");
       }
     } finally {
       await moduleRef.close();
@@ -122,6 +135,7 @@ describe("SaleOrderImportRowNormalizerService", () => {
         { provide: CLIENT_REPOSITORY, useValue: clientRepo },
         { provide: TELEPHONE_REPOSITORY, useValue: telephoneRepo },
         { provide: SaleOrderSkuRecognitionCodeService, useValue: skuRecognitionCodes },
+        { provide: SourceRecognitionCodeService, useValue: sourceRecognitionCodes },
       ],
     }).compile();
 
@@ -169,6 +183,7 @@ describe("SaleOrderImportRowNormalizerService", () => {
         { provide: CLIENT_REPOSITORY, useValue: clientRepo },
         { provide: TELEPHONE_REPOSITORY, useValue: telephoneRepo },
         { provide: SaleOrderSkuRecognitionCodeService, useValue: skuRecognitionCodes },
+        { provide: SourceRecognitionCodeService, useValue: sourceRecognitionCodes },
       ],
     }).compile();
 
@@ -216,6 +231,7 @@ describe("SaleOrderImportRowNormalizerService", () => {
         { provide: CLIENT_REPOSITORY, useValue: clientRepo },
         { provide: TELEPHONE_REPOSITORY, useValue: telephoneRepo },
         { provide: SaleOrderSkuRecognitionCodeService, useValue: skuRecognitionCodes },
+        { provide: SourceRecognitionCodeService, useValue: sourceRecognitionCodes },
       ],
     }).compile();
 
@@ -266,6 +282,7 @@ describe("SaleOrderImportRowNormalizerService", () => {
         { provide: CLIENT_REPOSITORY, useValue: clientRepo },
         { provide: TELEPHONE_REPOSITORY, useValue: telephoneRepo },
         { provide: SaleOrderSkuRecognitionCodeService, useValue: skuRecognitionCodes },
+        { provide: SourceRecognitionCodeService, useValue: sourceRecognitionCodes },
       ],
     }).compile();
 
@@ -322,6 +339,7 @@ describe("SaleOrderImportRowNormalizerService", () => {
         { provide: CLIENT_REPOSITORY, useValue: clientRepo },
         { provide: TELEPHONE_REPOSITORY, useValue: telephoneRepo },
         { provide: SaleOrderSkuRecognitionCodeService, useValue: skuRecognitionCodes },
+        { provide: SourceRecognitionCodeService, useValue: sourceRecognitionCodes },
       ],
     }).compile();
 

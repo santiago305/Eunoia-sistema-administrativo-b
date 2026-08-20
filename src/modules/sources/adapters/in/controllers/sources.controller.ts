@@ -18,6 +18,12 @@ import { HttpUpdateSourceDto } from "../dtos/http-source-update.dto";
 import { HttpSetSourceActiveDto } from "../dtos/http-source-set-active.dto";
 import { ListSourcesQueryDto } from "../dtos/list-sources.query.dto";
 import { HttpCreateSourceSearchMetricDto } from "../dtos/http-source-search-metric-create.dto";
+import {
+  CreateSourceRecognitionCodeDto,
+  ListSourceRecognitionCodesDto,
+  UpdateSourceRecognitionCodeDto,
+} from "../dtos/source-recognition-code.dto";
+import { SourceRecognitionCodeService } from "../../../application/services/source-recognition-code.service";
 
 @Controller("sources")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
@@ -31,6 +37,7 @@ export class SourcesController {
     private readonly getSearchState: GetSourceSearchStateUsecase,
     private readonly saveSearchMetric: SaveSourceSearchMetricUsecase,
     private readonly deleteSearchMetric: DeleteSourceSearchMetricUsecase,
+    private readonly recognitionCodes: SourceRecognitionCodeService,
   ) {}
 
   @RequirePermissions("sources.manage")
@@ -87,6 +94,50 @@ export class SourcesController {
   @Get(":id")
   getById(@Param("id", ParseUUIDPipe) id: string) {
     return this.getSource.execute({ sourceId: id });
+  }
+
+  @RequirePermissions("sources.recognition_codes.view")
+  @Get(":id/recognition-codes")
+  listRecognitionCodes(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Query() query: ListSourceRecognitionCodesDto,
+  ) {
+    return this.recognitionCodes.list({ sourceId: id, ...query });
+  }
+
+  @RequirePermissions("sources.recognition_codes.manage")
+  @Post(":id/recognition-codes")
+  createRecognitionCode(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() body: CreateSourceRecognitionCodeDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.recognitionCodes.create({ sourceId: id, ...body, userId: user.id });
+  }
+
+  @RequirePermissions("sources.recognition_codes.manage")
+  @Patch(":id/recognition-codes/:codeId")
+  updateRecognitionCode(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Param("codeId", ParseUUIDPipe) codeId: string,
+    @Body() body: UpdateSourceRecognitionCodeDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.recognitionCodes.update(codeId, {
+      sourceId: id,
+      ...body,
+      userId: user.id,
+    });
+  }
+
+  @RequirePermissions("sources.recognition_codes.manage")
+  @Delete(":id/recognition-codes/:codeId")
+  deleteRecognitionCode(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Param("codeId", ParseUUIDPipe) codeId: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.recognitionCodes.remove(id, codeId, user.id);
   }
 
   @RequirePermissions("sources.manage")

@@ -318,6 +318,8 @@ export const PERMISSIONS_SEED: PermissionSeedItem[] = [
   { code: 'agencies.export', name: 'Exportar agencias', description: 'Exportar agencias a Excel', module: 'agencies', resource: 'agencies', action: 'export', type: 'action' },
   { code: 'sources.read', name: 'Consultar fuentes', description: 'Consultar fuentes', module: 'sources', resource: 'sources', action: 'read', type: 'action' },
   { code: 'sources.manage', name: 'Gestionar fuentes', description: 'Crear/actualizar fuentes y su estado', module: 'sources', resource: 'sources', action: 'manage', type: 'action' },
+  { code: 'sources.recognition_codes.view', name: 'Ver códigos de reconocimiento de enganches', description: 'Abrir y consultar los códigos asociados a cada enganche', module: 'sources', resource: 'source_recognition_codes', action: 'view', type: 'action' },
+  { code: 'sources.recognition_codes.manage', name: 'Gestionar códigos de reconocimiento de enganches', description: 'Crear, editar, activar, eliminar y restaurar códigos de enganches', module: 'sources', resource: 'source_recognition_codes', action: 'manage', type: 'action' },
   { code: 'bank-accounts.read', name: 'Consultar cuentas bancarias', description: 'Consultar cuentas bancarias por empresa', module: 'bank_accounts', resource: 'bank_accounts', action: 'read', type: 'action' },
   { code: 'bank-accounts.manage', name: 'Gestionar cuentas bancarias', description: 'Crear/actualizar cuentas bancarias y su estado', module: 'bank_accounts', resource: 'bank_accounts', action: 'manage', type: 'action' },
 ];

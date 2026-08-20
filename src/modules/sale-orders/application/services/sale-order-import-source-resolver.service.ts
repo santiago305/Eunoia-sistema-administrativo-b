@@ -1,8 +1,8 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { CreateSourceUsecase } from "src/modules/sources/application/usecases/source/create.usecase";
 import { SOURCE_REPOSITORY, SourceRepository } from "src/modules/sources/domain/ports/source.repository";
-import { normalizeTextForMatch } from "src/modules/excel/application/orders-import/normalization";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
+import { SourceRecognitionCodeService } from "src/modules/sources/application/services/source-recognition-code.service";
 
 @Injectable()
 export class SaleOrderImportSourceResolverService {
@@ -10,11 +10,13 @@ export class SaleOrderImportSourceResolverService {
     @Inject(SOURCE_REPOSITORY)
     private readonly sourceRepo: SourceRepository,
     private readonly createSourceUsecase: CreateSourceUsecase,
+    private readonly recognitionCodes: SourceRecognitionCodeService,
   ) {}
 
   async resolveOrCreate(internalNote: string | null | undefined, tx: TransactionContext): Promise<string> {
-    const sourceName = this.getSourceName(internalNote);
-    return this.resolveOrCreateByName(sourceName, tx);
+    const recognized = await this.recognitionCodes.recognize(internalNote);
+    if (recognized) return recognized.sourceId;
+    return this.resolveOrCreateByName("SIN CODIGO", tx);
   }
 
   async resolveOrCreateByName(sourceName: string, tx: TransactionContext): Promise<string> {
@@ -27,24 +29,4 @@ export class SaleOrderImportSourceResolverService {
     );
   }
 
-  private getSourceName(note: unknown) {
-    const text = normalizeTextForMatch(note);
-    const tokens = text.split(/[\s,.;:_\-]+/).filter(Boolean);
-
-    let sourceName = "SIN CODIGO";
-
-    if (tokens.includes("whatsapp") || tokens.includes("wsp") || tokens.includes("wa")) {
-      sourceName = "WHATSAPP";
-    } else if (tokens.includes("instagram") || tokens.includes("ig")) {
-      sourceName = "INSTAGRAM";
-    } else if (tokens.includes("facebook") || tokens.includes("fb")) {
-      sourceName = "FACEBOOK";
-    } else if (tokens.includes("shopify")) {
-      sourceName = "SHOPIFY";
-    } else if (tokens.includes("organico") || tokens.includes("org")) {
-      sourceName = "ORGANICO";
-    }
-
-    return sourceName;
-  }
 }

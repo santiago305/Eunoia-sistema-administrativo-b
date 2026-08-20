@@ -5,14 +5,24 @@ import { ListingSearchMetricEntity } from "src/shared/listing-search/adapters/ou
 import { ListingSearchRecentEntity } from "src/shared/listing-search/adapters/out/persistence/typeorm/entities/listing-search-recent.entity";
 import { SourcesController } from "./adapters/in/controllers/sources.controller";
 import { SourceEntity } from "./adapters/out/persistence/typeorm/entities/source.entity";
+import { SourceRecognitionCodeEntity } from "./adapters/out/persistence/typeorm/entities/source-recognition-code.entity";
+import { SourceRecognitionCodeService } from "./application/services/source-recognition-code.service";
 import { sourcesModuleProviders } from "./composition/container";
 import { SOURCE_REPOSITORY } from "./domain/ports/source.repository";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([SourceEntity, ListingSearchRecentEntity, ListingSearchMetricEntity]), AccessControlModule],
+  imports: [
+    TypeOrmModule.forFeature([
+      SourceEntity,
+      SourceRecognitionCodeEntity,
+      ListingSearchRecentEntity,
+      ListingSearchMetricEntity,
+    ]),
+    AccessControlModule,
+  ],
   controllers: [SourcesController],
-  providers: [...sourcesModuleProviders],
-  exports: [SOURCE_REPOSITORY],
+  providers: [...sourcesModuleProviders, SourceRecognitionCodeService],
+  exports: [SOURCE_REPOSITORY, SourceRecognitionCodeService],
 })
 export class SourcesModule {}
 

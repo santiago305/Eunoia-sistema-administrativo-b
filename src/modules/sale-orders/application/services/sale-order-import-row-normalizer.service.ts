@@ -12,8 +12,8 @@ import {
   parseNumber,
 } from "src/modules/excel/application/orders-import/normalization";
 import { parseProductCodes } from "src/modules/excel/application/orders-import/product-codes";
-import { extractAdvertisingCode } from "src/modules/sale-orders/application/support/extract-advertising-code";
 import { SaleOrderSkuRecognitionCodeService } from "./sale-order-sku-recognition-code.service";
+import { SourceRecognitionCodeService } from "src/modules/sources/application/services/source-recognition-code.service";
 
 const PROVINCE_NAME_ALIASES_BY_DEPARTMENT: Readonly<
   Record<string, Readonly<Record<string, string>>>
@@ -77,6 +77,7 @@ export class SaleOrderImportRowNormalizerService {
     @Inject(CLIENT_REPOSITORY) private readonly clientRepo: ClientRepository,
     @Inject(TELEPHONE_REPOSITORY) private readonly telephoneRepo: TelephoneRepository,
     private readonly skuRecognitionCodes: SaleOrderSkuRecognitionCodeService,
+    private readonly sourceRecognitionCodes: SourceRecognitionCodeService,
   ) {}
 
   async normalize(cleanRow: SaleOrderImportPreviewCleanRow, rowNumber: number): Promise<RowNormalizationResult> {
@@ -114,7 +115,8 @@ export class SaleOrderImportRowNormalizerService {
     const advance = this.toNumber(cleanRow.advance) || 0;
     const codAmount = this.toNumber(cleanRow.codAmount) || 0;
     const internalNote = this.toText(cleanRow.internalNote) || null;
-    const advertisingCode = extractAdvertisingCode(internalNote);
+    const sourceRecognition = await this.sourceRecognitionCodes.recognize(internalNote);
+    const advertisingCode = sourceRecognition?.advertisingCode ?? null;
     const confirmedBy = this.toText(cleanRow.confirmedBy) || null;
     const productName = this.toText(cleanRow.productName) || null;
     const deliveryCost = this.toNumber(cleanRow.deliveryCost) || 0;
@@ -131,11 +133,16 @@ export class SaleOrderImportRowNormalizerService {
     let parsedSkus: NormalizedSaleOrderImportPreviewRow["parsedSkus"];
     try {
       parsedSkus = parseProductCodes(productCodesText, (code) => {
-        const { rawCode, ...rest } = this.parseExternalProductCode(
+        const parsed = this.parseExternalProductCode(
           code,
           recognitionCodes,
         ) as any;
-        return rest;
+        return {
+          productName: parsed.productName,
+          variantName: parsed.variantName,
+          skuName: parsed.skuName,
+          customSku: parsed.customSku,
+        };
       });
     } catch (error) {
       const message = error instanceof Error
