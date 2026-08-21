@@ -62,6 +62,23 @@ describe("SaleOrderWorkflowContextService", () => {
     expect(context.hasStock).toBe(false);
   });
 
+  it("does not consider a zero-total order paid even when it has payments", async () => {
+    const service = new SaleOrderWorkflowContextService(
+      {
+        listBySaleOrderIds: jest.fn().mockResolvedValue([{ amount: 20 }]),
+      } as any,
+      { getSnapshot: jest.fn().mockResolvedValue(null) } as any,
+      { now: () => new Date("2026-06-06T00:00:00.000Z") } as any,
+      { resolve: jest.fn().mockResolvedValue([]) } as any,
+      { findById: jest.fn().mockResolvedValue(null) } as any,
+    );
+
+    const context = await service.build(buildOrder({ total: 0 }), currentState);
+
+    expect(context.variables.totalPaid).toBe(20);
+    expect(context.isPaid).toBe(false);
+  });
+
   it("adds controlled sale-order and client fields to workflow variables", async () => {
     const service = new SaleOrderWorkflowContextService(
       { listBySaleOrderIds: jest.fn().mockResolvedValue([]) } as any,

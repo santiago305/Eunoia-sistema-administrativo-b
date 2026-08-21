@@ -115,7 +115,7 @@ export class SaleOrderImportRowNormalizerService {
     }
 
     const total = this.toNumber(cleanRow.total);
-    if (!(total >= 0)) errors.push("Total es obligatorio");
+    if (!(total > 0)) errors.push("Total debe ser mayor a 0");
 
     const orderDate = parseDateOnly(cleanRow.orderDate);
     const deliveryDate = parseDateOnly(cleanRow.deliveryDate);

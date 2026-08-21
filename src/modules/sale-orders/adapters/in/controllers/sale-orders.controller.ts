@@ -85,6 +85,8 @@ import {
 import { SaleOrderPackMatcherService } from 'src/modules/sale-orders/application/services/sale-order-pack-matcher.service';
 import { HttpSaleOrderMatchPackDto } from '../dtos/http-sale-order-match-pack.dto';
 import { SaleOrderSkuRecognitionCodeService } from 'src/modules/sale-orders/application/services/sale-order-sku-recognition-code.service';
+import { CorrectSaleOrderTotalUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/correct-total.usecase';
+import { CorrectSaleOrderTotalDto } from '../dtos/correct-sale-order-total.dto';
 import {
   CreateSaleOrderSkuRecognitionCodeDto,
   ListSaleOrderSkuRecognitionCodesDto,
@@ -116,6 +118,7 @@ export class SaleOrdersController {
     private readonly confirmDelivery: ConfirmSaleOrderDeliveryUsecase,
     private readonly addPayment: AddSaleOrderPaymentUsecase,
     private readonly deletePayment: DeleteSaleOrderPaymentUsecase,
+    private readonly correctTotal: CorrectSaleOrderTotalUsecase,
     private readonly listPayments: ListSaleOrderPaymentsUsecase,
     private readonly createFromImportPreview: CreateFromImportPreviewUseCase,
     private readonly listImportLotes: ListImportLotesUsecase,
@@ -595,6 +598,25 @@ export class SaleOrdersController {
     await this.evaluateAutomaticWorkflowThenNotify(
       saleOrderId,
       SaleOrderAutomaticWorkflowTriggerEnum.PAYMENT_DELETED,
+    );
+    return result;
+  }
+
+  @Patch(':saleOrderId/correct-total')
+  @RequirePermissions('sale_orders.update')
+  async correctSaleOrderTotal(
+    @Param('saleOrderId', ParseUUIDPipe) saleOrderId: string,
+    @Body() dto: CorrectSaleOrderTotalDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    const result = await this.correctTotal.execute({
+      saleOrderId,
+      total: dto.total,
+      executedBy: user.id,
+    });
+    await this.evaluateAutomaticWorkflowThenNotify(
+      saleOrderId,
+      SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_UPDATED,
     );
     return result;
   }

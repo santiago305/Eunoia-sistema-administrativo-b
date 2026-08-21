@@ -63,6 +63,8 @@ import { SaleOrderWorkflowActionRunnerService } from 'src/modules/workflow/appli
 import { GetSaleOrderStatisticsUsecase } from '../application/usecases/sale-order/get-statistics.usecase';
 import { SaleOrderNumberingService } from '../application/services/sale-order-numbering.service';
 import { SaleOrderStockConsumptionService } from 'src/modules/workflow/application/services/sale-order-stock-consumption.service';
+import { SaleOrderStockConsumptionReversalService } from 'src/modules/workflow/application/services/sale-order-stock-consumption-reversal.service';
+import { CorrectSaleOrderTotalUsecase } from '../application/usecases/sale-order/correct-total.usecase';
 import { RunAutomaticWorkflowTransitionsJob } from 'src/modules/workflow/application/jobs/run-automatic-workflow-transitions.job';
 import { SaleOrdersGateway } from 'src/modules/sale-orders/adapters/in/websocket/sale-orders.gateway';
 import { SaleOrdersRealtimeService } from 'src/modules/sale-orders/infrastructure/realtime/sale-orders-realtime.service';
@@ -127,6 +129,7 @@ export const saleOrdersModuleProviders = [
   ListSaleOrderPaymentsUsecase,
   AddSaleOrderPaymentUsecase,
   DeleteSaleOrderPaymentUsecase,
+  CorrectSaleOrderTotalUsecase,
   CreateFromImportPreviewUseCase,
   AssignImportLoteUsecase,
   ListImportLotesUsecase,
@@ -145,6 +148,7 @@ export const saleOrdersModuleProviders = [
   SaleOrderWorkflowActionRunnerService,
   SaleOrderWarehouseAssignmentService,
   SaleOrderStockConsumptionService,
+  SaleOrderStockConsumptionReversalService,
   SaleOrderImportClientResolverService,
   SaleOrderImportRowNormalizerService,
   SaleOrderImportSkuResolverService,

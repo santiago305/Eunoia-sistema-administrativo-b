@@ -18,5 +18,9 @@ export interface SaleOrderItemRepository {
   ): Promise<SaleOrderItem[]>;
 
   listBySaleOrderId(saleOrderId: string, tx?: TransactionContext): Promise<SaleOrderItem[]>;
+  updateAmounts(
+    input: Array<{ id: string; unitPrice: number; total: number }>,
+    tx?: TransactionContext,
+  ): Promise<void>;
   deleteBySaleOrderId(saleOrderId: string, tx?: TransactionContext): Promise<void>;
 }

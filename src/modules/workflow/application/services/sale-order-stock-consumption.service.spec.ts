@@ -8,9 +8,11 @@ describe("SaleOrderStockConsumptionService", () => {
     { stockItemId: "stock-2", quantity: 2 },
   ];
 
-  function setup(existingDocuments: any[] = []) {
+  function setup(existingDocuments: any[] = [], reversalDocuments: any[] = []) {
     const documents = {
-      findByReference: jest.fn().mockResolvedValue(existingDocuments),
+      findByReference: jest.fn().mockImplementation(async (input: { docType?: string }) =>
+        input.docType === "IN" ? reversalDocuments : existingDocuments,
+      ),
       create: jest.fn().mockResolvedValue({ id: "doc-1" }),
       addItem: jest
         .fn()
@@ -72,5 +74,23 @@ describe("SaleOrderStockConsumptionService", () => {
     expect(documents.create).not.toHaveBeenCalled();
     expect(inventory.incrementReserved).not.toHaveBeenCalled();
     expect(ledger.append).not.toHaveBeenCalled();
+  });
+
+  it("consumes stock again after the previous OUT was compensated", async () => {
+    const { service, documents, inventory } = setup(
+      [{ id: "existing-doc", status: "POSTED" }],
+      [
+        {
+          id: "reversal-doc",
+          status: "POSTED",
+          note: "Reversión del consumo existing-doc por corrección del total",
+        },
+      ],
+    );
+
+    await service.consume(order, requirements, tx);
+
+    expect(documents.create).toHaveBeenCalledTimes(1);
+    expect(inventory.incrementOnHand).toHaveBeenCalledTimes(2);
   });
 });

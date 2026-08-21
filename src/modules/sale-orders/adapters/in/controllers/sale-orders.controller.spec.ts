@@ -24,6 +24,7 @@ import { CancelSaleOrderUsecase } from 'src/modules/sale-orders/application/usec
 import { SaleOrdersRealtimeService } from 'src/modules/sale-orders/infrastructure/realtime/sale-orders-realtime.service';
 import { AddSaleOrderPaymentUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/add-payment.usecase';
 import { DeleteSaleOrderPaymentUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/delete-payment.usecase';
+import { CorrectSaleOrderTotalUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/correct-total.usecase';
 import { ListSaleOrderPaymentsUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/list-payments.usecase';
 import { ConfirmSaleOrderDeliveryUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/confirm-delivery.usecase';
 import { CreateFromImportPreviewUseCase } from 'src/modules/sale-orders/application/usecases/sale-order/create-from-import-preview.usecase';
@@ -94,6 +95,7 @@ describe('SaleOrdersController', () => {
   const confirmDelivery = { execute: jest.fn() };
   const addPayment = { execute: jest.fn() };
   const deletePayment = { execute: jest.fn() };
+  const correctTotal = { execute: jest.fn() };
   const listPayments = { execute: jest.fn() };
   const createFromImportPreview = { execute: jest.fn() };
   const listImportLotes = { execute: jest.fn() };
@@ -195,6 +197,26 @@ describe('SaleOrdersController', () => {
     });
     addPayment.execute.mockResolvedValue({ paymentId: 'p1' });
     deletePayment.execute.mockResolvedValue({ deleted: true });
+    correctTotal.execute.mockResolvedValue({
+      saleOrderId: 'x',
+      previousTotal: 0,
+      total: 100,
+      totalPaid: 20,
+      pendingAmount: 80,
+      paymentStatus: 'PENDING',
+      previousState: {
+        id: 'delivered',
+        code: 'DELIVERED',
+        name: 'Entregado',
+      },
+      currentState: {
+        id: 'in-progress',
+        code: 'IN_PROGRESS',
+        name: 'En curso',
+      },
+      stateChanged: true,
+      stockRestoredAndReserved: true,
+    });
     listPayments.execute.mockResolvedValue([{ id: 'p1' }]);
     createFromImportPreview.execute.mockResolvedValue({
       importedRows: 1,
@@ -491,6 +513,7 @@ describe('SaleOrdersController', () => {
         { provide: ConfirmSaleOrderDeliveryUsecase, useValue: confirmDelivery },
         { provide: AddSaleOrderPaymentUsecase, useValue: addPayment },
         { provide: DeleteSaleOrderPaymentUsecase, useValue: deletePayment },
+        { provide: CorrectSaleOrderTotalUsecase, useValue: correctTotal },
         { provide: ListSaleOrderPaymentsUsecase, useValue: listPayments },
         {
           provide: CreateFromImportPreviewUseCase,
@@ -1642,6 +1665,25 @@ describe('SaleOrdersController', () => {
       .patch(`/sale-orders/${saleOrderId}/confirm-delivery`)
       .expect(200);
     expect(confirmDelivery.execute).toHaveBeenCalledWith({ saleOrderId });
+  });
+
+  it('corrects the total with the current user and reevaluates the workflow', async () => {
+    const saleOrderId = '11111111-1111-4111-8111-111111111111';
+
+    await request(app.getHttpServer())
+      .patch(`/sale-orders/${saleOrderId}/correct-total`)
+      .send({ total: 100 })
+      .expect(200);
+
+    expect(correctTotal.execute).toHaveBeenCalledWith({
+      saleOrderId,
+      total: 100,
+      executedBy: 'user-1',
+    });
+    expect(automaticWorkflow.evaluateAndNotify).toHaveBeenCalledWith(
+      saleOrderId,
+      SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_UPDATED,
+    );
   });
 
   it('lists payments for a saleOrderId', async () => {

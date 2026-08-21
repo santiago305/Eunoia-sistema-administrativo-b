@@ -232,6 +232,21 @@ export class SaleOrderItemComponentTypeormRepository implements SaleOrderItemCom
     return rows.map((row) => this.toDomain(row));
   }
 
+  async updateAmounts(
+    input: Array<{ id: string; unitPrice: number; total: number }>,
+    tx?: TransactionContext,
+  ): Promise<void> {
+    if (!input.length) return;
+    const repo = this.getManager(tx).getRepository(SaleOrderItemComponentEntity);
+    await repo.save(
+      input.map((row) => ({
+        id: row.id,
+        unitPrice: row.unitPrice,
+        total: row.total,
+      })),
+    );
+  }
+
   async deleteBySaleOrderItemIds(saleOrderItemIds: string[], tx?: TransactionContext): Promise<void> {
     if (!saleOrderItemIds.length) return;
 

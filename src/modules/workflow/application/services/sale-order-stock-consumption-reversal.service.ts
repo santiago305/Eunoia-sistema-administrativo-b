@@ -19,6 +19,14 @@ import {
   PRODUCT_CATALOG_INVENTORY_REPOSITORY,
   ProductCatalogInventoryRepository,
 } from "src/modules/product-catalog/domain/ports/inventory.repository";
+import {
+  INVENTORY_LOCK,
+  InventoryLock,
+} from "src/modules/product-catalog/integration/inventory/ports/inventory-lock.port";
+import {
+  SALE_ORDER_REPOSITORY,
+  SaleOrderRepository,
+} from "src/modules/sale-orders/domain/ports/sale-order.repository";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { Direction } from "src/shared/domain/value-objects/direction";
 import { DocStatus } from "src/shared/domain/value-objects/doc-status";
@@ -27,7 +35,7 @@ import { ReferenceType } from "src/shared/domain/value-objects/reference-type";
 import { saleOrderStockConsumptionReversalMarker } from "./sale-order-stock-consumption-reversal-marker";
 
 @Injectable()
-export class SaleOrderStockConsumptionService {
+export class SaleOrderStockConsumptionReversalService {
   constructor(
     @Inject(PRODUCT_CATALOG_INVENTORY_DOCUMENT_REPOSITORY)
     private readonly documentRepo: ProductCatalogInventoryDocumentRepository,
@@ -37,70 +45,103 @@ export class SaleOrderStockConsumptionService {
     private readonly inventoryRepo: ProductCatalogInventoryRepository,
     @Inject(PRODUCT_CATALOG_INVENTORY_LEDGER_REPOSITORY)
     private readonly ledgerRepo: ProductCatalogInventoryLedgerRepository,
+    @Inject(INVENTORY_LOCK)
+    private readonly inventoryLock: InventoryLock,
+    @Inject(SALE_ORDER_REPOSITORY)
+    private readonly saleOrderRepo: SaleOrderRepository,
   ) {}
 
-  async consume(
+  async restoreAndReserve(
     order: SaleOrder,
-    requirements: Array<{ stockItemId: string; quantity: number }>,
+    executedBy: string,
     tx: TransactionContext,
-  ): Promise<void> {
-    if (!order.warehouseId || !requirements.length) return;
-
-    const existingOutDocuments = await this.documentRepo.findByReference(
-      { referenceType: ReferenceType.SALE_ORDER, referenceId: order.id, docType: DocType.OUT },
-      tx,
-    );
-    const postedOutDocuments = existingOutDocuments.filter(
-      (document) => document.status === DocStatus.POSTED && document.id,
-    );
-    const reversalDocuments = postedOutDocuments.length
-      ? await this.documentRepo.findByReference(
-          {
-            referenceType: ReferenceType.SALE_ORDER,
-            referenceId: order.id,
-            docType: DocType.IN,
-          },
-          tx,
-        )
-      : [];
-    const hasUnreversedConsumption = postedOutDocuments.some(
-      (document) =>
-        !reversalDocuments.some(
-          (reversal) =>
-            reversal.status === DocStatus.POSTED &&
-            reversal.note?.includes(
-              saleOrderStockConsumptionReversalMarker(document.id as string),
-            ),
-        ),
-    );
-    if (hasUnreversedConsumption) {
-      return;
+  ): Promise<boolean> {
+    if (!order.warehouseId) {
+      throw new BadRequestException(
+        "El pedido no tiene almacén para revertir el consumo de stock",
+      );
     }
 
+    const outDocuments = await this.documentRepo.findByReference(
+      {
+        referenceType: ReferenceType.SALE_ORDER,
+        referenceId: order.id,
+        docType: DocType.OUT,
+      },
+      tx,
+    );
+    const consumedDocument = outDocuments.find(
+      (document) => document.status === DocStatus.POSTED,
+    );
+    if (!consumedDocument?.id) return false;
+
+    const reversalMarker = saleOrderStockConsumptionReversalMarker(
+      consumedDocument.id,
+    );
+    const existingReversals = await this.documentRepo.findByReference(
+      {
+        referenceType: ReferenceType.SALE_ORDER,
+        referenceId: order.id,
+        docType: DocType.IN,
+      },
+      tx,
+    );
+    if (
+      existingReversals.some(
+        (document) =>
+          document.status === DocStatus.POSTED &&
+          document.note?.includes(reversalMarker),
+      )
+    ) {
+      return false;
+    }
+
+    const consumedItems = await this.documentRepo.listItems(
+      consumedDocument.id,
+      tx,
+    );
+    if (!consumedItems.length) return false;
+
     const series = await this.serieRepo.findActiveFor(
-      { docType: DocType.OUT, warehouseId: order.warehouseId, isActive: true },
+      { docType: DocType.IN, warehouseId: order.warehouseId, isActive: true },
       tx,
     );
     if (!series.length) {
-      throw new BadRequestException("No hay serie OUT activa para el almacen del pedido");
+      throw new BadRequestException(
+        "No hay serie IN activa para restaurar el stock del pedido",
+      );
     }
+
+    const keys = consumedItems
+      .map((item) => ({
+        warehouseId: order.warehouseId as string,
+        stockItemId: item.stockItemId,
+      }))
+      .sort((left, right) =>
+        `${left.warehouseId}:${left.stockItemId}`.localeCompare(
+          `${right.warehouseId}:${right.stockItemId}`,
+        ),
+      );
+    await this.inventoryLock.lockSnapshots(keys, tx);
+
     const serie = series[0];
     const correlative = await this.serieRepo.reserveNextNumber(serie.id, tx);
-    const actorId = order.createdBy ?? null;
-    const document = await this.documentRepo.create(
+    const now = new Date();
+    const note = `${reversalMarker} por corrección del total del pedido ${order.serie ?? "PE"}-${order.correlative ?? order.id}`;
+    const reversal = await this.documentRepo.create(
       new ProductCatalogInventoryDocument(
         undefined,
-        DocType.OUT,
+        DocType.IN,
         null,
         DocStatus.DRAFT,
         serie.id,
         correlative,
-        order.warehouseId,
         null,
+        order.warehouseId,
         order.id,
         ReferenceType.SALE_ORDER,
-        `Consumo de stock del pedido ${order.serie ?? "PE"}-${order.correlative ?? order.id}`,
-        actorId,
+        note,
+        executedBy,
         null,
         null,
       ),
@@ -108,47 +149,58 @@ export class SaleOrderStockConsumptionService {
     );
 
     const ledgerEntries: ProductCatalogInventoryLedgerEntry[] = [];
-    for (const requirement of requirements) {
+    for (const consumedItem of consumedItems) {
       const item = await this.documentRepo.addItem(
         new ProductCatalogInventoryDocumentItem(
           undefined,
-          document.id!,
-          requirement.stockItemId,
-          requirement.quantity,
+          reversal.id as string,
+          consumedItem.stockItemId,
+          Number(consumedItem.quantity),
           0,
           null,
           null,
-          null,
+          consumedItem.unitCost ?? null,
         ),
         tx,
       );
       const base = {
         warehouseId: order.warehouseId,
-        stockItemId: requirement.stockItemId,
+        stockItemId: consumedItem.stockItemId,
         locationId: null,
       };
-      await this.inventoryRepo.incrementReserved({ ...base, delta: -requirement.quantity }, tx);
-      await this.inventoryRepo.incrementOnHand({ ...base, delta: -requirement.quantity }, tx);
+      await this.inventoryRepo.incrementOnHand(
+        { ...base, delta: Number(consumedItem.quantity) },
+        tx,
+      );
+      await this.inventoryRepo.incrementReserved(
+        { ...base, delta: Number(consumedItem.quantity) },
+        tx,
+      );
       ledgerEntries.push(
         new ProductCatalogInventoryLedgerEntry(
           undefined,
-          document.id!,
+          reversal.id as string,
           item.id ?? null,
           order.warehouseId,
-          requirement.stockItemId,
-          Direction.OUT,
-          requirement.quantity,
+          consumedItem.stockItemId,
+          Direction.IN,
+          Number(consumedItem.quantity),
           null,
           0,
-          null,
+          consumedItem.unitCost ?? null,
         ),
       );
     }
 
     await this.ledgerRepo.append(ledgerEntries, tx);
     await this.documentRepo.markPosted(
-      { docId: document.id!, postedBy: actorId, postedAt: new Date() },
+      { docId: reversal.id as string, postedBy: executedBy, postedAt: now },
       tx,
     );
+    await this.saleOrderRepo.setReserveBool(
+      { saleOrderId: order.id, reserveBool: true },
+      tx,
+    );
+    return true;
   }
 }
