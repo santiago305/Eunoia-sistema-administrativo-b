@@ -26,6 +26,16 @@ const PROVINCE_NAME_ALIASES_BY_DEPARTMENT: Readonly<
   },
 };
 
+const DISTRICT_NAME_EQUIVALENTS_BY_PROVINCE: Readonly<
+  Record<string, ReadonlyArray<ReadonlyArray<string>>>
+> = {
+  "0701": [[
+    "carmen de la legua",
+    "carmen de la legua reynoso",
+    "carmen de la legua-reynoso",
+  ]],
+};
+
 export type NormalizedSaleOrderImportPreviewRow = {
   rowNumber: number;
   productName: string | null;
@@ -278,7 +288,13 @@ export class SaleOrderImportRowNormalizerService {
     if (!province) return null;
 
     const districts = await this.ubigeoRepo.listDistrictsByProvinceIds([province.id]);
-    const district = districts.find((item) => this.normalizeText(item.name) === districtNormalizedName);
+    const districtNameCandidates = this.resolveDistrictNameCandidates(
+      province.id,
+      districtNormalizedName,
+    );
+    const district = districts.find((item) =>
+      districtNameCandidates.has(this.normalizeText(item.name)),
+    );
     if (!district) return null;
 
     return { department, province, district };
@@ -295,6 +311,21 @@ export class SaleOrderImportRowNormalizerService {
 
     return PROVINCE_NAME_ALIASES_BY_DEPARTMENT[departmentId]?.[aliasKey]
       ?? normalizedProvinceName;
+  }
+
+  private resolveDistrictNameCandidates(
+    provinceId: string,
+    normalizedDistrictName: string,
+  ): Set<string> {
+    const candidates = new Set([normalizedDistrictName]);
+    const equivalentNames = DISTRICT_NAME_EQUIVALENTS_BY_PROVINCE[provinceId] ?? [];
+
+    for (const names of equivalentNames) {
+      if (!names.includes(normalizedDistrictName)) continue;
+      names.forEach((name) => candidates.add(name));
+    }
+
+    return candidates;
   }
 
   private getClientType(note: unknown) {

@@ -20,6 +20,11 @@ const PROVINCE_NAME_OVERRIDES: Record<string, string> = {
   "1608": "Putumayo",
 };
 
+const DISTRICT_NAME_OVERRIDES: Record<string, string> = {
+  // El nombre completo usado por los operadores y archivos de pedidos incluye "Reynoso".
+  "070103": "Carmen de la Legua Reynoso",
+};
+
 const getUbigeoSeedRows = (): UbigeoSeedRow[] => {
   const filePath = join(__dirname, "data", "ubigeo-peru.json");
 
@@ -39,6 +44,7 @@ export const seedUbigeo = async (dataSource: DataSource): Promise<void> => {
 
   for (const row of rows) {
     const provinceName = (PROVINCE_NAME_OVERRIDES[row.provinceCode] ?? row.provinceName).trim();
+    const districtName = (DISTRICT_NAME_OVERRIDES[row.districtCode] ?? row.districtName).trim();
 
     departments.set(row.departmentCode, {
       id: row.departmentCode,
@@ -58,8 +64,8 @@ export const seedUbigeo = async (dataSource: DataSource): Promise<void> => {
 
     districts.set(row.districtCode, {
       id: row.districtCode,
-      name: row.districtName.trim(),
-      normalizedName: normalizeUbigeoName(row.districtName),
+      name: districtName,
+      normalizedName: normalizeUbigeoName(districtName),
       provinceId: row.provinceCode,
       province: undefined,
     });

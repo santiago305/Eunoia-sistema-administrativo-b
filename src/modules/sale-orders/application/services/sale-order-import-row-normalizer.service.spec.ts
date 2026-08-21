@@ -171,6 +171,68 @@ describe("SaleOrderImportRowNormalizerService", () => {
     }
   });
 
+  it.each([
+    ["Carmen de la Legua Reynoso", "Carmen de La Legua"],
+    ["Carmen de la Legua", "Carmen de la Legua Reynoso"],
+    ["Carmen de la Legua-Reynoso", "Carmen de La Legua"],
+  ])(
+    "resolves the district alias %s against catalog name %s",
+    async (districtName, catalogDistrictName) => {
+      const ubigeoRepo = {
+        listDepartments: jest.fn().mockResolvedValue([{ id: "07", name: "Callao" }]),
+        listProvincesByDepartmentIds: jest.fn().mockResolvedValue([
+          { id: "0701", name: "Callao", departmentId: "07" },
+        ]),
+        listDistrictsByProvinceIds: jest.fn().mockResolvedValue([
+          { id: "070103", name: catalogDistrictName, provinceId: "0701" },
+        ]),
+      };
+      const clientRepo = {
+        findByDocument: jest.fn(),
+        findByReference: jest.fn(),
+      };
+      const telephoneRepo = { findByNumber: jest.fn().mockResolvedValue(null) };
+
+      const moduleRef = await Test.createTestingModule({
+        providers: [
+          SaleOrderImportRowNormalizerService,
+          { provide: UBIGEO_REPOSITORY, useValue: ubigeoRepo },
+          { provide: CLIENT_REPOSITORY, useValue: clientRepo },
+          { provide: TELEPHONE_REPOSITORY, useValue: telephoneRepo },
+          { provide: SaleOrderSkuRecognitionCodeService, useValue: skuRecognitionCodes },
+          { provide: SourceRecognitionCodeService, useValue: sourceRecognitionCodes },
+        ],
+      }).compile();
+
+      try {
+        const svc = moduleRef.get(SaleOrderImportRowNormalizerService);
+        const result = await svc.normalize(
+          {
+            recipientName: "Cliente Carmen de la Legua",
+            phone: "+51981046002",
+            departmentName: "Callao",
+            provinceName: "Prov. Const. del Callao",
+            districtName,
+            productCodes: "JABON DE CURCUMA-EVA02032 x 2",
+            total: 60,
+          } as any,
+          34,
+        );
+
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+          expect(result.row.ubigeo).toEqual({
+            departmentId: "07",
+            provinceId: "0701",
+            districtId: "070103",
+          });
+        }
+      } finally {
+        await moduleRef.close();
+      }
+    },
+  );
+
   it("returns the Excel row and original product text when no configured code matches", async () => {
     const ubigeoRepo = {
       listDepartments: jest.fn().mockResolvedValue([]),
