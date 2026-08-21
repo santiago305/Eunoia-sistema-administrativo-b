@@ -56,8 +56,7 @@ export class SaleOrderEditPolicyService {
         ? 'NONE'
         : resolvedStockStatus;
 
-    const productsEditable =
-      !isFinal && stockStatus !== 'RESERVED';
+    const productsEditable = true;
     const warehouseEditable =
       !isFinal &&
       stockStatus !== 'RESERVED' &&

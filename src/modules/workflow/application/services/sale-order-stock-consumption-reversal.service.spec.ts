@@ -58,11 +58,14 @@ describe("SaleOrderStockConsumptionReversalService", () => {
     new Date("2026-08-20T00:00:00.000Z"),
   );
 
-  function buildService(existingReversals: ProductCatalogInventoryDocument[] = []) {
+  function buildService(
+    existingReversals: ProductCatalogInventoryDocument[] = [],
+    consumedDocuments: ProductCatalogInventoryDocument[] = [consumedDocument],
+  ) {
     const documentRepo = {
       findByReference: jest
         .fn()
-        .mockResolvedValueOnce([consumedDocument])
+        .mockResolvedValueOnce(consumedDocuments)
         .mockResolvedValueOnce(existingReversals),
       listItems: jest.fn().mockResolvedValue([
         new ProductCatalogInventoryDocumentItem(
@@ -214,5 +217,53 @@ describe("SaleOrderStockConsumptionReversalService", () => {
 
     expect(dependencies.documentRepo.create).not.toHaveBeenCalled();
     expect(dependencies.inventoryRepo.incrementOnHand).not.toHaveBeenCalled();
+  });
+
+  it('reverses a newer consumption even when an older one was already reversed', async () => {
+    const existing = new ProductCatalogInventoryDocument(
+      'in-existing',
+      DocType.IN,
+      null,
+      DocStatus.POSTED,
+      'serie-in',
+      6,
+      null,
+      'warehouse-1',
+      'order-1',
+      ReferenceType.SALE_ORDER,
+      'Reversión del consumo out-1 por corrección',
+      'user-2',
+      'user-2',
+      new Date('2026-08-21T00:00:00.000Z'),
+    );
+    const newerConsumption = new ProductCatalogInventoryDocument(
+      'out-2',
+      DocType.OUT,
+      null,
+      DocStatus.POSTED,
+      'serie-out',
+      6,
+      'warehouse-1',
+      null,
+      'order-1',
+      ReferenceType.SALE_ORDER,
+      'Consumo corregido',
+      'user-1',
+      'user-1',
+      new Date('2026-08-22T00:00:00.000Z'),
+    );
+    const dependencies = buildService(
+      [existing],
+      [consumedDocument, newerConsumption],
+    );
+
+    await expect(
+      dependencies.service.restoreAndReserve(order, 'user-2', tx),
+    ).resolves.toBe(true);
+
+    expect(dependencies.documentRepo.listItems).toHaveBeenCalledWith(
+      'out-2',
+      tx,
+    );
   });
 });

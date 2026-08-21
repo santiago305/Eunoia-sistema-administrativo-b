@@ -52,6 +52,12 @@ describe('SaveSaleOrderWithClientUsecase', () => {
         retiredPaymentIds: [],
       }),
     };
+    const paymentWorkflowReconciliation = {
+      reconcile: jest.fn().mockResolvedValue({ stateChanged: true }),
+    };
+    const stockCorrection = {
+      consumeCorrectedSaleOrder: jest.fn().mockResolvedValue(undefined),
+    };
     const attachmentRepo = {
       list: jest.fn().mockResolvedValue([]),
       markDeleted: jest.fn(),
@@ -98,7 +104,12 @@ describe('SaveSaleOrderWithClientUsecase', () => {
         fileStorage as any,
         clientRealtime as any,
         imageProcessor as any,
+        undefined,
+        paymentWorkflowReconciliation as any,
+        stockCorrection as any,
       ),
+      paymentWorkflowReconciliation,
+      stockCorrection,
     };
   }
 
@@ -178,8 +189,85 @@ describe('SaveSaleOrderWithClientUsecase', () => {
         workflowId: undefined,
       }),
       tx,
+      {
+        deferPaymentWorkflowReconciliation: true,
+        executedBy: 'user-1',
+      },
     );
     expect(f.createOrder.executeInTransaction).not.toHaveBeenCalled();
+  });
+
+  it('reconciles payment workflow after saving the final prices and payments', async () => {
+    const f = fixture();
+    f.updateOrder.executeInTransaction.mockResolvedValue({
+      orderId: 'order-1',
+      serie: 'PE',
+      correlative: 28,
+      workflowId: 'workflow-1',
+      currentStateId: 'state-to-send',
+      previousTotal: 0,
+      totalChanged: true,
+    });
+
+    await f.usecase.execute({
+      saleOrderId: 'order-1',
+      data: {
+        ...data,
+        items: data.items.map((item) => ({
+          ...item,
+          unitPrice: 119.9,
+          total: 119.9,
+        })),
+      },
+      paymentPhotoByClientKey: new Map(),
+      userId: 'user-1',
+    });
+
+    expect(f.paymentWorkflowReconciliation.reconcile).toHaveBeenCalledWith(
+      {
+        saleOrderId: 'order-1',
+        executedBy: 'user-1',
+        source: 'sale-order-with-client-save',
+        previousTotal: 0,
+      },
+      tx,
+    );
+    expect(
+      f.paymentReconciler.reconcile.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      f.paymentWorkflowReconciliation.reconcile.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('consumes the corrected composition again when a paid order remains final', async () => {
+    const f = fixture();
+    f.updateOrder.executeInTransaction.mockResolvedValue({
+      orderId: 'order-1',
+      serie: 'PE',
+      correlative: 28,
+      workflowId: 'workflow-1',
+      currentStateId: 'state-delivered',
+      previousTotal: 100,
+      totalChanged: false,
+      stockCompositionReplaced: true,
+      previousStockStatus: 'CONSUMED',
+    });
+    f.paymentWorkflowReconciliation.reconcile.mockResolvedValue({
+      stateChanged: false,
+      currentState: { id: 'state-delivered' },
+    });
+
+    await f.usecase.execute({
+      saleOrderId: 'order-1',
+      data,
+      paymentPhotoByClientKey: new Map(),
+      userId: 'user-1',
+    });
+
+    expect(f.stockCorrection.consumeCorrectedSaleOrder).toHaveBeenCalledWith(
+      'order-1',
+      tx,
+    );
   });
 
   it('deletes newly written files when the database transaction fails', async () => {

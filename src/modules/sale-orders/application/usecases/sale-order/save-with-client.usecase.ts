@@ -34,6 +34,8 @@ import { SaleOrderPaymentReconcilerService } from '../../services/sale-order-pay
 import { CreateSaleOrderUsecase } from './create.usecase';
 import { UpdateSaleOrderUsecase } from './update.usecase';
 import { SaleOrderCommandAuthorizationService } from '../../services/sale-order-command-authorization.service';
+import { SaleOrderPaymentWorkflowReconciliationService } from '../../services/sale-order-payment-workflow-reconciliation.service';
+import { SaleOrderStockCorrectionService } from '../../services/sale-order-stock-correction.service';
 
 type SaveSaleOrderWithClientInput = {
   saleOrderId?: string;
@@ -61,6 +63,10 @@ export class SaveSaleOrderWithClientUsecase {
     @Inject(IMAGE_PROCESSOR)
     private readonly imageProcessor: ImageProcessor,
     @Optional() private readonly commandAuthorization?: SaleOrderCommandAuthorizationService,
+    @Optional()
+    private readonly paymentWorkflowReconciliation?: SaleOrderPaymentWorkflowReconciliationService,
+    @Optional()
+    private readonly stockCorrection?: SaleOrderStockCorrectionService,
   ) {}
 
   async execute(input: SaveSaleOrderWithClientInput) {
@@ -102,6 +108,10 @@ export class SaveSaleOrderWithClientUsecase {
                 payments: undefined,
               },
               tx,
+              {
+                deferPaymentWorkflowReconciliation: true,
+                executedBy: input.userId,
+              },
             )
           : await this.createOrder.executeInTransaction(
               {
@@ -135,6 +145,40 @@ export class SaveSaleOrderWithClientUsecase {
           tx,
         );
 
+        const paymentWorkflowResult =
+          input.saleOrderId && this.paymentWorkflowReconciliation
+            ? await this.paymentWorkflowReconciliation.reconcile(
+                {
+                  saleOrderId: orderResult.orderId,
+                  executedBy: input.userId,
+                  source: 'sale-order-with-client-save',
+                  previousTotal:
+                    'previousTotal' in orderResult
+                      ? Number(orderResult.previousTotal)
+                      : undefined,
+                },
+                tx,
+              )
+            : null;
+
+        if (
+          'stockCompositionReplaced' in orderResult &&
+          orderResult.stockCompositionReplaced === true &&
+          'previousStockStatus' in orderResult &&
+          orderResult.previousStockStatus === 'CONSUMED' &&
+          paymentWorkflowResult?.stateChanged !== true
+        ) {
+          if (!this.stockCorrection) {
+            throw new BadRequestException(
+              'No se pudo completar la corrección segura del inventario',
+            );
+          }
+          await this.stockCorrection.consumeCorrectedSaleOrder(
+            orderResult.orderId,
+            tx,
+          );
+        }
+
         await this.reconcileAttachments(
           {
             saleOrderId: orderResult.orderId,
@@ -153,6 +197,9 @@ export class SaveSaleOrderWithClientUsecase {
 
         return {
           ...orderResult,
+          currentStateId:
+            paymentWorkflowResult?.currentState?.id ??
+            orderResult.currentStateId,
           clientId: clientResult.clientId,
         };
       });

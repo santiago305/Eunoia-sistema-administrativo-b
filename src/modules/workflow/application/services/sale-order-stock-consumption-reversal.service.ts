@@ -70,14 +70,6 @@ export class SaleOrderStockConsumptionReversalService {
       },
       tx,
     );
-    const consumedDocument = outDocuments.find(
-      (document) => document.status === DocStatus.POSTED,
-    );
-    if (!consumedDocument?.id) return false;
-
-    const reversalMarker = saleOrderStockConsumptionReversalMarker(
-      consumedDocument.id,
-    );
     const existingReversals = await this.documentRepo.findByReference(
       {
         referenceType: ReferenceType.SALE_ORDER,
@@ -86,15 +78,23 @@ export class SaleOrderStockConsumptionReversalService {
       },
       tx,
     );
-    if (
-      existingReversals.some(
-        (document) =>
-          document.status === DocStatus.POSTED &&
-          document.note?.includes(reversalMarker),
-      )
-    ) {
-      return false;
-    }
+    const consumedDocument = outDocuments.find(
+      (document) =>
+        document.status === DocStatus.POSTED &&
+        document.id &&
+        !existingReversals.some(
+          (reversal) =>
+            reversal.status === DocStatus.POSTED &&
+            reversal.note?.includes(
+              saleOrderStockConsumptionReversalMarker(document.id as string),
+            ),
+        ),
+    );
+    if (!consumedDocument?.id) return false;
+
+    const reversalMarker = saleOrderStockConsumptionReversalMarker(
+      consumedDocument.id,
+    );
 
     const consumedItems = await this.documentRepo.listItems(
       consumedDocument.id,

@@ -1,4 +1,5 @@
 import { SaleOrder } from "src/modules/sale-orders/domain/entities/sale-order";
+import { SaleOrderPaymentWorkflowReconciliationService } from "../../services/sale-order-payment-workflow-reconciliation.service";
 import { CorrectSaleOrderTotalUsecase } from "./correct-total.usecase";
 
 describe("CorrectSaleOrderTotalUsecase", () => {
@@ -177,16 +178,21 @@ describe("CorrectSaleOrderTotalUsecase", () => {
     const stockReversal = {
       restoreAndReserve: jest.fn().mockResolvedValue(true),
     };
+    const paymentWorkflowReconciliation =
+      new SaleOrderPaymentWorkflowReconciliationService(
+        saleOrderRepo as any,
+        paymentRepo as any,
+        workflowRepo as any,
+        historyRepo as any,
+        { now: () => new Date("2026-08-21T12:00:00.000Z") } as any,
+        stockReversal as any,
+      );
     const usecase = new CorrectSaleOrderTotalUsecase(
       { runInTransaction: (work: (context: unknown) => unknown) => work(tx) } as any,
       saleOrderRepo as any,
       itemRepo as any,
       componentRepo as any,
-      paymentRepo as any,
-      workflowRepo as any,
-      historyRepo as any,
-      { now: () => new Date("2026-08-21T12:00:00.000Z") } as any,
-      stockReversal as any,
+      paymentWorkflowReconciliation,
     );
 
     return {

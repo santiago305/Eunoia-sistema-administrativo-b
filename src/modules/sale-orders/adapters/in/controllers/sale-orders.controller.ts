@@ -626,9 +626,11 @@ export class SaleOrdersController {
   async update(
     @Param('id', ParseUUIDPipe) saleOrderId: string,
     @Body() dto: HttpSaleOrderUpdateDto,
+    @CurrentUser() user: { id: string },
   ) {
     const result = await this.updateSaleOrder.execute({
       saleOrderId,
+      userId: user.id,
       warehouseId: dto.warehouseId,
       workflowId: dto.workflowId,
       clientId: dto.clientId,

@@ -41,6 +41,8 @@ import {
   SaleOrderSuppliesService,
   SaleOrderSupplyInput,
 } from '../../services/sale-order-supplies.service';
+import { SaleOrderPaymentWorkflowReconciliationService } from '../../services/sale-order-payment-workflow-reconciliation.service';
+import { SaleOrderStockCorrectionService } from '../../services/sale-order-stock-correction.service';
 
 export type UpdateSaleOrderInput = {
   saleOrderId: string;
@@ -93,6 +95,11 @@ export type UpdateSaleOrderInput = {
   supplies?: SaleOrderSupplyInput[];
 };
 
+type UpdateSaleOrderTransactionOptions = {
+  deferPaymentWorkflowReconciliation?: boolean;
+  executedBy?: string;
+};
+
 @Injectable()
 export class UpdateSaleOrderUsecase {
   constructor(
@@ -123,6 +130,10 @@ export class UpdateSaleOrderUsecase {
     @Optional()
     private readonly commandAuthorization?: SaleOrderCommandAuthorizationService,
     @Optional() private readonly suppliesService?: SaleOrderSuppliesService,
+    @Optional()
+    private readonly paymentWorkflowReconciliation?: SaleOrderPaymentWorkflowReconciliationService,
+    @Optional()
+    private readonly stockCorrection?: SaleOrderStockCorrectionService,
   ) {}
 
   private buildComponentSignature(
@@ -158,45 +169,6 @@ export class UpdateSaleOrderUsecase {
       .join('|');
   }
 
-  private buildCommercialItemSignature(
-    items: Array<{
-      referencePackId?: string | null;
-      quantity: number;
-      unitPrice: number;
-      total: number;
-      components: Array<{
-        skuId: string;
-        referencePackItemId?: string | null;
-        quantity: number;
-        unitPrice: number;
-        total: number;
-      }>;
-    }>,
-  ): string {
-    return items
-      .map((item) =>
-        JSON.stringify({
-          referencePackId: item.referencePackId ?? null,
-          quantity: Number(item.quantity),
-          unitPrice: Number(item.unitPrice),
-          total: Number(item.total),
-          components: item.components
-            .map((component) => ({
-              skuId: component.skuId,
-              referencePackItemId: component.referencePackItemId ?? null,
-              quantity: Number(component.quantity),
-              unitPrice: Number(component.unitPrice),
-              total: Number(component.total),
-            }))
-            .sort((left, right) =>
-              JSON.stringify(left).localeCompare(JSON.stringify(right)),
-            ),
-        }),
-      )
-      .sort()
-      .join('|');
-  }
-
   async execute(input: UpdateSaleOrderInput) {
     if (input.userId) {
       await this.commandAuthorization?.authorizeUpdate(
@@ -205,13 +177,14 @@ export class UpdateSaleOrderUsecase {
       );
     }
     return this.uow.runInTransaction((tx) =>
-      this.executeInTransaction(input, tx),
+      this.executeInTransaction(input, tx, { executedBy: input.userId }),
     );
   }
 
   async executeInTransaction(
     input: UpdateSaleOrderInput,
     tx: TransactionContext,
+    options: UpdateSaleOrderTransactionOptions = {},
   ) {
     await this.adviserMembership?.assertIsAdviser(input.assignedBy);
     const order = await this.saleOrderRepo.findByIdForUpdate(
@@ -332,47 +305,14 @@ export class UpdateSaleOrderUsecase {
       componentPlansByItemIndex.push(plans);
     }
 
-    if (editPolicy.isFinal) {
-      const existingComponents =
-        await this.componentRepo.listBySaleOrderItemIds(existingItemIds, tx);
-      const currentSignature = this.buildCommercialItemSignature(
-        existingItems.map((item) => ({
-          referencePackId: item.referencePackId,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          total: item.total,
-          components: existingComponents
-            .filter((component) => component.saleOrderItemId === item.id)
-            .map((component) => ({
-              skuId: component.skuId,
-              referencePackItemId: component.referencePackItemId,
-              quantity: component.quantity,
-              unitPrice: component.unitPrice,
-              total: component.total,
-            })),
-        })),
+    if (editPolicy.isFinal && input.warehouseId !== order.warehouseId) {
+      throw new BadRequestException(
+        'No se puede cambiar el almacén de un pedido finalizado.',
       );
-      const nextSignature = this.buildCommercialItemSignature(
-        input.items.map((item, index) => ({
-          referencePackId: item.referencePackId ?? null,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          total: item.total,
-          components: componentPlansByItemIndex[index] ?? [],
-        })),
-      );
-
-      if (
-        input.warehouseId !== order.warehouseId ||
-        currentSignature !== nextSignature
-      ) {
-        throw new BadRequestException(
-          'No se pueden cambiar productos, packs, cantidades, precios ni almacén de un pedido finalizado.',
-        );
-      }
     }
 
     const stockLifecycleStatus = editPolicy.stockStatus;
+    let activeStockCompositionReleased = false;
     const warehouseChanged = input.warehouseId !== order.warehouseId;
     if (warehouseChanged && stockLifecycleStatus === 'RESERVED') {
       throw new BadRequestException(
@@ -404,11 +344,20 @@ export class UpdateSaleOrderUsecase {
         })),
       );
       if (currentSignature !== nextSignature) {
-        throw new BadRequestException(
-          stockLifecycleStatus === 'RESERVED'
-            ? 'Este pedido ya tiene stock reservado. Para cambiar productos o cantidades, primero debes liberar la reserva del flujo.'
-            : 'Este pedido ya consumió stock. No se pueden cambiar productos o cantidades.',
-        );
+        const executedBy =
+          options.executedBy ?? input.userId ?? order.createdBy ?? null;
+        if (!this.stockCorrection || !executedBy) {
+          throw new BadRequestException(
+            'No se pudo iniciar la corrección segura del inventario',
+          );
+        }
+        activeStockCompositionReleased =
+          await this.stockCorrection.releasePreviousComposition(
+            order,
+            stockLifecycleStatus,
+            executedBy,
+            tx,
+          );
       }
     }
 
@@ -427,11 +376,26 @@ export class UpdateSaleOrderUsecase {
         this.buildSupplySignature(currentSupplies) !==
         this.buildSupplySignature(input.supplies)
       ) {
-        throw new BadRequestException(
-          stockLifecycleStatus === 'RESERVED'
-            ? 'Este pedido ya tiene stock reservado. Para cambiar insumos o cantidades, primero debes liberar la reserva del flujo.'
-            : 'No se pueden cambiar insumos de un pedido finalizado o con stock consumido.',
-        );
+        if (
+          (stockLifecycleStatus === 'RESERVED' ||
+            stockLifecycleStatus === 'CONSUMED') &&
+          !activeStockCompositionReleased
+        ) {
+          const executedBy =
+            options.executedBy ?? input.userId ?? order.createdBy ?? null;
+          if (!this.stockCorrection || !executedBy) {
+            throw new BadRequestException(
+              'No se pudo iniciar la corrección segura del inventario',
+            );
+          }
+          activeStockCompositionReleased =
+            await this.stockCorrection.releasePreviousComposition(
+              order,
+              stockLifecycleStatus,
+              executedBy,
+              tx,
+            );
+        }
       }
     }
 
@@ -522,6 +486,10 @@ export class UpdateSaleOrderUsecase {
       }
     }
 
+    if (activeStockCompositionReleased) {
+      await this.stockCorrection!.reserveCorrectedComposition(updated, tx);
+    }
+
     const paymentsInput = (input.payments ?? []).map((payment) => {
       const date = payment.date ? new Date(payment.date) : new Date();
 
@@ -568,12 +536,53 @@ export class UpdateSaleOrderUsecase {
       tx,
     );
 
+    const totalChanged =
+      Math.round(Number(order.total ?? 0) * 100) !==
+      Math.round(Number(total) * 100);
+    let reconciledCurrentStateId = updated.currentStateId ?? null;
+    let paymentStateChanged = false;
+    if (
+      !options.deferPaymentWorkflowReconciliation &&
+      options.executedBy &&
+      this.paymentWorkflowReconciliation &&
+      (totalChanged ||
+        input.payments !== undefined ||
+        activeStockCompositionReleased)
+    ) {
+      const reconciliation = await this.paymentWorkflowReconciliation.reconcile(
+        {
+          saleOrderId: updated.id,
+          executedBy: options.executedBy,
+          source: 'sale-order-standard-save',
+          previousTotal: Number(order.total ?? 0),
+          currentTotal: total,
+        },
+        tx,
+      );
+      reconciledCurrentStateId =
+        reconciliation?.currentState?.id ?? reconciledCurrentStateId;
+      paymentStateChanged = reconciliation?.stateChanged ?? false;
+    }
+
+    if (
+      activeStockCompositionReleased &&
+      stockLifecycleStatus === 'CONSUMED' &&
+      !options.deferPaymentWorkflowReconciliation &&
+      !paymentStateChanged
+    ) {
+      await this.stockCorrection!.consumeCorrectedComposition(updated, tx);
+    }
+
     return {
       orderId: updated.id,
       serie: updated.serie ?? null,
       correlative: updated.correlative ?? null,
       workflowId: updated.workflowId ?? null,
-      currentStateId: updated.currentStateId ?? null,
+      currentStateId: reconciledCurrentStateId,
+      previousTotal: Number(order.total ?? 0),
+      totalChanged,
+      stockCompositionReplaced: activeStockCompositionReleased,
+      previousStockStatus: stockLifecycleStatus,
     };
   }
 }

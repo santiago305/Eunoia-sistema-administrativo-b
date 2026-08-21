@@ -36,6 +36,7 @@ describe('UpdateSaleOrderUsecase', () => {
         warehouseId: 'warehouse-1',
         workflowId: 'workflow-1',
         currentStateId: 'state-1',
+        createdBy: 'user-1',
       }),
       update: jest.fn().mockResolvedValue({
         id: 'order-1',
@@ -139,6 +140,14 @@ describe('UpdateSaleOrderUsecase', () => {
       replace: jest.fn(),
       copyFromWorkflowRecipe: jest.fn(),
     };
+    const paymentWorkflowReconciliation = {
+      reconcile: jest.fn().mockResolvedValue({ stateChanged: true }),
+    };
+    const stockCorrection = {
+      releasePreviousComposition: jest.fn().mockResolvedValue(true),
+      reserveCorrectedComposition: jest.fn().mockResolvedValue(undefined),
+      consumeCorrectedComposition: jest.fn().mockResolvedValue(undefined),
+    };
     const editPolicy = new SaleOrderEditPolicyService(
       historyRepo as any,
       transitionRepo as any,
@@ -157,6 +166,8 @@ describe('UpdateSaleOrderUsecase', () => {
       undefined,
       undefined,
       suppliesService as any,
+      paymentWorkflowReconciliation as any,
+      stockCorrection as any,
     );
 
     return {
@@ -167,6 +178,8 @@ describe('UpdateSaleOrderUsecase', () => {
       paymentRepo,
       packRepo,
       suppliesService,
+      paymentWorkflowReconciliation,
+      stockCorrection,
     };
   };
 
@@ -177,6 +190,23 @@ describe('UpdateSaleOrderUsecase', () => {
 
     expect(componentRepo.bulkCreate).toHaveBeenCalled();
     expect(paymentRepo.deleteBySaleOrderId).not.toHaveBeenCalled();
+  });
+
+  it('reconciles the payment state when a standard save changes the total', async () => {
+    const { usecase, paymentWorkflowReconciliation } = createFixture();
+
+    await usecase.execute({ ...input, userId: 'user-2' });
+
+    expect(paymentWorkflowReconciliation.reconcile).toHaveBeenCalledWith(
+      {
+        saleOrderId: 'order-1',
+        executedBy: 'user-2',
+        source: 'sale-order-standard-save',
+        previousTotal: 0,
+        currentTotal: 10,
+      },
+      expect.anything(),
+    );
   });
 
   it('computes subtotal and total from item totals, delivery and discount', async () => {
@@ -212,7 +242,7 @@ describe('UpdateSaleOrderUsecase', () => {
     ).resolves.toEqual(expect.objectContaining({ orderId: 'order-1' }));
   });
 
-  it('rejects quantity edits when the current workflow state is final', async () => {
+  it('allows quantity and price corrections when the current workflow state is final', async () => {
     const fixture = createFixture([], true);
 
     await expect(
@@ -225,17 +255,9 @@ describe('UpdateSaleOrderUsecase', () => {
           },
         ],
       }),
-    ).rejects.toThrow(
-      'No se pueden cambiar productos, packs, cantidades, precios ni almacén de un pedido finalizado.',
-    );
+    ).resolves.toEqual(expect.objectContaining({ orderId: 'order-1' }));
 
-    expect(
-      fixture.componentRepo.deleteBySaleOrderItemIds,
-    ).not.toHaveBeenCalled();
-    expect(
-      fixture.saleOrderItemRepo.deleteBySaleOrderId,
-    ).not.toHaveBeenCalled();
-    expect(fixture.paymentRepo.deleteBySaleOrderId).not.toHaveBeenCalled();
+    expect(fixture.saleOrderItemRepo.bulkCreate).toHaveBeenCalled();
   });
 
   it('rejects warehouse edits when the current workflow state is final', async () => {
@@ -246,9 +268,7 @@ describe('UpdateSaleOrderUsecase', () => {
         ...input,
         warehouseId: 'warehouse-2',
       }),
-    ).rejects.toThrow(
-      'No se pueden cambiar productos, packs, cantidades, precios ni almacén de un pedido finalizado.',
-    );
+    ).rejects.toThrow('No se puede cambiar el almacén de un pedido finalizado.');
   });
 
   it('changes workflow, resets its state and copies the new recipe when supplies are omitted', async () => {
@@ -297,7 +317,7 @@ describe('UpdateSaleOrderUsecase', () => {
     );
   });
 
-  it('rejects supply changes while stock is reserved', async () => {
+  it('replaces the active reservation when supplies change', async () => {
     const fixture = createFixture([ACTIONS.RESERVE_STOCK]);
     fixture.suppliesService.listBySaleOrderId.mockResolvedValue([
       { supplySkuId: 'supply-1', quantity: 1, unitId: 'unit-1' },
@@ -308,12 +328,14 @@ describe('UpdateSaleOrderUsecase', () => {
         ...input,
         supplies: [{ supplySkuId: 'supply-1', quantity: 2, unitId: 'unit-1' }],
       }),
-    ).rejects.toThrow('Este pedido ya tiene stock reservado');
+    ).resolves.toEqual(expect.objectContaining({ orderId: 'order-1' }));
 
-    expect(fixture.suppliesService.replace).not.toHaveBeenCalled();
+    expect(fixture.stockCorrection.releasePreviousComposition).toHaveBeenCalled();
+    expect(fixture.stockCorrection.reserveCorrectedComposition).toHaveBeenCalled();
+    expect(fixture.suppliesService.replace).toHaveBeenCalled();
   });
 
-  it('rejects product and supply changes after stock was consumed', async () => {
+  it('replaces consumed stock when products change', async () => {
     const fixture = createFixture([
       ACTIONS.RESERVE_STOCK,
       ACTIONS.CONSUME_STOCK,
@@ -331,17 +353,15 @@ describe('UpdateSaleOrderUsecase', () => {
           },
         ],
       }),
-    ).rejects.toThrow('Este pedido ya consumió stock');
+    ).resolves.toEqual(expect.objectContaining({ orderId: 'order-1' }));
 
-    fixture.suppliesService.listBySaleOrderId.mockResolvedValue([
-      { supplySkuId: 'supply-1', quantity: 1, unitId: 'unit-1' },
-    ]);
-    await expect(
-      fixture.usecase.execute({
-        ...input,
-        supplies: [{ supplySkuId: 'supply-1', quantity: 2, unitId: 'unit-1' }],
-      }),
-    ).rejects.toThrow('No se pueden cambiar insumos');
+    expect(fixture.stockCorrection.releasePreviousComposition).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'order-1' }),
+      'CONSUMED',
+      'user-1',
+      expect.anything(),
+    );
+    expect(fixture.stockCorrection.reserveCorrectedComposition).toHaveBeenCalled();
   });
 
   it('rejects changing warehouse while stock is reserved before deleting related data', async () => {
