@@ -25,6 +25,7 @@ import {
   WorkflowTransitionRepository,
 } from "../../domain/ports/workflow-transition.repository";
 import { SaleOrderStockConsumptionService } from "./sale-order-stock-consumption.service";
+import { SaleOrderStockConsumptionReversalService } from "./sale-order-stock-consumption-reversal.service";
 import {
   SaleOrderWarehouseAssignmentService,
   WorkflowActionOutcome,
@@ -51,6 +52,7 @@ export class SaleOrderWorkflowActionRunnerService {
     @Inject(WORKFLOW_TRANSITION_REPOSITORY)
     private readonly transitionRepo: WorkflowTransitionRepository,
     private readonly stockConsumption: SaleOrderStockConsumptionService,
+    private readonly stockConsumptionReversal: SaleOrderStockConsumptionReversalService,
     private readonly warehouseAssignment: SaleOrderWarehouseAssignmentService,
   ) {}
 
@@ -84,6 +86,7 @@ export class SaleOrderWorkflowActionRunnerService {
     order: SaleOrder,
     actions: WorkflowAction[],
     tx: TransactionContext,
+    executedBy?: string,
   ): Promise<WorkflowActionRunResult> {
     if (order.isActive === false) {
       throw new ConflictException('Los pedidos eliminados son de solo lectura');
@@ -147,6 +150,13 @@ export class SaleOrderWorkflowActionRunnerService {
     }
 
     const onlyRevertsStock = stockActions.every((action) => action.type === ACTIONS.REVERT_STOCK);
+    if (onlyRevertsStock && effectiveOrder.warehouseId) {
+      await this.stockConsumptionReversal.restoreAndRelease(
+        effectiveOrder,
+        executedBy ?? effectiveOrder.createdBy,
+        tx,
+      );
+    }
     if (onlyRevertsStock && !(await this.hasActiveReservation(effectiveOrder.id, tx))) {
       await this.saleOrderRepo.setReserveBool(
         { saleOrderId: effectiveOrder.id, reserveBool: false },

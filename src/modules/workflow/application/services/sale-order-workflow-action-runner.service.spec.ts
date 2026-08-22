@@ -40,6 +40,9 @@ describe("SaleOrderWorkflowActionRunnerService", () => {
       }),
     };
     const consumption = { consume: jest.fn().mockResolvedValue(undefined) };
+    const consumptionReversal = {
+      restoreAndRelease: jest.fn().mockResolvedValue(false),
+    };
     const warehouseAssignment = {
       assign: jest.fn().mockImplementation(async (_order, _config) => ({
         order: { ..._order, warehouseId: _config.warehouseId },
@@ -65,6 +68,7 @@ describe("SaleOrderWorkflowActionRunnerService", () => {
         history as any,
         transitions as any,
         consumption as any,
+        consumptionReversal as any,
         warehouseAssignment as any,
       ),
       requirements,
@@ -74,6 +78,7 @@ describe("SaleOrderWorkflowActionRunnerService", () => {
       history,
       transitions,
       consumption,
+      consumptionReversal,
       warehouseAssignment,
     };
   }
@@ -400,6 +405,29 @@ describe("SaleOrderWorkflowActionRunnerService", () => {
       tx,
     );
 
+    expect(requirements.resolve).not.toHaveBeenCalled();
+    expect(inventory.incrementReserved).not.toHaveBeenCalled();
+  });
+
+  it("restores consumed stock before finishing a stock reversal", async () => {
+    const { runner, consumptionReversal, requirements, inventory } = setup(
+      { available: 10, reserved: 0, onHand: 7 },
+      { hasActiveReservation: false },
+    );
+    consumptionReversal.restoreAndRelease.mockResolvedValue(true);
+
+    await runner.run(
+      { ...order, createdBy: "creator-1" },
+      [{ id: "a1", transitionId: "t1", type: "REVERT_STOCK", config: {}, position: 0 } as any],
+      tx,
+      "user-2",
+    );
+
+    expect(consumptionReversal.restoreAndRelease).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "order-1" }),
+      "user-2",
+      tx,
+    );
     expect(requirements.resolve).not.toHaveBeenCalled();
     expect(inventory.incrementReserved).not.toHaveBeenCalled();
   });

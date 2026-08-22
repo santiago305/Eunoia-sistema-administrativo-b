@@ -212,7 +212,7 @@ describe("SaleOrderWorkflowTransitionService", () => {
       tx as any,
     );
 
-    expect(actionRunner.run).toHaveBeenCalledWith(order, [action], tx);
+    expect(actionRunner.run).toHaveBeenCalledWith(order, [action], tx, "user-1");
     expect(saleOrderRepo.updateWorkflowState).not.toHaveBeenCalled();
     expect(historyRepo.append).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -357,7 +357,7 @@ describe("SaleOrderWorkflowTransitionService", () => {
       tx as any,
     );
 
-    expect(actionRunner.run).toHaveBeenCalledWith(order, [thenAction], tx);
+    expect(actionRunner.run).toHaveBeenCalledWith(order, [thenAction], tx, "user-1");
     expect(historyRepo.append).toHaveBeenCalledWith(
       expect.objectContaining({
         metadata: {

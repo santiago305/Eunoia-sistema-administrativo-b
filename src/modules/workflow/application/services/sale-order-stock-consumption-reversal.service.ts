@@ -67,6 +67,48 @@ export class SaleOrderStockConsumptionReversalService {
     return this.restoreConsumption(order, executedBy, false, tx);
   }
 
+  async hasUnreversedConsumption(
+    saleOrderId: string,
+    tx: TransactionContext,
+  ): Promise<boolean> {
+    return Boolean(await this.findUnreversedConsumption(saleOrderId, tx));
+  }
+
+  private async findUnreversedConsumption(
+    saleOrderId: string,
+    tx: TransactionContext,
+  ): Promise<ProductCatalogInventoryDocument | null> {
+    const outDocuments = await this.documentRepo.findByReference(
+      {
+        referenceType: ReferenceType.SALE_ORDER,
+        referenceId: saleOrderId,
+        docType: DocType.OUT,
+      },
+      tx,
+    );
+    const existingReversals = await this.documentRepo.findByReference(
+      {
+        referenceType: ReferenceType.SALE_ORDER,
+        referenceId: saleOrderId,
+        docType: DocType.IN,
+      },
+      tx,
+    );
+
+    return outDocuments.find(
+      (document) =>
+        document.status === DocStatus.POSTED &&
+        document.id &&
+        !existingReversals.some(
+          (reversal) =>
+            reversal.status === DocStatus.POSTED &&
+            reversal.note?.includes(
+              saleOrderStockConsumptionReversalMarker(document.id as string),
+            ),
+        ),
+    ) ?? null;
+  }
+
   private async restoreConsumption(
     order: SaleOrder,
     executedBy: string,
@@ -79,34 +121,7 @@ export class SaleOrderStockConsumptionReversalService {
       );
     }
 
-    const outDocuments = await this.documentRepo.findByReference(
-      {
-        referenceType: ReferenceType.SALE_ORDER,
-        referenceId: order.id,
-        docType: DocType.OUT,
-      },
-      tx,
-    );
-    const existingReversals = await this.documentRepo.findByReference(
-      {
-        referenceType: ReferenceType.SALE_ORDER,
-        referenceId: order.id,
-        docType: DocType.IN,
-      },
-      tx,
-    );
-    const consumedDocument = outDocuments.find(
-      (document) =>
-        document.status === DocStatus.POSTED &&
-        document.id &&
-        !existingReversals.some(
-          (reversal) =>
-            reversal.status === DocStatus.POSTED &&
-            reversal.note?.includes(
-              saleOrderStockConsumptionReversalMarker(document.id as string),
-            ),
-        ),
-    );
+    const consumedDocument = await this.findUnreversedConsumption(order.id, tx);
     if (!consumedDocument?.id) return false;
 
     const reversalMarker = saleOrderStockConsumptionReversalMarker(
