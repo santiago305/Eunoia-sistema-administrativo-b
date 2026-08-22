@@ -603,7 +603,10 @@ export class SaleOrdersController {
   }
 
   @Patch(':saleOrderId/correct-total')
-  @RequirePermissions('sale_orders.update')
+  @RequirePermissions(
+    'sale_orders.update',
+    'sale_orders.advanced_orders',
+  )
   async correctSaleOrderTotal(
     @Param('saleOrderId', ParseUUIDPipe) saleOrderId: string,
     @Body() dto: CorrectSaleOrderTotalDto,

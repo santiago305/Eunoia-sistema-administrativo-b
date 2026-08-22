@@ -29,6 +29,10 @@ describe('UpdateSaleOrderUsecase', () => {
     > = [],
     currentStateIsFinal = false,
     packRepo = { findByIdWithItems: jest.fn() },
+    commandAuthorization?: {
+      authorizeUpdate: jest.Mock;
+      authorizeAdvancedOrder: jest.Mock;
+    },
   ) => {
     const saleOrderRepo = {
       findByIdForUpdate: jest.fn().mockResolvedValue({
@@ -37,6 +41,10 @@ describe('UpdateSaleOrderUsecase', () => {
         workflowId: 'workflow-1',
         currentStateId: 'state-1',
         createdBy: 'user-1',
+        subTotal: 10,
+        deliveryCost: 0,
+        discount: 0,
+        total: 10,
       }),
       update: jest.fn().mockResolvedValue({
         id: 'order-1',
@@ -164,7 +172,7 @@ describe('UpdateSaleOrderUsecase', () => {
       editPolicy,
       undefined,
       undefined,
-      undefined,
+      commandAuthorization as any,
       suppliesService as any,
       paymentWorkflowReconciliation as any,
       stockCorrection as any,
@@ -180,6 +188,7 @@ describe('UpdateSaleOrderUsecase', () => {
       suppliesService,
       paymentWorkflowReconciliation,
       stockCorrection,
+      commandAuthorization,
     };
   };
 
@@ -195,15 +204,28 @@ describe('UpdateSaleOrderUsecase', () => {
   it('reconciles the payment state when a standard save changes the total', async () => {
     const { usecase, paymentWorkflowReconciliation } = createFixture();
 
-    await usecase.execute({ ...input, userId: 'user-2' });
+    await usecase.execute({
+      ...input,
+      userId: 'user-2',
+      items: [
+        {
+          ...input.items[0],
+          unitPrice: 20,
+          total: 20,
+          components: [
+            { skuId: 'sku-1', quantity: 1, unitPrice: 20, total: 20 },
+          ],
+        },
+      ],
+    });
 
     expect(paymentWorkflowReconciliation.reconcile).toHaveBeenCalledWith(
       {
         saleOrderId: 'order-1',
         executedBy: 'user-2',
         source: 'sale-order-standard-save',
-        previousTotal: 0,
-        currentTotal: 10,
+        previousTotal: 10,
+        currentTotal: 20,
       },
       expect.anything(),
     );
@@ -258,6 +280,83 @@ describe('UpdateSaleOrderUsecase', () => {
     ).resolves.toEqual(expect.objectContaining({ orderId: 'order-1' }));
 
     expect(fixture.saleOrderItemRepo.bulkCreate).toHaveBeenCalled();
+  });
+
+  it('rejects advanced commercial corrections without Pedidos avanzados before mutating data', async () => {
+    const commandAuthorization = {
+      authorizeUpdate: jest.fn().mockResolvedValue(undefined),
+      authorizeAdvancedOrder: jest
+        .fn()
+        .mockRejectedValue(new Error('sale_orders.advanced_orders')),
+    };
+    const fixture = createFixture(
+      [],
+      true,
+      { findByIdWithItems: jest.fn() },
+      commandAuthorization,
+    );
+
+    await expect(
+      fixture.usecase.execute({
+        ...input,
+        userId: 'user-2',
+        items: [{ ...input.items[0], quantity: 2 }],
+      }),
+    ).rejects.toThrow('sale_orders.advanced_orders');
+
+    expect(commandAuthorization.authorizeAdvancedOrder).toHaveBeenCalledWith(
+      'user-2',
+    );
+    expect(fixture.saleOrderItemRepo.deleteBySaleOrderId).not.toHaveBeenCalled();
+    expect(fixture.componentRepo.deleteBySaleOrderItemIds).not.toHaveBeenCalled();
+  });
+
+  it('keeps advanced corrections enabled with Pedidos avanzados', async () => {
+    const commandAuthorization = {
+      authorizeUpdate: jest.fn().mockResolvedValue(undefined),
+      authorizeAdvancedOrder: jest.fn().mockResolvedValue(undefined),
+    };
+    const fixture = createFixture(
+      [],
+      true,
+      { findByIdWithItems: jest.fn() },
+      commandAuthorization,
+    );
+
+    await expect(
+      fixture.usecase.execute({
+        ...input,
+        userId: 'user-2',
+        items: [{ ...input.items[0], quantity: 2 }],
+      }),
+    ).resolves.toEqual(expect.objectContaining({ orderId: 'order-1' }));
+
+    expect(commandAuthorization.authorizeAdvancedOrder).toHaveBeenCalledWith(
+      'user-2',
+    );
+    expect(fixture.saleOrderItemRepo.bulkCreate).toHaveBeenCalled();
+  });
+
+  it('keeps metadata edits available without Pedidos avanzados', async () => {
+    const commandAuthorization = {
+      authorizeUpdate: jest.fn().mockResolvedValue(undefined),
+      authorizeAdvancedOrder: jest.fn().mockRejectedValue(new Error()),
+    };
+    const fixture = createFixture(
+      [],
+      true,
+      { findByIdWithItems: jest.fn() },
+      commandAuthorization,
+    );
+
+    await expect(
+      fixture.usecase.execute({
+        ...input,
+        userId: 'user-2',
+        note: 'Nota permitida',
+      }),
+    ).resolves.toEqual(expect.objectContaining({ orderId: 'order-1' }));
+    expect(commandAuthorization.authorizeAdvancedOrder).not.toHaveBeenCalled();
   });
 
   it('rejects warehouse edits when the current workflow state is final', async () => {

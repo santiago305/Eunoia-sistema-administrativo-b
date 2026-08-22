@@ -169,6 +169,56 @@ export class UpdateSaleOrderUsecase {
       .join('|');
   }
 
+  private buildCommercialItemSignature(
+    items: Array<{
+      referencePackId?: string | null;
+      packNameSnapshot?: string | null;
+      description?: string | null;
+      quantity: number;
+      unitPrice: number;
+      total: number;
+      components: Array<{
+        skuId: string;
+        referencePackItemId?: string | null;
+        quantity: number;
+        unitPrice: number;
+        total: number;
+      }>;
+    }>,
+  ): string {
+    return items
+      .map((item) =>
+        JSON.stringify({
+          referencePackId: item.referencePackId?.trim() || null,
+          packNameSnapshot: item.packNameSnapshot?.trim() || null,
+          description: item.description?.trim() || null,
+          quantity: Number(item.quantity ?? 0),
+          unitPrice: Number(item.unitPrice ?? 0),
+          total: Number(item.total ?? 0),
+          components: item.components
+            .map((component) => ({
+              skuId: component.skuId,
+              referencePackItemId:
+                component.referencePackItemId?.trim() || null,
+              quantity: Number(component.quantity ?? 0),
+              unitPrice: Number(component.unitPrice ?? 0),
+              total: Number(component.total ?? 0),
+            }))
+            .sort((left, right) =>
+              JSON.stringify(left).localeCompare(JSON.stringify(right)),
+            ),
+        }),
+      )
+      .sort()
+      .join('|');
+  }
+
+  private moneyChanged(left: number | null | undefined, right: number): boolean {
+    return (
+      Math.round(Number(left ?? 0) * 100) !== Math.round(Number(right) * 100)
+    );
+  }
+
   async execute(input: UpdateSaleOrderInput) {
     if (input.userId) {
       await this.commandAuthorization?.authorizeUpdate(
@@ -305,6 +355,61 @@ export class UpdateSaleOrderUsecase {
       componentPlansByItemIndex.push(plans);
     }
 
+    const existingComponents =
+      await this.componentRepo.listBySaleOrderItemIds(existingItemIds, tx);
+    const nextComponents = componentPlansByItemIndex.flat();
+    const stockCompositionChanged =
+      this.buildComponentSignature(
+        existingComponents.map((component) => ({
+          skuId: component.skuId,
+          quantity: Number(component.quantity ?? 0),
+        })),
+      ) !==
+      this.buildComponentSignature(
+        nextComponents.map((component) => ({
+          skuId: component.skuId,
+          quantity: Number(component.quantity ?? 0),
+        })),
+      );
+    const commercialItemsChanged =
+      this.buildCommercialItemSignature(
+        existingItems.map((item) => ({
+          referencePackId: item.referencePackId,
+          packNameSnapshot: item.packNameSnapshot,
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          total: item.total,
+          components: existingComponents
+            .filter((component) => component.saleOrderItemId === item.id)
+            .map((component) => ({
+              skuId: component.skuId,
+              referencePackItemId: component.referencePackItemId,
+              quantity: component.quantity,
+              unitPrice: component.unitPrice,
+              total: component.total,
+            })),
+        })),
+      ) !==
+      this.buildCommercialItemSignature(
+        input.items.map((item, index) => ({
+          referencePackId: item.referencePackId,
+          packNameSnapshot: item.packNameSnapshot,
+          description: item.description,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          total: item.total,
+          components: componentPlansByItemIndex[index] ?? [],
+        })),
+      );
+    const subTotal = input.items.reduce(
+      (sum, item) => sum + Number(item.total ?? 0),
+      0,
+    );
+    const deliveryCost = Number(input.deliveryCost ?? 0);
+    const discount = Number(input.discount ?? order.discount ?? 0);
+    const total = Math.max(0, subTotal + deliveryCost - discount);
+
     if (editPolicy.isFinal && input.warehouseId !== order.warehouseId) {
       throw new BadRequestException(
         'No se puede cambiar el almacén de un pedido finalizado.',
@@ -312,7 +417,10 @@ export class UpdateSaleOrderUsecase {
     }
 
     const stockLifecycleStatus = editPolicy.stockStatus;
-    let activeStockCompositionReleased = false;
+    const isAdvancedOrder =
+      editPolicy.isFinal ||
+      stockLifecycleStatus === 'RESERVED' ||
+      stockLifecycleStatus === 'CONSUMED';
     const warehouseChanged = input.warehouseId !== order.warehouseId;
     if (warehouseChanged && stockLifecycleStatus === 'RESERVED') {
       throw new BadRequestException(
@@ -324,79 +432,59 @@ export class UpdateSaleOrderUsecase {
         'No se puede cambiar el almacén porque el pedido ya consumió stock.',
       );
     }
-    if (
-      stockLifecycleStatus === 'RESERVED' ||
-      stockLifecycleStatus === 'CONSUMED'
-    ) {
-      const existingComponents =
-        await this.componentRepo.listBySaleOrderItemIds(existingItemIds, tx);
-      const currentSignature = this.buildComponentSignature(
-        existingComponents.map((component) => ({
-          skuId: component.skuId,
-          quantity: Number(component.quantity ?? 0),
-        })),
-      );
-      const nextComponents = componentPlansByItemIndex.flat();
-      const nextSignature = this.buildComponentSignature(
-        nextComponents.map((component) => ({
-          skuId: component.skuId,
-          quantity: Number(component.quantity ?? 0),
-        })),
-      );
-      if (currentSignature !== nextSignature) {
-        const executedBy =
-          options.executedBy ?? input.userId ?? order.createdBy ?? null;
-        if (!this.stockCorrection || !executedBy) {
-          throw new BadRequestException(
-            'No se pudo iniciar la corrección segura del inventario',
-          );
-        }
-        activeStockCompositionReleased =
-          await this.stockCorrection.releasePreviousComposition(
-            order,
-            stockLifecycleStatus,
-            executedBy,
-            tx,
-          );
-      }
-    }
 
+    let suppliesChanged = false;
     if (
       input.supplies !== undefined &&
       this.suppliesService &&
-      (editPolicy.isFinal ||
-        stockLifecycleStatus === 'RESERVED' ||
-        stockLifecycleStatus === 'CONSUMED')
+      isAdvancedOrder
     ) {
       const currentSupplies = await this.suppliesService.listBySaleOrderId(
         input.saleOrderId,
         tx,
       );
-      if (
+      suppliesChanged =
         this.buildSupplySignature(currentSupplies) !==
-        this.buildSupplySignature(input.supplies)
-      ) {
-        if (
-          (stockLifecycleStatus === 'RESERVED' ||
-            stockLifecycleStatus === 'CONSUMED') &&
-          !activeStockCompositionReleased
-        ) {
-          const executedBy =
-            options.executedBy ?? input.userId ?? order.createdBy ?? null;
-          if (!this.stockCorrection || !executedBy) {
-            throw new BadRequestException(
-              'No se pudo iniciar la corrección segura del inventario',
-            );
-          }
-          activeStockCompositionReleased =
-            await this.stockCorrection.releasePreviousComposition(
-              order,
-              stockLifecycleStatus,
-              executedBy,
-              tx,
-            );
-        }
+        this.buildSupplySignature(input.supplies);
+    }
+
+    const amountChanged =
+      this.moneyChanged(order.subTotal, subTotal) ||
+      this.moneyChanged(order.deliveryCost, deliveryCost) ||
+      this.moneyChanged(order.discount, discount) ||
+      this.moneyChanged(order.total, total);
+    const advancedCorrectionRequested =
+      isAdvancedOrder &&
+      (commercialItemsChanged || suppliesChanged || amountChanged);
+    const executedBy = options.executedBy ?? input.userId ?? null;
+    if (advancedCorrectionRequested && this.commandAuthorization) {
+      if (!executedBy) {
+        throw new BadRequestException(
+          'No se pudo validar el permiso Pedidos avanzados',
+        );
       }
+      await this.commandAuthorization.authorizeAdvancedOrder(executedBy);
+    }
+
+    let activeStockCompositionReleased = false;
+    if (
+      (stockLifecycleStatus === 'RESERVED' ||
+        stockLifecycleStatus === 'CONSUMED') &&
+      (stockCompositionChanged || suppliesChanged)
+    ) {
+      const stockActor = executedBy ?? order.createdBy ?? null;
+      if (!this.stockCorrection || !stockActor) {
+        throw new BadRequestException(
+          'No se pudo iniciar la corrección segura del inventario',
+        );
+      }
+      activeStockCompositionReleased =
+        await this.stockCorrection.releasePreviousComposition(
+          order,
+          stockLifecycleStatus,
+          stockActor,
+          tx,
+        );
     }
 
     await this.componentRepo.deleteBySaleOrderItemIds(existingItemIds, tx);
@@ -405,14 +493,6 @@ export class UpdateSaleOrderUsecase {
     if (input.payments) {
       await this.paymentRepo.deleteBySaleOrderId(input.saleOrderId, tx);
     }
-
-    const subTotal = input.items.reduce(
-      (sum, item) => sum + Number(item.total ?? 0),
-      0,
-    );
-    const deliveryCost = Number(input.deliveryCost ?? 0);
-    const discount = Number(input.discount ?? order.discount ?? 0);
-    const total = Math.max(0, subTotal + deliveryCost - discount);
 
     const updated = await this.saleOrderRepo.update(
       {

@@ -50,4 +50,20 @@ describe('SaleOrderCommandAuthorizationService', () => {
     await expect(service.authorizeCreate('u1', { client: { mode: 'create', data: {} } }))
       .rejects.toBeInstanceOf(ForbiddenException);
   });
+
+  it('requires Pedidos avanzados for sensitive corrections', async () => {
+    access.getEffectivePermissions.mockResolvedValue(['sale_orders.update']);
+
+    await expect(
+      service.authorizeAdvancedOrder('u1'),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+
+    access.getEffectivePermissions.mockResolvedValue([
+      'sale_orders.update',
+      'sale_orders.advanced_orders',
+    ]);
+    await expect(
+      service.authorizeAdvancedOrder('u1'),
+    ).resolves.toBeUndefined();
+  });
 });

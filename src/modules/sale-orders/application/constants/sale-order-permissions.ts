@@ -127,6 +127,16 @@ export const SALE_ORDER_PERMISSIONS: ReadonlyArray<Readonly<SaleOrderPermissionS
     type: "action",
   },
   {
+    code: "sale_orders.advanced_orders",
+    name: "Pedidos avanzados",
+    description:
+      "Corregir importes, productos, packs, cantidades e insumos en pedidos finalizados o con stock reservado o consumido",
+    module: "sale_orders",
+    resource: "sale_order_advanced",
+    action: "manage",
+    type: "action",
+  },
+  {
     code: "sale_orders.delete",
     name: "Eliminar pedido",
     description: "Archivar uno o varios pedidos de forma logica",
