@@ -231,6 +231,57 @@ describe('UpdateSaleOrderUsecase', () => {
     );
   });
 
+  it('reconciles the complete workflow when only the delivery date changes', async () => {
+    const { usecase, paymentWorkflowReconciliation } = createFixture();
+
+    await usecase.execute({
+      ...input,
+      userId: 'user-2',
+      deliveryDate: '2026-08-25',
+    });
+
+    expect(paymentWorkflowReconciliation.reconcile).toHaveBeenCalledWith(
+      {
+        saleOrderId: 'order-1',
+        executedBy: 'user-2',
+        source: 'sale-order-standard-save',
+        previousTotal: 10,
+        currentTotal: 10,
+        previousDeliveryDate: null,
+        currentDeliveryDate: '2026-08-25',
+      },
+      expect.anything(),
+    );
+  });
+
+  it('requires Pedidos avanzados to change the date after stock was reserved', async () => {
+    const commandAuthorization = {
+      authorizeUpdate: jest.fn().mockResolvedValue(undefined),
+      authorizeAdvancedOrder: jest
+        .fn()
+        .mockRejectedValue(new Error('sale_orders.advanced_orders')),
+    };
+    const fixture = createFixture(
+      [ACTIONS.RESERVE_STOCK],
+      false,
+      { findByIdWithItems: jest.fn() },
+      commandAuthorization,
+    );
+
+    await expect(
+      fixture.usecase.execute({
+        ...input,
+        userId: 'user-2',
+        deliveryDate: '2026-08-25',
+      }),
+    ).rejects.toThrow('sale_orders.advanced_orders');
+
+    expect(commandAuthorization.authorizeAdvancedOrder).toHaveBeenCalledWith(
+      'user-2',
+    );
+    expect(fixture.saleOrderRepo.update).not.toHaveBeenCalled();
+  });
+
   it('computes subtotal and total from item totals, delivery and discount', async () => {
     const { usecase, saleOrderRepo } = createFixture();
 

@@ -24,6 +24,8 @@ import { CONDITIONS } from 'src/modules/workflow/domain/constants/workflow-condi
 import { ACTIONS } from 'src/modules/workflow/domain/constants/workflow-action.constants';
 import { WorkflowState } from 'src/modules/workflow/domain/entities/workflow-state';
 import { SaleOrderStockCorrectionService } from './sale-order-stock-correction.service';
+import { ConditionFactory } from 'src/modules/workflow/domain/factories/condition.factory';
+import { WorkflowContext } from 'src/modules/workflow/domain/conditions/condition';
 
 @Injectable()
 export class SaleOrderPaymentWorkflowReconciliationService {
@@ -49,6 +51,8 @@ export class SaleOrderPaymentWorkflowReconciliationService {
       source: string;
       previousTotal?: number;
       currentTotal?: number;
+      previousDeliveryDate?: string | null;
+      currentDeliveryDate?: string | null;
       recordAuditWhenUnchanged?: boolean;
       requireWorkflow?: boolean;
     },
@@ -90,21 +94,43 @@ export class SaleOrderPaymentWorkflowReconciliationService {
     );
     const payments = await this.paymentRepo.listBySaleOrderIds([order.id], tx);
     const totalPaid = this.roundMoney(
-      payments.reduce(
-        (sum, payment) => sum + Number(payment.amount ?? 0),
-        0,
-      ),
+      payments.reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0),
     );
     const pendingAmount = this.roundMoney(Math.max(total - totalPaid, 0));
     const paymentStatus =
       total > 0 && totalPaid >= total
         ? ('PAID' as const)
         : ('PENDING' as const);
-    const rollbackAnalysis = await this.resolvePaymentRollback({
+    const previousDeliveryDate =
+      input.previousDeliveryDate === undefined
+        ? (order.deliveryDate ?? null)
+        : input.previousDeliveryDate;
+    const deliveryDate =
+      input.currentDeliveryDate === undefined
+        ? (order.deliveryDate ?? null)
+        : input.currentDeliveryDate;
+    const deliveryDateChanged = previousDeliveryDate !== deliveryDate;
+    const now = this.clock.now();
+    const conditionContext: WorkflowContext = {
+      orderId: order.id,
+      isPaid: paymentStatus === 'PAID',
+      hasStock: true,
+      isCancelled: false,
+      invoiceSent: order.invoiceSend,
+      currentDate: now,
+      variables: {
+        total,
+        totalPaid,
+        deliveryDate,
+        scheduleDate: order.scheduleDate,
+      },
+    };
+    const rollbackAnalysis = await this.resolveWorkflowRollback({
       saleOrderId: order.id,
       workflow,
       currentState,
       isPaid: paymentStatus === 'PAID',
+      conditionContext,
       tx,
     });
     const targetState = rollbackAnalysis.targetState;
@@ -144,7 +170,7 @@ export class SaleOrderPaymentWorkflowReconciliationService {
           fromStateId: currentState.id,
           toStateId: targetState.id,
           executedBy: input.executedBy,
-          executedAt: this.clock.now(),
+          executedAt: now,
           metadata: {
             source: input.source,
             previousTotal: this.roundMoney(
@@ -153,12 +179,18 @@ export class SaleOrderPaymentWorkflowReconciliationService {
             correctedTotal: total,
             totalPaid,
             pendingAmount,
+            previousDeliveryDate,
+            deliveryDate,
+            deliveryDateChanged,
             stateChanged,
             rollbackReason: stateChanged
-              ? 'payment-condition-invalidated'
+              ? this.resolveRollbackReason(rollbackAnalysis)
               : null,
-            invalidatedTransitionIds:
-              rollbackAnalysis.invalidatedTransitionIds,
+            invalidatedTransitionIds: rollbackAnalysis.invalidatedTransitionIds,
+            invalidatedPaymentTransitionIds:
+              rollbackAnalysis.invalidatedPaymentTransitionIds,
+            invalidatedDeliveryDateTransitionIds:
+              rollbackAnalysis.invalidatedDeliveryDateTransitionIds,
             stockRestored,
             stockRestoredAndReserved,
             stockStatus: stateChanged
@@ -182,6 +214,9 @@ export class SaleOrderPaymentWorkflowReconciliationService {
       totalPaid,
       pendingAmount,
       paymentStatus,
+      previousDeliveryDate,
+      deliveryDate,
+      deliveryDateChanged,
       previousState: {
         id: currentState.id,
         code: currentState.code,
@@ -195,36 +230,65 @@ export class SaleOrderPaymentWorkflowReconciliationService {
       stateChanged,
       stockRestored,
       stockRestoredAndReserved,
+      invalidatedTransitionIds: rollbackAnalysis.invalidatedTransitionIds,
+      invalidatedPaymentTransitionIds:
+        rollbackAnalysis.invalidatedPaymentTransitionIds,
+      invalidatedDeliveryDateTransitionIds:
+        rollbackAnalysis.invalidatedDeliveryDateTransitionIds,
     };
   }
 
-  private async resolvePaymentRollback(input: {
+  private async resolveWorkflowRollback(input: {
     saleOrderId: string;
     workflow: WorkflowAggregate;
     currentState: WorkflowState;
     isPaid: boolean;
+    conditionContext: WorkflowContext;
     tx: TransactionContext;
   }): Promise<{
     targetState: WorkflowState;
     invalidatedTransitionIds: string[];
+    invalidatedPaymentTransitionIds: string[];
+    invalidatedDeliveryDateTransitionIds: string[];
     targetRequiresReservation: boolean;
   }> {
-    if (input.isPaid) {
-      return {
-        targetState: input.currentState,
-        invalidatedTransitionIds: [],
-        targetRequiresReservation: false,
-      };
-    }
-
     const transitionsById = new Map(
-      input.workflow.transitions.map((transition) => [transition.id, transition]),
+      input.workflow.transitions.map((transition) => [
+        transition.id,
+        transition,
+      ]),
     );
     const paidTransitionIds = new Set(
       input.workflow.conditions
         .filter((condition) => condition.type === CONDITIONS.IS_PAID)
         .map((condition) => condition.transitionId),
     );
+    const invalidDeliveryDateTransitionIds = new Set(
+      input.workflow.conditions
+        .filter(
+          (condition) =>
+            condition.type === CONDITIONS.SCHEDULE_DELIVERY_WINDOW &&
+            !ConditionFactory.create(condition).evaluate(input.conditionContext)
+              .passed,
+        )
+        .map((condition) => condition.transitionId),
+    );
+    const invalidPaymentTransitionIds = input.isPaid
+      ? new Set<string>()
+      : paidTransitionIds;
+    const invalidWorkflowTransitionIds = new Set([
+      ...invalidPaymentTransitionIds,
+      ...invalidDeliveryDateTransitionIds,
+    ]);
+    if (!invalidWorkflowTransitionIds.size) {
+      return {
+        targetState: input.currentState,
+        invalidatedTransitionIds: [],
+        invalidatedPaymentTransitionIds: [],
+        invalidatedDeliveryDateTransitionIds: [],
+        targetRequiresReservation: false,
+      };
+    }
     const history = await this.historyRepo.listBySaleOrderId(
       input.saleOrderId,
       input.tx,
@@ -233,6 +297,8 @@ export class SaleOrderPaymentWorkflowReconciliationService {
     let rollbackStateId: string | null = null;
     let rollbackBoundaryIndex: number | null = null;
     const invalidatedTransitionIds: string[] = [];
+    const invalidatedPaymentIds: string[] = [];
+    const invalidatedDeliveryDateIds: string[] = [];
 
     for (let index = history.length - 1; index >= 0; index -= 1) {
       const item = history[index];
@@ -245,28 +311,47 @@ export class SaleOrderPaymentWorkflowReconciliationService {
       const executedBranch = item.metadata?.branch === 'ELSE' ? 'ELSE' : 'THEN';
       if (
         executedBranch === 'THEN' &&
-        paidTransitionIds.has(transition.id) &&
+        invalidWorkflowTransitionIds.has(transition.id) &&
         item.fromStateId
       ) {
         rollbackStateId = item.fromStateId;
         rollbackBoundaryIndex = index;
         invalidatedTransitionIds.push(transition.id);
+        if (invalidPaymentTransitionIds.has(transition.id)) {
+          invalidatedPaymentIds.push(transition.id);
+        }
+        if (invalidDeliveryDateTransitionIds.has(transition.id)) {
+          invalidatedDeliveryDateIds.push(transition.id);
+        }
       }
       cursorStateId = item.fromStateId;
       if (!cursorStateId) break;
     }
 
     if (!rollbackStateId) {
-      rollbackStateId = this.findGraphPaymentRollbackState(
+      const graphRollback = this.findGraphWorkflowRollbackState(
         input.currentState.id,
         input.workflow,
-        paidTransitionIds,
+        invalidWorkflowTransitionIds,
       );
+      rollbackStateId = graphRollback?.stateId ?? null;
+      for (const transitionId of graphRollback?.invalidatedTransitionIds ??
+        []) {
+        invalidatedTransitionIds.push(transitionId);
+        if (invalidPaymentTransitionIds.has(transitionId)) {
+          invalidatedPaymentIds.push(transitionId);
+        }
+        if (invalidDeliveryDateTransitionIds.has(transitionId)) {
+          invalidatedDeliveryDateIds.push(transitionId);
+        }
+      }
     }
     if (!rollbackStateId) {
       return {
         targetState: input.currentState,
         invalidatedTransitionIds: [],
+        invalidatedPaymentTransitionIds: [],
+        invalidatedDeliveryDateTransitionIds: [],
         targetRequiresReservation: false,
       };
     }
@@ -276,7 +361,7 @@ export class SaleOrderPaymentWorkflowReconciliationService {
     );
     if (!targetState) {
       throw new BadRequestException(
-        'El flujo no tiene activo el estado requerido por la condición de pago',
+        'El flujo no tiene activo el estado requerido por sus condiciones',
       );
     }
     const targetRequiresReservation =
@@ -286,13 +371,14 @@ export class SaleOrderPaymentWorkflowReconciliationService {
             history,
             rollbackBoundaryIndex,
           )
-        : this.resolveReservationFromGraph(
-            input.workflow,
-            targetState.id,
-          );
+        : this.resolveReservationFromGraph(input.workflow, targetState.id);
     return {
       targetState,
-      invalidatedTransitionIds,
+      invalidatedTransitionIds: [...new Set(invalidatedTransitionIds)],
+      invalidatedPaymentTransitionIds: [...new Set(invalidatedPaymentIds)],
+      invalidatedDeliveryDateTransitionIds: [
+        ...new Set(invalidatedDeliveryDateIds),
+      ],
       targetRequiresReservation,
     };
   }
@@ -413,14 +499,18 @@ export class SaleOrderPaymentWorkflowReconciliationService {
     return reserved;
   }
 
-  private findGraphPaymentRollbackState(
+  private findGraphWorkflowRollbackState(
     currentStateId: string,
     workflow: WorkflowAggregate,
-    paidTransitionIds: ReadonlySet<string>,
-  ): string | null {
+    invalidTransitionIds: ReadonlySet<string>,
+  ): { stateId: string; invalidatedTransitionIds: string[] } | null {
     const queue = [{ stateId: currentStateId, depth: 0 }];
     const visited = new Set<string>();
-    const candidates: Array<{ stateId: string; depth: number }> = [];
+    const candidates: Array<{
+      stateId: string;
+      depth: number;
+      transitionId: string;
+    }> = [];
 
     while (queue.length) {
       const current = queue.shift() as { stateId: string; depth: number };
@@ -437,13 +527,13 @@ export class SaleOrderPaymentWorkflowReconciliationService {
         if (!transition.fromStateId) continue;
         if (
           transition.toStateId === current.stateId &&
-          paidTransitionIds.has(transition.id)
+          invalidTransitionIds.has(transition.id)
         ) {
           candidates.push({
             stateId: transition.fromStateId,
             depth: current.depth + 1,
+            transitionId: transition.id,
           });
-          continue;
         }
         queue.push({
           stateId: transition.fromStateId,
@@ -453,17 +543,39 @@ export class SaleOrderPaymentWorkflowReconciliationService {
     }
 
     if (!candidates.length) return null;
-    const nearestDepth = Math.min(
+    const rollbackDepth = Math.max(
       ...candidates.map((candidate) => candidate.depth),
     );
-    const nearestStates = Array.from(
+    const rollbackStates = Array.from(
       new Set(
         candidates
-          .filter((candidate) => candidate.depth === nearestDepth)
+          .filter((candidate) => candidate.depth === rollbackDepth)
           .map((candidate) => candidate.stateId),
       ),
     );
-    return nearestStates.length === 1 ? nearestStates[0] : null;
+    if (rollbackStates.length !== 1) return null;
+    return {
+      stateId: rollbackStates[0],
+      invalidatedTransitionIds: candidates
+        .filter((candidate) => candidate.depth <= rollbackDepth)
+        .map((candidate) => candidate.transitionId),
+    };
+  }
+
+  private resolveRollbackReason(input: {
+    invalidatedPaymentTransitionIds: string[];
+    invalidatedDeliveryDateTransitionIds: string[];
+  }): string {
+    const paymentInvalidated = input.invalidatedPaymentTransitionIds.length > 0;
+    const deliveryDateInvalidated =
+      input.invalidatedDeliveryDateTransitionIds.length > 0;
+    if (paymentInvalidated && deliveryDateInvalidated) {
+      return 'payment-and-delivery-date-conditions-invalidated';
+    }
+    if (deliveryDateInvalidated) {
+      return 'delivery-date-condition-invalidated';
+    }
+    return 'payment-condition-invalidated';
   }
 
   private roundMoney(value: number): number {

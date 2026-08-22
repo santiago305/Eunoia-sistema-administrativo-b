@@ -453,9 +453,15 @@ export class UpdateSaleOrderUsecase {
       this.moneyChanged(order.deliveryCost, deliveryCost) ||
       this.moneyChanged(order.discount, discount) ||
       this.moneyChanged(order.total, total);
+    const previousDeliveryDate = order.deliveryDate ?? null;
+    const currentDeliveryDate = input.deliveryDate ?? null;
+    const deliveryDateChanged = previousDeliveryDate !== currentDeliveryDate;
     const advancedCorrectionRequested =
       isAdvancedOrder &&
-      (commercialItemsChanged || suppliesChanged || amountChanged);
+      (commercialItemsChanged ||
+        suppliesChanged ||
+        amountChanged ||
+        deliveryDateChanged);
     const executedBy = options.executedBy ?? input.userId ?? null;
     if (advancedCorrectionRequested && this.commandAuthorization) {
       if (!executedBy) {
@@ -626,6 +632,7 @@ export class UpdateSaleOrderUsecase {
       options.executedBy &&
       this.paymentWorkflowReconciliation &&
       (totalChanged ||
+        deliveryDateChanged ||
         input.payments !== undefined ||
         activeStockCompositionReleased)
     ) {
@@ -636,6 +643,9 @@ export class UpdateSaleOrderUsecase {
           source: 'sale-order-standard-save',
           previousTotal: Number(order.total ?? 0),
           currentTotal: total,
+          ...(deliveryDateChanged
+            ? { previousDeliveryDate, currentDeliveryDate }
+            : {}),
         },
         tx,
       );
@@ -661,6 +671,9 @@ export class UpdateSaleOrderUsecase {
       currentStateId: reconciledCurrentStateId,
       previousTotal: Number(order.total ?? 0),
       totalChanged,
+      previousDeliveryDate,
+      deliveryDate: currentDeliveryDate,
+      deliveryDateChanged,
       stockCompositionReplaced: activeStockCompositionReleased,
       previousStockStatus: stockLifecycleStatus,
     };

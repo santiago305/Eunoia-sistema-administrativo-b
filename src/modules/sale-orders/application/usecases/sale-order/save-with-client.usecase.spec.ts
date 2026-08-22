@@ -239,6 +239,37 @@ describe('SaveSaleOrderWithClientUsecase', () => {
     );
   });
 
+  it('passes the previous and current delivery dates to the workflow reconciliation', async () => {
+    const f = fixture();
+    f.updateOrder.executeInTransaction.mockResolvedValue({
+      orderId: 'order-1',
+      serie: 'PE',
+      correlative: 28,
+      workflowId: 'workflow-1',
+      currentStateId: 'state-waiting',
+      previousTotal: 25,
+      totalChanged: false,
+      previousDeliveryDate: '2026-08-21',
+      deliveryDate: '2026-08-25',
+      deliveryDateChanged: true,
+    });
+
+    await f.usecase.execute({
+      saleOrderId: 'order-1',
+      data: { ...data, deliveryDate: '2026-08-25' },
+      paymentPhotoByClientKey: new Map(),
+      userId: 'user-1',
+    });
+
+    expect(f.paymentWorkflowReconciliation.reconcile).toHaveBeenCalledWith(
+      expect.objectContaining({
+        previousDeliveryDate: '2026-08-21',
+        currentDeliveryDate: '2026-08-25',
+      }),
+      tx,
+    );
+  });
+
   it('consumes the corrected composition again when a paid order remains final', async () => {
     const f = fixture();
     f.updateOrder.executeInTransaction.mockResolvedValue({

@@ -156,6 +156,21 @@ export class SaveSaleOrderWithClientUsecase {
                     'previousTotal' in orderResult
                       ? Number(orderResult.previousTotal)
                       : undefined,
+                  ...('deliveryDateChanged' in orderResult &&
+                  orderResult.deliveryDateChanged === true
+                    ? {
+                        previousDeliveryDate:
+                          'previousDeliveryDate' in orderResult
+                            ? (orderResult.previousDeliveryDate as
+                                | string
+                                | null)
+                            : null,
+                        currentDeliveryDate:
+                          'deliveryDate' in orderResult
+                            ? (orderResult.deliveryDate as string | null)
+                            : null,
+                      }
+                    : {}),
                 },
                 tx,
               )
