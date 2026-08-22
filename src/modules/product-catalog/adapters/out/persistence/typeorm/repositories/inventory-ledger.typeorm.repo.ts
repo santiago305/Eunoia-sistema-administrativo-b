@@ -19,6 +19,7 @@ import { ReferenceType } from "src/shared/domain/value-objects/reference-type";
 import { DocType } from "src/shared/domain/value-objects/doc-type";
 import { Direction } from "src/shared/domain/value-objects/direction";
 import { ProductCatalogProductType } from "src/modules/product-catalog/domain/value-objects/product-type";
+import { buildInventoryMovementOriginLabel } from "src/modules/product-catalog/domain/services/inventory-movement-origin";
 
 @Injectable()
 export class ProductCatalogInventoryLedgerTypeormRepository implements ProductCatalogInventoryLedgerRepository {
@@ -371,6 +372,32 @@ export class ProductCatalogInventoryLedgerTypeormRepository implements ProductCa
       .innerJoin(ProductCatalogProductEntity, "p", "p.product_id = sku.product_id")
       .leftJoin(ProductCatalogUnitEntity, "bu", "bu.unit_id = p.base_unit_id")
       .innerJoin(ProductCatalogInventoryDocumentEntity, "d", "d.doc_id = l.doc_id")
+      .leftJoin("document_series", "ids", "ids.serie_id = d.serie_id")
+      .leftJoin(
+        "purchase_orders",
+        "po_origin",
+        "po_origin.po_id = d.reference_id AND d.reference_type = :movementPurchaseRefType",
+        { movementPurchaseRefType: ReferenceType.PURCHASE },
+      )
+      .leftJoin(
+        "production_orders",
+        "pr_origin",
+        "pr_origin.production_id = d.reference_id AND d.reference_type = :movementProductionRefType",
+        { movementProductionRefType: ReferenceType.PRODUCTION },
+      )
+      .leftJoin("document_series", "prs", "prs.serie_id = pr_origin.serie_id")
+      .leftJoin(
+        "sale_orders",
+        "so_origin",
+        "so_origin.id = d.reference_id AND d.reference_type = :movementSaleOrderRefType",
+        { movementSaleOrderRefType: ReferenceType.SALE_ORDER },
+      )
+      .leftJoin(
+        "document_series",
+        "sos",
+        "sos.code = so_origin.serie AND sos.warehouse_id = so_origin.warehouse_id AND sos.doc_type = :movementSaleOrderDocType",
+        { movementSaleOrderDocType: DocType.SALE_ORDER },
+      )
       .leftJoin("warehouses", "w", "w.id = l.warehouse_id")
       .leftJoin("users", "u_created", "u_created.user_id = d.created_by")
       .leftJoin("users", "u_posted", "u_posted.user_id = d.posted_by");
@@ -433,6 +460,22 @@ export class ProductCatalogInventoryLedgerTypeormRepository implements ProductCa
     const rows = await qb
       .select("l.ledger_id", "id")
       .addSelect("l.created_at", "createdAt")
+      .addSelect("d.doc_type", "docType")
+      .addSelect("d.reference_type", "referenceType")
+      .addSelect("d.correlative", "inventoryDocumentCorrelative")
+      .addSelect("ids.code", "inventoryDocumentSerie")
+      .addSelect("ids.separator", "inventoryDocumentSeparator")
+      .addSelect("ids.padding", "inventoryDocumentPadding")
+      .addSelect("po_origin.serie", "purchaseSerie")
+      .addSelect("po_origin.correlative", "purchaseCorrelative")
+      .addSelect("prs.code", "productionSerie")
+      .addSelect("prs.separator", "productionSeparator")
+      .addSelect("prs.padding", "productionPadding")
+      .addSelect("pr_origin.correlative", "productionCorrelative")
+      .addSelect("so_origin.serie", "saleOrderSerie")
+      .addSelect("sos.separator", "saleOrderSeparator")
+      .addSelect("sos.padding", "saleOrderPadding")
+      .addSelect("so_origin.correlative", "saleOrderCorrelative")
       .addSelect("l.quantity", "quantity")
       .addSelect("l.direction", "direction")
       .addSelect("l.warehouse_id", "warehouseId")
@@ -459,6 +502,22 @@ export class ProductCatalogInventoryLedgerTypeormRepository implements ProductCa
       .getRawMany<{
         id: string;
         createdAt: Date;
+        docType: DocType;
+        referenceType: ReferenceType | null;
+        inventoryDocumentCorrelative: number | string | null;
+        inventoryDocumentSerie: string | null;
+        inventoryDocumentSeparator: string | null;
+        inventoryDocumentPadding: number | string | null;
+        purchaseSerie: string | null;
+        purchaseCorrelative: number | string | null;
+        productionSerie: string | null;
+        productionSeparator: string | null;
+        productionPadding: number | string | null;
+        productionCorrelative: number | string | null;
+        saleOrderSerie: string | null;
+        saleOrderSeparator: string | null;
+        saleOrderPadding: number | string | null;
+        saleOrderCorrelative: number | string | null;
         quantity: number | string;
         direction: Direction;
         warehouseId: string;
@@ -485,10 +544,42 @@ export class ProductCatalogInventoryLedgerTypeormRepository implements ProductCa
       const userId = row.createdById ?? row.postedById ?? null;
       const userName = row.createdByName ?? row.postedByName ?? null;
       const userEmail = row.createdByEmail ?? row.postedByEmail ?? null;
+      const referenceNumber =
+        row.referenceType === ReferenceType.PURCHASE
+          ? {
+              serie: row.purchaseSerie ?? null,
+              correlative: row.purchaseCorrelative ?? null,
+            }
+          : row.referenceType === ReferenceType.PRODUCTION
+            ? {
+                serie: row.productionSerie ?? null,
+                correlative: row.productionCorrelative ?? null,
+                separator: row.productionSeparator ?? null,
+                padding: row.productionPadding ?? null,
+              }
+            : row.referenceType === ReferenceType.SALE_ORDER
+              ? {
+                  serie: row.saleOrderSerie ?? null,
+                  correlative: row.saleOrderCorrelative ?? null,
+                  separator: row.saleOrderSeparator ?? null,
+                  padding: row.saleOrderPadding ?? null,
+                }
+              : null;
 
       return {
         id: row.id,
         createdAt: row.createdAt,
+        originLabel: buildInventoryMovementOriginLabel({
+          docType: row.docType,
+          referenceType: row.referenceType ?? null,
+          documentNumber: {
+            serie: row.inventoryDocumentSerie ?? null,
+            correlative: row.inventoryDocumentCorrelative ?? null,
+            separator: row.inventoryDocumentSeparator ?? null,
+            padding: row.inventoryDocumentPadding ?? null,
+          },
+          referenceNumber,
+        }),
         quantity: Number(row.quantity ?? 0),
         direction: row.direction,
         warehouseId: row.warehouseId,

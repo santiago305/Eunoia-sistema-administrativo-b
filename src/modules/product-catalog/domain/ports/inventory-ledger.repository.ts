@@ -85,6 +85,7 @@ export interface ProductCatalogInventoryLedgerMovementUserRef {
 export interface ProductCatalogInventoryLedgerMovementListItem {
   id: string;
   createdAt: Date;
+  originLabel: string;
   quantity: number;
   direction: Direction;
   warehouseId: string;
