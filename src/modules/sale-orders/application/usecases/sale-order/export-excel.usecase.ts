@@ -38,6 +38,7 @@ const EXPORT_COLUMNS: ExportColumnDefinition[] = [
   { key: "detail", label: "Detalle", map: (row) => row.detail ?? "" },
   { key: "clientName", label: "Cliente", map: (row) => row.client?.fullName ?? "" },
   { key: "clientDocumentNumber", label: "Documento cliente", map: (row) => row.client?.docNumber ?? "" },
+  { key: "clientReference", label: "Referencia", map: (row) => row.client?.reference ?? "" },
   { key: "clientPhone", label: "Celular", map: (row) => row.client?.mainPhone ?? "" },
   { key: "clientDepartment", label: "Departamento", map: (row) => row.client?.department?.name ?? "" },
   { key: "clientProvince", label: "Provincia", map: (row) => row.client?.province?.name ?? "" },
@@ -119,7 +120,7 @@ export class ExportSaleOrdersExcelUsecase {
 
     const isColumnAllowed = (key: string) => {
       if (!readContext) return true;
-      const customerColumns = new Set(["clientDocumentNumber", "clientPhone", "clientDepartment", "clientProvince", "clientDistrict"]);
+      const customerColumns = new Set(["clientDocumentNumber", "clientReference", "clientPhone", "clientDepartment", "clientProvince", "clientDistrict"]);
       const amountColumns = new Set(["subTotal", "deliveryCost", "discount", "total", "totalPaid", "totalToPay", "paymentStatus"]);
       const productColumns = new Set(["SKUS", "detail"]);
       return (!customerColumns.has(key) || readContext.includeCustomerData)

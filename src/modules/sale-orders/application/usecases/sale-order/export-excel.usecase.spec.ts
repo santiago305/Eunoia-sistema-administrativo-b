@@ -17,7 +17,11 @@ describe("ExportSaleOrdersExcelUsecase", () => {
           id: "order-1",
           serie: "SO",
           correlative: 1,
-          client: { fullName: "Cliente Prueba", docNumber: "12345678" },
+          client: {
+            fullName: "Cliente Prueba",
+            docNumber: "12345678",
+            reference: "Puerta azul, segundo piso",
+          },
           warehouse: { name: "Principal" },
           source: { name: "Meta" },
           workflow: { name: "Venta" },
@@ -161,6 +165,21 @@ describe("ExportSaleOrdersExcelUsecase", () => {
     expect(worksheet?.getCell("B1").value).toBe("Detalle");
     expect(worksheet?.getCell("A2").value).toBe("EVA01863(1);EVA01893(1)");
     expect(worksheet?.getCell("B2").value).toBe("AMPOLLA ANTI ACNE x 2; AMPOLLA ANTI MANCHAS x 1");
+  });
+
+  it("exports the client reference as a selectable column", async () => {
+    const usecase = new ExportSaleOrdersExcelUsecase(saleOrderRepo as any);
+
+    const result = await usecase.execute({
+      columns: [{ key: "clientReference", label: "Referencia" }],
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(result.content);
+    const worksheet = workbook.getWorksheet("Pedidos");
+
+    expect(worksheet?.getCell("A1").value).toBe("Referencia");
+    expect(worksheet?.getCell("A2").value).toBe("Puerta azul, segundo piso");
   });
 
   it("exports lote column", async () => {
