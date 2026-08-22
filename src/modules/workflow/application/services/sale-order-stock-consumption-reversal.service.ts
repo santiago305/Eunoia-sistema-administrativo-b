@@ -56,6 +56,23 @@ export class SaleOrderStockConsumptionReversalService {
     executedBy: string,
     tx: TransactionContext,
   ): Promise<boolean> {
+    return this.restoreConsumption(order, executedBy, true, tx);
+  }
+
+  async restoreAndRelease(
+    order: SaleOrder,
+    executedBy: string,
+    tx: TransactionContext,
+  ): Promise<boolean> {
+    return this.restoreConsumption(order, executedBy, false, tx);
+  }
+
+  private async restoreConsumption(
+    order: SaleOrder,
+    executedBy: string,
+    keepReserved: boolean,
+    tx: TransactionContext,
+  ): Promise<boolean> {
     if (!order.warehouseId) {
       throw new BadRequestException(
         "El pedido no tiene almacén para revertir el consumo de stock",
@@ -172,10 +189,12 @@ export class SaleOrderStockConsumptionReversalService {
         { ...base, delta: Number(consumedItem.quantity) },
         tx,
       );
-      await this.inventoryRepo.incrementReserved(
-        { ...base, delta: Number(consumedItem.quantity) },
-        tx,
-      );
+      if (keepReserved) {
+        await this.inventoryRepo.incrementReserved(
+          { ...base, delta: Number(consumedItem.quantity) },
+          tx,
+        );
+      }
       ledgerEntries.push(
         new ProductCatalogInventoryLedgerEntry(
           undefined,
@@ -198,7 +217,7 @@ export class SaleOrderStockConsumptionReversalService {
       tx,
     );
     await this.saleOrderRepo.setReserveBool(
-      { saleOrderId: order.id, reserveBool: true },
+      { saleOrderId: order.id, reserveBool: keepReserved },
       tx,
     );
     return true;

@@ -21,7 +21,9 @@ import {
 import { SaleOrderStateHistory } from 'src/modules/workflow/domain/entities/sale-order-state-history';
 import { SaleOrderStockConsumptionReversalService } from 'src/modules/workflow/application/services/sale-order-stock-consumption-reversal.service';
 import { CONDITIONS } from 'src/modules/workflow/domain/constants/workflow-condition.constants';
+import { ACTIONS } from 'src/modules/workflow/domain/constants/workflow-action.constants';
 import { WorkflowState } from 'src/modules/workflow/domain/entities/workflow-state';
+import { SaleOrderStockCorrectionService } from './sale-order-stock-correction.service';
 
 @Injectable()
 export class SaleOrderPaymentWorkflowReconciliationService {
@@ -37,6 +39,7 @@ export class SaleOrderPaymentWorkflowReconciliationService {
     @Inject(CLOCK)
     private readonly clock: ClockPort,
     private readonly stockReversal: SaleOrderStockConsumptionReversalService,
+    private readonly stockCorrection: SaleOrderStockCorrectionService,
   ) {}
 
   async reconcile(
@@ -107,13 +110,24 @@ export class SaleOrderPaymentWorkflowReconciliationService {
     const targetState = rollbackAnalysis.targetState;
     const stateChanged = targetState.id !== currentState.id;
 
+    let stockRestored = false;
     let stockRestoredAndReserved = false;
     if (stateChanged) {
-      stockRestoredAndReserved = await this.stockReversal.restoreAndReserve(
-        order,
-        input.executedBy,
-        tx,
-      );
+      if (rollbackAnalysis.targetRequiresReservation) {
+        stockRestored = await this.stockReversal.restoreAndReserve(
+          order,
+          input.executedBy,
+          tx,
+        );
+        stockRestoredAndReserved = stockRestored || order.reserveBool === true;
+      } else {
+        stockRestored = await this.stockReversal.restoreAndRelease(
+          order,
+          input.executedBy,
+          tx,
+        );
+        await this.stockCorrection.releaseCurrentReservation(order, tx);
+      }
       await this.saleOrderRepo.updateWorkflowState(
         { saleOrderId: order.id, currentStateId: targetState.id },
         tx,
@@ -145,9 +159,11 @@ export class SaleOrderPaymentWorkflowReconciliationService {
               : null,
             invalidatedTransitionIds:
               rollbackAnalysis.invalidatedTransitionIds,
+            stockRestored,
             stockRestoredAndReserved,
             stockStatus: stateChanged
-              ? stockRestoredAndReserved || order.reserveBool
+              ? rollbackAnalysis.targetRequiresReservation &&
+                (stockRestoredAndReserved || order.reserveBool)
                 ? 'RESERVED'
                 : 'NONE'
               : undefined,
@@ -177,6 +193,7 @@ export class SaleOrderPaymentWorkflowReconciliationService {
         name: targetState.name,
       },
       stateChanged,
+      stockRestored,
       stockRestoredAndReserved,
     };
   }
@@ -190,11 +207,13 @@ export class SaleOrderPaymentWorkflowReconciliationService {
   }): Promise<{
     targetState: WorkflowState;
     invalidatedTransitionIds: string[];
+    targetRequiresReservation: boolean;
   }> {
     if (input.isPaid) {
       return {
         targetState: input.currentState,
         invalidatedTransitionIds: [],
+        targetRequiresReservation: false,
       };
     }
 
@@ -212,6 +231,7 @@ export class SaleOrderPaymentWorkflowReconciliationService {
     );
     let cursorStateId: string | null = input.currentState.id;
     let rollbackStateId: string | null = null;
+    let rollbackBoundaryIndex: number | null = null;
     const invalidatedTransitionIds: string[] = [];
 
     for (let index = history.length - 1; index >= 0; index -= 1) {
@@ -229,6 +249,7 @@ export class SaleOrderPaymentWorkflowReconciliationService {
         item.fromStateId
       ) {
         rollbackStateId = item.fromStateId;
+        rollbackBoundaryIndex = index;
         invalidatedTransitionIds.push(transition.id);
       }
       cursorStateId = item.fromStateId;
@@ -246,6 +267,7 @@ export class SaleOrderPaymentWorkflowReconciliationService {
       return {
         targetState: input.currentState,
         invalidatedTransitionIds: [],
+        targetRequiresReservation: false,
       };
     }
 
@@ -257,7 +279,138 @@ export class SaleOrderPaymentWorkflowReconciliationService {
         'El flujo no tiene activo el estado requerido por la condición de pago',
       );
     }
-    return { targetState, invalidatedTransitionIds };
+    const targetRequiresReservation =
+      rollbackBoundaryIndex !== null
+        ? this.resolveReservationFromHistory(
+            input.workflow,
+            history,
+            rollbackBoundaryIndex,
+          )
+        : this.resolveReservationFromGraph(
+            input.workflow,
+            targetState.id,
+          );
+    return {
+      targetState,
+      invalidatedTransitionIds,
+      targetRequiresReservation,
+    };
+  }
+
+  private resolveReservationFromHistory(
+    workflow: WorkflowAggregate,
+    history: Awaited<
+      ReturnType<SaleOrderStateHistoryRepository['listBySaleOrderId']>
+    >,
+    endExclusive: number,
+  ): boolean {
+    let reserved = false;
+    for (let index = 0; index < endExclusive; index += 1) {
+      const entry = history[index];
+      if (entry.transitionId) {
+        const branch = entry.metadata?.branch === 'ELSE' ? 'ELSE' : 'THEN';
+        reserved = this.applyStockActions(
+          reserved,
+          workflow.actions.filter(
+            (action) =>
+              action.transitionId === entry.transitionId &&
+              action.branch === branch,
+          ),
+        );
+      }
+      const recordedStatus = entry.metadata?.stockStatus;
+      if (recordedStatus === 'RESERVED') reserved = true;
+      if (
+        recordedStatus === 'NONE' ||
+        recordedStatus === 'REVERTED' ||
+        recordedStatus === 'CONSUMED'
+      ) {
+        reserved = false;
+      }
+    }
+    return reserved;
+  }
+
+  private resolveReservationFromGraph(
+    workflow: WorkflowAggregate,
+    targetStateId: string,
+  ): boolean {
+    const initialStateIds = workflow.states
+      .filter((state) => state.isActive && state.isInitial)
+      .map((state) => state.id);
+    const queue = initialStateIds.map((stateId) => ({
+      stateId,
+      reserved: false,
+    }));
+    const visited = new Set<string>();
+    const candidates: boolean[] = [];
+
+    while (queue.length) {
+      const current = queue.shift() as {
+        stateId: string;
+        reserved: boolean;
+      };
+      const key = `${current.stateId}:${current.reserved}`;
+      if (visited.has(key)) continue;
+      visited.add(key);
+      if (current.stateId === targetStateId) {
+        candidates.push(current.reserved);
+        continue;
+      }
+      const outgoing = workflow.transitions.filter(
+        (transition) =>
+          transition.isActive && transition.fromStateId === current.stateId,
+      );
+      for (const transition of outgoing) {
+        if (transition.toStateId) {
+          queue.push({
+            stateId: transition.toStateId,
+            reserved: this.applyStockActions(
+              current.reserved,
+              workflow.actions.filter(
+                (action) =>
+                  action.transitionId === transition.id &&
+                  action.branch === 'THEN',
+              ),
+            ),
+          });
+        }
+        if (transition.elseToStateId) {
+          queue.push({
+            stateId: transition.elseToStateId,
+            reserved: this.applyStockActions(
+              current.reserved,
+              workflow.actions.filter(
+                (action) =>
+                  action.transitionId === transition.id &&
+                  action.branch === 'ELSE',
+              ),
+            ),
+          });
+        }
+      }
+    }
+
+    return candidates.length > 0 && candidates.every(Boolean);
+  }
+
+  private applyStockActions(
+    initial: boolean,
+    actions: WorkflowAggregate['actions'],
+  ): boolean {
+    let reserved = initial;
+    for (const action of [...actions].sort(
+      (left, right) => left.position - right.position,
+    )) {
+      if (action.type === ACTIONS.RESERVE_STOCK) reserved = true;
+      if (
+        action.type === ACTIONS.CONSUME_STOCK ||
+        action.type === ACTIONS.REVERT_STOCK
+      ) {
+        reserved = false;
+      }
+    }
+    return reserved;
   }
 
   private findGraphPaymentRollbackState(

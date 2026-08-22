@@ -47,17 +47,32 @@ describe("CorrectSaleOrderTotalUsecase", () => {
     workflowName?: string;
     downstreamState?: boolean;
     withoutHistory?: boolean;
+    reservationBeforePayment?: boolean;
   } = {}) {
     const workflowName = options.workflowName ?? "ABONADO CE";
+    const reservationBeforePayment =
+      options.reservationBeforePayment ?? true;
     const paymentTargetStateId = options.downstreamState
       ? "state-to-send"
       : "state-delivered";
     const states = [
+      ...(reservationBeforePayment
+        ? [
+            {
+              id: "state-coordinated",
+              code: "COORDINATED",
+              name: "Coordinado",
+              isActive: true,
+              isInitial: true,
+            },
+          ]
+        : []),
       {
         id: "state-progress",
         code: options.downstreamState ? "WAITING_PAYMENT" : "IN_PROGRESS",
         name: options.downstreamState ? "Esperando pago" : "En curso",
         isActive: true,
+        isInitial: !reservationBeforePayment,
       },
       ...(options.downstreamState
         ? [
@@ -77,6 +92,17 @@ describe("CorrectSaleOrderTotalUsecase", () => {
       },
     ];
     const transitions = [
+      ...(reservationBeforePayment
+        ? [
+            {
+              id: "transition-reserve",
+              fromStateId: "state-coordinated",
+              toStateId: "state-progress",
+              elseToStateId: null,
+              isActive: true,
+            },
+          ]
+        : []),
       {
         id: "transition-paid",
         fromStateId: "state-progress",
@@ -97,6 +123,16 @@ describe("CorrectSaleOrderTotalUsecase", () => {
         : []),
     ];
     const history = [
+      ...(reservationBeforePayment
+        ? [
+            {
+              transitionId: "transition-reserve",
+              fromStateId: "state-coordinated",
+              toStateId: "state-progress",
+              metadata: { branch: "THEN" },
+            },
+          ]
+        : []),
       {
         transitionId: "transition-paid",
         fromStateId: "state-progress",
@@ -166,7 +202,18 @@ describe("CorrectSaleOrderTotalUsecase", () => {
             position: 0,
           },
         ],
-        actions: [],
+        actions: reservationBeforePayment
+          ? [
+              {
+                id: "action-reserve",
+                transitionId: "transition-reserve",
+                type: "RESERVE_STOCK",
+                config: {},
+                position: 0,
+                branch: "THEN",
+              },
+            ]
+          : [],
       }),
     };
     const historyRepo = {
@@ -177,6 +224,10 @@ describe("CorrectSaleOrderTotalUsecase", () => {
     };
     const stockReversal = {
       restoreAndReserve: jest.fn().mockResolvedValue(true),
+      restoreAndRelease: jest.fn().mockResolvedValue(true),
+    };
+    const stockCorrection = {
+      releaseCurrentReservation: jest.fn().mockResolvedValue(undefined),
     };
     const paymentWorkflowReconciliation =
       new SaleOrderPaymentWorkflowReconciliationService(
@@ -186,6 +237,7 @@ describe("CorrectSaleOrderTotalUsecase", () => {
         historyRepo as any,
         { now: () => new Date("2026-08-21T12:00:00.000Z") } as any,
         stockReversal as any,
+        stockCorrection as any,
       );
     const usecase = new CorrectSaleOrderTotalUsecase(
       { runInTransaction: (work: (context: unknown) => unknown) => work(tx) } as any,
@@ -202,6 +254,7 @@ describe("CorrectSaleOrderTotalUsecase", () => {
       componentRepo,
       historyRepo,
       stockReversal,
+      stockCorrection,
     };
   }
 
@@ -312,5 +365,26 @@ describe("CorrectSaleOrderTotalUsecase", () => {
 
     expect(result.stateChanged).toBe(true);
     expect(result.currentState.code).toBe("WAITING_PAYMENT");
+  });
+
+  it("restores and releases stock when payment rollback returns before reservation", async () => {
+    const dependencies = buildUsecase({ reservationBeforePayment: false });
+
+    const result = await dependencies.usecase.execute({
+      saleOrderId: "order-1",
+      total: 100,
+      executedBy: "user-2",
+    });
+
+    expect(result.stockRestored).toBe(true);
+    expect(result.stockRestoredAndReserved).toBe(false);
+    expect(dependencies.stockReversal.restoreAndRelease).toHaveBeenCalled();
+    expect(dependencies.stockCorrection.releaseCurrentReservation).toHaveBeenCalled();
+    expect(dependencies.historyRepo.append).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({ stockStatus: "NONE" }),
+      }),
+      tx,
+    );
   });
 });

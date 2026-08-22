@@ -86,6 +86,19 @@ export class SaleOrderStockCorrectionService {
     );
   }
 
+  async releaseCurrentReservation(
+    order: SaleOrder,
+    tx: TransactionContext,
+  ): Promise<void> {
+    if (order.reserveBool !== true) return;
+    const currentRequirements = await this.requirements.resolve(order, tx);
+    await this.changeReservation(order, currentRequirements, 'RELEASE', tx);
+    await this.saleOrderRepo.setReserveBool(
+      { saleOrderId: order.id, reserveBool: false },
+      tx,
+    );
+  }
+
   async consumeCorrectedComposition(
     order: SaleOrder,
     tx: TransactionContext,

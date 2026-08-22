@@ -192,6 +192,31 @@ describe("SaleOrderStockConsumptionReversalService", () => {
     );
   });
 
+  it('posts a compensating entry without reserving stock when the target state is before reservation', async () => {
+    const dependencies = buildService();
+
+    await expect(
+      dependencies.service.restoreAndRelease(order, 'user-2', tx),
+    ).resolves.toBe(true);
+
+    expect(dependencies.inventoryRepo.incrementOnHand).toHaveBeenCalledWith(
+      {
+        warehouseId: 'warehouse-1',
+        stockItemId: 'stock-1',
+        locationId: null,
+        delta: 2,
+      },
+      tx,
+    );
+    expect(
+      dependencies.inventoryRepo.incrementReserved,
+    ).not.toHaveBeenCalled();
+    expect(dependencies.saleOrderRepo.setReserveBool).toHaveBeenCalledWith(
+      { saleOrderId: 'order-1', reserveBool: false },
+      tx,
+    );
+  });
+
   it("does not duplicate an existing compensating entry", async () => {
     const existing = new ProductCatalogInventoryDocument(
       "in-existing",

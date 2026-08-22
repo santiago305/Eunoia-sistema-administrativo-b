@@ -95,4 +95,28 @@ describe('SaleOrderStockCorrectionService', () => {
       tx,
     );
   });
+
+  it('releases the current reservation when payment rollback returns before RESERVE_STOCK', async () => {
+    const f = fixture();
+    const reservedOrder = { ...order, reserveBool: true };
+    f.requirements.resolve.mockReset().mockResolvedValue([
+      { stockItemId: 'stock-new', quantity: 2 },
+    ]);
+    f.inventoryRepo.getSnapshot.mockResolvedValue({
+      onHand: 5,
+      reserved: 2,
+      available: 3,
+    });
+
+    await f.service.releaseCurrentReservation(reservedOrder, tx);
+
+    expect(f.inventoryRepo.incrementReserved).toHaveBeenCalledWith(
+      expect.objectContaining({ stockItemId: 'stock-new', delta: -2 }),
+      tx,
+    );
+    expect(f.saleOrderRepo.setReserveBool).toHaveBeenCalledWith(
+      { saleOrderId: 'order-1', reserveBool: false },
+      tx,
+    );
+  });
 });
