@@ -140,7 +140,7 @@ describe("ExportSaleOrdersExcelUsecase", () => {
           serie: "P001",
           correlative: 12,
           SKUS: "EVA01863(1);EVA01893(1)",
-          detail: "AMPOLLA1AZUFRE1",
+          detail: "AMPOLLA ANTI ACNE x 2; AMPOLLA ANTI MANCHAS x 1",
         },
       ],
     });
@@ -160,7 +160,7 @@ describe("ExportSaleOrdersExcelUsecase", () => {
     expect(worksheet?.getCell("A1").value).toBe("SKUS");
     expect(worksheet?.getCell("B1").value).toBe("Detalle");
     expect(worksheet?.getCell("A2").value).toBe("EVA01863(1);EVA01893(1)");
-    expect(worksheet?.getCell("B2").value).toBe("AMPOLLA1AZUFRE1");
+    expect(worksheet?.getCell("B2").value).toBe("AMPOLLA ANTI ACNE x 2; AMPOLLA ANTI MANCHAS x 1");
   });
 
   it("exports lote column", async () => {

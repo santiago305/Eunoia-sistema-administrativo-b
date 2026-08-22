@@ -1198,8 +1198,26 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     const skuById = new Map(componentSkus.map((sku) => [sku.id, sku]));
     const displayComponentsByOrderId = new Map<
       string,
-      Array<{ customSku: string | null; name: string | null; quantity: number }>
+      Array<{
+        customSku: string | null;
+        name: string | null;
+        attributes: Array<{ code: string; name: string | null; value: string }>;
+        quantity: number;
+      }>
     >();
+
+    const skuIdsMissingAttributeSnapshot = Array.from(
+      new Set(
+        components
+          .filter((component) => !component.attributesSnapshot?.length)
+          .map((component) => component.skuId)
+          .filter(Boolean),
+      ),
+    );
+    const fallbackAttributesBySkuId = await this.loadSkuAttributes(
+      manager,
+      skuIdsMissingAttributeSnapshot,
+    );
 
     for (const row of rows) {
       const orderedItems = [...(row.items ?? [])].sort(
@@ -1213,6 +1231,9 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
             return {
               customSku: component.customSkuSnapshot ?? sku?.customSku ?? null,
               name: component.skuNameSnapshot ?? sku?.name ?? null,
+              attributes: component.attributesSnapshot?.length
+                ? component.attributesSnapshot
+                : fallbackAttributesBySkuId.get(component.skuId) ?? [],
               quantity: Number(component.quantity ?? 0),
             };
           }),
@@ -1960,6 +1981,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     (compsByItemId.get(item.id) ?? []).map((component) => ({
       customSku: component.sku.customSku ?? null,
       name: component.sku.name ?? null,
+      attributes: component.attributes,
       quantity: Number(component.quantity ?? 0),
     })),
   );

@@ -3,18 +3,27 @@ import { buildSaleOrderItemDisplayFields } from "./sale-order-item-display-field
 describe("buildSaleOrderItemDisplayFields", () => {
   it("builds SKUS and detail from ordered components", () => {
     const result = buildSaleOrderItemDisplayFields([
-      { customSku: "EVA01863", name: "AMPOLLA", quantity: 1 },
-      { customSku: "EVA01893", name: "AZUFRE", quantity: 1 },
-      { customSku: "EVA01894", name: "VERDE", quantity: 1 },
+      {
+        customSku: "EVA01863",
+        name: "AMPOLLA",
+        attributes: [{ value: "ANTI ACNE" }],
+        quantity: 2,
+      },
+      {
+        customSku: "EVA01893",
+        name: "AMPOLLA",
+        attributes: [{ value: "ANTI MANCHAS" }],
+        quantity: 1,
+      },
     ]);
 
     expect(result).toEqual({
-      SKUS: "EVA01863(1);EVA01893(1);EVA01894(1)",
-      detail: "AMPOLLA1AZUFRE1VERDE1",
+      SKUS: "EVA01863(2);EVA01893(1)",
+      detail: "AMPOLLA ANTI ACNE x 2; AMPOLLA ANTI MANCHAS x 1",
     });
   });
 
-  it("removes spaces from detail names and trims decimal quantities", () => {
+  it("normalizes spaces in detail names and trims decimal quantities", () => {
     const result = buildSaleOrderItemDisplayFields([
       { customSku: " EVA001 ", name: "JABON AZUFRE", quantity: 1.5 },
       { customSku: "EVA002", name: "CREMA  VERDE", quantity: 2.25 },
@@ -22,8 +31,21 @@ describe("buildSaleOrderItemDisplayFields", () => {
 
     expect(result).toEqual({
       SKUS: "EVA001(1.5);EVA002(2.25)",
-      detail: "JABONAZUFRE1.5CREMAVERDE2.25",
+      detail: "JABON AZUFRE x 1.5; CREMA VERDE x 2.25",
     });
+  });
+
+  it("does not repeat an attribute already included in the SKU name", () => {
+    const result = buildSaleOrderItemDisplayFields([
+      {
+        customSku: "EVA003",
+        name: "JABON AZUFRE",
+        attributes: [{ value: "Azufre" }],
+        quantity: 1,
+      },
+    ]);
+
+    expect(result.detail).toBe("JABON AZUFRE x 1");
   });
 
   it("skips missing SKU codes or names independently", () => {
@@ -35,7 +57,7 @@ describe("buildSaleOrderItemDisplayFields", () => {
 
     expect(result).toEqual({
       SKUS: "EVA003(3)",
-      detail: "AMPOLLA1",
+      detail: "AMPOLLA x 1",
     });
   });
 });

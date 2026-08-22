@@ -231,6 +231,7 @@ describe("SaleOrderTypeormRepository", () => {
           id: "component-1",
           saleOrderItemId: "item-1",
           skuId: "sku-1",
+          attributesSnapshot: [{ code: "variant", name: "Variante", value: "ANTI ACNE" }],
           quantity: 1,
           createdAt: new Date("2026-07-24T10:02:00.000Z"),
         },
@@ -238,6 +239,7 @@ describe("SaleOrderTypeormRepository", () => {
           id: "component-2",
           saleOrderItemId: "item-1",
           skuId: "sku-2",
+          attributesSnapshot: [{ code: "variant", name: "Variante", value: "ANTI MANCHAS" }],
           quantity: 1,
           createdAt: new Date("2026-07-24T10:03:00.000Z"),
         },
@@ -276,7 +278,7 @@ describe("SaleOrderTypeormRepository", () => {
     expect(componentRepo.find).toHaveBeenCalled();
     expect(skuRepo.find).toHaveBeenCalled();
     expect(result.items[0].SKUS).toBe("EVA01863(1);EVA01893(1)");
-    expect(result.items[0].detail).toBe("AMPOLLA1AZUFRE1");
+    expect(result.items[0].detail).toBe("AMPOLLA ANTI ACNE x 1; AZUFRE ANTI MANCHAS x 1");
   });
 
   it("returns assignedBy and agencyDetail in list items", async () => {
@@ -886,7 +888,7 @@ describe("SaleOrderTypeormRepository", () => {
     const component = result?.items[0]?.components[0];
 
     expect(result?.SKUS).toBe("EVA01893(1)");
-    expect(result?.detail).toBe("JABONAZUFRE1");
+    expect(result?.detail).toBe("JABON AZUFRE x 1");
     expect(component).toEqual(
       expect.objectContaining({
         stockItemId: "stock-1",
