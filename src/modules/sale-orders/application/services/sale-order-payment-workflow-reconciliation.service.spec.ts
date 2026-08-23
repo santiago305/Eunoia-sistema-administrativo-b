@@ -4,11 +4,25 @@ describe('SaleOrderPaymentWorkflowReconciliationService', () => {
   const tx = { manager: {} } as any;
   const states = [
     {
+      id: 'state-draft',
+      code: 'DRAFT',
+      name: 'Borrador',
+      isActive: true,
+      isInitial: true,
+    },
+    {
+      id: 'state-created',
+      code: 'CREATED',
+      name: 'Creado',
+      isActive: true,
+      isInitial: false,
+    },
+    {
       id: 'state-coordinated',
       code: 'COORDINATED',
       name: 'Coordinado',
       isActive: true,
-      isInitial: true,
+      isInitial: false,
     },
     {
       id: 'state-programmed',
@@ -34,6 +48,20 @@ describe('SaleOrderPaymentWorkflowReconciliationService', () => {
   ];
   const transitions = [
     {
+      id: 'transition-created',
+      fromStateId: 'state-draft',
+      toStateId: 'state-created',
+      elseToStateId: null,
+      isActive: true,
+    },
+    {
+      id: 'transition-created-programmed',
+      fromStateId: 'state-created',
+      toStateId: 'state-programmed',
+      elseToStateId: 'state-coordinated',
+      isActive: true,
+    },
+    {
       id: 'transition-programmed',
       fromStateId: 'state-coordinated',
       toStateId: 'state-programmed',
@@ -57,6 +85,13 @@ describe('SaleOrderPaymentWorkflowReconciliationService', () => {
   ];
   const conditions = [
     {
+      id: 'condition-created-programmed-date',
+      transitionId: 'transition-created-programmed',
+      type: 'SCHEDULE_DELIVERY_WINDOW',
+      config: { minDaysBefore: 0, maxDaysBefore: 1 },
+      position: 0,
+    },
+    {
       id: 'condition-programmed-date',
       transitionId: 'transition-programmed',
       type: 'SCHEDULE_DELIVERY_WINDOW',
@@ -79,6 +114,14 @@ describe('SaleOrderPaymentWorkflowReconciliationService', () => {
     },
   ];
   const actions = [
+    {
+      id: 'action-created-reserve',
+      transitionId: 'transition-created-programmed',
+      type: 'RESERVE_STOCK',
+      config: {},
+      position: 0,
+      branch: 'THEN',
+    },
     {
       id: 'action-reserve',
       transitionId: 'transition-programmed',
@@ -117,8 +160,8 @@ describe('SaleOrderPaymentWorkflowReconciliationService', () => {
     };
     const fullHistory = [
       {
-        transitionId: 'transition-programmed',
-        fromStateId: 'state-coordinated',
+        transitionId: 'transition-created-programmed',
+        fromStateId: 'state-created',
         toStateId: 'state-programmed',
         metadata: { branch: 'THEN' },
       },
@@ -214,7 +257,7 @@ describe('SaleOrderPaymentWorkflowReconciliationService', () => {
         currentState: expect.objectContaining({ code: 'COORDINATED' }),
         invalidatedDeliveryDateTransitionIds: expect.arrayContaining([
           'transition-waiting',
-          'transition-programmed',
+          'transition-created-programmed',
         ]),
       }),
     );
@@ -281,7 +324,10 @@ describe('SaleOrderPaymentWorkflowReconciliationService', () => {
     expect(result.currentState.code).toBe('COORDINATED');
     expect(result.invalidatedPaymentTransitionIds).toEqual(['transition-paid']);
     expect(result.invalidatedDeliveryDateTransitionIds).toEqual(
-      expect.arrayContaining(['transition-waiting', 'transition-programmed']),
+      expect.arrayContaining([
+        'transition-waiting',
+        'transition-created-programmed',
+      ]),
     );
     expect(fixture.historyRepo.append).toHaveBeenCalledWith(
       expect.objectContaining({

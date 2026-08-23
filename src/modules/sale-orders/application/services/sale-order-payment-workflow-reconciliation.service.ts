@@ -296,6 +296,7 @@ export class SaleOrderPaymentWorkflowReconciliationService {
     let cursorStateId: string | null = input.currentState.id;
     let rollbackStateId: string | null = null;
     let rollbackBoundaryIndex: number | null = null;
+    let rollbackUsedAlternativeState = false;
     const invalidatedTransitionIds: string[] = [];
     const invalidatedPaymentIds: string[] = [];
     const invalidatedDeliveryDateIds: string[] = [];
@@ -314,7 +315,8 @@ export class SaleOrderPaymentWorkflowReconciliationService {
         invalidWorkflowTransitionIds.has(transition.id) &&
         item.fromStateId
       ) {
-        rollbackStateId = item.fromStateId;
+        rollbackStateId = transition.elseToStateId ?? item.fromStateId;
+        rollbackUsedAlternativeState = Boolean(transition.elseToStateId);
         rollbackBoundaryIndex = index;
         invalidatedTransitionIds.push(transition.id);
         if (invalidPaymentTransitionIds.has(transition.id)) {
@@ -366,7 +368,9 @@ export class SaleOrderPaymentWorkflowReconciliationService {
       );
     }
     const targetRequiresReservation =
-      rollbackBoundaryIndex !== null && !graphExtendedRollback
+      rollbackBoundaryIndex !== null &&
+      !graphExtendedRollback &&
+      !rollbackUsedAlternativeState
         ? this.resolveReservationFromHistory(
             input.workflow,
             history,
@@ -531,7 +535,7 @@ export class SaleOrderPaymentWorkflowReconciliationService {
           invalidTransitionIds.has(transition.id)
         ) {
           candidates.push({
-            stateId: transition.fromStateId,
+            stateId: transition.elseToStateId ?? transition.fromStateId,
             depth: current.depth + 1,
             transitionId: transition.id,
           });
