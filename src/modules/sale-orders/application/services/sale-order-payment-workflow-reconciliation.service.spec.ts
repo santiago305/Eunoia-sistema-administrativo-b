@@ -94,6 +94,9 @@ describe('SaleOrderPaymentWorkflowReconciliationService', () => {
     deliveryDate: string;
     totalPaid?: number;
     withoutHistory?: boolean;
+    historyOverride?: unknown[];
+    reserveBool?: boolean;
+    stockConsumptionRestored?: boolean;
   }) {
     const currentStateId = input.currentStateId ?? 'state-waiting';
     const order = {
@@ -108,7 +111,7 @@ describe('SaleOrderPaymentWorkflowReconciliationService', () => {
       deliveryDate: input.deliveryDate,
       scheduleDate: null,
       invoiceSend: false,
-      reserveBool: true,
+      reserveBool: input.reserveBool ?? true,
       createdBy: 'user-1',
       isActive: true,
     };
@@ -157,12 +160,16 @@ describe('SaleOrderPaymentWorkflowReconciliationService', () => {
     const historyRepo = {
       listBySaleOrderId: jest
         .fn()
-        .mockResolvedValue(input.withoutHistory ? [] : fullHistory),
+        .mockResolvedValue(
+          input.historyOverride ?? (input.withoutHistory ? [] : fullHistory),
+        ),
       append: jest.fn().mockResolvedValue(undefined),
     };
     const stockReversal = {
       restoreAndReserve: jest.fn().mockResolvedValue(false),
-      restoreAndRelease: jest.fn().mockResolvedValue(false),
+      restoreAndRelease: jest
+        .fn()
+        .mockResolvedValue(input.stockConsumptionRestored ?? false),
     };
     const stockCorrection = {
       releaseCurrentReservation: jest.fn().mockResolvedValue(undefined),
@@ -302,5 +309,57 @@ describe('SaleOrderPaymentWorkflowReconciliationService', () => {
     );
 
     expect(result.currentState.code).toBe('COORDINATED');
+  });
+
+  it('returns Por enviar to Coordinado and restores consumed stock even when a prior correction interrupts its history', async () => {
+    const fixture = buildFixture({
+      currentStateId: 'state-to-send',
+      deliveryDate: '2026-08-25',
+      totalPaid: 20,
+      reserveBool: false,
+      stockConsumptionRestored: true,
+      historyOverride: [
+        {
+          transitionId: null,
+          fromStateId: 'state-to-send',
+          toStateId: 'state-waiting',
+          metadata: { source: 'previous-correction' },
+        },
+        {
+          transitionId: 'transition-paid',
+          fromStateId: 'state-waiting',
+          toStateId: 'state-to-send',
+          metadata: { branch: 'THEN' },
+        },
+      ],
+    });
+
+    const result = await fixture.service.reconcile(
+      {
+        saleOrderId: 'order-1',
+        executedBy: 'user-2',
+        source: 'sale-order-with-client-save',
+        previousDeliveryDate: '2026-08-21',
+        currentDeliveryDate: '2026-08-25',
+      },
+      tx,
+    );
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        currentState: expect.objectContaining({ code: 'COORDINATED' }),
+        stockRestored: true,
+        invalidatedPaymentTransitionIds: ['transition-paid'],
+        invalidatedDeliveryDateTransitionIds: expect.arrayContaining([
+          'transition-waiting',
+          'transition-programmed',
+        ]),
+      }),
+    );
+    expect(fixture.stockReversal.restoreAndRelease).toHaveBeenCalled();
+    expect(fixture.stockReversal.restoreAndReserve).not.toHaveBeenCalled();
+    expect(
+      fixture.stockCorrection.releaseCurrentReservation,
+    ).toHaveBeenCalled();
   });
 });

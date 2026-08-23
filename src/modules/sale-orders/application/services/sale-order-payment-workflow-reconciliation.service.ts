@@ -328,15 +328,16 @@ export class SaleOrderPaymentWorkflowReconciliationService {
       if (!cursorStateId) break;
     }
 
-    if (!rollbackStateId) {
-      const graphRollback = this.findGraphWorkflowRollbackState(
-        input.currentState.id,
-        input.workflow,
-        invalidWorkflowTransitionIds,
-      );
-      rollbackStateId = graphRollback?.stateId ?? null;
-      for (const transitionId of graphRollback?.invalidatedTransitionIds ??
-        []) {
+    let graphExtendedRollback = false;
+    const graphRollback = this.findGraphWorkflowRollbackState(
+      rollbackStateId ?? input.currentState.id,
+      input.workflow,
+      invalidWorkflowTransitionIds,
+    );
+    if (graphRollback) {
+      graphExtendedRollback = graphRollback.stateId !== rollbackStateId;
+      rollbackStateId = graphRollback.stateId;
+      for (const transitionId of graphRollback.invalidatedTransitionIds) {
         invalidatedTransitionIds.push(transitionId);
         if (invalidPaymentTransitionIds.has(transitionId)) {
           invalidatedPaymentIds.push(transitionId);
@@ -365,7 +366,7 @@ export class SaleOrderPaymentWorkflowReconciliationService {
       );
     }
     const targetRequiresReservation =
-      rollbackBoundaryIndex !== null
+      rollbackBoundaryIndex !== null && !graphExtendedRollback
         ? this.resolveReservationFromHistory(
             input.workflow,
             history,

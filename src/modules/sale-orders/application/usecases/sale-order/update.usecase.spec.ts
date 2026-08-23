@@ -282,6 +282,34 @@ describe('UpdateSaleOrderUsecase', () => {
     expect(fixture.saleOrderRepo.update).not.toHaveBeenCalled();
   });
 
+  it('requires Pedidos avanzados to change the delivery date of a final order', async () => {
+    const commandAuthorization = {
+      authorizeUpdate: jest.fn().mockResolvedValue(undefined),
+      authorizeAdvancedOrder: jest
+        .fn()
+        .mockRejectedValue(new Error('sale_orders.advanced_orders')),
+    };
+    const fixture = createFixture(
+      [],
+      true,
+      { findByIdWithItems: jest.fn() },
+      commandAuthorization,
+    );
+
+    await expect(
+      fixture.usecase.execute({
+        ...input,
+        userId: 'user-2',
+        deliveryDate: '2026-08-25',
+      }),
+    ).rejects.toThrow('sale_orders.advanced_orders');
+
+    expect(commandAuthorization.authorizeAdvancedOrder).toHaveBeenCalledWith(
+      'user-2',
+    );
+    expect(fixture.saleOrderRepo.update).not.toHaveBeenCalled();
+  });
+
   it('computes subtotal and total from item totals, delivery and discount', async () => {
     const { usecase, saleOrderRepo } = createFixture();
 

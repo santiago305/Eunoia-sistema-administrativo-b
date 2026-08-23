@@ -159,7 +159,7 @@ export class SaleOrderStockConsumptionReversalService {
     const serie = series[0];
     const correlative = await this.serieRepo.reserveNextNumber(serie.id, tx);
     const now = new Date();
-    const note = `${reversalMarker} por corrección del total del pedido ${order.serie ?? "PE"}-${order.correlative ?? order.id}`;
+    const note = `${reversalMarker} por reconciliación del pedido ${order.serie ?? "PE"}-${order.correlative ?? order.id}`;
     const reversal = await this.documentRepo.create(
       new ProductCatalogInventoryDocument(
         undefined,
