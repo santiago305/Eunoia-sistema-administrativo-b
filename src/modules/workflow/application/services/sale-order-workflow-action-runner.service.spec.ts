@@ -369,9 +369,55 @@ describe("SaleOrderWorkflowActionRunnerService", () => {
       order,
       [{ stockItemId: "stock-1", quantity: 3 }],
       tx,
+      null,
     );
     expect(inventory.incrementReserved).not.toHaveBeenCalled();
     expect(inventory.incrementOnHand).not.toHaveBeenCalled();
+  });
+
+  it("uses the delivery window to date a delayed order movement", async () => {
+    const { runner, consumption, history, transitions } = setup();
+    const delayedOrder = {
+      ...order,
+      deliveryDate: "2026-08-18",
+      currentStateId: "waiting-payment",
+    } as any;
+    history.listBySaleOrderId.mockResolvedValue([
+      {
+        transitionId: "delivery-window-transition",
+        toStateId: "waiting-payment",
+      },
+    ]);
+    transitions.findDetailedById.mockResolvedValue({
+      conditions: [
+        {
+          type: "SCHEDULE_DELIVERY_WINDOW",
+          config: { minDaysBefore: 0, maxDaysBefore: 1 },
+        },
+      ],
+      actions: [],
+    });
+
+    await runner.run(
+      delayedOrder,
+      [
+        {
+          id: "a1",
+          transitionId: "t1",
+          type: "CONSUME_STOCK",
+          config: {},
+          position: 0,
+        } as any,
+      ],
+      tx,
+    );
+
+    expect(consumption.consume).toHaveBeenCalledWith(
+      delayedOrder,
+      [{ stockItemId: "stock-1", quantity: 3 }],
+      tx,
+      "2026-08-17",
+    );
   });
 
   it.each([

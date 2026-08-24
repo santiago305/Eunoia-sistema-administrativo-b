@@ -20,6 +20,7 @@ export class ProductCatalogInventoryDocument {
     public readonly postedBy: string | null,
     public readonly postedAt: Date | null,
     public readonly createdAt?: Date,
+    public readonly effectiveDate?: string | null,
   ) {}
 }
 

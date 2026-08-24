@@ -67,6 +67,7 @@ export class ProductCatalogInventoryDocumentTypeormRepository implements Product
       row.postedBy,
       row.postedAt,
       row.createdAt,
+      row.effectiveDate,
     );
   }
 
@@ -127,6 +128,7 @@ export class ProductCatalogInventoryDocumentTypeormRepository implements Product
       createdBy: document.createdBy,
       postedBy: document.postedBy,
       postedAt: document.postedAt,
+      effectiveDate: document.effectiveDate ?? null,
     });
     return this.toDocument(saved);
   }

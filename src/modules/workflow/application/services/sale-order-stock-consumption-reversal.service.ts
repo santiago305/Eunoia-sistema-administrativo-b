@@ -176,6 +176,8 @@ export class SaleOrderStockConsumptionReversalService {
         executedBy,
         null,
         null,
+        undefined,
+        consumedDocument.effectiveDate ?? null,
       ),
       tx,
     );

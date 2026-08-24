@@ -88,9 +88,13 @@ describe("SaleOrderStockConsumptionService", () => {
       ],
     );
 
-    await service.consume(order, requirements, tx);
+    await service.consume(order, requirements, tx, "2026-08-18");
 
     expect(documents.create).toHaveBeenCalledTimes(1);
+    expect(documents.create).toHaveBeenCalledWith(
+      expect.objectContaining({ effectiveDate: "2026-08-18" }),
+      tx,
+    );
     expect(inventory.incrementOnHand).toHaveBeenCalledTimes(2);
   });
 });

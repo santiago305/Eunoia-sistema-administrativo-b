@@ -110,7 +110,13 @@ export class SaleOrderWorkflowTransitionService {
     const actions = transitionBundle.actions.filter((action) => action.branch === branch);
     let actionResult;
     try {
-      actionResult = await this.actionRunner.run(order, actions, tx, input.executedBy);
+      actionResult = await this.actionRunner.run(
+        order,
+        actions,
+        tx,
+        input.executedBy,
+        transitionBundle.conditions,
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error al ejecutar acciones de workflow";
       throw new UnprocessableEntityException({
@@ -203,6 +209,7 @@ export class SaleOrderWorkflowTransitionService {
         actions,
         tx,
         executedBy ?? order.createdBy,
+        bundle.conditions,
       );
       const updated =
         effect === TRANSITION_EFFECTS.RUN_ACTIONS

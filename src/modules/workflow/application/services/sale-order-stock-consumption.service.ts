@@ -43,6 +43,7 @@ export class SaleOrderStockConsumptionService {
     order: SaleOrder,
     requirements: Array<{ stockItemId: string; quantity: number }>,
     tx: TransactionContext,
+    effectiveDate?: string | null,
   ): Promise<void> {
     if (!order.warehouseId || !requirements.length) return;
 
@@ -103,6 +104,8 @@ export class SaleOrderStockConsumptionService {
         actorId,
         null,
         null,
+        undefined,
+        effectiveDate ?? null,
       ),
       tx,
     );

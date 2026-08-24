@@ -460,6 +460,10 @@ export class ProductCatalogInventoryLedgerTypeormRepository implements ProductCa
     const rows = await qb
       .select("l.ledger_id", "id")
       .addSelect("l.created_at", "createdAt")
+      .addSelect(
+        "COALESCE(d.effective_date, (l.created_at AT TIME ZONE 'America/Lima')::date)",
+        "effectiveDate",
+      )
       .addSelect("d.doc_type", "docType")
       .addSelect("d.reference_type", "referenceType")
       .addSelect("d.correlative", "inventoryDocumentCorrelative")
@@ -502,6 +506,7 @@ export class ProductCatalogInventoryLedgerTypeormRepository implements ProductCa
       .getRawMany<{
         id: string;
         createdAt: Date;
+        effectiveDate: string;
         docType: DocType;
         referenceType: ReferenceType | null;
         inventoryDocumentCorrelative: number | string | null;
@@ -569,6 +574,7 @@ export class ProductCatalogInventoryLedgerTypeormRepository implements ProductCa
       return {
         id: row.id,
         createdAt: row.createdAt,
+        effectiveDate: row.effectiveDate,
         originLabel: buildInventoryMovementOriginLabel({
           docType: row.docType,
           referenceType: row.referenceType ?? null,
