@@ -59,7 +59,7 @@ export class HttpSaleOrderImportPreviewRowDto {
   quantity?: number;
 
   @IsNumber()
-  @Min(0)
+  @Min(0.01)
   total: number;
   
   @IsOptional()

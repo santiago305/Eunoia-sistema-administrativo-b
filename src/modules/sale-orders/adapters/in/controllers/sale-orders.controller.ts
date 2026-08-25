@@ -85,6 +85,8 @@ import {
 import { SaleOrderPackMatcherService } from 'src/modules/sale-orders/application/services/sale-order-pack-matcher.service';
 import { HttpSaleOrderMatchPackDto } from '../dtos/http-sale-order-match-pack.dto';
 import { SaleOrderSkuRecognitionCodeService } from 'src/modules/sale-orders/application/services/sale-order-sku-recognition-code.service';
+import { CorrectSaleOrderTotalUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/correct-total.usecase';
+import { CorrectSaleOrderTotalDto } from '../dtos/correct-sale-order-total.dto';
 import {
   CreateSaleOrderSkuRecognitionCodeDto,
   ListSaleOrderSkuRecognitionCodesDto,
@@ -116,6 +118,7 @@ export class SaleOrdersController {
     private readonly confirmDelivery: ConfirmSaleOrderDeliveryUsecase,
     private readonly addPayment: AddSaleOrderPaymentUsecase,
     private readonly deletePayment: DeleteSaleOrderPaymentUsecase,
+    private readonly correctTotal: CorrectSaleOrderTotalUsecase,
     private readonly listPayments: ListSaleOrderPaymentsUsecase,
     private readonly createFromImportPreview: CreateFromImportPreviewUseCase,
     private readonly listImportLotes: ListImportLotesUsecase,
@@ -599,14 +602,38 @@ export class SaleOrdersController {
     return result;
   }
 
+  @Patch(':saleOrderId/correct-total')
+  @RequirePermissions(
+    'sale_orders.update',
+    'sale_orders.advanced_orders',
+  )
+  async correctSaleOrderTotal(
+    @Param('saleOrderId', ParseUUIDPipe) saleOrderId: string,
+    @Body() dto: CorrectSaleOrderTotalDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    const result = await this.correctTotal.execute({
+      saleOrderId,
+      total: dto.total,
+      executedBy: user.id,
+    });
+    await this.evaluateAutomaticWorkflowThenNotify(
+      saleOrderId,
+      SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_UPDATED,
+    );
+    return result;
+  }
+
   @Patch(':id')
   @RequirePermissions('sale_orders.update')
   async update(
     @Param('id', ParseUUIDPipe) saleOrderId: string,
     @Body() dto: HttpSaleOrderUpdateDto,
+    @CurrentUser() user: { id: string },
   ) {
     const result = await this.updateSaleOrder.execute({
       saleOrderId,
+      userId: user.id,
       warehouseId: dto.warehouseId,
       workflowId: dto.workflowId,
       clientId: dto.clientId,

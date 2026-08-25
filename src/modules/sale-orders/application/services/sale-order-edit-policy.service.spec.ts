@@ -46,7 +46,7 @@ describe('SaleOrderEditPolicyService', () => {
 
   it.each([
     [[], 'NONE', true, true],
-    [[ACTIONS.RESERVE_STOCK], 'RESERVED', false, false],
+    [[ACTIONS.RESERVE_STOCK], 'RESERVED', true, false],
     [
       [ACTIONS.RESERVE_STOCK, ACTIONS.REVERT_STOCK],
       'REVERTED',
@@ -74,12 +74,12 @@ describe('SaleOrderEditPolicyService', () => {
     },
   );
 
-  it('makes commercial fields read-only in a final state while preserving stock status', async () => {
+  it('keeps commercial corrections available in a final state', async () => {
     const service = createFixture([ACTIONS.RESERVE_STOCK], true);
 
     await expect(service.resolve(order, tx)).resolves.toEqual({
       stockStatus: 'RESERVED',
-      productsEditable: false,
+      productsEditable: true,
       warehouseEditable: false,
       isFinal: true,
       reason: 'Pedido finalizado · Stock reservado',

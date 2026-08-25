@@ -89,6 +89,21 @@ export class SaleOrderItemTypeormRepository implements SaleOrderItemRepository {
     return rows.map((row) => this.toDomain(row));
   }
 
+  async updateAmounts(
+    input: Array<{ id: string; unitPrice: number; total: number }>,
+    tx?: TransactionContext,
+  ): Promise<void> {
+    if (!input.length) return;
+    const repo = this.getManager(tx).getRepository(SaleOrderItemEntity);
+    await repo.save(
+      input.map((row) => ({
+        id: row.id,
+        unitPrice: row.unitPrice,
+        total: row.total,
+      })),
+    );
+  }
+
   async deleteBySaleOrderId(
     saleOrderId: string,
     tx?: TransactionContext,

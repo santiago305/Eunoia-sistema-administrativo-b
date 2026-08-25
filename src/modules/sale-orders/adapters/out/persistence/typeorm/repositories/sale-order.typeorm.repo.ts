@@ -340,6 +340,24 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
 
     return this.toDomain(saved);
   }
+
+  async updateAmounts(
+    input: { saleOrderId: string; subTotal: number; total: number },
+    tx?: TransactionContext,
+  ): Promise<SaleOrder> {
+    const manager = this.getManager(tx);
+    const repo = manager.getRepository(SaleOrderEntity);
+    const row = await repo.findOne({
+      where: { id: input.saleOrderId },
+      lock: { mode: "pessimistic_write" },
+    });
+    if (!row) {
+      throw new BadRequestException("Pedido no encontrado");
+    }
+    row.subTotal = input.subTotal;
+    row.total = input.total;
+    return this.toDomain(await repo.save(row));
+  }
   async countSaleOrdersByClientId(
     clientId: string,
     tx?: TransactionContext,
@@ -518,7 +536,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
 
   private paymentStatusSql() {
     const paymentsSumSql = "(SELECT COALESCE(SUM(sp.amount), 0) FROM sale_payments sp WHERE sp.sale_order_id = so.id)";
-    return `CASE WHEN ${paymentsSumSql} >= so.total THEN '${SaleOrderPaymentStatusValues.PAID}' ELSE '${SaleOrderPaymentStatusValues.PENDING}' END`;
+    return `CASE WHEN so.total > 0 AND ${paymentsSumSql} >= so.total THEN '${SaleOrderPaymentStatusValues.PAID}' ELSE '${SaleOrderPaymentStatusValues.PENDING}' END`;
   }
 
   private applyBooleanStatusFilter(
@@ -1180,8 +1198,26 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     const skuById = new Map(componentSkus.map((sku) => [sku.id, sku]));
     const displayComponentsByOrderId = new Map<
       string,
-      Array<{ customSku: string | null; name: string | null; quantity: number }>
+      Array<{
+        customSku: string | null;
+        name: string | null;
+        attributes: Array<{ code: string; name: string | null; value: string }>;
+        quantity: number;
+      }>
     >();
+
+    const skuIdsMissingAttributeSnapshot = Array.from(
+      new Set(
+        components
+          .filter((component) => !component.attributesSnapshot?.length)
+          .map((component) => component.skuId)
+          .filter(Boolean),
+      ),
+    );
+    const fallbackAttributesBySkuId = await this.loadSkuAttributes(
+      manager,
+      skuIdsMissingAttributeSnapshot,
+    );
 
     for (const row of rows) {
       const orderedItems = [...(row.items ?? [])].sort(
@@ -1195,6 +1231,9 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
             return {
               customSku: component.customSkuSnapshot ?? sku?.customSku ?? null,
               name: component.skuNameSnapshot ?? sku?.name ?? null,
+              attributes: component.attributesSnapshot?.length
+                ? component.attributesSnapshot
+                : fallbackAttributesBySkuId.get(component.skuId) ?? [],
               quantity: Number(component.quantity ?? 0),
             };
           }),
@@ -1217,7 +1256,8 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       const totalPaid = orderPayments.reduce((acc, p) => acc + Number(p.amount ?? 0), 0);
       const totalOrder = Number(row.total ?? 0);
       const pendingAmount = Math.max(totalOrder - totalPaid, 0);
-      const paymentStatus: SaleOrderPaymentStatus = totalPaid >= totalOrder ? "PAID" : "PENDING";
+      const paymentStatus: SaleOrderPaymentStatus =
+        totalOrder > 0 && totalPaid >= totalOrder ? "PAID" : "PENDING";
 
       const client = clientById.get(row.clientId);
       const warehouse = warehouseById.get(row.warehouseId);
@@ -1941,6 +1981,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     (compsByItemId.get(item.id) ?? []).map((component) => ({
       customSku: component.sku.customSku ?? null,
       name: component.sku.name ?? null,
+      attributes: component.attributes,
       quantity: Number(component.quantity ?? 0),
     })),
   );
@@ -1949,7 +1990,8 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
   const totalPaid = payments.reduce((acc, payment) => acc + Number(payment.amount ?? 0), 0);
   const totalOrder = Number(row.total ?? 0);
   const pendingAmount = Math.max(totalOrder - totalPaid, 0);
-  const paymentStatus: SaleOrderPaymentStatus = totalPaid >= totalOrder ? "PAID" : "PENDING";
+  const paymentStatus: SaleOrderPaymentStatus =
+    totalOrder > 0 && totalPaid >= totalOrder ? "PAID" : "PENDING";
 
   const output: SaleOrderGetOutput = {
     id: row.id,

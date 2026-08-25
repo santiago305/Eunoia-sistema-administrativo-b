@@ -18,6 +18,10 @@ export interface SaleOrderItemComponentRepository {
   ): Promise<SaleOrderItemComponent[]>;
 
   listBySaleOrderItemIds(saleOrderItemIds: string[], tx?: TransactionContext): Promise<SaleOrderItemComponent[]>;
+  updateAmounts(
+    input: Array<{ id: string; unitPrice: number; total: number }>,
+    tx?: TransactionContext,
+  ): Promise<void>;
   deleteBySaleOrderItemIds(saleOrderItemIds: string[], tx?: TransactionContext): Promise<void>;
   findComponentsBySaleOrderItemId(
     saleOrderItemId: string,

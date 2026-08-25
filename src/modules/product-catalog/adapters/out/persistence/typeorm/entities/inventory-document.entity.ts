@@ -48,6 +48,9 @@ export class ProductCatalogInventoryDocumentEntity {
   @Column({ name: "posted_at", type: "timestamptz", nullable: true })
   postedAt: Date | null;
 
+  @Column({ name: "effective_date", type: "date", nullable: true })
+  effectiveDate: string | null;
+
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
 }

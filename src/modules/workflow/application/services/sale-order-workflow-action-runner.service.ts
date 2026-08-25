@@ -25,11 +25,14 @@ import {
   WorkflowTransitionRepository,
 } from "../../domain/ports/workflow-transition.repository";
 import { SaleOrderStockConsumptionService } from "./sale-order-stock-consumption.service";
+import { SaleOrderStockConsumptionReversalService } from "./sale-order-stock-consumption-reversal.service";
 import {
   SaleOrderWarehouseAssignmentService,
   WorkflowActionOutcome,
 } from "./sale-order-warehouse-assignment.service";
 import { ActionFactory } from "../../domain/factories/action.factory";
+import { CONDITIONS } from "../../domain/constants/workflow-condition.constants";
+import { WorkflowCondition } from "../../domain/entities/workflow-condition";
 
 export type WorkflowActionRunResult = {
   order: SaleOrder;
@@ -51,6 +54,7 @@ export class SaleOrderWorkflowActionRunnerService {
     @Inject(WORKFLOW_TRANSITION_REPOSITORY)
     private readonly transitionRepo: WorkflowTransitionRepository,
     private readonly stockConsumption: SaleOrderStockConsumptionService,
+    private readonly stockConsumptionReversal: SaleOrderStockConsumptionReversalService,
     private readonly warehouseAssignment: SaleOrderWarehouseAssignmentService,
   ) {}
 
@@ -80,10 +84,63 @@ export class SaleOrderWorkflowActionRunnerService {
     return active;
   }
 
+  private async resolveConsumptionEffectiveDate(
+    order: SaleOrder,
+    tx: TransactionContext,
+    currentConditions: WorkflowCondition[],
+  ): Promise<string | null> {
+    const deliveryDate = order.deliveryDate;
+    if (!deliveryDate || !/^\d{4}-\d{2}-\d{2}$/.test(deliveryDate)) {
+      return null;
+    }
+
+    const resolveDaysBefore = (conditions: WorkflowCondition[]) => {
+      const condition = conditions.find(
+        (item) => item.type === CONDITIONS.SCHEDULE_DELIVERY_WINDOW,
+      );
+      if (!condition) return null;
+
+      const rawDays = Number(condition.config.maxDaysBefore ?? 0);
+      return Number.isInteger(rawDays) && rawDays >= 0 ? rawDays : null;
+    };
+
+    let daysBefore = resolveDaysBefore(currentConditions);
+    if (daysBefore === null) {
+      const history = await this.historyRepo.listBySaleOrderId(order.id, tx);
+      for (let index = history.length - 1; index >= 0; index -= 1) {
+        const entry = history[index];
+        if (!entry.transitionId) continue;
+        if (order.currentStateId && entry.toStateId !== order.currentStateId) continue;
+
+        const transition = await this.transitionRepo.findDetailedById(
+          entry.transitionId,
+          tx,
+        );
+        daysBefore = resolveDaysBefore(transition?.conditions ?? []);
+        if (daysBefore !== null) break;
+      }
+    }
+
+    const [year, month, day] = deliveryDate.split("-").map(Number);
+    const effectiveDate = new Date(Date.UTC(year, month - 1, day));
+    if (
+      Number.isNaN(effectiveDate.getTime()) ||
+      effectiveDate.getUTCFullYear() !== year ||
+      effectiveDate.getUTCMonth() !== month - 1 ||
+      effectiveDate.getUTCDate() !== day
+    ) {
+      return null;
+    }
+    effectiveDate.setUTCDate(effectiveDate.getUTCDate() - (daysBefore ?? 0));
+    return effectiveDate.toISOString().slice(0, 10);
+  }
+
   async run(
     order: SaleOrder,
     actions: WorkflowAction[],
     tx: TransactionContext,
+    executedBy?: string,
+    currentConditions: WorkflowCondition[] = [],
   ): Promise<WorkflowActionRunResult> {
     if (order.isActive === false) {
       throw new ConflictException('Los pedidos eliminados son de solo lectura');
@@ -147,6 +204,13 @@ export class SaleOrderWorkflowActionRunnerService {
     }
 
     const onlyRevertsStock = stockActions.every((action) => action.type === ACTIONS.REVERT_STOCK);
+    if (onlyRevertsStock && effectiveOrder.warehouseId) {
+      await this.stockConsumptionReversal.restoreAndRelease(
+        effectiveOrder,
+        executedBy ?? effectiveOrder.createdBy,
+        tx,
+      );
+    }
     if (onlyRevertsStock && !(await this.hasActiveReservation(effectiveOrder.id, tx))) {
       await this.saleOrderRepo.setReserveBool(
         { saleOrderId: effectiveOrder.id, reserveBool: false },
@@ -256,7 +320,17 @@ export class SaleOrderWorkflowActionRunnerService {
         continue;
       }
       if (action.type === ACTIONS.CONSUME_STOCK) {
-        await this.stockConsumption.consume(effectiveOrder, requirements, tx);
+        const effectiveDate = await this.resolveConsumptionEffectiveDate(
+          effectiveOrder,
+          tx,
+          currentConditions,
+        );
+        await this.stockConsumption.consume(
+          effectiveOrder,
+          requirements,
+          tx,
+          effectiveDate,
+        );
         await this.saleOrderRepo.setReserveBool(
           { saleOrderId: effectiveOrder.id, reserveBool: false },
           tx,

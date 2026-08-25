@@ -31,9 +31,11 @@ export class SaleOrderWorkflowContextService {
     const totalPaid = payments.reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0);
     const client = await this.clientRepo.findById(order.clientId, tx);
 
+    const total = Number(order.total ?? 0);
+
     return {
       orderId: order.id,
-      isPaid: totalPaid >= Number(order.total ?? 0),
+      isPaid: total > 0 && totalPaid >= total,
       hasStock: await this.hasAvailableStock(order, tx),
       isCancelled: currentState.code.toUpperCase() === "CANCELLED",
       invoiceSent: order.invoiceSend,
@@ -42,7 +44,7 @@ export class SaleOrderWorkflowContextService {
         workflowId: order.workflowId,
         currentStateId: order.currentStateId,
         warehouseId: order.warehouseId,
-        total: Number(order.total ?? 0),
+        total,
         totalPaid,
         deliveryDate: order.deliveryDate,
         scheduleDate: order.scheduleDate,

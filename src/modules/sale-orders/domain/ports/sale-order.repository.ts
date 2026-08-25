@@ -65,6 +65,10 @@ export interface SaleOrderRepository {
     tx?: TransactionContext,
   ): Promise<SaleOrder | null>;
   update(input: SaleOrderWrite & { saleOrderId: string }, tx?: TransactionContext): Promise<SaleOrder>;
+  updateAmounts(
+    input: { saleOrderId: string; subTotal: number; total: number },
+    tx?: TransactionContext,
+  ): Promise<SaleOrder>;
   listIdsForAutomaticWorkflow(limit?: number, tx?: TransactionContext): Promise<string[]>;
   listIdsForAutomaticWorkflowByClientId(clientId: string, limit?: number, tx?: TransactionContext): Promise<string[]>;
   listIdsForAutomaticWorkflowByInventoryStockEvent(

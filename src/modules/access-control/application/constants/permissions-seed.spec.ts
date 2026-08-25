@@ -203,8 +203,8 @@ describe("permissions seed", () => {
   });
 
   it("includes the complete sale order permission contract", () => {
-    expect(SALE_ORDER_PERMISSION_CODES).toHaveLength(40);
-    expect(new Set(SALE_ORDER_PERMISSION_CODES).size).toBe(40);
+    expect(SALE_ORDER_PERMISSION_CODES).toHaveLength(41);
+    expect(new Set(SALE_ORDER_PERMISSION_CODES).size).toBe(41);
     expect(SALE_ORDER_PERMISSION_CODES).not.toContain("sale_orders.preguide.update");
     expect(SALE_ORDER_PERMISSION_CODES).not.toContain("sale_orders.prepared.update");
     expect(DEPRECATED_PERMISSION_CODES).toEqual(
@@ -232,6 +232,13 @@ describe("permissions seed", () => {
           code: "sale_orders.delete",
           resource: "sale_orders",
           action: "delete",
+          type: "action",
+        }),
+        expect.objectContaining({
+          code: "sale_orders.advanced_orders",
+          name: "Pedidos avanzados",
+          resource: "sale_order_advanced",
+          action: "manage",
           type: "action",
         }),
         expect.objectContaining({

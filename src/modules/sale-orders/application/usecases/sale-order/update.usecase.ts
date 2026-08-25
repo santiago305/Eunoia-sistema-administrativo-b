@@ -41,6 +41,8 @@ import {
   SaleOrderSuppliesService,
   SaleOrderSupplyInput,
 } from '../../services/sale-order-supplies.service';
+import { SaleOrderPaymentWorkflowReconciliationService } from '../../services/sale-order-payment-workflow-reconciliation.service';
+import { SaleOrderStockCorrectionService } from '../../services/sale-order-stock-correction.service';
 
 export type UpdateSaleOrderInput = {
   saleOrderId: string;
@@ -93,6 +95,11 @@ export type UpdateSaleOrderInput = {
   supplies?: SaleOrderSupplyInput[];
 };
 
+type UpdateSaleOrderTransactionOptions = {
+  deferPaymentWorkflowReconciliation?: boolean;
+  executedBy?: string;
+};
+
 @Injectable()
 export class UpdateSaleOrderUsecase {
   constructor(
@@ -123,6 +130,10 @@ export class UpdateSaleOrderUsecase {
     @Optional()
     private readonly commandAuthorization?: SaleOrderCommandAuthorizationService,
     @Optional() private readonly suppliesService?: SaleOrderSuppliesService,
+    @Optional()
+    private readonly paymentWorkflowReconciliation?: SaleOrderPaymentWorkflowReconciliationService,
+    @Optional()
+    private readonly stockCorrection?: SaleOrderStockCorrectionService,
   ) {}
 
   private buildComponentSignature(
@@ -161,6 +172,8 @@ export class UpdateSaleOrderUsecase {
   private buildCommercialItemSignature(
     items: Array<{
       referencePackId?: string | null;
+      packNameSnapshot?: string | null;
+      description?: string | null;
       quantity: number;
       unitPrice: number;
       total: number;
@@ -176,17 +189,20 @@ export class UpdateSaleOrderUsecase {
     return items
       .map((item) =>
         JSON.stringify({
-          referencePackId: item.referencePackId ?? null,
-          quantity: Number(item.quantity),
-          unitPrice: Number(item.unitPrice),
-          total: Number(item.total),
+          referencePackId: item.referencePackId?.trim() || null,
+          packNameSnapshot: item.packNameSnapshot?.trim() || null,
+          description: item.description?.trim() || null,
+          quantity: Number(item.quantity ?? 0),
+          unitPrice: Number(item.unitPrice ?? 0),
+          total: Number(item.total ?? 0),
           components: item.components
             .map((component) => ({
               skuId: component.skuId,
-              referencePackItemId: component.referencePackItemId ?? null,
-              quantity: Number(component.quantity),
-              unitPrice: Number(component.unitPrice),
-              total: Number(component.total),
+              referencePackItemId:
+                component.referencePackItemId?.trim() || null,
+              quantity: Number(component.quantity ?? 0),
+              unitPrice: Number(component.unitPrice ?? 0),
+              total: Number(component.total ?? 0),
             }))
             .sort((left, right) =>
               JSON.stringify(left).localeCompare(JSON.stringify(right)),
@@ -197,6 +213,12 @@ export class UpdateSaleOrderUsecase {
       .join('|');
   }
 
+  private moneyChanged(left: number | null | undefined, right: number): boolean {
+    return (
+      Math.round(Number(left ?? 0) * 100) !== Math.round(Number(right) * 100)
+    );
+  }
+
   async execute(input: UpdateSaleOrderInput) {
     if (input.userId) {
       await this.commandAuthorization?.authorizeUpdate(
@@ -205,13 +227,14 @@ export class UpdateSaleOrderUsecase {
       );
     }
     return this.uow.runInTransaction((tx) =>
-      this.executeInTransaction(input, tx),
+      this.executeInTransaction(input, tx, { executedBy: input.userId }),
     );
   }
 
   async executeInTransaction(
     input: UpdateSaleOrderInput,
     tx: TransactionContext,
+    options: UpdateSaleOrderTransactionOptions = {},
   ) {
     await this.adviserMembership?.assertIsAdviser(input.assignedBy);
     const order = await this.saleOrderRepo.findByIdForUpdate(
@@ -332,12 +355,28 @@ export class UpdateSaleOrderUsecase {
       componentPlansByItemIndex.push(plans);
     }
 
-    if (editPolicy.isFinal) {
-      const existingComponents =
-        await this.componentRepo.listBySaleOrderItemIds(existingItemIds, tx);
-      const currentSignature = this.buildCommercialItemSignature(
+    const existingComponents =
+      await this.componentRepo.listBySaleOrderItemIds(existingItemIds, tx);
+    const nextComponents = componentPlansByItemIndex.flat();
+    const stockCompositionChanged =
+      this.buildComponentSignature(
+        existingComponents.map((component) => ({
+          skuId: component.skuId,
+          quantity: Number(component.quantity ?? 0),
+        })),
+      ) !==
+      this.buildComponentSignature(
+        nextComponents.map((component) => ({
+          skuId: component.skuId,
+          quantity: Number(component.quantity ?? 0),
+        })),
+      );
+    const commercialItemsChanged =
+      this.buildCommercialItemSignature(
         existingItems.map((item) => ({
           referencePackId: item.referencePackId,
+          packNameSnapshot: item.packNameSnapshot,
+          description: item.description,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           total: item.total,
@@ -351,28 +390,37 @@ export class UpdateSaleOrderUsecase {
               total: component.total,
             })),
         })),
-      );
-      const nextSignature = this.buildCommercialItemSignature(
+      ) !==
+      this.buildCommercialItemSignature(
         input.items.map((item, index) => ({
-          referencePackId: item.referencePackId ?? null,
+          referencePackId: item.referencePackId,
+          packNameSnapshot: item.packNameSnapshot,
+          description: item.description,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           total: item.total,
           components: componentPlansByItemIndex[index] ?? [],
         })),
       );
+    const subTotal = input.items.reduce(
+      (sum, item) => sum + Number(item.total ?? 0),
+      0,
+    );
+    const deliveryCost = Number(input.deliveryCost ?? 0);
+    const discount = Number(input.discount ?? order.discount ?? 0);
+    const total = Math.max(0, subTotal + deliveryCost - discount);
 
-      if (
-        input.warehouseId !== order.warehouseId ||
-        currentSignature !== nextSignature
-      ) {
-        throw new BadRequestException(
-          'No se pueden cambiar productos, packs, cantidades, precios ni almacén de un pedido finalizado.',
-        );
-      }
+    if (editPolicy.isFinal && input.warehouseId !== order.warehouseId) {
+      throw new BadRequestException(
+        'No se puede cambiar el almacén de un pedido finalizado.',
+      );
     }
 
     const stockLifecycleStatus = editPolicy.stockStatus;
+    const isAdvancedOrder =
+      editPolicy.isFinal ||
+      stockLifecycleStatus === 'RESERVED' ||
+      stockLifecycleStatus === 'CONSUMED';
     const warehouseChanged = input.warehouseId !== order.warehouseId;
     if (warehouseChanged && stockLifecycleStatus === 'RESERVED') {
       throw new BadRequestException(
@@ -384,55 +432,65 @@ export class UpdateSaleOrderUsecase {
         'No se puede cambiar el almacén porque el pedido ya consumió stock.',
       );
     }
-    if (
-      stockLifecycleStatus === 'RESERVED' ||
-      stockLifecycleStatus === 'CONSUMED'
-    ) {
-      const existingComponents =
-        await this.componentRepo.listBySaleOrderItemIds(existingItemIds, tx);
-      const currentSignature = this.buildComponentSignature(
-        existingComponents.map((component) => ({
-          skuId: component.skuId,
-          quantity: Number(component.quantity ?? 0),
-        })),
-      );
-      const nextComponents = componentPlansByItemIndex.flat();
-      const nextSignature = this.buildComponentSignature(
-        nextComponents.map((component) => ({
-          skuId: component.skuId,
-          quantity: Number(component.quantity ?? 0),
-        })),
-      );
-      if (currentSignature !== nextSignature) {
-        throw new BadRequestException(
-          stockLifecycleStatus === 'RESERVED'
-            ? 'Este pedido ya tiene stock reservado. Para cambiar productos o cantidades, primero debes liberar la reserva del flujo.'
-            : 'Este pedido ya consumió stock. No se pueden cambiar productos o cantidades.',
-        );
-      }
-    }
 
+    let suppliesChanged = false;
     if (
       input.supplies !== undefined &&
       this.suppliesService &&
-      (editPolicy.isFinal ||
-        stockLifecycleStatus === 'RESERVED' ||
-        stockLifecycleStatus === 'CONSUMED')
+      isAdvancedOrder
     ) {
       const currentSupplies = await this.suppliesService.listBySaleOrderId(
         input.saleOrderId,
         tx,
       );
-      if (
+      suppliesChanged =
         this.buildSupplySignature(currentSupplies) !==
-        this.buildSupplySignature(input.supplies)
-      ) {
+        this.buildSupplySignature(input.supplies);
+    }
+
+    const amountChanged =
+      this.moneyChanged(order.subTotal, subTotal) ||
+      this.moneyChanged(order.deliveryCost, deliveryCost) ||
+      this.moneyChanged(order.discount, discount) ||
+      this.moneyChanged(order.total, total);
+    const previousDeliveryDate = order.deliveryDate ?? null;
+    const currentDeliveryDate = input.deliveryDate ?? null;
+    const deliveryDateChanged = previousDeliveryDate !== currentDeliveryDate;
+    const advancedCorrectionRequested =
+      isAdvancedOrder &&
+      (commercialItemsChanged ||
+        suppliesChanged ||
+        amountChanged ||
+        deliveryDateChanged);
+    const executedBy = options.executedBy ?? input.userId ?? null;
+    if (advancedCorrectionRequested && this.commandAuthorization) {
+      if (!executedBy) {
         throw new BadRequestException(
-          stockLifecycleStatus === 'RESERVED'
-            ? 'Este pedido ya tiene stock reservado. Para cambiar insumos o cantidades, primero debes liberar la reserva del flujo.'
-            : 'No se pueden cambiar insumos de un pedido finalizado o con stock consumido.',
+          'No se pudo validar el permiso Pedidos avanzados',
         );
       }
+      await this.commandAuthorization.authorizeAdvancedOrder(executedBy);
+    }
+
+    let activeStockCompositionReleased = false;
+    if (
+      (stockLifecycleStatus === 'RESERVED' ||
+        stockLifecycleStatus === 'CONSUMED') &&
+      (stockCompositionChanged || suppliesChanged)
+    ) {
+      const stockActor = executedBy ?? order.createdBy ?? null;
+      if (!this.stockCorrection || !stockActor) {
+        throw new BadRequestException(
+          'No se pudo iniciar la corrección segura del inventario',
+        );
+      }
+      activeStockCompositionReleased =
+        await this.stockCorrection.releasePreviousComposition(
+          order,
+          stockLifecycleStatus,
+          stockActor,
+          tx,
+        );
     }
 
     await this.componentRepo.deleteBySaleOrderItemIds(existingItemIds, tx);
@@ -441,14 +499,6 @@ export class UpdateSaleOrderUsecase {
     if (input.payments) {
       await this.paymentRepo.deleteBySaleOrderId(input.saleOrderId, tx);
     }
-
-    const subTotal = input.items.reduce(
-      (sum, item) => sum + Number(item.total ?? 0),
-      0,
-    );
-    const deliveryCost = Number(input.deliveryCost ?? 0);
-    const discount = Number(input.discount ?? order.discount ?? 0);
-    const total = Math.max(0, subTotal + deliveryCost - discount);
 
     const updated = await this.saleOrderRepo.update(
       {
@@ -522,6 +572,10 @@ export class UpdateSaleOrderUsecase {
       }
     }
 
+    if (activeStockCompositionReleased) {
+      await this.stockCorrection!.reserveCorrectedComposition(updated, tx);
+    }
+
     const paymentsInput = (input.payments ?? []).map((payment) => {
       const date = payment.date ? new Date(payment.date) : new Date();
 
@@ -568,12 +622,60 @@ export class UpdateSaleOrderUsecase {
       tx,
     );
 
+    const totalChanged =
+      Math.round(Number(order.total ?? 0) * 100) !==
+      Math.round(Number(total) * 100);
+    let reconciledCurrentStateId = updated.currentStateId ?? null;
+    let paymentStateChanged = false;
+    if (
+      !options.deferPaymentWorkflowReconciliation &&
+      options.executedBy &&
+      this.paymentWorkflowReconciliation &&
+      (totalChanged ||
+        deliveryDateChanged ||
+        input.payments !== undefined ||
+        activeStockCompositionReleased)
+    ) {
+      const reconciliation = await this.paymentWorkflowReconciliation.reconcile(
+        {
+          saleOrderId: updated.id,
+          executedBy: options.executedBy,
+          source: 'sale-order-standard-save',
+          previousTotal: Number(order.total ?? 0),
+          currentTotal: total,
+          ...(deliveryDateChanged
+            ? { previousDeliveryDate, currentDeliveryDate }
+            : {}),
+        },
+        tx,
+      );
+      reconciledCurrentStateId =
+        reconciliation?.currentState?.id ?? reconciledCurrentStateId;
+      paymentStateChanged = reconciliation?.stateChanged ?? false;
+    }
+
+    if (
+      activeStockCompositionReleased &&
+      stockLifecycleStatus === 'CONSUMED' &&
+      !options.deferPaymentWorkflowReconciliation &&
+      !paymentStateChanged
+    ) {
+      await this.stockCorrection!.consumeCorrectedComposition(updated, tx);
+    }
+
     return {
       orderId: updated.id,
       serie: updated.serie ?? null,
       correlative: updated.correlative ?? null,
       workflowId: updated.workflowId ?? null,
-      currentStateId: updated.currentStateId ?? null,
+      currentStateId: reconciledCurrentStateId,
+      previousTotal: Number(order.total ?? 0),
+      totalChanged,
+      previousDeliveryDate,
+      deliveryDate: currentDeliveryDate,
+      deliveryDateChanged,
+      stockCompositionReplaced: activeStockCompositionReleased,
+      previousStockStatus: stockLifecycleStatus,
     };
   }
 }

@@ -56,8 +56,7 @@ export class SaleOrderEditPolicyService {
         ? 'NONE'
         : resolvedStockStatus;
 
-    const productsEditable =
-      !isFinal && stockStatus !== 'RESERVED';
+    const productsEditable = true;
     const warehouseEditable =
       !isFinal &&
       stockStatus !== 'RESERVED' &&
@@ -100,6 +99,10 @@ export class SaleOrderEditPolicyService {
     let status: SaleOrderStockStatus = 'NONE';
 
     for (const item of history) {
+      if (item.metadata?.stockStatus === 'NONE') status = 'NONE';
+      if (item.metadata?.stockStatus === 'RESERVED') status = 'RESERVED';
+      if (item.metadata?.stockStatus === 'REVERTED') status = 'REVERTED';
+      if (item.metadata?.stockStatus === 'CONSUMED') status = 'CONSUMED';
       if (!item.transitionId) continue;
       const transition = await this.transitionRepo.findDetailedById(
         item.transitionId,

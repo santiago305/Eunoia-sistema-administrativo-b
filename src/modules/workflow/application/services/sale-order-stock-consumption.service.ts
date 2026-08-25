@@ -24,6 +24,7 @@ import { Direction } from "src/shared/domain/value-objects/direction";
 import { DocStatus } from "src/shared/domain/value-objects/doc-status";
 import { DocType } from "src/shared/domain/value-objects/doc-type";
 import { ReferenceType } from "src/shared/domain/value-objects/reference-type";
+import { saleOrderStockConsumptionReversalMarker } from "./sale-order-stock-consumption-reversal-marker";
 
 @Injectable()
 export class SaleOrderStockConsumptionService {
@@ -42,14 +43,38 @@ export class SaleOrderStockConsumptionService {
     order: SaleOrder,
     requirements: Array<{ stockItemId: string; quantity: number }>,
     tx: TransactionContext,
+    effectiveDate?: string | null,
   ): Promise<void> {
     if (!order.warehouseId || !requirements.length) return;
 
-    const existing = await this.documentRepo.findByReference(
+    const existingOutDocuments = await this.documentRepo.findByReference(
       { referenceType: ReferenceType.SALE_ORDER, referenceId: order.id, docType: DocType.OUT },
       tx,
     );
-    if (existing.some((document) => document.status === DocStatus.POSTED)) {
+    const postedOutDocuments = existingOutDocuments.filter(
+      (document) => document.status === DocStatus.POSTED && document.id,
+    );
+    const reversalDocuments = postedOutDocuments.length
+      ? await this.documentRepo.findByReference(
+          {
+            referenceType: ReferenceType.SALE_ORDER,
+            referenceId: order.id,
+            docType: DocType.IN,
+          },
+          tx,
+        )
+      : [];
+    const hasUnreversedConsumption = postedOutDocuments.some(
+      (document) =>
+        !reversalDocuments.some(
+          (reversal) =>
+            reversal.status === DocStatus.POSTED &&
+            reversal.note?.includes(
+              saleOrderStockConsumptionReversalMarker(document.id as string),
+            ),
+        ),
+    );
+    if (hasUnreversedConsumption) {
       return;
     }
 
@@ -79,6 +104,8 @@ export class SaleOrderStockConsumptionService {
         actorId,
         null,
         null,
+        undefined,
+        effectiveDate ?? null,
       ),
       tx,
     );

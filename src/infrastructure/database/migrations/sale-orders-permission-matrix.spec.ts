@@ -16,6 +16,7 @@ const EXPECTED_SALE_ORDER_PERMISSION_CODES = [
   'sale_orders.stock.view',
   'sale_orders.create',
   'sale_orders.update',
+  'sale_orders.advanced_orders',
   'sale_orders.delete',
   'sale_orders.restore',
   'sale_orders.clients.manage',

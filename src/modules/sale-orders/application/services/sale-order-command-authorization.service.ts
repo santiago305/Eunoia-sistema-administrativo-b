@@ -62,6 +62,11 @@ export class SaleOrderCommandAuthorizationService {
     this.assert(available, this.collect(input, 'sale_orders.update'));
   }
 
+  async authorizeAdvancedOrder(userId: string): Promise<void> {
+    const available = await this.permissions(userId);
+    this.assert(available, ['sale_orders.advanced_orders']);
+  }
+
   async authorizeWithClient(
     userId: string,
     input: PermissionInput,

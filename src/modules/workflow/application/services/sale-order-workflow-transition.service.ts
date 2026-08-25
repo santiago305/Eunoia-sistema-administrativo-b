@@ -110,7 +110,13 @@ export class SaleOrderWorkflowTransitionService {
     const actions = transitionBundle.actions.filter((action) => action.branch === branch);
     let actionResult;
     try {
-      actionResult = await this.actionRunner.run(order, actions, tx);
+      actionResult = await this.actionRunner.run(
+        order,
+        actions,
+        tx,
+        input.executedBy,
+        transitionBundle.conditions,
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : "Error al ejecutar acciones de workflow";
       throw new UnprocessableEntityException({
@@ -198,7 +204,13 @@ export class SaleOrderWorkflowTransitionService {
         throw new BadRequestException("Rama automatica de acciones sin acciones");
       }
 
-      const actionResult = await this.actionRunner.run(order, actions, tx);
+      const actionResult = await this.actionRunner.run(
+        order,
+        actions,
+        tx,
+        executedBy ?? order.createdBy,
+        bundle.conditions,
+      );
       const updated =
         effect === TRANSITION_EFFECTS.RUN_ACTIONS
           ? actionResult.order

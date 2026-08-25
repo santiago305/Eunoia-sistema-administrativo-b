@@ -73,7 +73,8 @@ import {
 
 const INVENTORY_LEDGER_EXPORT_LABELS: Record<string, string> = {
   createdAt: "Fecha",
-  documentNumber: "Documento",
+  effectiveDate: "Fecha prevista",
+  originLabel: "Origen",
   direction: "Direccion",
   skuName: "SKU",
   quantity: "Cantidad",

@@ -125,6 +125,8 @@ import { AddSourceRecognitionCodePermissions20260820121000 } from "./migrations/
 import { DropRecognitionCodeDescriptions20260820122000 } from "./migrations/20260820122000-drop-recognition-code-descriptions";
 import { NormalizePeruvianMobilePhones20260820123000 } from "./migrations/20260820123000-normalize-peruvian-mobile-phones";
 import { AllowDraftOnlyMailAttachments20260824120000 } from "./migrations/20260824120000-allow-draft-only-mail-attachments";
+import { AddSaleOrdersAdvancedPermission20260822120000 } from "./migrations/20260822120000-add-sale-orders-advanced-permission";
+import { AddInventoryMovementEffectiveDate20260824000000 } from "./migrations/20260824000000-add-inventory-movement-effective-date";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -261,6 +263,8 @@ export const databaseMigrations = [
     DropRecognitionCodeDescriptions20260820122000,
     NormalizePeruvianMobilePhones20260820123000,
     AllowDraftOnlyMailAttachments20260824120000,
+    AddSaleOrdersAdvancedPermission20260822120000,
+    AddInventoryMovementEffectiveDate20260824000000,
 ];
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({
