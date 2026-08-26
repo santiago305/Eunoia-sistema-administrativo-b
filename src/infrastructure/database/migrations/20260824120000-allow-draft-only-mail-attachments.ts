@@ -1,0 +1,19 @@
+import { MigrationInterface, QueryRunner } from 'typeorm';
+
+export class AllowDraftOnlyMailAttachments20260824120000
+  implements MigrationInterface
+{
+  name = 'AllowDraftOnlyMailAttachments20260824120000';
+
+  async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      'ALTER TABLE message_attachments ALTER COLUMN message_id DROP NOT NULL',
+    );
+  }
+
+  async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      'ALTER TABLE message_attachments ALTER COLUMN message_id SET NOT NULL',
+    );
+  }
+}
