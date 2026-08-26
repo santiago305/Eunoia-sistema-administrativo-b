@@ -99,6 +99,9 @@ export class SaleOrderEntity {
   @Column({ name: "reserve_bool", type: "boolean", default: false })
   reserveBool: boolean;
 
+  @Column({ name: "stock_reverted_bool", type: "boolean", default: false })
+  stockRevertedBool: boolean;
+
   @Column({ name: "lotes", type: "int", nullable: true })
   lotes?: number | null;
 

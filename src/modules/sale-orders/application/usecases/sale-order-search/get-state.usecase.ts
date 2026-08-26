@@ -7,6 +7,7 @@ import {
   SALE_ORDER_PAYMENT_STATUS_SEARCH_OPTIONS,
   SALE_ORDER_PREGUIDE_STATUS_SEARCH_OPTIONS,
   SALE_ORDER_PREPARED_STATUS_SEARCH_OPTIONS,
+  SALE_ORDER_STOCK_SITUATION_SEARCH_OPTIONS,
   sanitizeSaleOrderSearchSnapshot,
 } from "src/modules/sale-orders/application/support/sale-order-search.utils";
 import { SaleOrderInvoiceStatusValues } from "src/modules/sale-orders/application/dtos/sale-order-search/sale-order-search-snapshot";
@@ -43,6 +44,7 @@ export class GetSaleOrderSearchStateUsecase {
       ]),
       preguideStatuses: new Map(SALE_ORDER_PREGUIDE_STATUS_SEARCH_OPTIONS.map((item) => [item.id, item.label])),
       preparedStatuses: new Map(SALE_ORDER_PREPARED_STATUS_SEARCH_OPTIONS.map((item) => [item.id, item.label])),
+      stockSituations: new Map(SALE_ORDER_STOCK_SITUATION_SEARCH_OPTIONS.map((item) => [item.id, item.label])),
     };
 
     return {
@@ -85,6 +87,7 @@ export class GetSaleOrderSearchStateUsecase {
         ],
         preguideStatuses: SALE_ORDER_PREGUIDE_STATUS_SEARCH_OPTIONS,
         preparedStatuses: SALE_ORDER_PREPARED_STATUS_SEARCH_OPTIONS,
+        stockSituations: SALE_ORDER_STOCK_SITUATION_SEARCH_OPTIONS,
       },
     };
   }

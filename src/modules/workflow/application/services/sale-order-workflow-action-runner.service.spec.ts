@@ -26,6 +26,7 @@ describe("SaleOrderWorkflowActionRunnerService", () => {
       unmarkPrepared: jest.fn().mockResolvedValue(undefined),
       setTrackingByIds: jest.fn().mockResolvedValue(undefined),
       setReserveBool: jest.fn().mockResolvedValue(undefined),
+      markStockReverted: jest.fn().mockResolvedValue(undefined),
     };
     const history = {
       listBySaleOrderId: jest.fn().mockResolvedValue(

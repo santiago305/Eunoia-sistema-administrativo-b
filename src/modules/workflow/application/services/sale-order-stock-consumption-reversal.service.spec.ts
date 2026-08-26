@@ -129,7 +129,10 @@ describe("SaleOrderStockConsumptionReversalService", () => {
     };
     const ledgerRepo = { append: jest.fn().mockResolvedValue(undefined) };
     const inventoryLock = { lockSnapshots: jest.fn().mockResolvedValue(undefined) };
-    const saleOrderRepo = { setReserveBool: jest.fn().mockResolvedValue(undefined) };
+    const saleOrderRepo = {
+      setReserveBool: jest.fn().mockResolvedValue(undefined),
+      markStockReverted: jest.fn().mockResolvedValue(undefined),
+    };
     const service = new SaleOrderStockConsumptionReversalService(
       documentRepo as any,
       serieRepo as any,
@@ -188,6 +191,10 @@ describe("SaleOrderStockConsumptionReversalService", () => {
     );
     expect(dependencies.saleOrderRepo.setReserveBool).toHaveBeenCalledWith(
       { saleOrderId: "order-1", reserveBool: true },
+      tx,
+    );
+    expect(dependencies.saleOrderRepo.markStockReverted).toHaveBeenCalledWith(
+      "order-1",
       tx,
     );
   });

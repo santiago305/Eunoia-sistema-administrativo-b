@@ -32,6 +32,7 @@ describe('SaleOrderStockCorrectionService', () => {
     const inventoryLock = { lockSnapshots: jest.fn() };
     const saleOrderRepo = {
       setReserveBool: jest.fn(),
+      markStockReverted: jest.fn(),
       findByIdForUpdate: jest.fn().mockResolvedValue(order),
     };
     const service = new SaleOrderStockCorrectionService(

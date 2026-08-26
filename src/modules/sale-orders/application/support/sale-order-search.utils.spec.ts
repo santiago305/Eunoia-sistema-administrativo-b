@@ -52,6 +52,21 @@ describe("sale order search utils", () => {
     ]);
   });
 
+  it("keeps only supported stock situation values", () => {
+    expect(
+      sanitizeSaleOrderSearchFilters([{
+        field: "stockSituation",
+        operator: "in",
+        values: ["WITHOUT_RESERVATION", "CONSUMED", "REVERTED", "INVALID"],
+      }] as any),
+    ).toEqual([{
+      field: "stockSituation",
+      operator: "in",
+      mode: "include",
+      values: ["WITHOUT_RESERVATION", "CONSUMED", "REVERTED"],
+    }]);
+  });
+
   it("uses workflow and state labels in saved searches", () => {
     const label = buildSaleOrderSearchLabel(
       {

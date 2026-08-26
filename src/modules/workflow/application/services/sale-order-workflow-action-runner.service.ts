@@ -292,6 +292,7 @@ export class SaleOrderWorkflowActionRunnerService {
       }
     }
 
+    let releasedReservedStock = false;
     for (const action of ordered) {
       if (action.type === ACTIONS.MARK_INVOICE_SENT) {
         await this.saleOrderRepo.markInvoiceSent(order.id, tx);
@@ -345,6 +346,9 @@ export class SaleOrderWorkflowActionRunnerService {
         const base = { warehouseId: effectiveOrder.warehouseId, stockItemId, locationId: null };
         const reservedDelta = action.type === ACTIONS.RESERVE_STOCK ? quantityToApply : -quantityToApply;
         await this.inventoryRepo.incrementReserved({ ...base, delta: reservedDelta }, tx);
+        if (action.type === ACTIONS.REVERT_STOCK && quantityToApply > 0) {
+          releasedReservedStock = true;
+        }
       }
       if (action.type === ACTIONS.RESERVE_STOCK || action.type === ACTIONS.REVERT_STOCK) {
         await this.saleOrderRepo.setReserveBool(
@@ -355,6 +359,9 @@ export class SaleOrderWorkflowActionRunnerService {
           tx,
         );
       }
+    }
+    if (releasedReservedStock) {
+      await this.saleOrderRepo.markStockReverted(effectiveOrder.id, tx);
     }
     return { order: effectiveOrder, outcomes };
   }

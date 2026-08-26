@@ -66,6 +66,7 @@ export class SaleOrderStockCorrectionService {
       { saleOrderId: order.id, reserveBool: false },
       tx,
     );
+    await this.saleOrderRepo.markStockReverted(order.id, tx);
     return true;
   }
 
@@ -97,6 +98,7 @@ export class SaleOrderStockCorrectionService {
       { saleOrderId: order.id, reserveBool: false },
       tx,
     );
+    await this.saleOrderRepo.markStockReverted(order.id, tx);
   }
 
   async consumeCorrectedComposition(

@@ -35,6 +35,7 @@ export interface SaleOrderSearchStateOutput {
     invoiceStatuses: ListingSearchOptionOutput[];
     preguideStatuses: ListingSearchOptionOutput[];
     preparedStatuses: ListingSearchOptionOutput[];
+    stockSituations: ListingSearchOptionOutput[];
   };
 }
 export type SaleOrderItemComponentOutput = {

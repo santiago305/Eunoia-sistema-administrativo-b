@@ -126,6 +126,7 @@ import { DropRecognitionCodeDescriptions20260820122000 } from "./migrations/2026
 import { NormalizePeruvianMobilePhones20260820123000 } from "./migrations/20260820123000-normalize-peruvian-mobile-phones";
 import { AddSaleOrdersAdvancedPermission20260822120000 } from "./migrations/20260822120000-add-sale-orders-advanced-permission";
 import { AddInventoryMovementEffectiveDate20260824000000 } from "./migrations/20260824000000-add-inventory-movement-effective-date";
+import { AddSaleOrderStockSituationFilter20260826090000 } from "./migrations/20260826090000-add-sale-order-stock-situation-filter";
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -263,6 +264,7 @@ export const databaseMigrations = [
     NormalizePeruvianMobilePhones20260820123000,
     AddSaleOrdersAdvancedPermission20260822120000,
     AddInventoryMovementEffectiveDate20260824000000,
+    AddSaleOrderStockSituationFilter20260826090000,
 ];
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({

@@ -1181,6 +1181,40 @@ describe("SaleOrderTypeormRepository", () => {
     });
   });
 
+  it("combines stock situations with OR while preserving current and historical meanings", async () => {
+    const qb = {
+      leftJoinAndSelect: jest.fn().mockReturnThis(),
+      leftJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      take: jest.fn().mockReturnThis(),
+      getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+    };
+    const repository = new SaleOrderTypeormRepository({
+      manager: { getRepository: jest.fn().mockReturnValue({ createQueryBuilder: jest.fn().mockReturnValue(qb) }) },
+    } as any);
+
+    await repository.list({
+      filters: [{
+        field: "stockSituation",
+        operator: "in",
+        values: ["WITHOUT_RESERVATION", "CONSUMED", "REVERTED"],
+      }] as any,
+    });
+
+    const stockSql = qb.andWhere.mock.calls
+      .map(([sql]) => String(sql))
+      .find((sql) => sql.includes("pc_inventory_documents"));
+    expect(stockSql).toContain("COALESCE(so.reserveBool, false) = false");
+    expect(stockSql).toContain("active_consumption");
+    expect(stockSql).toContain("consumption_reversal");
+    expect(stockSql).toContain("AND NOT EXISTS");
+    expect(stockSql).toContain("COALESCE(so.stockRevertedBool, false) = true");
+    expect(stockSql).toContain(" OR ");
+  });
+
   it("applies createdAt filters as full local Peru day ranges in list queries", async () => {
     const qb = {
       leftJoinAndSelect: jest.fn().mockReturnThis(),
@@ -1409,6 +1443,37 @@ describe("SaleOrderTypeormRepository", () => {
     expect(baseQb.andWhere).toHaveBeenCalledWith("COALESCE(so.prepared, false) NOT IN (:...stats_filter_1_value)", {
       stats_filter_1_value: [true],
     });
+  });
+
+  it("applies excluded stock situations to statistics", async () => {
+    const baseQb = createStatsQueryBuilder();
+    baseQb.clone
+      .mockReturnValueOnce(createStatsQueryBuilder([]))
+      .mockReturnValueOnce(createStatsQueryBuilder([]))
+      .mockReturnValueOnce(createStatsQueryBuilder([]))
+      .mockReturnValueOnce(createStatsQueryBuilder([], {}))
+      .mockReturnValueOnce(createStatsQueryBuilder([]));
+    const repository = new SaleOrderTypeormRepository({
+      manager: {
+        getRepository: jest.fn().mockReturnValue({ createQueryBuilder: jest.fn().mockReturnValue(baseQb) }),
+      },
+    } as any);
+
+    await repository.statistics({
+      filters: [{
+        field: "stockSituation",
+        operator: "in",
+        mode: "exclude",
+        values: ["RESERVED", "REVERTED"],
+      }] as any,
+    });
+
+    const stockSql = baseQb.andWhere.mock.calls
+      .map(([sql]) => String(sql))
+      .find((sql) => sql.includes("stockRevertedBool"));
+    expect(stockSql).toContain("NOT (");
+    expect(stockSql).toContain("COALESCE(so.reserveBool, false) = true");
+    expect(stockSql).toContain("COALESCE(so.stockRevertedBool, false) = true");
   });
 
   it("applies inclusive month and calendar-week filters to statistics", async () => {

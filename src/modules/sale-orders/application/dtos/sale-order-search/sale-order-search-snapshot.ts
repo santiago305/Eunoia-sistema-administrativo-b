@@ -19,6 +19,7 @@ export const SaleOrderSearchFields = {
   INVOICE_STATUS: "invoiceStatus",
   PREGUIDE_STATUS: "preguideStatus",
   PREPARED_STATUS: "preparedStatus",
+  STOCK_SITUATION: "stockSituation",
   SCHEDULE_DATE: "scheduleDate",
   DELIVERY_DATE: "deliveryDate",
   CREATED_AT: "createdAt",
@@ -72,6 +73,16 @@ export const SaleOrderPreparedStatusValues = {
   PREPARED: "PREPARED",
   PENDING: "PENDING",
 } as const;
+
+export const SaleOrderStockSituationValues = {
+  WITHOUT_RESERVATION: "WITHOUT_RESERVATION",
+  RESERVED: "RESERVED",
+  CONSUMED: "CONSUMED",
+  REVERTED: "REVERTED",
+} as const;
+
+export type SaleOrderStockSituationValue =
+  typeof SaleOrderStockSituationValues[keyof typeof SaleOrderStockSituationValues];
 
 export interface SaleOrderSearchRule {
   field: SaleOrderSearchField;

@@ -233,6 +233,7 @@ export class SaleOrderStockConsumptionReversalService {
       { docId: reversal.id as string, postedBy: executedBy, postedAt: now },
       tx,
     );
+    await this.saleOrderRepo.markStockReverted(order.id, tx);
     await this.saleOrderRepo.setReserveBool(
       { saleOrderId: order.id, reserveBool: keepReserved },
       tx,

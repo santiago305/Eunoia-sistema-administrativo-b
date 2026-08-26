@@ -19,6 +19,7 @@ import {
   SaleOrderListItemOutput,
   SaleOrderPreguideStatusValues,
   SaleOrderPreparedStatusValues,
+  SaleOrderStockSituationValues,
   SaleOrderTrackingCapabilities,
   SaleOrderSearchFields,
   SaleOrderSearchOperators,
@@ -425,6 +426,14 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     );
   }
 
+  async markStockReverted(saleOrderId: string, tx?: TransactionContext): Promise<void> {
+    const manager = this.getManager(tx);
+    await manager.getRepository(SaleOrderEntity).update(
+      { id: saleOrderId },
+      { stockRevertedBool: true },
+    );
+  }
+
   async setLoteByIds(input: { saleOrderIds: string[]; lote: number }, tx?: TransactionContext): Promise<number> {
     const saleOrderIds = Array.from(new Set(input.saleOrderIds.filter(Boolean)));
     if (!saleOrderIds.length) return 0;
@@ -532,6 +541,51 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     const statusSql = this.paymentStatusSql();
 
     qb.andWhere(`${statusSql} ${comparator} (:...${valuesParam})`, { [valuesParam]: normalized });
+  }
+
+  private stockConsumedCurrentlySql() {
+    return `EXISTS (
+      SELECT 1
+      FROM pc_inventory_documents active_consumption
+      WHERE active_consumption.reference_type = 'SALE_ORDER'
+        AND active_consumption.reference_id = so.id
+        AND active_consumption.doc_type = 'OUT'
+        AND active_consumption.status = 'POSTED'
+        AND NOT EXISTS (
+          SELECT 1
+          FROM pc_inventory_documents consumption_reversal
+          WHERE consumption_reversal.reference_type = 'SALE_ORDER'
+            AND consumption_reversal.reference_id = so.id
+            AND consumption_reversal.doc_type = 'IN'
+            AND consumption_reversal.status = 'POSTED'
+            AND consumption_reversal.note LIKE ('%' || active_consumption.doc_id::text || '%')
+        )
+    )`;
+  }
+
+  private applyStockSituationFilter(
+    qb: SelectQueryBuilder<SaleOrderEntity>,
+    filter: SaleOrderSearchRule,
+  ) {
+    const allowed = new Set(Object.values(SaleOrderStockSituationValues));
+    const values = Array.from(new Set(filter.values ?? []))
+      .filter((value) => allowed.has(value as any));
+    if (!values.length) return;
+
+    const predicates = values.map((value) => {
+      if (value === SaleOrderStockSituationValues.WITHOUT_RESERVATION) {
+        return `(COALESCE(so.reserveBool, false) = false AND NOT ${this.stockConsumedCurrentlySql()})`;
+      }
+      if (value === SaleOrderStockSituationValues.RESERVED) {
+        return `COALESCE(so.reserveBool, false) = true`;
+      }
+      if (value === SaleOrderStockSituationValues.CONSUMED) {
+        return this.stockConsumedCurrentlySql();
+      }
+      return `COALESCE(so.stockRevertedBool, false) = true`;
+    });
+    const combined = `(${predicates.join(" OR ")})`;
+    qb.andWhere(filter.mode === "exclude" ? `NOT ${combined}` : combined);
   }
 
   private paymentStatusSql() {
@@ -1043,6 +1097,9 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
           break;
         case SaleOrderSearchFields.PREPARED_STATUS:
           this.applyBooleanStatusFilter(qb, filter, "so.prepared", valueParam);
+          break;
+        case SaleOrderSearchFields.STOCK_SITUATION:
+          this.applyStockSituationFilter(qb, filter);
           break;
         case SaleOrderSearchFields.SCHEDULE_DATE:
         case SaleOrderSearchFields.DELIVERY_DATE:
@@ -1571,6 +1628,8 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         this.applyBooleanStatusFilter(base, filter, "so.preguide", valueParam);
       } else if (filter.field === SaleOrderSearchFields.PREPARED_STATUS) {
         this.applyBooleanStatusFilter(base, filter, "so.prepared", valueParam);
+      } else if (filter.field === SaleOrderSearchFields.STOCK_SITUATION) {
+        this.applyStockSituationFilter(base, filter);
       } else if (
         filter.field === SaleOrderSearchFields.SCHEDULE_DATE ||
         filter.field === SaleOrderSearchFields.DELIVERY_DATE ||

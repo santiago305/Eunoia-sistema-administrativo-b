@@ -51,6 +51,12 @@ describe("GetSaleOrderSearchStateUsecase", () => {
       { id: "PREPARED", label: "Preparado" },
       { id: "PENDING", label: "Sin preparar" },
     ]);
+    expect(result.catalogs.stockSituations).toMatchObject([
+      { id: "WITHOUT_RESERVATION", label: "Sin reserva" },
+      { id: "RESERVED", label: "Reservado" },
+      { id: "CONSUMED", label: "Consumido" },
+      { id: "REVERTED", label: "Revertido" },
+    ]);
   });
 
   it("returns creator and assignee catalogs and uses them in labels", async () => {
