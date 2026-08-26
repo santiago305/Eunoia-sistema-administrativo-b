@@ -100,8 +100,15 @@ export class WorkflowsController {
       {
         type: CONDITIONS.SCHEDULE_DELIVERY_WINDOW,
         configSchema: {
-          minDaysBefore: { type: "integer", required: true, min: 0 },
-          maxDaysBefore: { type: "integer", required: true, min: 0 },
+          mode: {
+            type: "select",
+            required: true,
+            options: [
+              { label: "Dias anteriores", value: "BEFORE" },
+              { label: "Dias de retraso", value: "AFTER" },
+            ],
+          },
+          days: { type: "integer", required: true, min: 0 },
         },
       },
       {

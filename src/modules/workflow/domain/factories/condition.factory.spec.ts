@@ -98,4 +98,56 @@ describe("ConditionFactory", () => {
       ).toBe(passed);
     },
   );
+
+  it.each([
+    ["2026-08-26T15:00:00.000Z", false],
+    ["2026-08-27T15:00:00.000Z", true],
+    ["2026-08-28T15:00:00.000Z", true],
+  ])(
+    "waits one full delivery-delay day at %s",
+    (currentDate, passed) => {
+      const condition = ConditionFactory.create({
+        type: "SCHEDULE_DELIVERY_WINDOW" as any,
+        config: { mode: "AFTER", days: 1 },
+      });
+
+      expect(
+        condition.evaluate({
+          orderId: "order-1",
+          isPaid: false,
+          hasStock: false,
+          isCancelled: false,
+          invoiceSent: false,
+          currentDate: new Date(currentDate),
+          variables: { deliveryDate: "2026-08-26" },
+        }).passed,
+      ).toBe(passed);
+    },
+  );
+
+  it.each([
+    ["2026-08-24T15:00:00.000Z", false],
+    ["2026-08-25T15:00:00.000Z", true],
+    ["2026-08-26T15:00:00.000Z", true],
+  ])(
+    "opens a one-day delivery window at %s",
+    (currentDate, passed) => {
+      const condition = ConditionFactory.create({
+        type: "SCHEDULE_DELIVERY_WINDOW" as any,
+        config: { mode: "BEFORE", days: 1 },
+      });
+
+      expect(
+        condition.evaluate({
+          orderId: "order-1",
+          isPaid: false,
+          hasStock: false,
+          isCancelled: false,
+          invoiceSent: false,
+          currentDate: new Date(currentDate),
+          variables: { deliveryDate: "2026-08-26" },
+        }).passed,
+      ).toBe(passed);
+    },
+  );
 });

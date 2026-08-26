@@ -7,7 +7,11 @@ import { NotCancelledCondition } from "../conditions/not-cancelled.condition";
 import { WorkflowCondition } from "../entities/workflow-condition";
 import { CONDITIONS } from "../constants/workflow-condition.constants";
 import { InvoiceSentCondition } from "../conditions/invoice-sent.condition";
-import { ScheduleDeliveryWindowCondition } from "../conditions/schedule-delivery-window.condition";
+import {
+  DELIVERY_DATE_OFFSET_MODES,
+  DeliveryDateWindowRule,
+  ScheduleDeliveryWindowCondition,
+} from "../conditions/schedule-delivery-window.condition";
 import { SaleOrderFieldRequiredCondition } from "../conditions/sale-order-field-required.condition";
 import { isSaleOrderFieldValue } from "../conditions/sale-order-field-options";
 
@@ -28,8 +32,7 @@ export class ConditionFactory {
         return new InvoiceSentCondition();
       case CONDITIONS.SCHEDULE_DELIVERY_WINDOW:
         return new ScheduleDeliveryWindowCondition(
-          this.parseNonNegativeInteger(condition.config.minDaysBefore, "minDaysBefore"),
-          this.parseNonNegativeInteger(condition.config.maxDaysBefore, "maxDaysBefore"),
+          this.parseDeliveryDateWindowRule(condition.config),
         );
       case CONDITIONS.SALE_ORDER_FIELD_REQUIRED:
         return new SaleOrderFieldRequiredCondition(
@@ -58,6 +61,32 @@ export class ConditionFactory {
       throw new Error(`Config ${field} invalida`);
     }
     return Number(value);
+  }
+
+  private static parseDeliveryDateWindowRule(
+    config: Readonly<Record<string, unknown>>,
+  ): DeliveryDateWindowRule {
+    if (
+      config.mode === DELIVERY_DATE_OFFSET_MODES.BEFORE ||
+      config.mode === DELIVERY_DATE_OFFSET_MODES.AFTER
+    ) {
+      return {
+        mode: config.mode,
+        days: this.parseNonNegativeInteger(config.days, "days"),
+      };
+    }
+
+    return {
+      mode: "LEGACY",
+      minDaysBefore: this.parseNonNegativeInteger(
+        config.minDaysBefore,
+        "minDaysBefore",
+      ),
+      maxDaysBefore: this.parseNonNegativeInteger(
+        config.maxDaysBefore,
+        "maxDaysBefore",
+      ),
+    };
   }
 
   private static parseSaleOrderField(value: unknown) {
