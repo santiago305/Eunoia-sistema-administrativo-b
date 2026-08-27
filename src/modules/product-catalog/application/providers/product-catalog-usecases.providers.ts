@@ -46,6 +46,7 @@ import {
   UpsertInventoryAlertSettingUsecase,
 } from "../usecases/inventory-alert-settings.usecase";
 import { InventoryPredictiveAlertService } from "../services/inventory-predictive-alert.service";
+import { ListProductCatalogInventoryReservations } from "../usecases/list-inventory-reservations.usecase";
 
 export const productCatalogUsecasesProviders: Provider[] = [
   CreateProductCatalogProduct,
@@ -93,4 +94,5 @@ export const productCatalogUsecasesProviders: Provider[] = [
   GetInventoryAlertSettingUsecase,
   UpsertInventoryAlertSettingUsecase,
   InventoryPredictiveAlertService,
+  ListProductCatalogInventoryReservations,
 ];

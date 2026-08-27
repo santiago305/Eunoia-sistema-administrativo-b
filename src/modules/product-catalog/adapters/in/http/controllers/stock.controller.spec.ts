@@ -10,6 +10,7 @@ describe("ProductCatalogStockController permissions", () => {
   const getProduct = { execute: jest.fn() };
   const accessControlService = { userHasAllPermissions: jest.fn() };
   const documentRepo = { findById: jest.fn() };
+  const listInventoryReservations = { execute: jest.fn() };
 
   const noop = { execute: jest.fn() };
 
@@ -42,6 +43,7 @@ describe("ProductCatalogStockController permissions", () => {
     {} as any,
     {} as any,
     documentRepo as any,
+    listInventoryReservations as any,
   );
 
   beforeEach(() => {
@@ -55,6 +57,7 @@ describe("ProductCatalogStockController permissions", () => {
       docType: DocType.TRANSFER,
       productType: ProductCatalogProductType.PRODUCT,
     });
+    listInventoryReservations.execute.mockResolvedValue({ items: [] });
   });
 
   it("requires the product create permission before creating stock items", async () => {
@@ -112,5 +115,19 @@ describe("ProductCatalogStockController permissions", () => {
 
     expect(accessControlService.userHasAllPermissions).toHaveBeenCalledWith("user-1", ["adjustments.materials.process"]);
     expect(processDocument.execute).not.toHaveBeenCalled();
+  });
+
+  it("returns reservation origins for the selected stock item and warehouse", async () => {
+    await controller.listReservations(
+      "55555555-5555-4555-8555-555555555555",
+      "66666666-6666-4666-8666-666666666666",
+      ProductCatalogProductType.PRODUCT,
+    );
+
+    expect(listInventoryReservations.execute).toHaveBeenCalledWith({
+      stockItemId: "55555555-5555-4555-8555-555555555555",
+      warehouseId: "66666666-6666-4666-8666-666666666666",
+      productType: ProductCatalogProductType.PRODUCT,
+    });
   });
 });

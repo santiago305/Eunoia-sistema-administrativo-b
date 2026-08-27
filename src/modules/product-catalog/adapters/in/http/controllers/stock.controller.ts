@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, ForbiddenException, Get, Inject, NotFoundException, Param, ParseUUIDPipe, Post, Query, Res, Sse, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, ForbiddenException, Get, Inject, NotFoundException, Param, ParseEnumPipe, ParseUUIDPipe, Post, Query, Res, Sse, UseGuards } from "@nestjs/common";
 import { Response } from "express";
 import { filter, map } from "rxjs/operators";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
@@ -56,6 +56,7 @@ import { INVENTORY_REALTIME, InventoryRealtime, StockUpdatedEvent } from "src/mo
 import { GetProductCatalogSku } from "src/modules/product-catalog/application/usecases/get-sku.usecase";
 import { GetProductCatalogProduct } from "src/modules/product-catalog/application/usecases/get-product.usecase";
 import { AccessControlService } from "src/modules/access-control/application/services/access-control.service";
+import { ListProductCatalogInventoryReservations } from "src/modules/product-catalog/application/usecases/list-inventory-reservations.usecase";
 import {
   PRODUCT_CATALOG_INVENTORY_DOCUMENT_REPOSITORY,
   ProductCatalogInventoryDocumentRepository,
@@ -136,6 +137,7 @@ export class ProductCatalogStockController {
     private readonly inventoryRealtime: InventoryRealtime,
     @Inject(PRODUCT_CATALOG_INVENTORY_DOCUMENT_REPOSITORY)
     private readonly documentRepo: ProductCatalogInventoryDocumentRepository,
+    private readonly listInventoryReservations: ListProductCatalogInventoryReservations,
   ) {}
 
   @RequireAnyPermissionGroups(["products.create", "materials.create", "supplies.create"])
@@ -160,6 +162,21 @@ export class ProductCatalogStockController {
   @Get("stock-items/:id")
   getById(@Param("id", ParseUUIDPipe) id: string) {
     return this.getStockItem.execute(id);
+  }
+
+  @RequireDynamicPermissionGroups(inventoryPermissionGroupsFromRequest("view"))
+  @Get("stock-items/:id/reservations")
+  listReservations(
+    @Param("id", ParseUUIDPipe) stockItemId: string,
+    @Query("warehouseId", ParseUUIDPipe) warehouseId: string,
+    @Query("productType", new ParseEnumPipe(ProductCatalogProductType))
+    productType: ProductCatalogProductType,
+  ) {
+    return this.listInventoryReservations.execute({
+      stockItemId,
+      warehouseId,
+      productType,
+    });
   }
 
   @RequireAnyPermissionGroups(["inventory.products.view", "inventory.materials.view", "inventory.supplies.view", "catalog.read"])

@@ -42,6 +42,8 @@ import { InventoryRealtimeBridge } from "../adapters/out/bridges/inventory-realt
 import { StockItemBridge } from "../adapters/out/bridges/stock-item.bridge";
 import { InventoryGateway } from "../adapters/in/websocket/inventory.gateway";
 import { InventorySocketRealtimeService } from "../infrastructure/realtime/inventory-socket-realtime.service";
+import { INVENTORY_RESERVATION_DETAILS_QUERY } from "../application/ports/inventory-reservation-details.query";
+import { InventoryReservationDetailsTypeormQuery } from "../adapters/out/persistence/typeorm/repositories/inventory-reservation-details.typeorm.query";
 
 export const productCatalogModuleProviders: Provider[] = [
   ...productCatalogUsecasesProviders,
@@ -65,8 +67,11 @@ export const productCatalogModuleProviders: Provider[] = [
   { provide: INVENTORY_LOCK, useClass: InventoryLockBridge },
   { provide: INVENTORY_REALTIME, useClass: InventoryRealtimeBridge },
   { provide: STOCK_ITEM_REPOSITORY, useClass: StockItemBridge },
+  {
+    provide: INVENTORY_RESERVATION_DETAILS_QUERY,
+    useClass: InventoryReservationDetailsTypeormQuery,
+  },
   InventorySocketRealtimeService,
   InventoryGateway,
 ];
-
 
