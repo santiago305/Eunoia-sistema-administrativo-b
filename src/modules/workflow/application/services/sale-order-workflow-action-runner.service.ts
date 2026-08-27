@@ -74,7 +74,8 @@ export class SaleOrderWorkflowActionRunnerService {
           active = true;
         } else if (
           action.type === ACTIONS.CONSUME_STOCK ||
-          action.type === ACTIONS.REVERT_STOCK
+          action.type === ACTIONS.REVERT_STOCK ||
+          action.type === ACTIONS.RESTORE_STOCK
         ) {
           active = false;
         }
@@ -181,6 +182,22 @@ export class SaleOrderWorkflowActionRunnerService {
         ACTIONS.REVERT_STOCK,
       ].includes(action.type as any),
     );
+
+    const restoreStockAction = ordered.find(
+      (action) => action.type === ACTIONS.RESTORE_STOCK,
+    );
+    if (restoreStockAction) {
+      const restored = await this.stockConsumptionReversal.restoreAndRelease(
+        effectiveOrder,
+        executedBy ?? effectiveOrder.createdBy,
+        tx,
+      );
+      if (!restored) {
+        throw new BadRequestException(
+          "El pedido no tiene consumo de stock pendiente de reponer",
+        );
+      }
+    }
 
     if (!stockActions.length) {
       for (const action of ordered) {

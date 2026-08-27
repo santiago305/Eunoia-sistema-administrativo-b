@@ -479,6 +479,61 @@ describe("SaleOrderWorkflowActionRunnerService", () => {
     expect(inventory.incrementReserved).not.toHaveBeenCalled();
   });
 
+  it("restores consumed stock through the explicit restore action", async () => {
+    const { runner, consumptionReversal, requirements, inventory } = setup(
+      { available: 10, reserved: 0, onHand: 7 },
+      { hasActiveReservation: false },
+    );
+    consumptionReversal.restoreAndRelease.mockResolvedValue(true);
+
+    await runner.run(
+      { ...order, createdBy: "creator-1" },
+      [
+        {
+          id: "a1",
+          transitionId: "t1",
+          type: "RESTORE_STOCK",
+          config: {},
+          position: 0,
+        } as any,
+      ],
+      tx,
+      "user-2",
+    );
+
+    expect(consumptionReversal.restoreAndRelease).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "order-1" }),
+      "user-2",
+      tx,
+    );
+    expect(requirements.resolve).not.toHaveBeenCalled();
+    expect(inventory.incrementReserved).not.toHaveBeenCalled();
+  });
+
+  it("rejects restoring stock when the order has no pending consumption", async () => {
+    const { runner, consumptionReversal } = setup(
+      { available: 10, reserved: 0, onHand: 10 },
+      { hasActiveReservation: false },
+    );
+    consumptionReversal.restoreAndRelease.mockResolvedValue(false);
+
+    await expect(
+      runner.run(
+        order,
+        [
+          {
+            id: "a1",
+            transitionId: "t1",
+            type: "RESTORE_STOCK",
+            config: {},
+            position: 0,
+          } as any,
+        ],
+        tx,
+      ),
+    ).rejects.toThrow("El pedido no tiene consumo de stock pendiente de reponer");
+  });
+
   it("replays only the recorded transition branch when checking active reservations", async () => {
     const { runner, inventory, requirements, history, transitions } = setup(
       { available: 0, reserved: 10, onHand: 10 },

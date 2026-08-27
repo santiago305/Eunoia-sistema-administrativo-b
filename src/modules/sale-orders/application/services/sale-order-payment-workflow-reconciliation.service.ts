@@ -496,7 +496,8 @@ export class SaleOrderPaymentWorkflowReconciliationService {
       if (action.type === ACTIONS.RESERVE_STOCK) reserved = true;
       if (
         action.type === ACTIONS.CONSUME_STOCK ||
-        action.type === ACTIONS.REVERT_STOCK
+        action.type === ACTIONS.REVERT_STOCK ||
+        action.type === ACTIONS.RESTORE_STOCK
       ) {
         reserved = false;
       }

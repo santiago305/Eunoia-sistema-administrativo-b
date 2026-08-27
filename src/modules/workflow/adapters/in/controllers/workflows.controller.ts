@@ -131,6 +131,7 @@ export class WorkflowsController {
       { type: ACTIONS.RESERVE_STOCK, configSchema: {} },
       { type: ACTIONS.CONSUME_STOCK, configSchema: {} },
       { type: ACTIONS.REVERT_STOCK, configSchema: {} },
+      { type: ACTIONS.RESTORE_STOCK, configSchema: {} },
       { type: ACTIONS.MARK_INVOICE_SENT, configSchema: {} },
       { type: ACTIONS.MARK_PREGUIDE, configSchema: {} },
       { type: ACTIONS.MARK_PREPARED, configSchema: {} },

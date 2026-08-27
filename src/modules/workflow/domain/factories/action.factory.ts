@@ -7,6 +7,7 @@ export class ActionFactory {
       case ACTIONS.RESERVE_STOCK:
       case ACTIONS.CONSUME_STOCK:
       case ACTIONS.REVERT_STOCK:
+      case ACTIONS.RESTORE_STOCK:
       case ACTIONS.MARK_INVOICE_SENT:
       case ACTIONS.MARK_PREGUIDE:
       case ACTIONS.MARK_PREPARED:
@@ -27,7 +28,12 @@ export class ActionFactory {
   static validateOrder(actions: Array<Pick<WorkflowAction, "type" | "position">>): void {
     const stockPositions = actions
       .filter((action) =>
-        [ACTIONS.RESERVE_STOCK, ACTIONS.CONSUME_STOCK, ACTIONS.REVERT_STOCK].includes(action.type as any),
+        [
+          ACTIONS.RESERVE_STOCK,
+          ACTIONS.CONSUME_STOCK,
+          ACTIONS.REVERT_STOCK,
+          ACTIONS.RESTORE_STOCK,
+        ].includes(action.type as any),
       )
       .map((action) => action.position);
     if (!stockPositions.length) return;
@@ -44,6 +50,25 @@ export class ActionFactory {
     );
     if (assignmentAfterStock) {
       throw new Error("La asignacion de almacen debe ejecutarse antes de las acciones de stock");
+    }
+
+    const restoreActions = actions.filter(
+      (action) => action.type === ACTIONS.RESTORE_STOCK,
+    );
+    const otherStockActions = actions.filter((action) =>
+      [
+        ACTIONS.RESERVE_STOCK,
+        ACTIONS.CONSUME_STOCK,
+        ACTIONS.REVERT_STOCK,
+      ].includes(action.type as any),
+    );
+    if (
+      restoreActions.length > 1 ||
+      (restoreActions.length && otherStockActions.length)
+    ) {
+      throw new Error(
+        "Reponer stock consumido no puede combinarse con otras acciones de stock",
+      );
     }
   }
 

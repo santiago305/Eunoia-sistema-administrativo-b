@@ -2,7 +2,12 @@ import { ActionFactory } from "./action.factory";
 import { ACTIONS } from "../constants/workflow-action.constants";
 
 describe("ActionFactory", () => {
-  it.each([ACTIONS.RESERVE_STOCK, ACTIONS.CONSUME_STOCK, ACTIONS.REVERT_STOCK] as const)(
+  it.each([
+    ACTIONS.RESERVE_STOCK,
+    ACTIONS.CONSUME_STOCK,
+    ACTIONS.REVERT_STOCK,
+    ACTIONS.RESTORE_STOCK,
+  ] as const)(
     "accepts the supported %s action",
     (type) => {
       expect(() => ActionFactory.validate({ type, config: {} })).not.toThrow();
@@ -119,5 +124,21 @@ describe("ActionFactory", () => {
         },
       ] as any),
     ).toThrow("La asignacion de almacen debe ejecutarse antes de las acciones de stock");
+  });
+
+  it.each([
+    [ACTIONS.RESTORE_STOCK, ACTIONS.CONSUME_STOCK],
+    [ACTIONS.RESTORE_STOCK, ACTIONS.RESERVE_STOCK],
+    [ACTIONS.RESTORE_STOCK, ACTIONS.REVERT_STOCK],
+    [ACTIONS.RESTORE_STOCK, ACTIONS.RESTORE_STOCK],
+  ] as const)("rejects combining %s with %s", (first, second) => {
+    expect(() =>
+      ActionFactory.validateOrder([
+        { type: first, config: {}, position: 0 },
+        { type: second, config: {}, position: 1 },
+      ] as any),
+    ).toThrow(
+      "Reponer stock consumido no puede combinarse con otras acciones de stock",
+    );
   });
 });

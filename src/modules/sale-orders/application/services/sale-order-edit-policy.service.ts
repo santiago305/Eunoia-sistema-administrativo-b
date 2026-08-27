@@ -116,7 +116,12 @@ export class SaleOrderEditPolicyService {
 
       for (const action of actions) {
         if (action.type === ACTIONS.RESERVE_STOCK) status = 'RESERVED';
-        if (action.type === ACTIONS.REVERT_STOCK) status = 'REVERTED';
+        if (
+          action.type === ACTIONS.REVERT_STOCK ||
+          action.type === ACTIONS.RESTORE_STOCK
+        ) {
+          status = 'REVERTED';
+        }
         if (action.type === ACTIONS.CONSUME_STOCK) status = 'CONSUMED';
       }
     }

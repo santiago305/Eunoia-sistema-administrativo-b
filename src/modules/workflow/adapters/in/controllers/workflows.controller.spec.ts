@@ -139,6 +139,7 @@ describe("WorkflowsController", () => {
       { type: "RESERVE_STOCK", configSchema: {} },
       { type: "CONSUME_STOCK", configSchema: {} },
       { type: "REVERT_STOCK", configSchema: {} },
+      { type: "RESTORE_STOCK", configSchema: {} },
       { type: "MARK_INVOICE_SENT", configSchema: {} },
       { type: "MARK_PREGUIDE", configSchema: {} },
       { type: "MARK_PREPARED", configSchema: {} },

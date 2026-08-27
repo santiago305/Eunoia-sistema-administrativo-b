@@ -59,6 +59,12 @@ describe('SaleOrderEditPolicyService', () => {
       true,
       false,
     ],
+    [
+      [ACTIONS.RESERVE_STOCK, ACTIONS.CONSUME_STOCK, ACTIONS.RESTORE_STOCK],
+      'REVERTED',
+      true,
+      true,
+    ],
   ])(
     'maps stock history %j to %s',
     async (actions, stockStatus, productsEditable, warehouseEditable) => {
