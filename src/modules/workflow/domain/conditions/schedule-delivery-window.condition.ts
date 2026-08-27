@@ -14,7 +14,8 @@ export type DeliveryDateOffsetMode =
   (typeof DELIVERY_DATE_OFFSET_MODES)[keyof typeof DELIVERY_DATE_OFFSET_MODES];
 
 export type DeliveryDateWindowRule =
-  | { mode: DeliveryDateOffsetMode; days: number }
+  | { mode: typeof DELIVERY_DATE_OFFSET_MODES.BEFORE; days: number }
+  | { mode: typeof DELIVERY_DATE_OFFSET_MODES.AFTER; days: number }
   | { mode: "LEGACY"; minDaysBefore: number; maxDaysBefore: number };
 
 function parseDateOnly(value: unknown): number | null {
