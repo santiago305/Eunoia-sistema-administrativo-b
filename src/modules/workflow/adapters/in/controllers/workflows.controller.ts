@@ -108,6 +108,7 @@ export class WorkflowsController {
   listConditionTypes() {
     return [
       { type: CONDITIONS.IS_PAID, configSchema: {} },
+      { type: CONDITIONS.IS_NOT_PAID, configSchema: {} },
       { type: CONDITIONS.HAS_STOCK, configSchema: {} },
       { type: CONDITIONS.NOT_CANCELLED, configSchema: {} },
       { type: CONDITIONS.DATE_AFTER, configSchema: { date: { type: "date", required: true } } },

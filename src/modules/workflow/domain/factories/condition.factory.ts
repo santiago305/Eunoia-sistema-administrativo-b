@@ -2,7 +2,7 @@ import { DateAfterCondition } from "../conditions/date-after.condition";
 import { DateBeforeCondition } from "../conditions/date-before.condition";
 import { Condition } from "../conditions/condition";
 import { HasStockCondition } from "../conditions/has-stock.condition";
-import { IsPaidCondition } from "../conditions/is-paid.condition";
+import { IsNotPaidCondition, IsPaidCondition } from "../conditions/is-paid.condition";
 import { NotCancelledCondition } from "../conditions/not-cancelled.condition";
 import { WorkflowCondition } from "../entities/workflow-condition";
 import { CONDITIONS } from "../constants/workflow-condition.constants";
@@ -20,6 +20,8 @@ export class ConditionFactory {
     switch (condition.type) {
       case CONDITIONS.IS_PAID:
         return new IsPaidCondition();
+      case CONDITIONS.IS_NOT_PAID:
+        return new IsNotPaidCondition();
       case CONDITIONS.HAS_STOCK:
         return new HasStockCondition();
       case CONDITIONS.NOT_CANCELLED:

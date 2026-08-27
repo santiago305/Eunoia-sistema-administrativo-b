@@ -2,6 +2,28 @@ import { ConditionFactory } from "./condition.factory";
 import { CONDITIONS } from "../constants/workflow-condition.constants";
 
 describe("ConditionFactory", () => {
+  it.each([
+    [true, false],
+    [false, true],
+  ])("creates IS_NOT_PAID and evaluates paid=%s", (isPaid, passed) => {
+    const condition = ConditionFactory.create({
+      type: CONDITIONS.IS_NOT_PAID,
+      config: {},
+    });
+
+    expect(
+      condition.evaluate({
+        orderId: "order-1",
+        isPaid,
+        hasStock: false,
+        isCancelled: false,
+        invoiceSent: false,
+        currentDate: new Date(),
+        variables: {},
+      }).passed,
+    ).toBe(passed);
+  });
+
   it("creates DATE_AFTER from config", () => {
     const condition = ConditionFactory.create({
       type: CONDITIONS.DATE_AFTER,
