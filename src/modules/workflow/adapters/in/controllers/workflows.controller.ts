@@ -23,6 +23,8 @@ import { SaveFullWorkflowUseCase } from "../../../application/usecases/save-full
 import { SaveFullWorkflowDto } from "../dtos/save-full-workflow.dto";
 import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
 import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
+import { CreateWorkflowDraftUseCase } from '../../../application/usecases/create-workflow-draft.usecase';
+import { ListManagedWorkflowsUseCase } from '../../../application/usecases/list-managed-workflows.usecase';
 
 @Controller("workflows")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
@@ -38,6 +40,8 @@ export class WorkflowsController {
     private readonly updateWorkflowStatePositions: UpdateWorkflowStatePositionsUseCase,
     private readonly saveFullWorkflow: SaveFullWorkflowUseCase,
     private readonly createWorkflowTransition: CreateWorkflowTransitionUseCase,
+    private readonly createWorkflowDraft: CreateWorkflowDraftUseCase,
+    private readonly listManagedWorkflows: ListManagedWorkflowsUseCase,
   ) {}
 
   @Post()
@@ -85,6 +89,18 @@ export class WorkflowsController {
   @RequirePermissions("sale_orders.workflows.view")
   list() {
     return this.listWorkflows.execute();
+  }
+
+  @Get('manage/revisions')
+  @RequirePermissions('sale_orders.workflows.manage')
+  listManaged() {
+    return this.listManagedWorkflows.execute();
+  }
+
+  @Post(':id/drafts')
+  @RequirePermissions('sale_orders.workflows.manage')
+  createDraft(@Param('id', ParseUUIDPipe) workflowId: string) {
+    return this.createWorkflowDraft.execute({ workflowId });
   }
 
   @Get("conditions")

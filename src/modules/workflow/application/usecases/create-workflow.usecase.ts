@@ -4,6 +4,7 @@ import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.p
 import { Workflow } from "../../domain/entities/workflow";
 import { WORKFLOW_REPOSITORY, WorkflowRepository } from "../../domain/ports/workflow.repository";
 import { CreateWorkflowInput } from "../dtos/create-workflow.input";
+import { WORKFLOW_LIFECYCLE } from '../../domain/constants/workflow-lifecycle.constants';
 
 export class CreateWorkflowUseCase {
   constructor(
@@ -22,14 +23,19 @@ export class CreateWorkflowUseCase {
     }
 
     return this.uow.runInTransaction(async (tx) => {
+      const workflowId = crypto.randomUUID();
       const workflow = new Workflow({
-        id: crypto.randomUUID(),
+        id: workflowId,
         name,
         normalizedName: this.normalizeName(name),
         description: input.description ?? null,
         isActive: false,
         createdAt: this.clock.now(),
         updatedAt: null,
+        familyId: workflowId,
+        revision: 1,
+        lifecycleStatus: WORKFLOW_LIFECYCLE.DRAFT,
+        isCurrent: false,
       });
 
       return this.workflowRepo.create(workflow, tx);

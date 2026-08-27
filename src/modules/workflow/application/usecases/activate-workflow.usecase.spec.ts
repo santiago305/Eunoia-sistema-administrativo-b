@@ -1,6 +1,24 @@
 import { ActivateWorkflowUseCase } from "./activate-workflow.usecase";
 
 describe("ActivateWorkflowUseCase", () => {
+  it("rejects changes to a published historical revision", async () => {
+    const useCase = new ActivateWorkflowUseCase(
+      { runInTransaction: (callback: any) => callback({}) } as any,
+      {
+        findDetailedById: jest.fn().mockResolvedValue({
+          workflow: { lifecycleStatus: "PUBLISHED" },
+          states: [],
+          transitions: [],
+        }),
+      } as any,
+      { now: () => new Date("2026-06-06T00:00:00.000Z") } as any,
+    );
+
+    await expect(useCase.execute({ workflowId: "workflow-1" })).rejects.toThrow(
+      "Las revisiones publicadas son historicas",
+    );
+  });
+
   it("permits active RUN_ACTIONS transitions without a destination state", async () => {
     const update = jest.fn().mockResolvedValue({ id: "workflow-1", isActive: true });
     const useCase = new ActivateWorkflowUseCase(
@@ -13,6 +31,7 @@ describe("ActivateWorkflowUseCase", () => {
             normalizedName: "PEDIDOS",
             description: null,
             isActive: false,
+            lifecycleStatus: "DRAFT",
             createdAt: new Date("2026-06-06T00:00:00.000Z"),
           },
           states: [
@@ -53,6 +72,7 @@ describe("ActivateWorkflowUseCase", () => {
             normalizedName: "PEDIDOS",
             description: null,
             isActive: false,
+            lifecycleStatus: "DRAFT",
             createdAt: new Date("2026-06-06T00:00:00.000Z"),
           },
           states: [

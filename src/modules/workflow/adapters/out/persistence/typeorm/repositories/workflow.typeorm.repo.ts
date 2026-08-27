@@ -16,6 +16,9 @@ import { SaleOrderStateHistoryEntity } from "../entities/sale-order-state-histor
 import { SaleOrderEntity } from "src/modules/sale-orders/adapters/out/persistence/typeorm/entities/sale-order.entity";
 import { WorkflowActionEntity } from "../entities/workflow-action.entity";
 import { WorkflowAction } from "src/modules/workflow/domain/entities/workflow-action";
+import { WORKFLOW_LIFECYCLE } from 'src/modules/workflow/domain/constants/workflow-lifecycle.constants';
+import { WorkflowSupplyRecipeEntity } from '../entities/workflow-supply-recipe.entity';
+import { WorkflowSupplyRecipeItemEntity } from '../entities/workflow-supply-recipe-item.entity';
 
 @Injectable()
 export class WorkflowTypeormRepository implements WorkflowRepository {
@@ -41,6 +44,13 @@ export class WorkflowTypeormRepository implements WorkflowRepository {
       isActive: row.isActive,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt ?? null,
+      familyId: row.familyId,
+      revision: row.revision,
+      lifecycleStatus: row.lifecycleStatus,
+      isCurrent: row.isCurrent,
+      basedOnWorkflowId: row.basedOnWorkflowId ?? null,
+      publishedAt: row.publishedAt ?? null,
+      publishedBy: row.publishedBy ?? null,
     });
   }
 
@@ -119,6 +129,13 @@ export class WorkflowTypeormRepository implements WorkflowRepository {
       isActive: workflow.isActive,
       createdAt: workflow.createdAt,
       updatedAt: workflow.updatedAt,
+      familyId: workflow.familyId,
+      revision: workflow.revision,
+      lifecycleStatus: workflow.lifecycleStatus,
+      isCurrent: workflow.isCurrent,
+      basedOnWorkflowId: workflow.basedOnWorkflowId,
+      publishedAt: workflow.publishedAt,
+      publishedBy: workflow.publishedBy,
     });
 
     return this.toDomain(saved);
@@ -175,7 +192,12 @@ export class WorkflowTypeormRepository implements WorkflowRepository {
   ): Promise<WorkflowWithInitialState | null> {
     const manager = this.getManager(tx);
     const workflow = await manager.getRepository(WorkflowEntity).findOne({
-      where: { normalizedName, isActive: true },
+      where: {
+        normalizedName,
+        isActive: true,
+        isCurrent: true,
+        lifecycleStatus: WORKFLOW_LIFECYCLE.PUBLISHED,
+      },
     });
 
     if (!workflow) {
@@ -201,10 +223,64 @@ export class WorkflowTypeormRepository implements WorkflowRepository {
   async list(tx?: TransactionContext): Promise<Workflow[]> {
     const manager = this.getManager(tx);
     const rows = await manager.getRepository(WorkflowEntity).find({
+      where: {
+        lifecycleStatus: WORKFLOW_LIFECYCLE.PUBLISHED,
+        isCurrent: true,
+      },
       order: { createdAt: "DESC" },
     });
 
     return rows.map((row) => this.toDomain(row));
+  }
+
+  async listManaged(tx?: TransactionContext): Promise<Workflow[]> {
+    const rows = await this.getManager(tx).getRepository(WorkflowEntity).find({
+      where: [
+        { lifecycleStatus: WORKFLOW_LIFECYCLE.DRAFT },
+        { lifecycleStatus: WORKFLOW_LIFECYCLE.PUBLISHED, isCurrent: true },
+      ],
+      order: { name: 'ASC', revision: 'DESC' },
+    });
+    return rows.map((row) => this.toDomain(row));
+  }
+
+  async listByFamilyId(familyId: string, tx?: TransactionContext): Promise<Workflow[]> {
+    const rows = await this.getManager(tx).getRepository(WorkflowEntity).find({
+      where: { familyId },
+      order: { revision: 'DESC' },
+    });
+    return rows.map((row) => this.toDomain(row));
+  }
+
+  async cloneSupplyRecipe(
+    sourceWorkflowId: string,
+    targetWorkflowId: string,
+    tx: TransactionContext,
+  ): Promise<void> {
+    const manager = this.getManager(tx);
+    const recipeRepo = manager.getRepository(WorkflowSupplyRecipeEntity);
+    const itemRepo = manager.getRepository(WorkflowSupplyRecipeItemEntity);
+    const source = await recipeRepo.findOne({ where: { workflowId: sourceWorkflowId } });
+    if (!source) return;
+
+    const target = await recipeRepo.save({
+      id: crypto.randomUUID(),
+      workflowId: targetWorkflowId,
+      version: source.version,
+      notes: source.notes,
+    });
+    const items = await itemRepo.find({ where: { recipeId: source.id } });
+    if (items.length) {
+      await itemRepo.save(
+        items.map((item) => ({
+          id: crypto.randomUUID(),
+          recipeId: target.id,
+          supplySkuId: item.supplySkuId,
+          quantity: item.quantity,
+          unitId: item.unitId,
+        })),
+      );
+    }
   }
 
   async saveFull(
@@ -289,6 +365,13 @@ export class WorkflowTypeormRepository implements WorkflowRepository {
       isActive: aggregate.workflow.isActive,
       createdAt: aggregate.workflow.createdAt,
       updatedAt: aggregate.workflow.updatedAt,
+      familyId: aggregate.workflow.familyId,
+      revision: aggregate.workflow.revision,
+      lifecycleStatus: aggregate.workflow.lifecycleStatus,
+      isCurrent: aggregate.workflow.isCurrent,
+      basedOnWorkflowId: aggregate.workflow.basedOnWorkflowId,
+      publishedAt: aggregate.workflow.publishedAt,
+      publishedBy: aggregate.workflow.publishedBy,
     });
     await stateRepo.save(
       aggregate.states.map((state) => ({

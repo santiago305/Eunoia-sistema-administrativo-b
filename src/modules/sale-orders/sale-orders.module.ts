@@ -39,6 +39,8 @@ import { LogisticsPayablesModule } from "../logistics-payables/logistics-payable
 import { AuthModule } from "../auth/infrastructure/auth.module";
 import { SaleOrderSkuRecognitionCodeEntity } from "./adapters/out/persistence/typeorm/entities/sale-order-sku-recognition-code.entity";
 import { SaleOrderSkuRecognitionCodeService } from "./application/services/sale-order-sku-recognition-code.service";
+import { WorkflowDraftTestSessionEntity } from '../workflow/adapters/out/persistence/typeorm/entities/workflow-draft-test-session.entity';
+import { WorkflowRevisionsController } from './adapters/in/controllers/workflow-revisions.controller';
 
 @Module({
   imports: [
@@ -66,6 +68,7 @@ import { SaleOrderSkuRecognitionCodeService } from "./application/services/sale-
       AdviserEntity,
       SubsidiaryEntity,
       SaleOrderSkuRecognitionCodeEntity,
+      WorkflowDraftTestSessionEntity,
     ]),
     PacksModule,
     ProductCatalogModule,
@@ -80,7 +83,7 @@ import { SaleOrderSkuRecognitionCodeService } from "./application/services/sale-
     LogisticsPayablesModule,
     AuthModule,
   ],
-  controllers: [SaleOrdersController],
+  controllers: [SaleOrdersController, WorkflowRevisionsController],
   providers: [
     ...saleOrdersModuleProviders,
     AdviserMembershipService,

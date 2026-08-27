@@ -4,6 +4,7 @@ import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.p
 import { Workflow } from "../../domain/entities/workflow";
 import { WORKFLOW_REPOSITORY, WorkflowRepository } from "../../domain/ports/workflow.repository";
 import { UpdateWorkflowInput } from "../dtos/update-workflow.input";
+import { assertWorkflowDraft } from '../workflow-editability';
 
 export class UpdateWorkflowUseCase {
   constructor(
@@ -21,6 +22,7 @@ export class UpdateWorkflowUseCase {
       if (!current) {
         throw new NotFoundException("Workflow no encontrado");
       }
+      assertWorkflowDraft(current);
 
       const name = input.name?.trim() || current.name;
       if (!name) {
@@ -28,6 +30,7 @@ export class UpdateWorkflowUseCase {
       }
 
       const workflow = new Workflow({
+        ...current,
         id: current.id,
         name,
         normalizedName: this.normalizeName(name),

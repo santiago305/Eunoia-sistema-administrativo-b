@@ -1,5 +1,5 @@
 import React from "react";
-import { Document, Page, Text, View, StyleSheet, Image, DocumentProps } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
 import { PurchaseOrderPdfData } from "src/modules/pdf-generated/domain/ports/pdf-renderer.port";
 
 const MM_TO_PT = 72 / 25.4;
@@ -124,7 +124,7 @@ const formatDate = (date?: Date) => {
 
 const formatCurrency = (value: number) => value.toFixed(2);
 
-export const PurchaseOrderPdf = ({ data }: { data: PurchaseOrderPdfData }): React.ReactElement<DocumentProps> => (
+export const PurchaseOrderPdf = ({ data }: { data: PurchaseOrderPdfData }) => (
   <Document>
     <Page size={{ width: TICKET_WIDTH, height: TICKET_HEIGHT }} style={styles.page}>
       <View style={styles.headerRow}>

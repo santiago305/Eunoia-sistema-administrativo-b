@@ -13,6 +13,7 @@ import { WorkflowAction } from "../../domain/entities/workflow-action";
 import { ActionFactory } from "../../domain/factories/action.factory";
 import { TRANSITION_PURPOSES } from "../../domain/constants/workflow-transition-purpose.constants";
 import { TRANSITION_EFFECTS } from "../../domain/constants/workflow-transition-effect.constants";
+import { assertWorkflowDraft } from '../workflow-editability';
 
 export class CreateWorkflowTransitionUseCase {
   constructor(
@@ -30,6 +31,7 @@ export class CreateWorkflowTransitionUseCase {
       if (!aggregate) {
         throw new NotFoundException("Workflow no encontrado");
       }
+      assertWorkflowDraft(aggregate.workflow);
 
       const code = input.code?.trim();
       const name = input.name?.trim();

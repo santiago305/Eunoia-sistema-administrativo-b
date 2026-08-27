@@ -128,6 +128,7 @@ import { AllowDraftOnlyMailAttachments20260824120000 } from "./migrations/202608
 import { AddSaleOrdersAdvancedPermission20260822120000 } from "./migrations/20260822120000-add-sale-orders-advanced-permission";
 import { AddInventoryMovementEffectiveDate20260824000000 } from "./migrations/20260824000000-add-inventory-movement-effective-date";
 import { AddSaleOrderStockSituationFilter20260826090000 } from "./migrations/20260826090000-add-sale-order-stock-situation-filter";
+import { AddWorkflowRevisionsAndDraftTests20260827120000 } from './migrations/20260827120000-add-workflow-revisions-and-draft-tests';
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: "postgres",
@@ -267,6 +268,7 @@ export const databaseMigrations = [
     AddSaleOrdersAdvancedPermission20260822120000,
     AddInventoryMovementEffectiveDate20260824000000,
     AddSaleOrderStockSituationFilter20260826090000,
+    AddWorkflowRevisionsAndDraftTests20260827120000,
 ];
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({

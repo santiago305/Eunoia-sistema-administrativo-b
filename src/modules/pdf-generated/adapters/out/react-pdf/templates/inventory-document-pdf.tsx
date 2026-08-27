@@ -1,5 +1,5 @@
 import React from "react";
-import { Document, Page, Text, View, StyleSheet, Image, DocumentProps } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
 import { InventoryDocumentPdfData } from "src/modules/pdf-generated/domain/ports/pdf-renderer.port";
 
 const MM_TO_PT = 72 / 25.4;
@@ -130,7 +130,7 @@ const formatCurrency = (value: number | string | null | undefined) => {
   return Number.isFinite(num) ? num.toFixed(2) : "0.00";
 };
 
-export const InventoryDocumentPdf = ({ data }: { data: InventoryDocumentPdfData }): React.ReactElement<DocumentProps> => (
+export const InventoryDocumentPdf = ({ data }: { data: InventoryDocumentPdfData }) => (
   <Document>
     <Page size={{ width: TICKET_WIDTH, height: TICKET_HEIGHT }} style={styles.page}>
       <View style={styles.headerRow}>

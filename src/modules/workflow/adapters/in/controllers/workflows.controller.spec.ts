@@ -18,6 +18,8 @@ import { SaveFullWorkflowUseCase } from "../../../application/usecases/save-full
 import { ACTIONS } from "../../../domain/constants/workflow-action.constants";
 import { CONDITIONS } from "../../../domain/constants/workflow-condition.constants";
 import { TRANSITION_EFFECTS } from "../../../domain/constants/workflow-transition-effect.constants";
+import { CreateWorkflowDraftUseCase } from '../../../application/usecases/create-workflow-draft.usecase';
+import { ListManagedWorkflowsUseCase } from '../../../application/usecases/list-managed-workflows.usecase';
 
 @Injectable()
 class AllowGuard implements CanActivate {
@@ -40,6 +42,8 @@ describe("WorkflowsController", () => {
   const updateWorkflowStatePositions = { execute: jest.fn().mockResolvedValue([{ id: "state-1" }]) };
   const saveFullWorkflow = { execute: jest.fn().mockResolvedValue({ workflow: { id: "workflow-1" } }) };
   const createWorkflowTransition = { execute: jest.fn().mockResolvedValue({ transition: { id: "transition-1" }, conditions: [] }) };
+  const createWorkflowDraft = { execute: jest.fn().mockResolvedValue({ workflow: { id: 'draft-1' } }) };
+  const listManagedWorkflows = { execute: jest.fn().mockResolvedValue([]) };
 
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -55,6 +59,8 @@ describe("WorkflowsController", () => {
         { provide: UpdateWorkflowStatePositionsUseCase, useValue: updateWorkflowStatePositions },
         { provide: SaveFullWorkflowUseCase, useValue: saveFullWorkflow },
         { provide: CreateWorkflowTransitionUseCase, useValue: createWorkflowTransition },
+        { provide: CreateWorkflowDraftUseCase, useValue: createWorkflowDraft },
+        { provide: ListManagedWorkflowsUseCase, useValue: listManagedWorkflows },
       ],
     })
       .overrideGuard(JwtAuthGuard)

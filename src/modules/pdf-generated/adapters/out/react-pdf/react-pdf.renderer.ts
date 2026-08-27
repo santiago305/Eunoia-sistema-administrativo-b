@@ -14,26 +14,31 @@ import {
   SaleOrderPdfData,
 } from "src/modules/pdf-generated/domain/ports/pdf-renderer.port";
 
+type PdfDocumentElement = Parameters<typeof renderToBuffer>[0];
+
+const asPdfDocument = (element: unknown): PdfDocumentElement =>
+  element as PdfDocumentElement;
+
 @Injectable()
 export class ReactPdfRenderer implements PdfRendererPort {
   async renderInvoice(data: InvoicePdfData): Promise<Buffer> {
-    return renderToBuffer(InvoicePdf({ data }));
+    return renderToBuffer(asPdfDocument(InvoicePdf({ data })));
   }
 
   async renderPurchaseOrder(data: PurchaseOrderPdfData): Promise<Buffer> {
-    return renderToBuffer(PurchaseOrderPdf({ data }));
+    return renderToBuffer(asPdfDocument(PurchaseOrderPdf({ data })));
   }
 
   async renderProductionOrder(data: ProductionOrderPdfData): Promise<Buffer> {
-    return renderToBuffer(ProductionOrderPdf({ data }));
+    return renderToBuffer(asPdfDocument(ProductionOrderPdf({ data })));
   }
 
   async renderInventoryDocument(data: InventoryDocumentPdfData): Promise<Buffer> {
-    return renderToBuffer(InventoryDocumentPdf({ data }));
+    return renderToBuffer(asPdfDocument(InventoryDocumentPdf({ data })));
   }
 
   async renderSaleOrder(data: SaleOrderPdfData): Promise<Buffer> {
-    return renderToBuffer(SaleOrderPdf({ data }));
+    return renderToBuffer(asPdfDocument(SaleOrderPdf({ data })));
   }
 }
 

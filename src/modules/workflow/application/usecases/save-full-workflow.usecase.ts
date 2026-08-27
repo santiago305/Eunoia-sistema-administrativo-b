@@ -13,6 +13,7 @@ import { SaveFullWorkflowInput } from "../dtos/save-full-workflow.input";
 import { TRANSITION_PURPOSES } from "../../domain/constants/workflow-transition-purpose.constants";
 import { TRANSITION_EFFECTS } from "../../domain/constants/workflow-transition-effect.constants";
 import { SALE_ORDER_STATES_REPOSITORY, SaleOrderStatesRepository } from "../../domain/ports/sale-order-states.repository";
+import { WORKFLOW_LIFECYCLE } from '../../domain/constants/workflow-lifecycle.constants';
 
 export class SaveFullWorkflowUseCase {
   constructor(
@@ -33,6 +34,14 @@ export class SaveFullWorkflowUseCase {
       const current = input.workflowId ? await this.workflowRepo.findDetailedById(input.workflowId, tx) : null;
       if (input.workflowId && !current) {
         throw new NotFoundException("Workflow no encontrado");
+      }
+      if (
+        current?.workflow.lifecycleStatus &&
+        current.workflow.lifecycleStatus !== WORKFLOW_LIFECYCLE.DRAFT
+      ) {
+        throw new BadRequestException(
+          'Una revision publicada es inmutable. Cree o abra su borrador para editarla',
+        );
       }
 
       const aggregate = await this.buildAggregate(input, current, tx);
@@ -253,9 +262,18 @@ export class SaveFullWorkflowUseCase {
         name,
         normalizedName: name.replace(/\s+/g, " ").toLocaleUpperCase("es-PE"),
         description: input.description === undefined ? current?.workflow.description ?? null : input.description,
-        isActive: input.isActive ?? current?.workflow.isActive ?? false,
+        // Los borradores deben poder ejecutarse unicamente dentro de una sesion de prueba.
+        // La seleccion normal de pedidos sigue limitada a revisiones publicadas y vigentes.
+        isActive: true,
         createdAt: current?.workflow.createdAt ?? now,
         updatedAt: current ? now : null,
+        familyId: current?.workflow.familyId ?? workflowId,
+        revision: current?.workflow.revision ?? 1,
+        lifecycleStatus: current?.workflow.lifecycleStatus ?? WORKFLOW_LIFECYCLE.DRAFT,
+        isCurrent: false,
+        basedOnWorkflowId: current?.workflow.basedOnWorkflowId ?? null,
+        publishedAt: current?.workflow.publishedAt ?? null,
+        publishedBy: current?.workflow.publishedBy ?? null,
       }),
       states,
       transitions,

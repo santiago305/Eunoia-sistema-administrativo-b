@@ -30,6 +30,9 @@ export interface WorkflowRepository {
     tx?: TransactionContext,
   ): Promise<WorkflowWithInitialState | null>;
   list(tx?: TransactionContext): Promise<Workflow[]>;
+  listManaged?(tx?: TransactionContext): Promise<Workflow[]>;
+  listByFamilyId?(familyId: string, tx?: TransactionContext): Promise<Workflow[]>;
+  cloneSupplyRecipe?(sourceWorkflowId: string, targetWorkflowId: string, tx: TransactionContext): Promise<void>;
   saveFull(
     aggregate: WorkflowAggregate,
     options: { synchronize: boolean },

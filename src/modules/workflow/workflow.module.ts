@@ -19,6 +19,7 @@ import { WorkflowSupplyRecipeEntity } from "./adapters/out/persistence/typeorm/e
 import { WorkflowSupplyRecipeItemEntity } from "./adapters/out/persistence/typeorm/entities/workflow-supply-recipe-item.entity";
 import { WorkflowSupplyRecipeService } from "./application/services/workflow-supply-recipe.service";
 import { WorkflowSupplyRecipesController } from "./adapters/in/controllers/workflow-supply-recipes.controller";
+import { WorkflowDraftTestSessionEntity } from './adapters/out/persistence/typeorm/entities/workflow-draft-test-session.entity';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { WorkflowSupplyRecipesController } from "./adapters/in/controllers/workf
       WorkflowSupplyRecipeItemEntity,
       ProductCatalogSkuEntity,
       ProductCatalogUnitEntity,
+      WorkflowDraftTestSessionEntity,
     ]),
   ],
   controllers: [WorkflowsController, SaleOrderStatesController, WorkflowSupplyRecipesController],

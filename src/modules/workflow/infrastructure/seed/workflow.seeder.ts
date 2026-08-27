@@ -38,9 +38,29 @@ export function materializeWorkflowSeed(seed: WorkflowSeed) {
 async function synchronizeWorkflow(manager: EntityManager, seed: WorkflowSeed): Promise<void> {
   const materialized = materializeWorkflowSeed(seed);
   const workflowRepository = manager.getRepository(WorkflowEntity);
-  const existing = await workflowRepository.findOne({ where: { normalizedName: materialized.workflow.normalizedName } });
-  const workflowId = existing?.id ?? materialized.workflow.id;
-  await workflowRepository.save({ ...materialized.workflow, id: workflowId });
+  const existing = await workflowRepository.findOne({
+    where: {
+      normalizedName: materialized.workflow.normalizedName,
+      lifecycleStatus: 'PUBLISHED',
+      isCurrent: true,
+    },
+  });
+  // Una revision publicada ya forma parte del historial de pedidos y no debe
+  // reescribirse durante un seed posterior. Los cambios pasan por un borrador.
+  if (existing) return;
+
+  const workflowId = materialized.workflow.id;
+  await workflowRepository.save({
+    ...materialized.workflow,
+    id: workflowId,
+    familyId: workflowId,
+    revision: 1,
+    lifecycleStatus: 'PUBLISHED',
+    isCurrent: true,
+    basedOnWorkflowId: null,
+    publishedAt: new Date(),
+    publishedBy: null,
+  });
 
   const stateRepository = manager.getRepository(WorkflowStateEntity);
   const existingStates = await stateRepository.find({ where: { workflowId } });

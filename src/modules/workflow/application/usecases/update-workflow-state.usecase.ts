@@ -5,6 +5,7 @@ import { WORKFLOW_REPOSITORY, WorkflowRepository } from "../../domain/ports/work
 import { WORKFLOW_STATE_REPOSITORY, WorkflowStateRepository } from "../../domain/ports/workflow-state.repository";
 import { UpdateWorkflowStateInput } from "../dtos/update-workflow-state.input";
 import { SALE_ORDER_STATES_REPOSITORY, SaleOrderStatesRepository } from "../../domain/ports/sale-order-states.repository";
+import { assertWorkflowDraft } from '../workflow-editability';
 
 export class UpdateWorkflowStateUseCase {
   constructor(
@@ -24,6 +25,7 @@ export class UpdateWorkflowStateUseCase {
       if (!workflow) {
         throw new NotFoundException("Workflow no encontrado");
       }
+      assertWorkflowDraft(workflow);
 
       const current = await this.workflowStateRepo.findById(input.stateId, tx);
       if (!current || current.workflowId !== input.workflowId) {

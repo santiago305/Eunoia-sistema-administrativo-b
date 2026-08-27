@@ -113,6 +113,23 @@ export class SaleOrderStockCorrectionService {
     );
   }
 
+  async restoreConsumedAsReserved(
+    order: SaleOrder,
+    executedBy: string,
+    tx: TransactionContext,
+  ): Promise<void> {
+    const restored = await this.consumptionReversal.restoreAndReserve(
+      order,
+      executedBy,
+      tx,
+    );
+    if (!restored) {
+      throw new BadRequestException(
+        'No se pudo restaurar el consumo para mantenerlo reservado',
+      );
+    }
+  }
+
   async consumeCorrectedSaleOrder(
     saleOrderId: string,
     tx: TransactionContext,

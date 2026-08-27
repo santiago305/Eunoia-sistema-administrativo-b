@@ -1,5 +1,5 @@
 import React from "react";
-import { Document, Page, Text, View, StyleSheet, Image, DocumentProps } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
 import { InvoicePdfData } from "src/modules/pdf-generated/domain/ports/pdf-renderer.port";
 
 const styles = StyleSheet.create({
@@ -81,7 +81,7 @@ const formatDate = (date: Date) => {
   return `${day}/${month}/${year}`;
 };
 
-export const InvoicePdf = ({ data }: { data: InvoicePdfData }): React.ReactElement<DocumentProps> => (
+export const InvoicePdf = ({ data }: { data: InvoicePdfData }) => (
   <Document>
     <Page size="A4" style={styles.page}>
       <View style={styles.headerRow}>

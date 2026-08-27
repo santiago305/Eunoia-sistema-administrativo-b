@@ -4,6 +4,7 @@ import { WorkflowState } from "../../domain/entities/workflow-state";
 import { WORKFLOW_REPOSITORY, WorkflowRepository } from "../../domain/ports/workflow.repository";
 import { WORKFLOW_STATE_REPOSITORY, WorkflowStateRepository } from "../../domain/ports/workflow-state.repository";
 import { UpdateWorkflowStatePositionsInput } from "../dtos/update-workflow-state-positions.input";
+import { assertWorkflowDraft } from '../workflow-editability';
 
 export class UpdateWorkflowStatePositionsUseCase {
   constructor(
@@ -21,6 +22,7 @@ export class UpdateWorkflowStatePositionsUseCase {
       if (!workflow) {
         throw new NotFoundException("Workflow no encontrado");
       }
+      assertWorkflowDraft(workflow);
 
       const requestedIds = input.positions.map((position) => position.stateId);
       if (new Set(requestedIds).size !== requestedIds.length) {

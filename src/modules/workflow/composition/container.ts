@@ -22,6 +22,8 @@ import { CreateSaleOrderStateUseCase } from "../application/usecases/create-sale
 import { GetSaleOrderStateUseCase } from "../application/usecases/get-sale-order-state.usecase";
 import { ListSaleOrderStatesUseCase } from "../application/usecases/list-sale-order-states.usecase";
 import { UpdateSaleOrderStateUseCase } from "../application/usecases/update-sale-order-state.usecase";
+import { CreateWorkflowDraftUseCase } from '../application/usecases/create-workflow-draft.usecase';
+import { ListManagedWorkflowsUseCase } from '../application/usecases/list-managed-workflows.usecase';
 
 export const workflowModuleProviders = [
   { provide: WORKFLOW_REPOSITORY, useClass: WorkflowTypeormRepository },
@@ -43,4 +45,6 @@ export const workflowModuleProviders = [
   ListSaleOrderStatesUseCase,
   GetSaleOrderStateUseCase,
   UpdateSaleOrderStateUseCase,
+  CreateWorkflowDraftUseCase,
+  ListManagedWorkflowsUseCase,
 ];

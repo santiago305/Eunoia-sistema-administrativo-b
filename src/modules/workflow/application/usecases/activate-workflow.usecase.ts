@@ -4,6 +4,7 @@ import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.p
 import { Workflow } from "../../domain/entities/workflow";
 import { WORKFLOW_REPOSITORY, WorkflowRepository } from "../../domain/ports/workflow.repository";
 import { TRANSITION_PURPOSES } from "../../domain/constants/workflow-transition-purpose.constants";
+import { assertWorkflowDraft } from '../workflow-editability';
 
 export class ActivateWorkflowUseCase {
   constructor(
@@ -21,6 +22,7 @@ export class ActivateWorkflowUseCase {
       if (!aggregate) {
         throw new NotFoundException("Workflow no encontrado");
       }
+      assertWorkflowDraft(aggregate.workflow);
 
       const activeStates = aggregate.states.filter((state) => state.isActive);
       const initialStates = activeStates.filter((state) => state.isInitial);
@@ -50,6 +52,7 @@ export class ActivateWorkflowUseCase {
       }
 
       const workflow = new Workflow({
+        ...aggregate.workflow,
         id: aggregate.workflow.id,
         name: aggregate.workflow.name,
         normalizedName: aggregate.workflow.normalizedName,
