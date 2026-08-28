@@ -62,7 +62,8 @@ export class SaveSaleOrderWithClientUsecase {
     private readonly clientRealtime: ClientRealtime,
     @Inject(IMAGE_PROCESSOR)
     private readonly imageProcessor: ImageProcessor,
-    @Optional() private readonly commandAuthorization?: SaleOrderCommandAuthorizationService,
+    @Optional()
+    private readonly commandAuthorization?: SaleOrderCommandAuthorizationService,
     @Optional()
     private readonly paymentWorkflowReconciliation?: SaleOrderPaymentWorkflowReconciliationService,
     @Optional()
@@ -146,7 +147,12 @@ export class SaveSaleOrderWithClientUsecase {
         );
 
         const paymentWorkflowResult =
-          input.saleOrderId && this.paymentWorkflowReconciliation
+          input.saleOrderId &&
+          this.paymentWorkflowReconciliation &&
+          !(
+            'workflowChanged' in orderResult &&
+            orderResult.workflowChanged === true
+          )
             ? await this.paymentWorkflowReconciliation.reconcile(
                 {
                   saleOrderId: orderResult.orderId,
@@ -179,6 +185,10 @@ export class SaveSaleOrderWithClientUsecase {
         if (
           'stockCompositionReplaced' in orderResult &&
           orderResult.stockCompositionReplaced === true &&
+          !(
+            'workflowChanged' in orderResult &&
+            orderResult.workflowChanged === true
+          ) &&
           'previousStockStatus' in orderResult &&
           orderResult.previousStockStatus === 'CONSUMED' &&
           paymentWorkflowResult?.stateChanged !== true
@@ -363,14 +373,18 @@ export class SaveSaleOrderWithClientUsecase {
     tx: Parameters<SaleOrderAttachmentRepository['create']>[1],
     newFilePaths: string[],
   ): Promise<void> {
-    const preparedFile = await prepareImageForStorage(file, this.imageProcessor, {
-      maxWidth: 1920,
-      maxHeight: 1920,
-      quality: 80,
-      maxInputBytes: 15 * 1024 * 1024,
-      maxInputPixels: 20_000_000,
-      maxOutputBytes: 2 * 1024 * 1024,
-    });
+    const preparedFile = await prepareImageForStorage(
+      file,
+      this.imageProcessor,
+      {
+        maxWidth: 1920,
+        maxHeight: 1920,
+        quality: 80,
+        maxInputBytes: 15 * 1024 * 1024,
+        maxInputPixels: 20_000_000,
+        maxOutputBytes: 2 * 1024 * 1024,
+      },
+    );
 
     const stored = await this.fileStorage.save({
       area: 'public',
@@ -397,5 +411,4 @@ export class SaveSaleOrderWithClientUsecase {
       tx,
     );
   }
-
 }

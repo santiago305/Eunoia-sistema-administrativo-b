@@ -46,13 +46,16 @@ describe('UpdateSaleOrderUsecase', () => {
         discount: 0,
         total: 10,
       }),
-      update: jest.fn().mockResolvedValue({
-        id: 'order-1',
-        serie: 'PED',
-        correlative: 1,
-        workflowId: 'workflow-1',
-        currentStateId: 'state-1',
-      }),
+      update: jest.fn().mockImplementation((updateInput: any) =>
+        Promise.resolve({
+          id: 'order-1',
+          serie: 'PED',
+          correlative: 1,
+          warehouseId: updateInput.warehouseId,
+          workflowId: updateInput.workflowId,
+          currentStateId: updateInput.currentStateId,
+        }),
+      ),
     };
     const saleOrderItemRepo = {
       listBySaleOrderId: jest.fn().mockResolvedValue([
@@ -86,6 +89,7 @@ describe('UpdateSaleOrderUsecase', () => {
       bulkCreate: jest.fn(),
     };
     const historyRepo = {
+      append: jest.fn(),
       listBySaleOrderId: jest.fn().mockResolvedValue(
         stockActions.map((action, index) => ({
           transitionId: `transition-${index}`,
@@ -176,6 +180,8 @@ describe('UpdateSaleOrderUsecase', () => {
       suppliesService as any,
       paymentWorkflowReconciliation as any,
       stockCorrection as any,
+      historyRepo as any,
+      { now: () => new Date('2026-08-28T12:00:00.000Z') } as any,
     );
 
     return {
@@ -188,6 +194,7 @@ describe('UpdateSaleOrderUsecase', () => {
       suppliesService,
       paymentWorkflowReconciliation,
       stockCorrection,
+      historyRepo,
       commandAuthorization,
     };
   };
@@ -386,8 +393,12 @@ describe('UpdateSaleOrderUsecase', () => {
     expect(commandAuthorization.authorizeAdvancedOrder).toHaveBeenCalledWith(
       'user-2',
     );
-    expect(fixture.saleOrderItemRepo.deleteBySaleOrderId).not.toHaveBeenCalled();
-    expect(fixture.componentRepo.deleteBySaleOrderItemIds).not.toHaveBeenCalled();
+    expect(
+      fixture.saleOrderItemRepo.deleteBySaleOrderId,
+    ).not.toHaveBeenCalled();
+    expect(
+      fixture.componentRepo.deleteBySaleOrderItemIds,
+    ).not.toHaveBeenCalled();
   });
 
   it('keeps advanced corrections enabled with Pedidos avanzados', async () => {
@@ -438,7 +449,7 @@ describe('UpdateSaleOrderUsecase', () => {
     expect(commandAuthorization.authorizeAdvancedOrder).not.toHaveBeenCalled();
   });
 
-  it('rejects warehouse edits when the current workflow state is final', async () => {
+  it('allows an advanced warehouse correction when the current state is final', async () => {
     const fixture = createFixture([], true);
 
     await expect(
@@ -446,7 +457,16 @@ describe('UpdateSaleOrderUsecase', () => {
         ...input,
         warehouseId: 'warehouse-2',
       }),
-    ).rejects.toThrow('No se puede cambiar el almacén de un pedido finalizado.');
+    ).resolves.toEqual(
+      expect.objectContaining({
+        orderId: 'order-1',
+        warehouseChanged: true,
+      }),
+    );
+    expect(fixture.saleOrderRepo.update).toHaveBeenCalledWith(
+      expect.objectContaining({ warehouseId: 'warehouse-2' }),
+      expect.anything(),
+    );
   });
 
   it('changes workflow, resets its state and copies the new recipe when supplies are omitted', async () => {
@@ -471,6 +491,150 @@ describe('UpdateSaleOrderUsecase', () => {
       'workflow-2',
       expect.anything(),
     );
+  });
+
+  it('fully releases reserved stock before starting a new workflow', async () => {
+    const commandAuthorization = {
+      authorizeUpdate: jest.fn().mockResolvedValue(undefined),
+      authorizeAdvancedOrder: jest.fn().mockResolvedValue(undefined),
+    };
+    const fixture = createFixture(
+      [ACTIONS.RESERVE_STOCK],
+      false,
+      { findByIdWithItems: jest.fn() },
+      commandAuthorization,
+    );
+
+    await expect(
+      fixture.usecase.execute({
+        ...input,
+        userId: 'user-2',
+        workflowId: 'workflow-2',
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        workflowChanged: true,
+        workflowId: 'workflow-2',
+        currentStateId: 'state-2',
+      }),
+    );
+
+    expect(commandAuthorization.authorizeAdvancedOrder).toHaveBeenCalledWith(
+      'user-2',
+    );
+    expect(
+      fixture.stockCorrection.releasePreviousComposition,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ workflowId: 'workflow-1' }),
+      'RESERVED',
+      'user-2',
+      expect.anything(),
+    );
+    expect(
+      fixture.stockCorrection.reserveCorrectedComposition,
+    ).not.toHaveBeenCalled();
+    expect(
+      fixture.stockCorrection.consumeCorrectedComposition,
+    ).not.toHaveBeenCalled();
+    expect(fixture.historyRepo.append).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workflowId: 'workflow-2',
+        fromStateId: 'state-1',
+        toStateId: 'state-2',
+        metadata: expect.objectContaining({
+          source: 'advanced-order-reassignment',
+          previousWorkflowId: 'workflow-1',
+          workflowId: 'workflow-2',
+          stockStatus: 'NONE',
+        }),
+      }),
+      expect.anything(),
+    );
+  });
+
+  it('reverts the old warehouse and workflow together before assigning both targets', async () => {
+    const commandAuthorization = {
+      authorizeUpdate: jest.fn().mockResolvedValue(undefined),
+      authorizeAdvancedOrder: jest.fn().mockResolvedValue(undefined),
+    };
+    const fixture = createFixture(
+      [ACTIONS.RESERVE_STOCK, ACTIONS.CONSUME_STOCK],
+      true,
+      { findByIdWithItems: jest.fn() },
+      commandAuthorization,
+    );
+
+    await fixture.usecase.execute({
+      ...input,
+      userId: 'user-2',
+      workflowId: 'workflow-2',
+      warehouseId: 'warehouse-2',
+    });
+
+    expect(
+      fixture.stockCorrection.releasePreviousComposition,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workflowId: 'workflow-1',
+        warehouseId: 'warehouse-1',
+      }),
+      'CONSUMED',
+      'user-2',
+      expect.anything(),
+    );
+    expect(fixture.saleOrderRepo.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workflowId: 'workflow-2',
+        currentStateId: 'state-2',
+        warehouseId: 'warehouse-2',
+      }),
+      expect.anything(),
+    );
+    expect(
+      fixture.stockCorrection.reserveCorrectedComposition,
+    ).not.toHaveBeenCalled();
+    expect(
+      fixture.stockCorrection.consumeCorrectedComposition,
+    ).not.toHaveBeenCalled();
+    expect(fixture.historyRepo.append).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          workflowChanged: true,
+          warehouseChanged: true,
+          previousWarehouseId: 'warehouse-1',
+          warehouseId: 'warehouse-2',
+        }),
+      }),
+      expect.anything(),
+    );
+  });
+
+  it('rejects an advanced warehouse change before touching inventory when permission is missing', async () => {
+    const commandAuthorization = {
+      authorizeUpdate: jest.fn().mockResolvedValue(undefined),
+      authorizeAdvancedOrder: jest
+        .fn()
+        .mockRejectedValue(new Error('sale_orders.advanced_orders')),
+    };
+    const fixture = createFixture(
+      [ACTIONS.RESERVE_STOCK],
+      false,
+      { findByIdWithItems: jest.fn() },
+      commandAuthorization,
+    );
+
+    await expect(
+      fixture.usecase.execute({
+        ...input,
+        userId: 'user-2',
+        warehouseId: 'warehouse-2',
+      }),
+    ).rejects.toThrow('sale_orders.advanced_orders');
+
+    expect(
+      fixture.stockCorrection.releasePreviousComposition,
+    ).not.toHaveBeenCalled();
+    expect(fixture.saleOrderRepo.update).not.toHaveBeenCalled();
   });
 
   it('keeps existing supplies when neither supplies nor workflow change', async () => {
@@ -508,8 +672,12 @@ describe('UpdateSaleOrderUsecase', () => {
       }),
     ).resolves.toEqual(expect.objectContaining({ orderId: 'order-1' }));
 
-    expect(fixture.stockCorrection.releasePreviousComposition).toHaveBeenCalled();
-    expect(fixture.stockCorrection.reserveCorrectedComposition).toHaveBeenCalled();
+    expect(
+      fixture.stockCorrection.releasePreviousComposition,
+    ).toHaveBeenCalled();
+    expect(
+      fixture.stockCorrection.reserveCorrectedComposition,
+    ).toHaveBeenCalled();
     expect(fixture.suppliesService.replace).toHaveBeenCalled();
   });
 
@@ -533,16 +701,20 @@ describe('UpdateSaleOrderUsecase', () => {
       }),
     ).resolves.toEqual(expect.objectContaining({ orderId: 'order-1' }));
 
-    expect(fixture.stockCorrection.releasePreviousComposition).toHaveBeenCalledWith(
+    expect(
+      fixture.stockCorrection.releasePreviousComposition,
+    ).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'order-1' }),
       'CONSUMED',
       'user-1',
       expect.anything(),
     );
-    expect(fixture.stockCorrection.reserveCorrectedComposition).toHaveBeenCalled();
+    expect(
+      fixture.stockCorrection.reserveCorrectedComposition,
+    ).toHaveBeenCalled();
   });
 
-  it('rejects changing warehouse while stock is reserved before deleting related data', async () => {
+  it('moves an active reservation to the new warehouse', async () => {
     const fixture = createFixture([ACTIONS.RESERVE_STOCK]);
 
     await expect(
@@ -550,20 +722,44 @@ describe('UpdateSaleOrderUsecase', () => {
         ...input,
         warehouseId: 'warehouse-2',
       }),
-    ).rejects.toThrow(
-      'No se puede cambiar el almacén porque el pedido tiene stock reservado.',
+    ).resolves.toEqual(
+      expect.objectContaining({
+        orderId: 'order-1',
+        warehouseChanged: true,
+      }),
     );
 
     expect(
-      fixture.componentRepo.deleteBySaleOrderItemIds,
-    ).not.toHaveBeenCalled();
+      fixture.stockCorrection.releasePreviousComposition,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ warehouseId: 'warehouse-1' }),
+      'RESERVED',
+      'user-1',
+      expect.anything(),
+    );
     expect(
-      fixture.saleOrderItemRepo.deleteBySaleOrderId,
+      fixture.stockCorrection.reserveCorrectedComposition,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ warehouseId: 'warehouse-2' }),
+      expect.anything(),
+    );
+    expect(
+      fixture.stockCorrection.consumeCorrectedComposition,
     ).not.toHaveBeenCalled();
-    expect(fixture.paymentRepo.deleteBySaleOrderId).not.toHaveBeenCalled();
+    expect(fixture.historyRepo.append).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          source: 'advanced-order-reassignment',
+          previousWarehouseId: 'warehouse-1',
+          warehouseId: 'warehouse-2',
+          warehouseChanged: true,
+        }),
+      }),
+      expect.anything(),
+    );
   });
 
-  it('rejects changing warehouse after stock was consumed before deleting related data', async () => {
+  it('restores consumed stock in the old warehouse and consumes it in the new warehouse', async () => {
     const fixture = createFixture([
       ACTIONS.RESERVE_STOCK,
       ACTIONS.CONSUME_STOCK,
@@ -574,17 +770,28 @@ describe('UpdateSaleOrderUsecase', () => {
         ...input,
         warehouseId: 'warehouse-2',
       }),
-    ).rejects.toThrow(
-      'No se puede cambiar el almacén porque el pedido ya consumió stock.',
-    );
+    ).resolves.toEqual(expect.objectContaining({ warehouseChanged: true }));
 
     expect(
-      fixture.componentRepo.deleteBySaleOrderItemIds,
-    ).not.toHaveBeenCalled();
+      fixture.stockCorrection.releasePreviousComposition,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ warehouseId: 'warehouse-1' }),
+      'CONSUMED',
+      'user-1',
+      expect.anything(),
+    );
     expect(
-      fixture.saleOrderItemRepo.deleteBySaleOrderId,
-    ).not.toHaveBeenCalled();
-    expect(fixture.paymentRepo.deleteBySaleOrderId).not.toHaveBeenCalled();
+      fixture.stockCorrection.reserveCorrectedComposition,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ warehouseId: 'warehouse-2' }),
+      expect.anything(),
+    );
+    expect(
+      fixture.stockCorrection.consumeCorrectedComposition,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ warehouseId: 'warehouse-2' }),
+      expect.anything(),
+    );
   });
 
   it('allows changing warehouse after reserved stock was reverted', async () => {

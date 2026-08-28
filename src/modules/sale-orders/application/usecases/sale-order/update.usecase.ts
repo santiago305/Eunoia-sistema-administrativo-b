@@ -43,6 +43,13 @@ import {
 } from '../../services/sale-order-supplies.service';
 import { SaleOrderPaymentWorkflowReconciliationService } from '../../services/sale-order-payment-workflow-reconciliation.service';
 import { SaleOrderStockCorrectionService } from '../../services/sale-order-stock-correction.service';
+import {
+  SALE_ORDER_STATE_HISTORY_REPOSITORY,
+  SaleOrderStateHistoryRepository,
+} from 'src/modules/workflow/domain/ports/sale-order-state-history.repository';
+import { SaleOrderStateHistory } from 'src/modules/workflow/domain/entities/sale-order-state-history';
+import { CLOCK, ClockPort } from 'src/shared/application/ports/clock.port';
+import { randomUUID } from 'crypto';
 
 export type UpdateSaleOrderInput = {
   saleOrderId: string;
@@ -134,6 +141,12 @@ export class UpdateSaleOrderUsecase {
     private readonly paymentWorkflowReconciliation?: SaleOrderPaymentWorkflowReconciliationService,
     @Optional()
     private readonly stockCorrection?: SaleOrderStockCorrectionService,
+    @Optional()
+    @Inject(SALE_ORDER_STATE_HISTORY_REPOSITORY)
+    private readonly historyRepo?: SaleOrderStateHistoryRepository,
+    @Optional()
+    @Inject(CLOCK)
+    private readonly clock?: ClockPort,
   ) {}
 
   private buildComponentSignature(
@@ -213,7 +226,10 @@ export class UpdateSaleOrderUsecase {
       .join('|');
   }
 
-  private moneyChanged(left: number | null | undefined, right: number): boolean {
+  private moneyChanged(
+    left: number | null | undefined,
+    right: number,
+  ): boolean {
     return (
       Math.round(Number(left ?? 0) * 100) !== Math.round(Number(right) * 100)
     );
@@ -257,15 +273,6 @@ export class UpdateSaleOrderUsecase {
     );
 
     if (selectedWorkflowId && workflowChanged) {
-      if (
-        editPolicy.isFinal ||
-        editPolicy.stockStatus === 'RESERVED' ||
-        editPolicy.stockStatus === 'CONSUMED'
-      ) {
-        throw new BadRequestException(
-          'No se puede cambiar el flujo de un pedido finalizado o con stock reservado/consumido',
-        );
-      }
       const resolved = await this.workflowRepo.findDetailedById(
         selectedWorkflowId,
         tx,
@@ -355,8 +362,10 @@ export class UpdateSaleOrderUsecase {
       componentPlansByItemIndex.push(plans);
     }
 
-    const existingComponents =
-      await this.componentRepo.listBySaleOrderItemIds(existingItemIds, tx);
+    const existingComponents = await this.componentRepo.listBySaleOrderItemIds(
+      existingItemIds,
+      tx,
+    );
     const nextComponents = componentPlansByItemIndex.flat();
     const stockCompositionChanged =
       this.buildComponentSignature(
@@ -410,28 +419,12 @@ export class UpdateSaleOrderUsecase {
     const discount = Number(input.discount ?? order.discount ?? 0);
     const total = Math.max(0, subTotal + deliveryCost - discount);
 
-    if (editPolicy.isFinal && input.warehouseId !== order.warehouseId) {
-      throw new BadRequestException(
-        'No se puede cambiar el almacén de un pedido finalizado.',
-      );
-    }
-
     const stockLifecycleStatus = editPolicy.stockStatus;
     const isAdvancedOrder =
       editPolicy.isFinal ||
       stockLifecycleStatus === 'RESERVED' ||
       stockLifecycleStatus === 'CONSUMED';
     const warehouseChanged = input.warehouseId !== order.warehouseId;
-    if (warehouseChanged && stockLifecycleStatus === 'RESERVED') {
-      throw new BadRequestException(
-        'No se puede cambiar el almacén porque el pedido tiene stock reservado.',
-      );
-    }
-    if (warehouseChanged && stockLifecycleStatus === 'CONSUMED') {
-      throw new BadRequestException(
-        'No se puede cambiar el almacén porque el pedido ya consumió stock.',
-      );
-    }
 
     let suppliesChanged = false;
     if (
@@ -461,7 +454,9 @@ export class UpdateSaleOrderUsecase {
       (commercialItemsChanged ||
         suppliesChanged ||
         amountChanged ||
-        deliveryDateChanged);
+        deliveryDateChanged ||
+        workflowChanged ||
+        warehouseChanged);
     const executedBy = options.executedBy ?? input.userId ?? null;
     if (advancedCorrectionRequested && this.commandAuthorization) {
       if (!executedBy) {
@@ -476,7 +471,10 @@ export class UpdateSaleOrderUsecase {
     if (
       (stockLifecycleStatus === 'RESERVED' ||
         stockLifecycleStatus === 'CONSUMED') &&
-      (stockCompositionChanged || suppliesChanged)
+      (stockCompositionChanged ||
+        suppliesChanged ||
+        workflowChanged ||
+        warehouseChanged)
     ) {
       const stockActor = executedBy ?? order.createdBy ?? null;
       if (!this.stockCorrection || !stockActor) {
@@ -572,7 +570,7 @@ export class UpdateSaleOrderUsecase {
       }
     }
 
-    if (activeStockCompositionReleased) {
+    if (activeStockCompositionReleased && !workflowChanged) {
       await this.stockCorrection!.reserveCorrectedComposition(updated, tx);
     }
 
@@ -631,6 +629,7 @@ export class UpdateSaleOrderUsecase {
       !options.deferPaymentWorkflowReconciliation &&
       options.executedBy &&
       this.paymentWorkflowReconciliation &&
+      !workflowChanged &&
       (totalChanged ||
         deliveryDateChanged ||
         input.payments !== undefined ||
@@ -657,10 +656,45 @@ export class UpdateSaleOrderUsecase {
     if (
       activeStockCompositionReleased &&
       stockLifecycleStatus === 'CONSUMED' &&
+      !workflowChanged &&
       !options.deferPaymentWorkflowReconciliation &&
       !paymentStateChanged
     ) {
       await this.stockCorrection!.consumeCorrectedComposition(updated, tx);
+    }
+
+    if (
+      (workflowChanged || warehouseChanged) &&
+      this.historyRepo &&
+      updated.workflowId &&
+      updated.currentStateId
+    ) {
+      await this.historyRepo.append(
+        new SaleOrderStateHistory({
+          id: randomUUID(),
+          saleOrderId: updated.id,
+          workflowId: updated.workflowId,
+          transitionId: null,
+          fromStateId: order.currentStateId ?? null,
+          toStateId: updated.currentStateId,
+          executedBy,
+          executedAt: this.clock?.now() ?? new Date(),
+          metadata: {
+            source: 'advanced-order-reassignment',
+            previousWorkflowId: order.workflowId ?? null,
+            workflowId: updated.workflowId,
+            previousStateId: order.currentStateId ?? null,
+            stateId: updated.currentStateId,
+            previousWarehouseId: order.warehouseId ?? null,
+            warehouseId: updated.warehouseId ?? null,
+            previousStockStatus: stockLifecycleStatus,
+            workflowChanged,
+            warehouseChanged,
+            ...(workflowChanged ? { stockStatus: 'NONE' } : {}),
+          },
+        }),
+        tx,
+      );
     }
 
     return {
@@ -676,6 +710,10 @@ export class UpdateSaleOrderUsecase {
       deliveryDateChanged,
       stockCompositionReplaced: activeStockCompositionReleased,
       previousStockStatus: stockLifecycleStatus,
+      workflowChanged,
+      warehouseChanged,
+      previousWorkflowId: order.workflowId ?? null,
+      previousWarehouseId: order.warehouseId ?? null,
     };
   }
 }
