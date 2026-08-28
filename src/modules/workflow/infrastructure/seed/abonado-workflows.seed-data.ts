@@ -56,10 +56,11 @@ export type WorkflowSeed = {
 };
 
 const ref = (id: string) => `state-${id}`;
-const action = (
-  type: WorkflowActionType,
-  position = 0,
-): WorkflowActionSeed => ({ type, config: {}, position });
+const action = (type: WorkflowActionType): WorkflowActionSeed => ({
+  type,
+  config: {},
+  position: 0,
+});
 const condition = (
   type: WorkflowConditionType,
   config: Record<string, unknown> = {},
@@ -159,7 +160,6 @@ const ENVIO_WAITING_STOCK = ref('ef609d8b-a3d0-597f-9345-60fe5c46ee38');
 const ENVIO_DELIVERED = ref('51db9539-a81c-5dab-93a9-0ecd49a28c23');
 const ENVIO_WAITING_PAYMENT = ref('35e95b95-3687-5caa-8bcd-fb27f1a193ee');
 const ENVIO_TO_SEND = ref('c92c0444-fff0-4002-a876-276daf5fa88b');
-const ENVIO_IN_PROGRESS = ref('a14fe8d2-7c3c-4f35-8b8d-7a0e0f548f40');
 
 const draftToCreatedTransition = (
   clientId: string,
@@ -252,8 +252,8 @@ export const ABONADO_WORKFLOW_SEEDS: WorkflowSeed[] = [
         isActive: true,
       },
       {
-        clientId: ENVIO_IN_PROGRESS,
-        saleOrderStateId: 'af85cf11-7af0-46bf-8596-d52fa57b70d7',
+        clientId: ENVIO_WAITING_PAYMENT,
+        saleOrderStateId: '2f512296-827a-42cb-a6cf-5afa2e64798b',
         position: 6,
         positionX: -565.6874645370526,
         positionY: 51.421371502229064,
@@ -262,19 +262,9 @@ export const ABONADO_WORKFLOW_SEEDS: WorkflowSeed[] = [
         isActive: true,
       },
       {
-        clientId: ENVIO_WAITING_PAYMENT,
-        saleOrderStateId: '2f512296-827a-42cb-a6cf-5afa2e64798b',
-        position: 7,
-        positionX: -565.6874645370526,
-        positionY: 216,
-        isInitial: false,
-        isFinal: false,
-        isActive: true,
-      },
-      {
         clientId: ENVIO_TO_SEND,
         saleOrderStateId: '4f61e23c-2064-47b4-8860-ab722c28cdb2',
-        position: 8,
+        position: 7,
         positionX: -234.47978177828276,
         positionY: 46.50291970941866,
         isInitial: false,
@@ -338,7 +328,6 @@ export const ABONADO_WORKFLOW_SEEDS: WorkflowSeed[] = [
         isGlobal: true,
         excludedStateRefs: [
           ENVIO_WAITING_PAYMENT,
-          ENVIO_IN_PROGRESS,
           ENVIO_DRAFT,
           ENVIO_DELIVERED,
           ENVIO_WAITING_STOCK,
@@ -367,7 +356,6 @@ export const ABONADO_WORKFLOW_SEEDS: WorkflowSeed[] = [
         isGlobal: true,
         excludedStateRefs: [
           ENVIO_WAITING_PAYMENT,
-          ENVIO_IN_PROGRESS,
           ENVIO_DRAFT,
           ENVIO_DELIVERED,
           ENVIO_WAITING_STOCK,
@@ -391,42 +379,13 @@ export const ABONADO_WORKFLOW_SEEDS: WorkflowSeed[] = [
       transition({
         clientId: 'transition-066ebc76-9b33-4636-b61b-a757568cf3a4',
         code: 'TRANSITION_1782332299577',
-        name: 'En curso',
-        fromStateRef: ENVIO_SCHEDULED,
-        toStateRef: ENVIO_IN_PROGRESS,
-        sourceHandle: 'bottom',
-        targetHandle: 'top',
-        autoTrigger: true,
-        conditions: [zeroDayWindow()],
-      }),
-      transition({
-        clientId: 'transition-48c11bde-5e58-4d5d-8d55-4c091181f198',
-        code: 'ENVIO_PAID_TO_SEND',
-        name: 'Por enviar',
-        fromStateRef: ENVIO_IN_PROGRESS,
-        toStateRef: ENVIO_TO_SEND,
-        sourceHandle: 'right',
-        targetHandle: 'left',
-        autoTrigger: true,
-        priority: 0,
-        conditions: [condition('IS_PAID', {}, 0)],
-        actions: [action('CONSUME_STOCK')],
-      }),
-      transition({
-        clientId: 'transition-bd8037b6-f49d-4440-a754-d038b86f7484',
-        code: 'ENVIO_OVERDUE_WAITING_PAYMENT',
         name: 'Esperando',
-        fromStateRef: ENVIO_IN_PROGRESS,
+        fromStateRef: ENVIO_SCHEDULED,
         toStateRef: ENVIO_WAITING_PAYMENT,
         sourceHandle: 'bottom',
         targetHandle: 'top',
         autoTrigger: true,
-        priority: 1,
-        conditions: [
-          condition('IS_NOT_PAID', {}, 0),
-          condition('SCHEDULE_DELIVERY_WINDOW', { mode: 'AFTER', days: 1 }, 1),
-        ],
-        actions: [action('REVERT_STOCK')],
+        conditions: [zeroDayWindow()],
       }),
       transition({
         clientId: 'transition-140b19ac-050e-4457-828e-ca70d2c8a1ea',
@@ -437,11 +396,8 @@ export const ABONADO_WORKFLOW_SEEDS: WorkflowSeed[] = [
         sourceHandle: 'right',
         targetHandle: 'left',
         autoTrigger: true,
-        conditions: [
-          condition('IS_PAID', {}, 0),
-          condition('HAS_STOCK', {}, 1),
-        ],
-        actions: [action('RESERVE_STOCK', 0), action('CONSUME_STOCK', 1)],
+        conditions: [condition('IS_PAID', {}, 0)],
+        actions: [action('CONSUME_STOCK')],
       }),
       transition({
         clientId: 'transition-626eb486-8d2b-46b7-b753-e0b50d40fb8c',

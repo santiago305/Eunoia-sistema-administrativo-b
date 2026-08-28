@@ -51,12 +51,6 @@ describe('ABONADO workflow seed definitions', () => {
         expect.objectContaining({
           clientId: 'state-35e95b95-3687-5caa-8bcd-fb27f1a193ee',
           positionX: -565.6874645370526,
-          positionY: 216,
-        }),
-        expect.objectContaining({
-          clientId: 'state-a14fe8d2-7c3c-4f35-8b8d-7a0e0f548f40',
-          saleOrderStateId: 'af85cf11-7af0-46bf-8596-d52fa57b70d7',
-          positionX: -565.6874645370526,
           positionY: 51.421371502229064,
         }),
         expect.objectContaining({
@@ -73,36 +67,9 @@ describe('ABONADO workflow seed definitions', () => {
         expect.objectContaining({
           clientId: 'transition-066ebc76-9b33-4636-b61b-a757568cf3a4',
           code: 'TRANSITION_1782332299577',
-          name: 'En curso',
-          fromStateRef: 'state-805b9bd3-5efb-51a4-a93e-1c06ea49357a',
-          toStateRef: 'state-a14fe8d2-7c3c-4f35-8b8d-7a0e0f548f40',
-        }),
-        expect.objectContaining({
-          code: 'ENVIO_PAID_TO_SEND',
-          name: 'Por enviar',
-          fromStateRef: 'state-a14fe8d2-7c3c-4f35-8b8d-7a0e0f548f40',
-          toStateRef: 'state-c92c0444-fff0-4002-a876-276daf5fa88b',
-          autoTrigger: true,
-          priority: 0,
-          conditions: [{ type: 'IS_PAID', config: {}, position: 0 }],
-          actions: [{ type: 'CONSUME_STOCK', config: {}, position: 0 }],
-        }),
-        expect.objectContaining({
-          code: 'ENVIO_OVERDUE_WAITING_PAYMENT',
           name: 'Esperando',
-          fromStateRef: 'state-a14fe8d2-7c3c-4f35-8b8d-7a0e0f548f40',
+          fromStateRef: 'state-805b9bd3-5efb-51a4-a93e-1c06ea49357a',
           toStateRef: 'state-35e95b95-3687-5caa-8bcd-fb27f1a193ee',
-          autoTrigger: true,
-          priority: 1,
-          conditions: [
-            { type: 'IS_NOT_PAID', config: {}, position: 0 },
-            {
-              type: 'SCHEDULE_DELIVERY_WINDOW',
-              config: { mode: 'AFTER', days: 1 },
-              position: 1,
-            },
-          ],
-          actions: [{ type: 'REVERT_STOCK', config: {}, position: 0 }],
         }),
         expect.objectContaining({
           clientId: 'transition-140b19ac-050e-4457-828e-ca70d2c8a1ea',
@@ -112,19 +79,10 @@ describe('ABONADO workflow seed definitions', () => {
           toStateRef: 'state-c92c0444-fff0-4002-a876-276daf5fa88b',
           actions: [
             {
-              type: 'RESERVE_STOCK',
+              type: 'CONSUME_STOCK',
               config: {},
               position: 0,
             },
-            {
-              type: 'CONSUME_STOCK',
-              config: {},
-              position: 1,
-            },
-          ],
-          conditions: [
-            { type: 'IS_PAID', config: {}, position: 0 },
-            { type: 'HAS_STOCK', config: {}, position: 1 },
           ],
         }),
         expect.objectContaining({
