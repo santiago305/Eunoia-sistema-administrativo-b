@@ -1,110 +1,128 @@
-import { SaveFullWorkflowUseCase } from "./save-full-workflow.usecase";
-import { ACTIONS } from "../../domain/constants/workflow-action.constants";
-import { CONDITIONS } from "../../domain/constants/workflow-condition.constants";
-import { TRANSITION_EFFECTS } from "../../domain/constants/workflow-transition-effect.constants";
+import { SaveFullWorkflowUseCase } from './save-full-workflow.usecase';
+import { ACTIONS } from '../../domain/constants/workflow-action.constants';
+import { CONDITIONS } from '../../domain/constants/workflow-condition.constants';
+import { TRANSITION_EFFECTS } from '../../domain/constants/workflow-transition-effect.constants';
 
-describe("SaveFullWorkflowUseCase", () => {
+describe('SaveFullWorkflowUseCase', () => {
   function createUseCase() {
     return new SaveFullWorkflowUseCase(
       { runInTransaction: (callback: any) => callback({}) } as any,
-      { findDetailedById: jest.fn(), saveFull: jest.fn(async (aggregate) => aggregate) } as any,
-      { now: () => new Date("2026-06-06T00:00:00.000Z") } as any,
+      {
+        findDetailedById: jest.fn(),
+        saveFull: jest.fn(async (aggregate) => aggregate),
+      } as any,
+      { now: () => new Date('2026-06-06T00:00:00.000Z') } as any,
     );
   }
 
-  it("resolves workflow node display data from the global sale-order state", async () => {
+  it('resolves workflow node display data from the global sale-order state', async () => {
     const useCase = new SaveFullWorkflowUseCase(
       { runInTransaction: (callback: any) => callback({}) } as any,
-      { findDetailedById: jest.fn(), saveFull: jest.fn(async (aggregate) => aggregate) } as any,
-      { now: () => new Date("2026-06-06T00:00:00.000Z") } as any,
+      {
+        findDetailedById: jest.fn(),
+        saveFull: jest.fn(async (aggregate) => aggregate),
+      } as any,
+      { now: () => new Date('2026-06-06T00:00:00.000Z') } as any,
       {
         findById: jest.fn(async (id) =>
-          id === "global-created"
-            ? { id, code: "CREATED", name: "Creado", color: "#123456" }
-            : { id, code: "DELIVERED", name: "Entregado", color: "#00ff00" },
+          id === 'global-created'
+            ? { id, code: 'CREATED', name: 'Creado', color: '#123456' }
+            : { id, code: 'DELIVERED', name: 'Entregado', color: '#00ff00' },
         ),
       } as any,
     );
 
     const result = await useCase.execute({
-      name: "Pedidos",
+      name: 'Pedidos',
       states: [
-        { clientId: "created", saleOrderStateId: "global-created", isInitial: true },
-        { clientId: "delivered", saleOrderStateId: "global-delivered", isFinal: true },
+        {
+          clientId: 'created',
+          saleOrderStateId: 'global-created',
+          isInitial: true,
+        },
+        {
+          clientId: 'delivered',
+          saleOrderStateId: 'global-delivered',
+          isFinal: true,
+        },
       ],
       transitions: [],
     });
 
     expect(result.states[0]).toEqual(
       expect.objectContaining({
-        saleOrderStateId: "global-created",
-        code: "CREATED",
-        name: "Creado",
-        color: "#123456",
+        saleOrderStateId: 'global-created',
+        code: 'CREATED',
+        name: 'Creado',
+        color: '#123456',
       }),
     );
   });
 
-  it("rejects a workflow without an active final state", async () => {
+  it('rejects a workflow without an active final state', async () => {
     await expect(
       createUseCase().execute({
-        name: "Pedidos",
+        name: 'Pedidos',
         states: [
           {
-            clientId: "created",
-            code: "CREATED",
-            name: "Creado",
-            color: "#000000",
+            clientId: 'created',
+            code: 'CREATED',
+            name: 'Creado',
+            color: '#000000',
             isInitial: true,
           },
         ],
         transitions: [],
       }),
-    ).rejects.toThrow("El workflow requiere al menos un estado final activo");
+    ).rejects.toThrow('El workflow requiere al menos un estado final activo');
   });
 
-  it("resolves global transition exclusions and persists no source state", async () => {
+  it('resolves global transition exclusions and persists no source state', async () => {
     const useCase = createUseCase();
 
     const result = await useCase.execute({
-      name: "Pedidos",
+      name: 'Pedidos',
       states: [
         {
-          clientId: "created",
-          code: "CREATED",
-          name: "Creado",
-          color: "#000000",
+          clientId: 'created',
+          code: 'CREATED',
+          name: 'Creado',
+          color: '#000000',
           isInitial: true,
         },
         {
-          clientId: "delivered",
-          code: "DELIVERED",
-          name: "Entregado",
-          color: "#00ff00",
+          clientId: 'delivered',
+          code: 'DELIVERED',
+          name: 'Entregado',
+          color: '#00ff00',
           isFinal: true,
         },
         {
-          clientId: "cancelled",
-          code: "CANCELLED",
-          name: "Cancelado",
-          color: "#ff0000",
+          clientId: 'cancelled',
+          code: 'CANCELLED',
+          name: 'Cancelado',
+          color: '#ff0000',
           isFinal: true,
         },
       ],
       transitions: [
         {
-          clientId: "cancel",
-          code: "CANCEL",
-          name: "Cancelar",
+          clientId: 'cancel',
+          code: 'CANCEL',
+          name: 'Cancelar',
           isGlobal: true,
-          toStateRef: "cancelled",
-          excludedStateRefs: ["delivered"],
+          toStateRef: 'cancelled',
+          excludedStateRefs: ['delivered'],
         },
       ],
     });
 
-    const deliveredState = result.states.find((state) => state.code === "DELIVERED");
-    const cancelledState = result.states.find((state) => state.code === "CANCELLED");
+    const deliveredState = result.states.find(
+      (state) => state.code === 'DELIVERED',
+    );
+    const cancelledState = result.states.find(
+      (state) => state.code === 'CANCELLED',
+    );
     expect(result.transitions[0]).toEqual(
       expect.objectContaining({
         isGlobal: true,
@@ -115,32 +133,32 @@ describe("SaveFullWorkflowUseCase", () => {
     );
   });
 
-  it("persists a global run-actions transition without a target state", async () => {
+  it('persists a global run-actions transition without a target state', async () => {
     const useCase = createUseCase();
 
     const result = await useCase.execute({
-      name: "Pedidos",
+      name: 'Pedidos',
       states: [
         {
-          clientId: "created",
-          code: "CREATED",
-          name: "Creado",
-          color: "#000000",
+          clientId: 'created',
+          code: 'CREATED',
+          name: 'Creado',
+          color: '#000000',
           isInitial: true,
         },
         {
-          clientId: "delivered",
-          code: "DELIVERED",
-          name: "Entregado",
-          color: "#00ff00",
+          clientId: 'delivered',
+          code: 'DELIVERED',
+          name: 'Entregado',
+          color: '#00ff00',
           isFinal: true,
         },
       ],
       transitions: [
         {
-          clientId: "notify",
-          code: "NOTIFY_CLIENT",
-          name: "Notificar cliente",
+          clientId: 'notify',
+          code: 'NOTIFY_CLIENT',
+          name: 'Notificar cliente',
           effect: TRANSITION_EFFECTS.RUN_ACTIONS,
           isGlobal: true,
           conditions: [{ type: CONDITIONS.NOT_CANCELLED }],
@@ -157,36 +175,40 @@ describe("SaveFullWorkflowUseCase", () => {
         toStateId: null,
       }),
     );
-    expect(result.conditions[0]).toEqual(expect.objectContaining({ type: CONDITIONS.NOT_CANCELLED }));
-    expect(result.actions[0]).toEqual(expect.objectContaining({ type: ACTIONS.MARK_INVOICE_SENT }));
+    expect(result.conditions[0]).toEqual(
+      expect.objectContaining({ type: CONDITIONS.NOT_CANCELLED }),
+    );
+    expect(result.actions[0]).toEqual(
+      expect.objectContaining({ type: ACTIONS.MARK_INVOICE_SENT }),
+    );
   });
 
-  it("persists transition node coordinates", async () => {
+  it('persists transition node coordinates', async () => {
     const useCase = createUseCase();
 
     const result = await useCase.execute({
-      name: "Pedidos",
+      name: 'Pedidos',
       states: [
         {
-          clientId: "created",
-          code: "CREATED",
-          name: "Creado",
-          color: "#000000",
+          clientId: 'created',
+          code: 'CREATED',
+          name: 'Creado',
+          color: '#000000',
           isInitial: true,
         },
         {
-          clientId: "delivered",
-          code: "DELIVERED",
-          name: "Entregado",
-          color: "#00ff00",
+          clientId: 'delivered',
+          code: 'DELIVERED',
+          name: 'Entregado',
+          color: '#00ff00',
           isFinal: true,
         },
       ],
       transitions: [
         {
-          clientId: "notify",
-          code: "NOTIFY_CLIENT",
-          name: "Notificar cliente",
+          clientId: 'notify',
+          code: 'NOTIFY_CLIENT',
+          name: 'Notificar cliente',
           effect: TRANSITION_EFFECTS.RUN_ACTIONS,
           isGlobal: true,
           positionX: -240.5,
@@ -204,102 +226,253 @@ describe("SaveFullWorkflowUseCase", () => {
     );
   });
 
-  it("rejects a non-global cancellation transition", async () => {
+  it('rejects a non-global cancellation transition', async () => {
     await expect(
       createUseCase().execute({
-        name: "Pedidos",
+        name: 'Pedidos',
         states: [
-          { clientId: "created", code: "CREATED", name: "Creado", color: "#000", isInitial: true },
-          { clientId: "done", code: "DONE", name: "Final", color: "#0f0", isFinal: true },
+          {
+            clientId: 'created',
+            code: 'CREATED',
+            name: 'Creado',
+            color: '#000',
+            isInitial: true,
+          },
+          {
+            clientId: 'done',
+            code: 'DONE',
+            name: 'Final',
+            color: '#0f0',
+            isFinal: true,
+          },
         ],
         transitions: [
           {
-            clientId: "cancel",
-            code: "VOID",
-            name: "Anular",
-            purpose: "CANCEL" as any,
+            clientId: 'cancel',
+            code: 'VOID',
+            name: 'Anular',
+            purpose: 'CANCEL' as any,
             isGlobal: false,
-            fromStateRef: "created",
-            toStateRef: "done",
+            fromStateRef: 'created',
+            toStateRef: 'done',
           },
         ],
       }),
-    ).rejects.toThrow("La transicion de cancelacion debe ser global");
+    ).rejects.toThrow('La transicion de cancelacion debe ser global');
   });
 
-  it("rejects warehouse assignment after a stock action", async () => {
+  it('rejects warehouse assignment after a stock action', async () => {
     await expect(
       createUseCase().execute({
-        name: "Pedidos",
+        name: 'Pedidos',
         states: [
-          { clientId: "created", code: "CREATED", name: "Creado", color: "#000", isInitial: true },
-          { clientId: "done", code: "DONE", name: "Final", color: "#0f0", isFinal: true },
+          {
+            clientId: 'created',
+            code: 'CREATED',
+            name: 'Creado',
+            color: '#000',
+            isInitial: true,
+          },
+          {
+            clientId: 'done',
+            code: 'DONE',
+            name: 'Final',
+            color: '#0f0',
+            isFinal: true,
+          },
         ],
         transitions: [
           {
-            clientId: "schedule",
-            code: "SCHEDULE",
-            name: "Programar",
-            fromStateRef: "created",
-            toStateRef: "done",
+            clientId: 'schedule',
+            code: 'SCHEDULE',
+            name: 'Programar',
+            fromStateRef: 'created',
+            toStateRef: 'done',
             actions: [
               { type: ACTIONS.RESERVE_STOCK, position: 0 },
               {
                 type: ACTIONS.ASSIGN_WAREHOUSE_BY_PROVINCE,
                 position: 1,
                 config: {
-                  mode: "INCLUDE",
-                  provinceIds: ["1501"],
-                  warehouseId: "22222222-2222-4222-8222-222222222222",
+                  mode: 'INCLUDE',
+                  provinceIds: ['1501'],
+                  warehouseId: '22222222-2222-4222-8222-222222222222',
                 },
               },
             ],
           },
         ],
       } as any),
-    ).rejects.toThrow("La asignacion de almacen debe ejecutarse antes de las acciones de stock");
+    ).rejects.toThrow(
+      'La asignacion de almacen debe ejecutarse antes de las acciones de stock',
+    );
   });
 
-  it("rejects more than one cancellation transition", async () => {
+  it('rejects more than one cancellation transition', async () => {
     await expect(
       createUseCase().execute({
-        name: "Pedidos",
+        name: 'Pedidos',
         states: [
-          { clientId: "created", code: "CREATED", name: "Creado", color: "#000", isInitial: true },
-          { clientId: "done", code: "DONE", name: "Final", color: "#0f0", isFinal: true },
-          { clientId: "cancelled", code: "CANCELLED", name: "Cancelado", color: "#f00" },
+          {
+            clientId: 'created',
+            code: 'CREATED',
+            name: 'Creado',
+            color: '#000',
+            isInitial: true,
+          },
+          {
+            clientId: 'done',
+            code: 'DONE',
+            name: 'Final',
+            color: '#0f0',
+            isFinal: true,
+          },
+          {
+            clientId: 'cancelled',
+            code: 'CANCELLED',
+            name: 'Cancelado',
+            color: '#f00',
+          },
         ],
-        transitions: ["VOID", "ABORT"].map((code) => ({
+        transitions: ['VOID', 'ABORT'].map((code) => ({
           clientId: code,
           code,
           name: code,
-          purpose: "CANCEL" as any,
+          purpose: 'CANCEL' as any,
           isGlobal: true,
-          toStateRef: "cancelled",
+          toStateRef: 'cancelled',
         })),
       }),
-    ).rejects.toThrow("El workflow solo puede tener una transicion de cancelacion");
+    ).rejects.toThrow(
+      'El workflow solo puede tener una transicion de cancelacion',
+    );
   });
 
-  it("rejects a cancellation transition targeting a final state", async () => {
+  it('accepts multiple automatic transitions from one state with distinct priorities', async () => {
+    const result = await createUseCase().execute({
+      name: 'Pedidos',
+      states: [
+        {
+          clientId: 'in-progress',
+          code: 'IN_PROGRESS',
+          name: 'En curso',
+          color: '#000',
+          isInitial: true,
+        },
+        {
+          clientId: 'to-send',
+          code: 'TO_SEND',
+          name: 'Por enviar',
+          color: '#0f0',
+          isFinal: true,
+        },
+        {
+          clientId: 'waiting',
+          code: 'WAITING',
+          name: 'Esperando',
+          color: '#f00',
+          isFinal: true,
+        },
+      ],
+      transitions: [
+        {
+          clientId: 'paid',
+          code: 'PAID',
+          name: 'Por enviar',
+          fromStateRef: 'in-progress',
+          toStateRef: 'to-send',
+          autoTrigger: true,
+          priority: 0,
+          conditions: [{ type: CONDITIONS.IS_PAID }],
+        },
+        {
+          clientId: 'overdue',
+          code: 'OVERDUE',
+          name: 'Esperando',
+          fromStateRef: 'in-progress',
+          toStateRef: 'waiting',
+          autoTrigger: true,
+          priority: 1,
+          conditions: [{ type: CONDITIONS.IS_NOT_PAID }],
+        },
+      ],
+    });
+
+    expect(result.transitions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'PAID', priority: 0 }),
+        expect.objectContaining({ code: 'OVERDUE', priority: 1 }),
+      ]),
+    );
+  });
+
+  it('rejects duplicate automatic priorities from the same state', async () => {
     await expect(
       createUseCase().execute({
-        name: "Pedidos",
+        name: 'Pedidos',
         states: [
-          { clientId: "created", code: "CREATED", name: "Creado", color: "#000", isInitial: true },
-          { clientId: "cancelled", code: "CANCELLED", name: "Cancelado", color: "#f00", isFinal: true },
+          {
+            clientId: 'in-progress',
+            code: 'IN_PROGRESS',
+            name: 'En curso',
+            color: '#000',
+            isInitial: true,
+          },
+          {
+            clientId: 'done',
+            code: 'DONE',
+            name: 'Final',
+            color: '#0f0',
+            isFinal: true,
+          },
+        ],
+        transitions: ['PAID', 'OVERDUE'].map((code) => ({
+          clientId: code,
+          code,
+          name: code,
+          fromStateRef: 'in-progress',
+          toStateRef: 'done',
+          autoTrigger: true,
+          priority: 0,
+          conditions: [{ type: CONDITIONS.IS_PAID }],
+        })),
+      }),
+    ).rejects.toThrow(
+      'Las transiciones automaticas del mismo estado deben tener prioridades diferentes',
+    );
+  });
+
+  it('rejects a cancellation transition targeting a final state', async () => {
+    await expect(
+      createUseCase().execute({
+        name: 'Pedidos',
+        states: [
+          {
+            clientId: 'created',
+            code: 'CREATED',
+            name: 'Creado',
+            color: '#000',
+            isInitial: true,
+          },
+          {
+            clientId: 'cancelled',
+            code: 'CANCELLED',
+            name: 'Cancelado',
+            color: '#f00',
+            isFinal: true,
+          },
         ],
         transitions: [
           {
-            clientId: "cancel",
-            code: "VOID",
-            name: "Anular",
-            purpose: "CANCEL",
+            clientId: 'cancel',
+            code: 'VOID',
+            name: 'Anular',
+            purpose: 'CANCEL',
             isGlobal: true,
-            toStateRef: "cancelled",
+            toStateRef: 'cancelled',
           },
         ],
       }),
-    ).rejects.toThrow("El estado destino de cancelacion no puede ser final");
+    ).rejects.toThrow('El estado destino de cancelacion no puede ser final');
   });
 });

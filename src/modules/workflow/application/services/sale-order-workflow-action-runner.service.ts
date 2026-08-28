@@ -1,38 +1,43 @@
-import { BadRequestException, ConflictException, Inject, Injectable } from "@nestjs/common";
-import { SaleOrder } from "src/modules/sale-orders/domain/entities/sale-order";
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+} from '@nestjs/common';
+import { SaleOrder } from 'src/modules/sale-orders/domain/entities/sale-order';
 import {
   PRODUCT_CATALOG_INVENTORY_REPOSITORY,
   ProductCatalogInventoryRepository,
-} from "src/modules/product-catalog/domain/ports/inventory.repository";
+} from 'src/modules/product-catalog/domain/ports/inventory.repository';
 import {
   INVENTORY_LOCK,
   InventoryLock,
-} from "src/modules/product-catalog/integration/inventory/ports/inventory-lock.port";
-import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
-import { WorkflowAction } from "../../domain/entities/workflow-action";
-import { SaleOrderStockRequirementsService } from "./sale-order-stock-requirements.service";
+} from 'src/modules/product-catalog/integration/inventory/ports/inventory-lock.port';
+import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
+import { WorkflowAction } from '../../domain/entities/workflow-action';
+import { SaleOrderStockRequirementsService } from './sale-order-stock-requirements.service';
 import {
   SALE_ORDER_REPOSITORY,
   SaleOrderRepository,
-} from "src/modules/sale-orders/domain/ports/sale-order.repository";
-import { ACTIONS } from "../../domain/constants/workflow-action.constants";
+} from 'src/modules/sale-orders/domain/ports/sale-order.repository';
+import { ACTIONS } from '../../domain/constants/workflow-action.constants';
 import {
   SALE_ORDER_STATE_HISTORY_REPOSITORY,
   SaleOrderStateHistoryRepository,
-} from "../../domain/ports/sale-order-state-history.repository";
+} from '../../domain/ports/sale-order-state-history.repository';
 import {
   WORKFLOW_TRANSITION_REPOSITORY,
   WorkflowTransitionRepository,
-} from "../../domain/ports/workflow-transition.repository";
-import { SaleOrderStockConsumptionService } from "./sale-order-stock-consumption.service";
-import { SaleOrderStockConsumptionReversalService } from "./sale-order-stock-consumption-reversal.service";
+} from '../../domain/ports/workflow-transition.repository';
+import { SaleOrderStockConsumptionService } from './sale-order-stock-consumption.service';
+import { SaleOrderStockConsumptionReversalService } from './sale-order-stock-consumption-reversal.service';
 import {
   SaleOrderWarehouseAssignmentService,
   WorkflowActionOutcome,
-} from "./sale-order-warehouse-assignment.service";
-import { ActionFactory } from "../../domain/factories/action.factory";
-import { CONDITIONS } from "../../domain/constants/workflow-condition.constants";
-import { WorkflowCondition } from "../../domain/entities/workflow-condition";
+} from './sale-order-warehouse-assignment.service';
+import { ActionFactory } from '../../domain/factories/action.factory';
+import { CONDITIONS } from '../../domain/constants/workflow-condition.constants';
+import { WorkflowCondition } from '../../domain/entities/workflow-condition';
 
 export type WorkflowActionRunResult = {
   order: SaleOrder;
@@ -58,16 +63,22 @@ export class SaleOrderWorkflowActionRunnerService {
     private readonly warehouseAssignment: SaleOrderWarehouseAssignmentService,
   ) {}
 
-  private async hasActiveReservation(saleOrderId: string, tx: TransactionContext): Promise<boolean> {
+  private async hasActiveReservation(
+    saleOrderId: string,
+    tx: TransactionContext,
+  ): Promise<boolean> {
     const history = await this.historyRepo.listBySaleOrderId(saleOrderId, tx);
     let active = false;
 
     for (const entry of history) {
       if (!entry.transitionId) continue;
-      const transition = await this.transitionRepo.findDetailedById(entry.transitionId, tx);
-      const branch = entry.metadata?.branch === "ELSE" ? "ELSE" : "THEN";
+      const transition = await this.transitionRepo.findDetailedById(
+        entry.transitionId,
+        tx,
+      );
+      const branch = entry.metadata?.branch === 'ELSE' ? 'ELSE' : 'THEN';
       const actions = [...(transition?.actions ?? [])]
-        .filter((action) => (action.branch ?? "THEN") === branch)
+        .filter((action) => (action.branch ?? 'THEN') === branch)
         .sort((a, b) => a.position - b.position);
       for (const action of actions) {
         if (action.type === ACTIONS.RESERVE_STOCK) {
@@ -111,7 +122,8 @@ export class SaleOrderWorkflowActionRunnerService {
       for (let index = history.length - 1; index >= 0; index -= 1) {
         const entry = history[index];
         if (!entry.transitionId) continue;
-        if (order.currentStateId && entry.toStateId !== order.currentStateId) continue;
+        if (order.currentStateId && entry.toStateId !== order.currentStateId)
+          continue;
 
         const transition = await this.transitionRepo.findDetailedById(
           entry.transitionId,
@@ -122,7 +134,7 @@ export class SaleOrderWorkflowActionRunnerService {
       }
     }
 
-    const [year, month, day] = deliveryDate.split("-").map(Number);
+    const [year, month, day] = deliveryDate.split('-').map(Number);
     const effectiveDate = new Date(Date.UTC(year, month - 1, day));
     if (
       Number.isNaN(effectiveDate.getTime()) ||
@@ -194,7 +206,7 @@ export class SaleOrderWorkflowActionRunnerService {
       );
       if (!restored) {
         throw new BadRequestException(
-          "El pedido no tiene consumo de stock pendiente de reponer",
+          'El pedido no tiene consumo de stock pendiente de reponer',
         );
       }
     }
@@ -220,7 +232,9 @@ export class SaleOrderWorkflowActionRunnerService {
       return { order: effectiveOrder, outcomes };
     }
 
-    const onlyRevertsStock = stockActions.every((action) => action.type === ACTIONS.REVERT_STOCK);
+    const onlyRevertsStock = stockActions.every(
+      (action) => action.type === ACTIONS.REVERT_STOCK,
+    );
     if (onlyRevertsStock && effectiveOrder.warehouseId) {
       await this.stockConsumptionReversal.restoreAndRelease(
         effectiveOrder,
@@ -228,7 +242,10 @@ export class SaleOrderWorkflowActionRunnerService {
         tx,
       );
     }
-    if (onlyRevertsStock && !(await this.hasActiveReservation(effectiveOrder.id, tx))) {
+    if (
+      onlyRevertsStock &&
+      !(await this.hasActiveReservation(effectiveOrder.id, tx))
+    ) {
       await this.saleOrderRepo.setReserveBool(
         { saleOrderId: effectiveOrder.id, reserveBool: false },
         tx,
@@ -243,33 +260,69 @@ export class SaleOrderWorkflowActionRunnerService {
       return { order: effectiveOrder, outcomes };
     }
     if (!effectiveOrder.warehouseId) {
-      throw new BadRequestException("El pedido no tiene almacen para ejecutar acciones de stock");
+      throw new BadRequestException(
+        'El pedido no tiene almacen para ejecutar acciones de stock',
+      );
     }
 
     const requirements = await this.requirements.resolve(effectiveOrder, tx);
+    const requiresEffectiveStock = stockActions.some(
+      (action) =>
+        action.type === ACTIONS.RESERVE_STOCK ||
+        action.type === ACTIONS.CONSUME_STOCK,
+    );
+    if (
+      requiresEffectiveStock &&
+      (!requirements.length ||
+        requirements.some(
+          (requirement) =>
+            !Number.isFinite(Number(requirement.quantity)) ||
+            Number(requirement.quantity) <= 0,
+        ))
+    ) {
+      throw new BadRequestException(
+        'El pedido no tiene requisitos de stock validos y positivos',
+      );
+    }
     const keys = requirements
-      .map(({ stockItemId }) => ({ warehouseId: effectiveOrder.warehouseId!, stockItemId }))
-      .sort((a, b) => `${a.warehouseId}:${a.stockItemId}`.localeCompare(`${b.warehouseId}:${b.stockItemId}`));
+      .map(({ stockItemId }) => ({
+        warehouseId: effectiveOrder.warehouseId!,
+        stockItemId,
+      }))
+      .sort((a, b) =>
+        `${a.warehouseId}:${a.stockItemId}`.localeCompare(
+          `${b.warehouseId}:${b.stockItemId}`,
+        ),
+      );
     if (keys.length) {
       await this.inventoryLock.lockSnapshots(keys, tx);
     }
 
-    const snapshots = new Map<string, { onHand: number; reserved: number; available: number }>();
+    const snapshots = new Map<
+      string,
+      { onHand: number; reserved: number; available: number }
+    >();
     for (const requirement of requirements) {
       const snapshot = await this.inventoryRepo.getSnapshot(
-        { warehouseId: effectiveOrder.warehouseId, stockItemId: requirement.stockItemId, locationId: null },
+        {
+          warehouseId: effectiveOrder.warehouseId,
+          stockItemId: requirement.stockItemId,
+          locationId: null,
+        },
         tx,
       );
       if (!snapshot) {
         if (onlyRevertsStock) {
           continue;
         }
-        throw new BadRequestException("Stock no encontrado");
+        throw new BadRequestException('Stock no encontrado');
       }
       snapshots.set(requirement.stockItemId, {
         onHand: Number(snapshot.onHand ?? 0),
         reserved: Number(snapshot.reserved ?? 0),
-        available: Number(snapshot.available ?? snapshot.onHand - snapshot.reserved),
+        available: Number(
+          snapshot.available ?? snapshot.onHand - snapshot.reserved,
+        ),
       });
     }
 
@@ -283,18 +336,29 @@ export class SaleOrderWorkflowActionRunnerService {
           quantities.set(stockItemId, 0);
           continue;
         }
-        if (action.type === ACTIONS.RESERVE_STOCK && snapshot.available < quantity) {
-          throw new BadRequestException("Stock disponible insuficiente");
+        if (
+          action.type === ACTIONS.RESERVE_STOCK &&
+          snapshot.available < quantity
+        ) {
+          throw new BadRequestException('Stock disponible insuficiente');
         }
-        if (action.type === ACTIONS.CONSUME_STOCK && snapshot.reserved < quantity) {
-          throw new BadRequestException("Stock reservado insuficiente");
+        if (
+          action.type === ACTIONS.CONSUME_STOCK &&
+          snapshot.reserved < quantity
+        ) {
+          throw new BadRequestException('Stock reservado insuficiente');
         }
-        if (action.type === ACTIONS.CONSUME_STOCK && snapshot.onHand < quantity) {
-          throw new BadRequestException("Stock fisico insuficiente");
+        if (
+          action.type === ACTIONS.CONSUME_STOCK &&
+          snapshot.onHand < quantity
+        ) {
+          throw new BadRequestException('Stock fisico insuficiente');
         }
 
         const quantityToApply =
-          action.type === ACTIONS.REVERT_STOCK ? Math.min(snapshot.reserved, quantity) : quantity;
+          action.type === ACTIONS.REVERT_STOCK
+            ? Math.min(snapshot.reserved, quantity)
+            : quantity;
         quantities.set(stockItemId, quantityToApply);
         if (action.type === ACTIONS.RESERVE_STOCK) {
           snapshot.reserved += quantityToApply;
@@ -356,18 +420,32 @@ export class SaleOrderWorkflowActionRunnerService {
         continue;
       }
       for (const { stockItemId, quantity } of requirements) {
-        const quantityToApply = quantitiesByAction.get(action)?.get(stockItemId) ?? quantity;
+        const quantityToApply =
+          quantitiesByAction.get(action)?.get(stockItemId) ?? quantity;
         if (quantityToApply === 0) {
           continue;
         }
-        const base = { warehouseId: effectiveOrder.warehouseId, stockItemId, locationId: null };
-        const reservedDelta = action.type === ACTIONS.RESERVE_STOCK ? quantityToApply : -quantityToApply;
-        await this.inventoryRepo.incrementReserved({ ...base, delta: reservedDelta }, tx);
+        const base = {
+          warehouseId: effectiveOrder.warehouseId,
+          stockItemId,
+          locationId: null,
+        };
+        const reservedDelta =
+          action.type === ACTIONS.RESERVE_STOCK
+            ? quantityToApply
+            : -quantityToApply;
+        await this.inventoryRepo.incrementReserved(
+          { ...base, delta: reservedDelta },
+          tx,
+        );
         if (action.type === ACTIONS.REVERT_STOCK && quantityToApply > 0) {
           releasedReservedStock = true;
         }
       }
-      if (action.type === ACTIONS.RESERVE_STOCK || action.type === ACTIONS.REVERT_STOCK) {
+      if (
+        action.type === ACTIONS.RESERVE_STOCK ||
+        action.type === ACTIONS.REVERT_STOCK
+      ) {
         await this.saleOrderRepo.setReserveBool(
           {
             saleOrderId: effectiveOrder.id,

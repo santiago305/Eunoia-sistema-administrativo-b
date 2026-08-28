@@ -11,8 +11,12 @@ describe('ABONADO workflow seed definitions', () => {
     ]);
 
     for (const workflow of ABONADO_WORKFLOW_SEEDS) {
-      const stateRefs = new Set(workflow.states.map(({ clientId }) => clientId));
-      expect(workflow.states.filter(({ isInitial }) => isInitial)).toHaveLength(1);
+      const stateRefs = new Set(
+        workflow.states.map(({ clientId }) => clientId),
+      );
+      expect(workflow.states.filter(({ isInitial }) => isInitial)).toHaveLength(
+        1,
+      );
       expect(new Set(workflow.transitions.map(({ code }) => code)).size).toBe(
         workflow.transitions.length,
       );
@@ -31,7 +35,9 @@ describe('ABONADO workflow seed definitions', () => {
   });
 
   it('keeps ABONADO ENVIO aligned with the seeded automatic delivery path', () => {
-    const envio = ABONADO_WORKFLOW_SEEDS.find(({ name }) => name === 'ABONADO ENVIO');
+    const envio = ABONADO_WORKFLOW_SEEDS.find(
+      ({ name }) => name === 'ABONADO ENVIO',
+    );
 
     expect(envio).toBeDefined();
     expect(envio?.states).toEqual(
@@ -44,6 +50,12 @@ describe('ABONADO workflow seed definitions', () => {
         }),
         expect.objectContaining({
           clientId: 'state-35e95b95-3687-5caa-8bcd-fb27f1a193ee',
+          positionX: -565.6874645370526,
+          positionY: 216,
+        }),
+        expect.objectContaining({
+          clientId: 'state-a14fe8d2-7c3c-4f35-8b8d-7a0e0f548f40',
+          saleOrderStateId: 'af85cf11-7af0-46bf-8596-d52fa57b70d7',
           positionX: -565.6874645370526,
           positionY: 51.421371502229064,
         }),
@@ -61,9 +73,36 @@ describe('ABONADO workflow seed definitions', () => {
         expect.objectContaining({
           clientId: 'transition-066ebc76-9b33-4636-b61b-a757568cf3a4',
           code: 'TRANSITION_1782332299577',
-          name: 'Esperando',
+          name: 'En curso',
           fromStateRef: 'state-805b9bd3-5efb-51a4-a93e-1c06ea49357a',
+          toStateRef: 'state-a14fe8d2-7c3c-4f35-8b8d-7a0e0f548f40',
+        }),
+        expect.objectContaining({
+          code: 'ENVIO_PAID_TO_SEND',
+          name: 'Por enviar',
+          fromStateRef: 'state-a14fe8d2-7c3c-4f35-8b8d-7a0e0f548f40',
+          toStateRef: 'state-c92c0444-fff0-4002-a876-276daf5fa88b',
+          autoTrigger: true,
+          priority: 0,
+          conditions: [{ type: 'IS_PAID', config: {}, position: 0 }],
+          actions: [{ type: 'CONSUME_STOCK', config: {}, position: 0 }],
+        }),
+        expect.objectContaining({
+          code: 'ENVIO_OVERDUE_WAITING_PAYMENT',
+          name: 'Esperando',
+          fromStateRef: 'state-a14fe8d2-7c3c-4f35-8b8d-7a0e0f548f40',
           toStateRef: 'state-35e95b95-3687-5caa-8bcd-fb27f1a193ee',
+          autoTrigger: true,
+          priority: 1,
+          conditions: [
+            { type: 'IS_NOT_PAID', config: {}, position: 0 },
+            {
+              type: 'SCHEDULE_DELIVERY_WINDOW',
+              config: { mode: 'AFTER', days: 1 },
+              position: 1,
+            },
+          ],
+          actions: [{ type: 'REVERT_STOCK', config: {}, position: 0 }],
         }),
         expect.objectContaining({
           clientId: 'transition-140b19ac-050e-4457-828e-ca70d2c8a1ea',
@@ -73,10 +112,19 @@ describe('ABONADO workflow seed definitions', () => {
           toStateRef: 'state-c92c0444-fff0-4002-a876-276daf5fa88b',
           actions: [
             {
-              type: 'CONSUME_STOCK',
+              type: 'RESERVE_STOCK',
               config: {},
               position: 0,
             },
+            {
+              type: 'CONSUME_STOCK',
+              config: {},
+              position: 1,
+            },
+          ],
+          conditions: [
+            { type: 'IS_PAID', config: {}, position: 0 },
+            { type: 'HAS_STOCK', config: {}, position: 1 },
           ],
         }),
         expect.objectContaining({
@@ -142,7 +190,9 @@ describe('ABONADO workflow seed definitions', () => {
       ]),
     );
 
-    const ce = ABONADO_WORKFLOW_SEEDS.find(({ name }) => name === 'ABONADO CE')!;
+    const ce = ABONADO_WORKFLOW_SEEDS.find(
+      ({ name }) => name === 'ABONADO CE',
+    )!;
     const trackingTypes = new Set([
       'MARK_PREGUIDE',
       'UNMARK_PREGUIDE',
@@ -150,21 +200,32 @@ describe('ABONADO workflow seed definitions', () => {
       'UNMARK_PREPARED',
     ]);
     expect(
-      ce.transitions.flatMap(({ actions }) => actions.map(({ type }) => type))
+      ce.transitions
+        .flatMap(({ actions }) => actions.map(({ type }) => type))
         .filter((type) => trackingTypes.has(type)),
     ).toEqual([]);
   });
 
   it('starts ABONADO workflows in draft and assigns warehouse before created state', () => {
     for (const workflow of ABONADO_WORKFLOW_SEEDS) {
-      const draft = workflow.states.find((state) => state.saleOrderStateId === 'f24c85fa-28cc-412a-84d0-118e8d8f5059');
-      const created = workflow.states.find((state) => state.saleOrderStateId === 'ae9b51d9-9324-4d15-a648-626a5eabda3d');
+      const draft = workflow.states.find(
+        (state) =>
+          state.saleOrderStateId === 'f24c85fa-28cc-412a-84d0-118e8d8f5059',
+      );
+      const created = workflow.states.find(
+        (state) =>
+          state.saleOrderStateId === 'ae9b51d9-9324-4d15-a648-626a5eabda3d',
+      );
 
-      expect(draft).toEqual(expect.objectContaining({ isInitial: true, isFinal: false }));
+      expect(draft).toEqual(
+        expect.objectContaining({ isInitial: true, isFinal: false }),
+      );
       expect(created).toEqual(expect.objectContaining({ isInitial: false }));
 
       const draftTransition = workflow.transitions.find(
-        (transition) => transition.fromStateRef === draft?.clientId && transition.toStateRef === created?.clientId,
+        (transition) =>
+          transition.fromStateRef === draft?.clientId &&
+          transition.toStateRef === created?.clientId,
       );
 
       expect(draftTransition).toEqual(
@@ -216,23 +277,59 @@ describe('ABONADO workflow seed definitions', () => {
   });
 
   it('keeps seeded global action positions', () => {
-    const envio = ABONADO_WORKFLOW_SEEDS.find(({ name }) => name === 'ABONADO ENVIO')!;
-    const ce = ABONADO_WORKFLOW_SEEDS.find(({ name }) => name === 'ABONADO CE')!;
+    const envio = ABONADO_WORKFLOW_SEEDS.find(
+      ({ name }) => name === 'ABONADO ENVIO',
+    )!;
+    const ce = ABONADO_WORKFLOW_SEEDS.find(
+      ({ name }) => name === 'ABONADO CE',
+    )!;
 
     expect(envio.transitions).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ code: 'CANCEL', positionX: -336, positionY: -294 }),
-        expect.objectContaining({ code: 'GLOBAL_ACTION_1781572618528', positionX: -132, positionY: -300 }),
-        expect.objectContaining({ code: 'GLOBAL_ACTION_1785028166923', positionX: -340, positionY: -400 }),
-        expect.objectContaining({ code: 'GLOBAL_ACTION_1785028192676', positionX: -136, positionY: -402 }),
-        expect.objectContaining({ code: 'GLOBAL_ACTION_UNMARK_PREPARED', positionX: -340, positionY: -506 }),
-        expect.objectContaining({ code: 'GLOBAL_ACTION_UNMARK_PREGUIDE', positionX: -136, positionY: -508 }),
+        expect.objectContaining({
+          code: 'CANCEL',
+          positionX: -336,
+          positionY: -294,
+        }),
+        expect.objectContaining({
+          code: 'GLOBAL_ACTION_1781572618528',
+          positionX: -132,
+          positionY: -300,
+        }),
+        expect.objectContaining({
+          code: 'GLOBAL_ACTION_1785028166923',
+          positionX: -340,
+          positionY: -400,
+        }),
+        expect.objectContaining({
+          code: 'GLOBAL_ACTION_1785028192676',
+          positionX: -136,
+          positionY: -402,
+        }),
+        expect.objectContaining({
+          code: 'GLOBAL_ACTION_UNMARK_PREPARED',
+          positionX: -340,
+          positionY: -506,
+        }),
+        expect.objectContaining({
+          code: 'GLOBAL_ACTION_UNMARK_PREGUIDE',
+          positionX: -136,
+          positionY: -508,
+        }),
       ]),
     );
     expect(ce.transitions).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ code: 'CANCEL', positionX: -368.23939997978806, positionY: -465.6957459587233 }),
-        expect.objectContaining({ code: 'GLOBAL_ACTION_1781572618528', positionX: -160.43890775916253, positionY: -465.5710535966142 }),
+        expect.objectContaining({
+          code: 'CANCEL',
+          positionX: -368.23939997978806,
+          positionY: -465.6957459587233,
+        }),
+        expect.objectContaining({
+          code: 'GLOBAL_ACTION_1781572618528',
+          positionX: -160.43890775916253,
+          positionY: -465.5710535966142,
+        }),
       ]),
     );
   });
@@ -240,7 +337,9 @@ describe('ABONADO workflow seed definitions', () => {
   it('defines only executable workflow actions', () => {
     for (const workflow of ABONADO_WORKFLOW_SEEDS) {
       for (const transition of workflow.transitions) {
-        expect(() => ActionFactory.validateOrder(transition.actions)).not.toThrow();
+        expect(() =>
+          ActionFactory.validateOrder(transition.actions),
+        ).not.toThrow();
         for (const action of transition.actions) {
           expect(() => ActionFactory.validate(action)).not.toThrow();
         }
@@ -261,10 +360,16 @@ describe('materializeWorkflowSeed', () => {
     for (const transition of envio.transitions) {
       expect(transition).toHaveProperty('positionX');
       expect(transition).toHaveProperty('positionY');
-      for (const id of [transition.fromStateId, transition.toStateId, transition.elseToStateId].filter(Boolean)) {
+      for (const id of [
+        transition.fromStateId,
+        transition.toStateId,
+        transition.elseToStateId,
+      ].filter(Boolean)) {
         expect(stateIds.has(id as string)).toBe(true);
       }
-      expect(transition.excludedStateIds.every((id) => stateIds.has(id))).toBe(true);
+      expect(transition.excludedStateIds.every((id) => stateIds.has(id))).toBe(
+        true,
+      );
     }
   });
 });
