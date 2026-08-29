@@ -53,7 +53,7 @@ export class GetSaleOrderEditorCatalogsUsecase {
       this.warehouses.find({ where: { isActive: true }, order: { name: "ASC" }, take: 100 }),
       this.subsidiaries.find({ where: { isActive: true }, order: { alias: "ASC" }, take: 25 }),
       this.sources.find({ where: { isActive: true }, order: { name: "ASC" }, take: 100 }),
-      this.workflows.find({ where: { isActive: true }, order: { name: "ASC" } }),
+      this.workflows.find({ where: { isActive: true }, order: { createdAt: "DESC" } }),
       this.advisers
         .createQueryBuilder("adviser")
         .innerJoin(User, "user", `"user"."user_id" = "adviser"."user_id"`)
@@ -104,6 +104,9 @@ export class GetSaleOrderEditorCatalogsUsecase {
         id: workflow.id,
         name: workflow.name,
         isActive: workflow.isActive,
+        revision: workflow.revision,
+        createdAt: workflow.createdAt,
+        publishedAt: workflow.publishedAt ?? null,
       })),
       advisers,
       paymentMethods: paymentMethods

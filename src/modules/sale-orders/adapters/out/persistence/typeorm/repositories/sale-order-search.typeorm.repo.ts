@@ -53,7 +53,10 @@ export class SaleOrderSearchTypeormRepository implements SaleOrderSearchReposito
       this.storage.listState(params),
       this.clientRepo.find({ where: { isActive: true } }),
       this.warehouseRepo.find({ where: { isActive: true } }),
-      this.workflowRepo.find({ where: { isActive: true } }),
+      this.workflowRepo.find({
+        where: { isActive: true },
+        order: { createdAt: "DESC" },
+      }),
       this.stateRepo.find({
         order: {
           name: "ASC",
@@ -101,6 +104,23 @@ export class SaleOrderSearchTypeormRepository implements SaleOrderSearchReposito
       left.name.localeCompare(right.name, "es", { sensitivity: "base" }),
     );
 
+    const orderedWorkflows = [...workflows].sort((left, right) => {
+      const leftDate = left.publishedAt ?? left.createdAt;
+      const rightDate = right.publishedAt ?? right.createdAt;
+      const byDate =
+        (rightDate instanceof Date ? rightDate.getTime() : 0) -
+        (leftDate instanceof Date ? leftDate.getTime() : 0);
+      if (byDate !== 0) return byDate;
+
+      const byRevision = (right.revision ?? 1) - (left.revision ?? 1);
+      if (byRevision !== 0) return byRevision;
+
+      const byName = left.name.localeCompare(right.name, "es", {
+        sensitivity: "base",
+      });
+      return byName !== 0 ? byName : left.id.localeCompare(right.id);
+    });
+
     return {
       recent: state.recent.map((item) => ({
         recentId: item.recentId,
@@ -129,9 +149,9 @@ export class SaleOrderSearchTypeormRepository implements SaleOrderSearchReposito
         label: row.name,
       })),
 
-      workflows: workflows.map((row) => ({
+      workflows: orderedWorkflows.map((row) => ({
         workflowId: row.id,
-        label: row.name,
+        label: `${row.name} v${row.revision ?? 1}`,
       })),
 
       states: saleOrderStates.map((row) => ({

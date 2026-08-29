@@ -22,7 +22,18 @@ describe("GetSaleOrderEditorCatalogsUsecase", () => {
       ]),
     };
     const sources = { find: jest.fn().mockResolvedValue([]) };
-    const workflows = { find: jest.fn().mockResolvedValue([]) };
+    const workflows = {
+      find: jest.fn().mockResolvedValue([
+        {
+          id: "workflow-2",
+          name: "Abonado envio",
+          isActive: true,
+          revision: 2,
+          createdAt: new Date("2026-08-20T10:00:00.000Z"),
+          publishedAt: new Date("2026-08-21T10:00:00.000Z"),
+        },
+      ]),
+    };
     const advisers = { createQueryBuilder: jest.fn().mockReturnValue(createAdviserQueryBuilder()) };
     const companyMethods = { find: jest.fn().mockResolvedValue([]) };
     const companyPaymentAccounts = { find: jest.fn().mockResolvedValue([]) };
@@ -50,11 +61,25 @@ describe("GetSaleOrderEditorCatalogsUsecase", () => {
       order: { alias: "ASC" },
       take: 25,
     });
+    expect(workflows.find).toHaveBeenCalledWith({
+      where: { isActive: true },
+      order: { createdAt: "DESC" },
+    });
     expect(result.clients).toEqual([
       { id: "client-1", fullName: "Cliente Uno", docNumber: "12345678" },
     ]);
     expect(result.subsidiaries).toEqual([
       { id: "subsidiary-1", alias: "Olva", address: "Av. 1", basePrice: 12 },
+    ]);
+    expect(result.workflows).toEqual([
+      {
+        id: "workflow-2",
+        name: "Abonado envio",
+        isActive: true,
+        revision: 2,
+        createdAt: new Date("2026-08-20T10:00:00.000Z"),
+        publishedAt: new Date("2026-08-21T10:00:00.000Z"),
+      },
     ]);
   });
 });

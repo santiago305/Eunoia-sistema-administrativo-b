@@ -34,7 +34,12 @@ describe("SaleOrderSearchTypeormRepository", () => {
     };
     const clientRepo = { find: jest.fn().mockResolvedValue([]), manager };
     const warehouseRepo = { find: jest.fn().mockResolvedValue([]) };
-    const workflowRepo = { find: jest.fn().mockResolvedValue([]) };
+    const workflowRepo = {
+      find: jest.fn().mockResolvedValue([
+        { id: "workflow-1", name: "Abonado envio", revision: 1 },
+        { id: "workflow-2", name: "Abonado envio", revision: 2 },
+      ]),
+    };
     const stateRepo = { find: jest.fn().mockResolvedValue([]) };
     const companyPaymentAccountRepo = {
       find: jest.fn().mockResolvedValue([
@@ -58,6 +63,10 @@ describe("SaleOrderSearchTypeormRepository", () => {
     const result = await repository.listState({ userId: "user-1", tableKey: "sale-orders" });
 
     expect(companyPaymentAccountRepo.find).toHaveBeenCalledWith({ where: { isActive: true } });
+    expect(workflowRepo.find).toHaveBeenCalledWith({
+      where: { isActive: true },
+      order: { createdAt: "DESC" },
+    });
     expect(result.bankAccounts).toEqual([
       {
         bankAccountId: "company-account-1",
@@ -70,6 +79,10 @@ describe("SaleOrderSearchTypeormRepository", () => {
     ]);
     expect(result.assignees).toEqual([
       { userId: "assignee-1", label: "Ana (a@test.com)" },
+    ]);
+    expect(result.workflows).toEqual([
+      { workflowId: "workflow-2", label: "Abonado envio v2" },
+      { workflowId: "workflow-1", label: "Abonado envio v1" },
     ]);
   });
 
