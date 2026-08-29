@@ -273,6 +273,11 @@ export class CreateFromImportPreviewUseCase {
       input.row.confirmedBy,
       input.tx,
     );
+    if (input.row.confirmedBy?.trim() && !assignedBy) {
+      throw new BadRequestException(
+        `Asesor no reconocido en Confirmado por: ${input.row.confirmedBy.trim()}`,
+      );
+    }
 
     const saleOrder = await this.saleOrderRepo.create(
       {

@@ -130,6 +130,7 @@ import { AddInventoryMovementEffectiveDate20260824000000 } from './migrations/20
 import { AddSaleOrderStockSituationFilter20260826090000 } from './migrations/20260826090000-add-sale-order-stock-situation-filter';
 import { AddWorkflowRevisionsAndDraftTests20260827120000 } from './migrations/20260827120000-add-workflow-revisions-and-draft-tests';
 import { UpdateSaleOrdersAdvancedPermissionDescription20260828130000 } from './migrations/20260828130000-update-sale-orders-advanced-permission-description';
+import { CreateSaleOrderAdviserImportAliases20260829170000 } from './migrations/20260829170000-create-sale-order-adviser-import-aliases';
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: 'postgres',
@@ -271,6 +272,7 @@ export const databaseMigrations = [
   AddSaleOrderStockSituationFilter20260826090000,
   AddWorkflowRevisionsAndDraftTests20260827120000,
   UpdateSaleOrdersAdvancedPermissionDescription20260828130000,
+  CreateSaleOrderAdviserImportAliases20260829170000,
 ];
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({

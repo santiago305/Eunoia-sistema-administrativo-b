@@ -54,6 +54,8 @@ import { PermissionsGuard } from 'src/modules/access-control/adapters/in/guards/
 import { PATH_METADATA } from '@nestjs/common/constants';
 import { SaleOrderPackMatcherService } from 'src/modules/sale-orders/application/services/sale-order-pack-matcher.service';
 import { SaleOrderSkuRecognitionCodeService } from 'src/modules/sale-orders/application/services/sale-order-sku-recognition-code.service';
+import { SaleOrderAdviserImportAliasService } from 'src/modules/sale-orders/application/services/sale-order-adviser-import-alias.service';
+import { SaleOrderImportAdviserResolverService } from 'src/modules/sale-orders/application/services/sale-order-import-adviser-resolver.service';
 
 @Injectable()
 class TestJwtAuthGuard implements CanActivate {
@@ -122,6 +124,13 @@ describe('SaleOrdersController', () => {
     update: jest.fn(),
     remove: jest.fn(),
   };
+  const adviserImportAliases = {
+    list: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    remove: jest.fn(),
+  };
+  const adviserImportResolver = { resolveMany: jest.fn() };
   const exportExcel = {
     getAvailableColumns: jest.fn(),
     execute: jest.fn(),
@@ -488,6 +497,8 @@ describe('SaleOrdersController', () => {
         },
         { provide: SaleOrderPackMatcherService, useValue: packMatcher },
         { provide: SaleOrderSkuRecognitionCodeService, useValue: skuRecognitionCodes },
+        { provide: SaleOrderAdviserImportAliasService, useValue: adviserImportAliases },
+        { provide: SaleOrderImportAdviserResolverService, useValue: adviserImportResolver },
         { provide: ExportSaleOrdersExcelUsecase, useValue: exportExcel },
         { provide: LISTING_SEARCH_STORAGE, useValue: listingSearchStorage },
         { provide: GetSaleOrderSearchStateUsecase, useValue: getSearchState },

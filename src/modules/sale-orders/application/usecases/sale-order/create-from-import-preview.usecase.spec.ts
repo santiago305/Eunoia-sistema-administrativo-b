@@ -956,7 +956,7 @@ describe('CreateFromImportPreviewUseCase', () => {
     );
   });
 
-  it('stores null instead of the raw Confirmado por name when no adviser is resolved', async () => {
+  it('rejects a non-empty Confirmado por value when no adviser is resolved', async () => {
     const f = makeImportUsecase();
     f.normalizer.normalize.mockResolvedValue({
       ok: true,
@@ -978,17 +978,17 @@ describe('CreateFromImportPreviewUseCase', () => {
       },
     });
 
-    await f.usecase.execute({
+    const result = await f.usecase.execute({
       rows: [{ total: 120 } as any],
       userId: 'user-1',
     });
 
-    expect(f.saleOrderRepo.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        assignedBy: null,
-      }),
-      expect.anything(),
+    expect(result.importedRows).toBe(0);
+    expect(result.failedRows).toBe(1);
+    expect(result.errors[0].message).toContain(
+      'Asesor no reconocido en Confirmado por: Analucia Pazos Arroyo',
     );
+    expect(f.saleOrderRepo.create).not.toHaveBeenCalled();
   });
 
   it('stores the adviser user id when Confirmado por matches an active adviser name', async () => {

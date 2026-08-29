@@ -41,6 +41,8 @@ import { SaleOrderSkuRecognitionCodeEntity } from "./adapters/out/persistence/ty
 import { SaleOrderSkuRecognitionCodeService } from "./application/services/sale-order-sku-recognition-code.service";
 import { WorkflowDraftTestSessionEntity } from '../workflow/adapters/out/persistence/typeorm/entities/workflow-draft-test-session.entity';
 import { WorkflowRevisionsController } from './adapters/in/controllers/workflow-revisions.controller';
+import { SaleOrderAdviserImportAliasEntity } from './adapters/out/persistence/typeorm/entities/sale-order-adviser-import-alias.entity';
+import { SaleOrderAdviserImportAliasService } from './application/services/sale-order-adviser-import-alias.service';
 
 @Module({
   imports: [
@@ -69,6 +71,7 @@ import { WorkflowRevisionsController } from './adapters/in/controllers/workflow-
       SubsidiaryEntity,
       SaleOrderSkuRecognitionCodeEntity,
       WorkflowDraftTestSessionEntity,
+      SaleOrderAdviserImportAliasEntity,
     ]),
     PacksModule,
     ProductCatalogModule,
@@ -88,6 +91,7 @@ import { WorkflowRevisionsController } from './adapters/in/controllers/workflow-
     ...saleOrdersModuleProviders,
     AdviserMembershipService,
     SaleOrderSkuRecognitionCodeService,
+    SaleOrderAdviserImportAliasService,
   ],
 })
 export class SaleOrdersModule {}

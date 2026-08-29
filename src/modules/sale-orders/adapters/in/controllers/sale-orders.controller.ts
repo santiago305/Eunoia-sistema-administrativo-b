@@ -92,6 +92,14 @@ import {
   ListSaleOrderSkuRecognitionCodesDto,
   UpdateSaleOrderSkuRecognitionCodeDto,
 } from '../dtos/sale-order-sku-recognition-code.dto';
+import {
+  CreateSaleOrderAdviserImportAliasDto,
+  ListSaleOrderAdviserImportAliasesDto,
+  ResolveSaleOrderImportAdvisersDto,
+  UpdateSaleOrderAdviserImportAliasDto,
+} from '../dtos/sale-order-adviser-import-alias.dto';
+import { SaleOrderAdviserImportAliasService } from 'src/modules/sale-orders/application/services/sale-order-adviser-import-alias.service';
+import { SaleOrderImportAdviserResolverService } from 'src/modules/sale-orders/application/services/sale-order-import-adviser-resolver.service';
 
 @Controller('sale-orders')
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
@@ -134,6 +142,8 @@ export class SaleOrdersController {
     private readonly getEditorCatalogs: GetSaleOrderEditorCatalogsUsecase,
     private readonly packMatcher: SaleOrderPackMatcherService,
     private readonly skuRecognitionCodes: SaleOrderSkuRecognitionCodeService,
+    private readonly adviserImportAliases: SaleOrderAdviserImportAliasService,
+    private readonly adviserImportResolver: SaleOrderImportAdviserResolverService,
     @Inject(LISTING_SEARCH_STORAGE)
     private readonly listingSearchStorage: ListingSearchStorageRepository,
   ) {}
@@ -804,6 +814,51 @@ export class SaleOrdersController {
     @CurrentUser() user: { id: string },
   ) {
     return this.skuRecognitionCodes.remove(id, user.id);
+  }
+
+  @Get('adviser-import-aliases')
+  @RequirePermissions('sale_orders.adviser_import_aliases.view')
+  listAdviserImportAliases(
+    @Query() query: ListSaleOrderAdviserImportAliasesDto,
+  ) {
+    return this.adviserImportAliases.list(query);
+  }
+
+  @Post('adviser-import-aliases')
+  @RequirePermissions('sale_orders.adviser_import_aliases.manage')
+  createAdviserImportAlias(
+    @Body() body: CreateSaleOrderAdviserImportAliasDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.adviserImportAliases.create({ ...body, userId: user.id });
+  }
+
+  @Patch('adviser-import-aliases/:id')
+  @RequirePermissions('sale_orders.adviser_import_aliases.manage')
+  updateAdviserImportAlias(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: UpdateSaleOrderAdviserImportAliasDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.adviserImportAliases.update(id, { ...body, userId: user.id });
+  }
+
+  @Delete('adviser-import-aliases/:id')
+  @RequirePermissions('sale_orders.adviser_import_aliases.manage')
+  deleteAdviserImportAlias(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.adviserImportAliases.remove(id, user.id);
+  }
+
+  @Post('adviser-import-aliases/resolve')
+  @RequireAnyPermissionGroups(
+    ['sale_orders.import'],
+    ['sale_orders.adviser_import_aliases.view'],
+  )
+  resolveImportAdvisers(@Body() body: ResolveSaleOrderImportAdvisersDto) {
+    return this.adviserImportResolver.resolveMany(body.values ?? []);
   }
 
   @Get('import-lotes')
