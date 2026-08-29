@@ -45,6 +45,7 @@ import {
   SaleOrderPackMatcherService,
   SaleOrderPackMatchResult,
 } from '../../services/sale-order-pack-matcher.service';
+import { businessDateAsUtcMidnight } from 'src/shared/utilidades/utils/business-date';
 
 type ImportDestination = {
   agencySubsidiaryId: string | null;
@@ -352,7 +353,7 @@ export class CreateFromImportPreviewUseCase {
           {
             saleOrderId,
             bankAccountId: null,
-            date: new Date(),
+            date: businessDateAsUtcMidnight(),
             method: 'import_adelanto' as any,
             operationNumber: null,
             amount: advance,

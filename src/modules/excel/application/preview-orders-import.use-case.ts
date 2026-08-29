@@ -69,6 +69,7 @@ import { parseProductCodes } from "src/modules/excel/application/orders-import/p
 import { SaleOrderImportClientResolverService } from "src/modules/sale-orders/application/services/sale-order-import-client-resolver.service";
 import { SaleOrderImportSkuResolverService } from "src/modules/sale-orders/application/services/sale-order-import-sku-resolver.service";
 import { SaleOrderImportSourceResolverService } from "src/modules/sale-orders/application/services/sale-order-import-source-resolver.service";
+import { businessDateAsUtcMidnight } from "src/shared/utilidades/utils/business-date";
 
 type ClientPreviewStatus =
   | "EXISTS_BY_PHONE"
@@ -453,7 +454,7 @@ export class PreviewOrdersImportUseCase {
         {
           saleOrderId,
           bankAccountId: null,
-          date: new Date(),
+          date: businessDateAsUtcMidnight(),
           method: "import_adelanto" as any,
           operationNumber: null,
           amount: advance,

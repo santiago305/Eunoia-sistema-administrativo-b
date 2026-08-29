@@ -168,6 +168,7 @@ describe('CreateFromImportPreviewUseCase', () => {
   });
 
   it('imports a single valid row', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-08-30T01:30:00.000Z'));
     const uow = { runInTransaction: (work: any) => work({}) };
     const saleOrderRepo = { create: jest.fn() };
     const saleOrderItemRepo = { bulkCreate: jest.fn() };
@@ -290,7 +291,18 @@ describe('CreateFromImportPreviewUseCase', () => {
         'workflow-1',
         expect.anything(),
       );
+      expect(paymentRepo.bulkCreate).toHaveBeenCalledWith(
+        [
+          expect.objectContaining({
+            saleOrderId: 'order-1',
+            date: new Date('2026-08-29T00:00:00.000Z'),
+            amount: 40,
+          }),
+        ],
+        expect.anything(),
+      );
     } finally {
+      jest.useRealTimers();
       await moduleRef.close();
     }
   });
