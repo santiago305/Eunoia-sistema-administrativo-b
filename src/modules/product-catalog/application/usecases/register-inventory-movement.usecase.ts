@@ -375,6 +375,8 @@ export class RegisterProductCatalogInventoryMovement {
             reserved: row.balance.reserved,
             available: row.balance.available ?? row.balance.onHand - row.balance.reserved,
             documentId: document.id!,
+            docType: input.docType,
+            productType: documentProductType,
             occurredAt: new Date().toISOString(),
           });
           return acc;

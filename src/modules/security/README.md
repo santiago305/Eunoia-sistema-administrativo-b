@@ -51,7 +51,9 @@ Modulo de seguridad IP para rate limit, bans progresivos y blacklist manual.
 
 ## Integracion global
 - `IpBanGuard` y `SecurityThrottlerGuard` se registran como `APP_GUARD` en `AppModule`.
-- `ThrottlerModule` mantiene el limite global actual (`120/min`).
+- `ThrottlerModule` mantiene el limite global (`120/min`) y define una politica
+  independiente para `/inventory/stream` (`20 aperturas/min`, con bloqueo de
+  60 segundos al excederla). El stream no consume el limite global.
 - El storage del throttler es Redis (`RedisThrottlerStorage`), por lo que el contador se comparte entre instancias.
 - Cada 429 registra un evento JSON `rate_limit_exceeded` con IP, método, ruta, hits, límite y nivel de baneo; las respuestas exitosas registran `http_request_completed`.
 - `/health` usa `SkipThrottle` para que los healthchecks no consuman el presupuesto ni generen violaciones.

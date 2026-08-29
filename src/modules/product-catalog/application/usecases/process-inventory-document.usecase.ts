@@ -139,6 +139,8 @@ export class ProcessProductCatalogInventoryDocument {
               reserved: fromBalance.reserved,
               available: fromBalance.available ?? fromBalance.onHand - fromBalance.reserved,
               documentId: document.id!,
+              docType: document.docType,
+              productType: document.productType,
               occurredAt: new Date().toISOString(),
             },
             {
@@ -149,6 +151,8 @@ export class ProcessProductCatalogInventoryDocument {
               reserved: toBalance.reserved,
               available: toBalance.available ?? toBalance.onHand - toBalance.reserved,
               documentId: document.id!,
+              docType: document.docType,
+              productType: document.productType,
               occurredAt: new Date().toISOString(),
             },
           );
@@ -255,6 +259,8 @@ export class ProcessProductCatalogInventoryDocument {
             reserved: updatedBalance.reserved,
             available: updatedBalance.available ?? updatedBalance.onHand - updatedBalance.reserved,
             documentId: document.id!,
+            docType: document.docType,
+            productType: document.productType,
             occurredAt: new Date().toISOString(),
           });
 

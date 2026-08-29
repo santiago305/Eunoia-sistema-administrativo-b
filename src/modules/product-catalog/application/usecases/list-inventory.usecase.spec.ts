@@ -32,8 +32,8 @@ describe("ListProductCatalogInventory", () => {
       }),
     };
     const skuRepo = {
-      findById: jest.fn(async (id: string) => id === "sku-1"
-        ? {
+      findByIds: jest.fn(async (ids: string[]) => ids.includes("sku-1")
+        ? [{
             sku: {
               id: "sku-1",
               productId: "product-1",
@@ -43,8 +43,8 @@ describe("ListProductCatalogInventory", () => {
             },
             unit: null,
             attributes: [],
-          }
-        : null),
+          }]
+        : []),
     };
     const searchStorage = { touchRecentSearch: jest.fn() };
     const usecase = new ListProductCatalogInventory(

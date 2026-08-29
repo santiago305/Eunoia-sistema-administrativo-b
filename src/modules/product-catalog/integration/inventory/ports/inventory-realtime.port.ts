@@ -10,6 +10,8 @@ export type StockUpdatedEvent = {
   reserved: number;
   available: number;
   documentId?: string;
+  docType?: string;
+  productType?: string;
   occurredAt: string;
 };
 

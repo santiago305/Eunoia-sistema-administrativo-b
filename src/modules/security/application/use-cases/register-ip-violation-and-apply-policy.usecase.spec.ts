@@ -22,7 +22,7 @@ describe('RegisterIpViolationAndApplyPolicyUseCase', () => {
       resolveClientIpUseCase as any,
     );
 
-    return { useCase, banRepository };
+    return { useCase, banRepository, violationRepository };
   };
 
   it('records the first rate-limit violation without temporarily banning the IP', async () => {
@@ -51,7 +51,7 @@ describe('RegisterIpViolationAndApplyPolicyUseCase', () => {
   });
 
   it('temporarily bans after repeated rate-limit violations', async () => {
-    const { useCase } = makeUseCase(3);
+    const { useCase, banRepository, violationRepository } = makeUseCase(3);
 
     const result = await useCase.execute({
       ip: '::1',
@@ -63,5 +63,30 @@ describe('RegisterIpViolationAndApplyPolicyUseCase', () => {
     expect(result.banLevel).toBe(1);
     expect(result.bannedUntil).toBeInstanceOf(Date);
     expect(result.manualPermanentBan).toBe(false);
+    expect(banRepository.save).toHaveBeenCalled();
+    expect(violationRepository.count).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        ip: '::1',
+        reason: 'rate_limit_exceeded',
+      }),
+    });
+  });
+
+  it('audits non-rate-limit events without counting or changing the ban policy', async () => {
+    const { useCase, banRepository } = makeUseCase(999);
+
+    const result = await useCase.execute({
+      ip: '::1',
+      reason: 'temporary_ban_request',
+      path: '/inventory/stream',
+      method: 'GET',
+    });
+
+    expect(result).toEqual({
+      banLevel: 0,
+      bannedUntil: null,
+      manualPermanentBan: false,
+    });
+    expect(banRepository.save).not.toHaveBeenCalled();
   });
 });

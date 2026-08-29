@@ -94,12 +94,9 @@ export class ListProductCatalogInventory {
     });
 
     const uniqueSkuIds = Array.from(new Set(items.map((i) => i.skuId)));
-    const skus = await Promise.all(uniqueSkuIds.map((id) => this.skuRepo.findById(id)));
+    const skus = await this.skuRepo.findByIds(uniqueSkuIds);
     const skuMap = new Map(
-      uniqueSkuIds.map((id, index) => {
-        const sku = skus[index];
-        return [id, sku ? this.toInventorySkuDto(sku) : null] as const;
-      }),
+      skus.map((sku) => [sku.sku.id, this.toInventorySkuDto(sku)] as const),
     );
 
     if (params.requestedBy && hasInventorySearchCriteria(snapshot)) {

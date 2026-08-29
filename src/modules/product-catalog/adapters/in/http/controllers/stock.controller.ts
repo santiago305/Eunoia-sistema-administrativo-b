@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, ForbiddenException, Get, Inject, NotFoundException, Param, ParseEnumPipe, ParseUUIDPipe, Post, Query, Res, Sse, UseGuards } from "@nestjs/common";
 import { Response } from "express";
+import { SkipThrottle, Throttle } from "@nestjs/throttler";
 import { filter, map } from "rxjs/operators";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
 import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
@@ -695,6 +696,10 @@ export class ProductCatalogStockController {
   }
 
   @RequireAnyPermissionGroups(["inventory.realtime.view", "catalog.read"])
+  @SkipThrottle({ default: true })
+  @Throttle({
+    "inventory-stream": { limit: 20, ttl: 60_000, blockDuration: 60_000 },
+  })
   @Sse("inventory/stream")
   streamInventory(
     @Query("warehouseId") warehouseId?: string,

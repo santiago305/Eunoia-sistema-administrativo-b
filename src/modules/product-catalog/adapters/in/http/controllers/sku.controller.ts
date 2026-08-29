@@ -12,7 +12,7 @@ import { CreateProductCatalogSkuDto } from "../dtos/create-sku.dto";
 import { ListProductCatalogSkusDto } from "../dtos/list-skus.dto";
 import { UpdateProductCatalogSkuDto } from "../dtos/update-sku.dto";
 import { GetSnapshotInventory } from "src/modules/product-catalog/application/usecases/get-snapshot.usecase";
-import { GetSkuStockSnapshotDto, getStockDto } from "../dtos/get-stock.dto";
+import { GetSkuStockSnapshotDto, GetStockBatchDto, getStockDto } from "../dtos/get-stock.dto";
 import { ListProductCatalogInventorySnapshotsBySku } from "src/modules/product-catalog/application/usecases/list-snapshots.usecase";
 import { ListSkuStockSnapshotsDto } from "../dtos/list-sku-stock-snapshots.dto";
 import { ListSkuStockSnapshotsSearchDto } from "../dtos/list-sku-stock-snapshots-search.dto";
@@ -82,6 +82,17 @@ export class ProductCatalogSkuController {
   @Get("skus/get-stock")
   getSkuStock(@Query() query: getStockDto) {
     return this.getStock.execute(query);
+  }
+
+  @Post("skus/get-stock/batch")
+  async getSkuStockBatch(@Body() body: GetStockBatchDto) {
+    const items = await Promise.all(
+      body.items.map(async (item) => ({
+        ...item,
+        stock: await this.getStock.execute(item),
+      })),
+    );
+    return { items };
   }
 
   @RequireAnyPermissionGroups(["inventory.products.view", "inventory.materials.view", "inventory.supplies.view", "catalog.read"])

@@ -13,12 +13,14 @@ import { GetTopIpsSecurityUseCase } from '../use-cases/get-top-ips-security.usec
 import { GetTopRoutesSecurityUseCase } from '../use-cases/get-top-routes-security.usecase';
 import { ManageManualIpBlacklistUseCase } from '../use-cases/manage-manual-ip-blacklist.usecase';
 import { RegisterIpViolationAndApplyPolicyUseCase } from '../use-cases/register-ip-violation-and-apply-policy.usecase';
+import { RecordIpViolationUseCase } from '../use-cases/record-ip-violation.usecase';
 import { ResolveClientIpUseCase } from '../use-cases/resolve-client-ip.usecase';
 
 export const securityUseCasesProviders = [
   ResolveClientIpUseCase,
   CheckIpBanUseCase,
   RegisterIpViolationAndApplyPolicyUseCase,
+  RecordIpViolationUseCase,
   ManageManualIpBlacklistUseCase,
   GetTopIpsSecurityUseCase,
   GetActiveBansSecurityUseCase,

@@ -8,6 +8,7 @@ import { ResolveClientIpUseCase } from './resolve-client-ip.usecase';
 const VIOLATION_WINDOW_MS = 24 * 60 * 60 * 1000;
 const MIN_VIOLATIONS_BEFORE_TEMPORARY_BAN = 3;
 const BAN_RULES_MINUTES = [15, 60, 24 * 60, 7 * 24 * 60];
+const ESCALATING_VIOLATION_REASON = 'rate_limit_exceeded';
 
 @Injectable()
 export class RegisterIpViolationAndApplyPolicyUseCase {
@@ -25,7 +26,11 @@ export class RegisterIpViolationAndApplyPolicyUseCase {
     path?: string;
     method?: string;
     userAgent?: string;
-  }): Promise<{ banLevel: number; bannedUntil: Date | null; manualPermanentBan: boolean }> {
+  }): Promise<{
+    banLevel: number;
+    bannedUntil: Date | null;
+    manualPermanentBan: boolean;
+  }> {
     const ip = this.resolveClientIpUseCase.normalizeIp(params.ip);
 
     await this.violationRepository.save(
@@ -39,6 +44,15 @@ export class RegisterIpViolationAndApplyPolicyUseCase {
     );
 
     let ban = await this.banRepository.findOne({ where: { ip } });
+
+    if (params.reason !== ESCALATING_VIOLATION_REASON) {
+      return {
+        banLevel: ban?.banLevel ?? 0,
+        bannedUntil: ban?.bannedUntil ?? null,
+        manualPermanentBan: ban?.manualPermanentBan ?? false,
+      };
+    }
+
     if (!ban) {
       ban = this.banRepository.create({
         ip,
@@ -58,7 +72,11 @@ export class RegisterIpViolationAndApplyPolicyUseCase {
 
     const windowStart = new Date(Date.now() - VIOLATION_WINDOW_MS);
     const violationsInWindow = await this.violationRepository.count({
-      where: { ip, createdAt: MoreThanOrEqual(windowStart) },
+      where: {
+        ip,
+        reason: ESCALATING_VIOLATION_REASON,
+        createdAt: MoreThanOrEqual(windowStart),
+      },
     });
 
     if (violationsInWindow < MIN_VIOLATIONS_BEFORE_TEMPORARY_BAN) {
@@ -83,7 +101,9 @@ export class RegisterIpViolationAndApplyPolicyUseCase {
 
     ban.banLevel = banLevel;
     ban.bannedUntil =
-      ban.bannedUntil && ban.bannedUntil > proposedUntil ? ban.bannedUntil : proposedUntil;
+      ban.bannedUntil && ban.bannedUntil > proposedUntil
+        ? ban.bannedUntil
+        : proposedUntil;
     ban.lastReason = params.reason;
 
     const saved = await this.banRepository.save(ban);
@@ -94,4 +114,3 @@ export class RegisterIpViolationAndApplyPolicyUseCase {
     };
   }
 }
-

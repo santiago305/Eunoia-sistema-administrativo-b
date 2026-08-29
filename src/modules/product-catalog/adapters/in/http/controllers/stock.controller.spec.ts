@@ -1,9 +1,33 @@
 import { ForbiddenException } from "@nestjs/common";
+import {
+  THROTTLER_BLOCK_DURATION,
+  THROTTLER_LIMIT,
+  THROTTLER_SKIP,
+  THROTTLER_TTL,
+} from "@nestjs/throttler/dist/throttler.constants";
 import { ProductCatalogProductType } from "src/modules/product-catalog/domain/value-objects/product-type";
 import { DocType } from "src/shared/domain/value-objects/doc-type";
 import { ProductCatalogStockController } from "./stock.controller";
 
 describe("ProductCatalogStockController permissions", () => {
+  it("uses a dedicated throttler policy for the inventory stream", () => {
+    const handler = ProductCatalogStockController.prototype.streamInventory;
+
+    expect(Reflect.getMetadata(`${THROTTLER_SKIP}default`, handler)).toBe(true);
+    expect(
+      Reflect.getMetadata(`${THROTTLER_LIMIT}inventory-stream`, handler),
+    ).toBe(20);
+    expect(
+      Reflect.getMetadata(`${THROTTLER_TTL}inventory-stream`, handler),
+    ).toBe(60_000);
+    expect(
+      Reflect.getMetadata(
+        `${THROTTLER_BLOCK_DURATION}inventory-stream`,
+        handler,
+      ),
+    ).toBe(60_000);
+  });
+
   const createStockItem = { execute: jest.fn() };
   const processDocument = { execute: jest.fn() };
   const getSku = { execute: jest.fn() };

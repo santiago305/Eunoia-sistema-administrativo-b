@@ -1,4 +1,5 @@
-import { IsOptional, IsUUID } from "class-validator";
+import { Type } from "class-transformer";
+import { ArrayMaxSize, IsArray, IsOptional, IsUUID, ValidateNested } from "class-validator";
 
 export class GetStockDto {
   @IsUUID()
@@ -23,3 +24,11 @@ export class GetSkuStockSnapshotDto {
 
 // Backward-compatible export name used in controllers
 export { GetStockDto as getStockDto };
+
+export class GetStockBatchDto {
+  @IsArray()
+  @ArrayMaxSize(100)
+  @ValidateNested({ each: true })
+  @Type(() => GetStockDto)
+  items: GetStockDto[];
+}

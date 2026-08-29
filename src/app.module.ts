@@ -68,6 +68,12 @@ const redisUrl = `redis://${redisAuth}${envs.redis.host}:${envs.redis.port}/${en
         ttl: 60_000,
         limit: 120,
       },
+      {
+        name: 'inventory-stream',
+        ttl: 60_000,
+        limit: 20,
+        blockDuration: 60_000,
+      },
     ]),
     DatabaseModule,
     AuthModule, 
