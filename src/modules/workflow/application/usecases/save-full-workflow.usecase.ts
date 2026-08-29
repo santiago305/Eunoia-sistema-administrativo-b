@@ -80,7 +80,7 @@ export class SaveFullWorkflowUseCase {
       }
       if (current.workflow.lifecycleStatus !== WORKFLOW_LIFECYCLE.PUBLISHED) {
         throw new BadRequestException(
-          'Solo se pueden actualizar condiciones y acciones de una revision publicada',
+          'Solo se puede actualizar la configuracion y las reglas de una revision publicada',
         );
       }
 
@@ -88,13 +88,25 @@ export class SaveFullWorkflowUseCase {
         input.transitions.map((transition) => transition.transitionId),
         'transitionId',
       );
-      const existingTransitionIds = new Set(
-        current.transitions.map((transition) => transition.id),
+      const existingTransitionsById = new Map(
+        current.transitions.map((transition) => [transition.id, transition]),
       );
       for (const transition of input.transitions) {
-        if (!existingTransitionIds.has(transition.transitionId)) {
+        const existingTransition = existingTransitionsById.get(
+          transition.transitionId,
+        );
+        if (!existingTransition) {
           throw new BadRequestException(
             `La transicion ${transition.transitionId} no pertenece al workflow`,
+          );
+        }
+        if (
+          transition.autoTrigger &&
+          (existingTransition.isGlobal ||
+            existingTransition.purpose === TRANSITION_PURPOSES.CANCEL)
+        ) {
+          throw new BadRequestException(
+            `La transicion ${transition.transitionId} no admite ejecucion automatica`,
           );
         }
       }
@@ -173,8 +185,8 @@ export class SaveFullWorkflowUseCase {
           positionX: transition.positionX,
           positionY: transition.positionY,
           isActive: transition.isActive,
-          autoTrigger: transition.autoTrigger,
-          priority: transition.priority,
+          autoTrigger: updatedRules?.autoTrigger ?? transition.autoTrigger,
+          priority: updatedRules?.priority ?? transition.priority,
           elseEffect: transition.elseEffect,
           elseToStateRef: transition.elseToStateId,
           conditions: updatedRules?.conditions ?? currentConditions,

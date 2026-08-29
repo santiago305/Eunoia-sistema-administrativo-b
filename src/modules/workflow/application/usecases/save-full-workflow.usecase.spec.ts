@@ -476,7 +476,7 @@ describe('SaveFullWorkflowUseCase', () => {
     ).rejects.toThrow('El estado destino de cancelacion no puede ser final');
   });
 
-  it('updates published rules without creating a new revision or changing structure', async () => {
+  it('updates published configuration and rules without creating a new revision or changing structure', async () => {
     const current = {
       workflow: {
         id: 'workflow-v1',
@@ -583,6 +583,8 @@ describe('SaveFullWorkflowUseCase', () => {
       transitions: [
         {
           transitionId: 'transition-pay',
+          autoTrigger: true,
+          priority: 2,
           conditions: [{ type: CONDITIONS.IS_PAID, config: {}, position: 0 }],
           actions: [
             { type: ACTIONS.MARK_INVOICE_SENT, config: {}, position: 0 },
@@ -612,6 +614,8 @@ describe('SaveFullWorkflowUseCase', () => {
         toStateId: 'state-done',
         sourceHandle: 'right',
         targetHandle: 'left',
+        autoTrigger: true,
+        priority: 2,
       }),
     );
     expect(result.conditions).toEqual([
@@ -648,6 +652,8 @@ describe('SaveFullWorkflowUseCase', () => {
         transitions: [
           {
             transitionId: 'transition-foreign',
+            autoTrigger: false,
+            priority: 0,
             conditions: [],
             actions: [],
             elseActions: [],

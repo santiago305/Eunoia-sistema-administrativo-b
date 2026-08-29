@@ -407,12 +407,14 @@ describe("WorkflowsController", () => {
     );
   });
 
-  it("updates only conditions and actions of a published workflow", async () => {
+  it("updates only allowed configuration and rules of a published workflow", async () => {
     const workflowId = "11111111-1111-4111-8111-111111111111";
     const transitionId = "22222222-2222-4222-8222-222222222222";
     const transitions = [
       {
         transitionId,
+        autoTrigger: true,
+        priority: 2,
         conditions: [{ type: CONDITIONS.IS_PAID, config: {}, position: 0 }],
         actions: [{ type: ACTIONS.MARK_INVOICE_SENT, config: {}, position: 0 }],
         elseActions: [],
@@ -440,6 +442,8 @@ describe("WorkflowsController", () => {
         transitions: [
           {
             transitionId: "22222222-2222-4222-8222-222222222222",
+            autoTrigger: false,
+            priority: 0,
             conditions: [],
             actions: [],
             elseActions: [],

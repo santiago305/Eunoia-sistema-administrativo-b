@@ -69,6 +69,8 @@ export type SaveFullWorkflowInput = {
 
 export type PublishedWorkflowTransitionRulesInput = {
   transitionId: string;
+  autoTrigger: boolean;
+  priority: number;
   conditions: NonNullable<FullWorkflowTransitionInput["conditions"]>;
   actions: NonNullable<FullWorkflowTransitionInput["actions"]>;
   elseActions: NonNullable<FullWorkflowTransitionInput["elseActions"]>;

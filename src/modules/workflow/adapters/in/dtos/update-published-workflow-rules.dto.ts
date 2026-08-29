@@ -2,7 +2,10 @@ import { Type } from "class-transformer";
 import {
   ArrayNotEmpty,
   IsArray,
+  IsBoolean,
+  IsInt,
   IsUUID,
+  Min,
   ValidateNested,
 } from "class-validator";
 import {
@@ -13,6 +16,13 @@ import {
 class PublishedWorkflowTransitionRulesDto {
   @IsUUID()
   transitionId: string;
+
+  @IsBoolean()
+  autoTrigger: boolean;
+
+  @IsInt()
+  @Min(0)
+  priority: number;
 
   @IsArray()
   @ValidateNested({ each: true })
