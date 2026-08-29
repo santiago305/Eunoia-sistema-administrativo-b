@@ -16,7 +16,11 @@ import {
   WorkflowAggregate,
   WorkflowRepository,
 } from '../../domain/ports/workflow.repository';
-import { SaveFullWorkflowInput } from '../dtos/save-full-workflow.input';
+import {
+  FullWorkflowTransitionInput,
+  SaveFullWorkflowInput,
+  UpdatePublishedWorkflowRulesInput,
+} from '../dtos/save-full-workflow.input';
 import { TRANSITION_PURPOSES } from '../../domain/constants/workflow-transition-purpose.constants';
 import { TRANSITION_EFFECTS } from '../../domain/constants/workflow-transition-effect.constants';
 import {
@@ -63,6 +67,140 @@ export class SaveFullWorkflowUseCase {
         tx,
       );
     });
+  }
+
+  async executePublishedRules(input: UpdatePublishedWorkflowRulesInput) {
+    return this.uow.runInTransaction(async (tx) => {
+      const current = await this.workflowRepo.findDetailedById(
+        input.workflowId,
+        tx,
+      );
+      if (!current) {
+        throw new NotFoundException('Workflow no encontrado');
+      }
+      if (current.workflow.lifecycleStatus !== WORKFLOW_LIFECYCLE.PUBLISHED) {
+        throw new BadRequestException(
+          'Solo se pueden actualizar condiciones y acciones de una revision publicada',
+        );
+      }
+
+      this.assertUnique(
+        input.transitions.map((transition) => transition.transitionId),
+        'transitionId',
+      );
+      const existingTransitionIds = new Set(
+        current.transitions.map((transition) => transition.id),
+      );
+      for (const transition of input.transitions) {
+        if (!existingTransitionIds.has(transition.transitionId)) {
+          throw new BadRequestException(
+            `La transicion ${transition.transitionId} no pertenece al workflow`,
+          );
+        }
+      }
+
+      const aggregate = await this.buildAggregate(
+        this.buildPublishedRulesSaveInput(current, input),
+        current,
+        tx,
+      );
+      return this.workflowRepo.saveFull(
+        aggregate,
+        { synchronize: true },
+        tx,
+      );
+    });
+  }
+
+  private buildPublishedRulesSaveInput(
+    current: WorkflowAggregate,
+    input: UpdatePublishedWorkflowRulesInput,
+  ): SaveFullWorkflowInput {
+    const rulesByTransition = new Map(
+      input.transitions.map((transition) => [
+        transition.transitionId,
+        transition,
+      ]),
+    );
+
+    const transitions: FullWorkflowTransitionInput[] =
+      current.transitions.map((transition) => {
+        const updatedRules = rulesByTransition.get(transition.id);
+        const currentConditions = current.conditions
+          .filter((condition) => condition.transitionId === transition.id)
+          .sort((left, right) => left.position - right.position)
+          .map((condition) => ({
+            type: condition.type,
+            config: { ...condition.config },
+            position: condition.position,
+          }));
+        const currentActions = current.actions
+          .filter(
+            (action) =>
+              action.transitionId === transition.id && action.branch === 'THEN',
+          )
+          .sort((left, right) => left.position - right.position)
+          .map((action) => ({
+            type: action.type,
+            config: { ...action.config },
+            position: action.position,
+          }));
+        const currentElseActions = current.actions
+          .filter(
+            (action) =>
+              action.transitionId === transition.id && action.branch === 'ELSE',
+          )
+          .sort((left, right) => left.position - right.position)
+          .map((action) => ({
+            type: action.type,
+            config: { ...action.config },
+            position: action.position,
+          }));
+
+        return {
+          id: transition.id,
+          clientId: transition.id,
+          code: transition.code,
+          name: transition.name,
+          effect: transition.effect,
+          purpose: transition.purpose,
+          fromStateRef: transition.fromStateId,
+          toStateRef: transition.toStateId,
+          isGlobal: transition.isGlobal,
+          excludedStateRefs: [...transition.excludedStateIds],
+          sourceHandle: transition.sourceHandle,
+          targetHandle: transition.targetHandle,
+          positionX: transition.positionX,
+          positionY: transition.positionY,
+          isActive: transition.isActive,
+          autoTrigger: transition.autoTrigger,
+          priority: transition.priority,
+          elseEffect: transition.elseEffect,
+          elseToStateRef: transition.elseToStateId,
+          conditions: updatedRules?.conditions ?? currentConditions,
+          actions: updatedRules?.actions ?? currentActions,
+          elseActions: updatedRules?.elseActions ?? currentElseActions,
+        };
+      });
+
+    return {
+      workflowId: current.workflow.id,
+      name: current.workflow.name,
+      description: current.workflow.description,
+      isActive: current.workflow.isActive,
+      states: current.states.map((state) => ({
+        id: state.id,
+        clientId: state.id,
+        saleOrderStateId: state.saleOrderStateId,
+        position: state.position,
+        positionX: state.positionX,
+        positionY: state.positionY,
+        isInitial: state.isInitial,
+        isFinal: state.isFinal,
+        isActive: state.isActive,
+      })),
+      transitions,
+    };
   }
 
   private async buildAggregate(
@@ -405,7 +543,7 @@ export class SaveFullWorkflowUseCase {
         revision: current?.workflow.revision ?? 1,
         lifecycleStatus:
           current?.workflow.lifecycleStatus ?? WORKFLOW_LIFECYCLE.DRAFT,
-        isCurrent: false,
+        isCurrent: current?.workflow.isCurrent ?? false,
         basedOnWorkflowId: current?.workflow.basedOnWorkflowId ?? null,
         publishedAt: current?.workflow.publishedAt ?? null,
         publishedBy: current?.workflow.publishedBy ?? null,

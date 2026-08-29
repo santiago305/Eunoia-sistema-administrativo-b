@@ -25,6 +25,7 @@ import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/
 import { RequirePermissions } from "src/modules/access-control/adapters/in/decorators/require-permissions.decorator";
 import { CreateWorkflowDraftUseCase } from '../../../application/usecases/create-workflow-draft.usecase';
 import { ListManagedWorkflowsUseCase } from '../../../application/usecases/list-managed-workflows.usecase';
+import { UpdatePublishedWorkflowRulesDto } from '../dtos/update-published-workflow-rules.dto';
 
 @Controller("workflows")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
@@ -188,6 +189,18 @@ export class WorkflowsController {
   @RequirePermissions("sale_orders.workflows.manage")
   updateFullCanonical(@Param("id", ParseUUIDPipe) workflowId: string, @Body() dto: SaveFullWorkflowDto) {
     return this.saveFullWorkflow.execute({ ...dto, workflowId });
+  }
+
+  @Patch(":id/rules")
+  @RequirePermissions("sale_orders.workflows.manage")
+  updatePublishedRules(
+    @Param("id", ParseUUIDPipe) workflowId: string,
+    @Body() dto: UpdatePublishedWorkflowRulesDto,
+  ) {
+    return this.saveFullWorkflow.executePublishedRules({
+      workflowId,
+      transitions: dto.transitions,
+    });
   }
 
   @Get(":id")

@@ -40,7 +40,12 @@ describe("WorkflowsController", () => {
   const createWorkflowState = { execute: jest.fn().mockResolvedValue({ id: "state-1" }) };
   const updateWorkflowState = { execute: jest.fn().mockResolvedValue({ id: "state-1" }) };
   const updateWorkflowStatePositions = { execute: jest.fn().mockResolvedValue([{ id: "state-1" }]) };
-  const saveFullWorkflow = { execute: jest.fn().mockResolvedValue({ workflow: { id: "workflow-1" } }) };
+  const saveFullWorkflow = {
+    execute: jest.fn().mockResolvedValue({ workflow: { id: "workflow-1" } }),
+    executePublishedRules: jest
+      .fn()
+      .mockResolvedValue({ workflow: { id: "workflow-1" } }),
+  };
   const createWorkflowTransition = { execute: jest.fn().mockResolvedValue({ transition: { id: "transition-1" }, conditions: [] }) };
   const createWorkflowDraft = { execute: jest.fn().mockResolvedValue({ workflow: { id: 'draft-1' } }) };
   const listManagedWorkflows = { execute: jest.fn().mockResolvedValue([]) };
@@ -400,5 +405,49 @@ describe("WorkflowsController", () => {
     expect(saveFullWorkflow.execute).toHaveBeenCalledWith(
       expect.objectContaining({ workflowId, name: "ABONADO ENVIO" }),
     );
+  });
+
+  it("updates only conditions and actions of a published workflow", async () => {
+    const workflowId = "11111111-1111-4111-8111-111111111111";
+    const transitionId = "22222222-2222-4222-8222-222222222222";
+    const transitions = [
+      {
+        transitionId,
+        conditions: [{ type: CONDITIONS.IS_PAID, config: {}, position: 0 }],
+        actions: [{ type: ACTIONS.MARK_INVOICE_SENT, config: {}, position: 0 }],
+        elseActions: [],
+      },
+    ];
+
+    await request(app.getHttpServer())
+      .patch(`/workflows/${workflowId}/rules`)
+      .send({ transitions })
+      .expect(200);
+
+    expect(saveFullWorkflow.executePublishedRules).toHaveBeenCalledWith({
+      workflowId,
+      transitions,
+    });
+  });
+
+  it("rejects structural fields from the published-rules endpoint", async () => {
+    const workflowId = "11111111-1111-4111-8111-111111111111";
+
+    await request(app.getHttpServer())
+      .patch(`/workflows/${workflowId}/rules`)
+      .send({
+        name: "Nombre no permitido",
+        transitions: [
+          {
+            transitionId: "22222222-2222-4222-8222-222222222222",
+            conditions: [],
+            actions: [],
+            elseActions: [],
+          },
+        ],
+      })
+      .expect(400);
+
+    expect(saveFullWorkflow.executePublishedRules).not.toHaveBeenCalled();
   });
 });

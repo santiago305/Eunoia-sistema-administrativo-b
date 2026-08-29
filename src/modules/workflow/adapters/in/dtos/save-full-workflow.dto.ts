@@ -24,7 +24,7 @@ import {
   WorkflowTransitionEffect,
 } from "../../../domain/constants/workflow-transition-effect.constants";
 
-class FullWorkflowConditionDto {
+export class FullWorkflowConditionDto {
   @IsIn(Object.values(CONDITIONS))
   type: WorkflowConditionType;
 
@@ -38,7 +38,7 @@ class FullWorkflowConditionDto {
   position?: number;
 }
 
-class FullWorkflowActionDto {
+export class FullWorkflowActionDto {
   @IsIn(Object.values(ACTIONS))
   type: WorkflowActionType;
 

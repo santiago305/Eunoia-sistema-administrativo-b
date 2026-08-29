@@ -475,4 +475,187 @@ describe('SaveFullWorkflowUseCase', () => {
       }),
     ).rejects.toThrow('El estado destino de cancelacion no puede ser final');
   });
+
+  it('updates published rules without creating a new revision or changing structure', async () => {
+    const current = {
+      workflow: {
+        id: 'workflow-v1',
+        name: 'Abonado envio',
+        normalizedName: 'ABONADO ENVIO',
+        description: null,
+        isActive: true,
+        createdAt: new Date('2026-06-01T00:00:00.000Z'),
+        updatedAt: null,
+        familyId: 'workflow-family',
+        revision: 1,
+        lifecycleStatus: 'PUBLISHED',
+        isCurrent: true,
+        basedOnWorkflowId: null,
+        publishedAt: new Date('2026-06-02T00:00:00.000Z'),
+        publishedBy: 'user-1',
+      },
+      states: [
+        {
+          id: 'state-created',
+          workflowId: 'workflow-v1',
+          saleOrderStateId: 'global-created',
+          code: 'CREATED',
+          name: 'Creado',
+          color: '#000000',
+          position: 0,
+          positionX: 10,
+          positionY: 20,
+          isInitial: true,
+          isFinal: false,
+          isActive: true,
+        },
+        {
+          id: 'state-done',
+          workflowId: 'workflow-v1',
+          saleOrderStateId: 'global-done',
+          code: 'DONE',
+          name: 'Final',
+          color: '#00ff00',
+          position: 1,
+          positionX: 200,
+          positionY: 20,
+          isInitial: false,
+          isFinal: true,
+          isActive: true,
+        },
+      ],
+      transitions: [
+        {
+          id: 'transition-pay',
+          workflowId: 'workflow-v1',
+          code: 'PAY',
+          name: 'Pago completo',
+          effect: 'MOVE_STATE',
+          purpose: 'STANDARD',
+          fromStateId: 'state-created',
+          toStateId: 'state-done',
+          isGlobal: false,
+          excludedStateIds: [],
+          sourceHandle: 'right',
+          targetHandle: 'left',
+          positionX: null,
+          positionY: null,
+          isActive: true,
+          autoTrigger: false,
+          priority: 0,
+          elseEffect: null,
+          elseToStateId: null,
+        },
+      ],
+      conditions: [
+        {
+          id: 'condition-old',
+          transitionId: 'transition-pay',
+          type: CONDITIONS.IS_NOT_PAID,
+          config: {},
+          position: 0,
+        },
+      ],
+      actions: [],
+    } as any;
+    const workflowRepo = {
+      findDetailedById: jest.fn().mockResolvedValue(current),
+      saveFull: jest.fn(async (aggregate) => aggregate),
+    };
+    const useCase = new SaveFullWorkflowUseCase(
+      { runInTransaction: (callback: any) => callback({}) } as any,
+      workflowRepo as any,
+      { now: () => new Date('2026-06-06T00:00:00.000Z') } as any,
+      {
+        findById: jest.fn(async (id) => {
+          const state = current.states.find(
+            (item: any) => item.saleOrderStateId === id,
+          );
+          return state
+            ? { id, code: state.code, name: state.name, color: state.color }
+            : null;
+        }),
+      } as any,
+    );
+
+    const result = await useCase.executePublishedRules({
+      workflowId: 'workflow-v1',
+      transitions: [
+        {
+          transitionId: 'transition-pay',
+          conditions: [{ type: CONDITIONS.IS_PAID, config: {}, position: 0 }],
+          actions: [
+            { type: ACTIONS.MARK_INVOICE_SENT, config: {}, position: 0 },
+          ],
+          elseActions: [],
+        },
+      ],
+    });
+
+    expect(result.workflow).toEqual(
+      expect.objectContaining({
+        id: 'workflow-v1',
+        revision: 1,
+        lifecycleStatus: 'PUBLISHED',
+        isCurrent: true,
+      }),
+    );
+    expect(result.states.map((state) => state.id)).toEqual([
+      'state-created',
+      'state-done',
+    ]);
+    expect(result.transitions[0]).toEqual(
+      expect.objectContaining({
+        id: 'transition-pay',
+        name: 'Pago completo',
+        fromStateId: 'state-created',
+        toStateId: 'state-done',
+        sourceHandle: 'right',
+        targetHandle: 'left',
+      }),
+    );
+    expect(result.conditions).toEqual([
+      expect.objectContaining({ type: CONDITIONS.IS_PAID }),
+    ]);
+    expect(result.actions).toEqual([
+      expect.objectContaining({
+        type: ACTIONS.MARK_INVOICE_SENT,
+        branch: 'THEN',
+      }),
+    ]);
+    expect(workflowRepo.saveFull).toHaveBeenCalledWith(
+      expect.anything(),
+      { synchronize: true },
+      {},
+    );
+  });
+
+  it('rejects rules updates for a transition outside the published workflow', async () => {
+    const useCase = new SaveFullWorkflowUseCase(
+      { runInTransaction: (callback: any) => callback({}) } as any,
+      {
+        findDetailedById: jest.fn().mockResolvedValue({
+          workflow: { lifecycleStatus: 'PUBLISHED' },
+          transitions: [{ id: 'transition-owned' }],
+        }),
+      } as any,
+      { now: () => new Date() } as any,
+    );
+
+    await expect(
+      useCase.executePublishedRules({
+        workflowId: 'workflow-v1',
+        transitions: [
+          {
+            transitionId: 'transition-foreign',
+            conditions: [],
+            actions: [],
+            elseActions: [],
+          },
+        ],
+      }),
+    ).rejects.toThrow(
+      'La transicion transition-foreign no pertenece al workflow',
+    );
+  });
 });

@@ -66,3 +66,15 @@ export type SaveFullWorkflowInput = {
   states: FullWorkflowStateInput[];
   transitions: FullWorkflowTransitionInput[];
 };
+
+export type PublishedWorkflowTransitionRulesInput = {
+  transitionId: string;
+  conditions: NonNullable<FullWorkflowTransitionInput["conditions"]>;
+  actions: NonNullable<FullWorkflowTransitionInput["actions"]>;
+  elseActions: NonNullable<FullWorkflowTransitionInput["elseActions"]>;
+};
+
+export type UpdatePublishedWorkflowRulesInput = {
+  workflowId: string;
+  transitions: PublishedWorkflowTransitionRulesInput[];
+};
