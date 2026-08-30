@@ -6,14 +6,19 @@ import { AdvisersController } from './adapters/in/controllers/advisers.controlle
 import { AdviserEntity } from './adapters/out/persistence/typeorm/entities/adviser.entity';
 import { CreateAdviserUsecase } from './application/usecases/create-adviser.usecase';
 import { ListAdvisersUsecase } from './application/usecases/list-advisers.usecase';
+import { ListAdviserSummaryUsecase } from './application/usecases/list-adviser-summary.usecase';
+import { SetAdviserActiveUsecase } from './application/usecases/set-adviser-active.usecase';
+import { UpdateAdviserUsecase } from './application/usecases/update-adviser.usecase';
+import { SaleOrderEntity } from 'src/modules/sale-orders/adapters/out/persistence/typeorm/entities/sale-order.entity';
+import { SalePaymentEntity } from 'src/modules/sale-orders/adapters/out/persistence/typeorm/entities/sale-payment.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([AdviserEntity, User]),
+    TypeOrmModule.forFeature([AdviserEntity, User, SaleOrderEntity, SalePaymentEntity]),
     AccessControlModule,
   ],
   controllers: [AdvisersController],
-  providers: [ListAdvisersUsecase, CreateAdviserUsecase],
+  providers: [ListAdvisersUsecase, CreateAdviserUsecase, ListAdviserSummaryUsecase, SetAdviserActiveUsecase, UpdateAdviserUsecase],
   exports: [ListAdvisersUsecase],
 })
 export class AdvisersModule {}

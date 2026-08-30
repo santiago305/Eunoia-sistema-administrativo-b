@@ -30,7 +30,7 @@ export class SaleOrderAdviserImportAliasService {
     private readonly dataSource: DataSource,
   ) {}
 
-  async list(input: { page?: number; limit?: number; q?: string }) {
+  async list(input: { page?: number; limit?: number; q?: string; adviserUserId?: string }) {
     const page = Math.max(1, Number(input.page ?? 1));
     const limit = Math.min(100, Math.max(1, Number(input.limit ?? 25)));
     const query = String(input.q ?? '').trim();
@@ -39,6 +39,7 @@ export class SaleOrderAdviserImportAliasService {
       .createQueryBuilder('alias')
       .leftJoinAndSelect('alias.adviser', 'adviser')
       .where('alias.isDeleted = false');
+    if (input.adviserUserId) builder.andWhere('alias.adviserUserId = :adviserUserId', { adviserUserId: input.adviserUserId });
 
     if (query) {
       builder.andWhere(
@@ -201,7 +202,7 @@ export class SaleOrderAdviserImportAliasService {
     users = this.users,
   ) {
     const [isAdviser, user] = await Promise.all([
-      advisers.exist({ where: { userId: adviserUserId } }),
+      advisers.exist({ where: { userId: adviserUserId, isActive: true } }),
       users.findOne({ where: { id: adviserUserId, deleted: false } }),
     ]);
     if (!isAdviser || !user) {

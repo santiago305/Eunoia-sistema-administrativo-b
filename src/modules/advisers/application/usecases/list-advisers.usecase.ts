@@ -8,6 +8,10 @@ export type AdviserOutput = {
   id: string;
   name: string;
   email: string;
+  isActive?: boolean;
+  assignedOrders?: number;
+  soldTotal?: number;
+  collectedTotal?: number;
 };
 
 @Injectable()
@@ -20,7 +24,7 @@ export class ListAdvisersUsecase {
   ) {}
 
   async execute(): Promise<AdviserOutput[]> {
-    const rows = await this.advisers.find();
+    const rows = await this.advisers.find({ where: { isActive: true } });
     const userIds = rows.map((row) => row.userId);
     if (!userIds.length) return [];
 
@@ -32,6 +36,7 @@ export class ListAdvisersUsecase {
       id: user.id,
       name: user.name,
       email: user.email,
+      isActive: true,
     }));
   }
 }

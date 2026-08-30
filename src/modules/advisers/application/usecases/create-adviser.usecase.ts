@@ -24,9 +24,12 @@ export class CreateAdviserUsecase {
       userId: input.userId,
     });
     if (!existing) {
-      await this.advisers.save({ userId: input.userId });
+      await this.advisers.save({ userId: input.userId, isActive: true });
+    } else if (!existing.isActive) {
+      existing.isActive = true;
+      await this.advisers.save(existing);
     }
 
-    return { id: user.id, name: user.name, email: user.email };
+    return { id: user.id, name: user.name, email: user.email, isActive: true };
   }
 }

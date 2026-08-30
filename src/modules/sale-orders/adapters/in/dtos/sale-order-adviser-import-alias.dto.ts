@@ -37,6 +37,10 @@ export class ListSaleOrderAdviserImportAliasesDto {
   @IsString()
   @MaxLength(160)
   q?: string;
+
+  @IsOptional()
+  @IsUUID()
+  adviserUserId?: string;
 }
 
 export class CreateSaleOrderAdviserImportAliasDto {
