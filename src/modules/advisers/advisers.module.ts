@@ -11,14 +11,19 @@ import { SetAdviserActiveUsecase } from './application/usecases/set-adviser-acti
 import { UpdateAdviserUsecase } from './application/usecases/update-adviser.usecase';
 import { SaleOrderEntity } from 'src/modules/sale-orders/adapters/out/persistence/typeorm/entities/sale-order.entity';
 import { SalePaymentEntity } from 'src/modules/sale-orders/adapters/out/persistence/typeorm/entities/sale-payment.entity';
+import { AdviserSearchService } from './application/services/adviser-search.service';
+import { ListingSearchMetricEntity } from 'src/shared/listing-search/adapters/out/persistence/typeorm/entities/listing-search-metric.entity';
+import { ListingSearchRecentEntity } from 'src/shared/listing-search/adapters/out/persistence/typeorm/entities/listing-search-recent.entity';
+import { ListingSearchTypeormRepository } from 'src/shared/listing-search/adapters/out/persistence/typeorm/repositories/listing-search.typeorm.repo';
+import { LISTING_SEARCH_STORAGE } from 'src/shared/listing-search/domain/listing-search.repository';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([AdviserEntity, User, SaleOrderEntity, SalePaymentEntity]),
+    TypeOrmModule.forFeature([AdviserEntity, User, SaleOrderEntity, SalePaymentEntity, ListingSearchRecentEntity, ListingSearchMetricEntity]),
     AccessControlModule,
   ],
   controllers: [AdvisersController],
-  providers: [ListAdvisersUsecase, CreateAdviserUsecase, ListAdviserSummaryUsecase, SetAdviserActiveUsecase, UpdateAdviserUsecase],
+  providers: [ListAdvisersUsecase, CreateAdviserUsecase, ListAdviserSummaryUsecase, SetAdviserActiveUsecase, UpdateAdviserUsecase, AdviserSearchService, { provide: LISTING_SEARCH_STORAGE, useClass: ListingSearchTypeormRepository }],
   exports: [ListAdvisersUsecase],
 })
 export class AdvisersModule {}
