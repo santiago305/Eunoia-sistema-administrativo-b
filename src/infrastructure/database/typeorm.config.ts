@@ -132,6 +132,7 @@ import { AddWorkflowRevisionsAndDraftTests20260827120000 } from './migrations/20
 import { UpdateSaleOrdersAdvancedPermissionDescription20260828130000 } from './migrations/20260828130000-update-sale-orders-advanced-permission-description';
 import { CreateSaleOrderAdviserImportAliases20260829170000 } from './migrations/20260829170000-create-sale-order-adviser-import-aliases';
 import { AddAdviserManagement20260830100000 } from './migrations/20260830100000-add-adviser-management';
+import { AddInventoryTransferTransit20260830110000 } from './migrations/20260830110000-add-inventory-transfer-transit';
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: 'postgres',
@@ -275,6 +276,7 @@ export const databaseMigrations = [
   UpdateSaleOrdersAdvancedPermissionDescription20260828130000,
   CreateSaleOrderAdviserImportAliases20260829170000,
   AddAdviserManagement20260830100000,
+  AddInventoryTransferTransit20260830110000,
 ];
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({

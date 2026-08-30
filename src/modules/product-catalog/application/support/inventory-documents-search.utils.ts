@@ -56,6 +56,7 @@ const FIELD_LABELS: Record<InventoryDocumentsSearchField, string> = {
 
 export const INVENTORY_DOCUMENT_STATUS_OPTIONS: ListingSearchOptionOutput[] = [
   { id: DocStatus.DRAFT, label: "Borrador", keywords: ["draft", "borrador"] },
+  { id: DocStatus.IN_TRANSIT, label: "En tránsito", keywords: ["in transit", "en tránsito", "transito"] },
   { id: DocStatus.POSTED, label: "Contabilizado", keywords: ["posted", "contabilizado"] },
   { id: DocStatus.CANCELLED, label: "Anulado", keywords: ["cancelled", "anulado"] },
 ];

@@ -15,6 +15,10 @@ export interface InventoryDocumentPdfData {
     status?: string;
     fromWarehouse?: string;
     toWarehouse?: string;
+    scheduledDepartureDate?: string;
+    expectedArrivalDate?: string;
+    dispatchedAt?: Date;
+    receivedAt?: Date;
     reference?: string;
   };
   items: Array<{

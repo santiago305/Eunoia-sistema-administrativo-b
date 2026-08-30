@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { IsArray, IsNumber, IsOptional, IsString, IsUUID, ValidateNested } from "class-validator";
+import { IsArray, IsNumber, IsOptional, IsString, IsUUID, Matches, ValidateNested } from "class-validator";
 
 class TransferBetweenWarehousesItemDto {
   @IsUUID()
@@ -26,6 +26,14 @@ export class TransferBetweenWarehousesDto {
 
   @IsUUID()
   serieId: string;
+
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: "scheduledDepartureDate debe tener formato YYYY-MM-DD" })
+  scheduledDepartureDate: string;
+
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: "expectedArrivalDate debe tener formato YYYY-MM-DD" })
+  expectedArrivalDate: string;
 
   @IsOptional()
   @IsUUID()

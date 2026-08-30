@@ -37,6 +37,7 @@ const DOC_TYPE_LABEL: Record<DocType, string> = {
 
 const STATUS_LABEL: Record<DocStatus, string> = {
   [DocStatus.DRAFT]: "BORRADOR",
+  [DocStatus.IN_TRANSIT]: "EN TRANSITO",
   [DocStatus.POSTED]: "POSTEADO",
   [DocStatus.CANCELLED]: "ANULADO",
 };
@@ -202,6 +203,10 @@ export class GenerateInventoryDocumentPdfUseCase {
         reference: resolveReference(doc.referenceType ?? undefined, doc.referenceId ?? undefined),
         fromWarehouse: fromWarehouse?.name ?? undefined,
         toWarehouse: toWarehouse?.name ?? undefined,
+        scheduledDepartureDate: doc.scheduledDepartureDate ?? undefined,
+        expectedArrivalDate: doc.expectedArrivalDate ?? undefined,
+        dispatchedAt: doc.dispatchedAt ?? undefined,
+        receivedAt: doc.receivedAt ?? undefined,
       },
       items: mappedItems,
       totals: {

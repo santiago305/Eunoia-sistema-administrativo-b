@@ -68,6 +68,12 @@ export class ProductCatalogInventoryDocumentTypeormRepository implements Product
       row.postedAt,
       row.createdAt,
       row.effectiveDate,
+      row.scheduledDepartureDate,
+      row.expectedArrivalDate,
+      row.dispatchedBy,
+      row.dispatchedAt,
+      row.receivedBy,
+      row.receivedAt,
     );
   }
 
@@ -129,12 +135,27 @@ export class ProductCatalogInventoryDocumentTypeormRepository implements Product
       postedBy: document.postedBy,
       postedAt: document.postedAt,
       effectiveDate: document.effectiveDate ?? null,
+      scheduledDepartureDate: document.scheduledDepartureDate ?? null,
+      expectedArrivalDate: document.expectedArrivalDate ?? null,
+      dispatchedBy: document.dispatchedBy ?? null,
+      dispatchedAt: document.dispatchedAt ?? null,
+      receivedBy: document.receivedBy ?? null,
+      receivedAt: document.receivedAt ?? null,
     });
     return this.toDocument(saved);
   }
 
   async findById(id: string, tx?: TransactionContext): Promise<ProductCatalogInventoryDocument | null> {
     const row = await this.getDocRepo(tx).findOne({ where: { id } });
+    return row ? this.toDocument(row) : null;
+  }
+
+  async findByIdForUpdate(id: string, tx: TransactionContext): Promise<ProductCatalogInventoryDocument | null> {
+    const row = await this.getDocRepo(tx)
+      .createQueryBuilder("document")
+      .setLock("pessimistic_write")
+      .where("document.id = :id", { id })
+      .getOne();
     return row ? this.toDocument(row) : null;
   }
 
@@ -177,7 +198,9 @@ export class ProductCatalogInventoryDocumentTypeormRepository implements Product
       .leftJoin(WarehouseEntity, "fw", "fw.id = d.fromWarehouseId")
       .leftJoin(WarehouseEntity, "tw", "tw.id = d.toWarehouseId")
       .leftJoin(UserEntity, "cu", "cu.id = d.createdBy")
-      .leftJoin(UserEntity, "pu", "pu.id = d.postedBy");
+      .leftJoin(UserEntity, "pu", "pu.id = d.postedBy")
+      .leftJoin(UserEntity, "du", "du.id = d.dispatchedBy")
+      .leftJoin(UserEntity, "ru", "ru.id = d.receivedBy");
 
     if (params.docType) qb.andWhere("d.docType = :docType", { docType: params.docType });
     if (params.productType) qb.andWhere("d.productType = :productType", { productType: params.productType });
@@ -285,6 +308,16 @@ export class ProductCatalogInventoryDocumentTypeormRepository implements Product
       .addSelect("pu.name", "postedByName")
       .addSelect("pu.email", "postedByEmail")
       .addSelect("d.postedAt", "postedAt")
+      .addSelect("d.scheduledDepartureDate", "scheduledDepartureDate")
+      .addSelect("d.expectedArrivalDate", "expectedArrivalDate")
+      .addSelect("d.dispatchedBy", "dispatchedById")
+      .addSelect("du.name", "dispatchedByName")
+      .addSelect("du.email", "dispatchedByEmail")
+      .addSelect("d.dispatchedAt", "dispatchedAt")
+      .addSelect("d.receivedBy", "receivedById")
+      .addSelect("ru.name", "receivedByName")
+      .addSelect("ru.email", "receivedByEmail")
+      .addSelect("d.receivedAt", "receivedAt")
       .addSelect("d.createdAt", "createdAt")
       .orderBy("d.createdAt", "DESC")
       .skip((page - 1) * limit)
@@ -313,6 +346,16 @@ export class ProductCatalogInventoryDocumentTypeormRepository implements Product
         postedByName: string | null;
         postedByEmail: string | null;
         postedAt: Date | null;
+        scheduledDepartureDate: string | null;
+        expectedArrivalDate: string | null;
+        dispatchedById: string | null;
+        dispatchedByName: string | null;
+        dispatchedByEmail: string | null;
+        dispatchedAt: Date | null;
+        receivedById: string | null;
+        receivedByName: string | null;
+        receivedByEmail: string | null;
+        receivedAt: Date | null;
         createdAt: Date;
       }>();
 
@@ -349,6 +392,18 @@ export class ProductCatalogInventoryDocumentTypeormRepository implements Product
           ? { id: row.postedById, name: row.postedByName ?? null, email: row.postedByEmail ?? null }
           : null,
         postedAt: row.postedAt ?? null,
+        scheduledDepartureDate: row.scheduledDepartureDate ?? null,
+        expectedArrivalDate: row.expectedArrivalDate ?? null,
+        dispatchedById: row.dispatchedById ?? null,
+        dispatchedBy: row.dispatchedById
+          ? { id: row.dispatchedById, name: row.dispatchedByName ?? null, email: row.dispatchedByEmail ?? null }
+          : null,
+        dispatchedAt: row.dispatchedAt ?? null,
+        receivedById: row.receivedById ?? null,
+        receivedBy: row.receivedById
+          ? { id: row.receivedById, name: row.receivedByName ?? null, email: row.receivedByEmail ?? null }
+          : null,
+        receivedAt: row.receivedAt ?? null,
         createdAt: row.createdAt,
       }));
 
@@ -489,6 +544,36 @@ export class ProductCatalogInventoryDocumentTypeormRepository implements Product
         status: DocStatus.POSTED,
         postedBy: input.postedBy ?? null,
         postedAt: input.postedAt,
+      },
+    );
+  }
+
+  async markInTransit(
+    input: { docId: string; dispatchedBy: string; dispatchedAt: Date },
+    tx: TransactionContext,
+  ): Promise<void> {
+    await this.getDocRepo(tx).update(
+      { id: input.docId, status: DocStatus.DRAFT, docType: DocType.TRANSFER },
+      {
+        status: DocStatus.IN_TRANSIT,
+        dispatchedBy: input.dispatchedBy,
+        dispatchedAt: input.dispatchedAt,
+      },
+    );
+  }
+
+  async markReceived(
+    input: { docId: string; receivedBy: string; receivedAt: Date },
+    tx: TransactionContext,
+  ): Promise<void> {
+    await this.getDocRepo(tx).update(
+      { id: input.docId, status: DocStatus.IN_TRANSIT, docType: DocType.TRANSFER },
+      {
+        status: DocStatus.POSTED,
+        receivedBy: input.receivedBy,
+        receivedAt: input.receivedAt,
+        postedBy: input.receivedBy,
+        postedAt: input.receivedAt,
       },
     );
   }

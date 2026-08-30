@@ -30,6 +30,7 @@ describe("ProductCatalogStockController permissions", () => {
 
   const createStockItem = { execute: jest.fn() };
   const processDocument = { execute: jest.fn() };
+  const receiveTransfer = { execute: jest.fn() };
   const getSku = { execute: jest.fn() };
   const getProduct = { execute: jest.fn() };
   const accessControlService = { userHasAllPermissions: jest.fn() };
@@ -58,6 +59,7 @@ describe("ProductCatalogStockController permissions", () => {
     noop as any,
     noop as any,
     processDocument as any,
+    receiveTransfer as any,
     noop as any,
     noop as any,
     noop as any,
@@ -74,6 +76,7 @@ describe("ProductCatalogStockController permissions", () => {
     jest.clearAllMocks();
     createStockItem.execute.mockResolvedValue({ id: "stock-item-1" });
     processDocument.execute.mockResolvedValue({ id: "document-1" });
+    receiveTransfer.execute.mockResolvedValue({ id: "document-1" });
     getSku.execute.mockResolvedValue({ sku: { id: "sku-1", productId: "product-1" } });
     getProduct.execute.mockResolvedValue({ product: { id: "product-1", type: ProductCatalogProductType.PRODUCT } });
     documentRepo.findById.mockResolvedValue({
@@ -139,6 +142,18 @@ describe("ProductCatalogStockController permissions", () => {
 
     expect(accessControlService.userHasAllPermissions).toHaveBeenCalledWith("user-1", ["adjustments.materials.process"]);
     expect(processDocument.execute).not.toHaveBeenCalled();
+  });
+
+  it("requires the transfer process permission before confirming reception", async () => {
+    accessControlService.userHasAllPermissions.mockResolvedValueOnce(true);
+
+    await controller.receiveInventoryTransfer("33333333-3333-4333-8333-333333333333", { id: "user-1" });
+
+    expect(accessControlService.userHasAllPermissions).toHaveBeenCalledWith("user-1", ["transfers.products.process"]);
+    expect(receiveTransfer.execute).toHaveBeenCalledWith({
+      docId: "33333333-3333-4333-8333-333333333333",
+      receivedBy: "user-1",
+    });
   });
 
   it("returns reservation origins for the selected stock item and warehouse", async () => {

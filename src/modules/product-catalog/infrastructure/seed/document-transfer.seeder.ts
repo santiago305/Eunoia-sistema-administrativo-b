@@ -155,6 +155,9 @@ export async function seedInventoryTransfers(
 
       await serieRepo.update(serieId, { nextNumber: nextNumber + 1 } as any);
 
+      const expectedArrivalAt = new Date(movement.occurredAt);
+      expectedArrivalAt.setDate(expectedArrivalAt.getDate() + randomInt(1, 4));
+
       const savedDocument = await documentRepo.save({
         docType: DocType.TRANSFER,
         productType,
@@ -169,6 +172,12 @@ export async function seedInventoryTransfers(
         createdBy,
         postedBy: createdBy,
         postedAt: movement.occurredAt,
+        scheduledDepartureDate: movement.occurredAt.toISOString().slice(0, 10),
+        expectedArrivalDate: expectedArrivalAt.toISOString().slice(0, 10),
+        dispatchedBy: createdBy,
+        dispatchedAt: movement.occurredAt,
+        receivedBy: createdBy,
+        receivedAt: expectedArrivalAt,
         createdAt: movement.occurredAt,
       });
 

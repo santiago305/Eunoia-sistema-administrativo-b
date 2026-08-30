@@ -35,6 +35,7 @@ import { ProductCatalogInventoryLedgerEntry } from "../../domain/entities/invent
 import { CreateProductCatalogStockItem } from "./create-stock-item.usecase";
 import { INVENTORY_LOCK, InventoryLock } from "../../integration/inventory/ports/inventory-lock.port";
 import { INVENTORY_REALTIME, InventoryRealtime, StockUpdatedEvent } from "../../integration/inventory/ports/inventory-realtime.port";
+import { businessDateAsUtcMidnight } from "src/shared/utilidades/utils/business-date";
 
 @Injectable()
 export class TransferProductCatalogInventoryBetweenWarehouses {
@@ -66,6 +67,8 @@ export class TransferProductCatalogInventoryBetweenWarehouses {
     fromWarehouseId: string;
     toWarehouseId: string;
     serieId: string;
+    scheduledDepartureDate: string;
+    expectedArrivalDate: string;
     locationId?: string | null;
     note?: string | null;
     createdBy?: string | null;
@@ -82,6 +85,23 @@ export class TransferProductCatalogInventoryBetweenWarehouses {
     }
     if (input.fromWarehouseId === input.toWarehouseId) {
       throw new BadRequestException("fromWarehouseId y toWarehouseId no pueden ser iguales");
+    }
+    const isValidDate = (value: string) => {
+      const parsed = new Date(`${value}T00:00:00.000Z`);
+      return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+    };
+    if (!isValidDate(input.scheduledDepartureDate) || !isValidDate(input.expectedArrivalDate)) {
+      throw new BadRequestException(errorResponse("Las fechas de salida y llegada no son validas"));
+    }
+    if (input.expectedArrivalDate < input.scheduledDepartureDate) {
+      throw new BadRequestException(errorResponse("La llegada estimada no puede ser anterior a la salida"));
+    }
+    const currentBusinessDate = businessDateAsUtcMidnight().toISOString().slice(0, 10);
+    if (input.scheduledDepartureDate < currentBusinessDate) {
+      throw new BadRequestException(errorResponse("La fecha de salida no puede estar en el pasado"));
+    }
+    if (input.autoPost) {
+      throw new BadRequestException(errorResponse("Las transferencias deben despacharse y recibirse por separado"));
     }
 
     const result = await this.uow.runInTransaction(async (tx) => {
@@ -130,6 +150,10 @@ export class TransferProductCatalogInventoryBetweenWarehouses {
           input.createdBy ?? null,
           null,
           null,
+          undefined,
+          null,
+          input.scheduledDepartureDate,
+          input.expectedArrivalDate,
         ),
         tx,
       );
@@ -146,7 +170,9 @@ export class TransferProductCatalogInventoryBetweenWarehouses {
         fromBalance?: ProductCatalogInventoryBalance;
         toBalance?: ProductCatalogInventoryBalance;
       }> = [];
-      const shouldAutoPost = input.autoPost ?? true;
+      // A transfer must never move stock directly at creation. The lifecycle is
+      // draft -> dispatch (source OUT) -> receive (destination IN).
+      const shouldAutoPost = false;
 
       for (const row of input.items) {
         if (!Number.isFinite(row.quantity) || row.quantity <= 0) {

@@ -21,6 +21,12 @@ export class ProductCatalogInventoryDocument {
     public readonly postedAt: Date | null,
     public readonly createdAt?: Date,
     public readonly effectiveDate?: string | null,
+    public readonly scheduledDepartureDate?: string | null,
+    public readonly expectedArrivalDate?: string | null,
+    public readonly dispatchedBy?: string | null,
+    public readonly dispatchedAt?: Date | null,
+    public readonly receivedBy?: string | null,
+    public readonly receivedAt?: Date | null,
   ) {}
 }
 

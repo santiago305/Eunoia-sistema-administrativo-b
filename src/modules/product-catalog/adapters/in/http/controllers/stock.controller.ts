@@ -27,6 +27,7 @@ import { ListDailyMovementBySkuDto } from "../dtos/list-daily-movement-by-sku.dt
 import { ListProductCatalogInventory } from "src/modules/product-catalog/application/usecases/list-inventory.usecase";
 import { ListProductCatalogInventoryLedgerMovements } from "src/modules/product-catalog/application/usecases/list-inventory-ledger-movements.usecase";
 import { ProcessProductCatalogInventoryDocument } from "src/modules/product-catalog/application/usecases/process-inventory-document.usecase";
+import { ReceiveProductCatalogInventoryTransfer } from "src/modules/product-catalog/application/usecases/receive-inventory-transfer.usecase";
 import { ListProductCatalogInventoryDto } from "../dtos/list-inventory.dto";
 import type { ProductCatalogInventorySearchRule } from "src/modules/product-catalog/domain/ports/inventory.repository";
 import { GetInventorySearchStateUsecase } from "src/modules/product-catalog/application/usecases/inventory-search/get-state.usecase";
@@ -86,6 +87,10 @@ const INVENTORY_LEDGER_EXPORT_LABELS: Record<string, string> = {
 
 const INVENTORY_DOCUMENTS_EXPORT_LABELS: Record<string, string> = {
   createdAt: "Fecha",
+  scheduledDepartureDate: "Fecha de salida",
+  expectedArrivalDate: "Llegada estimada",
+  dispatchedAt: "Salida real",
+  receivedAt: "Recepcion real",
   documentNumber: "Documento",
   docType: "Tipo",
   status: "Estado",
@@ -126,6 +131,7 @@ export class ProductCatalogStockController {
     private readonly deleteInventoryDocsSearchMetric: DeleteInventoryDocumentsSearchMetricUsecase,
     private readonly listLedgerMovements: ListProductCatalogInventoryLedgerMovements,
     private readonly processDocument: ProcessProductCatalogInventoryDocument,
+    private readonly receiveTransfer: ReceiveProductCatalogInventoryTransfer,
     private readonly getInventoryLedgerSearchStateUc: GetInventoryLedgerSearchStateUsecase,
     private readonly saveInventoryLedgerSearchMetricUc: SaveInventoryLedgerSearchMetricUsecase,
     private readonly deleteInventoryLedgerSearchMetricUc: DeleteInventoryLedgerSearchMetricUsecase,
@@ -211,7 +217,7 @@ export class ProductCatalogStockController {
     @CurrentUser() user: { id: string },
     @Body() dto: TransferBetweenWarehousesDto,
   ) {
-    return this.transferBetweenWarehouses.execute({ ...dto, createdBy: user.id, autoPost: false });
+    return this.transferBetweenWarehouses.execute({ ...dto, createdBy: user.id });
   }
 
   @RequireAnyPermissionGroups(["transfers.products.process", "transfers.materials.process", "transfers.supplies.process", "adjustments.products.process", "adjustments.materials.process", "adjustments.supplies.process"])
@@ -222,6 +228,17 @@ export class ProductCatalogStockController {
   ) {
     return this.ensureDocumentProcessPermission(user.id, docId).then(() =>
       this.processDocument.execute({ docId, postedBy: user.id }),
+    );
+  }
+
+  @RequireAnyPermissionGroups(["transfers.products.process", "transfers.materials.process", "transfers.supplies.process"])
+  @Post("inventory-documents/:id/receive")
+  receiveInventoryTransfer(
+    @Param("id", ParseUUIDPipe) docId: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.ensureDocumentProcessPermission(user.id, docId).then(() =>
+      this.receiveTransfer.execute({ docId, receivedBy: user.id }),
     );
   }
 

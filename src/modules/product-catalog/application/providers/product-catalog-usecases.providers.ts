@@ -40,6 +40,7 @@ import { GetProductCatalogEquivalence } from "../usecases/get-equivalence.usecas
 import { ListProductCatalogEquivalencesByProduct } from "../usecases/list-equivalences-by-product.usecase";
 import { GetProductCatalogProductDetail } from "../usecases/get-product-detail.usecase";
 import { ProcessProductCatalogInventoryDocument } from "../usecases/process-inventory-document.usecase";
+import { ReceiveProductCatalogInventoryTransfer } from "../usecases/receive-inventory-transfer.usecase";
 import {
   GetInventoryAlertSettingUsecase,
   ListInventoryAlertSettingsUsecase,
@@ -90,6 +91,7 @@ export const productCatalogUsecasesProviders: Provider[] = [
   GetProductCatalogEquivalence,
   ListProductCatalogEquivalencesByProduct,
   ProcessProductCatalogInventoryDocument,
+  ReceiveProductCatalogInventoryTransfer,
   ListInventoryAlertSettingsUsecase,
   GetInventoryAlertSettingUsecase,
   UpsertInventoryAlertSettingUsecase,

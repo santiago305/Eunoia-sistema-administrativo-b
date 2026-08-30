@@ -125,6 +125,12 @@ const formatDate = (date?: Date) => {
   return `${day}/${month}/${year}`;
 };
 
+const formatDateOnly = (value?: string) => {
+  if (!value) return "";
+  const [year, month, day] = value.split("-");
+  return year && month && day ? `${day}/${month}/${year}` : value;
+};
+
 const formatCurrency = (value: number | string | null | undefined) => {
   const num = Number(value ?? 0);
   return Number.isFinite(num) ? num.toFixed(2) : "0.00";
@@ -167,6 +173,26 @@ export const InventoryDocumentPdf = ({ data }: { data: InventoryDocumentPdfData 
         {data.document.toWarehouse ? (
           <Text>
             <Text style={styles.label}>ALMACEN DESTINO:</Text> {data.document.toWarehouse}
+          </Text>
+        ) : null}
+        {data.document.scheduledDepartureDate ? (
+          <Text>
+            <Text style={styles.label}>SALIDA PROGRAMADA:</Text> {formatDateOnly(data.document.scheduledDepartureDate)}
+          </Text>
+        ) : null}
+        {data.document.expectedArrivalDate ? (
+          <Text>
+            <Text style={styles.label}>LLEGADA ESTIMADA:</Text> {formatDateOnly(data.document.expectedArrivalDate)}
+          </Text>
+        ) : null}
+        {data.document.dispatchedAt ? (
+          <Text>
+            <Text style={styles.label}>SALIDA REAL:</Text> {formatDate(data.document.dispatchedAt)}
+          </Text>
+        ) : null}
+        {data.document.receivedAt ? (
+          <Text>
+            <Text style={styles.label}>RECEPCION REAL:</Text> {formatDate(data.document.receivedAt)}
           </Text>
         ) : null}
         {/* {data.document.reference ? (

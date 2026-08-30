@@ -20,6 +20,7 @@ import { ProductCatalogInventoryBalance } from "../../domain/entities/inventory-
 import { ProductCatalogInventoryLedgerEntry } from "../../domain/entities/inventory-ledger-entry";
 import { INVENTORY_LOCK, InventoryLock } from "../../integration/inventory/ports/inventory-lock.port";
 import { INVENTORY_REALTIME, InventoryRealtime, StockUpdatedEvent } from "../../integration/inventory/ports/inventory-realtime.port";
+import { businessDateAsUtcMidnight } from "src/shared/utilidades/utils/business-date";
 
 @Injectable()
 export class ProcessProductCatalogInventoryDocument {
@@ -40,7 +41,7 @@ export class ProcessProductCatalogInventoryDocument {
 
   async execute(input: { docId: string; postedBy: string }) {
     const result = await this.uow.runInTransaction(async (tx) => {
-      const document = await this.documentRepo.findById(input.docId, tx);
+      const document = await this.documentRepo.findByIdForUpdate(input.docId, tx);
       if (!document) {
         throw new NotFoundException(errorResponse("Documento no encontrado"));
       }
@@ -63,6 +64,12 @@ export class ProcessProductCatalogInventoryDocument {
         if (!document.fromWarehouseId || !document.toWarehouseId) {
           throw new BadRequestException(errorResponse("Documento TRANSFER invalido"));
         }
+        const currentBusinessDate = businessDateAsUtcMidnight().toISOString().slice(0, 10);
+        if (document.scheduledDepartureDate && currentBusinessDate < document.scheduledDepartureDate) {
+          throw new BadRequestException(
+            errorResponse(`La transferencia esta programada para salir el ${document.scheduledDepartureDate}`),
+          );
+        }
 
         for (const item of items) {
           const locationId = item.fromLocationId ?? item.toLocationId ?? null;
@@ -73,17 +80,7 @@ export class ProcessProductCatalogInventoryDocument {
                 stockItemId: item.stockItemId,
                 locationId: locationId ?? undefined,
               },
-              {
-                warehouseId: document.toWarehouseId,
-                stockItemId: item.stockItemId,
-                locationId: locationId ?? undefined,
-              },
-            ]
-              .sort((a, b) =>
-                `${a.warehouseId}:${a.stockItemId}:${a.locationId ?? ""}`.localeCompare(
-                  `${b.warehouseId}:${b.stockItemId}:${b.locationId ?? ""}`,
-                ),
-              ),
+            ],
             tx,
           );
 
@@ -97,12 +94,7 @@ export class ProcessProductCatalogInventoryDocument {
             throw new BadRequestException(errorResponse("Stock insuficiente para procesar transferencia"));
           }
 
-          const currentTo =
-            currentBalances.find((row) => row.warehouseId === document.toWarehouseId && row.locationId === locationId) ??
-            new ProductCatalogInventoryBalance(document.toWarehouseId, item.stockItemId, locationId, 0, 0, 0);
-
           const fromOnHand = currentFrom.onHand - item.quantity;
-          const toOnHand = currentTo.onHand + item.quantity;
           if (fromOnHand < 0) {
             throw new BadRequestException(errorResponse("El inventario no puede quedar en negativo"));
           }
@@ -119,17 +111,6 @@ export class ProcessProductCatalogInventoryDocument {
             tx,
           );
 
-          const toBalance = await this.inventoryRepo.upsert(
-            new ProductCatalogInventoryBalance(
-              document.toWarehouseId,
-              item.stockItemId,
-              locationId,
-              toOnHand,
-              currentTo.reserved,
-              toOnHand - currentTo.reserved,
-            ),
-            tx,
-          );
           stockUpdatedEvents.push(
             {
               warehouseId: fromBalance.warehouseId,
@@ -138,18 +119,6 @@ export class ProcessProductCatalogInventoryDocument {
               onHand: fromBalance.onHand,
               reserved: fromBalance.reserved,
               available: fromBalance.available ?? fromBalance.onHand - fromBalance.reserved,
-              documentId: document.id!,
-              docType: document.docType,
-              productType: document.productType,
-              occurredAt: new Date().toISOString(),
-            },
-            {
-              warehouseId: toBalance.warehouseId,
-              stockItemId: toBalance.stockItemId,
-              locationId: toBalance.locationId,
-              onHand: toBalance.onHand,
-              reserved: toBalance.reserved,
-              available: toBalance.available ?? toBalance.onHand - toBalance.reserved,
               documentId: document.id!,
               docType: document.docType,
               productType: document.productType,
@@ -165,20 +134,6 @@ export class ProcessProductCatalogInventoryDocument {
               document.fromWarehouseId,
               item.stockItemId,
               Direction.OUT,
-              item.quantity,
-              locationId,
-              item.wasteQty ?? 0,
-              item.unitCost ?? null,
-            ),
-          );
-          ledgerEntries.push(
-            new ProductCatalogInventoryLedgerEntry(
-              undefined,
-              document.id!,
-              item.id ?? null,
-              document.toWarehouseId,
-              item.stockItemId,
-              Direction.IN,
               item.quantity,
               locationId,
               item.wasteQty ?? 0,
@@ -284,13 +239,28 @@ export class ProcessProductCatalogInventoryDocument {
       if (ledgerEntries.length) {
         await this.ledgerRepo.append(ledgerEntries, tx);
       }
-      await this.documentRepo.markPosted({ docId: document.id!, postedBy: input.postedBy, postedAt: new Date() }, tx);
+      const processedAt = new Date();
+      if (document.docType === DocType.TRANSFER) {
+        await this.documentRepo.markInTransit(
+          { docId: document.id!, dispatchedBy: input.postedBy, dispatchedAt: processedAt },
+          tx,
+        );
+      } else {
+        await this.documentRepo.markPosted({ docId: document.id!, postedBy: input.postedBy, postedAt: processedAt }, tx);
+      }
+
+      const status = document.docType === DocType.TRANSFER ? DocStatus.IN_TRANSIT : DocStatus.POSTED;
 
       return {
-        response: successResponse("Documento procesado con exito", {
+        response: successResponse(
+          document.docType === DocType.TRANSFER
+            ? "Transferencia despachada y en transito"
+            : "Documento procesado con exito",
+          {
           documentId: document.id!,
-          status: DocStatus.POSTED,
-        }),
+          status,
+          },
+        ),
         stockUpdatedEvents,
       };
     });

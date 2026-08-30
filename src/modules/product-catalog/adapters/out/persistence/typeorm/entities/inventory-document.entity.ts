@@ -51,6 +51,24 @@ export class ProductCatalogInventoryDocumentEntity {
   @Column({ name: "effective_date", type: "date", nullable: true })
   effectiveDate: string | null;
 
+  @Column({ name: "scheduled_departure_date", type: "date", nullable: true })
+  scheduledDepartureDate: string | null;
+
+  @Column({ name: "expected_arrival_date", type: "date", nullable: true })
+  expectedArrivalDate: string | null;
+
+  @Column({ name: "dispatched_by", type: "uuid", nullable: true })
+  dispatchedBy: string | null;
+
+  @Column({ name: "dispatched_at", type: "timestamptz", nullable: true })
+  dispatchedAt: Date | null;
+
+  @Column({ name: "received_by", type: "uuid", nullable: true })
+  receivedBy: string | null;
+
+  @Column({ name: "received_at", type: "timestamptz", nullable: true })
+  receivedAt: Date | null;
+
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt: Date;
 }
