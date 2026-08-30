@@ -11,6 +11,7 @@ import { SetAdviserActiveUsecase } from '../../../application/usecases/set-advis
 import { UpdateAdviserUsecase } from '../../../application/usecases/update-adviser.usecase';
 import { AdviserSearchService } from '../../../application/services/adviser-search.service';
 import { User as CurrentUser } from 'src/shared/utilidades/decorators/user.decorator';
+import { ListAdviserOrdersUsecase } from '../../../application/usecases/list-adviser-orders.usecase';
 
 @Controller('advisers')
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
@@ -19,6 +20,7 @@ export class AdvisersController {
     private readonly listAdvisers: ListAdvisersUsecase,
     private readonly createAdviser: CreateAdviserUsecase,
     private readonly summary: ListAdviserSummaryUsecase,
+    private readonly adviserOrders: ListAdviserOrdersUsecase,
     private readonly setActive: SetAdviserActiveUsecase,
     private readonly updateAdviser: UpdateAdviserUsecase,
     private readonly search: AdviserSearchService,
@@ -31,8 +33,14 @@ export class AdvisersController {
 
   @Get('summary')
   @RequirePermissions('advisers.view')
-  summaryList(@Query('page') page: number, @Query('limit') limit: number, @Query('q') q: string, @Query('filters') filters: string, @CurrentUser() user: { id: string }) {
-    return this.summary.execute({ page, limit, q, filters, requestedBy: user.id });
+  summaryList(@Query('page') page: number, @Query('limit') limit: number, @Query('q') q: string, @Query('filters') filters: string, @Query('startDate') startDate: string, @Query('endDate') endDate: string, @CurrentUser() user: { id: string }) {
+    return this.summary.execute({ page, limit, q, filters, startDate, endDate, requestedBy: user.id });
+  }
+
+  @Get(':userId/orders')
+  @RequirePermissions('advisers.view')
+  adviserOrderList(@Param('userId', ParseUUIDPipe) userId: string, @Query('page') page: number, @Query('limit') limit: number, @Query('startDate') startDate: string, @Query('endDate') endDate: string) {
+    return this.adviserOrders.execute({ adviserUserId: userId, page, limit, startDate, endDate });
   }
 
   @Get('search-state')
