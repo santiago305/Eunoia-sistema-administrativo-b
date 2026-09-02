@@ -71,6 +71,20 @@ import { SaleOrderImportSkuResolverService } from "src/modules/sale-orders/appli
 import { SaleOrderImportSourceResolverService } from "src/modules/sale-orders/application/services/sale-order-import-source-resolver.service";
 import { businessDateAsUtcMidnight } from "src/shared/utilidades/utils/business-date";
 
+const DEPARTMENT_NAME_ALIASES: Readonly<Record<string, string>> = {
+  cuzco: "cusco",
+};
+
+const PROVINCE_NAME_ALIASES_BY_DEPARTMENT: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+  "08": { cuzco: "cusco" },
+  "11": { nasca: "nazca" },
+};
+
+const DISTRICT_NAME_EQUIVALENTS_BY_PROVINCE: Readonly<Record<string, ReadonlyArray<ReadonlyArray<string>>>> = {
+  "0801": [["cusco", "cuzco"]],
+  "1103": [["nazca", "nasca"]],
+};
+
 type ClientPreviewStatus =
   | "EXISTS_BY_PHONE"
   | "EXISTS_BY_DNI"
@@ -1159,8 +1173,10 @@ export class PreviewOrdersImportUseCase {
 
     const departments = await this.ubigeoRepo.listDepartments();
 
+    const canonicalDepartmentName =
+      DEPARTMENT_NAME_ALIASES[departmentNormalizedName] ?? departmentNormalizedName;
     const department = departments.find(
-      (item) => this.normalizeText(item.name) === departmentNormalizedName,
+      (item) => this.normalizeText(item.name) === canonicalDepartmentName,
     );
 
     this.debug("RESOLVE_UBIGEO_DEPARTMENT", {
@@ -1172,8 +1188,10 @@ export class PreviewOrdersImportUseCase {
 
     const provinces = await this.ubigeoRepo.listProvincesByDepartmentIds([department.id]);
 
+    const canonicalProvinceName =
+      PROVINCE_NAME_ALIASES_BY_DEPARTMENT[department.id]?.[provinceNormalizedName] ?? provinceNormalizedName;
     const province = provinces.find(
-      (item) => this.normalizeText(item.name) === provinceNormalizedName,
+      (item) => this.normalizeText(item.name) === canonicalProvinceName,
     );
 
     this.debug("RESOLVE_UBIGEO_PROVINCE", {
@@ -1185,8 +1203,14 @@ export class PreviewOrdersImportUseCase {
 
     const districts = await this.ubigeoRepo.listDistrictsByProvinceIds([province.id]);
 
+    const districtCandidates = new Set([districtNormalizedName]);
+    for (const names of DISTRICT_NAME_EQUIVALENTS_BY_PROVINCE[province.id] ?? []) {
+      if (names.includes(districtNormalizedName)) {
+        names.forEach((name) => districtCandidates.add(name));
+      }
+    }
     const district = districts.find(
-      (item) => this.normalizeText(item.name) === districtNormalizedName,
+      (item) => districtCandidates.has(this.normalizeText(item.name)),
     );
 
     this.debug("RESOLVE_UBIGEO_DISTRICT", {

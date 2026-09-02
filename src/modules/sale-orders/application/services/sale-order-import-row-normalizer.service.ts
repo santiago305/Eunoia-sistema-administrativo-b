@@ -19,6 +19,12 @@ import { SourceRecognitionCodeService } from "src/modules/sources/application/se
 const PROVINCE_NAME_ALIASES_BY_DEPARTMENT: Readonly<
   Record<string, Readonly<Record<string, string>>>
 > = {
+  "08": {
+    cuzco: "cusco",
+  },
+  "11": {
+    nasca: "nazca",
+  },
   "07": {
     "prov const del callao": "callao",
     "prov constitucional del callao": "callao",
@@ -26,9 +32,15 @@ const PROVINCE_NAME_ALIASES_BY_DEPARTMENT: Readonly<
   },
 };
 
+const DEPARTMENT_NAME_ALIASES: Readonly<Record<string, string>> = {
+  cuzco: "cusco",
+};
+
 const DISTRICT_NAME_EQUIVALENTS_BY_PROVINCE: Readonly<
   Record<string, ReadonlyArray<ReadonlyArray<string>>>
 > = {
+  "0801": [["cusco", "cuzco"]],
+  "1103": [["nazca", "nasca"]],
   "0701": [[
     "carmen de la legua",
     "carmen de la legua reynoso",
@@ -274,7 +286,11 @@ export class SaleOrderImportRowNormalizerService {
     if (!departmentNormalizedName || !provinceNormalizedName || !districtNormalizedName) return null;
 
     const departments = await this.ubigeoRepo.listDepartments();
-    const department = departments.find((item) => this.normalizeText(item.name) === departmentNormalizedName);
+    const canonicalDepartmentName =
+      DEPARTMENT_NAME_ALIASES[departmentNormalizedName] ?? departmentNormalizedName;
+    const department = departments.find(
+      (item) => this.normalizeText(item.name) === canonicalDepartmentName,
+    );
     if (!department) return null;
 
     const provinces = await this.ubigeoRepo.listProvincesByDepartmentIds([department.id]);

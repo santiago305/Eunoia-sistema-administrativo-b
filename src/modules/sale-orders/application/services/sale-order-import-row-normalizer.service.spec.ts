@@ -441,4 +441,51 @@ describe("SaleOrderImportRowNormalizerService", () => {
       await moduleRef.close();
     }
   });
+
+  it.each([
+    ["Ica", "Nazca", "Nasca", "11", "1103", "110301"],
+    ["Ica", "Nasca", "Nazca", "11", "1103", "110301"],
+    ["Cuzco", "Cuzco", "Cuzco", "08", "0801", "080101"],
+    ["Cusco", "Cuzco", "Cusco", "08", "0801", "080101"],
+  ])(
+    "resolves ubigeo spelling aliases: %s / %s / %s",
+    async (departmentName, provinceName, districtName, departmentId, provinceId, districtId) => {
+      const ubigeoRepo = {
+        listDepartments: jest.fn().mockResolvedValue([
+          { id: "11", name: "Ica" },
+          { id: "08", name: "Cusco" },
+        ]),
+        listProvincesByDepartmentIds: jest.fn().mockResolvedValue([
+          { id: "1103", name: "Nazca", departmentId: "11" },
+          { id: "0801", name: "Cusco", departmentId: "08" },
+        ]),
+        listDistrictsByProvinceIds: jest.fn().mockResolvedValue([
+          { id: "110301", name: "Nazca", provinceId: "1103" },
+          { id: "080101", name: "Cusco", provinceId: "0801" },
+        ]),
+      };
+      const moduleRef = await Test.createTestingModule({
+        providers: [
+          SaleOrderImportRowNormalizerService,
+          { provide: UBIGEO_REPOSITORY, useValue: ubigeoRepo },
+          { provide: CLIENT_REPOSITORY, useValue: { findByDocument: jest.fn(), findByReference: jest.fn() } },
+          { provide: TELEPHONE_REPOSITORY, useValue: { findByNumber: jest.fn() } },
+          { provide: SaleOrderSkuRecognitionCodeService, useValue: skuRecognitionCodes },
+          { provide: SourceRecognitionCodeService, useValue: sourceRecognitionCodes },
+        ],
+      }).compile();
+
+      try {
+        const service = moduleRef.get(SaleOrderImportRowNormalizerService) as any;
+        const result = await service.resolveUbigeo(departmentName, provinceName, districtName);
+        expect(result).toMatchObject({
+          department: { id: departmentId },
+          province: { id: provinceId },
+          district: { id: districtId },
+        });
+      } finally {
+        await moduleRef.close();
+      }
+    },
+  );
 });
