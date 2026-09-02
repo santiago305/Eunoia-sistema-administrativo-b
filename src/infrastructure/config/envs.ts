@@ -24,6 +24,8 @@ interface EnvVars {
     REDIS_PASSWORD?: string;
     REDIS_DB?: number;
     REDIS_TTL_MS?: number;
+    RATE_LIMIT_SESSION_PER_MINUTE?: number;
+    RATE_LIMIT_IP_PER_MINUTE?: number;
     SALE_ORDER_AUTOMATIC_WORKFLOW_INTERVAL_MS?: number;
     SALE_ORDER_AUTOMATIC_WORKFLOW_RUN_ON_START?: boolean;
     FILES_STORAGE_ROOT?: string;
@@ -71,6 +73,8 @@ const envsSchema = joi.object({
     REDIS_PASSWORD: joi.string().allow('').optional(),
     REDIS_DB: joi.number().optional(),
     REDIS_TTL_MS: joi.number().optional(),
+    RATE_LIMIT_SESSION_PER_MINUTE: joi.number().integer().min(1).optional(),
+    RATE_LIMIT_IP_PER_MINUTE: joi.number().integer().min(1).optional(),
     SALE_ORDER_AUTOMATIC_WORKFLOW_INTERVAL_MS: joi.number().min(10_000).optional(),
     SALE_ORDER_AUTOMATIC_WORKFLOW_RUN_ON_START: joi.boolean().optional(),
     FILES_STORAGE_ROOT: joi.string().optional(),
@@ -106,6 +110,15 @@ if (error) {
 }
 
 const envsVars:EnvVars = value
+
+const sessionRateLimit = envsVars.RATE_LIMIT_SESSION_PER_MINUTE ?? 120;
+const ipRateLimit = envsVars.RATE_LIMIT_IP_PER_MINUTE ?? 600;
+
+if (ipRateLimit < sessionRateLimit) {
+    throw new Error(
+      'Config validation error: RATE_LIMIT_IP_PER_MINUTE debe ser mayor o igual que RATE_LIMIT_SESSION_PER_MINUTE',
+    );
+}
 
 const productionSecrets = [
     { name: 'DB_PASSWORD', value: envsVars.DB_PASSWORD, minLength: 16 },
@@ -192,6 +205,10 @@ export const envs = {
         password: envsVars.REDIS_PASSWORD,
         db: envsVars.REDIS_DB ?? 0,
         ttlMs: envsVars.REDIS_TTL_MS ?? 60_000,
+    },
+    rateLimit: {
+        sessionPerMinute: sessionRateLimit,
+        ipPerMinute: ipRateLimit,
     },
     saleOrderJobs: {
         automaticWorkflowIntervalMs: envsVars.SALE_ORDER_AUTOMATIC_WORKFLOW_INTERVAL_MS ?? 3_600_000,

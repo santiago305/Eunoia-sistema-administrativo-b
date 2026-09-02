@@ -53,9 +53,17 @@ async function bootstrap() {
       'Access-Control-Allow-Origin',
       'x-device-name',
       'x-user-agent',
+      'x-request-id',
       'x-csrf-token',
     ],
-    exposedHeaders: ['Authorization'],
+    exposedHeaders: [
+      'Authorization',
+      'Retry-After',
+      'X-Request-ID',
+      'X-RateLimit-Limit',
+      'X-RateLimit-Remaining',
+      'X-RateLimit-Reset',
+    ],
     credentials: true,
   });
 

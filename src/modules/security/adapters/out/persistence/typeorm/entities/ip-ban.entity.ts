@@ -30,10 +30,12 @@ export class IpBan {
   @Column({ name: 'last_reason', type: 'varchar', length: 120, nullable: true })
   lastReason: string | null;
 
+  @Column({ name: 'policy_reset_at', type: 'timestamptz', nullable: true })
+  policyResetAt: Date | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
 }
-

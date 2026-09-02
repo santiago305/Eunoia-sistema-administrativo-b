@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
+import { randomUUID } from 'crypto';
 
 /**
  * Interceptor que registra el tiempo de ejecuciAn de las solicitudes HTTP.
@@ -41,16 +42,23 @@ export class LoggingInterceptor implements NestInterceptor {
     const request = context.switchToHttp().getRequest();
     const method = request.method;
     const path = request.path ?? request.url;
+    const requestIdHeader = request.headers?.['x-request-id'];
+    const requestId = (
+      Array.isArray(requestIdHeader) ? requestIdHeader[0] : requestIdHeader
+    )?.trim() || randomUUID();
     const now = Date.now();
+    const response = context.switchToHttp().getResponse();
+    response.setHeader('X-Request-ID', requestId);
 
     return next.handle().pipe(
       tap(() => {
-        const response = context.switchToHttp().getResponse();
         this.logger.log(
           JSON.stringify({
             event: 'http_request_completed',
+            requestId,
             method,
             path,
+            userId: request.user?.id ?? null,
             statusCode: response.statusCode,
             durationMs: Date.now() - now,
           }),

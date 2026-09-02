@@ -66,12 +66,12 @@ const redisUrl = `redis://${redisAuth}${envs.redis.host}:${envs.redis.port}/${en
     ThrottlerModule.forRoot([
       {
         ttl: 60_000,
-        limit: 120,
+        limit: envs.rateLimit.sessionPerMinute,
       },
       {
-        name: 'inventory-stream',
+        name: 'ip-safety',
         ttl: 60_000,
-        limit: 20,
+        limit: envs.rateLimit.ipPerMinute,
         blockDuration: 60_000,
       },
     ]),
@@ -115,7 +115,7 @@ const redisUrl = `redis://${redisAuth}${envs.redis.host}:${envs.redis.port}/${en
   providers: [
     {
       provide: getStorageToken(),
-      useClass: RedisThrottlerStorage,
+      useExisting: RedisThrottlerStorage,
     },
     {
       provide: APP_GUARD,

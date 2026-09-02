@@ -25,13 +25,14 @@ describe('RecordIpViolationUseCase', () => {
     expect(resolveClientIpUseCase.normalizeIp).toHaveBeenCalledWith(
       ' 203.0.113.20 ',
     );
-    expect(violationRepository.create).toHaveBeenCalledWith({
+    expect(violationRepository.create).toHaveBeenCalledWith(expect.objectContaining({
       ip: '203.0.113.20',
       reason: 'temporary_ban_request',
       path: '/inventory/stream',
       method: 'GET',
       userAgent: 'test-agent',
-    });
+      countedForBan: false,
+    }));
     expect(violationRepository.save).toHaveBeenCalledTimes(1);
   });
 });

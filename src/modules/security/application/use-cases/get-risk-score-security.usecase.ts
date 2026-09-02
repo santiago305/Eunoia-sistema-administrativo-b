@@ -3,7 +3,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { IpViolation } from '../../adapters/out/persistence/typeorm/entities/ip-violation.entity';
 import { IpBan } from '../../adapters/out/persistence/typeorm/entities/ip-ban.entity';
-import { resolveRiskLevel, resolveWindow, SECURITY_TIMEZONE } from './security-insights.utils';
+import {
+  resolveRiskLevel,
+  resolveWindow,
+  SECURITY_AUDIT_ONLY_REASONS,
+  SECURITY_TIMEZONE,
+} from './security-insights.utils';
 
 @Injectable()
 export class GetRiskScoreSecurityUseCase {
@@ -23,6 +28,9 @@ export class GetRiskScoreSecurityUseCase {
         .select('COUNT(*)', 'violations')
         .addSelect('COUNT(DISTINCT v.ip)', 'uniqueIps')
         .where('v.created_at >= :from AND v.created_at <= :to', { from, to })
+        .andWhere('v.reason NOT IN (:...auditOnlyReasons)', {
+          auditOnlyReasons: SECURITY_AUDIT_ONLY_REASONS,
+        })
         .getRawOne<{ violations: string; uniqueIps: string }>(),
       this.banRepository
         .createQueryBuilder('b')
@@ -67,4 +75,3 @@ export class GetRiskScoreSecurityUseCase {
     };
   }
 }
-

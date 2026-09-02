@@ -4,7 +4,13 @@ import { Repository } from 'typeorm';
 import { IpViolation } from '../../adapters/out/persistence/typeorm/entities/ip-violation.entity';
 import { IpBan } from '../../adapters/out/persistence/typeorm/entities/ip-ban.entity';
 import { ResolveClientIpUseCase } from './resolve-client-ip.usecase';
-import { resolveFrontendRiskLabel, resolveRiskLevel, resolveWindow, SECURITY_TIMEZONE } from './security-insights.utils';
+import {
+  resolveFrontendRiskLabel,
+  resolveRiskLevel,
+  resolveWindow,
+  SECURITY_AUDIT_ONLY_REASONS,
+  SECURITY_TIMEZONE,
+} from './security-insights.utils';
 
 @Injectable()
 export class GetRiskScoreByIpSecurityUseCase {
@@ -25,12 +31,18 @@ export class GetRiskScoreByIpSecurityUseCase {
         .createQueryBuilder('v')
         .where('v.ip = :ip', { ip: normalizedIp })
         .andWhere('v.created_at >= :from AND v.created_at <= :to', { from, to })
+        .andWhere('v.reason NOT IN (:...auditOnlyReasons)', {
+          auditOnlyReasons: SECURITY_AUDIT_ONLY_REASONS,
+        })
         .getCount(),
       this.violationRepository
         .createQueryBuilder('v')
         .select('COUNT(DISTINCT v.reason)', 'count')
         .where('v.ip = :ip', { ip: normalizedIp })
         .andWhere('v.created_at >= :from AND v.created_at <= :to', { from, to })
+        .andWhere('v.reason NOT IN (:...auditOnlyReasons)', {
+          auditOnlyReasons: SECURITY_AUDIT_ONLY_REASONS,
+        })
         .getRawOne<{ count: string }>(),
       this.banRepository
         .createQueryBuilder('b')
@@ -83,4 +95,3 @@ export class GetRiskScoreByIpSecurityUseCase {
     };
   }
 }
-

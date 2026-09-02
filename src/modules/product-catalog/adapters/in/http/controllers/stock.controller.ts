@@ -713,9 +713,8 @@ export class ProductCatalogStockController {
   }
 
   @RequireAnyPermissionGroups(["inventory.realtime.view", "catalog.read"])
-  @SkipThrottle({ default: true })
   @Throttle({
-    "inventory-stream": { limit: 20, ttl: 60_000, blockDuration: 60_000 },
+    default: { limit: 20, ttl: 60_000, blockDuration: 60_000 },
   })
   @Sse("inventory/stream")
   streamInventory(

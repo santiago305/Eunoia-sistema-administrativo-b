@@ -15,9 +15,11 @@ import { ManageManualIpBlacklistUseCase } from '../use-cases/manage-manual-ip-bl
 import { RegisterIpViolationAndApplyPolicyUseCase } from '../use-cases/register-ip-violation-and-apply-policy.usecase';
 import { RecordIpViolationUseCase } from '../use-cases/record-ip-violation.usecase';
 import { ResolveClientIpUseCase } from '../use-cases/resolve-client-ip.usecase';
+import { ResolveRateLimitTrackerUseCase } from '../use-cases/resolve-rate-limit-tracker.usecase';
 
 export const securityUseCasesProviders = [
   ResolveClientIpUseCase,
+  ResolveRateLimitTrackerUseCase,
   CheckIpBanUseCase,
   RegisterIpViolationAndApplyPolicyUseCase,
   RecordIpViolationUseCase,

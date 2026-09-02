@@ -41,6 +41,7 @@ export class GetSecurityReasonsCatalogUseCase {
         return {
           key,
           label: catalogItem?.label ?? humanizeReason(key),
+          description: catalogItem?.description ?? null,
           count,
           active: catalogItem?.active ?? true,
         };

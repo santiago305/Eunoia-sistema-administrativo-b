@@ -23,6 +23,20 @@ export class ExportSecurityAuditCsvUseCase {
       .addSelect("COALESCE(v.path, '')", 'path')
       .addSelect("COALESCE(v.method, '')", 'method')
       .addSelect("COALESCE(v.user_agent, '')", 'userAgent')
+      .addSelect("COALESCE(v.request_id, '')", 'requestId')
+      .addSelect("COALESCE(v.actor, '')", 'actor')
+      .addSelect("COALESCE(v.throttler_name, '')", 'throttlerName')
+      .addSelect("COALESCE(v.tracker_type, '')", 'trackerType')
+      .addSelect("COALESCE(v.tracker_key_hash, '')", 'trackerKeyHash')
+      .addSelect("COALESCE(v.user_id, '')", 'userId')
+      .addSelect("COALESCE(v.session_id, '')", 'sessionId')
+      .addSelect('v.total_hits', 'totalHits')
+      .addSelect('v.request_limit', 'requestLimit')
+      .addSelect('v.window_seconds', 'windowSeconds')
+      .addSelect('v.retry_after_seconds', 'retryAfterSeconds')
+      .addSelect('v.counted_for_ban', 'countedForBan')
+      .addSelect('v.ban_level_after', 'banLevelAfter')
+      .addSelect('v.banned_until_after', 'bannedUntilAfter')
       .where('v.created_at >= :from AND v.created_at <= :to', { from, to })
       .andWhere(reasonFilter.clause, reasonFilter.bind)
       .orderBy('v.created_at', 'DESC')
@@ -33,9 +47,45 @@ export class ExportSecurityAuditCsvUseCase {
         path: string;
         method: string;
         userAgent: string;
+        requestId: string;
+        actor: string;
+        throttlerName: string;
+        trackerType: string;
+        trackerKeyHash: string;
+        userId: string;
+        sessionId: string;
+        totalHits: string | null;
+        requestLimit: string | null;
+        windowSeconds: string | null;
+        retryAfterSeconds: string | null;
+        countedForBan: boolean;
+        banLevelAfter: string | null;
+        bannedUntilAfter: string | null;
       }>();
 
-    const header = ['createdAt', 'createdAtLocal', 'ip', 'reason', 'path', 'method', 'userAgent'];
+    const header = [
+      'createdAt',
+      'createdAtLocal',
+      'ip',
+      'reason',
+      'path',
+      'method',
+      'requestId',
+      'actor',
+      'throttlerName',
+      'trackerType',
+      'trackerKeyHash',
+      'userId',
+      'sessionId',
+      'totalHits',
+      'requestLimit',
+      'windowSeconds',
+      'retryAfterSeconds',
+      'countedForBan',
+      'banLevelAfter',
+      'bannedUntilAfter',
+      'userAgent',
+    ];
     const lines = [
       header.join(','),
       ...rows.map((row) =>
@@ -46,6 +96,20 @@ export class ExportSecurityAuditCsvUseCase {
           row.reason ?? '',
           row.path ?? '',
           row.method ?? '',
+          row.requestId ?? '',
+          row.actor ?? '',
+          row.throttlerName ?? '',
+          row.trackerType ?? '',
+          row.trackerKeyHash ?? '',
+          row.userId ?? '',
+          row.sessionId ?? '',
+          row.totalHits ?? '',
+          row.requestLimit ?? '',
+          row.windowSeconds ?? '',
+          row.retryAfterSeconds ?? '',
+          row.countedForBan ?? false,
+          row.banLevelAfter ?? '',
+          row.bannedUntilAfter ?? '',
           row.userAgent ?? '',
         ]
           .map((value) => toCsvValue(value))
@@ -56,4 +120,3 @@ export class ExportSecurityAuditCsvUseCase {
     return lines.join('\n');
   }
 }
-

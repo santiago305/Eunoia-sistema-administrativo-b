@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { IpBan } from '../../adapters/out/persistence/typeorm/entities/ip-ban.entity';
+import { IpViolation } from '../../adapters/out/persistence/typeorm/entities/ip-violation.entity';
+import { RedisThrottlerStorage } from '../../infrastructure/providers/redis-throttler.storage';
 import { ResolveClientIpUseCase } from './resolve-client-ip.usecase';
 
 @Injectable()
@@ -9,7 +11,10 @@ export class ManageManualIpBlacklistUseCase {
   constructor(
     @InjectRepository(IpBan)
     private readonly banRepository: Repository<IpBan>,
+    @InjectRepository(IpViolation)
+    private readonly violationRepository: Repository<IpViolation>,
     private readonly resolveClientIpUseCase: ResolveClientIpUseCase,
+    private readonly throttlerStorage: RedisThrottlerStorage,
   ) {}
 
   async setManualPermanentBan(params: {
@@ -31,7 +36,18 @@ export class ManageManualIpBlacklistUseCase {
     ban.reviewedBy = params.reviewedBy ?? ban.reviewedBy ?? null;
     ban.lastReason = 'manual_permanent_ban';
 
-    return this.banRepository.save(ban);
+    const saved = await this.banRepository.save(ban);
+    await this.violationRepository.save(
+      this.violationRepository.create({
+        ip,
+        reason: 'manual_permanent_ban',
+        actor: params.reviewedBy ?? params.createdBy ?? null,
+        countedForBan: false,
+        banLevelAfter: saved.banLevel,
+        bannedUntilAfter: saved.bannedUntil,
+      }),
+    );
+    return saved;
   }
 
   async removeManualPermanentBan(ip: string, reviewedBy?: string): Promise<IpBan | null> {
@@ -44,8 +60,20 @@ export class ManageManualIpBlacklistUseCase {
     ban.bannedUntil = null;
     ban.reviewedBy = reviewedBy ?? ban.reviewedBy ?? null;
     ban.lastReason = 'manual_unban';
+    ban.policyResetAt = new Date();
 
-    return this.banRepository.save(ban);
+    const saved = await this.banRepository.save(ban);
+    await this.throttlerStorage.clearTracker(normalizedIp);
+    await this.violationRepository.save(
+      this.violationRepository.create({
+        ip: normalizedIp,
+        reason: 'manual_unban',
+        actor: reviewedBy ?? null,
+        countedForBan: false,
+        banLevelAfter: 0,
+        bannedUntilAfter: null,
+      }),
+    );
+    return saved;
   }
 }
-

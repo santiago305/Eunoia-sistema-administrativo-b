@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { IpBan } from '../../adapters/out/persistence/typeorm/entities/ip-ban.entity';
 import { IpViolation } from '../../adapters/out/persistence/typeorm/entities/ip-violation.entity';
+import { SecurityReasonCatalog } from '../../adapters/out/persistence/typeorm/entities/security-reason-catalog.entity';
 import { ResolveClientIpUseCase } from './resolve-client-ip.usecase';
 import { formatLocalDateTime, SECURITY_TIMEZONE } from './security-insights.utils';
 
@@ -13,6 +14,8 @@ export class GetIpHistorySecurityUseCase {
     private readonly violationRepository: Repository<IpViolation>,
     @InjectRepository(IpBan)
     private readonly banRepository: Repository<IpBan>,
+    @InjectRepository(SecurityReasonCatalog)
+    private readonly reasonCatalogRepository: Repository<SecurityReasonCatalog>,
     private readonly resolveClientIpUseCase: ResolveClientIpUseCase,
   ) {}
 
@@ -28,6 +31,11 @@ export class GetIpHistorySecurityUseCase {
         take: safeLimit,
       }),
     ]);
+    const reasonKeys = Array.from(new Set(violations.map((item) => item.reason)));
+    const reasons = reasonKeys.length
+      ? await this.reasonCatalogRepository.find({ where: { key: In(reasonKeys) } })
+      : [];
+    const reasonByKey = new Map(reasons.map((item) => [item.key, item]));
 
     return {
       ip: normalizedIp,
@@ -42,9 +50,14 @@ export class GetIpHistorySecurityUseCase {
         : null,
       violations: violations.map((violation) => ({
         ...violation,
+        reasonLabel: reasonByKey.get(violation.reason)?.label ?? violation.reason,
+        reasonDescription:
+          reasonByKey.get(violation.reason)?.description ?? null,
         createdAtLocal: formatLocalDateTime(violation.createdAt),
+        bannedUntilAfterLocal: formatLocalDateTime(
+          violation.bannedUntilAfter,
+        ),
       })),
     };
   }
 }
-

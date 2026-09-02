@@ -10,19 +10,15 @@ import { DocType } from "src/shared/domain/value-objects/doc-type";
 import { ProductCatalogStockController } from "./stock.controller";
 
 describe("ProductCatalogStockController permissions", () => {
-  it("uses a dedicated throttler policy for the inventory stream", () => {
+  it("limits inventory stream openings by authenticated session", () => {
     const handler = ProductCatalogStockController.prototype.streamInventory;
 
-    expect(Reflect.getMetadata(`${THROTTLER_SKIP}default`, handler)).toBe(true);
-    expect(
-      Reflect.getMetadata(`${THROTTLER_LIMIT}inventory-stream`, handler),
-    ).toBe(20);
-    expect(
-      Reflect.getMetadata(`${THROTTLER_TTL}inventory-stream`, handler),
-    ).toBe(60_000);
+    expect(Reflect.getMetadata(`${THROTTLER_SKIP}default`, handler)).not.toBe(true);
+    expect(Reflect.getMetadata(`${THROTTLER_LIMIT}default`, handler)).toBe(20);
+    expect(Reflect.getMetadata(`${THROTTLER_TTL}default`, handler)).toBe(60_000);
     expect(
       Reflect.getMetadata(
-        `${THROTTLER_BLOCK_DURATION}inventory-stream`,
+        `${THROTTLER_BLOCK_DURATION}default`,
         handler,
       ),
     ).toBe(60_000);

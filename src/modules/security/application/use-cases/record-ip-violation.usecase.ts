@@ -18,6 +18,11 @@ export class RecordIpViolationUseCase {
     path?: string;
     method?: string;
     userAgent?: string;
+    requestId?: string;
+    actor?: string;
+    countedForBan?: boolean;
+    banLevelAfter?: number;
+    bannedUntilAfter?: Date | null;
   }): Promise<void> {
     const ip = this.resolveClientIpUseCase.normalizeIp(params.ip);
 
@@ -28,6 +33,11 @@ export class RecordIpViolationUseCase {
         path: params.path ?? null,
         method: params.method ?? null,
         userAgent: params.userAgent ?? null,
+        requestId: params.requestId ?? null,
+        actor: params.actor ?? null,
+        countedForBan: params.countedForBan ?? false,
+        banLevelAfter: params.banLevelAfter ?? null,
+        bannedUntilAfter: params.bannedUntilAfter ?? null,
       }),
     );
   }

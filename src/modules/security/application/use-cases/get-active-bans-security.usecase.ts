@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { IpBan } from '../../adapters/out/persistence/typeorm/entities/ip-ban.entity';
+import { SecurityReasonCatalog } from '../../adapters/out/persistence/typeorm/entities/security-reason-catalog.entity';
 import { formatLocalDateTime, SECURITY_TIMEZONE } from './security-insights.utils';
 
 @Injectable()
@@ -9,6 +10,8 @@ export class GetActiveBansSecurityUseCase {
   constructor(
     @InjectRepository(IpBan)
     private readonly banRepository: Repository<IpBan>,
+    @InjectRepository(SecurityReasonCatalog)
+    private readonly reasonCatalogRepository: Repository<SecurityReasonCatalog>,
   ) {}
 
   async execute(params?: { page?: number; limit?: number }) {
@@ -25,6 +28,13 @@ export class GetActiveBansSecurityUseCase {
       .skip((page - 1) * limit)
       .take(limit)
       .getManyAndCount();
+    const reasonKeys = Array.from(
+      new Set(rows.map((item) => item.lastReason).filter((item): item is string => Boolean(item))),
+    );
+    const reasons = reasonKeys.length
+      ? await this.reasonCatalogRepository.find({ where: { key: In(reasonKeys) } })
+      : [];
+    const reasonByKey = new Map(reasons.map((item) => [item.key, item]));
 
     return {
       data: rows.map((ban) => ({
@@ -32,6 +42,10 @@ export class GetActiveBansSecurityUseCase {
         createdAtLocal: formatLocalDateTime(ban.createdAt),
         updatedAtLocal: formatLocalDateTime(ban.updatedAt),
         bannedUntilLocal: formatLocalDateTime(ban.bannedUntil),
+        lastReasonLabel:
+          reasonByKey.get(ban.lastReason ?? '')?.label ?? ban.lastReason,
+        lastReasonDescription:
+          reasonByKey.get(ban.lastReason ?? '')?.description ?? null,
         timeZone: SECURITY_TIMEZONE,
       })),
       total,

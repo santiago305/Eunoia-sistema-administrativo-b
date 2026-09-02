@@ -2,6 +2,17 @@ export type GroupByGranularity = '5min' | '15min' | '30min' | 'hour' | 'day';
 
 export const SECURITY_TIMEZONE = 'America/Lima';
 
+export const SECURITY_AUDIT_ONLY_REASONS = [
+  'rate_limit_blocked_request',
+  'operator_rate_limit_exceeded',
+  'operator_rate_limit_blocked_request',
+  'temporary_ban_request',
+  'manual_permanent_ban_request',
+  'manual_permanent_ban',
+  'manual_unban',
+  'ip_ban_guard_block',
+];
+
 export function resolveWindow(hours?: number) {
   const requestedHours = Number.isFinite(hours) ? (hours as number) : 24;
   const safeHours = Math.min(24 * 30, Math.max(1, requestedHours));

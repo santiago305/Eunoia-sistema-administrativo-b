@@ -26,6 +26,16 @@ export class RegisterIpViolationAndApplyPolicyUseCase {
     path?: string;
     method?: string;
     userAgent?: string;
+    requestId?: string;
+    throttlerName?: string;
+    totalHits?: number;
+    requestLimit?: number;
+    windowSeconds?: number;
+    retryAfterSeconds?: number;
+    trackerType?: 'session' | 'login' | 'ip';
+    trackerKeyHash?: string;
+    userId?: string;
+    sessionId?: string;
   }): Promise<{
     banLevel: number;
     bannedUntil: Date | null;
@@ -33,19 +43,32 @@ export class RegisterIpViolationAndApplyPolicyUseCase {
   }> {
     const ip = this.resolveClientIpUseCase.normalizeIp(params.ip);
 
-    await this.violationRepository.save(
+    const countedForBan = params.reason === ESCALATING_VIOLATION_REASON;
+    const violation = await this.violationRepository.save(
       this.violationRepository.create({
         ip,
         reason: params.reason,
         path: params.path ?? null,
         method: params.method ?? null,
         userAgent: params.userAgent ?? null,
+        requestId: params.requestId ?? null,
+        throttlerName: params.throttlerName ?? null,
+        totalHits: params.totalHits ?? null,
+        requestLimit: params.requestLimit ?? null,
+        windowSeconds: params.windowSeconds ?? null,
+        retryAfterSeconds: params.retryAfterSeconds ?? null,
+        trackerType: params.trackerType ?? null,
+        trackerKeyHash: params.trackerKeyHash ?? null,
+        userId: params.userId ?? null,
+        sessionId: params.sessionId ?? null,
+        countedForBan,
       }),
     );
 
     let ban = await this.banRepository.findOne({ where: { ip } });
 
     if (params.reason !== ESCALATING_VIOLATION_REASON) {
+      await this.savePolicyResult(violation, ban);
       return {
         banLevel: ban?.banLevel ?? 0,
         bannedUntil: ban?.bannedUntil ?? null,
@@ -59,10 +82,12 @@ export class RegisterIpViolationAndApplyPolicyUseCase {
         banLevel: 0,
         bannedUntil: null,
         manualPermanentBan: false,
+        policyResetAt: null,
       });
     }
 
     if (ban.manualPermanentBan) {
+      await this.savePolicyResult(violation, ban);
       return {
         banLevel: ban.banLevel,
         bannedUntil: ban.bannedUntil,
@@ -70,7 +95,11 @@ export class RegisterIpViolationAndApplyPolicyUseCase {
       };
     }
 
-    const windowStart = new Date(Date.now() - VIOLATION_WINDOW_MS);
+    const rollingWindowStart = new Date(Date.now() - VIOLATION_WINDOW_MS);
+    const windowStart =
+      ban.policyResetAt && ban.policyResetAt > rollingWindowStart
+        ? ban.policyResetAt
+        : rollingWindowStart;
     const violationsInWindow = await this.violationRepository.count({
       where: {
         ip,
@@ -85,6 +114,7 @@ export class RegisterIpViolationAndApplyPolicyUseCase {
       ban.lastReason = params.reason;
 
       const saved = await this.banRepository.save(ban);
+      await this.savePolicyResult(violation, saved);
       return {
         banLevel: saved.banLevel,
         bannedUntil: saved.bannedUntil,
@@ -107,10 +137,20 @@ export class RegisterIpViolationAndApplyPolicyUseCase {
     ban.lastReason = params.reason;
 
     const saved = await this.banRepository.save(ban);
+    await this.savePolicyResult(violation, saved);
     return {
       banLevel: saved.banLevel,
       bannedUntil: saved.bannedUntil,
       manualPermanentBan: saved.manualPermanentBan,
     };
+  }
+
+  private async savePolicyResult(
+    violation: IpViolation,
+    ban: IpBan | null,
+  ): Promise<void> {
+    violation.banLevelAfter = ban?.banLevel ?? 0;
+    violation.bannedUntilAfter = ban?.bannedUntil ?? null;
+    await this.violationRepository.save(violation);
   }
 }
