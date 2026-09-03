@@ -73,17 +73,10 @@ import {
   ledgerPermissionGroupsFromRequest,
   productTypePermissionPrefix,
 } from "./catalog-permission-groups";
-
-const INVENTORY_LEDGER_EXPORT_LABELS: Record<string, string> = {
-  createdAt: "Fecha",
-  effectiveDate: "Fecha prevista",
-  originLabel: "Origen",
-  direction: "Direccion",
-  skuName: "SKU",
-  quantity: "Cantidad",
-  warehouseName: "Almacen",
-  createdByName: "Usuario",
-};
+import {
+  buildInventoryLedgerExportRows,
+  INVENTORY_LEDGER_EXPORT_COLUMNS,
+} from "src/modules/product-catalog/application/support/inventory-ledger-export";
 
 const INVENTORY_DOCUMENTS_EXPORT_LABELS: Record<string, string> = {
   createdAt: "Fecha",
@@ -428,14 +421,8 @@ export class ProductCatalogStockController {
 
   @RequireDynamicPermissionGroups(ledgerExportPermissionGroupsFromRequest())
   @Get("inventory-ledger/export-columns")
-  async listInventoryLedgerExportColumns(
-    @Query() query: ListProductCatalogInventoryLedgerMovementsDto,
-    @CurrentUser() user: { id: string },
-  ) {
-    const data = await this.listInventoryLedgerMovements(query, user);
-    const rows = this.toRecordRows(data?.items);
-    const first = rows[0] ?? {};
-    return this.buildExportColumnsFromFirstRow(first, INVENTORY_LEDGER_EXPORT_LABELS);
+  listInventoryLedgerExportColumns() {
+    return INVENTORY_LEDGER_EXPORT_COLUMNS;
   }
 
   @RequireDynamicPermissionGroups(ledgerExportPermissionGroupsFromRequest())
@@ -485,12 +472,37 @@ export class ProductCatalogStockController {
     @CurrentUser() user: { id: string },
     @Res() res: Response,
   ) {
-    const payload = await this.listInventoryLedgerMovements(body, user);
-    const rows = this.toRecordRows(payload?.items);
-    const columns = (body.columns?.length
-      ? body.columns
-      : this.buildExportColumnsFromFirstRow(rows[0] ?? {}, INVENTORY_LEDGER_EXPORT_LABELS))
-      .map((column) => ({ key: column.key, header: column.label }));
+    const exportLimit = 100;
+    const firstPage = await this.listInventoryLedgerMovements(
+      { ...body, page: 1, limit: exportLimit },
+      user,
+    );
+    const allItems = [...(firstPage?.items ?? [])];
+    const totalPages = Math.ceil((firstPage?.total ?? 0) / exportLimit);
+
+    for (let page = 2; page <= totalPages; page += 1) {
+      const payload = await this.listInventoryLedgerMovements(
+        { ...body, page, limit: exportLimit },
+        user,
+      );
+      allItems.push(...(payload?.items ?? []));
+    }
+
+    const availableColumns = new Map(
+      INVENTORY_LEDGER_EXPORT_COLUMNS.map((column) => [column.key, column]),
+    );
+    const requestedColumns = (body.columns ?? [])
+      .map((column) => availableColumns.get(column.key))
+      .filter((column): column is { key: string; label: string } => Boolean(column));
+    const selectedColumns = requestedColumns.length
+      ? requestedColumns
+      : INVENTORY_LEDGER_EXPORT_COLUMNS;
+    const rows = buildInventoryLedgerExportRows(allItems);
+    const columns = selectedColumns.map((column) => ({
+      key: column.key,
+      header: column.label,
+      format: column.key === "skuCode" ? "text" as const : undefined,
+    }));
     const buffer = await new XlsxBuilderService().build({
       sheetName: "Movimientos",
       columns,
