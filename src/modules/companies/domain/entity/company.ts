@@ -5,6 +5,10 @@ import { CompanyPhone } from "../value-objects/company-phone.vo";
 import { CompanyRuc } from "../value-objects/company-ruc.vo";
 import { UpdateCompanyParams } from "../types/update-company.params";
 import { CreateCompanyParams } from "../types/create-company.params";
+import {
+  CompanyPrimaryColor,
+  DEFAULT_COMPANY_PRIMARY_COLOR,
+} from "../value-objects/company-primary-color.vo";
 
 export class Company {
   constructor(
@@ -25,6 +29,7 @@ export class Company {
     public readonly logoPath?: string,
     public readonly isotypePath?: string,
     public readonly certPath?: string,
+    public readonly primaryColor: string = DEFAULT_COMPANY_PRIMARY_COLOR,
     public readonly production: boolean = true,
     public readonly isActive: boolean = true,
     public readonly createdAt?: Date,
@@ -35,6 +40,7 @@ export class Company {
     const normalizedRuc = new CompanyRuc(ruc).value;
     const normalizedEmail = email ? new CompanyEmail(email).value : undefined;
     const normalizedPhone = phone ? new CompanyPhone(phone).value : undefined;
+    const normalizedPrimaryColor = new CompanyPrimaryColor(primaryColor).value;
 
     this.companyId = normalizedCompanyId;
     this.name = normalizedName;
@@ -52,6 +58,7 @@ export class Company {
     this.solPass = solPass;
     this.logoPath = logoPath;
     this.certPath = certPath;
+    this.primaryColor = normalizedPrimaryColor;
     this.production = production;
     this.isActive = isActive;
     this.createdAt = createdAt;
@@ -83,6 +90,7 @@ export class Company {
       params.logoPath,
       params.isotypePath,
       params.certPath,
+      params.primaryColor ?? DEFAULT_COMPANY_PRIMARY_COLOR,
       params.production ?? true,
       params.isActive ?? true,
       now,
@@ -108,6 +116,7 @@ export class Company {
     logoPath?: string;
     isotypePath?: string;
     certPath?: string;
+    primaryColor?: string;
     production: boolean;
     isActive: boolean;
     createdAt?: Date;
@@ -131,6 +140,7 @@ export class Company {
       params.logoPath,
       params.isotypePath,
       params.certPath,
+      params.primaryColor ?? DEFAULT_COMPANY_PRIMARY_COLOR,
       params.production,
       params.isActive,
       params.createdAt,
@@ -165,6 +175,7 @@ export class Company {
       params.logoPath ?? this.logoPath,
       params.isotypePath ?? this.isotypePath,
       params.certPath ?? this.certPath,
+      params.primaryColor ?? this.primaryColor,
       params.production ?? this.production,
       params.isActive ?? this.isActive,
       this.createdAt,

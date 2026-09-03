@@ -54,6 +54,7 @@ export class UpdateCompanyUsecase {
         ...(input.codLocal !== undefined ? { codLocal: input.codLocal } : {}),
         ...(input.solUser !== undefined ? { solUser: input.solUser } : {}),
         ...(input.solPass !== undefined ? { solPass: input.solPass } : {}),
+        ...(input.primaryColor !== undefined ? { primaryColor: input.primaryColor } : {}),
         ...(input.production !== undefined ? { production: input.production } : {}),
         ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
         ...(input.email !== undefined ? { email: normalizedEmail } : {}),
@@ -76,6 +77,9 @@ export class UpdateCompanyUsecase {
             ...(input.codLocal !== undefined ? { codLocal: nextCompany.codLocal } : {}),
             ...(input.solUser !== undefined ? { solUser: nextCompany.solUser } : {}),
             ...(input.solPass !== undefined ? { solPass: nextCompany.solPass } : {}),
+            ...(input.primaryColor !== undefined
+              ? { primaryColor: nextCompany.primaryColor }
+              : {}),
             ...(input.production !== undefined ? { production: nextCompany.production } : {}),
             ...(input.isActive !== undefined ? { isActive: nextCompany.isActive } : {}),
             updatedAt: this.clock.now(),

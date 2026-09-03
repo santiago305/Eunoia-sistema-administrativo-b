@@ -19,6 +19,7 @@ export class CompanyHttpMapper {
       codLocal: dto.codLocal?.trim() || undefined,
       solUser: dto.solUser?.trim() || undefined,
       solPass: dto.solPass?.trim() || undefined,
+      primaryColor: dto.primaryColor?.trim().toUpperCase() || undefined,
       production: dto.production,
       isActive: dto.isActive,
     };
@@ -43,6 +44,9 @@ export class CompanyHttpMapper {
       ...(dto.codLocal !== undefined ? { codLocal: dto.codLocal.trim() || undefined } : {}),
       ...(dto.solUser !== undefined ? { solUser: dto.solUser.trim() || undefined } : {}),
       ...(dto.solPass !== undefined ? { solPass: dto.solPass.trim() || undefined } : {}),
+      ...(dto.primaryColor !== undefined
+        ? { primaryColor: dto.primaryColor.trim().toUpperCase() }
+        : {}),
       ...(dto.production !== undefined ? { production: dto.production } : {}),
       ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
     };

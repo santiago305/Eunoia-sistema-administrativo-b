@@ -20,6 +20,7 @@ export class CompanyOutputMapper {
       logoPath: company.logoPath,
       isotypePath: company.isotypePath,
       certPath: company.certPath,
+      primaryColor: company.primaryColor,
       production: company.production,
       isActive: company.isActive,
       createdAt: company.createdAt,

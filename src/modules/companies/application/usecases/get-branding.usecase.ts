@@ -16,6 +16,7 @@ export class GetCompanyBrandingUsecase {
       name: company?.name ?? null,
       logoPath: company?.logoPath ?? null,
       isotypePath: company?.isotypePath ?? null,
+      primaryColor: company?.primaryColor ?? null,
     });
   }
 }

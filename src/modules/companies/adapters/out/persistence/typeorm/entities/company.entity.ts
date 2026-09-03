@@ -59,6 +59,9 @@ export class CompanyEntity {
   @Column({ name: "cert_path", type: "varchar", length: 255, nullable: true })
   certPath!: string | null;
 
+  @Column({ name: "primary_color", type: "varchar", length: 7, default: "#21B5A6" })
+  primaryColor!: string;
+
   @Column({ type: "boolean", default: true })
   production!: boolean;
 

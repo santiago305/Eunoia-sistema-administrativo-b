@@ -24,6 +24,7 @@ export class CompanyTypeormMapper {
       logoPath: entity.logoPath ?? undefined,
       isotypePath: entity.isotypePath ?? undefined,
       certPath: entity.certPath ?? undefined,
+      primaryColor: entity.primaryColor,
       production: entity.production,
       isActive: entity.isActive,
       createdAt: entity.createdAt,
@@ -50,6 +51,7 @@ export class CompanyTypeormMapper {
       logoPath: company.logoPath ?? null,
       isotypePath: company.isotypePath ?? null,
       certPath: company.certPath ?? null,
+      primaryColor: company.primaryColor,
       production: company.production,
       isActive: company.isActive,
       createdAt: company.createdAt,
@@ -81,6 +83,7 @@ export class CompanyTypeormMapper {
     if (params.logoPath !== undefined) patch.logoPath = params.logoPath;
     if (params.isotypePath !== undefined) patch.isotypePath = params.isotypePath;
     if (params.certPath !== undefined) patch.certPath = params.certPath;
+    if (params.primaryColor !== undefined) patch.primaryColor = params.primaryColor;
     if (params.production !== undefined) patch.production = params.production;
     if (params.isActive !== undefined) patch.isActive = params.isActive;
     if (params.createdAt !== undefined) patch.createdAt = params.createdAt;

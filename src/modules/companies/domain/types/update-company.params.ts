@@ -15,6 +15,7 @@ export interface UpdateCompanyParams {
   logoPath?: string;
   isotypePath?: string;
   certPath?: string;
+  primaryColor?: string;
   production?: boolean;
   isActive?: boolean;
 }

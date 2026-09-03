@@ -12,6 +12,7 @@ export interface UpdateCompanyInput {
   codLocal?: string;
   solUser?: string;
   solPass?: string;
+  primaryColor?: string;
   production?: boolean;
   isActive?: boolean;
 }

@@ -82,6 +82,7 @@ export class CompanyTypeormRepository implements CompanyRepository {
       logoPath?: string;
       isotypePath?: string;
       certPath?: string;
+      primaryColor?: string;
       production?: boolean;
       isActive?: boolean;
       createdAt?: Date;

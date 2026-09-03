@@ -6,6 +6,7 @@ import {
   IsString,
   Length,
   MaxLength,
+  Matches,
 } from "class-validator";
 
 export class HttpCreateCompanyDto {
@@ -73,6 +74,13 @@ export class HttpCreateCompanyDto {
   @IsString()
   @MaxLength(255)
   solPass?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^#[0-9A-Fa-f]{6}$/, {
+    message: "El color principal debe tener formato hexadecimal #RRGGBB",
+  })
+  primaryColor?: string;
 
   @IsOptional()
   @IsBoolean()
