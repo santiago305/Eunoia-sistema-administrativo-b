@@ -1,5 +1,6 @@
 export type SaleOrderItemDisplayComponent = {
   customSku: string | null;
+  backendSku?: string | null;
   name: string | null;
   attributes?: Array<{ value: string }>;
   quantity: number;
@@ -57,11 +58,13 @@ export function buildSaleOrderItemDisplayFields(
   components: SaleOrderItemDisplayComponent[],
 ): SaleOrderItemDisplayFields {
   const SKUS = components
-    .filter((component) => Boolean(component.customSku?.trim()))
     .map((component) => {
-      const customSku = component.customSku!.trim();
-      return `${customSku}(${formatSaleOrderDisplayQuantity(component.quantity)})`;
+      const sku = component.customSku?.trim() || component.backendSku?.trim();
+      return sku
+        ? `${sku}(${formatSaleOrderDisplayQuantity(component.quantity)})`
+        : "";
     })
+    .filter(Boolean)
     .join(";");
 
   const detail = components

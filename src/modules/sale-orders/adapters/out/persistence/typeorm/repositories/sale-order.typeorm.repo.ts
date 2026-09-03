@@ -1577,6 +1577,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       string,
       Array<{
         customSku: string | null;
+        backendSku: string | null;
         name: string | null;
         attributes: Array<{ code: string; name: string | null; value: string }>;
         quantity: number;
@@ -1607,6 +1608,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
             const sku = skuById.get(component.skuId);
             return {
               customSku: component.customSkuSnapshot ?? sku?.customSku ?? null,
+              backendSku: component.backendSkuSnapshot ?? sku?.backendSku ?? null,
               name: component.skuNameSnapshot ?? sku?.name ?? null,
               attributes: component.attributesSnapshot?.length
                 ? component.attributesSnapshot
@@ -2567,6 +2569,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     const orderedDisplayComponents = items.flatMap((item) =>
       (compsByItemId.get(item.id) ?? []).map((component) => ({
         customSku: component.sku.customSku ?? null,
+        backendSku: component.sku.backendSku ?? null,
         name: component.sku.name ?? null,
         attributes: component.attributes,
         quantity: Number(component.quantity ?? 0),

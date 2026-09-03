@@ -60,4 +60,23 @@ describe("buildSaleOrderItemDisplayFields", () => {
       detail: "AMPOLLA x 1",
     });
   });
+
+  it("uses backend SKU only when the custom SKU is missing", () => {
+    const result = buildSaleOrderItemDisplayFields([
+      {
+        customSku: "EVA003",
+        backendSku: "BACKEND-003",
+        name: "AMPOLLA",
+        quantity: 1,
+      },
+      {
+        customSku: null,
+        backendSku: "BACKEND-004",
+        name: "CAJA",
+        quantity: 2,
+      },
+    ]);
+
+    expect(result.SKUS).toBe("EVA003(1);BACKEND-004(2)");
+  });
 });

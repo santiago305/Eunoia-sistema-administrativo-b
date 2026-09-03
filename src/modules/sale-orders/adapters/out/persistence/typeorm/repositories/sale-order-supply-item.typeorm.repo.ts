@@ -55,6 +55,15 @@ export class SaleOrderSupplyItemTypeormRepository implements SaleOrderSupplyItem
     return rows.map((row) => this.toDomain(row));
   }
 
+  async listBySaleOrderIds(saleOrderIds: string[], tx?: TransactionContext): Promise<SaleOrderSupplyItem[]> {
+    if (!saleOrderIds.length) return [];
+    const rows = await this.getManager(tx).getRepository(SaleOrderSupplyItemEntity).find({
+      where: { saleOrderId: In(saleOrderIds) },
+      order: { createdAt: 'ASC' },
+    });
+    return rows.map((row) => this.toDomain(row));
+  }
+
   async findCatalogItems(supplySkuIds: string[], unitIds: string[], tx?: TransactionContext) {
     const manager = this.getManager(tx);
     const [skus, units] = await Promise.all([

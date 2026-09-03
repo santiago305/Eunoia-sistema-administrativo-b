@@ -35,6 +35,7 @@ export type ReplaceSaleOrderSupplyItem = {
 export interface SaleOrderSupplyItemRepository {
   saleOrderExists(saleOrderId: string, tx?: TransactionContext): Promise<boolean>;
   listBySaleOrderId(saleOrderId: string, tx?: TransactionContext): Promise<SaleOrderSupplyItem[]>;
+  listBySaleOrderIds(saleOrderIds: string[], tx?: TransactionContext): Promise<SaleOrderSupplyItem[]>;
   findCatalogItems(supplySkuIds: string[], unitIds: string[], tx?: TransactionContext): Promise<{
     supplies: SaleOrderSupplyCatalogItem[];
     units: SaleOrderSupplyUnit[];

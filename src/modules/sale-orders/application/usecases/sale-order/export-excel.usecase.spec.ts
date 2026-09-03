@@ -7,9 +7,16 @@ describe("ExportSaleOrdersExcelUsecase", () => {
   const saleOrderRepo = {
     list: jest.fn(),
   };
+  const supplyItemRepo = {
+    listBySaleOrderIds: jest.fn(),
+  };
+
+  const createUsecase = () =>
+    new ExportSaleOrdersExcelUsecase(saleOrderRepo as any, supplyItemRepo as any);
 
   beforeEach(() => {
     jest.clearAllMocks();
+    supplyItemRepo.listBySaleOrderIds.mockResolvedValue([]);
     saleOrderRepo.list.mockResolvedValue({
       total: 1,
       items: [
@@ -45,7 +52,7 @@ describe("ExportSaleOrdersExcelUsecase", () => {
   });
 
   it("exports selected columns with sanitized filters", async () => {
-    const usecase = new ExportSaleOrdersExcelUsecase(saleOrderRepo as any);
+    const usecase = createUsecase();
 
     const result = await usecase.execute({
       columns: [{ key: "number", label: "Numero" }],
@@ -78,7 +85,7 @@ describe("ExportSaleOrdersExcelUsecase", () => {
   });
 
   it("removes toolbar date rules when date range export is disabled", async () => {
-    const usecase = new ExportSaleOrdersExcelUsecase(saleOrderRepo as any);
+    const usecase = createUsecase();
 
     await usecase.execute({
       columns: [{ key: "number", label: "Numero" }],
@@ -121,7 +128,7 @@ describe("ExportSaleOrdersExcelUsecase", () => {
         },
       ],
     });
-    const usecase = new ExportSaleOrdersExcelUsecase(saleOrderRepo as any);
+    const usecase = createUsecase();
 
     const result = await usecase.execute({
       columns: [{ key: "number", label: "Numero" }],
@@ -148,7 +155,21 @@ describe("ExportSaleOrdersExcelUsecase", () => {
         },
       ],
     });
-    const usecase = new ExportSaleOrdersExcelUsecase(saleOrderRepo as any);
+    supplyItemRepo.listBySaleOrderIds.mockResolvedValueOnce([
+      {
+        saleOrderId: "order-1",
+        quantity: 2,
+        customSkuSnapshot: "INS00045",
+        backendSkuSnapshot: "BACKEND-INS-45",
+      },
+      {
+        saleOrderId: "order-1",
+        quantity: 1.5,
+        customSkuSnapshot: null,
+        backendSkuSnapshot: "BACKEND-INS-46",
+      },
+    ]);
+    const usecase = createUsecase();
 
     const result = await usecase.execute({
       columns: [
@@ -163,12 +184,15 @@ describe("ExportSaleOrdersExcelUsecase", () => {
 
     expect(worksheet?.getCell("A1").value).toBe("SKUS");
     expect(worksheet?.getCell("B1").value).toBe("Detalle");
-    expect(worksheet?.getCell("A2").value).toBe("EVA01863(1);EVA01893(1)");
+    expect(worksheet?.getCell("A2").value).toBe(
+      "EVA01863(1);EVA01893(1);INS00045(2);BACKEND-INS-46(1.5)",
+    );
     expect(worksheet?.getCell("B2").value).toBe("AMPOLLA ANTI ACNE x 2; AMPOLLA ANTI MANCHAS x 1");
+    expect(supplyItemRepo.listBySaleOrderIds).toHaveBeenCalledWith(["order-1"]);
   });
 
   it("exports the client reference as a selectable column", async () => {
-    const usecase = new ExportSaleOrdersExcelUsecase(saleOrderRepo as any);
+    const usecase = createUsecase();
 
     const result = await usecase.execute({
       columns: [{ key: "clientReference", label: "Referencia" }],
@@ -192,7 +216,7 @@ describe("ExportSaleOrdersExcelUsecase", () => {
         },
       ],
     });
-    const usecase = new ExportSaleOrdersExcelUsecase(saleOrderRepo as any);
+    const usecase = createUsecase();
 
     const result = await usecase.execute({
       columns: [{ key: "lotes", label: "Lote" }],
@@ -207,7 +231,7 @@ describe("ExportSaleOrdersExcelUsecase", () => {
   });
 
   it("rejects empty or unknown column selections", async () => {
-    const usecase = new ExportSaleOrdersExcelUsecase(saleOrderRepo as any);
+    const usecase = createUsecase();
 
     await expect(usecase.execute({ columns: [] })).rejects.toBeInstanceOf(BadRequestException);
     await expect(usecase.execute({ columns: [{ key: "missing", label: "Missing" }] })).rejects.toBeInstanceOf(BadRequestException);

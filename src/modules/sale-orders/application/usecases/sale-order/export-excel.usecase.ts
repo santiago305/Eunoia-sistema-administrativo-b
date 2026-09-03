@@ -11,6 +11,12 @@ import {
 import { sanitizeSaleOrderSearchSnapshot } from "../../support/sale-order-search.utils";
 import { XlsxBuilderService, type XlsxColumn } from "src/shared/application/services/xlsx-builder.service";
 import { SaleOrderAccessPolicyService } from "../../services/sale-order-access-policy.service";
+import {
+  SALE_ORDER_SUPPLY_ITEM_REPOSITORY,
+  SaleOrderSupplyItemRepository,
+} from "src/modules/sale-orders/domain/ports/sale-order-supply-item.repository";
+import { SaleOrderSupplyItem } from "src/modules/sale-orders/domain/entities/sale-order-supply-item";
+import { formatSaleOrderDisplayQuantity } from "../../support/sale-order-item-display-fields";
 
 type ExportColumnDefinition = {
   key: string;
@@ -30,6 +36,24 @@ const TOOLBAR_DATE_FIELDS = new Set<string>([
 
 const orderNumber = (row: SaleOrderListItemOutput) =>
   [row.serie, row.correlative].filter((value) => value !== null && value !== undefined && value !== "").join("-");
+
+const supplySkuCode = (item: SaleOrderSupplyItem): string =>
+  item.customSkuSnapshot?.trim() || item.backendSkuSnapshot.trim();
+
+const appendSupplySkus = (
+  productSkus: string,
+  supplies: SaleOrderSupplyItem[],
+): string => [
+  productSkus.trim(),
+  ...supplies
+    .map((item) => {
+      const sku = supplySkuCode(item);
+      return sku
+        ? `${sku}(${formatSaleOrderDisplayQuantity(item.quantity)})`
+        : "";
+    })
+    .filter(Boolean),
+].filter(Boolean).join(";");
 
 const EXPORT_COLUMNS: ExportColumnDefinition[] = [
   { key: "number", label: "Numero", map: orderNumber },
@@ -78,6 +102,8 @@ export class ExportSaleOrdersExcelUsecase {
   constructor(
     @Inject(SALE_ORDER_REPOSITORY)
     private readonly saleOrderRepo: SaleOrderRepository,
+    @Inject(SALE_ORDER_SUPPLY_ITEM_REPOSITORY)
+    private readonly supplyItemRepo: SaleOrderSupplyItemRepository,
     private readonly accessPolicy?: SaleOrderAccessPolicyService,
   ) {}
 
@@ -132,10 +158,24 @@ export class ExportSaleOrdersExcelUsecase {
       throw new BadRequestException("No hay columnas autorizadas para exportar");
     }
 
+    const suppliesByOrderId = new Map<string, SaleOrderSupplyItem[]>();
+    if (authorizedSelected.some(({ source }) => source.key === "SKUS")) {
+      const supplies = await this.supplyItemRepo.listBySaleOrderIds(
+        items.map((item) => item.id),
+      );
+      supplies.forEach((supply) => {
+        const current = suppliesByOrderId.get(supply.saleOrderId) ?? [];
+        current.push(supply);
+        suppliesByOrderId.set(supply.saleOrderId, current);
+      });
+    }
+
     const rows = items.map((item) => {
       const output: Record<string, unknown> = {};
       authorizedSelected.forEach(({ requested, source }) => {
-        output[requested.key] = source.map(item);
+        output[requested.key] = source.key === "SKUS"
+          ? appendSupplySkus(item.SKUS ?? "", suppliesByOrderId.get(item.id) ?? [])
+          : source.map(item);
       });
       return output;
     });
