@@ -57,4 +57,14 @@ describe("inventory ledger export", () => {
       direction: "Salida",
     });
   });
+
+  it("formats effective dates returned as Date objects", () => {
+    const [movement] = buildInventoryLedgerExportRows([
+      {
+        effectiveDate: new Date("2026-08-12T00:00:00.000Z"),
+      },
+    ]);
+
+    expect(movement.effectiveDate).toBe("12/08/2026");
+  });
 });

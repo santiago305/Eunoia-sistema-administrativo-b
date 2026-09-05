@@ -17,7 +17,7 @@ export const INVENTORY_LEDGER_EXPORT_COLUMNS: InventoryLedgerExportColumn[] = [
 
 type InventoryLedgerExportMovement = {
   createdAt?: Date | string | null;
-  effectiveDate?: string | null;
+  effectiveDate?: Date | string | null;
   quantity?: number | null;
   direction?: Direction | string | null;
   warehouseName?: string | null;
@@ -34,9 +34,19 @@ type InventoryLedgerExportMovement = {
 
 const preferredAttributeCodes = ["presentation", "variant", "color"];
 
-const formatDateOnly = (value?: string | null) => {
-  const match = value?.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  return match ? `${match[3]}/${match[2]}/${match[1]}` : (value ?? "");
+const formatDateOnly = (value?: Date | string | null) => {
+  if (value == null) return "";
+
+  const normalizedValue =
+    value instanceof Date
+      ? Number.isNaN(value.getTime())
+        ? ""
+        : value.toISOString().slice(0, 10)
+      : typeof value === "string"
+        ? value
+        : "";
+  const match = normalizedValue.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : normalizedValue;
 };
 
 const formatDetailedSkuName = (movement: InventoryLedgerExportMovement) => {

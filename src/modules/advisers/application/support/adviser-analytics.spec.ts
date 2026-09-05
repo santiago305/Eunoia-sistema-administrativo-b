@@ -42,4 +42,25 @@ describe('adviser analytics', () => {
     expect(points[2].performanceScore).toBeGreaterThan(points[0].performanceScore);
     expect(getAdviserPerformanceTrend(points).direction).toBe('improved');
   });
+
+  it('starts the series at the first month with activity', () => {
+    const points = buildAdviserMonthlyAnalytics(
+      ['2026-01', '2026-02', '2026-03', '2026-04'],
+      [
+        { monthKey: '2026-03', orders: 1, soldTotal: 500, collectedTotal: 0 },
+      ],
+    );
+
+    expect(points.map((point) => point.monthKey)).toEqual([
+      '2026-03',
+      '2026-04',
+    ]);
+    expect(points[1]).toMatchObject({ orders: 0, performanceScore: 0 });
+  });
+
+  it('returns no points when the whole period has no activity', () => {
+    expect(
+      buildAdviserMonthlyAnalytics(['2026-01', '2026-02'], []),
+    ).toEqual([]);
+  });
 });

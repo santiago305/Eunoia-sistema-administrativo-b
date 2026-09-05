@@ -75,12 +75,23 @@ export const buildAdviserMonthlyAnalytics = (
       collectedTotal: Number(row?.collectedTotal ?? 0),
     };
   });
-  const averageOrders =
-    totals.reduce((sum, item) => sum + item.orders, 0) / totals.length;
-  const averageSold =
-    totals.reduce((sum, item) => sum + item.soldTotal, 0) / totals.length;
+  const firstActiveMonthIndex = totals.findIndex(
+    (item) =>
+      item.orders > 0 || item.soldTotal > 0 || item.collectedTotal > 0,
+  );
+  const visibleTotals =
+    firstActiveMonthIndex === -1 ? [] : totals.slice(firstActiveMonthIndex);
 
-  return totals.map((item) => {
+  if (!visibleTotals.length) return [];
+
+  const averageOrders =
+    visibleTotals.reduce((sum, item) => sum + item.orders, 0) /
+    visibleTotals.length;
+  const averageSold =
+    visibleTotals.reduce((sum, item) => sum + item.soldTotal, 0) /
+    visibleTotals.length;
+
+  return visibleTotals.map((item) => {
     const ordersScore = averageOrders
       ? clampScore((item.orders / averageOrders) * 50)
       : 0;
