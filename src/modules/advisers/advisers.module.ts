@@ -17,6 +17,7 @@ import { ListingSearchRecentEntity } from 'src/shared/listing-search/adapters/ou
 import { ListingSearchTypeormRepository } from 'src/shared/listing-search/adapters/out/persistence/typeorm/repositories/listing-search.typeorm.repo';
 import { LISTING_SEARCH_STORAGE } from 'src/shared/listing-search/domain/listing-search.repository';
 import { ListAdviserOrdersUsecase } from './application/usecases/list-adviser-orders.usecase';
+import { GetAdviserAnalyticsUsecase } from './application/usecases/get-adviser-analytics.usecase';
 
 @Module({
   imports: [
@@ -24,7 +25,7 @@ import { ListAdviserOrdersUsecase } from './application/usecases/list-adviser-or
     AccessControlModule,
   ],
   controllers: [AdvisersController],
-  providers: [ListAdvisersUsecase, CreateAdviserUsecase, ListAdviserSummaryUsecase, ListAdviserOrdersUsecase, SetAdviserActiveUsecase, UpdateAdviserUsecase, AdviserSearchService, { provide: LISTING_SEARCH_STORAGE, useClass: ListingSearchTypeormRepository }],
+  providers: [ListAdvisersUsecase, CreateAdviserUsecase, ListAdviserSummaryUsecase, ListAdviserOrdersUsecase, GetAdviserAnalyticsUsecase, SetAdviserActiveUsecase, UpdateAdviserUsecase, AdviserSearchService, { provide: LISTING_SEARCH_STORAGE, useClass: ListingSearchTypeormRepository }],
   exports: [ListAdvisersUsecase],
 })
 export class AdvisersModule {}

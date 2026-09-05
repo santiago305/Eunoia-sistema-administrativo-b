@@ -12,6 +12,7 @@ import { UpdateAdviserUsecase } from '../../../application/usecases/update-advis
 import { AdviserSearchService } from '../../../application/services/adviser-search.service';
 import { User as CurrentUser } from 'src/shared/utilidades/decorators/user.decorator';
 import { ListAdviserOrdersUsecase } from '../../../application/usecases/list-adviser-orders.usecase';
+import { GetAdviserAnalyticsUsecase } from '../../../application/usecases/get-adviser-analytics.usecase';
 
 @Controller('advisers')
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard)
@@ -21,6 +22,7 @@ export class AdvisersController {
     private readonly createAdviser: CreateAdviserUsecase,
     private readonly summary: ListAdviserSummaryUsecase,
     private readonly adviserOrders: ListAdviserOrdersUsecase,
+    private readonly adviserAnalytics: GetAdviserAnalyticsUsecase,
     private readonly setActive: SetAdviserActiveUsecase,
     private readonly updateAdviser: UpdateAdviserUsecase,
     private readonly search: AdviserSearchService,
@@ -41,6 +43,15 @@ export class AdvisersController {
   @RequirePermissions('advisers.view')
   adviserOrderList(@Param('userId', ParseUUIDPipe) userId: string, @Query('page') page: number, @Query('limit') limit: number, @Query('startDate') startDate: string, @Query('endDate') endDate: string) {
     return this.adviserOrders.execute({ adviserUserId: userId, page, limit, startDate, endDate });
+  }
+
+  @Get(':userId/analytics')
+  @RequirePermissions('advisers.view')
+  analytics(
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @Query('months') months: number,
+  ) {
+    return this.adviserAnalytics.execute({ adviserUserId: userId, months });
   }
 
   @Get('search-state')
