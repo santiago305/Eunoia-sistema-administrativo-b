@@ -39,4 +39,25 @@ export class ListAdvisersUsecase {
       isActive: true,
     }));
   }
+
+  async listCandidates(): Promise<AdviserOutput[]> {
+    const [activeAdvisers, users] = await Promise.all([
+      this.advisers.find({ where: { isActive: true } }),
+      this.users.find({
+        where: { deleted: false },
+        order: { name: 'ASC' },
+      }),
+    ]);
+    const activeAdviserIds = new Set(
+      activeAdvisers.map((adviser) => adviser.userId),
+    );
+
+    return users
+      .filter((user) => !activeAdviserIds.has(user.id))
+      .map((user) => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      }));
+  }
 }

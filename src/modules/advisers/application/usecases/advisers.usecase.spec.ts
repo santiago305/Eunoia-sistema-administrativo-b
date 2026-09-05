@@ -34,7 +34,12 @@ describe('adviser use cases', () => {
     await expect(
       new ListAdvisersUsecase(advisers, users).execute(),
     ).resolves.toEqual([
-      { id: 'user-1', name: 'Ana', email: 'ana@example.com' },
+      {
+        id: 'user-1',
+        name: 'Ana',
+        email: 'ana@example.com',
+        isActive: true,
+      },
     ]);
   });
 
@@ -49,7 +54,10 @@ describe('adviser use cases', () => {
       ) => { execute(input: { userId: string }): Promise<unknown> };
     };
     const advisers = {
-      findOneBy: jest.fn().mockResolvedValue({ userId: 'user-1' }),
+      findOneBy: jest.fn().mockResolvedValue({
+        userId: 'user-1',
+        isActive: true,
+      }),
       save: jest.fn(),
     };
     const users = {
@@ -69,7 +77,35 @@ describe('adviser use cases', () => {
       id: 'user-1',
       name: 'Ana',
       email: 'ana@example.com',
+      isActive: true,
     });
     expect(advisers.save).not.toHaveBeenCalled();
+  });
+
+  it('lists active users that are not already active advisers as candidates', async () => {
+    expect(existsSync(`${listPath}.ts`)).toBe(true);
+    if (!existsSync(`${listPath}.ts`)) return;
+
+    const { ListAdvisersUsecase } = require(listPath) as {
+      ListAdvisersUsecase: new (
+        advisers: unknown,
+        users: unknown,
+      ) => { listCandidates(): Promise<unknown> };
+    };
+    const advisers = {
+      find: jest.fn().mockResolvedValue([{ userId: 'user-1' }]),
+    };
+    const users = {
+      find: jest.fn().mockResolvedValue([
+        { id: 'user-1', name: 'Ana', email: 'ana@example.com' },
+        { id: 'user-2', name: 'Bea', email: 'bea@example.com' },
+      ]),
+    };
+
+    await expect(
+      new ListAdvisersUsecase(advisers, users).listCandidates(),
+    ).resolves.toEqual([
+      { id: 'user-2', name: 'Bea', email: 'bea@example.com' },
+    ]);
   });
 });

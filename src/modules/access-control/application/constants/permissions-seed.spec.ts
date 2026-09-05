@@ -14,6 +14,40 @@ describe("permissions seed", () => {
     expect(codes.has("payments.manage")).toBe(true);
   });
 
+  it("includes the complete adviser permission contract", () => {
+    const adviserPermissions = PERMISSIONS_SEED.filter(
+      (item) => item.module === "advisers",
+    );
+
+    expect(adviserPermissions.map((item) => item.code)).toEqual([
+      "page.advisers.view",
+      "advisers.view",
+      "advisers.view_orders",
+      "advisers.view_performance",
+      "advisers.manage",
+    ]);
+    expect(adviserPermissions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "page.advisers.view",
+          resource: "advisers",
+          action: "view",
+          type: "page",
+        }),
+        expect.objectContaining({
+          code: "advisers.view_orders",
+          resource: "adviser_orders",
+          type: "action",
+        }),
+        expect.objectContaining({
+          code: "advisers.view_performance",
+          resource: "adviser_performance",
+          type: "action",
+        }),
+      ]),
+    );
+  });
+
   it("includes the final purchase module permission matrix", () => {
     const codes = new Set(PERMISSIONS_SEED.map((item) => item.code));
     const expectedCodes = [

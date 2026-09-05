@@ -138,6 +138,7 @@ const PRODUCTION_FINE_ACTION_PERMISSIONS: PermissionSeedItem[] = [
 
 export const PERMISSIONS_SEED: PermissionSeedItem[] = [
   { code: 'page.dashboard.view', name: 'Ver dashboard', description: 'Acceso a la vista principal', module: 'dashboard', resource: 'dashboard', action: 'view', type: 'page' },
+  { code: 'page.advisers.view', name: 'Ver asesores', description: 'Acceso a la pantalla de asesores', module: 'advisers', resource: 'advisers', action: 'view', type: 'page' },
   { code: 'page.users.view', name: 'Ver usuarios', description: 'Acceso a pantalla de usuarios', module: 'users', resource: 'users', action: 'view', type: 'page' },
   { code: 'page.roles.view', name: 'Ver roles', description: 'Acceso a pantalla de roles', module: 'roles', resource: 'roles', action: 'view', type: 'page' },
   { code: 'page.company.view', name: 'Ver empresa', description: 'Acceso a pantalla de empresa', module: 'company', resource: 'company', action: 'view', type: 'page' },
@@ -179,6 +180,10 @@ export const PERMISSIONS_SEED: PermissionSeedItem[] = [
   { code: 'users.deny_permissions', name: 'Denegar permisos', description: 'Denegar permisos directos por usuario', module: 'users', resource: 'users', action: 'deny_permissions', type: 'action' },
   { code: 'users.manage_grantable_permissions', name: 'Gestionar permisos delegables', description: 'Definir que permisos puede otorgar un usuario', module: 'users', resource: 'users', action: 'manage_grantable_permissions', type: 'action' },
   { code: 'users.view_effective_permissions', name: 'Ver permisos efectivos', description: 'Consultar permisos efectivos de usuario', module: 'users', resource: 'users', action: 'view_effective_permissions', type: 'action' },
+  { code: 'advisers.view', name: 'Consultar asesores', description: 'Ver el listado y los datos generales de los asesores', module: 'advisers', resource: 'advisers', action: 'view', type: 'action' },
+  { code: 'advisers.view_orders', name: 'Ver pedidos de asesores', description: 'Consultar los pedidos asignados a cada asesor', module: 'advisers', resource: 'adviser_orders', action: 'view', type: 'action' },
+  { code: 'advisers.view_performance', name: 'Ver rendimiento de asesores', description: 'Consultar ventas, recaudos y analitica de rendimiento de los asesores', module: 'advisers', resource: 'adviser_performance', action: 'view', type: 'action' },
+  { code: 'advisers.manage', name: 'Gestionar asesores', description: 'Agregar, editar, activar y desactivar asesores', module: 'advisers', resource: 'advisers', action: 'manage', type: 'action' },
   { code: 'roles.read', name: 'Listar roles', description: 'Ver listado de roles', module: 'roles', resource: 'roles', action: 'read', type: 'action' },
   { code: 'roles.create', name: 'Crear roles', description: 'Crear nuevos roles', module: 'roles', resource: 'roles', action: 'create', type: 'action' },
   { code: 'roles.update', name: 'Editar roles', description: 'Editar roles existentes', module: 'roles', resource: 'roles', action: 'update', type: 'action' },

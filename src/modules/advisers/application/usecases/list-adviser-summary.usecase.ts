@@ -15,12 +15,37 @@ export class ListAdviserSummaryUsecase {
     @Inject(LISTING_SEARCH_STORAGE) private readonly searchStorage: ListingSearchStorageRepository,
   ) {}
 
-  async execute(input: { page?: number; limit?: number; q?: string; filters?: string | AdviserSearchRule[]; requestedBy?: string; startDate?: string; endDate?: string }) {
+  async execute(input: {
+    page?: number;
+    limit?: number;
+    q?: string;
+    filters?: string | AdviserSearchRule[];
+    requestedBy?: string;
+    startDate?: string;
+    endDate?: string;
+    includeOrderSummary?: boolean;
+    includePerformanceSummary?: boolean;
+  }) {
     const page = Math.max(1, Number(input.page ?? 1));
     const limit = Math.min(100, Math.max(1, Number(input.limit ?? 25)));
     let parsedFilters: AdviserSearchRule[] = [];
     try { parsedFilters = Array.isArray(input.filters) ? input.filters : input.filters ? JSON.parse(input.filters) : []; } catch { parsedFilters = []; }
-    const snapshot = sanitizeAdviserSearchSnapshot({ q: input.q, filters: parsedFilters });
+    const sanitizedSnapshot = sanitizeAdviserSearchSnapshot({ q: input.q, filters: parsedFilters });
+    const snapshot = {
+      ...sanitizedSnapshot,
+      filters: sanitizedSnapshot.filters.filter((rule) => {
+        if (rule.field === AdviserSearchFields.ASSIGNED_ORDERS) {
+          return input.includeOrderSummary || input.includePerformanceSummary;
+        }
+        if (
+          rule.field === AdviserSearchFields.SOLD_TOTAL ||
+          rule.field === AdviserSearchFields.COLLECTED_TOTAL
+        ) {
+          return input.includePerformanceSummary;
+        }
+        return true;
+      }),
+    };
     const period = resolveAdviserPeriod(input.startDate, input.endDate);
     const periodParams = { periodStart: period.startDate, periodEnd: period.endDate };
     const query = snapshot.q ?? '';
@@ -61,7 +86,21 @@ export class ListAdviserSummaryUsecase {
     const items = allItems.slice((page - 1) * limit, page * limit);
     if (input.requestedBy && (snapshot.q || snapshot.filters.length)) await this.searchStorage.touchRecentSearch({ userId: input.requestedBy, tableKey: 'advisers', snapshot });
     return {
-      items: items.map((row) => ({ ...row, isActive: row.isActive === true || row.isactive === true, assignedOrders: Number(row.assignedOrders ?? 0), soldTotal: Number(row.soldTotal ?? 0), collectedTotal: Number(row.collectedTotal ?? 0) })),
+      items: items.map((row) => ({
+        id: row.id,
+        name: row.name,
+        email: row.email,
+        isActive: row.isActive === true || row.isactive === true,
+        ...(input.includeOrderSummary || input.includePerformanceSummary
+          ? { assignedOrders: Number(row.assignedOrders ?? 0) }
+          : {}),
+        ...(input.includePerformanceSummary
+          ? {
+              soldTotal: Number(row.soldTotal ?? 0),
+              collectedTotal: Number(row.collectedTotal ?? 0),
+            }
+          : {}),
+      })),
       total, page, limit,
       totalPages: Math.max(1, Math.ceil(total / limit)), period,
     };
