@@ -45,7 +45,7 @@ describe("SaleOrderImportClientResolverService", () => {
     expect(clientRepo.update).not.toHaveBeenCalled();
   });
 
-  it("uses delivery note coordinates as reference when client has no DNI", async () => {
+  it("does not save a delivery note as client reference when client has no DNI", async () => {
     const createClientUsecase = {
       executeInTransaction: jest.fn().mockResolvedValue("client-1"),
     };
@@ -74,7 +74,7 @@ describe("SaleOrderImportClientResolverService", () => {
       expect.objectContaining({
         docType: ClientDocType.NONE,
         docNumber: "",
-        reference: "-12.067073487054728 -76.95337387116433",
+        reference: undefined,
       }),
       tx,
     );

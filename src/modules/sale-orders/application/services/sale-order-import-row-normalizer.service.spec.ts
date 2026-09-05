@@ -325,7 +325,7 @@ describe("SaleOrderImportRowNormalizerService", () => {
     }
   });
 
-  it("resolves by delivery note reference before falling back to phone", async () => {
+  it("resolves by phone without trusting a delivery note reference", async () => {
     const ubigeoRepo = {
       listDepartments: jest.fn(),
       listProvincesByDepartmentIds: jest.fn(),
@@ -338,7 +338,7 @@ describe("SaleOrderImportRowNormalizerService", () => {
     ubigeoRepo.listProvincesByDepartmentIds.mockResolvedValue([{ id: "1501", name: "LIMA" }]);
     ubigeoRepo.listDistrictsByProvinceIds.mockResolvedValue([{ id: "150114", name: "LA MOLINA" }]);
 
-    clientRepo.findByReference.mockResolvedValue(null);
+    clientRepo.findByReference.mockResolvedValue({ clientId: { value: "wrong-client-from-reference" } });
     telephoneRepo.findByNumber.mockResolvedValue({ clientId: "old-client-with-empty-reference" });
 
     const moduleRef = await Test.createTestingModule({
@@ -370,9 +370,7 @@ describe("SaleOrderImportRowNormalizerService", () => {
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(clientRepo.findByReference).toHaveBeenCalledWith(
-          "-12.067073487054728 -76.95337387116433",
-        );
+        expect(clientRepo.findByReference).not.toHaveBeenCalled();
         expect(telephoneRepo.findByNumber).toHaveBeenCalledWith("995622971");
         expect(result.row.clientResolution.clientId).toBe("old-client-with-empty-reference");
         expect(result.row.clientResolution.matchedBy).toBe("PHONE");
@@ -382,7 +380,7 @@ describe("SaleOrderImportRowNormalizerService", () => {
     }
   });
 
-  it("keeps delivery note reference available for client creation when no client matches", async () => {
+  it("does not resolve a new client by a generic delivery note reference", async () => {
     const ubigeoRepo = {
       listDepartments: jest.fn(),
       listProvincesByDepartmentIds: jest.fn(),
@@ -395,7 +393,7 @@ describe("SaleOrderImportRowNormalizerService", () => {
     ubigeoRepo.listProvincesByDepartmentIds.mockResolvedValue([{ id: "1501", name: "LIMA" }]);
     ubigeoRepo.listDistrictsByProvinceIds.mockResolvedValue([{ id: "150114", name: "LA MOLINA" }]);
 
-    clientRepo.findByReference.mockResolvedValue(null);
+    clientRepo.findByReference.mockResolvedValue({ clientId: { value: "wrong-client-from-reference" } });
     telephoneRepo.findByNumber.mockResolvedValue(null);
 
     const moduleRef = await Test.createTestingModule({
@@ -418,7 +416,7 @@ describe("SaleOrderImportRowNormalizerService", () => {
           departmentName: "Lima",
           provinceName: "Lima",
           districtName: "La Molina",
-          deliveryNote: "-12.067073487054728, -76.95337387116433",
+          deliveryNote: "PIURA",
           productCodes: "AMPOLLA-EVA01863 x 1",
           total: 299.8,
         } as any,
@@ -427,13 +425,11 @@ describe("SaleOrderImportRowNormalizerService", () => {
 
       expect(result.ok).toBe(true);
       if (result.ok) {
-        expect(clientRepo.findByReference).toHaveBeenCalledWith(
-          "-12.067073487054728 -76.95337387116433",
-        );
+        expect(clientRepo.findByReference).not.toHaveBeenCalled();
         expect(telephoneRepo.findByNumber).toHaveBeenCalledWith("995622971");
         expect(result.row.parsedDocument.docType).toBe("NONE");
         expect(result.row.parsedDocument.reference).toBe(
-          "-12.067073487054728, -76.95337387116433",
+          "PIURA",
         );
         expect(result.row.clientResolution.clientId).toBeNull();
       }

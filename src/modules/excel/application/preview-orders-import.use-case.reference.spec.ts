@@ -1,58 +1,37 @@
 import { ClientDocType } from "src/modules/clients/domain/object-values/client-doc-type";
 import { PreviewOrdersImportUseCase } from "./preview-orders-import.use-case";
 
-describe("PreviewOrdersImportUseCase client reference", () => {
-  const sanitizeReference = (PreviewOrdersImportUseCase.prototype as any)
-    .sanitizeReference as (value: string | null | undefined) => string | undefined;
+describe("PreviewOrdersImportUseCase client resolution", () => {
+  const resolveClient = (PreviewOrdersImportUseCase.prototype as any)
+    .resolveClient as (input: any) => Promise<any>;
 
-  const buildClientReference = (PreviewOrdersImportUseCase.prototype as any)
-    .buildClientReference as (row: any) => string | undefined;
-
-  const ctx: any = {
-    toText: (value: unknown) => String(value ?? "").trim(),
-    sanitizeReference: (value: string | null | undefined) => sanitizeReference.call(ctx, value),
-  };
-
-  it("falls back to raw text when cleaning removes everything", () => {
-    const result = sanitizeReference.call(ctx, "✓✓✓   ");
-    expect(result).toBe("✓✓✓");
-  });
-
-  it("generates a fallback reference for NONE docType when note is empty", () => {
-    const row = {
-      parsedDocument: { docType: ClientDocType.NONE, docNumber: "", reference: "   " },
-      normalizedPhone: "999888777",
-      recipientName: "Juan Perez",
+  it("does not resolve by arbitrary delivery note reference", async () => {
+    const findByReference = jest.fn().mockResolvedValue({
+      clientId: { value: "wrong-client-from-reference" },
+    });
+    const ctx: any = {
+      debug: jest.fn(),
+      telephoneRepo: { findByNumber: jest.fn().mockResolvedValue(null) },
+      clientRepo: {
+        findByDocument: jest.fn().mockResolvedValue(null),
+        findByReference,
+      },
     };
 
-    const result = buildClientReference.call(ctx, row);
-    expect(result).toBe("TEL 999888777");
-  });
-
-  it("uses sanitized delivery note when available", () => {
-    const row = {
+    const result = await resolveClient.call(ctx, {
+      phone: "958293306",
       parsedDocument: {
         docType: ClientDocType.NONE,
         docNumber: "",
-        reference: "Dejar en portería!!! #$%",
+        reference: "PIURA",
       },
-      normalizedPhone: "999888777",
-      recipientName: "Juan Perez",
-    };
+    });
 
-    const result = buildClientReference.call(ctx, row);
-    expect(result).toBe("Dejar en portera");
-  });
-
-  it("does not produce reference for DNI docType", () => {
-    const row = {
-      parsedDocument: { docType: ClientDocType.DNI, docNumber: "12345678", reference: null },
-      normalizedPhone: "999888777",
-      recipientName: "Juan Perez",
-    };
-
-    const result = buildClientReference.call(ctx, row);
-    expect(result).toBeUndefined();
+    expect(result).toEqual({
+      status: "WOULD_CREATE",
+      clientId: null,
+      matchedBy: null,
+    });
+    expect(findByReference).not.toHaveBeenCalled();
   });
 });
-

@@ -88,7 +88,6 @@ const DISTRICT_NAME_EQUIVALENTS_BY_PROVINCE: Readonly<Record<string, ReadonlyArr
 type ClientPreviewStatus =
   | "EXISTS_BY_PHONE"
   | "EXISTS_BY_DNI"
-  | "EXISTS_BY_REFERENCE"
   | "WOULD_CREATE";
 
 @Injectable()
@@ -504,39 +503,6 @@ export class PreviewOrdersImportUseCase {
     return this.importClientResolver.resolveOrCreate(row as any, tx);
   }
 
-  private buildClientReference(
-    row: Awaited<ReturnType<PreviewOrdersImportUseCase["buildPreviewRow"]>>,
-  ): string | undefined {
-    if (row.parsedDocument.docType !== ClientDocType.NONE) return undefined;
-
-    const sanitized = this.sanitizeReference(row.parsedDocument.reference);
-    if (sanitized) return sanitized;
-
-    const phone = this.toText(row.normalizedPhone);
-    if (phone) return `TEL ${phone}`;
-
-    const recipientName = this.toText(row.recipientName);
-    if (recipientName) return recipientName.slice(0, 80);
-
-    return "IMPORT";
-  }
-
-  private sanitizeReference(value: string | null | undefined): string | undefined {
-    const text = this.toText(value);
-
-    if (!text) return undefined;
-
-    const cleaned = text
-      .replace(/[^a-zA-Z0-9\s\-_.]/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    if (!cleaned) {
-      return text.slice(0, 80);
-    }
-
-    return cleaned.slice(0, 80);
-  }
   private async resolveOrCreateSource(
     sourceName: string,
     tx: TransactionContext,
@@ -1075,7 +1041,7 @@ export class PreviewOrdersImportUseCase {
   }): Promise<{
     status: ClientPreviewStatus;
     clientId: string | null;
-    matchedBy: "PHONE" | "DNI" | "REFERENCE" | null;
+    matchedBy: "PHONE" | "DNI" | null;
   }> {
     this.debug("RESOLVE_CLIENT_START", input);
 
@@ -1117,23 +1083,6 @@ export class PreviewOrdersImportUseCase {
           status: "EXISTS_BY_DNI",
           clientId: byDni.clientId.value,
           matchedBy: "DNI",
-        };
-      }
-    }
-
-    if (input.parsedDocument.reference) {
-      const byReference = await this.clientRepo.findByReference(input.parsedDocument.reference);
-
-      this.debug("RESOLVE_CLIENT_BY_REFERENCE", {
-        reference: input.parsedDocument.reference,
-        byReference,
-      });
-
-      if (byReference) {
-        return {
-          status: "EXISTS_BY_REFERENCE",
-          clientId: byReference.clientId.value,
-          matchedBy: "REFERENCE",
         };
       }
     }

@@ -78,7 +78,7 @@ export type NormalizedSaleOrderImportPreviewRow = {
   };
   clientResolution: {
     clientId: string | null;
-    matchedBy: "PHONE" | "DNI" | "REFERENCE" | null;
+    matchedBy: "PHONE" | "DNI" | null;
   };
   ubigeo: {
     departmentId: string;
@@ -243,16 +243,10 @@ export class SaleOrderImportRowNormalizerService {
   private async resolveClient(input: {
     phone: string;
     parsedDocument: { docType: ClientDocType; docNumber: string; reference: string | null };
-  }): Promise<{ clientId: string | null; matchedBy: "PHONE" | "DNI" | "REFERENCE" | null }> {
+  }): Promise<{ clientId: string | null; matchedBy: "PHONE" | "DNI" | null }> {
     if (input.parsedDocument.docType === ClientDocType.DNI && input.parsedDocument.docNumber) {
       const byDni = await this.clientRepo.findByDocument(ClientDocType.DNI, input.parsedDocument.docNumber);
       if (byDni) return { clientId: byDni.clientId.value, matchedBy: "DNI" };
-    }
-
-    const reference = this.sanitizeReference(input.parsedDocument.reference);
-    if (reference) {
-      const byReference = await this.clientRepo.findByReference(reference);
-      if (byReference) return { clientId: byReference.clientId.value, matchedBy: "REFERENCE" };
     }
 
     if (input.phone) {
@@ -264,19 +258,6 @@ export class SaleOrderImportRowNormalizerService {
     }
 
     return { clientId: null, matchedBy: null };
-  }
-
-  private sanitizeReference(value: string | null | undefined): string | undefined {
-    const text = String(value ?? "").trim();
-    if (!text) return undefined;
-
-    const cleaned = text
-      .replace(/[^a-zA-Z0-9\s\-_.]/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
-
-    if (!cleaned) return text.slice(0, 80);
-    return cleaned.slice(0, 80);
   }
 
   private async resolveUbigeo(departmentName: unknown, provinceName: unknown, districtName: unknown) {
