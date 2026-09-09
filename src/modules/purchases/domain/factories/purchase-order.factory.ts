@@ -59,6 +59,7 @@ export class PurchaseOrderFactory {
     createdAt?: Date;
     createdBy?: string;
     imageProdution?: string[];
+    receivedAt?: DateInput;
   }): PurchaseOrder {
     const currency = params.currency ?? CurrencyType.PEN;
     const supplierId = new PurchaseSupplierId(params.supplierId).value;
@@ -114,6 +115,7 @@ export class PurchaseOrderFactory {
       params.createdAt,
       params.createdBy,
       params.imageProdution ?? [],
+      params.receivedAt ? new Date(params.receivedAt) : undefined,
     );
   }
 
@@ -157,6 +159,7 @@ export class PurchaseOrderFactory {
     createdAt?: Date;
     createdBy?: string;
     imageProdution?: string[];
+    receivedAt?: DateInput;
   }): PurchaseOrder {
     const currency = params.currency ?? CurrencyType.PEN;
     const poId = new PurchaseOrderId(params.poId).value;
@@ -213,6 +216,7 @@ export class PurchaseOrderFactory {
       params.createdAt,
       params.createdBy,
       params.imageProdution ?? [],
+      params.receivedAt ? new Date(params.receivedAt) : undefined,
     );
   }
 

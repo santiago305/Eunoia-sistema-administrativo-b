@@ -43,6 +43,7 @@ export interface PurchaseOrderOutput {
   requiresAssetCreation?: boolean;
   isActive: boolean;
   expectedAt?: Date;
+  receivedAt?: Date;
   dateIssue?: Date;
   dateExpiration?: Date;
   createdAt?: Date;

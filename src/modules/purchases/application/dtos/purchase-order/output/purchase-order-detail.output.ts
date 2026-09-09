@@ -35,6 +35,7 @@ export interface PurchaseOrderDetailOutput {
   status: PurchaseOrderStatus;
   isActive: boolean;
   expectedAt?: Date;
+  receivedAt?: Date;
   dateIssue?: Date;
   dateExpiration?: Date;
   createdAt?: Date;

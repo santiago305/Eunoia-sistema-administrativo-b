@@ -65,6 +65,7 @@ export interface PurchaseOrderRepository{
             requiresStockEntry?: boolean;
             requiresAssetCreation?: boolean;
             expectedAt?: Date;
+            receivedAt?: Date;
             dateIssue?: Date;
             dateExpiration?: Date;
             createdAt?: Date;

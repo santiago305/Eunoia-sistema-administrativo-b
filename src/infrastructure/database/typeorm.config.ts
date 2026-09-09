@@ -136,6 +136,7 @@ import { AddInventoryTransferTransit20260830110000 } from './migrations/20260830
 import { ExpandSecurityRateLimitAudit20260902000000 } from './migrations/20260902000000-expand-security-rate-limit-audit';
 import { AddCompanyPrimaryColor20260903000000 } from './migrations/20260903000000-add-company-primary-color';
 import { AddAdviserPermissions20260905090000 } from './migrations/20260905090000-add-adviser-permissions';
+import { AddPurchaseReceivedAt20260909000000 } from './migrations/20260909000000-add-purchase-received-at';
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: 'postgres',
@@ -283,6 +284,7 @@ export const databaseMigrations = [
   ExpandSecurityRateLimitAudit20260902000000,
   AddCompanyPrimaryColor20260903000000,
   AddAdviserPermissions20260905090000,
+  AddPurchaseReceivedAt20260909000000,
 ];
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({

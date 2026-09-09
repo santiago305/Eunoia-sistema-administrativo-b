@@ -47,6 +47,7 @@ export class ConfirmPurchaseReceptionUsecase {
       if (purchase.status === PurchaseOrderStatus.CANCELLED) {
         throw new BadRequestException("No puedes recibir una compra cancelada");
       }
+      const receivedAt = new Date();
 
       const purchaseItems = await this.purchaseItemRepo.getByPurchaseId(
         purchase.poId,
@@ -88,7 +89,7 @@ export class ConfirmPurchaseReceptionUsecase {
         receptionId,
         {
           receivedByUserId: userId,
-          receivedAt: new Date(),
+          receivedAt,
           inventoryDocumentId,
           stockPostedItemIds: stockLines.map((item) => item.purchaseItemId),
           serviceConfirmedItemIds,
@@ -116,6 +117,7 @@ export class ConfirmPurchaseReceptionUsecase {
         poId: purchase.poId,
         receptionStatus: nextReceptionStatus,
         status: nextPurchaseStatus,
+        receivedAt,
       }, tx);
 
       await this.history?.record({

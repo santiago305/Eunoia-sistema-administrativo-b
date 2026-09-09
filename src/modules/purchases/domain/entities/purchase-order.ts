@@ -48,5 +48,6 @@ export class PurchaseOrder {
     public readonly createdAt?: Date,
     public readonly createdBy?: string,
     public readonly imageProdution: string[] = [],
+    public readonly receivedAt?: Date,
   ) {}
 }

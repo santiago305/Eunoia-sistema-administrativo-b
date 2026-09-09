@@ -133,6 +133,7 @@ export class PurchaseOrderTypeormRepository implements PurchaseOrderRepository {
       requiresStockEntry?: boolean;
       requiresAssetCreation?: boolean;
       expectedAt?: Date;
+      receivedAt?: Date;
       dateIssue?: Date;
       dateExpiration?: Date;
       createdAt?: Date;
@@ -170,6 +171,7 @@ export class PurchaseOrderTypeormRepository implements PurchaseOrderRepository {
     if (params.requiresStockEntry !== undefined) patch.requiresStockEntry = params.requiresStockEntry;
     if (params.requiresAssetCreation !== undefined) patch.requiresAssetCreation = params.requiresAssetCreation;
     if (params.expectedAt !== undefined) patch.expectedAt = params.expectedAt;
+    if (params.receivedAt !== undefined) patch.receivedAt = params.receivedAt;
     if (params.dateIssue !== undefined) patch.dateIssue = params.dateIssue;
     if (params.dateExpiration !== undefined) patch.dateExpiration = params.dateExpiration;
     if (params.createdAt !== undefined) patch.createdAt = params.createdAt;

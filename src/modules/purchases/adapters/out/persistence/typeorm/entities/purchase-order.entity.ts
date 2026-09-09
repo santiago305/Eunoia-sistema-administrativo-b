@@ -113,6 +113,9 @@ export class PurchaseOrderEntity {
   @Column({ name: "expected_at", type: "timestamptz", nullable: true })
   expectedAt?: Date | null;
 
+  @Column({ name: "received_at", type: "timestamptz", nullable: true })
+  receivedAt?: Date | null;
+
   @Column({ name: "date_issue", type: "timestamptz", nullable: true })
   dateIssue?: Date | null;
 

@@ -33,6 +33,7 @@ export class ConfirmPurchaseReceptionUsecase {
           errorResponse("La orden no esta pendiente de confirmacion de recepcion"),
         );
       }
+      const receivedAt = new Date();
 
       if (order.requiresStockEntry) {
         try {
@@ -57,6 +58,7 @@ export class ConfirmPurchaseReceptionUsecase {
           poId: order.poId,
           status: PurchaseOrderStatus.RECEIVED,
           receptionStatus: ReceptionStatus.RECEIVED,
+          receivedAt,
         },
         tx,
       );
@@ -72,6 +74,7 @@ export class ConfirmPurchaseReceptionUsecase {
         newValues: {
           status: PurchaseOrderStatus.RECEIVED,
           receptionStatus: ReceptionStatus.RECEIVED,
+          receivedAt,
         },
         performedByUserId: performedByUserId ?? null,
         metadata: {

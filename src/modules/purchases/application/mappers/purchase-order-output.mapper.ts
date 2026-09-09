@@ -49,6 +49,7 @@ export class PurchaseOrderOutputMapper {
       requiresAssetCreation: order.requiresAssetCreation,
       isActive: order.isActive,
       expectedAt: order.expectedAt,
+      receivedAt: order.receivedAt,
       dateIssue: order.dateIssue,
       dateExpiration: order.dateExpiration,
       createdAt: order.createdAt,
