@@ -756,6 +756,41 @@ describe('SaleOrderTypeormRepository', () => {
     expect(qb.limit).toHaveBeenCalledWith(100);
   });
 
+  it('finds active reservations affected by an inventory stock event', async () => {
+    const qb = {
+      select: jest.fn().mockReturnThis(),
+      leftJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      distinct: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue([{ id: 'order-reservation' }]),
+    };
+    const repository = new SaleOrderTypeormRepository({
+      manager: {
+        getRepository: jest.fn().mockReturnValue({
+          createQueryBuilder: jest.fn().mockReturnValue(qb),
+        }),
+      },
+    } as any);
+
+    await expect(
+      repository.listIdsWithActiveReservationByInventoryStockEvent({
+        warehouseId: 'warehouse-1',
+        stockItemId: 'stock-1',
+      }),
+    ).resolves.toEqual(['order-reservation']);
+
+    expect(qb.andWhere).toHaveBeenCalledWith('so.reserve_bool = true');
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      'so.warehouse_id = :warehouseId',
+      { warehouseId: 'warehouse-1' },
+    );
+    expect(qb.leftJoin).toHaveBeenCalledTimes(5);
+    expect(qb.limit).toHaveBeenCalledWith(100);
+  });
+
   it('loads the active main telephone when getting a sale order', async () => {
     const telephoneRepo = {
       findOne: jest.fn().mockResolvedValue({ number: '999999999' }),

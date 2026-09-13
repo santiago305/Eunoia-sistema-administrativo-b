@@ -1,9 +1,13 @@
-import { BadRequestException, Inject, Injectable } from "@nestjs/common";
-import { SaleOrderGetOutput } from "../../dtos/sale-order-search/output/sale-order-search-state.output";
-import { SALE_ORDER_REPOSITORY, SaleOrderRepository } from "src/modules/sale-orders/domain/ports/sale-order.repository";
-import { SaleOrderEditPolicyService } from "../../services/sale-order-edit-policy.service";
-import { SaleOrderAccessPolicyService } from "../../services/sale-order-access-policy.service";
-
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { SaleOrderGetOutput } from '../../dtos/sale-order-search/output/sale-order-search-state.output';
+import {
+  SALE_ORDER_REPOSITORY,
+  SaleOrderRepository,
+} from 'src/modules/sale-orders/domain/ports/sale-order.repository';
+import { SaleOrderEditPolicyService } from '../../services/sale-order-edit-policy.service';
+import { SaleOrderAccessPolicyService } from '../../services/sale-order-access-policy.service';
+import { SaleOrderStockRequirementsService } from 'src/modules/workflow/application/services/sale-order-stock-requirements.service';
+import { SaleOrderReservationReconciliationService } from '../../services/sale-order-reservation-reconciliation.service';
 
 @Injectable()
 export class GetSaleOrderUsecase {
@@ -11,16 +15,25 @@ export class GetSaleOrderUsecase {
     @Inject(SALE_ORDER_REPOSITORY)
     private readonly saleOrderQueryRepo: SaleOrderRepository,
     private readonly editPolicy: SaleOrderEditPolicyService,
+    private readonly stockRequirements: SaleOrderStockRequirementsService,
+    private readonly reservationReconciliation: SaleOrderReservationReconciliationService,
     private readonly accessPolicy?: SaleOrderAccessPolicyService,
   ) {}
 
-  async execute(input: { saleOrderId: string; requestedBy?: string }): Promise<SaleOrderGetOutput> {
-    const readContext = input.requestedBy && this.accessPolicy
-      ? await this.accessPolicy.resolveReadContext(input.requestedBy)
-      : undefined;
-    const order = await this.saleOrderQueryRepo.findById(input.saleOrderId, readContext);
+  async execute(input: {
+    saleOrderId: string;
+    requestedBy?: string;
+  }): Promise<SaleOrderGetOutput> {
+    const readContext =
+      input.requestedBy && this.accessPolicy
+        ? await this.accessPolicy.resolveReadContext(input.requestedBy)
+        : undefined;
+    const order = await this.saleOrderQueryRepo.findById(
+      input.saleOrderId,
+      readContext,
+    );
     if (!order) {
-      throw new BadRequestException("Pedido no encontrado");
+      throw new BadRequestException('Pedido no encontrado');
     }
     const editPolicy = await this.editPolicy.resolve({
       id: order.id,
@@ -28,6 +41,15 @@ export class GetSaleOrderUsecase {
       currentStateId: order.currentState?.id ?? null,
       reserveBool: order.reserveBool,
     });
-    return { ...order, editPolicy };
+    const requirements = await this.stockRequirements.resolve({ id: order.id });
+    const reservationHealth = await this.reservationReconciliation.inspect(
+      {
+        id: order.id,
+        warehouseId: order.warehouse?.id ?? null,
+        reserveBool: order.reserveBool,
+      },
+      requirements,
+    );
+    return { ...order, editPolicy, reservationHealth };
   }
 }

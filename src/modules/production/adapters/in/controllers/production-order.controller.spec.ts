@@ -250,8 +250,12 @@ describe("ProductionOrdersController", () => {
       area: "public",
       directory: `production-attachments/${productionId}`,
     }));
-    expect(orderRepo.update).not.toHaveBeenCalledWith(
-      expect.objectContaining({ imageProdution: expect.any(Array) }),
+    expect(orderRepo.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        imageProdution: [
+          "/api/assets/production-attachments/44444444-4444-4444-8444-444444444444/photo.webp",
+        ],
+      }),
     );
     expect(response.body.imageProdution).toEqual([
       "/api/assets/production-attachments/44444444-4444-4444-8444-444444444444/photo.webp",

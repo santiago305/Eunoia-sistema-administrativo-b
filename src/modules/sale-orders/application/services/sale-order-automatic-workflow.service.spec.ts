@@ -137,4 +137,75 @@ describe("SaleOrderAutomaticWorkflowService", () => {
     });
     expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith("sale-orders.updated", clientPayload);
   });
+
+  it("retries and notifies a pending reservation after inventory is updated", async () => {
+    const automaticWorkflowJob = {
+      runForSaleOrder: jest.fn().mockResolvedValue({
+        updated: 0,
+        failed: 0,
+        saleOrderIds: [],
+      }),
+    };
+    const realtimeService = { emitToAllConnected: jest.fn() };
+    const inventoryPayload = {
+      ...automaticPayload,
+      trigger: "inventory-updated",
+    };
+    const payloadBuilder = {
+      build: jest.fn().mockResolvedValue(inventoryPayload),
+    };
+    const tx = { manager: {} };
+    const uow = {
+      runInTransaction: jest.fn((work) => work(tx)),
+    };
+    const saleOrderRepo = {
+      findByIdForUpdate: jest.fn().mockResolvedValue({
+        id: "order-1",
+        isActive: true,
+        reserveBool: true,
+      }),
+    };
+    const stockCorrection = {
+      reconcileCurrentReservation: jest.fn().mockResolvedValue({
+        checked: true,
+        adjusted: true,
+        items: [],
+      }),
+    };
+    const service = new (SaleOrderAutomaticWorkflowService as any)(
+      automaticWorkflowJob,
+      realtimeService,
+      payloadBuilder,
+      uow,
+      saleOrderRepo,
+      stockCorrection,
+    );
+
+    await expect(
+      service.evaluateManyAndNotify(
+        ["order-1"],
+        SaleOrderAutomaticWorkflowTriggerEnum.INVENTORY_UPDATED,
+      ),
+    ).resolves.toEqual({
+      found: 1,
+      updated: 1,
+      failed: 0,
+      saleOrderIds: ["order-1"],
+    });
+
+    expect(stockCorrection.reconcileCurrentReservation).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "order-1" }),
+      tx,
+    );
+    expect(payloadBuilder.build).toHaveBeenCalledWith({
+      updated: 1,
+      saleOrderIds: ["order-1"],
+      source: "automatic-workflow",
+      trigger: "inventory-updated",
+    });
+    expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
+      "sale-orders.updated",
+      inventoryPayload,
+    );
+  });
 });

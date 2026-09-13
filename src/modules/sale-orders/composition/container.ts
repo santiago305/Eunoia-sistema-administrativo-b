@@ -89,6 +89,9 @@ import { ExportSaleOrdersExcelUsecase } from '../application/usecases/sale-order
 import { GetSaleOrderEditorCatalogsUsecase } from '../application/usecases/sale-order/get-editor-catalogs.usecase';
 import { SaleOrderSuppliesService } from '../application/services/sale-order-supplies.service';
 import { SaleOrderPackMatcherService } from '../application/services/sale-order-pack-matcher.service';
+import { SALE_ORDER_RESERVATION_TOTALS_QUERY } from '../application/ports/sale-order-reservation-totals.query';
+import { SaleOrderReservationTotalsTypeormQuery } from '../adapters/out/persistence/typeorm/repositories/sale-order-reservation-totals.typeorm.query';
+import { SaleOrderReservationReconciliationService } from '../application/services/sale-order-reservation-reconciliation.service';
 
 export const saleOrdersModuleProviders = [
   { provide: SALE_ORDER_REPOSITORY, useClass: SaleOrderTypeormRepository },
@@ -111,6 +114,10 @@ export const saleOrdersModuleProviders = [
   { provide: SALE_PAYMENT_REPOSITORY, useClass: SalePaymentTypeormRepository },
   { provide: LISTING_SEARCH_STORAGE, useClass: ListingSearchTypeormRepository },
   { provide: SALE_ORDER_SEARCH, useClass: SaleOrderSearchTypeormRepository },
+  {
+    provide: SALE_ORDER_RESERVATION_TOTALS_QUERY,
+    useClass: SaleOrderReservationTotalsTypeormQuery,
+  },
   { provide: UNIT_OF_WORK, useClass: TypeormUnitOfWork },
   { provide: IMAGE_PROCESSOR, useClass: SharpImageProcessorService },
   { provide: CLOCK, useValue: { now: () => new Date() } },
@@ -155,6 +162,7 @@ export const saleOrdersModuleProviders = [
   SaleOrderStockConsumptionReversalService,
   SaleOrderPaymentWorkflowReconciliationService,
   SaleOrderStockCorrectionService,
+  SaleOrderReservationReconciliationService,
   SaleOrderImportClientResolverService,
   SaleOrderImportRowNormalizerService,
   SaleOrderImportSkuResolverService,

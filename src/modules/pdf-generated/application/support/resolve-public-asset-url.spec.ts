@@ -47,7 +47,7 @@ describe('resolvePublicAssetUrl', () => {
 
     const result = await resolvePublicAssetUrl('/api/assets/company/logo.png');
 
-    expect(result).toBe(`file:///${storageLogo.replace(/\\/g, '/')}`);
+    expect(result).toBe(`file://${storageLogo.replace(/\\/g, '/')}`);
   });
 
   it('keeps external and data URLs unchanged', async () => {

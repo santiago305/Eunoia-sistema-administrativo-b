@@ -1032,6 +1032,65 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     return rows.map((row) => row.id);
   }
 
+  async listIdsWithActiveReservationByInventoryStockEvent(
+    input: { warehouseId: string; stockItemId: string },
+    limit = 100,
+    tx?: TransactionContext,
+  ): Promise<string[]> {
+    const manager = this.getManager(tx);
+    const rows = await manager
+      .getRepository(SaleOrderEntity)
+      .createQueryBuilder('so')
+      .select('so.id', 'id')
+      .leftJoin(
+        SaleOrderItemEntity,
+        'reservedItem',
+        'reservedItem.sale_order_id = so.id',
+      )
+      .leftJoin(
+        SaleOrderItemComponentEntity,
+        'reservedComponent',
+        'reservedComponent.sale_order_item_id = reservedItem.id',
+      )
+      .leftJoin(
+        ProductCatalogStockItemEntity,
+        'componentStockItem',
+        'componentStockItem.sku_id = reservedComponent.sku_id',
+      )
+      .leftJoin(
+        SaleOrderSupplyItemEntity,
+        'reservedSupply',
+        'reservedSupply.sale_order_id = so.id',
+      )
+      .leftJoin(
+        ProductCatalogStockItemEntity,
+        'supplyStockItem',
+        'supplyStockItem.sku_id = reservedSupply.supply_sku_id',
+      )
+      .where('so.is_active = true')
+      .andWhere('so.reserve_bool = true')
+      .andWhere('so.warehouse_id = :warehouseId', {
+        warehouseId: input.warehouseId,
+      })
+      .andWhere(
+        new Brackets((query) => {
+          query
+            .where('componentStockItem.stock_item_id = :stockItemId', {
+              stockItemId: input.stockItemId,
+            })
+            .orWhere('supplyStockItem.stock_item_id = :stockItemId', {
+              stockItemId: input.stockItemId,
+            });
+        }),
+      )
+      .distinct(true)
+      .orderBy('so.created_at', 'ASC')
+      .limit(limit)
+      .getRawMany<{ id: string }>();
+
+    return rows.map((row) => row.id);
+  }
+
   async list(
     params: {
       q?: string;

@@ -570,8 +570,19 @@ export class UpdateSaleOrderUsecase {
       }
     }
 
+    let stockReservation = null;
     if (activeStockCompositionReleased && !workflowChanged) {
-      await this.stockCorrection!.reserveCorrectedComposition(updated, tx);
+      stockReservation =
+        await this.stockCorrection!.reserveCorrectedComposition(updated, tx);
+    } else if (
+      stockLifecycleStatus === 'RESERVED' &&
+      !workflowChanged &&
+      this.stockCorrection
+    ) {
+      stockReservation = await this.stockCorrection.reconcileCurrentReservation(
+        updated,
+        tx,
+      );
     }
 
     const paymentsInput = (input.payments ?? []).map((payment) => {
@@ -714,6 +725,7 @@ export class UpdateSaleOrderUsecase {
       warehouseChanged,
       previousWorkflowId: order.workflowId ?? null,
       previousWarehouseId: order.warehouseId ?? null,
+      stockReservation,
     };
   }
 }

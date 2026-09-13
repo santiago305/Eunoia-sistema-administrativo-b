@@ -43,6 +43,7 @@ import { WorkflowDraftTestSessionEntity } from '../workflow/adapters/out/persist
 import { WorkflowRevisionsController } from './adapters/in/controllers/workflow-revisions.controller';
 import { SaleOrderAdviserImportAliasEntity } from './adapters/out/persistence/typeorm/entities/sale-order-adviser-import-alias.entity';
 import { SaleOrderAdviserImportAliasService } from './application/services/sale-order-adviser-import-alias.service';
+import { ProductCatalogInventoryEntity } from '../product-catalog/adapters/out/persistence/typeorm/entities/inventory.entity';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { SaleOrderAdviserImportAliasService } from './application/services/sale-
       SaleOrderSkuRecognitionCodeEntity,
       WorkflowDraftTestSessionEntity,
       SaleOrderAdviserImportAliasEntity,
+      ProductCatalogInventoryEntity,
     ]),
     PacksModule,
     ProductCatalogModule,

@@ -19,6 +19,7 @@ const catalog = {
 const createRepository = (): jest.Mocked<SaleOrderSupplyItemRepository> => ({
   saleOrderExists: jest.fn().mockResolvedValue(true),
   listBySaleOrderId: jest.fn(),
+  listBySaleOrderIds: jest.fn(),
   findCatalogItems: jest.fn().mockResolvedValue(catalog),
   findRecipeItemsByWorkflowId: jest.fn().mockResolvedValue([]),
   findRecipeItemsByIds: jest.fn().mockResolvedValue([]),

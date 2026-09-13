@@ -34,6 +34,22 @@ describe('UpdateSaleOrderUsecase', () => {
       authorizeAdvancedOrder: jest.Mock;
     },
   ) => {
+    const reserveBool = stockActions.reduce((active, entry) => {
+      const type = typeof entry === 'string' ? entry : entry.type;
+      const branchMatches =
+        typeof entry === 'string' ||
+        (entry.actionBranch ?? 'THEN') === (entry.executedBranch ?? 'THEN');
+      if (!branchMatches) return active;
+      if (type === ACTIONS.RESERVE_STOCK) return true;
+      if (
+        type === ACTIONS.CONSUME_STOCK ||
+        type === ACTIONS.REVERT_STOCK ||
+        type === ACTIONS.RESTORE_STOCK
+      ) {
+        return false;
+      }
+      return active;
+    }, false);
     const saleOrderRepo = {
       findByIdForUpdate: jest.fn().mockResolvedValue({
         id: 'order-1',
@@ -41,6 +57,7 @@ describe('UpdateSaleOrderUsecase', () => {
         workflowId: 'workflow-1',
         currentStateId: 'state-1',
         createdBy: 'user-1',
+        reserveBool,
         subTotal: 10,
         deliveryCost: 0,
         discount: 0,
@@ -54,6 +71,7 @@ describe('UpdateSaleOrderUsecase', () => {
           warehouseId: updateInput.warehouseId,
           workflowId: updateInput.workflowId,
           currentStateId: updateInput.currentStateId,
+          reserveBool,
         }),
       ),
     };
@@ -159,6 +177,12 @@ describe('UpdateSaleOrderUsecase', () => {
       releasePreviousComposition: jest.fn().mockResolvedValue(true),
       reserveCorrectedComposition: jest.fn().mockResolvedValue(undefined),
       consumeCorrectedComposition: jest.fn().mockResolvedValue(undefined),
+      reconcileCurrentReservation: jest.fn().mockResolvedValue({
+        checked: true,
+        adjusted: false,
+        warehouseId: 'warehouse-1',
+        items: [],
+      }),
     };
     const editPolicy = new SaleOrderEditPolicyService(
       historyRepo as any,
@@ -287,6 +311,28 @@ describe('UpdateSaleOrderUsecase', () => {
       'user-2',
     );
     expect(fixture.saleOrderRepo.update).not.toHaveBeenCalled();
+  });
+
+  it('rechecks an existing reservation when only the delivery date changes', async () => {
+    const fixture = createFixture([ACTIONS.RESERVE_STOCK]);
+
+    await expect(
+      fixture.usecase.execute({
+        ...input,
+        deliveryDate: '2026-09-12',
+      }),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        stockReservation: expect.objectContaining({ checked: true }),
+      }),
+    );
+
+    expect(
+      fixture.stockCorrection.reconcileCurrentReservation,
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'order-1', reserveBool: true }),
+      expect.anything(),
+    );
   });
 
   it('requires Pedidos avanzados to change the delivery date of a final order', async () => {

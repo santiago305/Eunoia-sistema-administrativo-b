@@ -38,6 +38,7 @@ import {
 import { ActionFactory } from '../../domain/factories/action.factory';
 import { CONDITIONS } from '../../domain/constants/workflow-condition.constants';
 import { WorkflowCondition } from '../../domain/entities/workflow-condition';
+import { SaleOrderReservationReconciliationService } from 'src/modules/sale-orders/application/services/sale-order-reservation-reconciliation.service';
 
 export type WorkflowActionRunResult = {
   order: SaleOrder;
@@ -61,6 +62,7 @@ export class SaleOrderWorkflowActionRunnerService {
     private readonly stockConsumption: SaleOrderStockConsumptionService,
     private readonly stockConsumptionReversal: SaleOrderStockConsumptionReversalService,
     private readonly warehouseAssignment: SaleOrderWarehouseAssignmentService,
+    private readonly reservationReconciliation: SaleOrderReservationReconciliationService,
   ) {}
 
   private async hasActiveReservation(
@@ -297,6 +299,11 @@ export class SaleOrderWorkflowActionRunnerService {
     if (keys.length) {
       await this.inventoryLock.lockSnapshots(keys, tx);
     }
+    await this.reservationReconciliation.reconcile(
+      effectiveOrder,
+      requirements,
+      tx,
+    );
 
     const snapshots = new Map<
       string,

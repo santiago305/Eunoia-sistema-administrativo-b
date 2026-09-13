@@ -19,7 +19,7 @@ describe('HttpSaleOrderCreateDto numeric precision', () => {
       },
     ],
   ])('rejects quantities with more than two decimals', async (Dto, input) => {
-    const errors = await validate(plainToInstance(Dto, input));
+    const errors = await validate(plainToInstance(Dto as any, input));
 
     expect(errors.some((error) => error.property === 'quantity')).toBe(true);
   });
@@ -36,7 +36,7 @@ describe('HttpSaleOrderCreateDto numeric precision', () => {
           : {}),
       };
 
-      const errors = await validate(plainToInstance(Dto, input));
+      const errors = await validate(plainToInstance(Dto as any, input));
 
       expect(errors).toHaveLength(0);
     },

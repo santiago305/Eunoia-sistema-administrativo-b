@@ -96,6 +96,11 @@ export interface SaleOrderRepository {
     limit?: number,
     tx?: TransactionContext,
   ): Promise<string[]>;
+  listIdsWithActiveReservationByInventoryStockEvent(
+    input: { warehouseId: string; stockItemId: string },
+    limit?: number,
+    tx?: TransactionContext,
+  ): Promise<string[]>;
   list(
     params: {
       q?: string;

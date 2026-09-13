@@ -14,6 +14,7 @@ import { ClientType } from "src/modules/clients/domain/object-values/client-type
 import { ClientDocType } from "src/modules/clients/domain/object-values/client-doc-type";
 import { SaleOrderEditPolicy } from "src/modules/sale-orders/application/services/sale-order-edit-policy.service";
 import { SaleOrderAttachmentType } from "src/modules/sale-order-attachments/domain/value-objects/sale-order-attachment-type";
+import type { SaleOrderReservationHealthResult } from "src/modules/sale-orders/application/services/sale-order-reservation-reconciliation.service";
 
 export interface SaleOrderSearchStateOutput {
   recent: ListingSearchRecentOutput<SaleOrderSearchSnapshot>[];
@@ -214,6 +215,7 @@ export type SaleOrderGetOutput = {
     createdAt: string;
   }>;
   editPolicy: SaleOrderEditPolicy;
+  reservationHealth?: SaleOrderReservationHealthResult;
   totalPaid: number;
   pendingAmount: number;
   paymentStatus: SaleOrderPaymentStatus;

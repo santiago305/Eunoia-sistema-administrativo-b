@@ -125,9 +125,18 @@ export class WorkflowReactivityOrchestratorService implements OnModuleInit, OnMo
       occurredAt: event.occurredAt,
     });
 
-    const saleOrderIds = await this.saleOrderRepo.listIdsForAutomaticWorkflowByInventoryStockEvent(
-      { warehouseId: event.warehouseId, stockItemId: event.stockItemId },
-      WORKFLOW_REACTIVITY_LIMIT,
+    const [workflowCandidateIds, reservationCandidateIds] = await Promise.all([
+      this.saleOrderRepo.listIdsForAutomaticWorkflowByInventoryStockEvent(
+        { warehouseId: event.warehouseId, stockItemId: event.stockItemId },
+        WORKFLOW_REACTIVITY_LIMIT,
+      ),
+      this.saleOrderRepo.listIdsWithActiveReservationByInventoryStockEvent(
+        { warehouseId: event.warehouseId, stockItemId: event.stockItemId },
+        WORKFLOW_REACTIVITY_LIMIT,
+      ),
+    ]);
+    const saleOrderIds = Array.from(
+      new Set([...workflowCandidateIds, ...reservationCandidateIds]),
     );
 
     if (!saleOrderIds.length) {

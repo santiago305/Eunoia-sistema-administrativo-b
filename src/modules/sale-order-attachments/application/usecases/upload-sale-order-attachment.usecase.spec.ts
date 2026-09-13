@@ -41,7 +41,7 @@ describe('UploadSaleOrderAttachmentUsecase', () => {
     const manager = {
       getRepository: jest.fn((entity: { name?: string }) => {
         if (entity.name === 'SaleOrderEntity') {
-          return { findOne: jest.fn().mockResolvedValue({ id: 'order-1' }) };
+          return { findOne: jest.fn().mockResolvedValue({ id: 'order-1', isActive: true }) };
         }
         return {
           findOne: jest
@@ -107,7 +107,7 @@ describe('UploadSaleOrderAttachmentUsecase', () => {
     };
     const manager = {
       getRepository: jest.fn().mockReturnValue({
-        findOne: jest.fn().mockResolvedValue({ id: 'order-1' }),
+        findOne: jest.fn().mockResolvedValue({ id: 'order-1', isActive: true }),
       }),
     };
     const uow = {
@@ -168,7 +168,7 @@ describe('UploadSaleOrderAttachmentUsecase', () => {
     };
     const manager = {
       getRepository: jest.fn().mockReturnValue({
-        findOne: jest.fn().mockResolvedValue({ id: 'order-1' }),
+        findOne: jest.fn().mockResolvedValue({ id: 'order-1', isActive: true }),
       }),
     };
     const uow = {
@@ -253,7 +253,7 @@ describe('UploadSaleOrderAttachmentUsecase', () => {
     };
     const manager = {
       getRepository: jest.fn().mockReturnValue({
-        findOne: jest.fn().mockResolvedValue({ id: 'order-1' }),
+        findOne: jest.fn().mockResolvedValue({ id: 'order-1', isActive: true }),
       }),
     };
     const uow = {

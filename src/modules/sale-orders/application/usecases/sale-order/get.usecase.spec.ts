@@ -26,9 +26,24 @@ describe('GetSaleOrderUsecase', () => {
         reason: 'Stock reservado',
       }),
     };
+    const stockRequirements = {
+      resolve: jest
+        .fn()
+        .mockResolvedValue([{ stockItemId: 'stock-1', quantity: 2 }]),
+    };
+    const reservationReconciliation = {
+      inspect: jest.fn().mockResolvedValue({
+        checked: true,
+        status: 'COMPLETE',
+        warehouseId: null,
+        items: [],
+      }),
+    };
     const usecase = new GetSaleOrderUsecase(
       repository as any,
       policy as any,
+      stockRequirements as any,
+      reservationReconciliation as any,
     );
 
     const result = await usecase.execute({ saleOrderId: 'order-1' });
@@ -39,6 +54,15 @@ describe('GetSaleOrderUsecase', () => {
       currentStateId: 'state-1',
     });
     expect(result.editPolicy.stockStatus).toBe('RESERVED');
+    expect(result.reservationHealth.status).toBe('COMPLETE');
+    expect(reservationReconciliation.inspect).toHaveBeenCalledWith(
+      {
+        id: 'order-1',
+        warehouseId: null,
+        reserveBool: undefined,
+      },
+      [{ stockItemId: 'stock-1', quantity: 2 }],
+    );
     expect(result.client?.telephones).toHaveLength(1);
     expect(result.SKUS).toBe('EVA01893(1)');
     expect(result.detail).toBe('JABONAZUFRE1');

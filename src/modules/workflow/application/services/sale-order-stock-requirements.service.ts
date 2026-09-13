@@ -31,7 +31,7 @@ export class SaleOrderStockRequirementsService {
     private readonly supplyRepo: SaleOrderSupplyItemRepository,
   ) {}
 
-  async resolve(order: SaleOrder, tx?: TransactionContext) {
+  async resolve(order: Pick<SaleOrder, "id">, tx?: TransactionContext) {
     const items = await this.itemRepo.listBySaleOrderId(order.id, tx);
     const [components, supplies] = await Promise.all([
       this.componentRepo.listBySaleOrderItemIds(items.map((item) => item.id), tx),

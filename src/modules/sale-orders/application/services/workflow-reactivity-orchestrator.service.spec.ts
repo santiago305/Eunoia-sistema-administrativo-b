@@ -25,6 +25,7 @@ const createService = () => {
   const saleOrderRepo = {
     listIdsForAutomaticWorkflowByClientId: jest.fn(),
     listIdsForAutomaticWorkflowByInventoryStockEvent: jest.fn(),
+    listIdsWithActiveReservationByInventoryStockEvent: jest.fn(),
   };
   const automaticWorkflow = {
     evaluateManyAndNotify: jest.fn(),
@@ -85,18 +86,22 @@ describe("WorkflowReactivityOrchestratorService", () => {
   it("automatically processes workflow candidates after inventory stock updates", async () => {
     const { service, saleOrderRepo, automaticWorkflow, workflowRealtime } = createService();
     saleOrderRepo.listIdsForAutomaticWorkflowByInventoryStockEvent.mockResolvedValue(["order-1"]);
+    saleOrderRepo.listIdsWithActiveReservationByInventoryStockEvent.mockResolvedValue([
+      "order-1",
+      "order-reservation",
+    ]);
     automaticWorkflow.evaluateManyAndNotify.mockResolvedValue({
-      found: 1,
-      updated: 1,
+      found: 2,
+      updated: 2,
       failed: 0,
-      saleOrderIds: ["order-1"],
+      saleOrderIds: ["order-1", "order-reservation"],
     });
 
     await expect(service.handleStockUpdated(stockEvent())).resolves.toEqual({
-      found: 1,
-      updated: 1,
+      found: 2,
+      updated: 2,
       failed: 0,
-      saleOrderIds: ["order-1"],
+      saleOrderIds: ["order-1", "order-reservation"],
     });
 
     expect(saleOrderRepo.listIdsForAutomaticWorkflowByInventoryStockEvent).toHaveBeenCalledWith(
@@ -104,12 +109,18 @@ describe("WorkflowReactivityOrchestratorService", () => {
       100,
     );
     expect(automaticWorkflow.evaluateManyAndNotify).toHaveBeenCalledWith(
-      ["order-1"],
+      ["order-1", "order-reservation"],
       SaleOrderAutomaticWorkflowTriggerEnum.INVENTORY_UPDATED,
+    );
+    expect(
+      saleOrderRepo.listIdsWithActiveReservationByInventoryStockEvent,
+    ).toHaveBeenCalledWith(
+      { warehouseId: "warehouse-1", stockItemId: "stock-1" },
+      100,
     );
     expect(workflowRealtime.emitToAllConnected).toHaveBeenCalledWith(
       "workflow-reactivity.processed",
-      expect.objectContaining({ source: "inventory", trigger: "inventory-updated", updated: 1 }),
+      expect.objectContaining({ source: "inventory", trigger: "inventory-updated", updated: 2 }),
     );
   });
 
@@ -124,6 +135,7 @@ describe("WorkflowReactivityOrchestratorService", () => {
     });
 
     expect(saleOrderRepo.listIdsForAutomaticWorkflowByInventoryStockEvent).not.toHaveBeenCalled();
+    expect(saleOrderRepo.listIdsWithActiveReservationByInventoryStockEvent).not.toHaveBeenCalled();
     expect(automaticWorkflow.evaluateManyAndNotify).not.toHaveBeenCalled();
     expect(workflowRealtime.emitToAllConnected).toHaveBeenCalledWith(
       "workflow-reactivity.skipped",

@@ -66,6 +66,14 @@ describe('SaleOrderWorkflowActionRunnerService', () => {
           },
         })),
     };
+    const reservationReconciliation = {
+      reconcile: jest.fn().mockResolvedValue({
+        checked: true,
+        adjusted: false,
+        warehouseId: 'warehouse-1',
+        items: [],
+      }),
+    };
     return {
       runner: new SaleOrderWorkflowActionRunnerService(
         requirements as any,
@@ -77,6 +85,7 @@ describe('SaleOrderWorkflowActionRunnerService', () => {
         consumption as any,
         consumptionReversal as any,
         warehouseAssignment as any,
+        reservationReconciliation as any,
       ),
       requirements,
       inventory,
@@ -87,6 +96,7 @@ describe('SaleOrderWorkflowActionRunnerService', () => {
       consumption,
       consumptionReversal,
       warehouseAssignment,
+      reservationReconciliation,
     };
   }
 
@@ -96,7 +106,7 @@ describe('SaleOrderWorkflowActionRunnerService', () => {
   ] as const)(
     'executes %s with the expected inventory deltas',
     async (type, reservedDelta, onHandDelta) => {
-      const { runner, inventory } = setup();
+      const { runner, inventory, reservationReconciliation } = setup();
 
       await runner.run(
         order,
@@ -119,6 +129,11 @@ describe('SaleOrderWorkflowActionRunnerService', () => {
           locationId: null,
           delta: reservedDelta,
         },
+        tx,
+      );
+      expect(reservationReconciliation.reconcile).toHaveBeenCalledWith(
+        order,
+        [{ stockItemId: 'stock-1', quantity: 3 }],
         tx,
       );
       if (onHandDelta) {
