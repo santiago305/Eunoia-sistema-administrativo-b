@@ -137,6 +137,18 @@ import { ExpandSecurityRateLimitAudit20260902000000 } from './migrations/2026090
 import { AddCompanyPrimaryColor20260903000000 } from './migrations/20260903000000-add-company-primary-color';
 import { AddAdviserPermissions20260905090000 } from './migrations/20260905090000-add-adviser-permissions';
 import { AddPurchaseReceivedAt20260909000000 } from './migrations/20260909000000-add-purchase-received-at';
+import { NormalizePaymentMethodCatalog20260920090000 } from './migrations/20260920090000-normalize-payment-method-catalog';
+import { HardenCompanyTreasuryAccounts20260921100000 } from './migrations/20260921100000-harden-company-treasury-accounts';
+import { CreateSupplierPaymentDestinations20260921110000 } from './migrations/20260921110000-create-supplier-payment-destinations';
+import { NormalizeLegacyPaymentMethodNames20260921120000 } from './migrations/20260921120000-normalize-legacy-payment-method-names';
+import { ReconcileLegacySupplierMethodDuplicates20260921130000 } from './migrations/20260921130000-reconcile-legacy-supplier-method-duplicates';
+import { HardenAccountsPayableLifecycle20260921140000 } from './migrations/20260921140000-harden-accounts-payable-lifecycle';
+import { CreatePaymentAllocationsAndLifecycle20260921150000 } from './migrations/20260921150000-create-payment-allocations-and-lifecycle';
+import { UnifySalePaymentsWithFinancialPayments20260921160000 } from './migrations/20260921160000-unify-sale-payments-with-financial-payments';
+import { RetireUnusedBankAccounts20260921170000 } from './migrations/20260921170000-retire-unused-bank-accounts';
+import { LinkPaymentSupplierDestination20260921180000 } from './migrations/20260921180000-link-payment-supplier-destination';
+import { RetireCompanyMethodNumber20260921190000 } from './migrations/20260921190000-retire-company-method-number';
+import { RetireBankAccountPermissions20260921200000 } from './migrations/20260921200000-retire-bank-account-permissions';
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: 'postgres',
@@ -285,6 +297,18 @@ export const databaseMigrations = [
   AddCompanyPrimaryColor20260903000000,
   AddAdviserPermissions20260905090000,
   AddPurchaseReceivedAt20260909000000,
+  NormalizePaymentMethodCatalog20260920090000,
+  HardenCompanyTreasuryAccounts20260921100000,
+  CreateSupplierPaymentDestinations20260921110000,
+  NormalizeLegacyPaymentMethodNames20260921120000,
+  ReconcileLegacySupplierMethodDuplicates20260921130000,
+  HardenAccountsPayableLifecycle20260921140000,
+  CreatePaymentAllocationsAndLifecycle20260921150000,
+  UnifySalePaymentsWithFinancialPayments20260921160000,
+  RetireUnusedBankAccounts20260921170000,
+  LinkPaymentSupplierDestination20260921180000,
+  RetireCompanyMethodNumber20260921190000,
+  RetireBankAccountPermissions20260921200000,
 ];
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({

@@ -21,7 +21,11 @@ import { ListingSearchMetricEntity } from "src/shared/listing-search/adapters/ou
 import { ListingSearchRecentEntity } from "src/shared/listing-search/adapters/out/persistence/typeorm/entities/listing-search-recent.entity";
 import { PaymentMethodEntity } from "src/modules/payment-methods/adapters/out/persistence/typeorm/entities/payment-method.entity";
 import { CompanyPaymentAccountEntity } from "src/modules/company-payment-accounts/adapters/out/persistence/typeorm/entities/company-payment-account.entity";
+import { PaymentAllocationEntity } from "./adapters/out/persistence/typeorm/entities/payment-allocation.entity";
 import { PAYMENT_SEARCH } from "./domain/ports/payment-search.repository";
+import { SupplierPaymentDestinationEntity } from "src/modules/supplier-payment-destinations/adapters/out/persistence/typeorm/entities/supplier-payment-destination.entity";
+import { ReleaseDueScheduledPaymentsJob } from "./application/jobs/release-due-scheduled-payments.job";
+import { PaymentsJobsScheduler } from "./infrastructure/jobs/payments-jobs.scheduler";
 
 @Module({
   imports: [
@@ -32,6 +36,8 @@ import { PAYMENT_SEARCH } from "./domain/ports/payment-search.repository";
       ListingSearchMetricEntity,
       PaymentMethodEntity,
       CompanyPaymentAccountEntity,
+      PaymentAllocationEntity,
+      SupplierPaymentDestinationEntity,
     ]),
     TypeOrmModule.forFeature([
       ApprovalRequestEntity,
@@ -43,7 +49,11 @@ import { PAYMENT_SEARCH } from "./domain/ports/payment-search.repository";
     AccountsPayableModule,
   ],
   controllers: [PaymentsController, CreditQuotasController],
-  providers: [...paymentsModuleProviders],
+  providers: [
+    ...paymentsModuleProviders,
+    ReleaseDueScheduledPaymentsJob,
+    PaymentsJobsScheduler,
+  ],
   exports: [
     CreatePaymentUsecase,
     DeletePaymentUsecase,

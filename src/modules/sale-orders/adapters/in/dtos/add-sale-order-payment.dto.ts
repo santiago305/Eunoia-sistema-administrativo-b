@@ -1,8 +1,17 @@
 import { IsDateString, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Min } from "class-validator";
 
 export class AddSaleOrderPaymentDto {
+  @IsOptional()
   @IsUUID()
-  bankAccountId: string;
+  bankAccountId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  companyPaymentAccountId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  paymentMethodId?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -19,6 +28,10 @@ export class AddSaleOrderPaymentDto {
   @IsOptional()
   @IsString()
   operationNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  operationCode?: string;
 
   @IsOptional()
   @IsString()

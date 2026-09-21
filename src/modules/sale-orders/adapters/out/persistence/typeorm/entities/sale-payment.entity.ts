@@ -1,4 +1,5 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
+import { CurrencyType } from "src/modules/payments/domain/value-objects/currency-type";
 
 @Entity("sale_payments")
 @Index("idx_sale_payments_sale_order", ["saleOrderId"])
@@ -11,6 +12,30 @@ export class SalePaymentEntity {
 
   @Column({ name: "bank_account_id", type: "uuid", nullable: true })
   bankAccountId?: string | null;
+
+  @Column({ name: "company_payment_account_id", type: "uuid", nullable: true })
+  companyPaymentAccountId?: string | null;
+
+  @Column({ name: "payment_method_id", type: "uuid", nullable: true })
+  paymentMethodId?: string | null;
+
+  @Column({ name: "currency", type: "enum", enum: CurrencyType, enumName: "currency_type", default: CurrencyType.PEN })
+  currency: CurrencyType;
+
+  @Column({ name: "status", type: "varchar", length: 20, default: "POSTED" })
+  status: "DRAFT" | "POSTED" | "VOIDED";
+
+  @Column({ name: "operation_code", type: "varchar", length: 80, nullable: true })
+  operationCode?: string | null;
+
+  @Column({ name: "voided_at", type: "timestamptz", nullable: true })
+  voidedAt?: Date | null;
+
+  @Column({ name: "voided_by_user_id", type: "uuid", nullable: true })
+  voidedByUserId?: string | null;
+
+  @Column({ name: "void_reason", type: "text", nullable: true })
+  voidReason?: string | null;
 
   @Column({ name: "date", type: "timestamptz" })
   date: Date;

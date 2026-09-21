@@ -5,7 +5,7 @@ import { PaymentDocument } from "../entity/payment-document";
 
 export const PAYMENT_DOCUMENT_REPOSITORY = Symbol("PAYMENT_DOCUMENT_REPOSITORY");
 
-export type PaymentStatus = "SCHEDULED" | "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
+export type PaymentStatus = "DRAFT" | "SCHEDULED" | "PENDING_APPROVAL" | "POSTED" | "APPROVED" | "REJECTED" | "VOIDED";
 
 export interface ListPaymentDocumentsParams {
   q?: string;

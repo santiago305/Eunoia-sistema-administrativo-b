@@ -68,6 +68,16 @@ import { SaleOrderReadContext } from 'src/modules/sale-orders/application/servic
 import { buildSaleOrderTrackingCapabilities } from 'src/modules/sale-orders/application/support/sale-order-tracking-capabilities';
 import { SaleOrderSupplyItemEntity } from '../entities/sale-order-supply-item.entity';
 
+const maskedAccountNumber = (account: CompanyPaymentAccountEntity): string | null => {
+  const suffix =
+    account.cardLastFour ??
+    account.accountLastFour ??
+    account.cciLastFour ??
+    account.walletPhoneLastFour;
+
+  return suffix ? `****${suffix}` : null;
+};
+
 @Injectable()
 export class SaleOrderTypeormRepository implements SaleOrderRepository {
   constructor(
@@ -1850,7 +1860,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
                     ? {
                         id: account.id,
                         name: account.name,
-                        number: account.accountNumber ?? null,
+                        number: maskedAccountNumber(account),
                       }
                     : null;
                 })()
@@ -2302,7 +2312,23 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         )
         .select('bankAccount.id', 'id')
         .addSelect("COALESCE(bankAccount.name, 'Sin cuenta')", 'label')
-        .addSelect('bankAccount.accountNumber', 'number')
+        .addSelect(
+          `CASE
+            WHEN COALESCE(
+              bankAccount.cardLastFour,
+              bankAccount.accountLastFour,
+              bankAccount.cciLastFour,
+              bankAccount.walletPhoneLastFour
+            ) IS NULL THEN NULL
+            ELSE '****' || COALESCE(
+              bankAccount.cardLastFour,
+              bankAccount.accountLastFour,
+              bankAccount.cciLastFour,
+              bankAccount.walletPhoneLastFour
+            )
+          END`,
+          'number',
+        )
         .addSelect(
           "COALESCE(NULLIF(TRIM(payment.note), ''), 'Sin descripcion')",
           'description',
@@ -2311,7 +2337,10 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         .addSelect('COALESCE(SUM(payment.amount), 0)', 'collected')
         .groupBy('bankAccount.id')
         .addGroupBy('bankAccount.name')
-        .addGroupBy('bankAccount.accountNumber')
+        .addGroupBy('bankAccount.cardLastFour')
+        .addGroupBy('bankAccount.accountLastFour')
+        .addGroupBy('bankAccount.cciLastFour')
+        .addGroupBy('bankAccount.walletPhoneLastFour')
         .addGroupBy(
           "COALESCE(NULLIF(TRIM(payment.note), ''), 'Sin descripcion')",
         )
@@ -2823,7 +2852,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
                 ? {
                     id: account.id,
                     name: account.name,
-                    number: account.accountNumber ?? null,
+                    number: maskedAccountNumber(account),
                   }
                 : null;
             })()

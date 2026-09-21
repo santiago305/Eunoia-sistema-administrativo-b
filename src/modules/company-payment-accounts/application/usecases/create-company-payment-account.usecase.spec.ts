@@ -78,6 +78,7 @@ describe("CreateCompanyPaymentAccountUsecase", () => {
           companyId: "company-1",
           type: "BANK_ACCOUNT",
           name: "BCP Empresa",
+          institutionName: "BCP",
           accountNumber: "1912345678901",
           currency: CurrencyType.PEN,
         }),

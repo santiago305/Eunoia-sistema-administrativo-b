@@ -1,31 +1,48 @@
 import { DataSource } from "typeorm";
 import { PaymentMethodEntity } from "../../adapters/out/persistence/typeorm/entities/payment-method.entity";
-import { resolveRequiresVoucher } from "../../domain/services/payment-method-voucher-policy";
+import {
+  PAYMENT_METHOD_DEFINITIONS,
+  PAYMENT_METHOD_CODES,
+} from "../../domain/value-objects/payment-method-catalog";
 
-const PAYMENT_METHODS = ["YAPE", "PLIN", "BCP", "BBVA", "EFECTIVO", "TARJETA"];
+const PAYMENT_METHODS = PAYMENT_METHOD_CODES.map((code) => PAYMENT_METHOD_DEFINITIONS[code]);
 
 export const seedPaymentMethods = async (dataSource: DataSource): Promise<void> => {
   const repo = dataSource.getRepository(PaymentMethodEntity);
 
-  for (const name of PAYMENT_METHODS) {
-    const requiresVoucher = resolveRequiresVoucher(name);
-    const existing = await repo.findOne({ where: { name } });
+  for (const definition of PAYMENT_METHODS) {
+    const existing = await repo.findOne({ where: { code: definition.code } });
     if (existing) {
-      if (existing.requiresVoucher !== requiresVoucher) {
-        await repo.update({ id: existing.id }, { requiresVoucher });
-      }
-      console.log(`Metodo de pago ${name} ya existe, omitiendo...`);
+      await repo.update(
+        { id: existing.id },
+        {
+          name: definition.defaultName,
+          category: definition.category,
+          requiresVoucher: definition.requiresVoucher,
+          requiresSourceAccount: definition.requiresSourceAccount,
+          requiresDestination: definition.requiresDestination,
+          requiresOperationReference: definition.requiresOperationReference,
+          isSystem: true,
+        },
+      );
+      console.log(`Metodo de pago ${definition.code} ya existe, actualizando catalogo...`);
       continue;
     }
 
     await repo.save(
       repo.create({
-        name,
+        name: definition.defaultName,
+        code: definition.code,
+        category: definition.category,
         isActive: true,
-        requiresVoucher,
+        requiresVoucher: definition.requiresVoucher,
+        requiresSourceAccount: definition.requiresSourceAccount,
+        requiresDestination: definition.requiresDestination,
+        requiresOperationReference: definition.requiresOperationReference,
+        isSystem: true,
       }),
     );
 
-    console.log(`Metodo de pago creado: ${name}`);
+    console.log(`Metodo de pago creado: ${definition.code}`);
   }
 };

@@ -11,6 +11,7 @@ import { GetPaymentUsecase } from "src/modules/payments/application/usecases/pay
 import { GetPaymentsByPoIdUsecase } from "src/modules/payments/application/usecases/payment/get-by-po-id.usecase";
 import { ListPaymentsUsecase } from "src/modules/payments/application/usecases/payment/list.usecase";
 import { RejectPaymentUsecase } from "src/modules/payments/application/usecases/payment/reject.usecase";
+import { VoidPaymentUsecase } from "src/modules/payments/application/usecases/payment/void-payment.usecase";
 import { ExportPaymentsExcelUsecase } from "src/modules/payments/application/usecases/payment/export-excel.usecase";
 import { PaymentsHttpMapper } from "src/modules/payments/application/mappers/payments-http.mapper";
 import { HttpCreatePaymentDto } from "../dtos/payment/http-payment-create.dto";
@@ -38,6 +39,7 @@ export class PaymentsController {
     private readonly createPayment: CreatePaymentUsecase,
     private readonly approvePaymentUsecase: ApprovePaymentUsecase,
     private readonly rejectPaymentUsecase: RejectPaymentUsecase,
+    private readonly voidPaymentUsecase: VoidPaymentUsecase,
     private readonly deletePayment: DeletePaymentUsecase,
     private readonly getPayment: GetPaymentUsecase,
     private readonly getPaymentsByPoId: GetPaymentsByPoIdUsecase,
@@ -93,7 +95,7 @@ export class PaymentsController {
       input,
       undefined,
       {
-        status: isScheduled ? "SCHEDULED" : canApprovePayment ? "APPROVED" : "PENDING_APPROVAL",
+      status: isScheduled ? "SCHEDULED" : canApprovePayment ? "POSTED" : "PENDING_APPROVAL",
         requestedByUserId: user.id,
         scheduledByUserId: isScheduled ? user.id : undefined,
         approvedByUserId: canApprovePayment ? user.id : undefined,
@@ -187,6 +189,16 @@ export class PaymentsController {
       userId: user.id,
       reason: body?.reason,
     });
+  }
+
+  @RequirePermissions("payments.approve")
+  @Post(":id/void")
+  async voidPayment(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() body: { reason?: string },
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.voidPaymentUsecase.execute({ paymentId: id, userId: user.id, reason: body?.reason ?? "" });
   }
 
   @RequirePermissions("payments.read")
@@ -325,7 +337,7 @@ export class PaymentsController {
     });
 
     if (purchase?.approvalStatus === "PENDING") {
-      return payments.filter((item) => item.status === "APPROVED");
+      return payments.filter((item) => item.status === "APPROVED" || item.status === "POSTED");
     }
 
     return payments.filter((item) => item.status !== "REJECTED");

@@ -15,6 +15,7 @@ interface EnvVars {
     DB_NAME: string;
     COOKIE_DOMAIN?: string;
     COOKIE_SECRET: string;
+    PAYMENT_ACCOUNT_ENCRYPTION_KEY?: string;
     JWT_SECRET: string;
     JWT_EXPIRES_IN: StringValue;
     JWT_ISSUER: StringValue;
@@ -64,6 +65,7 @@ const envsSchema = joi.object({
     DB_NAME: joi.string().required(),
     COOKIE_DOMAIN: joi.string().allow('').optional(),
     COOKIE_SECRET: joi.string().min(32).required(),
+    PAYMENT_ACCOUNT_ENCRYPTION_KEY: joi.string().min(32).optional(),
     JWT_SECRET: joi.string().min(32).required(),
     JWT_EXPIRES_IN: joi.string().required(),
     JWT_ISSUER: joi.string().required(),
@@ -124,6 +126,11 @@ const productionSecrets = [
     { name: 'DB_PASSWORD', value: envsVars.DB_PASSWORD, minLength: 16 },
     { name: 'REDIS_PASSWORD', value: envsVars.REDIS_PASSWORD, minLength: 16 },
     { name: 'COOKIE_SECRET', value: envsVars.COOKIE_SECRET, minLength: 32 },
+    {
+        name: 'PAYMENT_ACCOUNT_ENCRYPTION_KEY',
+        value: envsVars.PAYMENT_ACCOUNT_ENCRYPTION_KEY,
+        minLength: 32,
+    },
     { name: 'JWT_SECRET', value: envsVars.JWT_SECRET, minLength: 32 },
     {
         name: 'MASTER_ADMIN_INITIAL_PASSWORD',
@@ -179,6 +186,7 @@ export const envs = {
     corsOrigins,
     cookieDomain: envsVars.COOKIE_DOMAIN?.trim() || undefined,
     cookieSecret: envsVars.COOKIE_SECRET,
+    paymentAccountEncryptionKey: envsVars.PAYMENT_ACCOUNT_ENCRYPTION_KEY,
     jwt: {
         secret: envsVars.JWT_SECRET,
         expiresIn: envsVars.JWT_EXPIRES_IN,

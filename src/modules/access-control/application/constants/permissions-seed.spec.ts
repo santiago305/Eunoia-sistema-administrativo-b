@@ -14,6 +14,13 @@ describe("permissions seed", () => {
     expect(codes.has("payments.manage")).toBe(true);
   });
 
+  it("does not seed permissions from the retired bank accounts module", () => {
+    const codes = new Set(PERMISSIONS_SEED.map((item) => item.code));
+
+    expect(codes.has("bank-accounts.read")).toBe(false);
+    expect(codes.has("bank-accounts.manage")).toBe(false);
+  });
+
   it("includes the complete adviser permission contract", () => {
     const adviserPermissions = PERMISSIONS_SEED.filter(
       (item) => item.module === "advisers",

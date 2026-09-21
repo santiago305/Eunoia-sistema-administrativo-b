@@ -1,9 +1,6 @@
 import { DataSource } from "typeorm";
 import { SupplierEntity } from "../../adapters/out/persistence/typeorm/entities/supplier.entity";
 import { SupplierDocType } from "../../domain/object-values/supplier-doc-type";
-import { PaymentMethodEntity } from "src/modules/payment-methods/adapters/out/persistence/typeorm/entities/payment-method.entity";
-import { SupplierMethodEntity } from "src/modules/payment-methods/adapters/out/persistence/typeorm/entities/supplier-method.entity";
-import { resolveRequiresVoucher } from "src/modules/payment-methods/domain/services/payment-method-voucher-policy";
 
 const REAL_SUPPLIER_NAMES = [
   "Alicorp",
@@ -30,15 +27,6 @@ const REAL_SUPPLIER_NAMES = [
 
 export const seedSuppliers = async (dataSource: DataSource, count: number = 10): Promise<void> => {
   const repo = dataSource.getRepository(SupplierEntity);
-  const methodRepo = dataSource.getRepository(PaymentMethodEntity);
-  const supplierMethodRepo = dataSource.getRepository(SupplierMethodEntity);
-  const methods = await methodRepo.find({ order: { name: "ASC" } });
-  if (methods.length === 0) {
-    throw new Error("No hay metodos de pago. Ejecuta seedPaymentMethods primero.");
-  }
-  if (methods.length < 3) {
-    throw new Error("Se requieren al menos 3 metodos de pago para asignar a proveedores.");
-  }
   const total = Math.min(count, REAL_SUPPLIER_NAMES.length);
 
   for (let i = 1; i <= total; i++) {
@@ -69,94 +57,5 @@ export const seedSuppliers = async (dataSource: DataSource, count: number = 10):
       console.log(`Proveedor creado: ${supplierName} (${documentNumber})`);
     }
 
-    const methodIndexes = [0, 1, 2].map((offset) => (i - 1 + offset) % methods.length);
-    for (const idx of methodIndexes) {
-      const method = methods[idx];
-      const methodNumber = buildMethodNumber(method.name, i);
-      const existingLink = await supplierMethodRepo
-        .createQueryBuilder("sm")
-        .where("sm.supplierId = :supplierId", { supplierId: supplier.id })
-        .andWhere("sm.methodId = :methodId", { methodId: method.id })
-        .andWhere("COALESCE(BTRIM(sm.number), '') = :normalizedNumber", {
-          normalizedNumber: methodNumber?.trim() ?? "",
-        })
-        .getOne();
-      if (existingLink) continue;
-
-      await supplierMethodRepo.save(
-        supplierMethodRepo.create({
-          supplierId: supplier.id,
-          methodId: method.id,
-          number: methodNumber ?? null,
-          requiresVoucher: resolveRequiresVoucher(method.name, method.requiresVoucher),
-        }),
-      );
-    }
-
-    const cashMethod = methods.find((method) => method.name.trim().toUpperCase() === "EFECTIVO");
-    if (cashMethod) {
-      const existingCash = await supplierMethodRepo
-        .createQueryBuilder("sm")
-        .where("sm.supplierId = :supplierId", { supplierId: supplier.id })
-        .andWhere("sm.methodId = :methodId", { methodId: cashMethod.id })
-        .andWhere("COALESCE(BTRIM(sm.number), '') = ''")
-        .getOne();
-
-      if (existingCash) {
-        if (existingCash.requiresVoucher) {
-          await supplierMethodRepo.update({ id: existingCash.id }, { requiresVoucher: false });
-        }
-      } else {
-        await supplierMethodRepo.save(
-          supplierMethodRepo.create({
-            supplierId: supplier.id,
-            methodId: cashMethod.id,
-            number: null,
-            isDefault: true,
-            requiresVoucher: false,
-          }),
-        );
-      }
-    }
-
-    if (i === 1) {
-      const bcpMethod = methods.find((method) => method.name === "BCP");
-      if (bcpMethod) {
-        const extraBcpNumber = `99${String(i).padStart(6, "0")}654321`;
-        const existingExtraBcp = await supplierMethodRepo
-          .createQueryBuilder("sm")
-          .where("sm.supplierId = :supplierId", { supplierId: supplier.id })
-          .andWhere("sm.methodId = :methodId", { methodId: bcpMethod.id })
-          .andWhere("COALESCE(BTRIM(sm.number), '') = :normalizedNumber", {
-            normalizedNumber: extraBcpNumber,
-          })
-          .getOne();
-
-        if (!existingExtraBcp) {
-          await supplierMethodRepo.save(
-            supplierMethodRepo.create({
-              supplierId: supplier.id,
-              methodId: bcpMethod.id,
-              number: extraBcpNumber,
-              requiresVoucher: resolveRequiresVoucher(bcpMethod.name, bcpMethod.requiresVoucher),
-            }),
-          );
-        }
-      }
-    }
   }
-};
-
-const buildMethodNumber = (methodName: string, seed: number): string | null => {
-  const suffix = String(seed).padStart(6, "0");
-  if (methodName === "YAPE" || methodName === "PLIN") {
-    return `9${suffix}`;
-  }
-  if (methodName === "BCP" || methodName === "BBVA") {
-    return `00${suffix}123456`;
-  }
-  if (methodName === "EFECTIVO") {
-    return null;
-  }
-  return null;
 };

@@ -32,6 +32,9 @@ export class DeletePaymentUsecase {
     if (!existing) {
       throw new NotFoundException(new PaymentNotFoundError().message);
     }
+    if (existing.status === "APPROVED" || existing.status === "POSTED" || existing.status === "VOIDED") {
+      throw new BadRequestException("Los pagos contabilizados o anulados no se eliminan; deben conservarse para auditoría");
+    }
     if (existing.quotaId) {
       const quota = await this.creditQuotaRepo.findById(existing.quotaId, tx);
       if (quota) {

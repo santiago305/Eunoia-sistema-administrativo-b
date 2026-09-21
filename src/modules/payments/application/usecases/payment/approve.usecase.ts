@@ -1,4 +1,4 @@
-import { Inject } from "@nestjs/common";
+import { Inject, Optional } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { RecalculateAccountPayableUsecase } from "src/modules/accounts-payable";
@@ -9,6 +9,9 @@ import { PurchaseOrderEntity } from "src/modules/purchases/adapters/out/persiste
 import { PurchaseHistoryService } from "src/modules/purchases/application/services/purchase-history.service";
 import { PaymentDocumentEntity } from "src/modules/payments/adapters/out/persistence/typeorm/entities/payment-document.entity";
 import { CREDIT_QUOTA_REPOSITORY, CreditQuotaRepository } from "src/modules/payments/domain/ports/credit-quota.repository";
+import { PaymentAllocationEntity } from "src/modules/payments/adapters/out/persistence/typeorm/entities/payment-allocation.entity";
+import { PaymentMethodEntity } from "src/modules/payment-methods/adapters/out/persistence/typeorm/entities/payment-method.entity";
+import { SupplierPaymentDestinationEntity } from "src/modules/supplier-payment-destinations/adapters/out/persistence/typeorm/entities/supplier-payment-destination.entity";
 
 export class ApprovePaymentUsecase {
   constructor(
@@ -23,6 +26,15 @@ export class ApprovePaymentUsecase {
     private readonly recalculateAccountPayable: RecalculateAccountPayableUsecase,
     private readonly notificationsService: NotificationsService,
     private readonly history: PurchaseHistoryService,
+    @Optional()
+    @InjectRepository(PaymentAllocationEntity)
+    private readonly allocationRepo?: Repository<PaymentAllocationEntity>,
+    @Optional()
+    @InjectRepository(PaymentMethodEntity)
+    private readonly paymentMethodRepo?: Repository<PaymentMethodEntity>,
+    @Optional()
+    @InjectRepository(SupplierPaymentDestinationEntity)
+    private readonly supplierDestinationRepo?: Repository<SupplierPaymentDestinationEntity>,
   ) {}
 
   async execute(input: { paymentId: string; userId: string }) {
@@ -34,12 +46,42 @@ export class ApprovePaymentUsecase {
       return { type: "error" as const, message: "El pago no está pendiente de aprobación" };
     }
 
-    existing.status = "APPROVED";
+    const paymentMethod = existing.paymentMethodId && this.paymentMethodRepo
+      ? await this.paymentMethodRepo.findOne({ where: { id: existing.paymentMethodId } })
+      : null;
+    if (paymentMethod?.requiresDestination && !existing.supplierPaymentDestinationId) {
+      return { type: "error" as const, message: "El pago no tiene un destino de proveedor confirmado" };
+    }
+    if (existing.supplierPaymentDestinationId) {
+      if (!this.supplierDestinationRepo) {
+        return { type: "error" as const, message: "No se pudo validar el destino del proveedor" };
+      }
+      const destination = await this.supplierDestinationRepo.findOne({
+        where: { id: existing.supplierPaymentDestinationId },
+      });
+      if (!destination || !destination.isActive || destination.requiresManualReview) {
+        return { type: "error" as const, message: "El destino del proveedor no esta disponible" };
+      }
+      if (destination.currency !== existing.currency || (existing.paymentMethodId && destination.methodId !== existing.paymentMethodId)) {
+        return { type: "error" as const, message: "El destino del proveedor no es compatible con el pago" };
+      }
+    }
+
+    existing.status = "POSTED";
     existing.approvedByUserId = input.userId;
     existing.approvedAt = new Date();
     existing.paidByUserId = input.userId;
     existing.paidAt = existing.paidAt ?? new Date();
     await this.paymentEntityRepo.save(existing);
+
+    if (existing.accountPayableId && this.allocationRepo) {
+      await this.allocationRepo.save(this.allocationRepo.create({
+        paymentId: existing.id,
+        accountPayableId: existing.accountPayableId,
+        amount: Number(existing.amount),
+        currency: existing.currency,
+      }));
+    }
 
     if (existing.quotaId) {
       const quota = await this.creditQuotaRepo.findById(existing.quotaId);

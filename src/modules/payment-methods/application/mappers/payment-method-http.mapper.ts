@@ -4,20 +4,12 @@ import { CreatePaymentMethodInput } from "../dtos/payment-method/input/create.in
 import { ListPaymentMethodsInput } from "../dtos/payment-method/input/list.input";
 import { SetPaymentMethodActiveInput } from "../dtos/payment-method/input/set-active.input";
 import { UpdatePaymentMethodInput } from "../dtos/payment-method/input/update.input";
-import { CreateSupplierMethodInput } from "../dtos/supplier-method/input/create.input";
-import { UpdateSupplierMethodInput } from "../dtos/supplier-method/input/update.input";
 
 export class PaymentMethodHttpMapper {
-  private static normalizeNumber(number?: string | null) {
-    if (number === undefined || number === null) return null;
-
-    const normalized = number.trim();
-    return normalized ? normalized : null;
-  }
-
   static toCreatePaymentMethodInput(dto: CreatePaymentMethodInput): CreatePaymentMethodInput {
     return {
       name: dto.name.trim(),
+      code: dto.code?.trim() || undefined,
       isActive: dto.isActive,
       requiresVoucher: dto.requiresVoucher,
     };
@@ -46,33 +38,7 @@ export class PaymentMethodHttpMapper {
   }
 
   static toCreateCompanyMethodInput(dto: CreateCompanyMethodInput): CreateCompanyMethodInput {
-    return {
-      ...dto,
-      number: PaymentMethodHttpMapper.normalizeNumber(dto.number),
-    };
-  }
-
-  static toCreateSupplierMethodInput(dto: CreateSupplierMethodInput): CreateSupplierMethodInput {
-    return {
-      ...dto,
-      number: PaymentMethodHttpMapper.normalizeNumber(dto.number),
-    };
-  }
-
-  static toUpdateSupplierMethodInput(
-    supplierMethodId: string,
-    dto: Omit<UpdateSupplierMethodInput, "supplierMethodId">,
-  ): UpdateSupplierMethodInput {
-    const input: UpdateSupplierMethodInput = { supplierMethodId };
-
-    if (dto.methodId !== undefined) input.methodId = dto.methodId;
-    if (Object.prototype.hasOwnProperty.call(dto, "number")) {
-      input.number = PaymentMethodHttpMapper.normalizeNumber(dto.number);
-    }
-    if (dto.isDefault !== undefined) input.isDefault = dto.isDefault;
-    if (dto.requiresVoucher !== undefined) input.requiresVoucher = dto.requiresVoucher;
-
-    return input;
+    return { ...dto };
   }
 
   static toUpdateCompanyMethodInput(
@@ -82,10 +48,8 @@ export class PaymentMethodHttpMapper {
     const input: UpdateCompanyMethodInput = { companyMethodId };
 
     if (dto.methodId !== undefined) input.methodId = dto.methodId;
-    if (Object.prototype.hasOwnProperty.call(dto, "number")) {
-      input.number = PaymentMethodHttpMapper.normalizeNumber(dto.number);
-    }
     if (dto.requiresVoucher !== undefined) input.requiresVoucher = dto.requiresVoucher;
+    if (dto.enabled !== undefined) input.enabled = dto.enabled;
 
     return input;
   }

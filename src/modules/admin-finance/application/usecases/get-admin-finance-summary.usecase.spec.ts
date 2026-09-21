@@ -4,9 +4,9 @@ import { ADMIN_FINANCE_QUERY_REPOSITORY, AdminFinanceQueryRepository } from "../
 describe("GetAdminFinanceSummaryUsecase", () => {
   it("delegates normalized date filters and returns consolidated money flow", async () => {
     const summary = {
-      income: { collected: 120, pending: 30 },
-      expenses: { paid: 80, pending: 50, overdue: 10, scheduled: 20 },
-      net: { collectedMinusPaid: 40, projectedAfterPending: -40 },
+      income: { collected: 120, pending: 30, byCurrency: {} },
+      expenses: { paid: 80, pending: 50, overdue: 10, scheduled: 20, byCurrency: {} },
+      net: { collectedMinusPaid: 40, projectedAfterPending: -40, byCurrency: {} },
     };
     const repo: AdminFinanceQueryRepository = {
       getSummary: jest.fn().mockResolvedValue(summary),

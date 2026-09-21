@@ -16,7 +16,7 @@ export class PaymentsFactory {
     poId?: string;
     quotaId?: string;
     accountPayableId?: string;
-    status?: "SCHEDULED" | "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
+    status?: "DRAFT" | "SCHEDULED" | "PENDING_APPROVAL" | "POSTED" | "APPROVED" | "REJECTED" | "VOIDED";
     requestedByUserId?: string;
     approvedByUserId?: string;
     rejectedByUserId?: string;
@@ -25,6 +25,7 @@ export class PaymentsFactory {
     rejectionReason?: string;
     companyPaymentAccountId?: string;
     paymentMethodId?: string;
+    supplierPaymentDestinationId?: string;
     paidByUserId?: string;
     scheduledByUserId?: string;
     scheduledAt?: Date;

@@ -45,6 +45,7 @@ export class PaymentDocumentTypeormRepository implements PaymentDocumentReposito
       accountPayableId: row.accountPayableId ?? undefined,
       companyPaymentAccountId: row.companyPaymentAccountId ?? undefined,
       paymentMethodId: row.paymentMethodId ?? undefined,
+      supplierPaymentDestinationId: row.supplierPaymentDestinationId ?? undefined,
       status: row.status,
       requestedByUserId: row.requestedByUserId ?? undefined,
       approvedByUserId: row.approvedByUserId ?? undefined,
@@ -80,7 +81,10 @@ export class PaymentDocumentTypeormRepository implements PaymentDocumentReposito
     accountPayableId: string,
     tx?: TransactionContext,
   ): Promise<PaymentDocument[]> {
-    const rows = await this.getRepo(tx).find({ where: { accountPayableId, status: "APPROVED" } });
+    const rows = await this.getRepo(tx).find({ where: [
+      { accountPayableId, status: "APPROVED" },
+      { accountPayableId, status: "POSTED" },
+    ] });
     return rows.map((r) => this.toDomain(r));
   }
 
@@ -117,6 +121,7 @@ export class PaymentDocumentTypeormRepository implements PaymentDocumentReposito
       accountPayableId: document.accountPayableId ?? null,
       companyPaymentAccountId: document.companyPaymentAccountId ?? null,
       paymentMethodId: document.paymentMethodId ?? null,
+      supplierPaymentDestinationId: document.supplierPaymentDestinationId ?? null,
       status: document.status,
       requestedByUserId: document.requestedByUserId ?? null,
       approvedByUserId: document.approvedByUserId ?? null,
@@ -154,6 +159,7 @@ export class PaymentDocumentTypeormRepository implements PaymentDocumentReposito
       accountPayableId: document.accountPayableId ?? null,
       companyPaymentAccountId: document.companyPaymentAccountId ?? null,
       paymentMethodId: document.paymentMethodId ?? null,
+      supplierPaymentDestinationId: document.supplierPaymentDestinationId ?? null,
       status: document.status,
       requestedByUserId: document.requestedByUserId ?? null,
       approvedByUserId: document.approvedByUserId ?? null,

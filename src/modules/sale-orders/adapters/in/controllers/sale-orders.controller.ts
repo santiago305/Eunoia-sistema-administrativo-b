@@ -583,10 +583,13 @@ export class SaleOrdersController {
     const result = await this.addPayment.execute({
       saleOrderId,
       bankAccountId: dto.bankAccountId,
+      companyPaymentAccountId: dto.companyPaymentAccountId ?? dto.bankAccountId,
+      paymentMethodId: dto.paymentMethodId,
       method: dto.method,
       amount: dto.amount,
       date: dto.date,
       operationNumber: dto.operationNumber,
+      operationCode: dto.operationCode,
       note: dto.note,
       paymentPhoto: dto.paymentPhoto,
     });

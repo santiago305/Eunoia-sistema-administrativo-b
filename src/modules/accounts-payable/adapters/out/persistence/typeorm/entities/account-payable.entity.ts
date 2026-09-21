@@ -40,6 +40,12 @@ export class AccountPayableEntity {
   @Column({ name: "status", type: "varchar", length: 20, default: "PENDING" })
   status: PayableStatus;
 
+  @Column({ name: "requires_manual_review", type: "boolean", default: false })
+  requiresManualReview: boolean;
+
+  @Column({ name: "reconciliation_note", type: "text", nullable: true })
+  reconciliationNote?: string | null;
+
   @Column({ name: "created_by_user_id", type: "uuid", nullable: true })
   createdByUserId?: string | null;
 

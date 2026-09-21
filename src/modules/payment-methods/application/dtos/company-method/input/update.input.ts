@@ -1,6 +1,6 @@
 export interface UpdateCompanyMethodInput {
   companyMethodId: string;
   methodId?: string;
-  number?: string | null;
   requiresVoucher?: boolean;
+  enabled?: boolean;
 }

@@ -44,6 +44,10 @@ export class HttpCreatePaymentDto {
   paymentMethodId?: string;
 
   @IsOptional()
+  @IsUUID()
+  supplierPaymentDestinationId?: string;
+
+  @IsOptional()
   @IsDateString()
   scheduledAt?: string;
 

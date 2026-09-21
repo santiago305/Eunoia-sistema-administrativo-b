@@ -5,16 +5,16 @@ export class CompanyMethod {
     public readonly companyMethodId: string | undefined,
     public readonly companyId: string,
     public readonly methodId: string,
-    public readonly number?: string,
     public readonly requiresVoucher: boolean = true,
+    public readonly enabled: boolean = true,
   ) {}
 
   static create(params: {
     companyMethodId?: string;
     companyId: string;
     methodId: string;
-    number?: string | null;
     requiresVoucher?: boolean;
+    enabled?: boolean;
   }) {
     if (!params.companyId || !params.methodId) {
       throw new InvalidPaymentMethodRelationError("company");
@@ -24,8 +24,8 @@ export class CompanyMethod {
       params.companyMethodId,
       params.companyId,
       params.methodId,
-      params.number?.trim() || undefined,
       params.requiresVoucher ?? true,
+      params.enabled ?? true,
     );
   }
 }

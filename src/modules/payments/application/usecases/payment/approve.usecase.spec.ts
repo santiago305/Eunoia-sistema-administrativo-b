@@ -76,7 +76,7 @@ describe("ApprovePaymentUsecase", () => {
 
     expect(result).toEqual({ type: "success", message: "Pago aprobado correctamente" });
     expect(paymentRepo.save).toHaveBeenCalledWith(expect.objectContaining({
-      status: "APPROVED",
+      status: "POSTED",
       approvedByUserId: "approver-1",
       paidByUserId: "approver-1",
       paidAt: new Date("2026-07-13T12:00:00.000Z"),

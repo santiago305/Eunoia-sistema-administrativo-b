@@ -1,5 +1,6 @@
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { SalePayment } from "../entities/sale-payment";
+import { CurrencyType } from "src/modules/payments/domain/value-objects/currency-type";
 
 export const SALE_PAYMENT_REPOSITORY = Symbol("SALE_PAYMENT_REPOSITORY");
 
@@ -8,6 +9,11 @@ export interface SalePaymentRepository {
     input: Array<{
       saleOrderId: string;
       bankAccountId?: string | null;
+      companyPaymentAccountId?: string | null;
+      paymentMethodId?: string | null;
+      currency?: CurrencyType;
+      status?: "DRAFT" | "POSTED" | "VOIDED";
+      operationCode?: string | null;
       date: Date;
       method: string;
       operationNumber?: string | null;
@@ -30,6 +36,9 @@ export interface SalePaymentRepository {
       saleOrderId: string;
       paymentId: string;
       bankAccountId?: string | null;
+      companyPaymentAccountId?: string | null;
+      paymentMethodId?: string | null;
+      operationCode?: string | null;
       date: Date;
       method: string;
       operationNumber?: string | null;

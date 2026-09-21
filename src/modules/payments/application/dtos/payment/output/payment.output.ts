@@ -15,7 +15,8 @@ export interface PaymentOutput {
   accountPayableId?: string | null;
   companyPaymentAccountId?: string | null;
   paymentMethodId?: string | null;
-  status: "SCHEDULED" | "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
+  supplierPaymentDestinationId?: string | null;
+  status: "DRAFT" | "SCHEDULED" | "PENDING_APPROVAL" | "POSTED" | "APPROVED" | "REJECTED" | "VOIDED";
   requestedByUserId?: string | null;
   approvedByUserId?: string | null;
   rejectedByUserId?: string | null;

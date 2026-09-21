@@ -1,5 +1,5 @@
 export const isCashPaymentMethodName = (name?: string | null) =>
-  (name ?? "").trim().toUpperCase() === "EFECTIVO";
+  ["EFECTIVO", "CASH"].includes((name ?? "").trim().toUpperCase());
 
 export const resolveRequiresVoucher = (
   methodName?: string | null,

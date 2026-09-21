@@ -4,10 +4,9 @@ import { EntityManager, Repository } from "typeorm";
 import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { PaymentMethod } from "src/modules/payment-methods/domain/entity/payment-method";
-import { PaymentMethodRepository, PaymentMethodWithNumber } from "src/modules/payment-methods/domain/ports/payment-method.repository";
+import { ConfiguredPaymentMethod, PaymentMethodRepository } from "src/modules/payment-methods/domain/ports/payment-method.repository";
 import { CompanyMethodEntity } from "../entities/company-method.entity";
 import { PaymentMethodEntity } from "../entities/payment-method.entity";
-import { SupplierMethodEntity } from "../entities/supplier-method.entity";
 
 @Injectable()
 export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
@@ -31,8 +30,14 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
     return PaymentMethod.create({
       methodId: row.id,
       name: row.name,
+      code: row.code,
       isActive: row.isActive,
       requiresVoucher: row.requiresVoucher,
+      category: row.category as any,
+      requiresSourceAccount: row.requiresSourceAccount,
+      requiresDestination: row.requiresDestination,
+      requiresOperationReference: row.requiresOperationReference,
+      isSystem: row.isSystem,
     });
   }
 
@@ -41,32 +46,44 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
     return row ? this.toDomain(row) : null;
   }
 
-  async getByCompany(companyId: string, tx?: TransactionContext): Promise<PaymentMethodWithNumber[]> {
+  async getByCompany(companyId: string, tx?: TransactionContext): Promise<ConfiguredPaymentMethod[]> {
     const rows = await this.getRepo(tx)
       .createQueryBuilder("pm")
       .innerJoin(CompanyMethodEntity, "cm", "cm.methodId = pm.id")
       .where("cm.companyId = :companyId", { companyId })
+      .andWhere("cm.enabled = true")
+      .andWhere("pm.isActive = true")
       .select([
         "cm.id AS relation_id",
-        "cm.number AS relation_number",
         "cm.requiresVoucher AS relation_requires_voucher",
+        "cm.enabled AS relation_enabled",
         "pm.id AS method_id",
         "pm.name AS method_name",
+        "pm.code AS method_code",
+        "pm.category AS method_category",
         "pm.isActive AS method_is_active",
         "pm.requiresVoucher AS method_requires_voucher",
+        "pm.requiresSourceAccount AS method_requires_source_account",
+        "pm.requiresDestination AS method_requires_destination",
+        "pm.requiresOperationReference AS method_requires_operation_reference",
+        "pm.isSystem AS method_is_system",
       ])
       .orderBy("pm.name", "ASC")
-      .addOrderBy("cm.number", "ASC", "NULLS FIRST")
       .addOrderBy("cm.id", "ASC")
       .getRawMany<{
         relation_id: string;
-        relation_number?: string | null;
-        relation_is_default: boolean;
         relation_requires_voucher: boolean;
+        relation_enabled: boolean;
         method_id: string;
         method_name: string;
+        method_code: string;
+        method_category: string;
         method_is_active: boolean;
         method_requires_voucher: boolean;
+        method_requires_source_account: boolean;
+        method_requires_destination: boolean;
+        method_requires_operation_reference: boolean;
+        method_is_system: boolean;
       }>();
 
     return rows.map((row) => ({
@@ -74,60 +91,26 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
       method: PaymentMethod.create({
         methodId: row.method_id,
         name: row.method_name,
+        code: row.method_code,
         isActive: row.method_is_active,
         requiresVoucher: row.method_requires_voucher,
+        category: row.method_category as any,
+        requiresSourceAccount: row.method_requires_source_account,
+        requiresDestination: row.method_requires_destination,
+        requiresOperationReference: row.method_requires_operation_reference,
+        isSystem: row.method_is_system,
       }),
-      number: row.relation_number ?? undefined,
-      isDefault: row.relation_is_default ?? false,
+      isDefault: false,
       requiresVoucher: row.relation_requires_voucher ?? row.method_requires_voucher,
-    }));
-  }
-
-  async getBySupplier(supplierId: string, tx?: TransactionContext): Promise<PaymentMethodWithNumber[]> {
-    const rows = await this.getRepo(tx)
-      .createQueryBuilder("pm")
-      .innerJoin(SupplierMethodEntity, "sm", "sm.methodId = pm.id")
-      .where("sm.supplierId = :supplierId", { supplierId })
-      .select([
-        "sm.id AS relation_id",
-        "sm.number AS relation_number",
-        "sm.isDefault AS relation_is_default",
-        "sm.requiresVoucher AS relation_requires_voucher",
-        "pm.id AS method_id",
-        "pm.name AS method_name",
-        "pm.isActive AS method_is_active",
-        "pm.requiresVoucher AS method_requires_voucher",
-      ])
-      .orderBy("pm.name", "ASC")
-      .addOrderBy("sm.number", "ASC", "NULLS FIRST")
-      .addOrderBy("sm.id", "ASC")
-      .getRawMany<{
-        relation_id: string;
-        relation_number?: string | null;
-        relation_is_default: boolean;
-        relation_requires_voucher: boolean;
-        method_id: string;
-        method_name: string;
-        method_is_active: boolean;
-        method_requires_voucher: boolean;
-      }>();
-
-    return rows.map((row) => ({
-      relationId: row.relation_id,
-      method: PaymentMethod.create({
-        methodId: row.method_id,
-        name: row.method_name,
-        isActive: row.method_is_active,
-        requiresVoucher: row.method_requires_voucher,
-      }),
-      number: row.relation_number ?? undefined,
-      isDefault: row.relation_is_default ?? false,
-      requiresVoucher: row.relation_requires_voucher ?? row.method_requires_voucher,
+      enabled: row.relation_enabled ?? true,
     }));
   }
 
   async getRecords(tx?: TransactionContext): Promise<PaymentMethod[]> {
-    const rows = await this.getRepo(tx).find({ order: { name: "ASC" } });
+    const rows = await this.getRepo(tx).find({
+      where: { isActive: true },
+      order: { name: "ASC" },
+    });
     return rows.map((r) => this.toDomain(r));
   }
 
@@ -156,8 +139,14 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
     const row = repo.create({
       id: method.methodId,
       name: method.name,
+      code: method.code,
       isActive: method.isActive ?? true,
       requiresVoucher: method.requiresVoucher,
+      category: method.category,
+      requiresSourceAccount: method.requiresSourceAccount,
+      requiresDestination: method.requiresDestination,
+      requiresOperationReference: method.requiresOperationReference,
+      isSystem: method.isSystem,
     });
 
     const saved = await repo.save(row);

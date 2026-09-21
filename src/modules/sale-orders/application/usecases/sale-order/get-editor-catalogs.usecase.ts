@@ -120,19 +120,28 @@ export class GetSaleOrderEditorCatalogsUsecase {
           isActive: row.method.isActive,
           requiresVoucher: row.requiresVoucher,
         })),
-      companyPaymentAccounts: companyPaymentAccounts.map((account) => ({
+      companyPaymentAccounts: companyPaymentAccounts
+        .filter((account) => account.isActive && (!account.usage || account.usage === "INFLOW" || account.usage === "BOTH"))
+        .map((account) => ({
         id: account.id,
         companyId: account.companyId,
         type: account.type,
+        usage: account.usage,
         name: account.name,
-        bankName: account.bankName ?? null,
-        accountNumber: account.accountNumber ?? null,
+        institutionName: account.institutionName ?? account.bankName ?? null,
+        bankName: account.institutionName ?? account.bankName ?? null,
+        accountNumber: null,
         accountLastFour: account.accountLastFour ?? null,
+        cciLastFour: account.cciLastFour ?? null,
         cardLastFour: account.cardLastFour ?? null,
-        walletName: account.walletName ?? null,
+        walletProvider: account.walletProvider ?? account.walletName ?? null,
+        walletName: account.walletProvider ?? account.walletName ?? null,
+        walletPhoneLastFour: account.walletPhoneLastFour ?? null,
+        holderName: account.holderName ?? null,
         currency: account.currency,
         isActive: account.isActive,
         isDefault: account.isDefault,
+        maskedLabel: account.maskedLabel ?? account.name,
       })),
     };
   }

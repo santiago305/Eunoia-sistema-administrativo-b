@@ -15,16 +15,19 @@ export type AdminFinanceSummaryOutput = {
   income: {
     collected: number;
     pending: number;
+    byCurrency: Record<string, { collected: number; pending: number }>;
   };
   expenses: {
     paid: number;
     pending: number;
     overdue: number;
     scheduled: number;
+    byCurrency: Record<string, { paid: number; pending: number; overdue: number; scheduled: number; voided: number }>;
   };
   net: {
     collectedMinusPaid: number;
     projectedAfterPending: number;
+    byCurrency: Record<string, { collectedMinusPaid: number; projectedAfterPending: number }>;
   };
 };
 

@@ -17,6 +17,7 @@ export class PaymentOutputMapper {
       accountPayableId: row.accountPayableId ?? null,
       companyPaymentAccountId: row.companyPaymentAccountId ?? null,
       paymentMethodId: row.paymentMethodId ?? null,
+      supplierPaymentDestinationId: row.supplierPaymentDestinationId ?? null,
       status: row.status,
       requestedByUserId: row.requestedByUserId ?? null,
       approvedByUserId: row.approvedByUserId ?? null,

@@ -37,11 +37,11 @@ export class CreateCompanyMethodUsecase {
       const relation = PaymentMethodFactory.createCompanyMethod({
         ...input,
         requiresVoucher: resolveRequiresVoucher(method.name, input.requiresVoucher),
+        enabled: input.enabled,
       });
       const existing = await this.companyMethodRepo.findDuplicate(
         relation.companyId,
         relation.methodId,
-        relation.number ?? null,
         tx,
       );
       if (existing) {

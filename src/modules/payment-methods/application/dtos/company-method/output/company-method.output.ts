@@ -3,7 +3,9 @@ export interface CompanyMethodOutput {
   companyId: string;
   methodId: string;
   methodName: string;
-  number?: string;
+  methodCode?: string;
+  category?: string;
   isActive: boolean;
   requiresVoucher: boolean;
+  enabled: boolean;
 }

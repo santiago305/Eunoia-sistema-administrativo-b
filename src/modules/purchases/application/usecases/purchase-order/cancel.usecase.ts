@@ -14,6 +14,8 @@ import { NotificationsService } from "src/modules/mail/application/use-cases/not
 import { PURCHASE_NOTIFICATION_TYPES } from "src/modules/mail/domain/constants/purchase-notification-types";
 import { CurrencyType } from "src/modules/purchases/domain/value-objects/currency-type";
 import { PurchaseHistoryService } from "../../services/purchase-history.service";
+import { ACCOUNT_PAYABLE_REPOSITORY, AccountPayableRepository } from "src/modules/accounts-payable";
+import { PAYMENT_DOCUMENT_REPOSITORY, PaymentDocumentRepository } from "src/modules/payments/domain/ports/payment-document.repository";
 
 export class CancelPurchaseOrderUsecase {
   constructor(
@@ -30,6 +32,12 @@ export class CancelPurchaseOrderUsecase {
     private readonly notificationsService: NotificationsService,
     @Optional()
     private readonly history?: PurchaseHistoryService,
+    @Optional()
+    @Inject(ACCOUNT_PAYABLE_REPOSITORY)
+    private readonly payableRepo?: AccountPayableRepository,
+    @Optional()
+    @Inject(PAYMENT_DOCUMENT_REPOSITORY)
+    private readonly paymentRepo?: PaymentDocumentRepository,
   ) {}
 
   async execute(poId: string, performedByUserId?: string): Promise<{ message: string }> {
@@ -83,6 +91,16 @@ export class CancelPurchaseOrderUsecase {
         }
       }
 
+      if (this.paymentRepo) {
+        const postedPayments = (await this.paymentRepo.findByPoId(order.poId, tx))
+          .filter((payment) => payment.status === "APPROVED");
+        if (postedPayments.length > 0) {
+          throw new BadRequestException(
+            "No se puede cancelar la compra mientras existan pagos aprobados. Resuelva primero la devolución o reversión del pago.",
+          );
+        }
+      }
+
       const updated = await this.purchaseRepo.update(
         { poId: order.poId, status: PurchaseOrderStatus.CANCELLED },
         tx,
@@ -91,6 +109,8 @@ export class CancelPurchaseOrderUsecase {
       if (!updated) {
         throw new BadRequestException("No se pudo actualizar estado");
       }
+
+      await this.payableRepo?.cancelOpenByPurchase(order.poId, tx);
 
       await this.history?.record({
         purchaseId: order.poId,

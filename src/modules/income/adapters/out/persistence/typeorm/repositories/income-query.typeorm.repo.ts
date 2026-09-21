@@ -10,7 +10,8 @@ import { IncomeListOutput, IncomeOutput, IncomeSummaryOutput } from "src/modules
 import { IncomeQueryRepository } from "src/modules/income/domain/ports/income-query.repository";
 
 const numberFrom = (value: unknown): number => Number(value ?? 0);
-const accountLabelSql = "COALESCE(cpa.name, cpa.bank_name, cpa.wallet_name, 'Sin cuenta')";
+const accountLabelSql =
+  "COALESCE(cpa.masked_label, cpa.name, cpa.institution_name, cpa.bank_name, cpa.wallet_provider, cpa.wallet_name, 'Sin cuenta')";
 
 @Injectable()
 export class IncomeQueryTypeormRepository implements IncomeQueryRepository {
@@ -27,13 +28,13 @@ export class IncomeQueryTypeormRepository implements IncomeQueryRepository {
         .createQueryBuilder("sp")
         .innerJoin(SaleOrderEntity, "so", "so.id = sp.saleOrderId")
         .leftJoin(ClientEntity, "client", "client.id = so.clientId")
-        .leftJoin(CompanyPaymentAccountEntity, "cpa", "cpa.id = sp.bankAccountId")
+        .leftJoin(CompanyPaymentAccountEntity, "cpa", "cpa.id = sp.companyPaymentAccountId")
         .select("sp.id", "incomeId")
         .addSelect("sp.saleOrderId", "saleOrderId")
         .addSelect("COALESCE(client.fullName, 'Cliente sin nombre')", "clientName")
         .addSelect("sp.amount", "amount")
         .addSelect("sp.method", "method")
-        .addSelect("sp.bankAccountId", "companyPaymentAccountId")
+        .addSelect("sp.companyPaymentAccountId", "companyPaymentAccountId")
         .addSelect(accountLabelSql, "companyPaymentAccountLabel")
         .addSelect("sp.operationNumber", "operationNumber")
         .addSelect("sp.date", "date")
@@ -59,7 +60,7 @@ export class IncomeQueryTypeormRepository implements IncomeQueryRepository {
         .createQueryBuilder("sp")
         .innerJoin(SaleOrderEntity, "so", "so.id = sp.saleOrderId")
         .leftJoin(ClientEntity, "client", "client.id = so.clientId")
-        .leftJoin(CompanyPaymentAccountEntity, "cpa", "cpa.id = sp.bankAccountId")
+        .leftJoin(CompanyPaymentAccountEntity, "cpa", "cpa.id = sp.companyPaymentAccountId")
         .select("COALESCE(SUM(sp.amount), 0)", "totalCollected"),
       filters,
     );
@@ -89,7 +90,7 @@ export class IncomeQueryTypeormRepository implements IncomeQueryRepository {
         .createQueryBuilder("sp")
         .innerJoin(SaleOrderEntity, "so", "so.id = sp.saleOrderId")
         .leftJoin(ClientEntity, "client", "client.id = so.clientId")
-        .leftJoin(CompanyPaymentAccountEntity, "cpa", "cpa.id = sp.bankAccountId")
+        .leftJoin(CompanyPaymentAccountEntity, "cpa", "cpa.id = sp.companyPaymentAccountId")
         .select("COALESCE(sp.method, 'Sin metodo')", "method")
         .addSelect("COALESCE(SUM(sp.amount), 0)", "amount")
         .addSelect("COUNT(*)", "count")
@@ -102,14 +103,17 @@ export class IncomeQueryTypeormRepository implements IncomeQueryRepository {
         .createQueryBuilder("sp")
         .innerJoin(SaleOrderEntity, "so", "so.id = sp.saleOrderId")
         .leftJoin(ClientEntity, "client", "client.id = so.clientId")
-        .leftJoin(CompanyPaymentAccountEntity, "cpa", "cpa.id = sp.bankAccountId")
-        .select("sp.bankAccountId", "accountId")
+        .leftJoin(CompanyPaymentAccountEntity, "cpa", "cpa.id = sp.companyPaymentAccountId")
+        .select("sp.companyPaymentAccountId", "accountId")
         .addSelect(accountLabelSql, "label")
         .addSelect("COALESCE(SUM(sp.amount), 0)", "amount")
         .addSelect("COUNT(*)", "count")
-        .groupBy("sp.bankAccountId")
+        .groupBy("sp.companyPaymentAccountId")
+        .addGroupBy("cpa.masked_label")
         .addGroupBy("cpa.name")
+        .addGroupBy("cpa.institution_name")
         .addGroupBy("cpa.bank_name")
+        .addGroupBy("cpa.wallet_provider")
         .addGroupBy("cpa.wallet_name"),
       filters,
     ).getRawMany();
@@ -138,7 +142,7 @@ export class IncomeQueryTypeormRepository implements IncomeQueryRepository {
     this.applyOrderFilters(qb, filters);
     if (filters.method) qb.andWhere("sp.method = :method", { method: filters.method });
     if (filters.companyPaymentAccountId) {
-      qb.andWhere("sp.bankAccountId = :companyPaymentAccountId", {
+      qb.andWhere("sp.companyPaymentAccountId = :companyPaymentAccountId", {
         companyPaymentAccountId: filters.companyPaymentAccountId,
       });
     }

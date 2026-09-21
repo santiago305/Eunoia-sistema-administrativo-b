@@ -85,10 +85,13 @@ export type CreateSaleOrderInput = {
   }>;
   payments?: Array<{
     bankAccountId?: string;
+    companyPaymentAccountId?: string;
+    paymentMethodId?: string;
     method: string;
     amount: number;
     date?: string;
     operationNumber?: string;
+    operationCode?: string;
     note?: string;
     paymentPhoto?: string | null;
   }>;
@@ -277,9 +280,14 @@ export class CreateSaleOrderUsecase {
       return {
         saleOrderId: order.id,
         bankAccountId: p.bankAccountId?.trim() ? p.bankAccountId.trim() : null,
+        companyPaymentAccountId: p.companyPaymentAccountId?.trim() || p.bankAccountId?.trim() || null,
+        paymentMethodId: p.paymentMethodId ?? null,
+        currency: "PEN" as any,
+        status: "POSTED" as const,
         date,
         method: p.method,
         operationNumber: p.operationNumber ?? null,
+        operationCode: p.operationCode ?? p.operationNumber ?? null,
         amount: p.amount,
         note: p.note ?? null,
         paymentPhoto: p.paymentPhoto ?? null,

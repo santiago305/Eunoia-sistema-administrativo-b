@@ -1,4 +1,4 @@
-import { Inject, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Inject, NotFoundException } from "@nestjs/common";
 import { successResponse } from "src/shared/response-standard/response";
 import {
   COMPANY_PAYMENT_ACCOUNT_REPOSITORY,
@@ -13,9 +13,14 @@ export class SetCompanyPaymentAccountActiveUsecase {
 
   async execute(input: { id: string; isActive: boolean }) {
     const current = await this.accountRepo.findById(input.id);
-    if (!current) throw new NotFoundException("Cuenta de pago no encontrada");
+    if (!current) throw new NotFoundException("Cuenta de tesoreria no encontrada");
+    if (!input.isActive && current.isDefault) {
+      throw new BadRequestException(
+        "Selecciona otra cuenta predeterminada para la misma moneda y uso antes de desactivar esta cuenta",
+      );
+    }
 
     await this.accountRepo.setActive(input.id, input.isActive);
-    return successResponse("Estado de cuenta de pago actualizado correctamente");
+    return successResponse("Estado de cuenta de tesoreria actualizado correctamente");
   }
 }

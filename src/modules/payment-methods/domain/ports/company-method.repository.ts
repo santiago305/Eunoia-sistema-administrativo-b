@@ -19,7 +19,6 @@ export interface CompanyMethodRepository {
   findDuplicate(
     companyId: string,
     methodId: string,
-    number: string | null,
     tx?: TransactionContext,
   ): Promise<CompanyMethod | null>;
   create(method: CompanyMethod, tx?: TransactionContext): Promise<CompanyMethod>;
@@ -27,8 +26,8 @@ export interface CompanyMethodRepository {
     params: {
       companyMethodId: string;
       methodId?: string;
-      number?: string | null;
       requiresVoucher?: boolean;
+      enabled?: boolean;
     },
     tx?: TransactionContext,
   ): Promise<CompanyMethod | null>;

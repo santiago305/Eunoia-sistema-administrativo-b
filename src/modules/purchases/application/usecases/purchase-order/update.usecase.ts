@@ -33,6 +33,7 @@ import { PurchaseUnitConversionService } from "../../services/purchase-unit-conv
 import { PurchaseItemType } from "src/modules/purchases/domain/value-objects/purchase-item-type";
 import { PurchaseOrder } from "src/modules/purchases/domain/entities/purchase-order";
 import { PurchaseHistoryService } from "../../services/purchase-history.service";
+import { CreateAccountPayableUsecase } from "src/modules/accounts-payable";
 
 export class UpdatePurchaseOrderUsecase {
   constructor(
@@ -53,6 +54,8 @@ export class UpdatePurchaseOrderUsecase {
     private readonly stockItemRepo: ProductCatalogStockItemRepository,
     private readonly createStockItem: CreateProductCatalogStockItem,
     private readonly purchaseUnitConversionService: PurchaseUnitConversionService,
+    @Optional()
+    private readonly createAccountPayable?: CreateAccountPayableUsecase,
     @Optional()
     private readonly history?: PurchaseHistoryService,
   ) {}
@@ -266,6 +269,16 @@ export class UpdatePurchaseOrderUsecase {
         (isCredit && input.quotas !== undefined && quotasChanged);
 
       if (shouldDeletePayments) {
+        const postedPayments = (await this.paymentDocRepo.findByPoId(updated.poId, tx))
+          .filter((payment) => payment.status === "APPROVED");
+        if (postedPayments.length > 0) {
+          throw new BadRequestException(
+            "No se puede reemplazar la programación de pagos porque la compra ya tiene pagos aprobados. Ajuste las obligaciones sin borrar su trazabilidad.",
+          );
+        }
+      }
+
+      if (shouldDeletePayments) {
         const existingPayments = await this.paymentDocRepo.findByPoId(updated.poId, tx);
         for (const payment of existingPayments) {
           try {
@@ -339,6 +352,14 @@ export class UpdatePurchaseOrderUsecase {
             note: payment.note,
             poId: updated.poId,
             quotaId: payment.quotaId,
+            companyPaymentAccountId: payment.companyPaymentAccountId,
+            paymentMethodId: payment.paymentMethodId,
+            supplierPaymentDestinationId: payment.supplierPaymentDestinationId,
+            paymentEvidenceFileId: payment.paymentEvidenceFileId,
+            bankName: payment.bankName,
+            cardLastFour: payment.cardLastFour,
+            operationCode: payment.operationCode,
+            isPartial: payment.isPartial,
           });
 
           try {
@@ -397,6 +418,18 @@ export class UpdatePurchaseOrderUsecase {
 
           try {
             const createdQuota = await this.creditQuotaRepo.create(quota, tx);
+            if (this.createAccountPayable) {
+              await this.createAccountPayable.execute({
+                purchaseId: updated.poId,
+                quotaId: createdQuota.quotaId,
+                supplierId: updated.supplierId,
+                description: `Cuota ${quotaInput.number}`,
+                currency: (updated.currency ?? CurrencyType.PEN) as any,
+                amountTotal: quotaInput.totalToPay,
+                dueDate: expirationDate,
+                createdByUserId: input.performedByUserId,
+              }, tx);
+            }
             await this.history?.record({
               purchaseId: updated.poId,
               eventType: "PURCHASE_QUOTA_CREATED",

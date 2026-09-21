@@ -13,11 +13,14 @@ export class CompanyMethodEntity {
   @Column({ name: "method_id", type: "uuid" })
   methodId: string;
 
-  @Column({ type: "varchar", length: 30, nullable: true })
-  number?: string | null;
-
   @Column({ name: "requires_voucher", type: "boolean", default: true })
   requiresVoucher: boolean;
+
+  @Column({ type: "boolean", default: true })
+  enabled: boolean;
+
+  @Column({ name: "evidence_policy", type: "varchar", length: 20, default: "INHERIT" })
+  evidencePolicy: "INHERIT" | "REQUIRED" | "OPTIONAL";
 
   @ManyToOne(() => CompanyEntity)
   @JoinColumn({ name: "company_id" })

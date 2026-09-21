@@ -1,9 +1,7 @@
 import { CompanyMethodOutput } from "../dtos/company-method/output/company-method.output";
 import { PaymentMethodOutput } from "../dtos/payment-method/output/payment-method.output";
-import { SupplierMethodOutput } from "../dtos/supplier-method/output/supplier-method.output";
 import { PaymentMethod } from "../../domain/entity/payment-method";
-import { PaymentMethodWithNumber } from "../../domain/ports/payment-method.repository";
-import { SupplierMethodWithMethod } from "../../domain/ports/supplier-method.repository";
+import { ConfiguredPaymentMethod } from "../../domain/ports/payment-method.repository";
 import { CompanyMethodWithMethod } from "../../domain/ports/company-method.repository";
 
 export class PaymentMethodOutputMapper {
@@ -11,32 +9,31 @@ export class PaymentMethodOutputMapper {
     return {
       methodId: method.methodId!,
       name: method.name,
+      code: method.code,
+      category: method.category,
+      requiresSourceAccount: method.requiresSourceAccount,
+      requiresDestination: method.requiresDestination,
+      requiresOperationReference: method.requiresOperationReference,
+      isSystem: method.isSystem,
       isActive: method.isActive,
       requiresVoucher: method.requiresVoucher,
     };
   }
 
-  static toOutputWithNumber(item: PaymentMethodWithNumber): PaymentMethodOutput {
+  static toConfiguredOutput(item: ConfiguredPaymentMethod): PaymentMethodOutput {
     return {
       methodId: item.method.methodId!,
       name: item.method.name,
-      number: item.number ?? undefined,
+      code: item.method.code,
+      category: item.method.category,
+      requiresSourceAccount: item.method.requiresSourceAccount,
+      requiresDestination: item.method.requiresDestination,
+      requiresOperationReference: item.method.requiresOperationReference,
+      isSystem: item.method.isSystem,
+      enabled: item.enabled ?? true,
       isActive: item.method.isActive,
       isDefault: item.isDefault ?? false,
       requiresVoucher: item.requiresVoucher,
-    };
-  }
-
-  static toSupplierMethodOutput(item: SupplierMethodWithMethod): SupplierMethodOutput {
-    return {
-      supplierMethodId: item.relation.supplierMethodId!,
-      supplierId: item.relation.supplierId,
-      methodId: item.relation.methodId,
-      methodName: item.method.name,
-      number: item.relation.number,
-      isActive: item.method.isActive,
-      isDefault: item.relation.isDefault,
-      requiresVoucher: item.relation.requiresVoucher,
     };
   }
 
@@ -46,9 +43,11 @@ export class PaymentMethodOutputMapper {
       companyId: item.relation.companyId,
       methodId: item.relation.methodId,
       methodName: item.method.name,
-      number: item.relation.number,
+      methodCode: item.method.code,
+      category: item.method.category,
       isActive: item.method.isActive,
       requiresVoucher: item.relation.requiresVoucher,
+      enabled: item.relation.enabled,
     };
   }
 }

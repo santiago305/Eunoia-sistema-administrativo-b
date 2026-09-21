@@ -7,16 +7,10 @@ import { UpdateCompanyMethodUsecase } from "../usecases/company-method/update.us
 import { CreatePaymentMethodUsecase } from "../usecases/payment-method/create.usecase";
 import { GetPaymentMethodsByCompanyUsecase } from "../usecases/payment-method/get-by-company.usecase";
 import { GetPaymentMethodByIdUsecase } from "../usecases/payment-method/get-by-id.usecase";
-import { GetPaymentMethodsBySupplierUsecase } from "../usecases/payment-method/get-by-supplier.usecase";
 import { GetPaymentMethodsRecordsUsecase } from "../usecases/payment-method/get-records.usecase";
 import { ListPaymentMethodsUsecase } from "../usecases/payment-method/list.usecase";
 import { SetPaymentMethodActiveUsecase } from "../usecases/payment-method/set-active.usecase";
 import { UpdatePaymentMethodUsecase } from "../usecases/payment-method/update.usecase";
-import { CreateSupplierMethodUsecase } from "../usecases/supplier-method/create.usecase";
-import { DeleteSupplierMethodUsecase } from "../usecases/supplier-method/delete.usecase";
-import { GetSupplierMethodByIdUsecase } from "../usecases/supplier-method/get-by-id.usecase";
-import { ListSupplierMethodsUsecase } from "../usecases/supplier-method/list.usecase";
-import { UpdateSupplierMethodUsecase } from "../usecases/supplier-method/update.usecase";
 
 export const paymentMethodUsecasesProviders: Provider[] = [
   CreatePaymentMethodUsecase,
@@ -24,7 +18,6 @@ export const paymentMethodUsecasesProviders: Provider[] = [
   SetPaymentMethodActiveUsecase,
   GetPaymentMethodByIdUsecase,
   GetPaymentMethodsByCompanyUsecase,
-  GetPaymentMethodsBySupplierUsecase,
   ListPaymentMethodsUsecase,
   GetPaymentMethodsRecordsUsecase,
   CreateCompanyMethodUsecase,
@@ -32,9 +25,4 @@ export const paymentMethodUsecasesProviders: Provider[] = [
   UpdateCompanyMethodUsecase,
   DeleteCompanyMethodUsecase,
   GetCompanyMethodByIdUsecase,
-  CreateSupplierMethodUsecase,
-  ListSupplierMethodsUsecase,
-  UpdateSupplierMethodUsecase,
-  DeleteSupplierMethodUsecase,
-  GetSupplierMethodByIdUsecase,
 ];

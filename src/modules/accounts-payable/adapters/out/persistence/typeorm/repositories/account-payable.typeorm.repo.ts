@@ -40,6 +40,8 @@ export class AccountPayableTypeormRepository implements AccountPayableRepository
       amountPending: Number(row.amountPending),
       dueDate: row.dueDate ?? undefined,
       status: row.status,
+      requiresManualReview: row.requiresManualReview,
+      reconciliationNote: row.reconciliationNote ?? undefined,
       createdByUserId: row.createdByUserId ?? undefined,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
@@ -59,6 +61,8 @@ export class AccountPayableTypeormRepository implements AccountPayableRepository
       amountPending: payable.amountPending,
       dueDate: payable.dueDate ?? null,
       status: payable.status,
+      requiresManualReview: payable.requiresManualReview,
+      reconciliationNote: payable.reconciliationNote ?? null,
       createdByUserId: payable.createdByUserId ?? null,
     });
     return this.toDomain(await this.getRepo(tx).save(row));
@@ -78,6 +82,8 @@ export class AccountPayableTypeormRepository implements AccountPayableRepository
       amountPending: payable.amountPending,
       dueDate: payable.dueDate ?? null,
       status: payable.status,
+      requiresManualReview: payable.requiresManualReview,
+      reconciliationNote: payable.reconciliationNote ?? null,
       createdByUserId: payable.createdByUserId ?? null,
       createdAt: payable.createdAt,
       updatedAt: payable.updatedAt,
@@ -156,6 +162,18 @@ export class AccountPayableTypeormRepository implements AccountPayableRepository
       .where("due_date < :today", { today: now.toISOString().slice(0, 10) })
       .andWhere("amount_pending > 0")
       .andWhere("status IN (:...statuses)", { statuses: ["PENDING", "PARTIAL"] })
+      .execute();
+    return result.affected ?? 0;
+  }
+
+  async cancelOpenByPurchase(purchaseId: string, tx?: TransactionContext): Promise<number> {
+    const result = await this.getRepo(tx)
+      .createQueryBuilder()
+      .update(AccountPayableEntity)
+      .set({ status: "CANCELLED", amountPending: 0 })
+      .where("purchase_id = :purchaseId", { purchaseId })
+      .andWhere("status IN (:...statuses)", { statuses: ["PENDING", "PARTIAL", "OVERDUE"] })
+      .andWhere("amount_paid = 0")
       .execute();
     return result.affected ?? 0;
   }

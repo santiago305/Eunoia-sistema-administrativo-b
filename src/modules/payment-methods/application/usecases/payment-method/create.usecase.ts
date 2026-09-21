@@ -18,7 +18,7 @@ export class CreatePaymentMethodUsecase {
     return this.uow.runInTransaction(async (tx) => {
       const method = PaymentMethodFactory.create({
         ...input,
-        requiresVoucher: resolveRequiresVoucher(input.name, input.requiresVoucher),
+        requiresVoucher: resolveRequiresVoucher(input.code ?? input.name, input.requiresVoucher),
       });
 
       try {

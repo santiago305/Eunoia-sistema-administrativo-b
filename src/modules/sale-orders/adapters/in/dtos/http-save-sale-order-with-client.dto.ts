@@ -26,6 +26,14 @@ export class HttpUnifiedSalePaymentDto {
   @IsUUID()
   bankAccountId?: string | null;
 
+  @IsOptional()
+  @IsUUID()
+  companyPaymentAccountId?: string | null;
+
+  @IsOptional()
+  @IsUUID()
+  paymentMethodId?: string | null;
+
   @IsString()
   method: string;
 
@@ -40,6 +48,10 @@ export class HttpUnifiedSalePaymentDto {
   @IsOptional()
   @IsString()
   operationNumber?: string | null;
+
+  @IsOptional()
+  @IsString()
+  operationCode?: string | null;
 
   @IsOptional()
   @IsString()

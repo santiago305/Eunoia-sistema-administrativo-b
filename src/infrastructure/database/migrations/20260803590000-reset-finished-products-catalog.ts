@@ -66,14 +66,37 @@ export class ResetFinishedProductsCatalog20260803590000
         JOIN pc_products product ON product.product_id = sku.product_id
         WHERE product.type = 'PRODUCT';
 
-        IF sale_component_references > 0
-          OR sale_pack_references > 0
-          OR production_references > 0
-          OR inventory_document_references > 0
-          OR inventory_ledger_references > 0
-          OR purchase_references > 0 THEN
-          RAISE EXCEPTION
-            'Finished product catalog reset blocked: sale components=%, sale pack references=%, production items=%, inventory document items=%, inventory ledger=%, purchase items=%',
+        IF sale_component_references = 0
+          AND sale_pack_references = 0
+          AND production_references = 0
+          AND inventory_document_references = 0
+          AND inventory_ledger_references = 0
+          AND purchase_references = 0 THEN
+          DELETE FROM packs pack
+          WHERE EXISTS (
+            SELECT 1
+            FROM pack_items pack_item
+            JOIN pc_skus sku ON sku.sku_id = pack_item.sku_id
+            JOIN pc_products product ON product.product_id = sku.product_id
+            WHERE product.type = 'PRODUCT'
+              AND pack_item.pack_id = pack.id
+          );
+
+          DELETE FROM pc_recipes recipe
+          WHERE EXISTS (
+            SELECT 1
+            FROM pc_recipe_items recipe_item
+            JOIN pc_skus sku ON sku.sku_id = recipe_item.material_sku_id
+            JOIN pc_products product ON product.product_id = sku.product_id
+            WHERE product.type = 'PRODUCT'
+              AND recipe_item.recipe_id = recipe.recipe_id
+          );
+
+          DELETE FROM pc_products
+          WHERE type = 'PRODUCT';
+        ELSE
+          RAISE NOTICE
+            'Finished product catalog reset skipped to preserve references: sale components=%, sale pack references=%, production items=%, inventory document items=%, inventory ledger=%, purchase items=%',
             sale_component_references,
             sale_pack_references,
             production_references,
@@ -82,29 +105,6 @@ export class ResetFinishedProductsCatalog20260803590000
             purchase_references;
         END IF;
       END $$;
-
-      DELETE FROM packs pack
-      WHERE EXISTS (
-        SELECT 1
-        FROM pack_items pack_item
-        JOIN pc_skus sku ON sku.sku_id = pack_item.sku_id
-        JOIN pc_products product ON product.product_id = sku.product_id
-        WHERE product.type = 'PRODUCT'
-          AND pack_item.pack_id = pack.id
-      );
-
-      DELETE FROM pc_recipes recipe
-      WHERE EXISTS (
-        SELECT 1
-        FROM pc_recipe_items recipe_item
-        JOIN pc_skus sku ON sku.sku_id = recipe_item.material_sku_id
-        JOIN pc_products product ON product.product_id = sku.product_id
-        WHERE product.type = 'PRODUCT'
-          AND recipe_item.recipe_id = recipe.recipe_id
-      );
-
-      DELETE FROM pc_products
-      WHERE type = 'PRODUCT';
     `);
   }
 

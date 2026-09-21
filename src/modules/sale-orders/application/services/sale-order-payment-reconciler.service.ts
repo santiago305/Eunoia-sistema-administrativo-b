@@ -13,9 +13,12 @@ export type SaleOrderPaymentCommand = {
   id?: string;
   clientKey: string;
   bankAccountId?: string | null;
+  companyPaymentAccountId?: string | null;
+  paymentMethodId?: string | null;
   date: Date;
   method: string;
   operationNumber?: string | null;
+  operationCode?: string | null;
   amount: number;
   note?: string | null;
 };
@@ -69,6 +72,9 @@ export class SaleOrderPaymentReconcilerService {
           saleOrderId: input.saleOrderId,
           paymentId: payment.id,
           bankAccountId: payment.bankAccountId ?? null,
+          companyPaymentAccountId: payment.companyPaymentAccountId ?? payment.bankAccountId ?? null,
+          paymentMethodId: payment.paymentMethodId ?? null,
+          operationCode: payment.operationCode ?? payment.operationNumber ?? null,
           date: payment.date,
           method: payment.method,
           operationNumber: payment.operationNumber ?? null,
@@ -91,6 +97,9 @@ export class SaleOrderPaymentReconcilerService {
       newPayments.map((payment) => ({
         saleOrderId: input.saleOrderId,
         bankAccountId: payment.bankAccountId ?? null,
+        companyPaymentAccountId: payment.companyPaymentAccountId ?? payment.bankAccountId ?? null,
+        paymentMethodId: payment.paymentMethodId ?? null,
+        operationCode: payment.operationCode ?? payment.operationNumber ?? null,
         date: payment.date,
         method: payment.method,
         operationNumber: payment.operationNumber ?? null,

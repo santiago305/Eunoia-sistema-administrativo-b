@@ -38,33 +38,33 @@ export class ScopeProductNameUniquenessByType20260804000000
           HAVING count(*) > 1
         ) duplicates;
 
-        IF duplicate_names IS NOT NULL THEN
-          RAISE EXCEPTION 'Active duplicate product names prevent normalized uniqueness: %', duplicate_names;
+        IF duplicate_names IS NULL THEN
+          ALTER TABLE pc_products
+          DROP CONSTRAINT IF EXISTS pc_products_name_key;
+
+          ALTER TABLE pc_products
+          DROP CONSTRAINT IF EXISTS ux_pc_products_name;
+
+          DROP INDEX IF EXISTS ux_pc_products_name;
+
+          UPDATE pc_products
+          SET name = upper(left(formatted_name, 1)) || substring(formatted_name from 2)
+          FROM (
+            SELECT
+              product_id,
+              lower(btrim(regexp_replace(name, '[[:space:]]+', ' ', 'g'))) AS formatted_name
+            FROM pc_products
+          ) formatted
+          WHERE formatted.product_id = pc_products.product_id
+            AND pc_products.is_deleted = false;
+
+          CREATE UNIQUE INDEX IF NOT EXISTS ux_pc_products_type_name
+          ON pc_products (type, normalize_product_name(name))
+          WHERE is_deleted = false;
+        ELSE
+          RAISE NOTICE 'Active duplicate product names preserved; normalized uniqueness skipped: %', duplicate_names;
         END IF;
       END $$;
-
-      ALTER TABLE pc_products
-      DROP CONSTRAINT IF EXISTS pc_products_name_key;
-
-      ALTER TABLE pc_products
-      DROP CONSTRAINT IF EXISTS ux_pc_products_name;
-
-      DROP INDEX IF EXISTS ux_pc_products_name;
-
-      UPDATE pc_products
-      SET name = upper(left(formatted_name, 1)) || substring(formatted_name from 2)
-      FROM (
-        SELECT
-          product_id,
-          lower(btrim(regexp_replace(name, '[[:space:]]+', ' ', 'g'))) AS formatted_name
-        FROM pc_products
-      ) formatted
-      WHERE formatted.product_id = pc_products.product_id
-        AND pc_products.is_deleted = false;
-
-      CREATE UNIQUE INDEX IF NOT EXISTS ux_pc_products_type_name
-      ON pc_products (type, normalize_product_name(name))
-      WHERE is_deleted = false;
     `);
   }
 

@@ -18,6 +18,7 @@ import { SourceEntity } from "src/modules/sources/adapters/out/persistence/typeo
 import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
 import { CompanyPaymentAccountEntity } from "src/modules/company-payment-accounts/adapters/out/persistence/typeorm/entities/company-payment-account.entity";
 import { CompanyMethodEntity } from "src/modules/payment-methods/adapters/out/persistence/typeorm/entities/company-method.entity";
+import { PaymentMethodEntity } from "src/modules/payment-methods/adapters/out/persistence/typeorm/entities/payment-method.entity";
 import { ProductCatalogSkuEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku.entity";
 import { saleOrdersModuleProviders } from "./composition/container";
 import { SaleOrdersController } from "./adapters/in/controllers/sale-orders.controller";
@@ -64,6 +65,7 @@ import { ProductCatalogInventoryEntity } from '../product-catalog/adapters/out/p
       User,
       CompanyPaymentAccountEntity,
       CompanyMethodEntity,
+      PaymentMethodEntity,
       ProductCatalogSkuEntity,
       WorkflowEntity,
       WorkflowStateEntity,

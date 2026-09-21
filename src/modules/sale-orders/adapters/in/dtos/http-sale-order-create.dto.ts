@@ -87,8 +87,17 @@ export class HttpSaleOrderItemDto {
 }
 
 export class HttpSalePaymentDto {
+  @IsOptional()
   @IsUUID()
-  bankAccountId: string;
+  bankAccountId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  companyPaymentAccountId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  paymentMethodId?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -105,6 +114,10 @@ export class HttpSalePaymentDto {
   @IsOptional()
   @IsString()
   operationNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  operationCode?: string;
 
   @IsOptional()
   @IsString()

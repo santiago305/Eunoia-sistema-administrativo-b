@@ -2,7 +2,12 @@ import { BadRequestException, ConflictException, Inject, NotFoundException } fro
 import { COMPANY_REPOSITORY, CompanyRepository } from "src/modules/companies/domain/ports/company.repository";
 import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.port";
 import { successResponse } from "src/shared/response-standard/response";
-import { CompanyPaymentAccount, CompanyPaymentAccountType } from "../../domain/entity/company-payment-account";
+import {
+  CompanyPaymentAccount,
+  CompanyPaymentAccountType,
+  CompanyPaymentAccountUsage,
+  CompanyPaymentAccountValidationError,
+} from "../../domain/entity/company-payment-account";
 import {
   COMPANY_PAYMENT_ACCOUNT_REPOSITORY,
   CompanyPaymentAccountRepository,
@@ -13,11 +18,17 @@ import { CurrencyType } from "src/modules/payments/domain/value-objects/currency
 export type CreateCompanyPaymentAccountInput = {
   companyId: string;
   type: CompanyPaymentAccountType;
+  usage?: CompanyPaymentAccountUsage;
   name: string;
+  institutionName?: string | null;
   bankName?: string | null;
   accountNumber?: string | null;
+  cci?: string | null;
   cardLastFour?: string | null;
+  walletProvider?: string | null;
   walletName?: string | null;
+  walletPhone?: string | null;
+  holderName?: string | null;
   currency: CurrencyType;
   isActive?: boolean;
   isDefault?: boolean;
@@ -42,22 +53,30 @@ export class CreateCompanyPaymentAccountUsecase {
       let account: CompanyPaymentAccount;
       try {
         account = CompanyPaymentAccount.create(input);
-      } catch {
-        throw new BadRequestException("Datos de cuenta de pago invalidos");
+      } catch (error) {
+        throw new BadRequestException(
+          error instanceof CompanyPaymentAccountValidationError
+            ? error.message
+            : "Datos de cuenta de tesoreria invalidos",
+        );
       }
 
-      if (account.accountNumber) {
-        const duplicate = await this.accountRepo.findDuplicate(account.companyId, account.accountNumber, tx);
-        if (duplicate) throw new ConflictException("La cuenta de pago ya existe");
-      }
+      const duplicate = await this.accountRepo.findDuplicate(account, undefined, tx);
+      if (duplicate) throw new ConflictException("La cuenta de tesoreria ya existe");
 
       if (account.isDefault) {
-        await this.accountRepo.clearDefaultForCompany(account.companyId, undefined, tx);
+        await this.accountRepo.clearDefaultForScope(
+          account.companyId,
+          account.currency,
+          account.usage,
+          undefined,
+          tx,
+        );
       }
 
       const saved = await this.accountRepo.create(account, tx);
       return successResponse(
-        "Cuenta de pago creada correctamente",
+        "Cuenta de tesoreria creada correctamente",
         CompanyPaymentAccountOutputMapper.toOutput(saved, {
           includeSensitive: input.includeSensitive,
         }),

@@ -116,6 +116,20 @@ export class CreatePurchaseOrderUsecase {
         throw new BadRequestException("No se pudo crear la orden de compra");
       }
 
+      let immediatePayableId: string | undefined;
+      if (po.paymentForm === PaymentFormType.CONTADO && this.createAccountPayable) {
+        const immediatePayable = await this.createAccountPayable.execute({
+          purchaseId: po.poId,
+          supplierId: po.supplierId,
+          description: "Obligación de compra al contado",
+          currency: currency as any,
+          amountTotal: po.total.getAmount(),
+          dueDate: po.dateExpiration ?? po.dateIssue ?? this.clock.now(),
+          createdByUserId: createdBy,
+        }, tx);
+        immediatePayableId = immediatePayable.accountPayableId;
+      }
+
       if (input.items && input.items.length > 0) {
         for (const item of input.items) {
           let orderItem;
@@ -254,6 +268,15 @@ export class CreatePurchaseOrderUsecase {
             note: payment.note,
             poId: po.poId,
             quotaId: payment.quotaId,
+            accountPayableId: immediatePayableId,
+            companyPaymentAccountId: payment.companyPaymentAccountId,
+            paymentMethodId: payment.paymentMethodId,
+            supplierPaymentDestinationId: payment.supplierPaymentDestinationId,
+            paymentEvidenceFileId: payment.paymentEvidenceFileId,
+            bankName: payment.bankName,
+            cardLastFour: payment.cardLastFour,
+            operationCode: payment.operationCode,
+            isPartial: payment.isPartial,
             status: allowDirectPaymentCreation ? "APPROVED" : "PENDING_APPROVAL",
             requestedByUserId: createdBy,
             approvedByUserId: allowDirectPaymentCreation ? createdBy : undefined,

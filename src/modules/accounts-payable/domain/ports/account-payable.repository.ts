@@ -32,5 +32,6 @@ export interface AccountPayableRepository {
     tx?: TransactionContext,
   ): Promise<{ items: AccountPayable[]; total: number }>;
   markOverdue(now: Date, tx?: TransactionContext): Promise<number>;
+  cancelOpenByPurchase(purchaseId: string, tx?: TransactionContext): Promise<number>;
 }
 

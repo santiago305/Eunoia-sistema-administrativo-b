@@ -20,9 +20,9 @@ export class UpdateCompanyMethodUsecase {
 
   async execute(input: UpdateCompanyMethodInput) {
     return this.uow.runInTransaction(async (tx) => {
-      const hasNumber = Object.prototype.hasOwnProperty.call(input, "number");
       const hasRequiresVoucher = Object.prototype.hasOwnProperty.call(input, "requiresVoucher");
-      if (input.methodId === undefined && !hasNumber && !hasRequiresVoucher) {
+      const hasEnabled = Object.prototype.hasOwnProperty.call(input, "enabled");
+      if (input.methodId === undefined && !hasRequiresVoucher && !hasEnabled) {
         throw new BadRequestException("Debe enviar al menos un campo para actualizar");
       }
 
@@ -42,11 +42,9 @@ export class UpdateCompanyMethodUsecase {
         nextMethodId = input.methodId;
       }
 
-      const nextNumber = hasNumber ? input.number ?? null : current.relation.number ?? null;
       const duplicate = await this.companyMethodRepo.findDuplicate(
         current.relation.companyId,
         nextMethodId,
-        nextNumber,
         tx,
       );
       if (duplicate && duplicate.companyMethodId !== current.relation.companyMethodId) {
@@ -58,8 +56,8 @@ export class UpdateCompanyMethodUsecase {
           {
             companyMethodId: input.companyMethodId,
             methodId: input.methodId,
-            ...(hasNumber ? { number: nextNumber } : {}),
             ...(hasRequiresVoucher ? { requiresVoucher: input.requiresVoucher } : {}),
+            ...(hasEnabled ? { enabled: input.enabled } : {}),
           },
           tx,
         );

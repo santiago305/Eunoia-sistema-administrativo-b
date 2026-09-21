@@ -15,7 +15,7 @@ export class PaymentDocument {
     public readonly poId?: string,
     public readonly quotaId?: string,
     public readonly accountPayableId?: string,
-    public readonly status: "SCHEDULED" | "PENDING_APPROVAL" | "APPROVED" | "REJECTED" = "APPROVED",
+    public readonly status: "DRAFT" | "SCHEDULED" | "PENDING_APPROVAL" | "POSTED" | "APPROVED" | "REJECTED" | "VOIDED" = "APPROVED",
     public readonly requestedByUserId?: string,
     public readonly approvedByUserId?: string,
     public readonly rejectedByUserId?: string,
@@ -24,6 +24,7 @@ export class PaymentDocument {
     public readonly rejectionReason?: string,
     public readonly companyPaymentAccountId?: string,
     public readonly paymentMethodId?: string,
+    public readonly supplierPaymentDestinationId?: string,
     public readonly paidByUserId?: string,
     public readonly scheduledByUserId?: string,
     public readonly scheduledAt?: Date,
@@ -49,7 +50,7 @@ export class PaymentDocument {
     poId?: string;
     quotaId?: string;
     accountPayableId?: string;
-    status?: "SCHEDULED" | "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
+    status?: "DRAFT" | "SCHEDULED" | "PENDING_APPROVAL" | "POSTED" | "APPROVED" | "REJECTED" | "VOIDED";
     requestedByUserId?: string;
     approvedByUserId?: string;
     rejectedByUserId?: string;
@@ -58,6 +59,7 @@ export class PaymentDocument {
     rejectionReason?: string;
     companyPaymentAccountId?: string;
     paymentMethodId?: string;
+    supplierPaymentDestinationId?: string;
     paidByUserId?: string;
     scheduledByUserId?: string;
     scheduledAt?: Date;
@@ -96,6 +98,7 @@ export class PaymentDocument {
       params.rejectionReason?.trim() || undefined,
       params.companyPaymentAccountId,
       params.paymentMethodId,
+      params.supplierPaymentDestinationId,
       params.paidByUserId,
       params.scheduledByUserId,
       params.scheduledAt,

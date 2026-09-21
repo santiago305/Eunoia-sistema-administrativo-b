@@ -1,4 +1,4 @@
-import { IsBoolean, IsOptional, IsString, IsUUID } from "class-validator";
+import { IsBoolean, IsOptional, IsUUID } from "class-validator";
 
 export class HttpCompanyMethodUpdateDto {
   @IsOptional()
@@ -6,10 +6,10 @@ export class HttpCompanyMethodUpdateDto {
   methodId?: string;
 
   @IsOptional()
-  @IsString()
-  number?: string | null;
+  @IsBoolean()
+  requiresVoucher?: boolean;
 
   @IsOptional()
   @IsBoolean()
-  requiresVoucher?: boolean;
+  enabled?: boolean;
 }

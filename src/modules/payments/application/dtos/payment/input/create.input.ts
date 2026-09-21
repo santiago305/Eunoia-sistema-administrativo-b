@@ -11,6 +11,7 @@ export interface CreatePaymentInput {
   accountPayableId?: string;
   companyPaymentAccountId?: string;
   paymentMethodId?: string;
+  supplierPaymentDestinationId?: string;
   paidByUserId?: string;
   scheduledByUserId?: string;
   scheduledAt?: string;

@@ -18,7 +18,7 @@ describe("ResetFinishedProductsCatalog20260803590000", () => {
     expect(sql).not.toContain("WHERE type = 'MATERIAL'");
   });
 
-  it("blocks the reset when operational references exist", async () => {
+  it("preserves the catalog when operational references exist", async () => {
     const queries: string[] = [];
     const queryRunner = {
       query: jest.fn(async (query: string) => queries.push(query)),
@@ -33,6 +33,6 @@ describe("ResetFinishedProductsCatalog20260803590000", () => {
     expect(sql).toContain("pc_inventory_document_items");
     expect(sql).toContain("pc_inventory_ledger");
     expect(sql).toContain("purchase_order_items");
-    expect(sql).toContain("Finished product catalog reset blocked");
+    expect(sql).toContain("Finished product catalog reset skipped to preserve references");
   });
 });

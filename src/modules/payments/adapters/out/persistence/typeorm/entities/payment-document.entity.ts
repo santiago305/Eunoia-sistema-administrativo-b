@@ -52,8 +52,11 @@ export class PaymentDocumentEntity {
   @Column({ name: "payment_method_id", type: "uuid", nullable: true })
   paymentMethodId?: string | null;
 
+  @Column({ name: "supplier_payment_destination_id", type: "uuid", nullable: true })
+  supplierPaymentDestinationId?: string | null;
+
   @Column({ name: "status", type: "varchar", length: 30, default: "APPROVED" })
-  status: "SCHEDULED" | "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
+  status: "DRAFT" | "SCHEDULED" | "PENDING_APPROVAL" | "POSTED" | "APPROVED" | "REJECTED" | "VOIDED";
 
   @Column({ name: "requested_by_user_id", type: "uuid", nullable: true })
   requestedByUserId?: string | null;

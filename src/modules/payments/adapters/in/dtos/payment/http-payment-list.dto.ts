@@ -16,7 +16,7 @@ import { Transform, Type } from "class-transformer";
 import { CurrencyType } from "src/modules/payments/domain/value-objects/currency-type";
 import { PayDocType } from "src/modules/payments/domain/value-objects/pay-doc-type";
 
-const PAYMENT_STATUSES = ["SCHEDULED", "PENDING_APPROVAL", "APPROVED", "REJECTED"] as const;
+const PAYMENT_STATUSES = ["DRAFT", "SCHEDULED", "PENDING_APPROVAL", "POSTED", "APPROVED", "REJECTED", "VOIDED"] as const;
 
 const toStringArray = (value: unknown): string[] | undefined => {
   if (value === undefined || value === null || value === "") return undefined;
@@ -51,13 +51,13 @@ export class HttpListPaymentsQueryDto {
 
   @IsOptional()
   @IsIn(PAYMENT_STATUSES)
-  status?: "SCHEDULED" | "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
+  status?: "DRAFT" | "SCHEDULED" | "PENDING_APPROVAL" | "POSTED" | "APPROVED" | "REJECTED" | "VOIDED";
 
   @IsOptional()
   @Transform(({ value }) => toStringArray(value))
   @IsArray()
   @IsIn(PAYMENT_STATUSES, { each: true })
-  statuses?: Array<"SCHEDULED" | "PENDING_APPROVAL" | "APPROVED" | "REJECTED">;
+  statuses?: Array<"DRAFT" | "SCHEDULED" | "PENDING_APPROVAL" | "POSTED" | "APPROVED" | "REJECTED" | "VOIDED">;
 
   @IsOptional()
   @IsEnum(CurrencyType)

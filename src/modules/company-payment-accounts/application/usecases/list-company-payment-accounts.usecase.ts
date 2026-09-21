@@ -12,7 +12,9 @@ export class ListCompanyPaymentAccountsUsecase {
   ) {}
 
   async execute(input: { companyId: string; includeSensitive?: boolean }) {
-    const items = await this.accountRepo.listByCompany(input.companyId);
+    const items = await this.accountRepo.listByCompany(input.companyId, {
+      includeSensitive: input.includeSensitive,
+    });
     return {
       items: items.map((account) =>
         CompanyPaymentAccountOutputMapper.toOutput(account, {

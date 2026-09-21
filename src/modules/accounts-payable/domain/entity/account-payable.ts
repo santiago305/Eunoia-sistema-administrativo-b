@@ -15,6 +15,8 @@ export class AccountPayable {
     public readonly amountPending: number,
     public readonly dueDate: Date | undefined,
     public readonly status: PayableStatus,
+    public readonly requiresManualReview: boolean,
+    public readonly reconciliationNote: string | undefined,
     public readonly createdByUserId: string | undefined,
     public readonly createdAt?: Date,
     public readonly updatedAt?: Date,
@@ -32,6 +34,8 @@ export class AccountPayable {
     amountPending?: number;
     dueDate?: Date;
     status?: PayableStatus;
+    requiresManualReview?: boolean;
+    reconciliationNote?: string;
     createdByUserId?: string;
     createdAt?: Date;
     updatedAt?: Date;
@@ -45,7 +49,8 @@ export class AccountPayable {
 
     const amountPaid = params.amountPaid ?? 0;
     const amountPending = params.amountPending ?? Math.max(params.amountTotal - amountPaid, 0);
-    if (amountPaid < 0 || amountPending < 0) {
+    const balanceDifference = Math.abs(Number(params.amountTotal) - (Number(amountPaid) + Number(amountPending)));
+    if (amountPaid < 0 || amountPending < 0 || balanceDifference > 0.01) {
       throw new Error("Los importes de la cuenta por pagar no pueden ser negativos");
     }
 
@@ -61,6 +66,8 @@ export class AccountPayable {
       Number(amountPending),
       params.dueDate,
       params.status ?? "PENDING",
+      params.requiresManualReview ?? false,
+      params.reconciliationNote?.trim() || undefined,
       params.createdByUserId,
       params.createdAt,
       params.updatedAt,
@@ -68,11 +75,18 @@ export class AccountPayable {
   }
 
   withBalance(amountPaid: number, now = new Date()) {
-    const normalizedPaid = Math.min(Math.max(Number(amountPaid), 0), this.amountTotal);
-    const amountPending = Math.max(this.amountTotal - normalizedPaid, 0);
+    const normalizedPaid = Number(amountPaid);
+    if (!Number.isFinite(normalizedPaid) || normalizedPaid < 0) {
+      throw new Error("El importe pagado no puede ser negativo");
+    }
+    if (normalizedPaid > this.amountTotal + 0.01) {
+      throw new Error("El importe pagado no puede superar el total de la cuenta por pagar");
+    }
+    const settledPaid = Math.min(normalizedPaid, this.amountTotal);
+    const amountPending = Math.max(this.amountTotal - settledPaid, 0);
     let status: PayableStatus = "PENDING";
     if (amountPending <= 0) status = "PAID";
-    else if (normalizedPaid > 0) status = "PARTIAL";
+    else if (settledPaid > 0) status = "PARTIAL";
     else if (this.status === "OVERDUE") status = "OVERDUE";
 
     return AccountPayable.create({
@@ -83,10 +97,12 @@ export class AccountPayable {
       description: this.description,
       currency: this.currency,
       amountTotal: this.amountTotal,
-      amountPaid: normalizedPaid,
+      amountPaid: settledPaid,
       amountPending,
       dueDate: this.dueDate,
       status,
+      requiresManualReview: this.requiresManualReview,
+      reconciliationNote: this.reconciliationNote,
       createdByUserId: this.createdByUserId,
       createdAt: this.createdAt,
       updatedAt: now,

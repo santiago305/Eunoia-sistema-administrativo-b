@@ -27,7 +27,8 @@ describe("SalePaymentTypeormRepository", () => {
         {
           id: "bank-1",
           name: "BCP Soles",
-          accountNumber: "001",
+          accountNumber: null,
+          accountLastFour: "0001",
         },
       ]),
     };
@@ -55,7 +56,7 @@ describe("SalePaymentTypeormRepository", () => {
         bankAccount: {
           id: "bank-1",
           name: "BCP Soles",
-          number: "001",
+          number: "****0001",
         },
         date: paymentDate,
         method: "EFECTIVO",

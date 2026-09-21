@@ -28,7 +28,7 @@ describe("DeletePaymentUsecase", () => {
     paymentDocRepo.deleteById.mockResolvedValue(undefined);
   });
 
-  it("recalculates the linked account payable after deleting a payment", async () => {
+  it("rejects physical deletion of a posted payment", async () => {
     paymentDocRepo.findById.mockResolvedValueOnce({
       payDocId: "payment-1",
       poId: "purchase-1",
@@ -48,13 +48,8 @@ describe("DeletePaymentUsecase", () => {
       history as any,
     );
 
-    const result = await usecase.execute("payment-1", undefined, "user-1");
-
-    expect(result).toEqual(expect.objectContaining({ message: "Pago eliminado con exito" }));
-    expect(paymentDocRepo.deleteById).toHaveBeenCalledWith("payment-1", tx);
-    expect(recalculateAccountPayable.execute).toHaveBeenCalledWith(
-      { accountPayableId: "payable-1" },
-      tx,
-    );
+    await expect(usecase.execute("payment-1", undefined, "user-1"))
+      .rejects.toThrow("no se eliminan");
+    expect(paymentDocRepo.deleteById).not.toHaveBeenCalled();
   });
 });

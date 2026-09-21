@@ -1,12 +1,24 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, In, Repository } from "typeorm";
+import { DeepPartial } from "typeorm";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { TypeormTransactionContext } from "src/shared/domain/ports/typeorm-transaction-context";
 import { SalePaymentEntity } from "../entities/sale-payment.entity";
 import { SalePaymentRepository } from "src/modules/sale-orders/domain/ports/sale-payment.repository";
 import { SalePayment } from "src/modules/sale-orders/domain/entities/sale-payment";
 import { CompanyPaymentAccountEntity } from "src/modules/company-payment-accounts/adapters/out/persistence/typeorm/entities/company-payment-account.entity";
+import { CurrencyType } from "src/modules/payments/domain/value-objects/currency-type";
+
+const maskedAccountNumber = (account: CompanyPaymentAccountEntity): string | null => {
+  const suffix =
+    account.cardLastFour ??
+    account.accountLastFour ??
+    account.cciLastFour ??
+    account.walletPhoneLastFour;
+
+  return suffix ? `****${suffix}` : null;
+};
 
 @Injectable()
 export class SalePaymentTypeormRepository implements SalePaymentRepository {
@@ -41,28 +53,39 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
         ? {
             id: bankAccount.id,
             name: bankAccount.name,
-            number: bankAccount.accountNumber ?? null,
+            number: maskedAccountNumber(bankAccount),
           }
         : null,
+      row.companyPaymentAccountId ?? row.bankAccountId ?? null,
+      row.paymentMethodId ?? null,
+      row.currency,
+      row.status,
+      row.operationCode ?? null,
+      row.voidedAt ?? null,
+      row.voidReason ?? null,
     );
   }
 
   async bulkCreate(input: Parameters<SalePaymentRepository["bulkCreate"]>[0], tx?: TransactionContext): Promise<SalePayment[]> {
     if (!input.length) return [];
     const manager = this.getManager(tx);
-    const saved = await manager.getRepository(SalePaymentEntity).save(
-      input.map((row) => ({
+    const entities: DeepPartial<SalePaymentEntity>[] = input.map((row) => ({
         saleOrderId: row.saleOrderId,
         bankAccountId: row.bankAccountId ?? null,
+        companyPaymentAccountId: row.companyPaymentAccountId ?? row.bankAccountId ?? null,
+        paymentMethodId: row.paymentMethodId ?? null,
+        currency: row.currency ?? CurrencyType.PEN,
+        status: row.status ?? "POSTED",
+        operationCode: row.operationCode ?? null,
         date: row.date,
         method: row.method,
         operationNumber: row.operationNumber ?? null,
         amount: row.amount,
         note: row.note ?? null,
         paymentPhoto: row.paymentPhoto ?? null,
-      })),
-    );
-    return saved.map((row) => this.toDomain(row));
+      }));
+    const saved = await manager.getRepository(SalePaymentEntity).save(entities);
+    return saved.map((row) => this.toDomain(row as SalePaymentEntity));
   }
 
   async deleteBySaleOrderId(saleOrderId: string, tx?: TransactionContext): Promise<void> {
@@ -86,6 +109,9 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
       { id: input.paymentId, saleOrderId: input.saleOrderId },
       {
         bankAccountId: input.bankAccountId ?? null,
+        companyPaymentAccountId: input.companyPaymentAccountId ?? input.bankAccountId ?? null,
+        paymentMethodId: input.paymentMethodId ?? null,
+        operationCode: input.operationCode ?? null,
         date: input.date,
         method: input.method,
         operationNumber: input.operationNumber ?? null,
@@ -126,12 +152,12 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
       where: { saleOrderId: In(saleOrderIds) },
       order: { saleOrderId: "ASC", createdAt: "ASC" },
     });
-    const bankAccountIds = Array.from(
-      new Set(rows.map((row) => row.bankAccountId).filter(Boolean)),
+    const accountIds = Array.from(
+      new Set(rows.map((row) => row.companyPaymentAccountId ?? row.bankAccountId).filter(Boolean)),
     ) as string[];
-    const bankAccounts = bankAccountIds.length
+    const bankAccounts = accountIds.length
       ? await manager.getRepository(CompanyPaymentAccountEntity).find({
-          where: { id: In(bankAccountIds) },
+          where: { id: In(accountIds) },
         })
       : [];
     const bankAccountById = new Map(bankAccounts.map((row) => [row.id, row]));
@@ -139,7 +165,9 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
     return rows.map((row) =>
       this.toDomain(
         row,
-        row.bankAccountId ? bankAccountById.get(row.bankAccountId) ?? null : null,
+        (row.companyPaymentAccountId ?? row.bankAccountId)
+          ? bankAccountById.get(row.companyPaymentAccountId ?? row.bankAccountId!) ?? null
+          : null,
       ),
     );
   }

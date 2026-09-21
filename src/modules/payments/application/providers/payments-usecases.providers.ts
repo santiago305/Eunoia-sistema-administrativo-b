@@ -11,6 +11,7 @@ import { GetPaymentUsecase } from "../usecases/payment/get-by-id.usecase";
 import { GetPaymentsByPoIdUsecase } from "../usecases/payment/get-by-po-id.usecase";
 import { ListPaymentsUsecase } from "../usecases/payment/list.usecase";
 import { RejectPaymentUsecase } from "../usecases/payment/reject.usecase";
+import { VoidPaymentUsecase } from "../usecases/payment/void-payment.usecase";
 import { ExportPaymentsExcelUsecase } from "../usecases/payment/export-excel.usecase";
 import { DeletePaymentSearchMetricUsecase } from "../usecases/payment-search/delete-metric.usecase";
 import { GetPaymentSearchStateUsecase } from "../usecases/payment-search/get-state.usecase";
@@ -20,6 +21,7 @@ export const paymentsUsecasesProviders: Provider[] = [
   CreatePaymentUsecase,
   ApprovePaymentUsecase,
   RejectPaymentUsecase,
+  VoidPaymentUsecase,
   DeletePaymentUsecase,
   GetPaymentUsecase,
   GetPaymentsByPoIdUsecase,

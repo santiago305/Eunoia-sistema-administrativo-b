@@ -72,4 +72,55 @@ describe("AddSaleOrderPaymentUsecase", () => {
       uc.execute({ saleOrderId: "order-1", bankAccountId: "ba-1", method: "cash", amount: 10 }),
     ).rejects.toThrow("Cuenta bancaria inválida");
   });
+
+  it("requires a normalized payment method when financial repositories are available", async () => {
+    const uow = { runInTransaction: (fn: any) => fn({}) };
+    const paymentRepo = { bulkCreate: jest.fn() };
+    const saleOrderRepo = { findByIdForUpdate: jest.fn().mockResolvedValue({ id: "order-1", total: 100 }) };
+    const accountRepo = {
+      findOne: jest.fn().mockResolvedValue({ id: "account-1", isActive: true, usage: "INFLOW", currency: "PEN", type: "BANK_ACCOUNT" }),
+    };
+    const methodRepo = { findOne: jest.fn() };
+    const uc = new AddSaleOrderPaymentUsecase(
+      uow as any,
+      paymentRepo as any,
+      saleOrderRepo as any,
+      accountRepo as any,
+      methodRepo as any,
+    );
+
+    await expect(uc.execute({
+      saleOrderId: "order-1",
+      companyPaymentAccountId: "account-1",
+      method: "TRANSFERENCIA",
+      amount: 10,
+    })).rejects.toThrow("Selecciona el método de pago del cobro");
+  });
+
+  it("rejects a receiver account that is incompatible with the payment method", async () => {
+    const uow = { runInTransaction: (fn: any) => fn({}) };
+    const paymentRepo = { bulkCreate: jest.fn() };
+    const saleOrderRepo = { findByIdForUpdate: jest.fn().mockResolvedValue({ id: "order-1", total: 100 }) };
+    const accountRepo = {
+      findOne: jest.fn().mockResolvedValue({ id: "account-1", isActive: true, usage: "INFLOW", currency: "PEN", type: "DIGITAL_WALLET" }),
+    };
+    const methodRepo = {
+      findOne: jest.fn().mockResolvedValue({ id: "method-1", isActive: true, code: "BANK_TRANSFER" }),
+    };
+    const uc = new AddSaleOrderPaymentUsecase(
+      uow as any,
+      paymentRepo as any,
+      saleOrderRepo as any,
+      accountRepo as any,
+      methodRepo as any,
+    );
+
+    await expect(uc.execute({
+      saleOrderId: "order-1",
+      companyPaymentAccountId: "account-1",
+      paymentMethodId: "method-1",
+      method: "TRANSFERENCIA",
+      amount: 10,
+    })).rejects.toThrow("La cuenta receptora no es compatible con el método de pago");
+  });
 });

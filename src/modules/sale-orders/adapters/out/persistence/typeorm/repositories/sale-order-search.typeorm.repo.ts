@@ -100,7 +100,9 @@ export class SaleOrderSearchTypeormRepository implements SaleOrderSearchReposito
       left.name.localeCompare(right.name, "es", { sensitivity: "base" }),
     );
 
-    const orderedBankAccounts = [...bankAccounts].sort((left, right) =>
+    const orderedBankAccounts = bankAccounts
+      .filter((account) => !account.usage || account.usage === "INFLOW" || account.usage === "BOTH")
+      .sort((left, right) =>
       left.name.localeCompare(right.name, "es", { sensitivity: "base" }),
     );
 
@@ -160,7 +162,7 @@ export class SaleOrderSearchTypeormRepository implements SaleOrderSearchReposito
       })),
 
       bankAccounts: orderedBankAccounts.map((row) => {
-        const number = row.accountNumber ? ` (${row.accountNumber})` : "";
+        const number = row.accountLastFour ? ` (****${row.accountLastFour})` : "";
 
         return {
           bankAccountId: row.id,

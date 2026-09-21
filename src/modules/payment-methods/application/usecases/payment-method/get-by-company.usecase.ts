@@ -21,7 +21,7 @@ export class GetPaymentMethodsByCompanyUsecase {
     const methods = await this.paymentMethodRepo.getByCompany(input.companyId);
     return successResponse(
       "Metodos de pago encontrados",
-      methods.map((method) => PaymentMethodOutputMapper.toOutputWithNumber(method)),
+      methods.map((method) => PaymentMethodOutputMapper.toConfiguredOutput(method)),
     );
   }
 }
