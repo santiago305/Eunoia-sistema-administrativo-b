@@ -2307,24 +2307,24 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         .innerJoin(SalePaymentEntity, 'payment', 'payment.saleOrderId = so.id')
         .leftJoin(
           CompanyPaymentAccountEntity,
-          'bankAccount',
-          'bankAccount.id = payment.bankAccountId',
+          'bank_account',
+          'bank_account.id = payment.bankAccountId',
         )
-        .select('bankAccount.id', 'id')
-        .addSelect("COALESCE(bankAccount.name, 'Sin cuenta')", 'label')
+        .select('bank_account.id', 'id')
+        .addSelect("COALESCE(bank_account.name, 'Sin cuenta')", 'label')
         .addSelect(
           `CASE
             WHEN COALESCE(
-              bankAccount.cardLastFour,
-              bankAccount.accountLastFour,
-              bankAccount.cciLastFour,
-              bankAccount.walletPhoneLastFour
+              bank_account.cardLastFour,
+              bank_account.accountLastFour,
+              bank_account.cciLastFour,
+              bank_account.walletPhoneLastFour
             ) IS NULL THEN NULL
             ELSE '****' || COALESCE(
-              bankAccount.cardLastFour,
-              bankAccount.accountLastFour,
-              bankAccount.cciLastFour,
-              bankAccount.walletPhoneLastFour
+              bank_account.cardLastFour,
+              bank_account.accountLastFour,
+              bank_account.cciLastFour,
+              bank_account.walletPhoneLastFour
             )
           END`,
           'number',
@@ -2335,12 +2335,12 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         )
         .addSelect('COUNT(payment.id)', 'payments')
         .addSelect('COALESCE(SUM(payment.amount), 0)', 'collected')
-        .groupBy('bankAccount.id')
-        .addGroupBy('bankAccount.name')
-        .addGroupBy('bankAccount.cardLastFour')
-        .addGroupBy('bankAccount.accountLastFour')
-        .addGroupBy('bankAccount.cciLastFour')
-        .addGroupBy('bankAccount.walletPhoneLastFour')
+        .groupBy('bank_account.id')
+        .addGroupBy('bank_account.name')
+        .addGroupBy('bank_account.cardLastFour')
+        .addGroupBy('bank_account.accountLastFour')
+        .addGroupBy('bank_account.cciLastFour')
+        .addGroupBy('bank_account.walletPhoneLastFour')
         .addGroupBy(
           "COALESCE(NULLIF(TRIM(payment.note), ''), 'Sin descripcion')",
         )
