@@ -2315,16 +2315,16 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         .addSelect(
           `CASE
             WHEN COALESCE(
-              bank_account.cardLastFour,
-              bank_account.accountLastFour,
-              bank_account.cciLastFour,
-              bank_account.walletPhoneLastFour
+              "bank_account"."card_last_four",
+              "bank_account"."account_last_four",
+              "bank_account"."cci_last_four",
+              "bank_account"."wallet_phone_last_four"
             ) IS NULL THEN NULL
             ELSE '****' || COALESCE(
-              bank_account.cardLastFour,
-              bank_account.accountLastFour,
-              bank_account.cciLastFour,
-              bank_account.walletPhoneLastFour
+              "bank_account"."card_last_four",
+              "bank_account"."account_last_four",
+              "bank_account"."cci_last_four",
+              "bank_account"."wallet_phone_last_four"
             )
           END`,
           'number',
@@ -2337,10 +2337,10 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         .addSelect('COALESCE(SUM(payment.amount), 0)', 'collected')
         .groupBy('bank_account.id')
         .addGroupBy('bank_account.name')
-        .addGroupBy('bank_account.cardLastFour')
-        .addGroupBy('bank_account.accountLastFour')
-        .addGroupBy('bank_account.cciLastFour')
-        .addGroupBy('bank_account.walletPhoneLastFour')
+        .addGroupBy('"bank_account"."card_last_four"')
+        .addGroupBy('"bank_account"."account_last_four"')
+        .addGroupBy('"bank_account"."cci_last_four"')
+        .addGroupBy('"bank_account"."wallet_phone_last_four"')
         .addGroupBy(
           "COALESCE(NULLIF(TRIM(payment.note), ''), 'Sin descripcion')",
         )
