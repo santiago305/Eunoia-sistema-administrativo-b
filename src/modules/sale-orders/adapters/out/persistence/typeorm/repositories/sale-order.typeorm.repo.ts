@@ -1347,7 +1347,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
               'filterPayment.saleOrderId = so.id',
             );
             qb.andWhere(
-              `filterPayment.bankAccountId ${filter.mode === 'exclude' ? 'NOT IN' : 'IN'} (:...${valueParam})`,
+              `filterPayment.companyPaymentAccountId ${filter.mode === 'exclude' ? 'NOT IN' : 'IN'} (:...${valueParam})`,
               {
                 [valueParam]: filter.values,
               },
@@ -1600,7 +1600,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     ]);
 
     const bankAccountIds = Array.from(
-      new Set(payments.map((p) => p.bankAccountId).filter(Boolean)),
+      new Set(payments.map((p) => p.companyPaymentAccountId).filter(Boolean)),
     ) as string[];
     const bankAccounts = bankAccountIds.length
       ? await manager
@@ -1853,9 +1853,9 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
           detail: displayFields.detail,
           payments: orderPayments.map((p) => ({
             id: p.id,
-            bankAccount: p.bankAccountId
+            bankAccount: p.companyPaymentAccountId
               ? (() => {
-                  const account = bankAccountById.get(p.bankAccountId);
+                  const account = bankAccountById.get(p.companyPaymentAccountId);
                   return account
                     ? {
                         id: account.id,
@@ -2143,7 +2143,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
             SELECT 1
             FROM sale_payments filter_payment
             WHERE filter_payment.sale_order_id = so.id
-            AND filter_payment.bank_account_id ${filter.mode === 'exclude' ? 'NOT IN' : 'IN'} (:...${valueParam})
+            AND filter_payment.company_payment_account_id ${filter.mode === 'exclude' ? 'NOT IN' : 'IN'} (:...${valueParam})
           )`,
           { [valueParam]: filter.values },
         );
@@ -2308,7 +2308,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         .leftJoin(
           CompanyPaymentAccountEntity,
           'bank_account',
-          'bank_account.id = payment.bankAccountId',
+          'bank_account.id = payment.companyPaymentAccountId',
         )
         .select('bank_account.id', 'id')
         .addSelect("COALESCE(bank_account.name, 'Sin cuenta')", 'label')
@@ -2569,7 +2569,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     );
 
     const bankAccountIds = Array.from(
-      new Set(payments.map((payment) => payment.bankAccountId).filter(Boolean)),
+      new Set(payments.map((payment) => payment.companyPaymentAccountId).filter(Boolean)),
     ) as string[];
 
     const bankAccounts = bankAccountIds.length
@@ -2844,9 +2844,9 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       payments: payments.map((payment) => ({
         id: payment.id,
         clientKey: payment.id,
-        bankAccount: payment.bankAccountId
+        bankAccount: payment.companyPaymentAccountId
           ? (() => {
-              const account = bankAccountById.get(payment.bankAccountId);
+              const account = bankAccountById.get(payment.companyPaymentAccountId);
 
               return account
                 ? {

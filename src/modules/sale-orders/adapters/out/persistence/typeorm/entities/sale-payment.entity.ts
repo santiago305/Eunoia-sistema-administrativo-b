@@ -10,9 +10,6 @@ export class SalePaymentEntity {
   @Column({ name: "sale_order_id", type: "uuid" })
   saleOrderId: string;
 
-  @Column({ name: "bank_account_id", type: "uuid", nullable: true })
-  bankAccountId?: string | null;
-
   @Column({ name: "company_payment_account_id", type: "uuid", nullable: true })
   companyPaymentAccountId?: string | null;
 

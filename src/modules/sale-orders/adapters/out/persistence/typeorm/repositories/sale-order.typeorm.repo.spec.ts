@@ -1171,7 +1171,7 @@ describe('SaleOrderTypeormRepository', () => {
     });
 
     expect(baseQb.andWhere).toHaveBeenCalledWith(
-      expect.stringContaining('filter_payment.bank_account_id IN'),
+      expect.stringContaining('filter_payment.company_payment_account_id IN'),
       { stats_filter_0_value: ['bank-1'] },
     );
     expect(baseQb.andWhere).toHaveBeenCalledWith(

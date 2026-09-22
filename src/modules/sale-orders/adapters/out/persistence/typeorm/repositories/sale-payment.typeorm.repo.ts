@@ -41,7 +41,7 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
     return new SalePayment(
       row.id,
       row.saleOrderId,
-      row.bankAccountId ?? null,
+      row.companyPaymentAccountId ?? null,
       row.date,
       row.method,
       row.operationNumber ?? null,
@@ -56,7 +56,7 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
             number: maskedAccountNumber(bankAccount),
           }
         : null,
-      row.companyPaymentAccountId ?? row.bankAccountId ?? null,
+      row.companyPaymentAccountId ?? null,
       row.paymentMethodId ?? null,
       row.currency,
       row.status,
@@ -71,7 +71,6 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
     const manager = this.getManager(tx);
     const entities: DeepPartial<SalePaymentEntity>[] = input.map((row) => ({
         saleOrderId: row.saleOrderId,
-        bankAccountId: row.bankAccountId ?? null,
         companyPaymentAccountId: row.companyPaymentAccountId ?? row.bankAccountId ?? null,
         paymentMethodId: row.paymentMethodId ?? null,
         currency: row.currency ?? CurrencyType.PEN,
@@ -108,7 +107,6 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
     await manager.getRepository(SalePaymentEntity).update(
       { id: input.paymentId, saleOrderId: input.saleOrderId },
       {
-        bankAccountId: input.bankAccountId ?? null,
         companyPaymentAccountId: input.companyPaymentAccountId ?? input.bankAccountId ?? null,
         paymentMethodId: input.paymentMethodId ?? null,
         operationCode: input.operationCode ?? null,
@@ -153,7 +151,7 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
       order: { saleOrderId: "ASC", createdAt: "ASC" },
     });
     const accountIds = Array.from(
-      new Set(rows.map((row) => row.companyPaymentAccountId ?? row.bankAccountId).filter(Boolean)),
+      new Set(rows.map((row) => row.companyPaymentAccountId).filter(Boolean)),
     ) as string[];
     const bankAccounts = accountIds.length
       ? await manager.getRepository(CompanyPaymentAccountEntity).find({
@@ -165,8 +163,8 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
     return rows.map((row) =>
       this.toDomain(
         row,
-        (row.companyPaymentAccountId ?? row.bankAccountId)
-          ? bankAccountById.get(row.companyPaymentAccountId ?? row.bankAccountId!) ?? null
+        row.companyPaymentAccountId
+          ? bankAccountById.get(row.companyPaymentAccountId) ?? null
           : null,
       ),
     );
