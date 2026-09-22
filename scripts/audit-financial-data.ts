@@ -44,6 +44,16 @@ const queries: Array<{ check: string; sql: string }> = [
     `,
   },
   {
+    check: "legacy_company_method_requires_voucher_column",
+    sql: `
+      SELECT column_name AS id
+      FROM information_schema.columns
+      WHERE table_schema = current_schema()
+        AND table_name = 'company_methods'
+        AND column_name = 'requires_voucher'
+    `,
+  },
+  {
     check: "supplier_methods_without_method",
     sql: `
       SELECT sm.supplier_method_id AS id

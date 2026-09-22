@@ -34,7 +34,7 @@ export class CompanyMethodTypeormRepository implements CompanyMethodRepository {
       companyMethodId: row.id,
       companyId: row.companyId,
       methodId: row.methodId,
-      requiresVoucher: row.requiresVoucher,
+      evidencePolicy: row.evidencePolicy,
       enabled: row.enabled,
     });
   }
@@ -111,7 +111,7 @@ export class CompanyMethodTypeormRepository implements CompanyMethodRepository {
       id: method.companyMethodId,
       companyId: method.companyId,
       methodId: method.methodId,
-      requiresVoucher: method.requiresVoucher,
+      evidencePolicy: method.evidencePolicy,
       enabled: method.enabled,
     });
     const saved = await repo.save(row);
@@ -122,7 +122,7 @@ export class CompanyMethodTypeormRepository implements CompanyMethodRepository {
     params: {
       companyMethodId: string;
       methodId?: string;
-      requiresVoucher?: boolean;
+      evidencePolicy?: CompanyMethod["evidencePolicy"];
       enabled?: boolean;
     },
     tx?: TransactionContext,
@@ -131,8 +131,8 @@ export class CompanyMethodTypeormRepository implements CompanyMethodRepository {
     const patch: Partial<CompanyMethodEntity> = {};
 
     if (params.methodId !== undefined) patch.methodId = params.methodId;
-      if (params.requiresVoucher !== undefined) patch.requiresVoucher = params.requiresVoucher;
-      if (params.enabled !== undefined) patch.enabled = params.enabled;
+    if (params.evidencePolicy !== undefined) patch.evidencePolicy = params.evidencePolicy;
+    if (params.enabled !== undefined) patch.enabled = params.enabled;
 
     await repo.update({ id: params.companyMethodId }, patch);
     const updated = await repo.findOne({ where: { id: params.companyMethodId } });

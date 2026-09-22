@@ -1,5 +1,6 @@
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { PaymentMethod } from "../entity/payment-method";
+import type { CompanyMethodEvidencePolicy } from "../services/payment-method-voucher-policy";
 
 export const PAYMENT_METHOD_REPOSITORY = Symbol("PAYMENT_METHOD_REPOSITORY");
 
@@ -8,6 +9,7 @@ export type ConfiguredPaymentMethod = {
   method: PaymentMethod;
   isDefault?: boolean;
   requiresVoucher: boolean;
+  evidencePolicy: CompanyMethodEvidencePolicy;
   enabled?: boolean;
 };
 

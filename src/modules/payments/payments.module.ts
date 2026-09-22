@@ -20,6 +20,7 @@ import { AccountsPayableModule } from "src/modules/accounts-payable";
 import { ListingSearchMetricEntity } from "src/shared/listing-search/adapters/out/persistence/typeorm/entities/listing-search-metric.entity";
 import { ListingSearchRecentEntity } from "src/shared/listing-search/adapters/out/persistence/typeorm/entities/listing-search-recent.entity";
 import { PaymentMethodEntity } from "src/modules/payment-methods/adapters/out/persistence/typeorm/entities/payment-method.entity";
+import { CompanyMethodEntity } from "src/modules/payment-methods/adapters/out/persistence/typeorm/entities/company-method.entity";
 import { CompanyPaymentAccountEntity } from "src/modules/company-payment-accounts/adapters/out/persistence/typeorm/entities/company-payment-account.entity";
 import { PaymentAllocationEntity } from "./adapters/out/persistence/typeorm/entities/payment-allocation.entity";
 import { PAYMENT_SEARCH } from "./domain/ports/payment-search.repository";
@@ -36,6 +37,7 @@ import { PurchaseAttachmentsModule } from "src/modules/purchase-attachments/purc
       ListingSearchRecentEntity,
       ListingSearchMetricEntity,
       PaymentMethodEntity,
+      CompanyMethodEntity,
       CompanyPaymentAccountEntity,
       PaymentAllocationEntity,
       SupplierPaymentDestinationEntity,

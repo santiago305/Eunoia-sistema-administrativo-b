@@ -1,4 +1,8 @@
-import { IsBoolean, IsNotEmpty, IsOptional, IsUUID } from "class-validator";
+import { IsBoolean, IsIn, IsNotEmpty, IsOptional, IsUUID } from "class-validator";
+import {
+  COMPANY_METHOD_EVIDENCE_POLICIES,
+  type CompanyMethodEvidencePolicy,
+} from "src/modules/payment-methods/domain/services/payment-method-voucher-policy";
 
 export class HttpCompanyMethodCreateDto {
   @IsUUID()
@@ -12,6 +16,10 @@ export class HttpCompanyMethodCreateDto {
   @IsOptional()
   @IsBoolean()
   requiresVoucher?: boolean;
+
+  @IsOptional()
+  @IsIn(COMPANY_METHOD_EVIDENCE_POLICIES)
+  evidencePolicy?: CompanyMethodEvidencePolicy;
 
   @IsOptional()
   @IsBoolean()

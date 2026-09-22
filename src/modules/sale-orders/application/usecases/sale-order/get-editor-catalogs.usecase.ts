@@ -10,6 +10,7 @@ import { AdviserEntity } from "src/modules/advisers/adapters/out/persistence/typ
 import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
 import { CompanyMethodEntity } from "src/modules/payment-methods/adapters/out/persistence/typeorm/entities/company-method.entity";
 import { CompanyPaymentAccountEntity } from "src/modules/company-payment-accounts/adapters/out/persistence/typeorm/entities/company-payment-account.entity";
+import { resolveCompanyMethodRequiresVoucher } from "src/modules/payment-methods/domain/services/payment-method-voucher-policy";
 
 type Input = {
   companyId?: string;
@@ -110,15 +111,23 @@ export class GetSaleOrderEditorCatalogsUsecase {
       })),
       advisers,
       paymentMethods: paymentMethods
-        .filter((row) => row.method?.isActive)
+        .filter((row) => row.enabled && row.method?.isActive)
         .map((row) => ({
           companyMethodId: row.id,
           companyId: row.companyId,
           methodId: row.methodId,
           name: row.method.name,
-          number: row.number ?? undefined,
+          code: row.method.code,
+          category: row.method.category,
           isActive: row.method.isActive,
-          requiresVoucher: row.requiresVoucher,
+          requiresSourceAccount: row.method.requiresSourceAccount,
+          requiresDestination: row.method.requiresDestination,
+          requiresOperationReference: row.method.requiresOperationReference,
+          evidencePolicy: row.evidencePolicy,
+          requiresVoucher: resolveCompanyMethodRequiresVoucher(
+            row.method.requiresVoucher,
+            row.evidencePolicy,
+          ),
         })),
       companyPaymentAccounts: companyPaymentAccounts
         .filter((account) => account.isActive && (!account.usage || account.usage === "INFLOW" || account.usage === "BOTH"))

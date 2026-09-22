@@ -13,6 +13,7 @@ import { PurchaseHistoryService } from "src/modules/purchases/application/servic
 import { RecalculateAccountPayableUsecase } from "src/modules/accounts-payable";
 import { CompanyPaymentAccountEntity } from "src/modules/company-payment-accounts/adapters/out/persistence/typeorm/entities/company-payment-account.entity";
 import { PaymentMethodEntity } from "src/modules/payment-methods/adapters/out/persistence/typeorm/entities/payment-method.entity";
+import { CompanyMethodEntity } from "src/modules/payment-methods/adapters/out/persistence/typeorm/entities/company-method.entity";
 import { ACCOUNT_PAYABLE_REPOSITORY, AccountPayableRepository } from "src/modules/accounts-payable";
 import { PaymentAllocationEntity } from "src/modules/payments/adapters/out/persistence/typeorm/entities/payment-allocation.entity";
 import { SupplierPaymentDestinationEntity } from "src/modules/supplier-payment-destinations/adapters/out/persistence/typeorm/entities/supplier-payment-destination.entity";
@@ -22,6 +23,7 @@ import {
   type PaymentMethodPolicy,
 } from "src/modules/payments/domain/services/payment-financial-policy";
 import { getPaymentMethodDefinition } from "src/modules/payment-methods/domain/value-objects/payment-method-catalog";
+import { resolveCompanyMethodRequiresVoucher } from "src/modules/payment-methods/domain/services/payment-method-voucher-policy";
 
 export class CreatePaymentUsecase {
   constructor(
@@ -52,18 +54,40 @@ export class CreatePaymentUsecase {
     @Optional()
     @InjectRepository(PaymentAllocationEntity)
     private readonly allocationRepo?: Repository<PaymentAllocationEntity>,
+    @Optional()
+    @InjectRepository(CompanyMethodEntity)
+    private readonly companyMethods?: Repository<CompanyMethodEntity>,
   ) {}
 
   private async validateTreasuryAccount(input: CreatePaymentInput) {
-    if (!this.companyPaymentAccounts) return;
+    if (!this.companyPaymentAccounts) {
+      return { method: null, requiresVoucher: false };
+    }
     const account = input.companyPaymentAccountId
       ? await this.companyPaymentAccounts.findOne({ where: { id: input.companyPaymentAccountId } })
       : null;
     const method = input.paymentMethodId && this.paymentMethods
       ? await this.paymentMethods.findOne({ where: { id: input.paymentMethodId } })
       : null;
+    if (input.paymentMethodId && (!method || !method.isActive)) {
+      throw new BadRequestException("El metodo de pago no esta disponible");
+    }
     const methodCode = method?.code ?? getPaymentMethodDefinition(undefined, input.method).code;
     const definition = getPaymentMethodDefinition(methodCode, input.method);
+    let requiresVoucher = method?.requiresVoucher ?? definition.requiresVoucher;
+
+    if (method && account && this.companyMethods) {
+      const companyMethod = await this.companyMethods.findOne({
+        where: { companyId: account.companyId, methodId: method.id },
+      });
+      if (!companyMethod?.enabled) {
+        throw new BadRequestException("El metodo de pago no esta habilitado para la empresa");
+      }
+      requiresVoucher = resolveCompanyMethodRequiresVoucher(
+        method.requiresVoucher,
+        companyMethod.evidencePolicy,
+      );
+    }
     const methodPolicy: PaymentMethodPolicy = method
       ? {
           code: method.code,
@@ -72,7 +96,7 @@ export class CreatePaymentUsecase {
           // Destination is validated after it is resolved and checked against the supplier.
           requiresDestination: false,
           requiresOperationReference: false,
-          requiresVoucher: method.requiresVoucher,
+          requiresVoucher,
         }
       : {
           ...definition,
@@ -101,12 +125,17 @@ export class CreatePaymentUsecase {
       if (error instanceof Error) throw new BadRequestException(error.message);
       throw error;
     }
+    return { method, requiresVoucher };
   }
 
-  private async validateSupplierDestination(input: CreatePaymentInput, purchaseId: string) {
-    const method = input.paymentMethodId && this.paymentMethods
+  private async validateSupplierDestination(
+    input: CreatePaymentInput,
+    purchaseId: string,
+    resolvedMethod?: PaymentMethodEntity | null,
+  ) {
+    const method = resolvedMethod ?? (input.paymentMethodId && this.paymentMethods
       ? await this.paymentMethods.findOne({ where: { id: input.paymentMethodId } })
-      : null;
+      : null);
     if (input.paymentMethodId && (!method || !method.isActive)) {
       throw new BadRequestException("El metodo de pago no esta disponible");
     }
@@ -164,9 +193,13 @@ export class CreatePaymentUsecase {
     }
   }
 
-  private async validateMethodRequirements(input: CreatePaymentInput) {
+  private async validateMethodRequirements(
+    input: CreatePaymentInput,
+    resolvedMethod?: PaymentMethodEntity | null,
+  ) {
     if (!this.paymentMethods || !input.paymentMethodId) return;
-    const method = await this.paymentMethods.findOne({ where: { id: input.paymentMethodId } });
+    const method = resolvedMethod
+      ?? await this.paymentMethods.findOne({ where: { id: input.paymentMethodId } });
     if (!method) throw new BadRequestException("El metodo de pago no existe");
     try {
       PaymentFinancialPolicy.validate({
@@ -223,12 +256,11 @@ export class CreatePaymentUsecase {
         throw new BadRequestException("Fecha de pago invalida");
       }
 
-      await this.validateTreasuryAccount(input);
-      await this.validateSupplierDestination(input, paymentPoId);
-      await this.validateMethodRequirements(input);
+      const paymentPolicy = await this.validateTreasuryAccount(input);
+      await this.validateSupplierDestination(input, paymentPoId, paymentPolicy.method);
+      await this.validateMethodRequirements(input, paymentPolicy.method);
       if (["POSTED", "APPROVED"].includes(options?.status ?? "APPROVED") && input.paymentMethodId && this.paymentMethods) {
-        const method = await this.paymentMethods.findOne({ where: { id: input.paymentMethodId } });
-        if (method?.requiresVoucher && !input.paymentEvidenceFileId) {
+        if (paymentPolicy.requiresVoucher && !input.paymentEvidenceFileId) {
           throw new BadRequestException("Los pagos que requieren comprobante deben enviarse como borrador con evidencia");
         }
       }

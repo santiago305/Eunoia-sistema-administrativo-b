@@ -75,7 +75,7 @@ export class NormalizePaymentMethodCatalog20260920090000 implements MigrationInt
     `);
 
     await queryRunner.query(`
-      CREATE TEMP TABLE payment_method_code_map ON COMMIT DROP AS
+      CREATE TEMP TABLE payment_method_code_map AS
       SELECT
         pm.method_id,
         pm.code,
@@ -148,6 +148,7 @@ export class NormalizePaymentMethodCatalog20260920090000 implements MigrationInt
       WHERE pm.method_id = map.method_id
         AND map.method_id <> map.canonical_method_id
     `);
+    await queryRunner.query(`DROP TABLE IF EXISTS payment_method_code_map`);
 
     await queryRunner.query(`
       CREATE UNIQUE INDEX IF NOT EXISTS ux_payment_methods_code

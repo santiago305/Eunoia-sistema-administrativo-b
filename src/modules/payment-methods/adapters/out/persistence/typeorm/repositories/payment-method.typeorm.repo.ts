@@ -6,6 +6,7 @@ import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { PaymentMethod } from "src/modules/payment-methods/domain/entity/payment-method";
 import { ConfiguredPaymentMethod, PaymentMethodRepository } from "src/modules/payment-methods/domain/ports/payment-method.repository";
 import { CompanyMethodEntity } from "../entities/company-method.entity";
+import { resolveCompanyMethodRequiresVoucher } from "src/modules/payment-methods/domain/services/payment-method-voucher-policy";
 import { PaymentMethodEntity } from "../entities/payment-method.entity";
 
 @Injectable()
@@ -55,7 +56,7 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
       .andWhere("pm.isActive = true")
       .select([
         "cm.id AS relation_id",
-        "cm.requiresVoucher AS relation_requires_voucher",
+        "cm.evidencePolicy AS relation_evidence_policy",
         "cm.enabled AS relation_enabled",
         "pm.id AS method_id",
         "pm.name AS method_name",
@@ -72,7 +73,7 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
       .addOrderBy("cm.id", "ASC")
       .getRawMany<{
         relation_id: string;
-        relation_requires_voucher: boolean;
+        relation_evidence_policy: "INHERIT" | "REQUIRED" | "OPTIONAL";
         relation_enabled: boolean;
         method_id: string;
         method_name: string;
@@ -101,7 +102,11 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
         isSystem: row.method_is_system,
       }),
       isDefault: false,
-      requiresVoucher: row.relation_requires_voucher ?? row.method_requires_voucher,
+      requiresVoucher: resolveCompanyMethodRequiresVoucher(
+        row.method_requires_voucher,
+        row.relation_evidence_policy,
+      ),
+      evidencePolicy: row.relation_evidence_policy,
       enabled: row.relation_enabled ?? true,
     }));
   }

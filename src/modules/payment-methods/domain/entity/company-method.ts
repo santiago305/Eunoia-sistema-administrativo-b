@@ -1,11 +1,12 @@
 import { InvalidPaymentMethodRelationError } from "../errors/invalid-payment-method-relation.error";
+import type { CompanyMethodEvidencePolicy } from "../services/payment-method-voucher-policy";
 
 export class CompanyMethod {
   private constructor(
     public readonly companyMethodId: string | undefined,
     public readonly companyId: string,
     public readonly methodId: string,
-    public readonly requiresVoucher: boolean = true,
+    public readonly evidencePolicy: CompanyMethodEvidencePolicy = "INHERIT",
     public readonly enabled: boolean = true,
   ) {}
 
@@ -13,7 +14,7 @@ export class CompanyMethod {
     companyMethodId?: string;
     companyId: string;
     methodId: string;
-    requiresVoucher?: boolean;
+    evidencePolicy?: CompanyMethodEvidencePolicy;
     enabled?: boolean;
   }) {
     if (!params.companyId || !params.methodId) {
@@ -24,7 +25,7 @@ export class CompanyMethod {
       params.companyMethodId,
       params.companyId,
       params.methodId,
-      params.requiresVoucher ?? true,
+      params.evidencePolicy ?? "INHERIT",
       params.enabled ?? true,
     );
   }

@@ -3,6 +3,7 @@ import { PaymentMethodOutput } from "../dtos/payment-method/output/payment-metho
 import { PaymentMethod } from "../../domain/entity/payment-method";
 import { ConfiguredPaymentMethod } from "../../domain/ports/payment-method.repository";
 import { CompanyMethodWithMethod } from "../../domain/ports/company-method.repository";
+import { resolveCompanyMethodRequiresVoucher } from "../../domain/services/payment-method-voucher-policy";
 
 export class PaymentMethodOutputMapper {
   static toOutput(method: PaymentMethod): PaymentMethodOutput {
@@ -34,6 +35,7 @@ export class PaymentMethodOutputMapper {
       isActive: item.method.isActive,
       isDefault: item.isDefault ?? false,
       requiresVoucher: item.requiresVoucher,
+      evidencePolicy: item.evidencePolicy,
     };
   }
 
@@ -46,7 +48,11 @@ export class PaymentMethodOutputMapper {
       methodCode: item.method.code,
       category: item.method.category,
       isActive: item.method.isActive,
-      requiresVoucher: item.relation.requiresVoucher,
+      requiresVoucher: resolveCompanyMethodRequiresVoucher(
+        item.method.requiresVoucher,
+        item.relation.evidencePolicy,
+      ),
+      evidencePolicy: item.relation.evidencePolicy,
       enabled: item.relation.enabled,
     };
   }

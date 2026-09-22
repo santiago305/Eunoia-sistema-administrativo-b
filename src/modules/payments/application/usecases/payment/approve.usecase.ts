@@ -14,6 +14,10 @@ import { PaymentMethodEntity } from "src/modules/payment-methods/adapters/out/pe
 import { SupplierPaymentDestinationEntity } from "src/modules/supplier-payment-destinations/adapters/out/persistence/typeorm/entities/supplier-payment-destination.entity";
 import { PURCHASE_ATTACHMENT_REPOSITORY, PurchaseAttachmentRepository } from "src/modules/purchase-attachments/domain/ports/purchase-attachment.repository";
 import { PurchaseAttachmentType } from "src/modules/purchase-attachments/domain/value-objects/purchase-attachment-type";
+import { CompanyMethodEntity } from "src/modules/payment-methods/adapters/out/persistence/typeorm/entities/company-method.entity";
+import { CompanyPaymentAccountEntity } from "src/modules/company-payment-accounts/adapters/out/persistence/typeorm/entities/company-payment-account.entity";
+import { resolveCompanyMethodRequiresVoucher } from "src/modules/payment-methods/domain/services/payment-method-voucher-policy";
+import { PaymentFinancialPolicy } from "src/modules/payments/domain/services/payment-financial-policy";
 
 export class ApprovePaymentUsecase {
   constructor(
@@ -40,6 +44,12 @@ export class ApprovePaymentUsecase {
     @Optional()
     @Inject(PURCHASE_ATTACHMENT_REPOSITORY)
     private readonly attachmentRepo?: PurchaseAttachmentRepository,
+    @Optional()
+    @InjectRepository(CompanyPaymentAccountEntity)
+    private readonly companyPaymentAccountRepo?: Repository<CompanyPaymentAccountEntity>,
+    @Optional()
+    @InjectRepository(CompanyMethodEntity)
+    private readonly companyMethodRepo?: Repository<CompanyMethodEntity>,
   ) {}
 
   async execute(input: { paymentId: string; userId: string }) {
@@ -54,10 +64,60 @@ export class ApprovePaymentUsecase {
     const paymentMethod = existing.paymentMethodId && this.paymentMethodRepo
       ? await this.paymentMethodRepo.findOne({ where: { id: existing.paymentMethodId } })
       : null;
+    if (this.paymentMethodRepo && (!paymentMethod || !paymentMethod.isActive)) {
+      return { type: "error" as const, message: "El metodo de pago no esta disponible" };
+    }
+    const sourceAccount = existing.companyPaymentAccountId && this.companyPaymentAccountRepo
+      ? await this.companyPaymentAccountRepo.findOne({ where: { id: existing.companyPaymentAccountId } })
+      : null;
+    if (this.companyPaymentAccountRepo && paymentMethod?.requiresSourceAccount && !sourceAccount) {
+      return { type: "error" as const, message: "La cuenta de origen no existe o esta inactiva" };
+    }
+    const companyMethod = sourceAccount && this.companyMethodRepo
+      ? await this.companyMethodRepo.findOne({
+          where: { companyId: sourceAccount.companyId, methodId: paymentMethod!.id },
+        })
+      : null;
+    if (this.companyMethodRepo && sourceAccount && !companyMethod?.enabled) {
+      return { type: "error" as const, message: "El metodo de pago no esta habilitado para la empresa" };
+    }
+    const requiresVoucher = paymentMethod
+      ? resolveCompanyMethodRequiresVoucher(
+          paymentMethod.requiresVoucher,
+          companyMethod?.evidencePolicy,
+        )
+      : false;
+    if (paymentMethod && sourceAccount) {
+      try {
+        PaymentFinancialPolicy.validate({
+          method: {
+            code: paymentMethod.code,
+            isActive: paymentMethod.isActive,
+            requiresSourceAccount: paymentMethod.requiresSourceAccount,
+            requiresDestination: false,
+            requiresOperationReference: false,
+            requiresVoucher,
+          },
+          account: {
+            id: sourceAccount.id,
+            isActive: sourceAccount.isActive,
+            currency: sourceAccount.currency,
+            usage: sourceAccount.usage,
+            type: sourceAccount.type,
+          },
+          currency: existing.currency,
+        });
+      } catch (error) {
+        return {
+          type: "error" as const,
+          message: error instanceof Error ? error.message : "La cuenta de origen no es válida",
+        };
+      }
+    }
     if (paymentMethod?.requiresDestination && !existing.supplierPaymentDestinationId) {
       return { type: "error" as const, message: "El pago no tiene un destino de proveedor confirmado" };
     }
-    if (paymentMethod?.requiresVoucher) {
+    if (requiresVoucher) {
       if (!this.attachmentRepo) {
         return { type: "error" as const, message: "No se pudo validar la evidencia del pago" };
       }

@@ -1,6 +1,7 @@
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 import { CompanyEntity } from "src/modules/companies/adapters/out/persistence/typeorm/entities/company.entity";
 import { PaymentMethodEntity } from "./payment-method.entity";
+import type { CompanyMethodEvidencePolicy } from "src/modules/payment-methods/domain/services/payment-method-voucher-policy";
 
 @Entity("company_methods")
 export class CompanyMethodEntity {
@@ -13,14 +14,11 @@ export class CompanyMethodEntity {
   @Column({ name: "method_id", type: "uuid" })
   methodId: string;
 
-  @Column({ name: "requires_voucher", type: "boolean", default: true })
-  requiresVoucher: boolean;
-
   @Column({ type: "boolean", default: true })
   enabled: boolean;
 
   @Column({ name: "evidence_policy", type: "varchar", length: 20, default: "INHERIT" })
-  evidencePolicy: "INHERIT" | "REQUIRED" | "OPTIONAL";
+  evidencePolicy: CompanyMethodEvidencePolicy;
 
   @ManyToOne(() => CompanyEntity)
   @JoinColumn({ name: "company_id" })

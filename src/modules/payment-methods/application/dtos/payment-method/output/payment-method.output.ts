@@ -1,3 +1,5 @@
+import type { CompanyMethodEvidencePolicy } from "src/modules/payment-methods/domain/services/payment-method-voucher-policy";
+
 export interface PaymentMethodOutput {
   methodId: string;
   name: string;
@@ -10,5 +12,6 @@ export interface PaymentMethodOutput {
   isActive: boolean;
   isDefault?: boolean;
   requiresVoucher: boolean;
+  evidencePolicy?: CompanyMethodEvidencePolicy;
   enabled?: boolean;
 }

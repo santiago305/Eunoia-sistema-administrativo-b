@@ -19,12 +19,44 @@ describe("CreatePaymentUsecase", () => {
   const history = {
     recordPayment: jest.fn(),
   };
+  const companyPaymentAccounts = {
+    findOne: jest.fn(),
+  };
+  const paymentMethods = {
+    findOne: jest.fn(),
+  };
+  const companyMethods = {
+    findOne: jest.fn(),
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
     uow.runInTransaction.mockImplementation((callback) => callback(tx));
     paymentDocRepo.create.mockResolvedValue({
       payDocId: "payment-1",
+    });
+    companyPaymentAccounts.findOne.mockResolvedValue({
+      id: "account-1",
+      companyId: "company-1",
+      isActive: true,
+      currency: "PEN",
+      usage: "OUTFLOW",
+      type: "CREDIT_CARD",
+    });
+    paymentMethods.findOne.mockResolvedValue({
+      id: "method-1",
+      code: "CARD",
+      isActive: true,
+      requiresSourceAccount: true,
+      requiresDestination: false,
+      requiresOperationReference: false,
+      requiresVoucher: true,
+    });
+    companyMethods.findOne.mockResolvedValue({
+      companyId: "company-1",
+      methodId: "method-1",
+      enabled: true,
+      evidencePolicy: "OPTIONAL",
     });
   });
 
@@ -84,5 +116,64 @@ describe("CreatePaymentUsecase", () => {
     );
 
     expect(recalculateAccountPayable.execute).not.toHaveBeenCalled();
+  });
+
+  it("rejects a globally active method that is not enabled for the account company", async () => {
+    companyMethods.findOne.mockResolvedValueOnce(null);
+    const usecase = new CreatePaymentUsecase(
+      uow as any,
+      paymentDocRepo as any,
+      creditQuotaRepo as any,
+      recalculateAccountPayable as any,
+      history as any,
+      companyPaymentAccounts as any,
+      paymentMethods as any,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      companyMethods as any,
+    );
+
+    await expect(usecase.execute({
+      poId: "purchase-1",
+      method: "Tarjeta",
+      paymentMethodId: "method-1",
+      companyPaymentAccountId: "account-1",
+      date: "2026-09-22",
+      currency: "PEN",
+      amount: 100,
+    } as any, undefined, { status: "DRAFT" })).rejects.toThrow(
+      "El metodo de pago no esta habilitado para la empresa",
+    );
+  });
+
+  it("uses the company evidence policy instead of the global voucher default", async () => {
+    const usecase = new CreatePaymentUsecase(
+      uow as any,
+      paymentDocRepo as any,
+      creditQuotaRepo as any,
+      recalculateAccountPayable as any,
+      history as any,
+      companyPaymentAccounts as any,
+      paymentMethods as any,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      companyMethods as any,
+    );
+
+    await expect(usecase.execute({
+      poId: "purchase-1",
+      method: "Tarjeta",
+      paymentMethodId: "method-1",
+      companyPaymentAccountId: "account-1",
+      date: "2026-09-22",
+      currency: "PEN",
+      amount: 100,
+    } as any, undefined, { status: "APPROVED" })).resolves.toEqual(
+      expect.objectContaining({ paymentId: "payment-1" }),
+    );
   });
 });

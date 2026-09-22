@@ -1,6 +1,7 @@
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { PaymentMethod } from "../entity/payment-method";
 import { CompanyMethod } from "../entity/company-method";
+import type { CompanyMethodEvidencePolicy } from "../services/payment-method-voucher-policy";
 
 export const COMPANY_METHOD_REPOSITORY = Symbol("COMPANY_METHOD_REPOSITORY");
 
@@ -26,7 +27,7 @@ export interface CompanyMethodRepository {
     params: {
       companyMethodId: string;
       methodId?: string;
-      requiresVoucher?: boolean;
+      evidencePolicy?: CompanyMethodEvidencePolicy;
       enabled?: boolean;
     },
     tx?: TransactionContext,

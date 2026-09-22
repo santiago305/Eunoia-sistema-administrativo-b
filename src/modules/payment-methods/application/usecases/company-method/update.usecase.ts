@@ -7,6 +7,7 @@ import { UpdateCompanyMethodInput } from "../../dtos/company-method/input/update
 import { PaymentMethodNotFoundError } from "../../errors/payment-method-not-found.error";
 import { PaymentMethodRelationNotFoundError } from "../../errors/payment-method-relation-not-found.error";
 import { PaymentMethodOutputMapper } from "../../mappers/payment-method-output.mapper";
+import { toCompanyMethodEvidencePolicy } from "src/modules/payment-methods/domain/services/payment-method-voucher-policy";
 
 export class UpdateCompanyMethodUsecase {
   constructor(
@@ -21,8 +22,9 @@ export class UpdateCompanyMethodUsecase {
   async execute(input: UpdateCompanyMethodInput) {
     return this.uow.runInTransaction(async (tx) => {
       const hasRequiresVoucher = Object.prototype.hasOwnProperty.call(input, "requiresVoucher");
+      const hasEvidencePolicy = Object.prototype.hasOwnProperty.call(input, "evidencePolicy");
       const hasEnabled = Object.prototype.hasOwnProperty.call(input, "enabled");
-      if (input.methodId === undefined && !hasRequiresVoucher && !hasEnabled) {
+      if (input.methodId === undefined && !hasRequiresVoucher && !hasEvidencePolicy && !hasEnabled) {
         throw new BadRequestException("Debe enviar al menos un campo para actualizar");
       }
 
@@ -56,7 +58,14 @@ export class UpdateCompanyMethodUsecase {
           {
             companyMethodId: input.companyMethodId,
             methodId: input.methodId,
-            ...(hasRequiresVoucher ? { requiresVoucher: input.requiresVoucher } : {}),
+            ...(hasRequiresVoucher || hasEvidencePolicy
+              ? {
+                  evidencePolicy: toCompanyMethodEvidencePolicy(
+                    input.evidencePolicy,
+                    input.requiresVoucher,
+                  ),
+                }
+              : {}),
             ...(hasEnabled ? { enabled: input.enabled } : {}),
           },
           tx,

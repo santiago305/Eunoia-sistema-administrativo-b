@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, Optional } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { PaymentDocumentEntity } from "src/modules/payments/adapters/out/persistence/typeorm/entities/payment-document.entity";
@@ -8,6 +8,8 @@ import { PurchaseAttachmentType } from "src/modules/purchase-attachments/domain/
 import { CompanyPaymentAccountEntity } from "src/modules/company-payment-accounts/adapters/out/persistence/typeorm/entities/company-payment-account.entity";
 import { SupplierPaymentDestinationEntity } from "src/modules/supplier-payment-destinations/adapters/out/persistence/typeorm/entities/supplier-payment-destination.entity";
 import { PaymentFinancialPolicy } from "src/modules/payments/domain/services/payment-financial-policy";
+import { CompanyMethodEntity } from "src/modules/payment-methods/adapters/out/persistence/typeorm/entities/company-method.entity";
+import { resolveCompanyMethodRequiresVoucher } from "src/modules/payment-methods/domain/services/payment-method-voucher-policy";
 
 @Injectable()
 export class SubmitPaymentUsecase {
@@ -22,6 +24,9 @@ export class SubmitPaymentUsecase {
     private readonly destinationRepo: Repository<SupplierPaymentDestinationEntity>,
     @Inject(PURCHASE_ATTACHMENT_REPOSITORY)
     private readonly attachmentRepo: PurchaseAttachmentRepository,
+    @Optional()
+    @InjectRepository(CompanyMethodEntity)
+    private readonly companyMethodRepo?: Repository<CompanyMethodEntity>,
   ) {}
 
   async execute(paymentId: string, requestedByUserId?: string) {
@@ -36,6 +41,18 @@ export class SubmitPaymentUsecase {
     const account = payment.companyPaymentAccountId
       ? await this.accountRepo.findOne({ where: { id: payment.companyPaymentAccountId } })
       : null;
+    const companyMethod = account && this.companyMethodRepo
+      ? await this.companyMethodRepo.findOne({
+          where: { companyId: account.companyId, methodId: method.id },
+        })
+      : null;
+    if (this.companyMethodRepo && account && !companyMethod?.enabled) {
+      throw new BadRequestException("El metodo de pago no esta habilitado para la empresa");
+    }
+    const requiresVoucher = resolveCompanyMethodRequiresVoucher(
+      method.requiresVoucher,
+      companyMethod?.evidencePolicy,
+    );
     const destination = payment.supplierPaymentDestinationId
       ? await this.destinationRepo.findOne({ where: { id: payment.supplierPaymentDestinationId } })
       : null;
@@ -47,7 +64,7 @@ export class SubmitPaymentUsecase {
           requiresSourceAccount: method.requiresSourceAccount,
           requiresDestination: method.requiresDestination,
           requiresOperationReference: method.requiresOperationReference,
-          requiresVoucher: method.requiresVoucher,
+          requiresVoucher,
         },
         account: account
           ? { id: account.id, isActive: account.isActive, currency: account.currency, usage: account.usage, type: account.type }
@@ -62,7 +79,7 @@ export class SubmitPaymentUsecase {
     } catch (error) {
       throw new BadRequestException(error instanceof Error ? error.message : "El pago no cumple la politica financiera");
     }
-    if (method.requiresVoucher) {
+    if (requiresVoucher) {
       const evidence = await this.attachmentRepo.list({
         paymentId,
         type: PurchaseAttachmentType.PAYMENT_PROOF,
