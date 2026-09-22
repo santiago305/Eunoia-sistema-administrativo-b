@@ -137,22 +137,21 @@ describe('Catalog inventory flow matrix (e2e)', () => {
 
       await fixture.register.execute({ docType: DocType.IN, warehouseId: fixture.warehouseA, serieId: `in-${productType}`, direction: Direction.IN, items: [{ skuId: fixture.skuId, quantity: 10 }] });
       await expect(fixture.register.execute({ docType: DocType.ADJUSTMENT, warehouseId: fixture.warehouseA, serieId: `adjustment-${productType}`, direction: Direction.OUT, items: [{ skuId: fixture.skuId, quantity: 11 }] })).rejects.toBeInstanceOf(BadRequestException);
-      await fixture.transfer.execute({ fromWarehouseId: fixture.warehouseA, toWarehouseId: fixture.warehouseB, serieId: `transfer-${productType}`, items: [{ skuId: fixture.skuId, quantity: 4 }] });
+      await fixture.transfer.execute({ fromWarehouseId: fixture.warehouseA, toWarehouseId: fixture.warehouseB, serieId: `transfer-${productType}`, scheduledDepartureDate: '2026-09-23', expectedArrivalDate: '2026-09-24', items: [{ skuId: fixture.skuId, quantity: 4 }] });
       await fixture.register.execute({ docType: DocType.ADJUSTMENT, warehouseId: fixture.warehouseA, serieId: `adjustment-${productType}`, direction: Direction.OUT, items: [{ skuId: fixture.skuId, quantity: 2 }] });
 
       const balances = [...fixture.balances.values()].sort((a, b) => a.warehouseId.localeCompare(b.warehouseId));
       expect(balances.map(({ warehouseId, onHand, available }) => ({ warehouseId, onHand, available }))).toEqual([
-        { warehouseId: fixture.warehouseA, onHand: 4, available: 4 },
-        { warehouseId: fixture.warehouseB, onHand: 4, available: 4 },
+        { warehouseId: fixture.warehouseA, onHand: 8, available: 8 },
       ]);
       expect(balances.reduce((total, balance) => total + balance.onHand, 0)).toBe(8);
-      expect(fixture.documents.filter((document) => document.status === 'POSTED').map((document) => document.docType)).toEqual([DocType.IN, DocType.TRANSFER, DocType.ADJUSTMENT]);
+      expect(fixture.documents.filter((document) => document.status === 'POSTED').map((document) => document.docType)).toEqual([DocType.IN, DocType.ADJUSTMENT]);
       expect(fixture.ledger.map((entry) => ({ direction: entry.direction, quantity: entry.quantity }))).toEqual([
-        { direction: Direction.IN, quantity: 10 }, { direction: Direction.OUT, quantity: 4 }, { direction: Direction.IN, quantity: 4 }, { direction: Direction.OUT, quantity: 2 },
+        { direction: Direction.IN, quantity: 10 }, { direction: Direction.OUT, quantity: 2 },
       ]);
       expect(fixture.ledger.reduce((total, entry) => total + (entry.direction === Direction.IN ? entry.quantity : -entry.quantity), 0)).toBe(8);
-      expect(fixture.emittedEvents.map((events) => events.length)).toEqual([1, 2, 1]);
-      expect(fixture.inventoryRealtime.emitStockUpdated).toHaveBeenCalledTimes(3);
+      expect(fixture.emittedEvents.map((events) => events.length)).toEqual([1, 1]);
+      expect(fixture.inventoryRealtime.emitStockUpdated).toHaveBeenCalledTimes(2);
     },
   );
 });

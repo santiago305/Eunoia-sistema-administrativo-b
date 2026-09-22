@@ -20,6 +20,8 @@ import { PermissionsGuard } from 'src/modules/access-control/adapters/in/guards/
 import { RoleType } from 'src/shared/constantes/constants';
 import { IMAGE_PROCESSOR } from 'src/shared/application/ports/image-processor.port';
 import { FILE_STORAGE } from 'src/shared/application/ports/file-storage.port';
+import { CompanyConfiguredGuard } from 'src/shared/utilidades/guards/company-configured.guard';
+import { UpdateUserManagementScopeUseCase } from 'src/modules/users/application/use-cases/update-user-management-scope.usecase';
 
 describe('UsersController (e2e)', () => {
   let app: INestApplication;
@@ -45,6 +47,7 @@ describe('UsersController (e2e)', () => {
         { provide: RestoreUserUseCase, useValue: { execute: jest.fn() } },
         { provide: UpdateAvatarUseCase, useValue: { execute: jest.fn() } },
         { provide: RemoveAvatarUseCase, useValue: removeAvatarUseCase },
+        { provide: UpdateUserManagementScopeUseCase, useValue: { execute: jest.fn() } },
         { provide: IMAGE_PROCESSOR, useValue: imageProcessor },
         { provide: FILE_STORAGE, useValue: fileStorage },
       ],
@@ -58,6 +61,8 @@ describe('UsersController (e2e)', () => {
         },
       })
       .overrideGuard(PermissionsGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(CompanyConfiguredGuard)
       .useValue({ canActivate: () => true })
       .compile();
 
@@ -75,7 +80,7 @@ describe('UsersController (e2e)', () => {
 
     expect(listUsersUseCase.execute).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'all' }),
-      RoleType.ADMIN
+      { role: RoleType.ADMIN, userId: 'user-1' }
     );
   });
 
@@ -89,7 +94,7 @@ describe('UsersController (e2e)', () => {
 
     expect(listUsersUseCase.execute).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'active' }),
-      RoleType.ADMIN
+      { role: RoleType.ADMIN, userId: 'user-1' }
     );
   });
 
@@ -103,7 +108,7 @@ describe('UsersController (e2e)', () => {
 
     expect(listUsersUseCase.execute).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'inactive' }),
-      RoleType.ADMIN
+      { role: RoleType.ADMIN, userId: 'user-1' }
     );
   });
 
@@ -117,7 +122,7 @@ describe('UsersController (e2e)', () => {
 
     expect(listUsersUseCase.execute).toHaveBeenCalledWith(
       expect.objectContaining({ filters: { role: undefined, q: 'ana' } }),
-      RoleType.ADMIN
+      { role: RoleType.ADMIN, userId: 'user-1' }
     );
   });
 

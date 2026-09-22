@@ -12,6 +12,8 @@ import { CREDIT_QUOTA_REPOSITORY, CreditQuotaRepository } from "src/modules/paym
 import { PaymentAllocationEntity } from "src/modules/payments/adapters/out/persistence/typeorm/entities/payment-allocation.entity";
 import { PaymentMethodEntity } from "src/modules/payment-methods/adapters/out/persistence/typeorm/entities/payment-method.entity";
 import { SupplierPaymentDestinationEntity } from "src/modules/supplier-payment-destinations/adapters/out/persistence/typeorm/entities/supplier-payment-destination.entity";
+import { PURCHASE_ATTACHMENT_REPOSITORY, PurchaseAttachmentRepository } from "src/modules/purchase-attachments/domain/ports/purchase-attachment.repository";
+import { PurchaseAttachmentType } from "src/modules/purchase-attachments/domain/value-objects/purchase-attachment-type";
 
 export class ApprovePaymentUsecase {
   constructor(
@@ -35,6 +37,9 @@ export class ApprovePaymentUsecase {
     @Optional()
     @InjectRepository(SupplierPaymentDestinationEntity)
     private readonly supplierDestinationRepo?: Repository<SupplierPaymentDestinationEntity>,
+    @Optional()
+    @Inject(PURCHASE_ATTACHMENT_REPOSITORY)
+    private readonly attachmentRepo?: PurchaseAttachmentRepository,
   ) {}
 
   async execute(input: { paymentId: string; userId: string }) {
@@ -51,6 +56,18 @@ export class ApprovePaymentUsecase {
       : null;
     if (paymentMethod?.requiresDestination && !existing.supplierPaymentDestinationId) {
       return { type: "error" as const, message: "El pago no tiene un destino de proveedor confirmado" };
+    }
+    if (paymentMethod?.requiresVoucher) {
+      if (!this.attachmentRepo) {
+        return { type: "error" as const, message: "No se pudo validar la evidencia del pago" };
+      }
+      const evidence = await this.attachmentRepo.list({
+        paymentId: existing.id,
+        type: PurchaseAttachmentType.PAYMENT_PROOF,
+      });
+      if (!evidence.length) {
+        return { type: "error" as const, message: "El pago requiere evidencia antes de ser aprobado" };
+      }
     }
     if (existing.supplierPaymentDestinationId) {
       if (!this.supplierDestinationRepo) {

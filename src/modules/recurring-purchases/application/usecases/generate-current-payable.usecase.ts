@@ -42,12 +42,22 @@ export class GenerateCurrentPayableUsecase {
       const template = await this.templateRepo.findById(input.templateId, tx);
       if (!template) throw new NotFoundException("Recurrencia no encontrada");
       if (!template.isDue(now)) {
-        return { generated: false, reason: "NOT_DUE" as const };
+        return {
+          generated: false,
+          reason: "NOT_DUE" as const,
+          purchaseId: template.lastGeneratedPurchaseId,
+          accountPayableId: template.lastGeneratedAccountPayableId,
+        };
       }
 
       const periodKey = template.currentPeriodKey();
       if (template.lastGeneratedPeriodKey === periodKey) {
-        return { generated: false, reason: "ALREADY_GENERATED" as const };
+        return {
+          generated: false,
+          reason: "ALREADY_GENERATED" as const,
+          purchaseId: template.lastGeneratedPurchaseId,
+          accountPayableId: template.lastGeneratedAccountPayableId,
+        };
       }
 
       const purchase = await this.purchaseRepo.create(

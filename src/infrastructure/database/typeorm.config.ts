@@ -149,6 +149,7 @@ import { RetireUnusedBankAccounts20260921170000 } from './migrations/20260921170
 import { LinkPaymentSupplierDestination20260921180000 } from './migrations/20260921180000-link-payment-supplier-destination';
 import { RetireCompanyMethodNumber20260921190000 } from './migrations/20260921190000-retire-company-method-number';
 import { RetireBankAccountPermissions20260921200000 } from './migrations/20260921200000-retire-bank-account-permissions';
+import { RetireSalePaymentBankAccount20260921210000 } from './migrations/20260921210000-retire-sale-payment-bank-account';
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: 'postgres',
@@ -309,6 +310,7 @@ export const databaseMigrations = [
   LinkPaymentSupplierDestination20260921180000,
   RetireCompanyMethodNumber20260921190000,
   RetireBankAccountPermissions20260921200000,
+  RetireSalePaymentBankAccount20260921210000,
 ];
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({

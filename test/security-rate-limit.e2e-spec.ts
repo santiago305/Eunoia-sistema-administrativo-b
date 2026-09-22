@@ -8,6 +8,8 @@ import { IpBan } from 'src/modules/security/adapters/out/persistence/typeorm/ent
 import { IpViolation } from 'src/modules/security/adapters/out/persistence/typeorm/entities/ip-violation.entity';
 import { RegisterIpViolationAndApplyPolicyUseCase } from 'src/modules/security/application/use-cases/register-ip-violation-and-apply-policy.usecase';
 import { ResolveClientIpUseCase } from 'src/modules/security/application/use-cases/resolve-client-ip.usecase';
+import { RedisThrottlerStorage } from 'src/modules/security/infrastructure/providers/redis-throttler.storage';
+import { ResolveRateLimitTrackerUseCase } from 'src/modules/security/application/use-cases/resolve-rate-limit-tracker.usecase';
 
 @Controller('security-rate-limit-e2e')
 @UseGuards(SecurityThrottlerGuard)
@@ -52,7 +54,7 @@ describe('security rate limit (e2e)', () => {
     const violationRepository = {
       create: jest.fn((value) => ({ ...value, createdAt: new Date() })),
       save: jest.fn(async (value) => {
-        violations.push(value);
+        if (!violations.includes(value)) violations.push(value);
         return value;
       }),
       count: jest.fn(async () => violations.length),
@@ -74,6 +76,8 @@ describe('security rate limit (e2e)', () => {
         ResolveClientIpUseCase,
         RegisterIpViolationAndApplyPolicyUseCase,
         { provide: getStorageToken(), useClass: MemoryThrottlerStorage },
+        { provide: RedisThrottlerStorage, useValue: { buildTrackerKeySuffix: (value: string) => value, claimFirstBlockEvent: jest.fn().mockResolvedValue(true), linkTrackerToIp: jest.fn() } },
+        { provide: ResolveRateLimitTrackerUseCase, useValue: { executePrimary: jest.fn(async () => ({ tracker: 'ip:127.0.0.1', trackerType: 'ip', userId: null, sessionId: null })), executeIp: jest.fn(() => ({ tracker: 'ip:127.0.0.1', trackerType: 'ip', userId: null, sessionId: null })), describeTracker: jest.fn((tracker: string) => ({ tracker, trackerType: 'ip', userId: null, sessionId: null })) } },
         { provide: getRepositoryToken(IpViolation), useValue: violationRepository },
         { provide: getRepositoryToken(IpBan), useValue: banRepository },
       ],

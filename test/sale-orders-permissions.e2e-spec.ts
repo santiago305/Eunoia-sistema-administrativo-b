@@ -3,8 +3,8 @@ import { DEPRECATED_PERMISSION_CODES } from 'src/modules/access-control/infrastr
 
 describe('Sale orders permission contract (e2e)', () => {
   it('keeps a unique catalog of 40 page/action permissions', () => {
-    expect(SALE_ORDER_PERMISSIONS).toHaveLength(40);
-    expect(new Set(SALE_ORDER_PERMISSION_CODES).size).toBe(40);
+    expect(SALE_ORDER_PERMISSIONS).toHaveLength(41);
+    expect(new Set(SALE_ORDER_PERMISSION_CODES).size).toBe(41);
     expect(SALE_ORDER_PERMISSION_CODES).toContain('page.sale-orders.view');
     expect(SALE_ORDER_PERMISSION_CODES).toContain('sale_orders.view_deleted');
     expect(SALE_ORDER_PERMISSION_CODES).toContain('sale_orders.sku_recognition_codes.view');

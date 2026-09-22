@@ -17,7 +17,11 @@ import { ACCOUNT_PAYABLE_REPOSITORY, AccountPayableRepository } from "src/module
 import { PaymentAllocationEntity } from "src/modules/payments/adapters/out/persistence/typeorm/entities/payment-allocation.entity";
 import { SupplierPaymentDestinationEntity } from "src/modules/supplier-payment-destinations/adapters/out/persistence/typeorm/entities/supplier-payment-destination.entity";
 import { PurchaseOrderEntity } from "src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-order.entity";
-import { isCompanyPaymentAccountCompatible } from "src/modules/company-payment-accounts/domain/policies/payment-account-compatibility";
+import {
+  PaymentFinancialPolicy,
+  type PaymentMethodPolicy,
+} from "src/modules/payments/domain/services/payment-financial-policy";
+import { getPaymentMethodDefinition } from "src/modules/payment-methods/domain/value-objects/payment-method-catalog";
 
 export class CreatePaymentUsecase {
   constructor(
@@ -51,40 +55,51 @@ export class CreatePaymentUsecase {
   ) {}
 
   private async validateTreasuryAccount(input: CreatePaymentInput) {
-    if (!input.companyPaymentAccountId || !this.companyPaymentAccounts) return;
-    const account = await this.companyPaymentAccounts.findOne({
-      where: { id: input.companyPaymentAccountId },
-    });
-    if (!account || !account.isActive) {
-      throw new BadRequestException("La cuenta de origen no existe o esta inactiva");
-    }
-    if (account.currency !== input.currency) {
-      throw new BadRequestException("La moneda del pago no coincide con la cuenta de origen");
-    }
-    if (account.usage !== "OUTFLOW" && account.usage !== "BOTH") {
-      throw new BadRequestException("La cuenta seleccionada no permite salidas");
-    }
+    if (!this.companyPaymentAccounts) return;
+    const account = input.companyPaymentAccountId
+      ? await this.companyPaymentAccounts.findOne({ where: { id: input.companyPaymentAccountId } })
+      : null;
+    const method = input.paymentMethodId && this.paymentMethods
+      ? await this.paymentMethods.findOne({ where: { id: input.paymentMethodId } })
+      : null;
+    const methodCode = method?.code ?? getPaymentMethodDefinition(undefined, input.method).code;
+    const definition = getPaymentMethodDefinition(methodCode, input.method);
+    const methodPolicy: PaymentMethodPolicy = method
+      ? {
+          code: method.code,
+          isActive: method.isActive,
+          requiresSourceAccount: method.requiresSourceAccount,
+          // Destination is validated after it is resolved and checked against the supplier.
+          requiresDestination: false,
+          requiresOperationReference: false,
+          requiresVoucher: method.requiresVoucher,
+        }
+      : {
+          ...definition,
+          isActive: true,
+          // Legacy callers are kept compatible until their adapters migrate.
+          requiresSourceAccount: true,
+          requiresDestination: false,
+          requiresOperationReference: false,
+        };
 
-    let methodCode = "";
-    if (input.paymentMethodId && this.paymentMethods) {
-      const method = await this.paymentMethods.findOne({ where: { id: input.paymentMethodId } });
-      if (!method || !method.isActive) throw new BadRequestException("El metodo de pago no esta disponible");
-      methodCode = method.code;
-    } else {
-      const legacy = input.method.trim().toUpperCase();
-      methodCode = legacy === "TRANSFERENCIA" || legacy === "DEPOSITO"
-        ? "BANK_TRANSFER"
-        : legacy === "TARJETA"
-          ? "CARD"
-          : legacy === "YAPE" || legacy === "PLIN"
-            ? "DIGITAL_WALLET"
-            : legacy === "EFECTIVO"
-              ? "CASH"
-              : legacy;
-    }
-
-    if (!isCompanyPaymentAccountCompatible(methodCode, account.type)) {
-      throw new BadRequestException("La cuenta de origen no es compatible con el metodo de pago");
+    try {
+      PaymentFinancialPolicy.validate({
+        method: methodPolicy,
+        account: account
+          ? {
+              id: account.id,
+              isActive: account.isActive,
+              currency: account.currency,
+              usage: account.usage,
+              type: account.type,
+            }
+          : null,
+        currency: input.currency,
+      });
+    } catch (error) {
+      if (error instanceof Error) throw new BadRequestException(error.message);
+      throw error;
     }
   }
 
@@ -109,16 +124,67 @@ export class CreatePaymentUsecase {
       this.purchaseOrders.findOne({ where: { id: purchaseId }, select: ["id", "supplierId"] }),
     ]);
     if (!destination || !destination.isActive || destination.requiresManualReview) {
-      throw new BadRequestException("El destino del proveedor no existe, esta inactivo o requiere revision");
+      throw new BadRequestException("El destino de pago no esta disponible para uso inmediato");
     }
     if (!purchase || destination.supplierId !== purchase.supplierId) {
       throw new BadRequestException("El destino seleccionado no pertenece al proveedor de la compra");
     }
-    if (destination.currency !== input.currency) {
-      throw new BadRequestException("La moneda del pago no coincide con el destino del proveedor");
+
+    const definition = getPaymentMethodDefinition(method?.code, input.method);
+    try {
+      PaymentFinancialPolicy.validate({
+        method: method
+          ? {
+              code: method.code,
+              isActive: method.isActive,
+              requiresSourceAccount: false,
+              requiresDestination: Boolean(method.requiresDestination),
+              requiresOperationReference: method.requiresOperationReference,
+              requiresVoucher: method.requiresVoucher,
+            }
+          : {
+              ...definition,
+              isActive: true,
+              requiresSourceAccount: false,
+            },
+        destination: {
+          id: destination.id,
+          isActive: destination.isActive,
+          requiresManualReview: destination.requiresManualReview,
+          currency: destination.currency,
+          methodId: destination.methodId,
+        },
+        paymentMethodId: input.paymentMethodId,
+        currency: input.currency,
+        operationNumber: input.operationNumber,
+      });
+    } catch (error) {
+      if (error instanceof Error) throw new BadRequestException(error.message);
+      throw error;
     }
-    if (input.paymentMethodId && destination.methodId !== input.paymentMethodId) {
-      throw new BadRequestException("El destino no es compatible con el metodo de pago");
+  }
+
+  private async validateMethodRequirements(input: CreatePaymentInput) {
+    if (!this.paymentMethods || !input.paymentMethodId) return;
+    const method = await this.paymentMethods.findOne({ where: { id: input.paymentMethodId } });
+    if (!method) throw new BadRequestException("El metodo de pago no existe");
+    try {
+      PaymentFinancialPolicy.validate({
+        method: {
+          code: method.code,
+          isActive: method.isActive,
+          // Source account and destination are validated by their respective adapters.
+          requiresSourceAccount: false,
+          requiresDestination: false,
+          requiresOperationReference: method.requiresOperationReference,
+          requiresVoucher: method.requiresVoucher,
+        },
+        currency: input.currency,
+        operationNumber: input.operationNumber,
+      });
+    } catch (error) {
+      if (error instanceof Error) throw new BadRequestException(error.message);
+      throw error;
     }
   }
 
@@ -159,6 +225,13 @@ export class CreatePaymentUsecase {
 
       await this.validateTreasuryAccount(input);
       await this.validateSupplierDestination(input, paymentPoId);
+      await this.validateMethodRequirements(input);
+      if (["POSTED", "APPROVED"].includes(options?.status ?? "APPROVED") && input.paymentMethodId && this.paymentMethods) {
+        const method = await this.paymentMethods.findOne({ where: { id: input.paymentMethodId } });
+        if (method?.requiresVoucher && !input.paymentEvidenceFileId) {
+          throw new BadRequestException("Los pagos que requieren comprobante deben enviarse como borrador con evidencia");
+        }
+      }
 
       let accountPayableId = input.accountPayableId;
       if (!accountPayableId && this.payableRepo) {

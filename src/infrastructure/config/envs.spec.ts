@@ -88,6 +88,7 @@ describe('envs validation', () => {
     process.env.JWT_SECRET = 'Jwt_Production_9fH2!mQ7#vL4@xP8$zN3';
     process.env.COOKIE_SECRET = 'Cookie_Production_6zN3@qW8#kT2!mQ7';
     process.env.MASTER_ADMIN_INITIAL_PASSWORD = 'Root_8#xP2!vL6';
+    process.env.PAYMENT_ACCOUNT_ENCRYPTION_KEY = 'PaymentAccount_Encryption_9fH2!mQ7#vL4@xP8';
 
     expect(() => {
       jest.isolateModules(() => {

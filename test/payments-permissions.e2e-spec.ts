@@ -24,6 +24,9 @@ import { ApprovalRequestEntity } from 'src/modules/purchases/adapters/out/persis
 import { PurchaseHistoryEventEntity } from 'src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-history-event.entity';
 import { PurchaseOrderEntity } from 'src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-order.entity';
 import { RecalculateAccountPayableUsecase } from 'src/modules/accounts-payable';
+import { VoidPaymentUsecase } from 'src/modules/payments/application/usecases/payment/void-payment.usecase';
+import { SubmitPaymentUsecase } from 'src/modules/payments/application/usecases/payment/submit.usecase';
+import { PaymentDocumentEntity } from 'src/modules/payments/adapters/out/persistence/typeorm/entities/payment-document.entity';
 
 describe('Payments permissions (e2e)', () => {
   let app: INestApplication;
@@ -42,6 +45,7 @@ describe('Payments permissions (e2e)', () => {
         { provide: ApprovePaymentUsecase, useValue: { execute: jest.fn() } },
         { provide: RejectPaymentUsecase, useValue: { execute: jest.fn() } },
         { provide: DeletePaymentUsecase, useValue: { execute: jest.fn() } },
+        { provide: VoidPaymentUsecase, useValue: { execute: jest.fn() } },
         { provide: GetPaymentUsecase, useValue: { execute: jest.fn() } },
         { provide: GetPaymentsByPoIdUsecase, useValue: { execute: jest.fn() } },
         { provide: ListPaymentsUsecase, useValue: listPaymentsUseCase },
@@ -56,6 +60,8 @@ describe('Payments permissions (e2e)', () => {
         { provide: getRepositoryToken(PurchaseHistoryEventEntity), useValue: { create: jest.fn(), save: jest.fn() } },
         { provide: getRepositoryToken(PurchaseOrderEntity), useValue: { findOne: jest.fn() } },
         { provide: RecalculateAccountPayableUsecase, useValue: { execute: jest.fn() } },
+        { provide: SubmitPaymentUsecase, useValue: { execute: jest.fn() } },
+        { provide: getRepositoryToken(PaymentDocumentEntity), useValue: { findOne: jest.fn(), create: jest.fn(), save: jest.fn() } },
       ],
     })
       .overrideGuard(JwtAuthGuard)

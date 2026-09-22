@@ -46,7 +46,7 @@ describe("SaleOrderSearchTypeormRepository", () => {
         {
           id: "company-account-1",
           name: "BCP Empresa",
-          accountNumber: "001",
+          accountLastFour: "001",
           isActive: true,
         },
       ]),
@@ -70,7 +70,7 @@ describe("SaleOrderSearchTypeormRepository", () => {
     expect(result.bankAccounts).toEqual([
       {
         bankAccountId: "company-account-1",
-        label: "BCP Empresa (001)",
+        label: "BCP Empresa (****001)",
       },
     ]);
     expect(result.creators).toEqual([

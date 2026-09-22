@@ -26,6 +26,7 @@ import { PAYMENT_SEARCH } from "./domain/ports/payment-search.repository";
 import { SupplierPaymentDestinationEntity } from "src/modules/supplier-payment-destinations/adapters/out/persistence/typeorm/entities/supplier-payment-destination.entity";
 import { ReleaseDueScheduledPaymentsJob } from "./application/jobs/release-due-scheduled-payments.job";
 import { PaymentsJobsScheduler } from "./infrastructure/jobs/payments-jobs.scheduler";
+import { PurchaseAttachmentsModule } from "src/modules/purchase-attachments/purchase-attachments.module";
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { PaymentsJobsScheduler } from "./infrastructure/jobs/payments-jobs.sched
     AccessControlModule,
     MailModule,
     AccountsPayableModule,
+    PurchaseAttachmentsModule,
   ],
   controllers: [PaymentsController, CreditQuotasController],
   providers: [

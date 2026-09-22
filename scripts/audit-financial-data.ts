@@ -9,6 +9,13 @@ export type FinancialAuditCheck = {
 
 const queries: Array<{ check: string; sql: string }> = [
   {
+    check: "legacy_bank_accounts_table_remaining",
+    sql: `
+      SELECT to_regclass('public.bank_accounts') AS id
+      WHERE to_regclass('public.bank_accounts') IS NOT NULL
+    `,
+  },
+  {
     check: "payment_method_legacy_names",
     sql: `
       SELECT method_id AS id, name, code, is_active, is_system, COUNT(*) OVER ()::int AS total
@@ -351,18 +358,31 @@ const queries: Array<{ check: string; sql: string }> = [
   {
     check: "sale_payments_legacy_receiver_unmapped",
     sql: `
-      SELECT id, sale_order_id, bank_account_id
+      SELECT id, sale_order_id,
+             (to_jsonb(sale_payments)->>'bank_account_id') AS bank_account_id
       FROM sale_payments
-      WHERE bank_account_id IS NOT NULL
+      WHERE (to_jsonb(sale_payments)->>'bank_account_id') IS NOT NULL
         AND company_payment_account_id IS NULL
+    `,
+  },
+  {
+    check: "legacy_sale_payments_bank_account_column_remaining",
+    sql: `
+      SELECT column_name AS id
+      FROM information_schema.columns
+      WHERE table_schema = current_schema()
+        AND table_name = 'sale_payments'
+        AND column_name = 'bank_account_id'
     `,
   },
   {
     check: "sale_payments_legacy_bank_account_values",
     sql: `
-      SELECT id, sale_order_id, bank_account_id, company_payment_account_id
+      SELECT id, sale_order_id,
+             (to_jsonb(sale_payments)->>'bank_account_id') AS bank_account_id,
+             company_payment_account_id
       FROM sale_payments
-      WHERE bank_account_id IS NOT NULL
+      WHERE (to_jsonb(sale_payments)->>'bank_account_id') IS NOT NULL
     `,
   },
   {

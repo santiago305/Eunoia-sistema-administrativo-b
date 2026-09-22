@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Header, Inject, Param, ParseUUIDPipe, Post, Query, Res, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Header, Inject, Param, ParseUUIDPipe, Patch, Post, Query, Res, UseGuards } from "@nestjs/common";
 import type { Response } from "express";
 import { JwtAuthGuard } from "src/modules/auth/adapters/in/guards/jwt-auth.guard";
 import { PermissionsGuard } from "src/modules/access-control/adapters/in/guards/permissions.guard";
@@ -31,6 +31,8 @@ import { SavePaymentSearchMetricUsecase } from "src/modules/payments/application
 import { DeletePaymentSearchMetricUsecase } from "src/modules/payments/application/usecases/payment-search/delete-metric.usecase";
 import { sanitizePaymentSearchSnapshot } from "src/modules/payments/application/support/payment-search.utils";
 import { LISTING_SEARCH_STORAGE, ListingSearchStorageRepository } from "src/shared/listing-search/domain/listing-search.repository";
+import { SubmitPaymentUsecase } from "src/modules/payments/application/usecases/payment/submit.usecase";
+import { PaymentDocumentEntity } from "src/modules/payments/adapters/out/persistence/typeorm/entities/payment-document.entity";
 
 @Controller("payments")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
@@ -58,7 +60,34 @@ export class PaymentsController {
     private readonly purchaseHistoryRepo: Repository<PurchaseHistoryEventEntity>,
     @InjectRepository(PurchaseOrderEntity)
     private readonly purchaseOrderRepo: Repository<PurchaseOrderEntity>,
+    private readonly submitPayment: SubmitPaymentUsecase,
+    @InjectRepository(PaymentDocumentEntity)
+    private readonly paymentEntityRepo: Repository<PaymentDocumentEntity>,
   ) {}
+
+  @RequirePermissions("payments.create")
+  @Post("drafts")
+  async createDraft(@Body() dto: HttpCreatePaymentDto, @CurrentUser() user: { id: string }) {
+    const input = PaymentsHttpMapper.toCreatePaymentInput(dto);
+    return this.createPayment.execute(input, undefined, { status: "DRAFT", requestedByUserId: user.id });
+  }
+
+  @RequirePermissions("payments.create")
+  @Patch(":id/draft")
+  async updateDraft(@Param("id", ParseUUIDPipe) id: string, @Body() dto: Partial<HttpCreatePaymentDto>) {
+    const payment = await this.paymentEntityRepo.findOne({ where: { id } });
+    if (!payment || payment.status !== "DRAFT") return { type: "error", message: "Solo se pueden editar pagos en borrador" };
+    const editable = ["method", "date", "operationNumber", "currency", "amount", "note", "quotaId", "poId", "accountPayableId", "companyPaymentAccountId", "paymentMethodId", "supplierPaymentDestinationId", "scheduledAt", "paymentEvidenceFileId", "bankName", "cardLastFour", "operationCode", "isPartial"] as const;
+    for (const key of editable) if (dto[key] !== undefined) (payment as any)[key] = dto[key];
+    await this.paymentEntityRepo.save(payment);
+    return { type: "success", message: "Borrador actualizado", paymentId: id };
+  }
+
+  @RequirePermissions("payments.create")
+  @Post(":id/submit")
+  submitDraft(@Param("id", ParseUUIDPipe) id: string, @CurrentUser() user: { id: string }) {
+    return this.submitPayment.execute(id, user.id);
+  }
 
   @RequirePermissions("payments.create")
   @Post()

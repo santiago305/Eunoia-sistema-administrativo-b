@@ -49,10 +49,11 @@ describe("SalePaymentTypeormRepository", () => {
     });
     expect(bankAccountRepo.find).toHaveBeenCalledWith({ where: { id: In(["bank-1"]) } });
     expect(result).toEqual([
-      {
+      expect.objectContaining({
         id: "payment-1",
         saleOrderId: "order-1",
         bankAccountId: "bank-1",
+        companyPaymentAccountId: "bank-1",
         bankAccount: {
           id: "bank-1",
           name: "BCP Soles",
@@ -64,8 +65,14 @@ describe("SalePaymentTypeormRepository", () => {
         amount: 10,
         note: "ADELANTO",
         paymentPhoto: null,
+        currency: "PEN",
+        paymentMethodId: null,
+        operationCode: null,
+        status: "POSTED",
+        voidedAt: null,
+        voidReason: null,
         createdAt,
-      },
+      }),
     ]);
   });
 
