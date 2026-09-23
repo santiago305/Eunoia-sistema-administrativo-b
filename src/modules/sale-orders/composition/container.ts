@@ -81,6 +81,10 @@ import { WorkflowRevisionLifecycleService } from '../application/services/workfl
 import { SaleOrderAccessPolicyService } from '../application/services/sale-order-access-policy.service';
 import { SaleOrderCommandAuthorizationService } from '../application/services/sale-order-command-authorization.service';
 import { SaleOrderDeactivationService } from '../application/services/sale-order-deactivation.service';
+import { MarkerWorkflowActionHandler } from 'src/modules/workflow/application/services/action-handlers/marker-workflow-action-handler';
+import { WorkflowActionHandlerRegistry } from 'src/modules/workflow/application/services/action-handlers/workflow-action-handler-registry';
+import { WarehouseWorkflowActionHandler } from 'src/modules/workflow/application/services/action-handlers/warehouse-workflow-action-handler';
+import { StockWorkflowActionHandler } from 'src/modules/workflow/application/services/action-handlers/stock-workflow-action-handler';
 import { UpdateClientUsecase } from 'src/modules/clients/application/usecases/client/update.usecase';
 import { SaleOrderClientCommandService } from '../application/services/sale-order-client-command.service';
 import { SaleOrderPaymentReconcilerService } from '../application/services/sale-order-payment-reconciler.service';
@@ -157,6 +161,10 @@ export const saleOrdersModuleProviders = [
   GetOrderTimelineUseCase,
   SaleOrderStockRequirementsService,
   SaleOrderWorkflowActionRunnerService,
+    MarkerWorkflowActionHandler,
+    WarehouseWorkflowActionHandler,
+    StockWorkflowActionHandler,
+    WorkflowActionHandlerRegistry,
   SaleOrderWarehouseAssignmentService,
   SaleOrderStockConsumptionService,
   SaleOrderStockConsumptionReversalService,

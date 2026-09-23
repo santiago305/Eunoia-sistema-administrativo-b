@@ -1,5 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
 import { SaleOrderWorkflowActionRunnerService } from './sale-order-workflow-action-runner.service';
+import { MarkerWorkflowActionHandler } from './action-handlers/marker-workflow-action-handler';
+import { WorkflowActionHandlerRegistry } from './action-handlers/workflow-action-handler-registry';
+import { WarehouseWorkflowActionHandler } from './action-handlers/warehouse-workflow-action-handler';
+import { StockWorkflowActionHandler } from './action-handlers/stock-workflow-action-handler';
 
 describe('SaleOrderWorkflowActionRunnerService', () => {
   const order = { id: 'order-1', warehouseId: 'warehouse-1' } as any;
@@ -77,6 +81,12 @@ describe('SaleOrderWorkflowActionRunnerService', () => {
         })),
     };
     const reservationReconciliation = {
+      inspect: jest.fn().mockResolvedValue({
+        checked: true,
+        status: 'COMPLETE',
+        warehouseId: 'warehouse-1',
+        items: [],
+      }),
       reconcile: jest.fn().mockResolvedValue({
         checked: true,
         adjusted: false,
@@ -84,6 +94,11 @@ describe('SaleOrderWorkflowActionRunnerService', () => {
         items: [],
       }),
     };
+    const actionHandlerRegistry = new WorkflowActionHandlerRegistry(
+      new MarkerWorkflowActionHandler(saleOrders as any),
+      new WarehouseWorkflowActionHandler(warehouseAssignment as any),
+      new StockWorkflowActionHandler(consumptionReversal as any),
+    );
     return {
       runner: new SaleOrderWorkflowActionRunnerService(
         requirements as any,
@@ -96,6 +111,7 @@ describe('SaleOrderWorkflowActionRunnerService', () => {
         consumptionReversal as any,
         warehouseAssignment as any,
         reservationReconciliation as any,
+        actionHandlerRegistry,
       ),
       requirements,
       inventory,
@@ -654,7 +670,7 @@ describe('SaleOrderWorkflowActionRunnerService', () => {
   });
 
   it('skips reserving stock when the order already has an active reservation', async () => {
-    const { runner, inventory, requirements } = setup();
+    const { runner, inventory, requirements, reservationReconciliation } = setup();
 
     const result = await runner.run(
       { ...order, reserveBool: true },
@@ -670,7 +686,12 @@ describe('SaleOrderWorkflowActionRunnerService', () => {
       tx,
     );
 
-    expect(requirements.resolve).not.toHaveBeenCalled();
+    expect(requirements.resolve).toHaveBeenCalledTimes(1);
+    expect(reservationReconciliation.inspect).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'order-1', reserveBool: true }),
+      [{ stockItemId: 'stock-1', quantity: 3 }],
+      tx,
+    );
     expect(inventory.incrementReserved).not.toHaveBeenCalled();
     expect(result.stockStatus).toBe('RESERVED');
     expect(result.outcomes).toEqual([
@@ -679,6 +700,37 @@ describe('SaleOrderWorkflowActionRunnerService', () => {
         status: 'SKIPPED',
       }),
     ]);
+  });
+
+  it('rejects an active reservation when inventory evidence is inconsistent', async () => {
+    const { runner, inventory, requirements, reservationReconciliation } = setup();
+    reservationReconciliation.inspect.mockResolvedValue({
+      checked: true,
+      status: 'INCONSISTENT',
+      warehouseId: 'warehouse-1',
+      items: [],
+    });
+
+    await expect(
+      runner.run(
+        { ...order, reserveBool: true },
+        [
+          {
+            id: 'a1',
+            transitionId: 't1',
+            type: 'RESERVE_STOCK',
+            config: {},
+            position: 0,
+          } as any,
+        ],
+        tx,
+      ),
+    ).rejects.toThrow(
+      'La reserva activa del pedido no coincide con las existencias reservadas',
+    );
+
+    expect(requirements.resolve).toHaveBeenCalledTimes(1);
+    expect(inventory.incrementReserved).not.toHaveBeenCalled();
   });
 
   it('uses the delivery window to date a delayed order movement', async () => {

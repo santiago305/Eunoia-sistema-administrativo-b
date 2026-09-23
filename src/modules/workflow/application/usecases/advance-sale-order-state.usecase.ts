@@ -16,6 +16,7 @@ export class AdvanceSaleOrderStateUseCase {
     transitionId?: string;
     transitionCode?: string;
     metadata?: Record<string, unknown> | null;
+    idempotencyKey?: string;
   }) {
     return this.uow.runInTransaction((tx) => this.transitionService.advance(input, tx));
   }

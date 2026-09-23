@@ -39,6 +39,8 @@ import { ActionFactory } from '../../domain/factories/action.factory';
 import { CONDITIONS } from '../../domain/constants/workflow-condition.constants';
 import { WorkflowCondition } from '../../domain/entities/workflow-condition';
 import { SaleOrderReservationReconciliationService } from 'src/modules/sale-orders/application/services/sale-order-reservation-reconciliation.service';
+import { WorkflowActionHandlerRegistry } from './action-handlers/workflow-action-handler-registry';
+import { WorkflowActionMutableState } from './action-handlers/idempotent-workflow-action-handler';
 
 export type WorkflowActionRunResult = {
   order: SaleOrder;
@@ -64,6 +66,7 @@ export class SaleOrderWorkflowActionRunnerService {
     private readonly stockConsumptionReversal: SaleOrderStockConsumptionReversalService,
     private readonly warehouseAssignment: SaleOrderWarehouseAssignmentService,
     private readonly reservationReconciliation: SaleOrderReservationReconciliationService,
+    private readonly actionHandlerRegistry: WorkflowActionHandlerRegistry,
   ) {}
 
   private async hasActiveReservation(
@@ -163,80 +166,64 @@ export class SaleOrderWorkflowActionRunnerService {
     }
     if (!actions.length) return { order, outcomes: [] };
     const ordered = [...actions].sort((a, b) => a.position - b.position);
+    for (const action of ordered) {
+      if (!this.actionHandlerRegistry.get(action.type as any)) {
+        throw new BadRequestException(`La acción ${action.type} no está soportada`);
+      }
+    }
     let effectiveOrder = order;
     const outcomes: WorkflowActionOutcome[] = [];
     let stockStatus: WorkflowActionRunResult['stockStatus'];
-    const markerState = {
+    const markerState: WorkflowActionMutableState = {
       invoiceSent: Boolean(order.invoiceSend),
       preguide: Boolean(order.preguide),
       prepared: Boolean(order.prepared),
     };
     const runMarkerAction = async (action: WorkflowAction): Promise<boolean> => {
-      const apply = async (
-        current: boolean,
-        expected: boolean,
-        operation: () => Promise<void>,
-        update: () => void,
-      ) => {
-        if (current === expected) {
-          outcomes.push({
-            actionType: action.type,
-            status: 'SKIPPED',
-            message: 'La accion ya estaba satisfecha',
-          });
-          return;
-        }
-        await operation();
-        update();
-        outcomes.push({ actionType: action.type, status: 'APPLIED' });
-      };
+      if (
+        action.type === ACTIONS.RESERVE_STOCK ||
+        action.type === ACTIONS.CONSUME_STOCK ||
+        action.type === ACTIONS.REVERT_STOCK ||
+        action.type === ACTIONS.RESTORE_STOCK
+      ) {
+        return false;
+      }
+      const handler = this.actionHandlerRegistry.get(action.type);
+      if (!handler) {
+        throw new BadRequestException(`La acción ${action.type} no está soportada`);
+      }
 
-      if (action.type === ACTIONS.MARK_INVOICE_SENT) {
-        await apply(
-          markerState.invoiceSent,
-          true,
-          () => this.saleOrderRepo.markInvoiceSent(order.id, tx),
-          () => { markerState.invoiceSent = true; },
-        );
+      const decision = await handler.inspect({
+        order: effectiveOrder,
+        action,
+        tx,
+        executedBy,
+        currentConditions,
+        state: markerState,
+      });
+      if (decision.status === 'CONFLICT') {
+        throw new BadRequestException(decision.reason);
+      }
+      if (decision.status === 'ALREADY_SATISFIED') {
+        outcomes.push({
+          actionType: action.type,
+          status: 'SKIPPED',
+          message: 'La accion ya estaba satisfecha',
+        });
         return true;
       }
-      if (action.type === ACTIONS.MARK_PREGUIDE) {
-        await apply(
-          markerState.preguide,
-          true,
-          () => this.saleOrderRepo.markPreguide(order.id, tx),
-          () => { markerState.preguide = true; },
-        );
-        return true;
-      }
-      if (action.type === ACTIONS.MARK_PREPARED) {
-        await apply(
-          markerState.prepared,
-          true,
-          () => this.saleOrderRepo.markPrepared(order.id, tx),
-          () => { markerState.prepared = true; },
-        );
-        return true;
-      }
-      if (action.type === ACTIONS.UNMARK_PREGUIDE) {
-        await apply(
-          markerState.preguide,
-          false,
-          () => this.saleOrderRepo.unmarkPreguide(order.id, tx),
-          () => { markerState.preguide = false; },
-        );
-        return true;
-      }
-      if (action.type === ACTIONS.UNMARK_PREPARED) {
-        await apply(
-          markerState.prepared,
-          false,
-          () => this.saleOrderRepo.unmarkPrepared(order.id, tx),
-          () => { markerState.prepared = false; },
-        );
-        return true;
-      }
-      return false;
+
+      const result = await handler.execute({
+        order: effectiveOrder,
+        action,
+        tx,
+        executedBy,
+        currentConditions,
+        state: markerState,
+      });
+      if (result.order) effectiveOrder = result.order;
+      outcomes.push(result.outcome);
+      return true;
     };
     for (const action of ordered) {
       if (
@@ -247,20 +234,7 @@ export class SaleOrderWorkflowActionRunnerService {
       }
 
       ActionFactory.validate(action);
-      const result =
-        action.type === ACTIONS.ASSIGN_WAREHOUSE_BY_PROVINCE
-          ? await this.warehouseAssignment.assign(
-              effectiveOrder,
-              action.config as any,
-              tx,
-            )
-          : await this.warehouseAssignment.assignByWorkflow(
-              effectiveOrder,
-              action.config as any,
-              tx,
-            );
-      effectiveOrder = result.order;
-      outcomes.push(result.outcome);
+      await runMarkerAction(action);
     }
 
     let stockActions = ordered.filter((action) =>
@@ -274,6 +248,43 @@ export class SaleOrderWorkflowActionRunnerService {
     const skippedConsumeActionIds = new Set<string>();
     const skippedReserveActionIds = new Set<string>();
     const completedRevertActionIds = new Set<string>();
+    let resolvedRequirements:
+      | Array<{ stockItemId: string; quantity: number }>
+      | undefined;
+    const resolveRequirements = async () => {
+      resolvedRequirements ??= await this.requirements.resolve(effectiveOrder, tx);
+      return resolvedRequirements;
+    };
+    for (const action of stockActions) {
+      const handler = this.actionHandlerRegistry.get(action.type);
+      if (!handler) continue;
+      const decision = await handler.inspect({
+        order: effectiveOrder,
+        action,
+        tx,
+        executedBy,
+        currentConditions,
+        state: markerState,
+      });
+      if (decision.status === 'CONFLICT') {
+        throw new BadRequestException(decision.reason);
+      }
+    }
+    const inspectActiveReservation = async () => {
+      const health = await this.reservationReconciliation.inspect(
+        effectiveOrder,
+        await resolveRequirements(),
+        tx,
+      );
+      if (health.status !== 'COMPLETE') {
+        throw new BadRequestException(
+          health.status === 'INSUFFICIENT_STOCK'
+            ? 'La reserva activa del pedido no tiene stock suficiente'
+            : 'La reserva activa del pedido no coincide con las existencias reservadas',
+        );
+      }
+      return health;
+    };
     let consumptionState:
       | Awaited<ReturnType<SaleOrderStockConsumptionReversalService['inspectConsumption']>>
       | undefined;
@@ -315,6 +326,9 @@ export class SaleOrderWorkflowActionRunnerService {
     }
 
     if (effectiveOrder.reserveBool === true) {
+      if (stockActions.some((action) => action.type === ACTIONS.RESERVE_STOCK)) {
+        await inspectActiveReservation();
+      }
       for (const action of stockActions) {
         if (action.type === ACTIONS.RESERVE_STOCK) {
           skippedReserveActionIds.add(action.id);
@@ -406,6 +420,11 @@ export class SaleOrderWorkflowActionRunnerService {
       (action) => action.type === ACTIONS.REVERT_STOCK,
     );
     let restoredDuringRevert = false;
+    let activeReservation = false;
+    if (onlyRevertsStock && effectiveOrder.reserveBool === true) {
+      await inspectActiveReservation();
+      activeReservation = true;
+    }
     if (onlyRevertsStock && effectiveOrder.warehouseId) {
       restoredDuringRevert = await this.stockConsumptionReversal.restoreAndRelease(
         effectiveOrder,
@@ -415,7 +434,7 @@ export class SaleOrderWorkflowActionRunnerService {
     }
     if (
       onlyRevertsStock &&
-      !(await this.hasActiveReservation(effectiveOrder.id, tx))
+      !(activeReservation || (await this.hasActiveReservation(effectiveOrder.id, tx)))
     ) {
       await this.saleOrderRepo.setReserveBool(
         { saleOrderId: effectiveOrder.id, reserveBool: false },
@@ -456,7 +475,7 @@ export class SaleOrderWorkflowActionRunnerService {
       );
     }
 
-    const requirements = await this.requirements.resolve(effectiveOrder, tx);
+    const requirements = await resolveRequirements();
     const requiresEffectiveStock = stockActions.some(
       (action) =>
         action.type === ACTIONS.RESERVE_STOCK ||
@@ -571,6 +590,12 @@ export class SaleOrderWorkflowActionRunnerService {
 
     let releasedReservedStock = false;
     for (const action of ordered) {
+      if (
+        action.type === ACTIONS.ASSIGN_WAREHOUSE_BY_PROVINCE ||
+        action.type === ACTIONS.ASSIGN_WAREHOUSE_BY_WORKFLOW
+      ) {
+        continue;
+      }
       if (await runMarkerAction(action)) {
         continue;
       }
@@ -596,12 +621,6 @@ export class SaleOrderWorkflowActionRunnerService {
       }
       if (action.id === restoreStockAction?.id && restoreStockOutcome) {
         outcomes.push(restoreStockOutcome);
-        continue;
-      }
-      if (
-        action.type === ACTIONS.ASSIGN_WAREHOUSE_BY_PROVINCE ||
-        action.type === ACTIONS.ASSIGN_WAREHOUSE_BY_WORKFLOW
-      ) {
         continue;
       }
       if (action.type === ACTIONS.CONSUME_STOCK) {

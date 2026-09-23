@@ -24,6 +24,9 @@ import { ListSaleOrderStatesUseCase } from "../application/usecases/list-sale-or
 import { UpdateSaleOrderStateUseCase } from "../application/usecases/update-sale-order-state.usecase";
 import { CreateWorkflowDraftUseCase } from '../application/usecases/create-workflow-draft.usecase';
 import { ListManagedWorkflowsUseCase } from '../application/usecases/list-managed-workflows.usecase';
+import { WORKFLOW_ACTION_EXECUTION_REPOSITORY } from '../domain/ports/workflow-action-execution.repository';
+import { WorkflowActionExecutionTypeormRepository } from '../adapters/out/persistence/typeorm/repositories/workflow-action-execution.typeorm.repo';
+import { WorkflowActionExecutionRecorderService } from '../application/services/workflow-action-execution-recorder.service';
 
 export const workflowModuleProviders = [
   { provide: WORKFLOW_REPOSITORY, useClass: WorkflowTypeormRepository },
@@ -31,6 +34,8 @@ export const workflowModuleProviders = [
   { provide: WORKFLOW_TRANSITION_REPOSITORY, useClass: WorkflowTransitionTypeormRepository },
   { provide: SALE_ORDER_STATE_HISTORY_REPOSITORY, useClass: SaleOrderStateHistoryTypeormRepository },
   { provide: SALE_ORDER_STATES_REPOSITORY, useClass: SaleOrderStatesTypeormRepository },
+  { provide: WORKFLOW_ACTION_EXECUTION_REPOSITORY, useClass: WorkflowActionExecutionTypeormRepository },
+  WorkflowActionExecutionRecorderService,
   CreateWorkflowUseCase,
   ListWorkflowsUseCase,
   GetWorkflowUseCase,

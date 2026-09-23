@@ -490,6 +490,7 @@ export class SaleOrdersController {
       saleOrderId,
       transitionId: body.transitionId,
       metadata: body.metadata,
+      idempotencyKey: body.idempotencyKey,
       executedBy: user.id,
     });
 

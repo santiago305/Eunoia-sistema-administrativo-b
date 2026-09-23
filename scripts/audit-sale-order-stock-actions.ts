@@ -1,4 +1,6 @@
 import "dotenv/config";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { migrationDataSource } from "../src/infrastructure/database/typeorm.config";
 
 type SaleOrderStockAuditRow = {
@@ -6,6 +8,8 @@ type SaleOrderStockAuditRow = {
   serie: string | null;
   correlative: number | null;
   workflowStateId: string | null;
+  workflowStateCode: string | null;
+  workflowStateName: string | null;
   isFinal: boolean;
   warehouseId: string | null;
   reserveBool: boolean;
@@ -22,6 +26,8 @@ const auditSql = `
     so.serie,
     so.correlative,
     so.current_state_id AS "workflowStateId",
+    sos.code AS "workflowStateCode",
+    sos.name AS "workflowStateName",
     COALESCE(ws.is_final, false) AS "isFinal",
     so.warehouse_id AS "warehouseId",
     COALESCE(so.reserve_bool, false) AS "reserveBool",
@@ -60,6 +66,7 @@ const auditSql = `
     END AS reason
   FROM sale_orders so
   LEFT JOIN workflow_states ws ON ws.id = so.current_state_id
+  LEFT JOIN sale_order_states sos ON sos.id = ws.sale_order_state_id
   CROSS JOIN LATERAL (
     SELECT
       COUNT(*) FILTER (WHERE out_doc.status = 'POSTED') AS posted_count,
@@ -103,6 +110,10 @@ export async function collectSaleOrderStockAudit(
     correlative: row.correlative == null ? null : Number(row.correlative),
     workflowStateId:
       row.workflowStateId == null ? null : String(row.workflowStateId),
+    workflowStateCode:
+      row.workflowStateCode == null ? null : String(row.workflowStateCode),
+    workflowStateName:
+      row.workflowStateName == null ? null : String(row.workflowStateName),
     isFinal: Boolean(row.isFinal),
     warehouseId: row.warehouseId == null ? null : String(row.warehouseId),
     reserveBool: Boolean(row.reserveBool),
@@ -117,6 +128,7 @@ export async function collectSaleOrderStockAudit(
 export async function runSaleOrderStockAudit(options: {
   summary?: boolean;
   strict?: boolean;
+  output?: string;
 } = {}) {
   await migrationDataSource.initialize();
   try {
@@ -139,19 +151,29 @@ export async function runSaleOrderStockAudit(options: {
       },
     );
 
-    console.log(
-      JSON.stringify(
-        {
-          generatedAt: new Date().toISOString(),
-          totals,
-          ...(options.summary
-            ? {}
-            : { findings: rows.filter((row) => row.severity !== "OK") }),
-        },
-        null,
-        2,
-      ),
-    );
+    const report = {
+      reportType: "sale-order-stock-reconciliation",
+      readOnly: true,
+      generatedAt: new Date().toISOString(),
+      source: {
+        saleOrders: "sale_orders",
+        inventoryDocuments: "pc_inventory_documents",
+        workflowStates: "workflow_states",
+      },
+      totals,
+      orders: rows,
+      findings: rows.filter((row) => row.severity !== "OK"),
+    };
+    const consoleReport = options.summary
+      ? { ...report, orders: undefined, findings: undefined }
+      : report;
+    console.log(JSON.stringify(consoleReport, null, 2));
+    if (options.output) {
+      const outputPath = resolve(options.output);
+      mkdirSync(dirname(outputPath), { recursive: true });
+      writeFileSync(outputPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
+      console.error(`Reporte de conciliacion guardado en ${outputPath}`);
+    }
 
     if (options.strict && totals.CONFLICT > 0) {
       process.exitCode = 2;
@@ -166,6 +188,9 @@ if (require.main === module) {
   runSaleOrderStockAudit({
     summary: process.argv.includes("--summary"),
     strict: process.argv.includes("--strict"),
+    output: process.argv
+      .find((argument) => argument.startsWith("--output="))
+      ?.slice("--output=".length),
   }).catch((error) => {
     console.error("Error ejecutando auditoria de stock de pedidos:", error);
     process.exit(1);

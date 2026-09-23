@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, UnprocessableEntityException } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, Optional, UnprocessableEntityException } from "@nestjs/common";
 import { CLOCK, ClockPort } from "src/shared/application/ports/clock.port";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { SALE_ORDER_REPOSITORY, SaleOrderRepository } from "src/modules/sale-orders/domain/ports/sale-order.repository";
@@ -15,6 +15,7 @@ import { SaleOrderWorkflowContextService } from "./sale-order-workflow-context.s
 import { SaleOrderWorkflowActionRunnerService } from "./sale-order-workflow-action-runner.service";
 import { WorkflowTransitionPurpose } from "../../domain/constants/workflow-transition-purpose.constants";
 import { TRANSITION_EFFECTS } from "../../domain/constants/workflow-transition-effect.constants";
+import { WorkflowActionExecutionRecorderService } from './workflow-action-execution-recorder.service';
 
 type AdvanceStateInput = {
   saleOrderId: string;
@@ -23,6 +24,7 @@ type AdvanceStateInput = {
   transitionCode?: string;
   transitionPurpose?: WorkflowTransitionPurpose;
   metadata?: Record<string, unknown> | null;
+  idempotencyKey?: string;
 };
 
 @Injectable()
@@ -42,7 +44,47 @@ export class SaleOrderWorkflowTransitionService {
     private readonly clock: ClockPort,
     private readonly contextService: SaleOrderWorkflowContextService,
     private readonly actionRunner: SaleOrderWorkflowActionRunnerService,
+    @Optional()
+    private readonly executionRecorder?: WorkflowActionExecutionRecorderService,
   ) {}
+
+  private async recordActionOutcomes(
+    input: {
+      saleOrderId: string;
+      transitionId: string;
+      idempotencyKey?: string;
+    },
+    actions: Array<{ id: string; type: string }>,
+    outcomes: Array<{ actionType: string; status: 'APPLIED' | 'SKIPPED'; message?: string }>,
+    tx: TransactionContext,
+    now: Date,
+  ): Promise<void> {
+    if (!this.executionRecorder) return;
+    const pendingByType = new Map<string, Array<{ id: string; type: string }>>();
+    for (const action of actions) {
+      const list = pendingByType.get(action.type) ?? [];
+      list.push(action);
+      pendingByType.set(action.type, list);
+    }
+    for (const [index, outcome] of outcomes.entries()) {
+      const matching = pendingByType.get(outcome.actionType)?.shift();
+      const actionId = matching?.id ?? null;
+      const key = input.idempotencyKey
+        ? `${input.idempotencyKey}:${actionId ?? outcome.actionType}:${index}`
+        : crypto.randomUUID();
+      await this.executionRecorder.record({
+        saleOrderId: input.saleOrderId,
+        transitionId: input.transitionId,
+        actionId,
+        actionType: outcome.actionType,
+        idempotencyKey: key,
+        status: outcome.status === 'APPLIED' ? 'COMPLETED' : 'SKIPPED',
+        evidence: outcome.message ? { message: outcome.message } : undefined,
+        now,
+        tx,
+      });
+    }
+  }
 
   async advance(input: AdvanceStateInput, tx: TransactionContext) {
     const order = await this.saleOrderRepo.findByIdForUpdate(input.saleOrderId, tx);
@@ -161,6 +203,17 @@ export class SaleOrderWorkflowTransitionService {
       }),
       tx,
     );
+    await this.recordActionOutcomes(
+      {
+        saleOrderId: order.id,
+        transitionId: transitionBundle.transition.id,
+        idempotencyKey: input.idempotencyKey ?? (typeof input.metadata?.idempotencyKey === 'string' ? input.metadata.idempotencyKey : undefined),
+      },
+      actions,
+      actionResult.outcomes,
+      tx,
+      this.clock.now(),
+    );
 
     return {
       order: updated,
@@ -241,6 +294,16 @@ export class SaleOrderWorkflowTransitionService {
           },
         }),
         tx,
+      );
+      await this.recordActionOutcomes(
+        {
+          saleOrderId: order.id,
+          transitionId: bundle.transition.id,
+        },
+        actions,
+        actionResult.outcomes,
+        tx,
+        this.clock.now(),
       );
       return updated;
     }
