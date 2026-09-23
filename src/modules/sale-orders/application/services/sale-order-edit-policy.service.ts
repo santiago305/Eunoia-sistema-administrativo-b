@@ -99,10 +99,16 @@ export class SaleOrderEditPolicyService {
     let status: SaleOrderStockStatus = 'NONE';
 
     for (const item of history) {
-      if (item.metadata?.stockStatus === 'NONE') status = 'NONE';
-      if (item.metadata?.stockStatus === 'RESERVED') status = 'RESERVED';
-      if (item.metadata?.stockStatus === 'REVERTED') status = 'REVERTED';
-      if (item.metadata?.stockStatus === 'CONSUMED') status = 'CONSUMED';
+      const recordedStatus = item.metadata?.stockStatus;
+      if (
+        recordedStatus === 'NONE' ||
+        recordedStatus === 'RESERVED' ||
+        recordedStatus === 'REVERTED' ||
+        recordedStatus === 'CONSUMED'
+      ) {
+        status = recordedStatus;
+        continue;
+      }
       if (!item.transitionId) continue;
       const transition = await this.transitionRepo.findDetailedById(
         item.transitionId,

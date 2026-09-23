@@ -12,7 +12,7 @@ describe("SalePaymentTypeormRepository", () => {
         {
           id: "payment-1",
           saleOrderId: "order-1",
-          bankAccountId: "bank-1",
+          companyPaymentAccountId: "bank-1",
           date: paymentDate,
           method: "EFECTIVO",
           operationNumber: "",

@@ -34,6 +34,12 @@ import { DocType } from "src/shared/domain/value-objects/doc-type";
 import { ReferenceType } from "src/shared/domain/value-objects/reference-type";
 import { saleOrderStockConsumptionReversalMarker } from "./sale-order-stock-consumption-reversal-marker";
 
+export type SaleOrderConsumptionState = {
+  status: "NONE" | "CONSUMED" | "RESTORED" | "INCONSISTENT";
+  activeDocumentIds: string[];
+  postedDocumentIds: string[];
+};
+
 @Injectable()
 export class SaleOrderStockConsumptionReversalService {
   constructor(
@@ -71,13 +77,37 @@ export class SaleOrderStockConsumptionReversalService {
     saleOrderId: string,
     tx: TransactionContext,
   ): Promise<boolean> {
-    return Boolean(await this.findUnreversedConsumption(saleOrderId, tx));
+    return (await this.inspectConsumption(saleOrderId, tx)).status === "CONSUMED";
   }
 
-  private async findUnreversedConsumption(
+  async inspectConsumption(
     saleOrderId: string,
     tx: TransactionContext,
-  ): Promise<ProductCatalogInventoryDocument | null> {
+  ): Promise<SaleOrderConsumptionState> {
+    const { postedOutDocuments, activeOutDocuments } =
+      await this.loadConsumptionDocuments(saleOrderId, tx);
+
+    return {
+      status:
+        activeOutDocuments.length > 1
+          ? "INCONSISTENT"
+          : activeOutDocuments.length === 1
+            ? "CONSUMED"
+            : postedOutDocuments.length > 0
+              ? "RESTORED"
+              : "NONE",
+      activeDocumentIds: activeOutDocuments.map((document) => document.id as string),
+      postedDocumentIds: postedOutDocuments.map((document) => document.id as string),
+    };
+  }
+
+  private async loadConsumptionDocuments(
+    saleOrderId: string,
+    tx: TransactionContext,
+  ): Promise<{
+    postedOutDocuments: ProductCatalogInventoryDocument[];
+    activeOutDocuments: ProductCatalogInventoryDocument[];
+  }> {
     const outDocuments = await this.documentRepo.findByReference(
       {
         referenceType: ReferenceType.SALE_ORDER,
@@ -95,10 +125,11 @@ export class SaleOrderStockConsumptionReversalService {
       tx,
     );
 
-    return outDocuments.find(
+    const postedOutDocuments = outDocuments.filter(
+      (document) => document.status === DocStatus.POSTED && document.id,
+    );
+    const activeOutDocuments = postedOutDocuments.filter(
       (document) =>
-        document.status === DocStatus.POSTED &&
-        document.id &&
         !existingReversals.some(
           (reversal) =>
             reversal.status === DocStatus.POSTED &&
@@ -106,7 +137,25 @@ export class SaleOrderStockConsumptionReversalService {
               saleOrderStockConsumptionReversalMarker(document.id as string),
             ),
         ),
-    ) ?? null;
+    );
+
+    return { postedOutDocuments, activeOutDocuments };
+  }
+
+  private async findUnreversedConsumption(
+    saleOrderId: string,
+    tx: TransactionContext,
+  ): Promise<ProductCatalogInventoryDocument | null> {
+    const { activeOutDocuments } = await this.loadConsumptionDocuments(
+      saleOrderId,
+      tx,
+    );
+    if (activeOutDocuments.length > 1) {
+      throw new BadRequestException(
+        "El pedido tiene multiples consumos de stock vigentes y requiere conciliacion",
+      );
+    }
+    return activeOutDocuments[0] ?? null;
   }
 
   private async restoreConsumption(

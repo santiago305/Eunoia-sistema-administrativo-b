@@ -336,6 +336,7 @@ describe("SaleOrderWorkflowTransitionService", () => {
       run: jest.fn().mockResolvedValue({
         order,
         outcomes: [],
+        stockStatus: "RESERVED",
       }),
     };
     const service = new SaleOrderWorkflowTransitionService(
@@ -363,6 +364,7 @@ describe("SaleOrderWorkflowTransitionService", () => {
         metadata: {
           branch: "THEN",
           actionOutcomes: [],
+          stockStatus: "RESERVED",
         },
       }),
       tx,

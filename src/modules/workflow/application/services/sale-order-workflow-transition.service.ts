@@ -154,6 +154,9 @@ export class SaleOrderWorkflowTransitionService {
           ...(input.metadata ?? {}),
           branch,
           actionOutcomes: actionResult.outcomes,
+          ...(actionResult.stockStatus
+            ? { stockStatus: actionResult.stockStatus }
+            : {}),
         },
       }),
       tx,
@@ -232,6 +235,9 @@ export class SaleOrderWorkflowTransitionService {
             source: "automatic-workflow",
             branch: passed ? "THEN" : "ELSE",
             actionOutcomes: actionResult.outcomes,
+            ...(actionResult.stockStatus
+              ? { stockStatus: actionResult.stockStatus }
+              : {}),
           },
         }),
         tx,

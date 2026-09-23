@@ -43,6 +43,7 @@ import { SaleOrderReservationReconciliationService } from 'src/modules/sale-orde
 export type WorkflowActionRunResult = {
   order: SaleOrder;
   outcomes: WorkflowActionOutcome[];
+  stockStatus?: 'NONE' | 'RESERVED' | 'REVERTED' | 'CONSUMED';
 };
 
 @Injectable()
@@ -164,6 +165,79 @@ export class SaleOrderWorkflowActionRunnerService {
     const ordered = [...actions].sort((a, b) => a.position - b.position);
     let effectiveOrder = order;
     const outcomes: WorkflowActionOutcome[] = [];
+    let stockStatus: WorkflowActionRunResult['stockStatus'];
+    const markerState = {
+      invoiceSent: Boolean(order.invoiceSend),
+      preguide: Boolean(order.preguide),
+      prepared: Boolean(order.prepared),
+    };
+    const runMarkerAction = async (action: WorkflowAction): Promise<boolean> => {
+      const apply = async (
+        current: boolean,
+        expected: boolean,
+        operation: () => Promise<void>,
+        update: () => void,
+      ) => {
+        if (current === expected) {
+          outcomes.push({
+            actionType: action.type,
+            status: 'SKIPPED',
+            message: 'La accion ya estaba satisfecha',
+          });
+          return;
+        }
+        await operation();
+        update();
+        outcomes.push({ actionType: action.type, status: 'APPLIED' });
+      };
+
+      if (action.type === ACTIONS.MARK_INVOICE_SENT) {
+        await apply(
+          markerState.invoiceSent,
+          true,
+          () => this.saleOrderRepo.markInvoiceSent(order.id, tx),
+          () => { markerState.invoiceSent = true; },
+        );
+        return true;
+      }
+      if (action.type === ACTIONS.MARK_PREGUIDE) {
+        await apply(
+          markerState.preguide,
+          true,
+          () => this.saleOrderRepo.markPreguide(order.id, tx),
+          () => { markerState.preguide = true; },
+        );
+        return true;
+      }
+      if (action.type === ACTIONS.MARK_PREPARED) {
+        await apply(
+          markerState.prepared,
+          true,
+          () => this.saleOrderRepo.markPrepared(order.id, tx),
+          () => { markerState.prepared = true; },
+        );
+        return true;
+      }
+      if (action.type === ACTIONS.UNMARK_PREGUIDE) {
+        await apply(
+          markerState.preguide,
+          false,
+          () => this.saleOrderRepo.unmarkPreguide(order.id, tx),
+          () => { markerState.preguide = false; },
+        );
+        return true;
+      }
+      if (action.type === ACTIONS.UNMARK_PREPARED) {
+        await apply(
+          markerState.prepared,
+          false,
+          () => this.saleOrderRepo.unmarkPrepared(order.id, tx),
+          () => { markerState.prepared = false; },
+        );
+        return true;
+      }
+      return false;
+    };
     for (const action of ordered) {
       if (
         action.type !== ACTIONS.ASSIGN_WAREHOUSE_BY_PROVINCE &&
@@ -189,7 +263,7 @@ export class SaleOrderWorkflowActionRunnerService {
       outcomes.push(result.outcome);
     }
 
-    const stockActions = ordered.filter((action) =>
+    let stockActions = ordered.filter((action) =>
       [
         ACTIONS.RESERVE_STOCK,
         ACTIONS.CONSUME_STOCK,
@@ -197,48 +271,143 @@ export class SaleOrderWorkflowActionRunnerService {
       ].includes(action.type as any),
     );
 
+    const skippedConsumeActionIds = new Set<string>();
+    const skippedReserveActionIds = new Set<string>();
+    const completedRevertActionIds = new Set<string>();
+    let consumptionState:
+      | Awaited<ReturnType<SaleOrderStockConsumptionReversalService['inspectConsumption']>>
+      | undefined;
+
+    if (
+      stockActions.some(
+        (action) =>
+          action.type === ACTIONS.CONSUME_STOCK ||
+          action.type === ACTIONS.RESERVE_STOCK,
+      )
+    ) {
+      consumptionState = await this.stockConsumptionReversal.inspectConsumption(
+        effectiveOrder.id,
+        tx,
+      );
+      if (consumptionState.status === 'INCONSISTENT') {
+        throw new BadRequestException(
+          'El pedido tiene multiples consumos de stock vigentes y requiere conciliacion',
+        );
+      }
+      if (consumptionState.status === 'CONSUMED') {
+        if (
+          stockActions.some((action) => action.type === ACTIONS.RESERVE_STOCK)
+        ) {
+          throw new BadRequestException(
+            'El stock del pedido ya fue consumido y no puede reservarse nuevamente',
+          );
+        }
+        for (const action of stockActions) {
+          if (action.type === ACTIONS.CONSUME_STOCK) {
+            skippedConsumeActionIds.add(action.id);
+          }
+        }
+        stockActions = stockActions.filter(
+          (action) => action.type !== ACTIONS.CONSUME_STOCK,
+        );
+        stockStatus = 'CONSUMED';
+      }
+    }
+
+    if (effectiveOrder.reserveBool === true) {
+      for (const action of stockActions) {
+        if (action.type === ACTIONS.RESERVE_STOCK) {
+          skippedReserveActionIds.add(action.id);
+        }
+      }
+      stockActions = stockActions.filter(
+        (action) => action.type !== ACTIONS.RESERVE_STOCK,
+      );
+      if (skippedReserveActionIds.size) stockStatus = 'RESERVED';
+    }
+
     const restoreStockAction = ordered.find(
       (action) => action.type === ACTIONS.RESTORE_STOCK,
     );
+    let restoreStockOutcome: WorkflowActionOutcome | undefined;
     if (restoreStockAction) {
-      const restored = await this.stockConsumptionReversal.restoreAndRelease(
-        effectiveOrder,
-        executedBy ?? effectiveOrder.createdBy,
-        tx,
-      );
-      if (!restored) {
+      consumptionState ??=
+        await this.stockConsumptionReversal.inspectConsumption(
+          effectiveOrder.id,
+          tx,
+        );
+      if (consumptionState.status === 'INCONSISTENT') {
+        throw new BadRequestException(
+          'El pedido tiene multiples consumos de stock vigentes y requiere conciliacion',
+        );
+      }
+      if (consumptionState.status === 'NONE') {
         throw new BadRequestException(
           'El pedido no tiene consumo de stock pendiente de reponer',
         );
       }
+      if (consumptionState.status === 'RESTORED') {
+        restoreStockOutcome = {
+          actionType: restoreStockAction.type,
+          status: 'SKIPPED',
+          message: 'El consumo de stock ya estaba restaurado',
+        };
+      } else {
+        const restored = await this.stockConsumptionReversal.restoreAndRelease(
+          effectiveOrder,
+          executedBy ?? effectiveOrder.createdBy,
+          tx,
+        );
+        if (!restored) {
+          throw new BadRequestException(
+            'No se pudo restaurar el consumo vigente del pedido',
+          );
+        }
+        restoreStockOutcome = {
+          actionType: restoreStockAction.type,
+          status: 'APPLIED',
+        };
+      }
+      stockStatus = 'REVERTED';
     }
 
     if (!stockActions.length) {
       for (const action of ordered) {
-        if (action.type === ACTIONS.MARK_INVOICE_SENT) {
-          await this.saleOrderRepo.markInvoiceSent(order.id, tx);
+        if (skippedConsumeActionIds.has(action.id)) {
+          await this.saleOrderRepo.setReserveBool(
+            { saleOrderId: effectiveOrder.id, reserveBool: false },
+            tx,
+          );
+          outcomes.push({
+            actionType: action.type,
+            status: 'SKIPPED',
+            message: 'El stock del pedido ya estaba consumido',
+          });
+          continue;
         }
-        if (action.type === ACTIONS.MARK_PREGUIDE) {
-          await this.saleOrderRepo.markPreguide(order.id, tx);
+        if (skippedReserveActionIds.has(action.id)) {
+          outcomes.push({
+            actionType: action.type,
+            status: 'SKIPPED',
+            message: 'El stock del pedido ya estaba reservado',
+          });
+          continue;
         }
-        if (action.type === ACTIONS.MARK_PREPARED) {
-          await this.saleOrderRepo.markPrepared(order.id, tx);
+        if (action.id === restoreStockAction?.id && restoreStockOutcome) {
+          outcomes.push(restoreStockOutcome);
+          continue;
         }
-        if (action.type === ACTIONS.UNMARK_PREGUIDE) {
-          await this.saleOrderRepo.unmarkPreguide(order.id, tx);
-        }
-        if (action.type === ACTIONS.UNMARK_PREPARED) {
-          await this.saleOrderRepo.unmarkPrepared(order.id, tx);
-        }
+        await runMarkerAction(action);
       }
-      return { order: effectiveOrder, outcomes };
+      return { order: effectiveOrder, outcomes, stockStatus };
     }
 
     const onlyRevertsStock = stockActions.every(
       (action) => action.type === ACTIONS.REVERT_STOCK,
     );
+    let restoredDuringRevert = false;
     if (onlyRevertsStock && effectiveOrder.warehouseId) {
-      await this.stockConsumptionReversal.restoreAndRelease(
+      restoredDuringRevert = await this.stockConsumptionReversal.restoreAndRelease(
         effectiveOrder,
         executedBy ?? effectiveOrder.createdBy,
         tx,
@@ -252,14 +421,34 @@ export class SaleOrderWorkflowActionRunnerService {
         { saleOrderId: effectiveOrder.id, reserveBool: false },
         tx,
       );
-      return { order: effectiveOrder, outcomes };
+      for (const action of stockActions) completedRevertActionIds.add(action.id);
+      stockActions = [];
+      stockStatus = 'REVERTED';
     }
-    if (!effectiveOrder.warehouseId && onlyRevertsStock) {
+    if (stockActions.length && !effectiveOrder.warehouseId && onlyRevertsStock) {
       await this.saleOrderRepo.setReserveBool(
         { saleOrderId: effectiveOrder.id, reserveBool: false },
         tx,
       );
-      return { order: effectiveOrder, outcomes };
+      for (const action of stockActions) completedRevertActionIds.add(action.id);
+      stockActions = [];
+      stockStatus = 'REVERTED';
+    }
+    if (!stockActions.length) {
+      for (const action of ordered) {
+        if (completedRevertActionIds.has(action.id)) {
+          outcomes.push({
+            actionType: action.type,
+            status: restoredDuringRevert ? 'APPLIED' : 'SKIPPED',
+            message: restoredDuringRevert
+              ? 'Se restauro el consumo vigente del pedido'
+              : 'El pedido no tenia una reserva activa',
+          });
+          continue;
+        }
+        await runMarkerAction(action);
+      }
+      return { order: effectiveOrder, outcomes, stockStatus };
     }
     if (!effectiveOrder.warehouseId) {
       throw new BadRequestException(
@@ -382,24 +571,31 @@ export class SaleOrderWorkflowActionRunnerService {
 
     let releasedReservedStock = false;
     for (const action of ordered) {
-      if (action.type === ACTIONS.MARK_INVOICE_SENT) {
-        await this.saleOrderRepo.markInvoiceSent(order.id, tx);
+      if (await runMarkerAction(action)) {
         continue;
       }
-      if (action.type === ACTIONS.MARK_PREGUIDE) {
-        await this.saleOrderRepo.markPreguide(order.id, tx);
+      if (skippedConsumeActionIds.has(action.id)) {
+        await this.saleOrderRepo.setReserveBool(
+          { saleOrderId: effectiveOrder.id, reserveBool: false },
+          tx,
+        );
+        outcomes.push({
+          actionType: action.type,
+          status: 'SKIPPED',
+          message: 'El stock del pedido ya estaba consumido',
+        });
         continue;
       }
-      if (action.type === ACTIONS.MARK_PREPARED) {
-        await this.saleOrderRepo.markPrepared(order.id, tx);
+      if (skippedReserveActionIds.has(action.id)) {
+        outcomes.push({
+          actionType: action.type,
+          status: 'SKIPPED',
+          message: 'El stock del pedido ya estaba reservado',
+        });
         continue;
       }
-      if (action.type === ACTIONS.UNMARK_PREGUIDE) {
-        await this.saleOrderRepo.unmarkPreguide(order.id, tx);
-        continue;
-      }
-      if (action.type === ACTIONS.UNMARK_PREPARED) {
-        await this.saleOrderRepo.unmarkPrepared(order.id, tx);
+      if (action.id === restoreStockAction?.id && restoreStockOutcome) {
+        outcomes.push(restoreStockOutcome);
         continue;
       }
       if (
@@ -424,6 +620,8 @@ export class SaleOrderWorkflowActionRunnerService {
           { saleOrderId: effectiveOrder.id, reserveBool: false },
           tx,
         );
+        stockStatus = 'CONSUMED';
+        outcomes.push({ actionType: action.type, status: 'APPLIED' });
         continue;
       }
       for (const { stockItemId, quantity } of requirements) {
@@ -460,11 +658,14 @@ export class SaleOrderWorkflowActionRunnerService {
           },
           tx,
         );
+        stockStatus =
+          action.type === ACTIONS.RESERVE_STOCK ? 'RESERVED' : 'REVERTED';
+        outcomes.push({ actionType: action.type, status: 'APPLIED' });
       }
     }
     if (releasedReservedStock) {
       await this.saleOrderRepo.markStockReverted(effectiveOrder.id, tx);
     }
-    return { order: effectiveOrder, outcomes };
+    return { order: effectiveOrder, outcomes, stockStatus };
   }
 }

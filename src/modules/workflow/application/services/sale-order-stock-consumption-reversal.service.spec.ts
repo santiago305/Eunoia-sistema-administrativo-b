@@ -251,6 +251,73 @@ describe("SaleOrderStockConsumptionReversalService", () => {
     expect(dependencies.inventoryRepo.incrementOnHand).not.toHaveBeenCalled();
   });
 
+  it("identifies a posted OUT without reversal as an active consumption", async () => {
+    const dependencies = buildService();
+
+    await expect(
+      dependencies.service.inspectConsumption("order-1", tx),
+    ).resolves.toEqual({
+      status: "CONSUMED",
+      activeDocumentIds: ["out-1"],
+      postedDocumentIds: ["out-1"],
+    });
+  });
+
+  it("identifies a compensated OUT as restored", async () => {
+    const existing = new ProductCatalogInventoryDocument(
+      "in-existing",
+      DocType.IN,
+      null,
+      DocStatus.POSTED,
+      "serie-in",
+      6,
+      null,
+      "warehouse-1",
+      "order-1",
+      ReferenceType.SALE_ORDER,
+      "Reversión del consumo out-1 por corrección",
+      "user-2",
+      "user-2",
+      new Date("2026-08-21T00:00:00.000Z"),
+    );
+    const dependencies = buildService([existing]);
+
+    await expect(
+      dependencies.service.inspectConsumption("order-1", tx),
+    ).resolves.toEqual({
+      status: "RESTORED",
+      activeDocumentIds: [],
+      postedDocumentIds: ["out-1"],
+    });
+  });
+
+  it("reports multiple active OUT documents as inconsistent", async () => {
+    const duplicate = new ProductCatalogInventoryDocument(
+      "out-2",
+      DocType.OUT,
+      null,
+      DocStatus.POSTED,
+      "serie-out",
+      6,
+      "warehouse-1",
+      null,
+      "order-1",
+      ReferenceType.SALE_ORDER,
+      "Consumo duplicado",
+      "user-1",
+      "user-1",
+      new Date("2026-08-21T00:00:00.000Z"),
+    );
+    const dependencies = buildService([], [consumedDocument, duplicate]);
+
+    await expect(
+      dependencies.service.inspectConsumption("order-1", tx),
+    ).resolves.toMatchObject({
+      status: "INCONSISTENT",
+      activeDocumentIds: ["out-1", "out-2"],
+    });
+  });
+
   it('reverses a newer consumption even when an older one was already reversed', async () => {
     const existing = new ProductCatalogInventoryDocument(
       'in-existing',

@@ -7,7 +7,10 @@ describe('SaleOrderWorkflowActionRunnerService', () => {
 
   function setup(
     snapshot = { available: 10, reserved: 10, onHand: 10 },
-    options: { hasActiveReservation?: boolean } = {},
+    options: {
+      hasActiveReservation?: boolean;
+      consumptionStatus?: 'NONE' | 'CONSUMED' | 'RESTORED' | 'INCONSISTENT';
+    } = {},
   ) {
     const requirements = {
       resolve: jest
@@ -47,6 +50,13 @@ describe('SaleOrderWorkflowActionRunnerService', () => {
     const consumption = { consume: jest.fn().mockResolvedValue(undefined) };
     const consumptionReversal = {
       restoreAndRelease: jest.fn().mockResolvedValue(false),
+      inspectConsumption: jest.fn().mockResolvedValue({
+        status: options.consumptionStatus ?? 'NONE',
+        activeDocumentIds:
+          options.consumptionStatus === 'CONSUMED' ? ['out-1'] : [],
+        postedDocumentIds:
+          options.consumptionStatus === 'NONE' ? [] : ['out-1'],
+      }),
     };
     const warehouseAssignment = {
       assign: jest.fn().mockImplementation(async (_order, _config) => ({
@@ -196,6 +206,7 @@ describe('SaleOrderWorkflowActionRunnerService', () => {
     );
     expect(result.outcomes).toEqual([
       { actionType: 'ASSIGN_WAREHOUSE_BY_PROVINCE', status: 'APPLIED' },
+      { actionType: 'RESERVE_STOCK', status: 'APPLIED' },
     ]);
   });
 
@@ -255,6 +266,7 @@ describe('SaleOrderWorkflowActionRunnerService', () => {
     );
     expect(result.outcomes).toEqual([
       { actionType: 'ASSIGN_WAREHOUSE_BY_WORKFLOW', status: 'APPLIED' },
+      { actionType: 'RESERVE_STOCK', status: 'APPLIED' },
     ]);
   });
 
@@ -283,7 +295,7 @@ describe('SaleOrderWorkflowActionRunnerService', () => {
     expect(warehouseAssignment.assign).not.toHaveBeenCalled();
   });
 
-  it('marks the invoice as sent without requiring a warehouse', async () => {
+  it('skips marking an invoice that was already sent', async () => {
     const { runner, saleOrders, requirements } = setup();
     const orderWithoutWarehouse = {
       id: 'order-1',
@@ -291,7 +303,7 @@ describe('SaleOrderWorkflowActionRunnerService', () => {
       invoiceSend: true,
     } as any;
 
-    await runner.run(
+    const result = await runner.run(
       orderWithoutWarehouse,
       [
         {
@@ -305,7 +317,13 @@ describe('SaleOrderWorkflowActionRunnerService', () => {
       tx,
     );
 
-    expect(saleOrders.markInvoiceSent).toHaveBeenCalledWith('order-1', tx);
+    expect(saleOrders.markInvoiceSent).not.toHaveBeenCalled();
+    expect(result.outcomes).toEqual([
+      expect.objectContaining({
+        actionType: 'MARK_INVOICE_SENT',
+        status: 'SKIPPED',
+      }),
+    ]);
     expect(requirements.resolve).not.toHaveBeenCalled();
   });
 
@@ -357,7 +375,11 @@ describe('SaleOrderWorkflowActionRunnerService', () => {
 
   it('unmarks preguide without requiring a warehouse', async () => {
     const { runner, saleOrders, requirements } = setup();
-    const orderWithoutWarehouse = { id: 'order-1', warehouseId: null } as any;
+    const orderWithoutWarehouse = {
+      id: 'order-1',
+      warehouseId: null,
+      preguide: true,
+    } as any;
 
     await runner.run(
       orderWithoutWarehouse,
@@ -379,7 +401,11 @@ describe('SaleOrderWorkflowActionRunnerService', () => {
 
   it('unmarks prepared without requiring a warehouse', async () => {
     const { runner, saleOrders, requirements } = setup();
-    const orderWithoutWarehouse = { id: 'order-1', warehouseId: null } as any;
+    const orderWithoutWarehouse = {
+      id: 'order-1',
+      warehouseId: null,
+      prepared: true,
+    } as any;
 
     await runner.run(
       orderWithoutWarehouse,
@@ -403,7 +429,7 @@ describe('SaleOrderWorkflowActionRunnerService', () => {
     const { runner, saleOrders, inventory } = setup();
 
     await runner.run(
-      order,
+      { ...order, prepared: true },
       [
         {
           id: 'a1',
@@ -563,6 +589,98 @@ describe('SaleOrderWorkflowActionRunnerService', () => {
     expect(inventory.incrementOnHand).not.toHaveBeenCalled();
   });
 
+  it('allows a legacy order to continue when its stock was already consumed', async () => {
+    const { runner, consumption, inventory, saleOrders, requirements } = setup(
+      { available: 0, reserved: 0, onHand: 0 },
+      { consumptionStatus: 'CONSUMED' },
+    );
+
+    const result = await runner.run(
+      order,
+      [
+        {
+          id: 'a1',
+          transitionId: 't1',
+          type: 'CONSUME_STOCK',
+          config: {},
+          position: 0,
+        } as any,
+      ],
+      tx,
+    );
+
+    expect(requirements.resolve).not.toHaveBeenCalled();
+    expect(inventory.getSnapshot).not.toHaveBeenCalled();
+    expect(consumption.consume).not.toHaveBeenCalled();
+    expect(saleOrders.setReserveBool).toHaveBeenCalledWith(
+      { saleOrderId: 'order-1', reserveBool: false },
+      tx,
+    );
+    expect(result.stockStatus).toBe('CONSUMED');
+    expect(result.outcomes).toEqual([
+      expect.objectContaining({
+        actionType: 'CONSUME_STOCK',
+        status: 'SKIPPED',
+      }),
+    ]);
+  });
+
+  it('rejects a new reservation when the order already has an active consumption', async () => {
+    const { runner, inventory, requirements } = setup(
+      { available: 10, reserved: 0, onHand: 10 },
+      { consumptionStatus: 'CONSUMED' },
+    );
+
+    await expect(
+      runner.run(
+        order,
+        [
+          {
+            id: 'a1',
+            transitionId: 't1',
+            type: 'RESERVE_STOCK',
+            config: {},
+            position: 0,
+          } as any,
+        ],
+        tx,
+      ),
+    ).rejects.toThrow(
+      'El stock del pedido ya fue consumido y no puede reservarse nuevamente',
+    );
+
+    expect(requirements.resolve).not.toHaveBeenCalled();
+    expect(inventory.incrementReserved).not.toHaveBeenCalled();
+  });
+
+  it('skips reserving stock when the order already has an active reservation', async () => {
+    const { runner, inventory, requirements } = setup();
+
+    const result = await runner.run(
+      { ...order, reserveBool: true },
+      [
+        {
+          id: 'a1',
+          transitionId: 't1',
+          type: 'RESERVE_STOCK',
+          config: {},
+          position: 0,
+        } as any,
+      ],
+      tx,
+    );
+
+    expect(requirements.resolve).not.toHaveBeenCalled();
+    expect(inventory.incrementReserved).not.toHaveBeenCalled();
+    expect(result.stockStatus).toBe('RESERVED');
+    expect(result.outcomes).toEqual([
+      expect.objectContaining({
+        actionType: 'RESERVE_STOCK',
+        status: 'SKIPPED',
+      }),
+    ]);
+  });
+
   it('uses the delivery window to date a delayed order movement', async () => {
     const { runner, consumption, history, transitions } = setup();
     const delayedOrder = {
@@ -685,7 +803,7 @@ describe('SaleOrderWorkflowActionRunnerService', () => {
   it('restores consumed stock before finishing a stock reversal', async () => {
     const { runner, consumptionReversal, requirements, inventory } = setup(
       { available: 10, reserved: 0, onHand: 7 },
-      { hasActiveReservation: false },
+      { hasActiveReservation: false, consumptionStatus: 'CONSUMED' },
     );
     consumptionReversal.restoreAndRelease.mockResolvedValue(true);
 
@@ -716,7 +834,7 @@ describe('SaleOrderWorkflowActionRunnerService', () => {
   it('restores consumed stock through the explicit restore action', async () => {
     const { runner, consumptionReversal, requirements, inventory } = setup(
       { available: 10, reserved: 0, onHand: 7 },
-      { hasActiveReservation: false },
+      { hasActiveReservation: false, consumptionStatus: 'CONSUMED' },
     );
     consumptionReversal.restoreAndRelease.mockResolvedValue(true);
 
