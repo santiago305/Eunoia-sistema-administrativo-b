@@ -24,8 +24,8 @@ COPY --chown=node:node package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --prod --frozen-lockfile && pnpm store prune
 COPY --from=build --chown=node:node /app/dist ./dist
 COPY --from=build --chown=node:node /app/src/modules/ubigeo/infrastructure/seed/data ./dist/modules/ubigeo/infrastructure/seed/data
-RUN mkdir -p storage/public storage/private storage/deleted storage/mail-attachments storage/mail-attachments-deleted assets \
-  && chown -R node:node storage assets
+RUN mkdir -p storage/public storage/private storage/deleted storage/mail-attachments storage/mail-attachments-deleted assets reports \
+  && chown -R node:node storage assets reports
 USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
