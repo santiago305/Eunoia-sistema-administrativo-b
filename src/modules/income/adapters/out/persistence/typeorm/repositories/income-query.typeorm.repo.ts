@@ -31,12 +31,15 @@ export class IncomeQueryTypeormRepository implements IncomeQueryRepository {
         .leftJoin(CompanyPaymentAccountEntity, "cpa", "cpa.id = sp.companyPaymentAccountId")
         .select("sp.id", "incomeId")
         .addSelect("sp.saleOrderId", "saleOrderId")
+        .addSelect("so.serie", "saleOrderSerie")
+        .addSelect("so.correlative", "saleOrderCorrelative")
         .addSelect("COALESCE(client.fullName, 'Cliente sin nombre')", "clientName")
         .addSelect("sp.amount", "amount")
         .addSelect("sp.method", "method")
         .addSelect("sp.companyPaymentAccountId", "companyPaymentAccountId")
         .addSelect(accountLabelSql, "companyPaymentAccountLabel")
         .addSelect("sp.operationNumber", "operationNumber")
+        .addSelect("sp.note", "detail")
         .addSelect("sp.date", "date")
         .addSelect("sp.createdAt", "createdAt")
         .addSelect("sp.paymentPhoto", "evidenceUrl"),
@@ -173,15 +176,21 @@ export class IncomeQueryTypeormRepository implements IncomeQueryRepository {
   }
 
   private mapIncome(row: any): IncomeOutput {
+    const saleOrderNumber = [row.saleOrderSerie, row.saleOrderCorrelative]
+      .filter((value) => value !== null && value !== undefined && value !== "")
+      .join("-");
+
     return {
       incomeId: row.incomeId,
       saleOrderId: row.saleOrderId,
+      saleOrderNumber: saleOrderNumber || row.saleOrderId,
       clientName: row.clientName,
       amount: numberFrom(row.amount),
       method: row.method,
       companyPaymentAccountId: row.companyPaymentAccountId ?? null,
       companyPaymentAccountLabel: row.companyPaymentAccountLabel ?? null,
       operationNumber: row.operationNumber ?? null,
+      detail: row.detail ?? null,
       date: row.date instanceof Date ? row.date.toISOString() : String(row.date),
       createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
       evidenceUrl: row.evidenceUrl ?? null,

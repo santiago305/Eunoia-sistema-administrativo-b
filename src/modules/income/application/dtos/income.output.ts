@@ -1,12 +1,14 @@
 export interface IncomeOutput {
   incomeId: string;
   saleOrderId: string;
+  saleOrderNumber: string;
   clientName: string;
   amount: number;
   method: string;
   companyPaymentAccountId: string | null;
   companyPaymentAccountLabel: string | null;
   operationNumber: string | null;
+  detail: string | null;
   date: string;
   createdAt: string;
   evidenceUrl: string | null;
