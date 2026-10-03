@@ -16,6 +16,7 @@ import { SaleOrderNumberingService } from '../../services/sale-order-numbering.s
 import { AssignImportLoteUsecase } from './assign-import-lote.usecase';
 import { SaleOrderSuppliesService } from '../../services/sale-order-supplies.service';
 import { SaleOrderPackMatcherService } from '../../services/sale-order-pack-matcher.service';
+import { PreferredCompanyPaymentMethodService } from 'src/modules/payment-methods/application/services/preferred-company-payment-method.service';
 
 function makeImportUsecase(overrides: Record<string, any> = {}) {
   const tx = overrides.tx ?? {};
@@ -55,6 +56,14 @@ function makeImportUsecase(overrides: Record<string, any> = {}) {
   const suppliesService = {
     copyFromWorkflowRecipe: jest.fn().mockResolvedValue([]),
   };
+  const preferredPaymentMethod = {
+    resolve: jest.fn().mockResolvedValue({
+      companyId: 'company-1',
+      paymentMethodId: 'method-bank-transfer',
+      method: 'Transferencia bancaria',
+      code: 'BANK_TRANSFER',
+    }),
+  };
   const skuResolver = {
     resolveOrCreateSkus: jest.fn().mockResolvedValue([
       {
@@ -81,6 +90,7 @@ function makeImportUsecase(overrides: Record<string, any> = {}) {
     overrides.numbering ?? (numbering as any),
     overrides.assignImportLote ?? (assignImportLote as any),
     overrides.packMatcher ?? (packMatcher as any),
+    overrides.preferredPaymentMethod ?? (preferredPaymentMethod as any),
     overrides.adviserResolver ?? (adviserResolver as any),
     overrides.suppliesService ?? (suppliesService as any),
   ) as CreateFromImportPreviewUseCase;
@@ -102,6 +112,7 @@ function makeImportUsecase(overrides: Record<string, any> = {}) {
     packMatcher,
     adviserResolver,
     suppliesService,
+    preferredPaymentMethod,
   };
 }
 
@@ -262,6 +273,17 @@ describe('CreateFromImportPreviewUseCase', () => {
         { provide: SaleOrderNumberingService, useValue: numbering },
         { provide: AssignImportLoteUsecase, useValue: assignImportLote },
         { provide: SaleOrderPackMatcherService, useValue: packMatcher },
+        {
+          provide: PreferredCompanyPaymentMethodService,
+          useValue: {
+            resolve: jest.fn().mockResolvedValue({
+              companyId: 'company-1',
+              paymentMethodId: 'method-bank-transfer',
+              method: 'Transferencia bancaria',
+              code: 'BANK_TRANSFER',
+            }),
+          },
+        },
         { provide: SaleOrderSuppliesService, useValue: suppliesService },
       ],
     }).compile();
@@ -297,6 +319,9 @@ describe('CreateFromImportPreviewUseCase', () => {
             saleOrderId: 'order-1',
             date: new Date('2026-08-29T00:00:00.000Z'),
             amount: 40,
+            companyPaymentAccountId: null,
+            paymentMethodId: 'method-bank-transfer',
+            method: 'Transferencia bancaria',
           }),
         ],
         expect.anything(),
@@ -763,6 +788,10 @@ describe('CreateFromImportPreviewUseCase', () => {
         {
           provide: SaleOrderPackMatcherService,
             useValue: { decompose: jest.fn() },
+        },
+        {
+          provide: PreferredCompanyPaymentMethodService,
+          useValue: { resolve: jest.fn() },
         },
       ],
     }).compile();

@@ -54,6 +54,7 @@ export class PaymentMethodOutputMapper {
       ),
       evidencePolicy: item.relation.evidencePolicy,
       enabled: item.relation.enabled,
+      isDefault: item.relation.isDefault,
     };
   }
 }

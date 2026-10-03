@@ -17,6 +17,9 @@ export class CompanyMethodEntity {
   @Column({ type: "boolean", default: true })
   enabled: boolean;
 
+  @Column({ name: "is_default", type: "boolean", default: false })
+  isDefault: boolean;
+
   @Column({ name: "evidence_policy", type: "varchar", length: 20, default: "INHERIT" })
   evidencePolicy: CompanyMethodEvidencePolicy;
 

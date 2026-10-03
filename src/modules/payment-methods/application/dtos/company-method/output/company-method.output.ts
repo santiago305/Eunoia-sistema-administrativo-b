@@ -11,4 +11,5 @@ export interface CompanyMethodOutput {
   requiresVoucher: boolean;
   evidencePolicy: CompanyMethodEvidencePolicy;
   enabled: boolean;
+  isDefault: boolean;
 }

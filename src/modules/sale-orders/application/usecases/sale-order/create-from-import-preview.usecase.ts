@@ -24,6 +24,7 @@ import {
   SaleOrderImportPreviewCleanRow,
   CreateSaleOrdersFromImportPreviewOutput,
 } from 'src/modules/sale-orders/application/dtos/import-preview/create-sale-orders-from-preview.input';
+import { PreferredCompanyPaymentMethodService } from 'src/modules/payment-methods/application/services/preferred-company-payment-method.service';
 import { SaleOrderImportClientResolverService } from 'src/modules/sale-orders/application/services/sale-order-import-client-resolver.service';
 import { SaleOrderImportRowNormalizerService } from 'src/modules/sale-orders/application/services/sale-order-import-row-normalizer.service';
 import { SaleOrderImportSkuResolverService } from 'src/modules/sale-orders/application/services/sale-order-import-sku-resolver.service';
@@ -105,6 +106,7 @@ export class CreateFromImportPreviewUseCase {
     private readonly numbering: SaleOrderNumberingService,
     private readonly assignImportLote: AssignImportLoteUsecase,
     private readonly packMatcher: SaleOrderPackMatcherService,
+    private readonly preferredPaymentMethod: PreferredCompanyPaymentMethodService,
     @Optional()
     private readonly adviserResolver?: SaleOrderImportAdviserResolverService,
     @Optional()
@@ -353,13 +355,15 @@ export class CreateFromImportPreviewUseCase {
     }
 
     if (advance > 0) {
+      const preferredMethod = await this.preferredPaymentMethod.resolve(input.tx);
       await this.salePaymentRepo.bulkCreate(
         [
           {
             saleOrderId,
-            bankAccountId: null,
+            companyPaymentAccountId: null,
+            paymentMethodId: preferredMethod.paymentMethodId,
             date: businessDateAsUtcMidnight(),
-            method: 'import_adelanto' as any,
+            method: preferredMethod.method,
             operationNumber: null,
             amount: advance,
             note: PaymentDescription.ANTICIPO,

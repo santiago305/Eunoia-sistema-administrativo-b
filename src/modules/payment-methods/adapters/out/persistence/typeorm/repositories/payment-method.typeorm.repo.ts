@@ -58,6 +58,7 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
         "cm.id AS relation_id",
         "cm.evidencePolicy AS relation_evidence_policy",
         "cm.enabled AS relation_enabled",
+        "cm.isDefault AS relation_is_default",
         "pm.id AS method_id",
         "pm.name AS method_name",
         "pm.code AS method_code",
@@ -69,12 +70,14 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
         "pm.requiresOperationReference AS method_requires_operation_reference",
         "pm.isSystem AS method_is_system",
       ])
-      .orderBy("pm.name", "ASC")
+      .orderBy("cm.isDefault", "DESC")
+      .addOrderBy("pm.name", "ASC")
       .addOrderBy("cm.id", "ASC")
       .getRawMany<{
         relation_id: string;
         relation_evidence_policy: "INHERIT" | "REQUIRED" | "OPTIONAL";
         relation_enabled: boolean;
+        relation_is_default: boolean;
         method_id: string;
         method_name: string;
         method_code: string;
@@ -101,7 +104,7 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
         requiresOperationReference: row.method_requires_operation_reference,
         isSystem: row.method_is_system,
       }),
-      isDefault: false,
+      isDefault: row.relation_is_default ?? false,
       requiresVoucher: resolveCompanyMethodRequiresVoucher(
         row.method_requires_voucher,
         row.relation_evidence_policy,

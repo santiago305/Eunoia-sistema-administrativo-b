@@ -29,8 +29,14 @@ export interface CompanyMethodRepository {
       methodId?: string;
       evidencePolicy?: CompanyMethodEvidencePolicy;
       enabled?: boolean;
+      isDefault?: boolean;
     },
     tx?: TransactionContext,
   ): Promise<CompanyMethod | null>;
+  clearDefaultByCompany(
+    companyId: string,
+    exceptCompanyMethodId?: string,
+    tx?: TransactionContext,
+  ): Promise<void>;
   delete(companyMethodId: string, tx?: TransactionContext): Promise<boolean>;
 }

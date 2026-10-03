@@ -15,9 +15,20 @@ export class DeleteCompanyMethodUsecase {
 
   async execute(input: GetCompanyMethodByIdInput) {
     return this.uow.runInTransaction(async (tx) => {
-      const existing = await this.companyMethodRepo.findById(input.companyMethodId, tx);
+      const existing = await this.companyMethodRepo.findDetailById(input.companyMethodId, tx);
       if (!existing) {
         throw new NotFoundException(new PaymentMethodRelationNotFoundError().message);
+      }
+
+      if (existing.method.code === "BANK_TRANSFER") {
+        throw new BadRequestException(
+          "Transferencia bancaria es un método obligatorio y no puede desvincularse",
+        );
+      }
+      if (existing.relation.isDefault) {
+        throw new BadRequestException(
+          "Selecciona otro método preferido antes de desvincular el actual",
+        );
       }
 
       try {

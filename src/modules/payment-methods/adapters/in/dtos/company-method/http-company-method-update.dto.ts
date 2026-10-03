@@ -20,4 +20,8 @@ export class HttpCompanyMethodUpdateDto {
   @IsOptional()
   @IsBoolean()
   enabled?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isDefault?: boolean;
 }

@@ -8,6 +8,7 @@ export class CompanyMethod {
     public readonly methodId: string,
     public readonly evidencePolicy: CompanyMethodEvidencePolicy = "INHERIT",
     public readonly enabled: boolean = true,
+    public readonly isDefault: boolean = false,
   ) {}
 
   static create(params: {
@@ -16,6 +17,7 @@ export class CompanyMethod {
     methodId: string;
     evidencePolicy?: CompanyMethodEvidencePolicy;
     enabled?: boolean;
+    isDefault?: boolean;
   }) {
     if (!params.companyId || !params.methodId) {
       throw new InvalidPaymentMethodRelationError("company");
@@ -27,6 +29,7 @@ export class CompanyMethod {
       params.methodId,
       params.evidencePolicy ?? "INHERIT",
       params.enabled ?? true,
+      params.isDefault ?? false,
     );
   }
 }

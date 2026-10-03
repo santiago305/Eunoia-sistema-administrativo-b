@@ -51,6 +51,7 @@ export class PaymentMethodHttpMapper {
     if (dto.requiresVoucher !== undefined) input.requiresVoucher = dto.requiresVoucher;
     if (dto.evidencePolicy !== undefined) input.evidencePolicy = dto.evidencePolicy;
     if (dto.enabled !== undefined) input.enabled = dto.enabled;
+    if (dto.isDefault !== undefined) input.isDefault = dto.isDefault;
 
     return input;
   }

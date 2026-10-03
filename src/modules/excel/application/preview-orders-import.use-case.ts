@@ -70,6 +70,7 @@ import { SaleOrderImportClientResolverService } from "src/modules/sale-orders/ap
 import { SaleOrderImportSkuResolverService } from "src/modules/sale-orders/application/services/sale-order-import-sku-resolver.service";
 import { SaleOrderImportSourceResolverService } from "src/modules/sale-orders/application/services/sale-order-import-source-resolver.service";
 import { businessDateAsUtcMidnight } from "src/shared/utilidades/utils/business-date";
+import { PreferredCompanyPaymentMethodService } from "src/modules/payment-methods/application/services/preferred-company-payment-method.service";
 
 const DEPARTMENT_NAME_ALIASES: Readonly<Record<string, string>> = {
   cuzco: "cusco",
@@ -141,6 +142,7 @@ export class PreviewOrdersImportUseCase {
     private readonly createProductCatalogSku: CreateProductCatalogSku,
     private readonly createSourceUsecase: CreateSourceUsecase,
     private readonly createProductCatalogStockItem: CreateProductCatalogStockItem,
+    private readonly preferredPaymentMethod: PreferredCompanyPaymentMethodService,
   ) {}
 
   async execute(file: Express.Multer.File, userId: string) {
@@ -463,12 +465,14 @@ export class PreviewOrdersImportUseCase {
     });
 
     if (advance > 0) {
+      const preferredMethod = await this.preferredPaymentMethod.resolve(input.tx);
       const paymentsInput = [
         {
           saleOrderId,
-          bankAccountId: null,
+          companyPaymentAccountId: null,
+          paymentMethodId: preferredMethod.paymentMethodId,
           date: businessDateAsUtcMidnight(),
-          method: "import_adelanto" as any,
+          method: preferredMethod.method,
           operationNumber: null,
           amount: advance,
           note: "ADELANTO",

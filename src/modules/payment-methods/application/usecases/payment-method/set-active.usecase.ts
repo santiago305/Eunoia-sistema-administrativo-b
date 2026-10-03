@@ -21,6 +21,12 @@ export class SetPaymentMethodActiveUsecase {
         throw new NotFoundException(new PaymentMethodNotFoundError().message);
       }
 
+      if (current.code === "BANK_TRANSFER" && input.isActive === false) {
+        throw new BadRequestException(
+          "Transferencia bancaria es un método obligatorio y no puede desactivarse",
+        );
+      }
+
       if (!PaymentMethodDomainService.canToggleState(current, input.isActive)) {
         return successResponse("Estado actualizado correctamente", {
           methodId: current.methodId,

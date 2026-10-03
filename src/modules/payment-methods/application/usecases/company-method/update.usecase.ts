@@ -24,7 +24,8 @@ export class UpdateCompanyMethodUsecase {
       const hasRequiresVoucher = Object.prototype.hasOwnProperty.call(input, "requiresVoucher");
       const hasEvidencePolicy = Object.prototype.hasOwnProperty.call(input, "evidencePolicy");
       const hasEnabled = Object.prototype.hasOwnProperty.call(input, "enabled");
-      if (input.methodId === undefined && !hasRequiresVoucher && !hasEvidencePolicy && !hasEnabled) {
+      const hasIsDefault = Object.prototype.hasOwnProperty.call(input, "isDefault");
+      if (input.methodId === undefined && !hasRequiresVoucher && !hasEvidencePolicy && !hasEnabled && !hasIsDefault) {
         throw new BadRequestException("Debe enviar al menos un campo para actualizar");
       }
 
@@ -53,6 +54,39 @@ export class UpdateCompanyMethodUsecase {
         throw new ConflictException("La relacion ya existe");
       }
 
+      if (
+        current.method.code === "BANK_TRANSFER" &&
+        input.methodId !== undefined &&
+        input.methodId !== current.relation.methodId
+      ) {
+        throw new BadRequestException(
+          "Transferencia bancaria es un método obligatorio y no puede reemplazarse",
+        );
+      }
+      if (nextMethod.code === "BANK_TRANSFER" && input.enabled === false) {
+        throw new BadRequestException(
+          "Transferencia bancaria es un método obligatorio y no puede deshabilitarse",
+        );
+      }
+      if (current.relation.isDefault && input.isDefault === false) {
+        throw new BadRequestException(
+          "Selecciona otro método preferido antes de quitar el actual",
+        );
+      }
+      if (input.isDefault === true) {
+        const nextEnabled = input.enabled ?? current.relation.enabled;
+        if (!nextEnabled || !nextMethod.isActive) {
+          throw new BadRequestException(
+            "El método preferido debe estar habilitado y activo",
+          );
+        }
+        await this.companyMethodRepo.clearDefaultByCompany(
+          current.relation.companyId,
+          current.relation.companyMethodId,
+          tx,
+        );
+      }
+
       try {
         const updated = await this.companyMethodRepo.update(
           {
@@ -67,6 +101,7 @@ export class UpdateCompanyMethodUsecase {
                 }
               : {}),
             ...(hasEnabled ? { enabled: input.enabled } : {}),
+            ...(hasIsDefault ? { isDefault: input.isDefault } : {}),
           },
           tx,
         );

@@ -6,10 +6,12 @@ import { PaymentMethodTypeormRepository } from "../adapters/out/persistence/type
 import { paymentMethodUsecasesProviders } from "../application/providers/payment-method-usecases.providers";
 import { COMPANY_METHOD_REPOSITORY } from "../domain/ports/company-method.repository";
 import { PAYMENT_METHOD_REPOSITORY } from "../domain/ports/payment-method.repository";
+import { PreferredCompanyPaymentMethodService } from "../application/services/preferred-company-payment-method.service";
 
 export const paymentMethodsModuleProviders: Provider[] = [
   ...paymentMethodUsecasesProviders,
   { provide: PAYMENT_METHOD_REPOSITORY, useClass: PaymentMethodTypeormRepository },
   { provide: COMPANY_METHOD_REPOSITORY, useClass: CompanyMethodTypeormRepository },
   { provide: UNIT_OF_WORK, useClass: TypeormUnitOfWork },
+  PreferredCompanyPaymentMethodService,
 ];

@@ -36,6 +36,7 @@ export class CompanyMethodTypeormRepository implements CompanyMethodRepository {
       methodId: row.methodId,
       evidencePolicy: row.evidencePolicy,
       enabled: row.enabled,
+      isDefault: row.isDefault,
     });
   }
 
@@ -113,6 +114,7 @@ export class CompanyMethodTypeormRepository implements CompanyMethodRepository {
       methodId: method.methodId,
       evidencePolicy: method.evidencePolicy,
       enabled: method.enabled,
+      isDefault: method.isDefault,
     });
     const saved = await repo.save(row);
     return this.toDomain(saved);
@@ -124,6 +126,7 @@ export class CompanyMethodTypeormRepository implements CompanyMethodRepository {
       methodId?: string;
       evidencePolicy?: CompanyMethod["evidencePolicy"];
       enabled?: boolean;
+      isDefault?: boolean;
     },
     tx?: TransactionContext,
   ): Promise<CompanyMethod | null> {
@@ -133,10 +136,32 @@ export class CompanyMethodTypeormRepository implements CompanyMethodRepository {
     if (params.methodId !== undefined) patch.methodId = params.methodId;
     if (params.evidencePolicy !== undefined) patch.evidencePolicy = params.evidencePolicy;
     if (params.enabled !== undefined) patch.enabled = params.enabled;
+    if (params.isDefault !== undefined) patch.isDefault = params.isDefault;
 
     await repo.update({ id: params.companyMethodId }, patch);
     const updated = await repo.findOne({ where: { id: params.companyMethodId } });
     return updated ? this.toDomain(updated) : null;
+  }
+
+  async clearDefaultByCompany(
+    companyId: string,
+    exceptCompanyMethodId?: string,
+    tx?: TransactionContext,
+  ): Promise<void> {
+    const qb = this.getRepo(tx)
+      .createQueryBuilder()
+      .update(CompanyMethodEntity)
+      .set({ isDefault: false })
+      .where("company_id = :companyId", { companyId })
+      .andWhere("is_default = true");
+
+    if (exceptCompanyMethodId) {
+      qb.andWhere("company_method_id <> :exceptCompanyMethodId", {
+        exceptCompanyMethodId,
+      });
+    }
+
+    await qb.execute();
   }
 
   async delete(companyMethodId: string, tx?: TransactionContext): Promise<boolean> {

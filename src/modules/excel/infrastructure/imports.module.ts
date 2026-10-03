@@ -52,12 +52,14 @@ import { SaleOrderImportClientResolverService } from "src/modules/sale-orders/ap
 import { SaleOrderImportSourceResolverService } from "src/modules/sale-orders/application/services/sale-order-import-source-resolver.service";
 import { SaleOrderImportSkuResolverService } from "src/modules/sale-orders/application/services/sale-order-import-sku-resolver.service";
 import { AccessControlModule } from "src/modules/access-control/infrastructure/access-control.module";
+import { PaymentMethodsModule } from "src/modules/payment-methods/payment-methods.module";
 
 @Module({
   imports: [
     ClientsModule,
     UbigeoModule,
     AccessControlModule,
+    PaymentMethodsModule,
     TypeOrmModule.forFeature([
       ProductCatalogProductEntity,
       ProductCatalogSkuEntity,

@@ -9,6 +9,7 @@ import { PAYMENT_METHOD_REPOSITORY } from "./domain/ports/payment-method.reposit
 import { COMPANY_METHOD_REPOSITORY } from "./domain/ports/company-method.repository";
 import { paymentMethodsModuleProviders } from "./composition/container";
 import { AccessControlModule } from "src/modules/access-control/infrastructure/access-control.module";
+import { PreferredCompanyPaymentMethodService } from "./application/services/preferred-company-payment-method.service";
 
 @Module({
   imports: [
@@ -18,6 +19,10 @@ import { AccessControlModule } from "src/modules/access-control/infrastructure/a
   ],
   controllers: [PaymentMethodsController, CompanyMethodsController],
   providers: [...paymentMethodsModuleProviders],
-  exports: [PAYMENT_METHOD_REPOSITORY, COMPANY_METHOD_REPOSITORY],
+  exports: [
+    PAYMENT_METHOD_REPOSITORY,
+    COMPANY_METHOD_REPOSITORY,
+    PreferredCompanyPaymentMethodService,
+  ],
 })
 export class PaymentMethodsModule {}

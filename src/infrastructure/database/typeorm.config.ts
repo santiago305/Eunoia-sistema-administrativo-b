@@ -152,6 +152,7 @@ import { RetireBankAccountPermissions20260921200000 } from './migrations/2026092
 import { RetireSalePaymentBankAccount20260921210000 } from './migrations/20260921210000-retire-sale-payment-bank-account';
 import { ConsolidateCompanyMethodEvidencePolicy20260922120000 } from './migrations/20260922120000-consolidate-company-method-evidence-policy';
 import { CreateWorkflowActionExecutions20260923090000 } from './migrations/20260923090000-create-workflow-action-executions';
+import { AddPreferredCompanyPaymentMethod20260928120000 } from './migrations/20260928120000-add-preferred-company-payment-method';
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: 'postgres',
@@ -315,6 +316,7 @@ export const databaseMigrations = [
   RetireSalePaymentBankAccount20260921210000,
   ConsolidateCompanyMethodEvidencePolicy20260922120000,
   CreateWorkflowActionExecutions20260923090000,
+  AddPreferredCompanyPaymentMethod20260928120000,
 ];
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({
