@@ -100,6 +100,7 @@ import {
 } from '../dtos/sale-order-adviser-import-alias.dto';
 import { SaleOrderAdviserImportAliasService } from 'src/modules/sale-orders/application/services/sale-order-adviser-import-alias.service';
 import { SaleOrderImportAdviserResolverService } from 'src/modules/sale-orders/application/services/sale-order-import-adviser-resolver.service';
+import { RepairSaleOrderWorkflowUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/repair-workflow.usecase';
 
 @Controller('sale-orders')
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
@@ -144,6 +145,7 @@ export class SaleOrdersController {
     private readonly skuRecognitionCodes: SaleOrderSkuRecognitionCodeService,
     private readonly adviserImportAliases: SaleOrderAdviserImportAliasService,
     private readonly adviserImportResolver: SaleOrderImportAdviserResolverService,
+    private readonly repairSaleOrderWorkflow: RepairSaleOrderWorkflowUsecase,
     @Inject(LISTING_SEARCH_STORAGE)
     private readonly listingSearchStorage: ListingSearchStorageRepository,
   ) {}
@@ -523,6 +525,22 @@ export class SaleOrdersController {
       saleOrderId,
       SaleOrderAutomaticWorkflowTriggerEnum.WORKFLOW_ASSIGNED,
     );
+    return result;
+  }
+
+  @Post(':saleOrderId/repair-workflow')
+  @RequirePermissions('sale_orders.repair_workflow')
+  async repairWorkflow(
+    @Param('saleOrderId', ParseUUIDPipe) saleOrderId: string,
+    @CurrentUser() user: { id: string },
+  ) {
+    const result = await this.repairSaleOrderWorkflow.execute({
+      saleOrderId,
+      executedBy: user.id,
+    });
+    if (result.repaired) {
+      await this.notifySaleOrderUpdated(saleOrderId, 'sale-order-workflow-repair');
+    }
     return result;
   }
 

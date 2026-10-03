@@ -56,6 +56,7 @@ import { SaleOrderPackMatcherService } from 'src/modules/sale-orders/application
 import { SaleOrderSkuRecognitionCodeService } from 'src/modules/sale-orders/application/services/sale-order-sku-recognition-code.service';
 import { SaleOrderAdviserImportAliasService } from 'src/modules/sale-orders/application/services/sale-order-adviser-import-alias.service';
 import { SaleOrderImportAdviserResolverService } from 'src/modules/sale-orders/application/services/sale-order-import-adviser-resolver.service';
+import { RepairSaleOrderWorkflowUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/repair-workflow.usecase';
 
 @Injectable()
 class TestJwtAuthGuard implements CanActivate {
@@ -131,6 +132,7 @@ describe('SaleOrdersController', () => {
     remove: jest.fn(),
   };
   const adviserImportResolver = { resolveMany: jest.fn() };
+  const repairSaleOrderWorkflow = { execute: jest.fn() };
   const exportExcel = {
     getAvailableColumns: jest.fn(),
     execute: jest.fn(),
@@ -155,6 +157,14 @@ describe('SaleOrdersController', () => {
   };
 
   beforeEach(async () => {
+    repairSaleOrderWorkflow.execute.mockResolvedValue({
+      repaired: false,
+      reason: 'already-consistent',
+      saleOrderId: 'x',
+      workflow: { fromId: 'wf-1', toId: 'wf-1', revision: 1 },
+      state: { fromId: 'state-1', fromName: 'Coordinado', toId: 'state-1', toName: 'Coordinado' },
+      stock: { from: 'NONE', to: 'NONE', actions: [] },
+    });
     listSaleOrders.execute.mockResolvedValue({
       items: [],
       total: 0,
@@ -499,6 +509,7 @@ describe('SaleOrdersController', () => {
         { provide: SaleOrderSkuRecognitionCodeService, useValue: skuRecognitionCodes },
         { provide: SaleOrderAdviserImportAliasService, useValue: adviserImportAliases },
         { provide: SaleOrderImportAdviserResolverService, useValue: adviserImportResolver },
+        { provide: RepairSaleOrderWorkflowUsecase, useValue: repairSaleOrderWorkflow },
         { provide: ExportSaleOrdersExcelUsecase, useValue: exportExcel },
         { provide: LISTING_SEARCH_STORAGE, useValue: listingSearchStorage },
         { provide: GetSaleOrderSearchStateUsecase, useValue: getSearchState },
@@ -1634,6 +1645,35 @@ describe('SaleOrdersController', () => {
       workflowId,
       executedBy: 'user-1',
     });
+  });
+
+  it('repairs a sale order workflow and returns the repair report', async () => {
+    const saleOrderId = '11111111-1111-4111-8111-111111111111';
+    repairSaleOrderWorkflow.execute.mockResolvedValueOnce({
+      repaired: true,
+      reason: 'workflow-reconciled',
+      saleOrderId,
+      workflow: { fromId: 'wf-1', toId: 'wf-1', revision: 2 },
+      state: { fromId: 'programmed', fromName: 'Programado', toId: 'coordinated', toName: 'Coordinado' },
+      stock: { from: 'CONSUMED', to: 'NONE', actions: ['RESTORE_STOCK'] },
+    });
+
+    const response = await request(app.getHttpServer())
+      .post(`/sale-orders/${saleOrderId}/repair-workflow`)
+      .expect(201);
+
+    expect(repairSaleOrderWorkflow.execute).toHaveBeenCalledWith({
+      saleOrderId,
+      executedBy: 'user-1',
+    });
+    expect(response.body.repaired).toBe(true);
+    expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
+      'sale-orders.updated',
+      expect.objectContaining({
+        saleOrderIds: [saleOrderId],
+        source: 'sale-order-workflow-repair',
+      }),
+    );
   });
 
   it('returns evaluated available transitions', async () => {

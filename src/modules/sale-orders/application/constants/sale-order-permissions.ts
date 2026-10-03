@@ -386,6 +386,15 @@ export const SALE_ORDER_PERMISSIONS: ReadonlyArray<
     action: 'manage',
     type: 'action',
   },
+  {
+    code: 'sale_orders.repair_workflow',
+    name: 'Reparar flujo de pedido',
+    description: 'Recalcular el flujo vigente y reconciliar estado e inventario de un pedido',
+    module: 'sale_orders',
+    resource: 'sale_orders',
+    action: 'repair_workflow',
+    type: 'action',
+  },
 ];
 
 export const SALE_ORDER_PERMISSION_CODES: ReadonlyArray<string> =

@@ -391,6 +391,158 @@ export class WorkflowRevisionLifecycleService {
     });
   }
 
+  /**
+   * Re-evaluates one order against the currently published revision of its
+   * workflow family and reconciles state, markers, warehouse and inventory in
+   * one transaction. This is intentionally idempotent: a consistent order is
+   * returned without creating inventory movements or history rows.
+   */
+  async repairSaleOrder(input: { saleOrderId: string; executedBy: string }) {
+    return this.uow.runInTransaction(async (tx) => {
+      const manager = this.getManager(tx);
+      let order = await this.saleOrderRepo.findByIdForUpdate(input.saleOrderId, tx);
+      if (!order || order.isActive === false) {
+        throw new NotFoundException('Pedido no encontrado');
+      }
+      if (!order.workflowId || !order.currentStateId) {
+        throw new BadRequestException('El pedido no tiene flujo y estado asignados');
+      }
+
+      const assignedWorkflow = await this.workflowRepo.findDetailedById(order.workflowId, tx);
+      if (!assignedWorkflow) throw new NotFoundException('Flujo del pedido no encontrado');
+      const currentState = assignedWorkflow.states.find((state) => state.id === order.currentStateId);
+      if (!currentState) throw new BadRequestException('Estado actual del pedido invalido');
+      if (currentState.isFinal) {
+        throw new BadRequestException('No se puede reparar un pedido finalizado');
+      }
+
+      const family = (await this.workflowRepo.listByFamilyId?.(assignedWorkflow.workflow.familyId, tx)) ?? [];
+      const currentWorkflow = family
+        .filter(
+          (workflow) =>
+            workflow.isCurrent &&
+            workflow.isActive &&
+            workflow.lifecycleStatus === WORKFLOW_LIFECYCLE.PUBLISHED,
+        )
+        .sort((left, right) => right.revision - left.revision)[0] ??
+        (assignedWorkflow.workflow.isCurrent &&
+        assignedWorkflow.workflow.isActive &&
+        assignedWorkflow.workflow.lifecycleStatus === WORKFLOW_LIFECYCLE.PUBLISHED
+          ? assignedWorkflow.workflow
+          : null);
+      if (!currentWorkflow) {
+        throw new BadRequestException('No existe una revision publicada vigente para el flujo del pedido');
+      }
+      const targetWorkflow =
+        currentWorkflow.id === assignedWorkflow.workflow.id
+          ? assignedWorkflow
+          : await this.workflowRepo.findDetailedById(currentWorkflow.id, tx);
+      if (!targetWorkflow) throw new NotFoundException('Revision vigente del flujo no encontrada');
+
+      const analysis = await this.analyzeTarget(order, targetWorkflow, tx);
+      const policy = await this.editPolicy.resolve(order, tx);
+      const desiredStockStatus = analysis.desiredStockStatus;
+      const currentStockStatus = this.normalizeStockStatus(policy.stockStatus);
+      const workflowChanged = order.workflowId !== targetWorkflow.workflow.id;
+      const stateChanged = order.currentStateId !== analysis.targetState.id;
+      const warehouseChanged = (order.warehouseId ?? null) !== (analysis.warehouseId ?? null);
+      const markersChanged =
+        order.invoiceSend !== analysis.tracking.invoiceSend ||
+        order.prepared !== analysis.tracking.prepared ||
+        order.preguide !== analysis.tracking.preguide ||
+        order.reserveBool !== (desiredStockStatus === 'RESERVED');
+      const stockChanged = currentStockStatus !== desiredStockStatus;
+      const changed = workflowChanged || stateChanged || warehouseChanged || markersChanged || stockChanged;
+
+      if (!changed) {
+        return {
+          repaired: false,
+          reason: 'already-consistent',
+          saleOrderId: order.id,
+          workflow: { fromId: order.workflowId, toId: targetWorkflow.workflow.id, revision: targetWorkflow.workflow.revision },
+          state: { fromId: currentState.id, fromName: currentState.name, toId: analysis.targetState.id, toName: analysis.targetState.name },
+          stock: { from: currentStockStatus, to: desiredStockStatus, actions: [] },
+        };
+      }
+
+      const stockActions = this.planMigrationStockActions(
+        policy.stockStatus,
+        desiredStockStatus,
+        order.warehouseId,
+        analysis.warehouseId,
+      );
+      if (warehouseChanged) {
+        await this.reconcileStock(order, policy.stockStatus, 'NONE', input.executedBy, tx);
+        await manager.getRepository(SaleOrderEntity).update(
+          { id: order.id },
+          { warehouseId: analysis.warehouseId },
+        );
+        order = (await this.saleOrderRepo.findByIdForUpdate(order.id, tx)) as SaleOrder;
+        await this.reconcileStock(order, 'NONE', desiredStockStatus, input.executedBy, tx);
+      } else {
+        await this.reconcileStock(order, policy.stockStatus, desiredStockStatus, input.executedBy, tx);
+      }
+
+      await manager.getRepository(SaleOrderEntity).update(
+        { id: order.id },
+        {
+          workflowId: targetWorkflow.workflow.id,
+          currentStateId: analysis.targetState.id,
+          warehouseId: analysis.warehouseId,
+          invoiceSend: analysis.tracking.invoiceSend,
+          prepared: analysis.tracking.prepared,
+          preguide: analysis.tracking.preguide,
+          reserveBool: desiredStockStatus === 'RESERVED',
+        },
+      );
+      await this.appendHistory(
+        {
+          saleOrderId: order.id,
+          workflowId: targetWorkflow.workflow.id,
+          fromStateId: currentState.id,
+          toStateId: analysis.targetState.id,
+          executedBy: input.executedBy,
+          metadata: {
+            source: 'sale-order-workflow-repair',
+            fromWorkflowId: assignedWorkflow.workflow.id,
+            toWorkflowId: targetWorkflow.workflow.id,
+            fromRevision: assignedWorkflow.workflow.revision,
+            toRevision: targetWorkflow.workflow.revision,
+            transitionIds: analysis.transitionIds,
+            transitionNames: analysis.transitionNames,
+            stockStatus: desiredStockStatus,
+            previousStockStatus: currentStockStatus,
+            stockActions,
+            previousStateId: currentState.id,
+            stateId: analysis.targetState.id,
+          },
+        },
+        tx,
+      );
+
+      return {
+        repaired: true,
+        reason: 'workflow-reconciled',
+        saleOrderId: order.id,
+        workflow: {
+          fromId: assignedWorkflow.workflow.id,
+          toId: targetWorkflow.workflow.id,
+          fromRevision: assignedWorkflow.workflow.revision,
+          revision: targetWorkflow.workflow.revision,
+        },
+        state: { fromId: currentState.id, fromName: currentState.name, toId: analysis.targetState.id, toName: analysis.targetState.name },
+        stock: { from: currentStockStatus, to: desiredStockStatus, actions: stockActions },
+        changes: {
+          workflow: workflowChanged,
+          state: stateChanged,
+          warehouse: warehouseChanged,
+          markers: markersChanged,
+          stock: stockChanged,
+        },
+      };
+    });
+  }
+
   private async revertTestInTransaction(
     input: { draftWorkflowId: string; sessionId: string; executedBy: string },
     tx: TransactionContext,

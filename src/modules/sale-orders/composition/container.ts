@@ -96,6 +96,7 @@ import { SaleOrderPackMatcherService } from '../application/services/sale-order-
 import { SALE_ORDER_RESERVATION_TOTALS_QUERY } from '../application/ports/sale-order-reservation-totals.query';
 import { SaleOrderReservationTotalsTypeormQuery } from '../adapters/out/persistence/typeorm/repositories/sale-order-reservation-totals.typeorm.query';
 import { SaleOrderReservationReconciliationService } from '../application/services/sale-order-reservation-reconciliation.service';
+import { RepairSaleOrderWorkflowUsecase } from '../application/usecases/sale-order/repair-workflow.usecase';
 
 export const saleOrdersModuleProviders = [
   { provide: SALE_ORDER_REPOSITORY, useClass: SaleOrderTypeormRepository },
@@ -171,6 +172,7 @@ export const saleOrdersModuleProviders = [
   SaleOrderPaymentWorkflowReconciliationService,
   SaleOrderStockCorrectionService,
   SaleOrderReservationReconciliationService,
+  RepairSaleOrderWorkflowUsecase,
   SaleOrderImportClientResolverService,
   SaleOrderImportRowNormalizerService,
   SaleOrderImportSkuResolverService,

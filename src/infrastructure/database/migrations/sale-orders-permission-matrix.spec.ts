@@ -44,6 +44,7 @@ const EXPECTED_SALE_ORDER_PERMISSION_CODES = [
   'sale_orders.pdf.view',
   'sale_orders.workflows.view',
   'sale_orders.workflows.manage',
+  'sale_orders.repair_workflow',
 ] as const;
 
 describe('AddSaleOrdersPermissionMatrix20260731130000', () => {
