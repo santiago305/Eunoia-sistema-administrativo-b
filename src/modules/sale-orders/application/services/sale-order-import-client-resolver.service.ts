@@ -17,12 +17,20 @@ export class SaleOrderImportClientResolverService {
   ) {}
 
   async resolveOrCreate(row: NormalizedSaleOrderImportPreviewRow, tx: TransactionContext): Promise<string> {
+    const reference = row.parsedDocument?.reference?.trim() || undefined;
+
     if (row.clientResolution.clientId) {
-      if (row.clientType !== ClientType.UNDEFINED) {
-        await this.clientRepo.update(
-          { clientId: row.clientResolution.clientId, type: row.clientType },
-          tx,
-        );
+      const changes: {
+        clientId: string;
+        type?: ClientType;
+        reference?: string;
+      } = { clientId: row.clientResolution.clientId };
+
+      if (row.clientType !== ClientType.UNDEFINED) changes.type = row.clientType;
+      if (reference) changes.reference = reference;
+
+      if (changes.type !== undefined || changes.reference !== undefined) {
+        await this.clientRepo.update(changes, tx);
       }
       return row.clientResolution.clientId;
     }
@@ -34,7 +42,7 @@ export class SaleOrderImportClientResolverService {
         fullName: row.recipientName,
         docType: row.parsedDocument.docType,
         docNumber: row.parsedDocument.docNumber,
-        reference: undefined,
+        reference,
         address: row.address ?? undefined,
         departmentId: row.ubigeo.departmentId,
         provinceId: row.ubigeo.provinceId,

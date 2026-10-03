@@ -45,7 +45,7 @@ describe("SaleOrderImportClientResolverService", () => {
     expect(clientRepo.update).not.toHaveBeenCalled();
   });
 
-  it("does not save a delivery note as client reference when client has no DNI", async () => {
+  it("saves a delivery note reference when creating a client without DNI", async () => {
     const createClientUsecase = {
       executeInTransaction: jest.fn().mockResolvedValue("client-1"),
     };
@@ -74,7 +74,7 @@ describe("SaleOrderImportClientResolverService", () => {
       expect.objectContaining({
         docType: ClientDocType.NONE,
         docNumber: "",
-        reference: undefined,
+        reference: "-12.067073487054728, -76.95337387116433",
       }),
       tx,
     );
@@ -109,5 +109,52 @@ describe("SaleOrderImportClientResolverService", () => {
       }),
       expect.anything(),
     );
+  });
+
+  it("updates the reference of an existing client when import provides one", async () => {
+    const createClientUsecase = { executeInTransaction: jest.fn() };
+    const clientRepo = { update: jest.fn().mockResolvedValue({}) };
+    const service = new SaleOrderImportClientResolverService(createClientUsecase as any, clientRepo as any);
+
+    await expect(
+      service.resolveOrCreate(
+        {
+          clientResolution: { clientId: "client-1", matchedBy: "PHONE" },
+          clientType: ClientType.UNDEFINED,
+          parsedDocument: {
+            docType: ClientDocType.NONE,
+            docNumber: "",
+            reference: "PIURA OPEN",
+          },
+        } as any,
+        {} as any,
+      ),
+    ).resolves.toBe("client-1");
+
+    expect(clientRepo.update).toHaveBeenCalledWith(
+      { clientId: "client-1", reference: "PIURA OPEN" },
+      expect.anything(),
+    );
+  });
+
+  it("keeps the existing reference when the import has no reference", async () => {
+    const createClientUsecase = { executeInTransaction: jest.fn() };
+    const clientRepo = { update: jest.fn().mockResolvedValue({}) };
+    const service = new SaleOrderImportClientResolverService(createClientUsecase as any, clientRepo as any);
+
+    await service.resolveOrCreate(
+      {
+        clientResolution: { clientId: "client-1", matchedBy: "DNI" },
+        clientType: ClientType.UNDEFINED,
+        parsedDocument: {
+          docType: ClientDocType.DNI,
+          docNumber: "47159287",
+          reference: null,
+        },
+      } as any,
+      {} as any,
+    );
+
+    expect(clientRepo.update).not.toHaveBeenCalled();
   });
 });

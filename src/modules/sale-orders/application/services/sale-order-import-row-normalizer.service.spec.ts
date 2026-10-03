@@ -111,6 +111,55 @@ describe("SaleOrderImportRowNormalizerService", () => {
     }
   });
 
+  it("keeps the reference text after a DNI in the delivery note", async () => {
+    const ubigeoRepo = {
+      listDepartments: jest.fn().mockResolvedValue([{ id: "15", name: "LIMA" }]),
+      listProvincesByDepartmentIds: jest.fn().mockResolvedValue([{ id: "1501", name: "LIMA" }]),
+      listDistrictsByProvinceIds: jest.fn().mockResolvedValue([{ id: "150114", name: "LA MOLINA" }]),
+    };
+    const clientRepo = { findByDocument: jest.fn(), findByReference: jest.fn() };
+    const telephoneRepo = { findByNumber: jest.fn().mockResolvedValue(null) };
+
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        SaleOrderImportRowNormalizerService,
+        { provide: UBIGEO_REPOSITORY, useValue: ubigeoRepo },
+        { provide: CLIENT_REPOSITORY, useValue: clientRepo },
+        { provide: TELEPHONE_REPOSITORY, useValue: telephoneRepo },
+        { provide: SaleOrderSkuRecognitionCodeService, useValue: skuRecognitionCodes },
+        { provide: SourceRecognitionCodeService, useValue: sourceRecognitionCodes },
+      ],
+    }).compile();
+
+    try {
+      const svc = moduleRef.get(SaleOrderImportRowNormalizerService);
+      const result = await svc.normalize(
+        {
+          recipientName: "Cliente con coordenadas",
+          phone: "999999999",
+          departmentName: "LIMA",
+          provinceName: "LIMA",
+          districtName: "LA MOLINA",
+          deliveryNote: "DNI 47159287 -12.171537, -76.997695",
+          productCodes: "AMPOLLA - ROJO - EVA001",
+          total: 120,
+        } as any,
+        12,
+      );
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.row.parsedDocument).toEqual({
+          docType: "DNI",
+          docNumber: "47159287",
+          reference: "-12.171537, -76.997695",
+        });
+      }
+    } finally {
+      await moduleRef.close();
+    }
+  });
+
   it.each([
     "Prov. Const. del Callao",
     "Prov Const del Callao",

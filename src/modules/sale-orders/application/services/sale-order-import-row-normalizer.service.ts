@@ -342,7 +342,21 @@ export class SaleOrderImportRowNormalizerService {
     const dniMatch = text.match(/DNI\s*[:\-]?\s*(\d{8})/i);
 
     if (dniMatch?.[1]) {
-      return { docType: ClientDocType.DNI, docNumber: dniMatch[1], reference: null };
+      // A delivery note may contain both the DNI and an additional reference
+      // (for example, coordinates). Keep the DNI for identity and preserve
+      // everything else as the client's reference.
+      const reference = text
+        .replace(dniMatch[0], "")
+        .replace(/^[\s,;:|/]+/, "")
+        .replace(/[\s,;:|/]+$/, "")
+        .replace(/\s+/g, " ")
+        .trim();
+
+      return {
+        docType: ClientDocType.DNI,
+        docNumber: dniMatch[1],
+        reference: reference || null,
+      };
     }
 
     return { docType: ClientDocType.NONE, docNumber: "", reference: text || null };
