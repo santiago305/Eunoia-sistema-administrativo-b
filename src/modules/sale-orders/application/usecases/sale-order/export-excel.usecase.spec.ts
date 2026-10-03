@@ -206,6 +206,31 @@ describe("ExportSaleOrdersExcelUsecase", () => {
     expect(worksheet?.getCell("A2").value).toBe("Puerta azul, segundo piso");
   });
 
+  it("keeps agency addresses with numbers as text", async () => {
+    saleOrderRepo.list.mockResolvedValueOnce({
+      total: 1,
+      items: [
+        {
+          id: "order-1",
+          agencyDetail: "santa rosa 1051",
+        },
+      ],
+    });
+    const usecase = createUsecase();
+
+    const result = await usecase.execute({
+      columns: [{ key: "agencyDetail", label: "Agencia/Direccion" }],
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(result.content);
+    const worksheet = workbook.getWorksheet("Pedidos");
+    const cell = worksheet?.getCell("A2");
+
+    expect(cell?.value).toBe("santa rosa 1051");
+    expect(cell?.numFmt).toBe("@");
+  });
+
   it("exports lote column", async () => {
     saleOrderRepo.list.mockResolvedValueOnce({
       total: 1,

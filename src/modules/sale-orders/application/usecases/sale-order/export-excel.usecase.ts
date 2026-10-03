@@ -34,6 +34,34 @@ const TOOLBAR_DATE_FIELDS = new Set<string>([
   SaleOrderSearchFields.DELIVERY_DATE,
 ]);
 
+// These values are business text even when they contain numbers, hyphens or
+// words such as "Santa". They must never be passed through JavaScript's
+// permissive Date parser during Excel generation.
+const SALE_ORDER_TEXT_COLUMNS = new Set<string>([
+  "number",
+  "SKUS",
+  "detail",
+  "clientName",
+  "clientDocumentNumber",
+  "clientReference",
+  "clientPhone",
+  "clientDepartment",
+  "clientProvince",
+  "clientDistrict",
+  "agencyDetail",
+  "warehouseName",
+  "sourceName",
+  "workflowName",
+  "currentStateName",
+  "paymentStatus",
+  "invoiceStatus",
+  "assignedByName",
+  "createdByName",
+  "advertisingCode",
+  "note",
+  "observation",
+]);
+
 const orderNumber = (row: SaleOrderListItemOutput) =>
   [row.serie, row.correlative].filter((value) => value !== null && value !== undefined && value !== "").join("-");
 
@@ -183,7 +211,7 @@ export class ExportSaleOrdersExcelUsecase {
     const excelColumns: XlsxColumn[] = authorizedSelected.map(({ requested }) => ({
       key: requested.key,
       header: requested.label,
-      format: requested.key === "number" ? "text" : undefined,
+      format: SALE_ORDER_TEXT_COLUMNS.has(requested.key) ? "text" : undefined,
     }));
     const builder = new XlsxBuilderService();
     const content = await builder.build({
