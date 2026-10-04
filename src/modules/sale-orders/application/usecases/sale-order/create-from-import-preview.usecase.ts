@@ -60,6 +60,7 @@ type ResolvedImportSku = {
   skuId: string;
   skuName: string;
   customSku: string;
+  price: number;
   quantity: number;
 };
 
@@ -118,6 +119,7 @@ export class CreateFromImportPreviewUseCase {
     userId: string;
   }): Promise<CreateSaleOrdersFromImportPreviewOutput> {
     const errors: Array<{ rowNumber: number; message: string }> = [];
+    const warnings: Array<{ rowNumber: number; message: string }> = [];
     const createdRows: CreateSaleOrdersFromImportPreviewOutput['rows'] = [];
 
     const unknownProductErrors: Array<{ rowNumber: number; message: string }> =
@@ -184,7 +186,7 @@ export class CreateFromImportPreviewUseCase {
             tx,
           );
 
-          const saleOrderId = await this.createSaleOrderFromImportRow({
+          const saleOrder = await this.createSaleOrderFromImportRow({
             row: normalized.row,
             destination,
             clientId,
@@ -194,7 +196,7 @@ export class CreateFromImportPreviewUseCase {
             tx,
           });
 
-          return { clientId, sourceId, saleOrderId, skus };
+          return { clientId, sourceId, ...saleOrder, skus };
         });
 
         createdRows.push({
@@ -204,6 +206,9 @@ export class CreateFromImportPreviewUseCase {
           saleOrderId: result.saleOrderId,
           skus: result.skus,
         });
+        if (result.pricingWarning) {
+          warnings.push({ rowNumber, message: result.pricingWarning });
+        }
       } catch (error) {
         errors.push({
           rowNumber,
@@ -226,6 +231,7 @@ export class CreateFromImportPreviewUseCase {
       lote,
       rows: createdRows,
       errors,
+      warnings,
     };
   }
 
@@ -250,13 +256,40 @@ export class CreateFromImportPreviewUseCase {
     userId: string;
     skus: ResolvedImportSku[];
     tx: TransactionContext;
-  }): Promise<string> {
+  }): Promise<{ saleOrderId: string; pricingWarning: string | null }> {
     const warehouseId = null;
 
     const total = this.roundMoney(Number(input.row.total ?? 0));
     const advance = Number(input.row.advance ?? 0);
     const deliveryCost = this.roundMoney(Number(input.row.deliveryCost ?? 0));
-    const subTotal = this.roundMoney(Math.max(total - deliveryCost, 0));
+    const importedSubTotal = this.roundMoney(Math.max(total - deliveryCost, 0));
+
+    const itemDescription = input.row.productName?.trim() || 'Sin nombre';
+    const referenceItemPlans = await this.buildImportedItemPlans({
+      description: itemDescription,
+      subTotal: importedSubTotal,
+      skus: input.skus,
+      tx: input.tx,
+    });
+    const itemPlans = this.reconcileImportedPricing(
+      referenceItemPlans,
+      importedSubTotal,
+    );
+    const subTotal = this.roundMoney(
+      itemPlans.reduce((sum, item) => sum + item.total, 0),
+    );
+    const discount = this.roundMoney(
+      Math.max(subTotal + deliveryCost - total, 0),
+    );
+    const pricingWarning = this.buildPricingWarning({
+      description: itemDescription,
+      importedTotal: total,
+      referenceSubTotal: this.roundMoney(
+        referenceItemPlans.reduce((sum, item) => sum + item.total, 0),
+      ),
+      discount,
+      deliveryCost,
+    });
 
     const { serie, correlative } = await this.numbering.reserveNext(input.tx);
     const deliveryDate = input.row.deliveryDate;
@@ -294,6 +327,7 @@ export class CreateFromImportPreviewUseCase {
         deliveryDate: deliveryDate,
         subTotal,
         deliveryCost,
+        discount,
         total,
         note: input.row.internalNote ?? null,
         advertisingCode: input.row.advertisingCode,
@@ -312,14 +346,6 @@ export class CreateFromImportPreviewUseCase {
     const saleOrderId = this.getEntityId(
       (saleOrder as any).saleOrderId ?? (saleOrder as any).id,
     );
-
-    const itemDescription = input.row.productName?.trim() || 'Sin nombre';
-    const itemPlans = await this.buildImportedItemPlans({
-      description: itemDescription,
-      subTotal,
-      skus: input.skus,
-      tx: input.tx,
-    });
 
     const items = await this.saleOrderItemRepo.bulkCreate(
       itemPlans.map((itemPlan) => ({
@@ -373,7 +399,7 @@ export class CreateFromImportPreviewUseCase {
       );
     }
 
-    return saleOrderId;
+    return { saleOrderId, pricingWarning };
   }
 
   private async buildImportedItemPlans(input: {
@@ -392,7 +418,12 @@ export class CreateFromImportPreviewUseCase {
 
     if (skus.length === 1) {
       const sku = skus[0];
-      const total = this.roundMoney(input.subTotal);
+      const referenceTotal = this.roundMoney(
+        Number(sku.price) > 0
+          ? Number(sku.price) * sku.quantity
+          : input.subTotal,
+      );
+      const total = referenceTotal;
       const unitPrice = this.divideMoney(total, sku.quantity);
 
       return [{
@@ -421,34 +452,22 @@ export class CreateFromImportPreviewUseCase {
       input.tx,
     );
 
-    if (match.status !== 'UNIQUE' || match.leftovers.length === 0) {
+    if (match.status !== 'UNIQUE') {
       return [this.buildGroupedItemPlan({
         description: input.description,
         subTotal: input.subTotal,
         skus,
-        match:
-          match.status === 'UNIQUE'
-            ? {
-                status: 'UNIQUE',
-                composition: match.composition,
-                pack: match.pack,
-                matches: match.matches,
-              }
-            : match,
+        match,
       })];
     }
 
     return this.buildPartialPackItemPlans({
-      description: input.description,
-      subTotal: input.subTotal,
       skus,
       match,
     });
   }
 
   private buildPartialPackItemPlans(input: {
-    description: string;
-    subTotal: number;
     skus: ResolvedImportSku[];
     match: Extract<
       Awaited<ReturnType<SaleOrderPackMatcherService['decompose']>>,
@@ -458,14 +477,9 @@ export class CreateFromImportPreviewUseCase {
     const packTotal = this.roundMoney(
       Number(input.match.pack.pack.total ?? 0) * input.match.packQuantity,
     );
-    if (packTotal > this.roundMoney(input.subTotal)) {
-      throw new BadRequestException(
-        `El precio del pack ${input.match.pack.pack.description} supera el subtotal importado`,
-      );
-    }
 
     const packComponentWeights = input.match.pack.items.map((item) =>
-      Number(item.lineTotal ?? 0) * input.match.packQuantity,
+      this.getPackItemReferenceTotal(item, input.match),
     );
     const packComponentTotals = this.allocateMoney(
       packTotal,
@@ -478,9 +492,7 @@ export class CreateFromImportPreviewUseCase {
       unitPrice: this.divideMoney(packTotal, input.match.packQuantity),
       total: packTotal,
       components: input.match.pack.items.map((item, index) => {
-        const quantity = this.roundQuantity(
-          Number(item.quantity) * input.match.packQuantity,
-        );
+        const quantity = this.getPackItemQuantity(item, input.match);
         const total = packComponentTotals[index] ?? 0;
         return {
           skuId: item.skuId,
@@ -492,27 +504,32 @@ export class CreateFromImportPreviewUseCase {
       }),
     };
 
-    const remainingTotal = this.roundMoney(input.subTotal - packTotal);
     const packItemBySkuId = new Map(
       input.match.pack.items.map((item) => [item.skuId, item]),
     );
+    const skuById = new Map(input.skus.map((sku) => [sku.skuId, sku]));
     const leftoverWeights = input.match.leftovers.map((leftover) => {
-      const unitWeight = Number(
+      const skuPrice = Number(skuById.get(leftover.skuId)?.price ?? 0);
+      const packItemPrice = Number(
         packItemBySkuId.get(leftover.skuId)?.price ?? 0,
       );
-      return unitWeight > 0
-        ? unitWeight * leftover.quantity
-        : leftover.quantity;
+      const unitWeight = skuPrice > 0 ? skuPrice : packItemPrice;
+      return unitWeight > 0 ? unitWeight * leftover.quantity : leftover.quantity;
     });
-    const leftoverTotals = this.allocateMoney(remainingTotal, leftoverWeights);
-    const skuById = new Map(input.skus.map((sku) => [sku.skuId, sku]));
+    const leftoverReferenceTotal = this.roundMoney(
+      leftoverWeights.reduce((sum, weight) => sum + weight, 0),
+    );
+    const leftoverTotals = this.allocateMoney(
+      leftoverReferenceTotal,
+      leftoverWeights,
+    );
 
     return [
       packPlan,
       ...input.match.leftovers.map((leftover, index) => {
         const total = leftoverTotals[index] ?? 0;
         const sku = skuById.get(leftover.skuId);
-        const description = sku?.skuName?.trim() || input.description;
+        const description = sku?.skuName?.trim() || 'Producto importado';
         return {
           referencePackId: null,
           description,
@@ -570,6 +587,114 @@ export class CreateFromImportPreviewUseCase {
         };
       }),
     };
+  }
+
+  private reconcileImportedPricing(
+    plans: ImportedItemPlan[],
+    importedSubTotal: number,
+  ): ImportedItemPlan[] {
+    const referenceSubTotal = this.roundMoney(
+      plans.reduce((sum, item) => sum + Number(item.total ?? 0), 0),
+    );
+    const targetSubTotal = this.roundMoney(importedSubTotal);
+
+    if (referenceSubTotal >= targetSubTotal || plans.length === 0) {
+      return plans;
+    }
+
+    const itemWeights = plans.map((item) =>
+      Number(item.total) > 0 ? Number(item.total) : Number(item.quantity),
+    );
+    const itemTotals = this.allocateMoney(targetSubTotal, itemWeights);
+
+    return plans.map((item, index) => {
+      const itemTotal = itemTotals[index] ?? 0;
+      const componentWeights = item.components.map((component) =>
+        Number(component.total) > 0
+          ? Number(component.total)
+          : Number(component.quantity),
+      );
+      const componentTotals = this.allocateMoney(
+        itemTotal,
+        componentWeights,
+      );
+
+      return {
+        ...item,
+        unitPrice: this.divideMoney(itemTotal, item.quantity),
+        total: itemTotal,
+        components: item.components.map((component, componentIndex) => {
+          const total = componentTotals[componentIndex] ?? 0;
+          return {
+            ...component,
+            unitPrice: this.divideMoney(total, component.quantity),
+            total,
+          };
+        }),
+      };
+    });
+  }
+
+  private buildPricingWarning(input: {
+    description: string;
+    importedTotal: number;
+    referenceSubTotal: number;
+    discount: number;
+    deliveryCost: number;
+  }): string | null {
+    const importedSubTotal = this.roundMoney(
+      Math.max(input.importedTotal - input.deliveryCost, 0),
+    );
+    const referenceSubTotal = this.roundMoney(input.referenceSubTotal);
+
+    if (input.discount > 0) {
+      return `Se reconocio ${input.description} y se aplico un descuento comercial de S/ ${input.discount.toFixed(2)} para respetar el importe importado de S/ ${input.importedTotal.toFixed(2)}.`;
+    }
+
+    if (importedSubTotal > referenceSubTotal) {
+      return `El importe importado de S/ ${input.importedTotal.toFixed(2)} supera el precio de referencia; se ajustaron los precios de venta de ${input.description}.`;
+    }
+
+    return null;
+  }
+
+  private getPackItemQuantity(
+    item: { skuId: string; quantity?: number },
+    match: Extract<
+      Awaited<ReturnType<SaleOrderPackMatcherService['decompose']>>,
+      { status: 'UNIQUE' }
+    >,
+  ): number {
+    const quantity = Number(item.quantity ?? 0) * Number(match.packQuantity);
+    if (quantity > 0) return this.roundQuantity(quantity);
+
+    const compositionQuantity = Number(
+      match.composition.find((component) => component.skuId === item.skuId)
+        ?.quantity ?? 0,
+    );
+    return this.roundQuantity(compositionQuantity);
+  }
+
+  private getPackItemReferenceTotal(
+    item: {
+      skuId: string;
+      quantity?: number;
+      price?: number;
+      lineTotal?: number;
+    },
+    match: Extract<
+      Awaited<ReturnType<SaleOrderPackMatcherService['decompose']>>,
+      { status: 'UNIQUE' }
+    >,
+  ): number {
+    const lineTotal = Number(item.lineTotal ?? 0) * Number(match.packQuantity);
+    if (lineTotal > 0) return this.roundMoney(lineTotal);
+
+    const quantity = this.getPackItemQuantity(item, match);
+    const price = Number(item.price ?? 0);
+    if (price > 0) return this.roundMoney(price * quantity);
+
+    return quantity;
   }
 
   private aggregateImportedSkus(

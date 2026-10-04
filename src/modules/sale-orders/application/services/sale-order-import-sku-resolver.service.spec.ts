@@ -30,10 +30,10 @@ describe("SaleOrderImportSkuResolverService", () => {
   };
 
   it("uses an existing custom SKU even when the imported product name differs", async () => {
-    const { service } = buildService({ sku: { id: "sku-1", productId: "product-1" } });
+    const { service } = buildService({ sku: { id: "sku-1", productId: "product-1", price: 19.9 } });
 
     await expect(service.resolveOrCreateSkus([product])).resolves.toEqual([
-      expect.objectContaining({ productId: "product-1", skuId: "sku-1", customSku: "EVA001" }),
+      expect.objectContaining({ productId: "product-1", skuId: "sku-1", customSku: "EVA001", price: 19.9 }),
     ]);
   });
 

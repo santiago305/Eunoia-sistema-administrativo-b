@@ -535,6 +535,118 @@ describe('CreateFromImportPreviewUseCase', () => {
       ],
       f.tx,
     );
+    expect(f.saleOrderRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subTotal: 100,
+        discount: 0,
+        total: 100,
+      }),
+      f.tx,
+    );
+  });
+
+  it('keeps a contained pack and applies an order discount when the imported price is lower', async () => {
+    const skus = [
+      {
+        productId: 'p-soap',
+        skuId: 'sku-soap',
+        skuName: 'Jabon de azufre',
+        customSku: 'EVA01893',
+        price: 25,
+        quantity: 1,
+      },
+      {
+        productId: 'p-ampoule',
+        skuId: 'sku-ampoule',
+        skuName: 'Ampolla anti acne',
+        customSku: 'EVA01863',
+        price: 109.9,
+        quantity: 1,
+      },
+      {
+        productId: 'p-mask',
+        skuId: 'sku-mask',
+        skuName: 'Mascarilla arcilla rosada',
+        customSku: 'EVA01895',
+        price: 30,
+        quantity: 1,
+      },
+    ];
+    const matchedPack = {
+      pack: {
+        packId: { value: 'pack-duo-purificante' },
+        description: 'Pack Dúo Purificante',
+        total: 134.9,
+        isActive: true,
+      },
+      items: [
+        { id: 'pack-item-soap', skuId: 'sku-soap', quantity: 1, price: 25, lineTotal: 25 },
+        { id: 'pack-item-ampoule', skuId: 'sku-ampoule', quantity: 1, price: 109.9, lineTotal: 109.9 },
+      ],
+    };
+    const f = makeImportUsecase({
+      skuResolver: { resolveOrCreateSkus: jest.fn().mockResolvedValue(skus) },
+      packMatcher: {
+        decompose: jest.fn().mockResolvedValue({
+          status: 'UNIQUE',
+          composition: skus.map(({ skuId, quantity }) => ({ skuId, quantity })),
+          pack: matchedPack,
+          packQuantity: 1,
+          leftovers: [{ skuId: 'sku-mask', quantity: 1 }],
+          matches: [matchedPack],
+        }),
+      },
+    });
+    f.saleOrderItemRepo.bulkCreate.mockResolvedValue([
+      { id: 'item-pack' },
+      { id: 'item-mask' },
+    ]);
+    f.normalizer.normalize.mockResolvedValue({
+      ok: true,
+      row: makeNormalizedImportRow({ total: 129.9 }),
+    });
+
+    const result = await f.usecase.execute({
+      rows: [{ total: 129.9 }] as any,
+      userId: 'user-1',
+    });
+
+    expect(result.importedRows).toBe(1);
+    expect(result.failedRows).toBe(0);
+    expect(result.warnings).toHaveLength(1);
+    expect(f.saleOrderRepo.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subTotal: 164.9,
+        discount: 35,
+        deliveryCost: 0,
+        total: 129.9,
+      }),
+      f.tx,
+    );
+    expect(f.saleOrderItemRepo.bulkCreate).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          referencePackId: 'pack-duo-purificante',
+          total: 134.9,
+        }),
+        expect.objectContaining({
+          referencePackId: null,
+          description: 'Mascarilla arcilla rosada',
+          total: 30,
+        }),
+      ],
+      f.tx,
+    );
+    const savedComponents = f.componentRepo.bulkCreate.mock.calls.flatMap(
+      (call: any[]) => call[0],
+    );
+    expect(savedComponents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ skuId: 'sku-soap', total: 25 }),
+        expect.objectContaining({ skuId: 'sku-ampoule', total: 109.9 }),
+        expect.objectContaining({ skuId: 'sku-mask', total: 30 }),
+      ]),
+    );
   });
 
   it('extracts a contained pack and stores surplus SKUs as independent products', async () => {

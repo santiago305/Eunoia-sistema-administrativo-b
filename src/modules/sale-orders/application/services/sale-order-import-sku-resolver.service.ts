@@ -27,7 +27,14 @@ export class SaleOrderImportSkuResolverService {
     }>,
     tx?: TransactionContext,
   ) {
-    const resolved: Array<{ productId: string; skuId: string; skuName: string; customSku: string; quantity: number }> = [];
+    const resolved: Array<{
+      productId: string;
+      skuId: string;
+      skuName: string;
+      customSku: string;
+      price: number;
+      quantity: number;
+    }> = [];
 
     for (const item of products) {
       const sku = await this.resolveOrCreateSku(item, tx);
@@ -36,6 +43,7 @@ export class SaleOrderImportSkuResolverService {
         skuId: sku.skuId,
         skuName: item.skuName,
         customSku: item.customSku,
+        price: sku.price,
         quantity: item.quantity,
       });
     }
@@ -58,7 +66,11 @@ export class SaleOrderImportSkuResolverService {
       );
 
       await this.ensureStockItemAndSnapshots(skuId, tx);
-      return { productId, skuId };
+      return {
+        productId,
+        skuId,
+        price: Number((existingSku as any).sku?.price ?? (existingSku as any).price ?? 0),
+      };
     }
 
     throw new BadRequestException(

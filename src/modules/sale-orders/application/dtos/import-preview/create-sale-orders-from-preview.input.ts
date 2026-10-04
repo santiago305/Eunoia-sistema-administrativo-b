@@ -29,6 +29,11 @@ export type SaleOrderImportPreviewNormalizedSku = {
   quantity: number;
 };
 
+export type SaleOrderImportPreviewWarningRow = {
+  rowNumber: number;
+  message: string;
+};
+
 export type SaleOrderImportPreviewResultRow = {
   rowNumber: number;
   clientId: string;
@@ -60,5 +65,6 @@ export type CreateSaleOrdersFromImportPreviewOutput = {
   } | null;
   rows: SaleOrderImportPreviewResultRow[];
   errors: SaleOrderImportPreviewErrorRow[];
+  warnings: SaleOrderImportPreviewWarningRow[];
 };
 
