@@ -12,6 +12,8 @@
     "audit:financial": "ts-node -r tsconfig-paths/register scripts/audit-financial-data.ts",
     "audit:financial:summary": "ts-node -r tsconfig-paths/register scripts/audit-financial-data.ts --summary",
     "audit:financial:strict": "ts-node -r tsconfig-paths/register scripts/audit-financial-data.ts --strict --summary",
+    "audit:income-evidence": "ts-node -r tsconfig-paths/register scripts/audit-income-payment-evidence.ts",
+    "audit:income-evidence:strict": "ts-node -r tsconfig-paths/register scripts/audit-income-payment-evidence.ts --strict",
     "audit:sale-order-stock": "ts-node -r tsconfig-paths/register scripts/audit-sale-order-stock-actions.ts",
     "audit:sale-order-stock:summary": "ts-node -r tsconfig-paths/register scripts/audit-sale-order-stock-actions.ts --summary",
     "audit:sale-order-stock:strict": "ts-node -r tsconfig-paths/register scripts/audit-sale-order-stock-actions.ts --strict --summary",

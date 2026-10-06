@@ -13,6 +13,14 @@ export class DeleteSaleOrderPaymentUsecase {
 
   async execute(input: { saleOrderId: string; paymentId: string }) {
     return this.uow.runInTransaction(async (tx) => {
+      if (typeof this.paymentRepo.listBySaleOrderId === "function") {
+        const payment = (await this.paymentRepo.listBySaleOrderId(input.saleOrderId, tx))
+          .find((item) => item.id === input.paymentId);
+        if (!payment) throw new BadRequestException("Pago no encontrado");
+        if (payment.status === "POSTED" || payment.status === "VOIDED") {
+          throw new BadRequestException("Los pagos contabilizados o anulados no se pueden eliminar; utiliza Anular ingreso");
+        }
+      }
       const deleted = await this.paymentRepo.deleteById(
         { saleOrderId: input.saleOrderId, paymentId: input.paymentId },
         tx,

@@ -62,6 +62,7 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
       row.status,
       row.operationCode ?? null,
       row.voidedAt ?? null,
+      row.voidedByUserId ?? null,
       row.voidReason ?? null,
     );
   }
@@ -168,5 +169,29 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
           : null,
       ),
     );
+  }
+
+  async voidPostedPayment(
+    input: Parameters<SalePaymentRepository["voidPostedPayment"]>[0],
+    tx?: TransactionContext,
+  ): Promise<{ payment: SalePayment; transitioned: boolean } | null> {
+    const manager = this.getManager(tx);
+    const paymentRepository = manager.getRepository(SalePaymentEntity);
+    const row = await paymentRepository
+      .createQueryBuilder("payment")
+      .where("payment.id = :paymentId", { paymentId: input.paymentId })
+      .andWhere("payment.sale_order_id = :saleOrderId", { saleOrderId: input.saleOrderId })
+      .setLock("pessimistic_write")
+      .getOne();
+
+    if (!row) return null;
+    if (row.status !== "POSTED") return { payment: this.toDomain(row), transitioned: false };
+
+    row.status = "VOIDED";
+    row.voidedAt = input.voidedAt;
+    row.voidedByUserId = input.voidedByUserId;
+    row.voidReason = input.voidReason;
+    const saved = await paymentRepository.save(row);
+    return { payment: this.toDomain(saved), transitioned: true };
   }
 }

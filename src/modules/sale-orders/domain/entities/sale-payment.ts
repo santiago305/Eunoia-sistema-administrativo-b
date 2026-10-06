@@ -19,6 +19,7 @@ export class SalePayment {
     public readonly status: "DRAFT" | "POSTED" | "VOIDED" = "POSTED",
     public readonly operationCode: string | null = null,
     public readonly voidedAt: Date | null = null,
+    public readonly voidedByUserId: string | null = null,
     public readonly voidReason: string | null = null,
   ) {}
 }

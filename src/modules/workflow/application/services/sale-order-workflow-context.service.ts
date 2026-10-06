@@ -28,7 +28,13 @@ export class SaleOrderWorkflowContextService {
 
   async build(order: SaleOrder, currentState: WorkflowState, tx?: TransactionContext): Promise<WorkflowContext> {
     const payments = await this.paymentRepo.listBySaleOrderIds([order.id], tx);
-    const totalPaid = payments.reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0);
+    const totalPaid = payments.reduce(
+      (sum, payment) =>
+        payment.status === undefined || payment.status === "POSTED"
+          ? sum + Number(payment.amount ?? 0)
+          : sum,
+      0,
+    );
     const client = await this.clientRepo.findById(order.clientId, tx);
 
     const total = Number(order.total ?? 0);

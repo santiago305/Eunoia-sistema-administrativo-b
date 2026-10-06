@@ -32,6 +32,7 @@ const EXPECTED_SALE_ORDER_PERMISSION_CODES = [
   'sale_orders.payments.create',
   'sale_orders.payments.update',
   'sale_orders.payments.delete',
+  'sale_orders.payments.void',
   'sale_orders.attachments.view',
   'sale_orders.attachments.upload',
   'sale_orders.attachments.delete',

@@ -88,7 +88,13 @@ export class GenerateSaleOrderPdfUseCase {
       compsByItemId.set(c.saleOrderItemId, list);
     }
 
-    const totalPaid = payments.reduce((acc, p) => acc + Number(p.amount ?? 0), 0);
+    const totalPaid = payments.reduce(
+      (acc, p) =>
+        p.status === undefined || p.status === "POSTED"
+          ? acc + Number(p.amount ?? 0)
+          : acc,
+      0,
+    );
     const total = Number(order.total ?? 0);
     const pendingAmount = Math.max(total - totalPaid, 0);
 

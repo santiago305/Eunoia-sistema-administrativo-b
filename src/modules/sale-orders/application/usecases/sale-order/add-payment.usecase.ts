@@ -8,6 +8,7 @@ import { CompanyPaymentAccountEntity } from "src/modules/company-payment-account
 import { PaymentMethodEntity } from "src/modules/payment-methods/adapters/out/persistence/typeorm/entities/payment-method.entity";
 import { CurrencyType } from "src/modules/payments/domain/value-objects/currency-type";
 import { isCompanyPaymentAccountCompatible } from "src/modules/company-payment-accounts/domain/policies/payment-account-compatibility";
+import { canonicalPaymentMethodName } from "src/modules/payment-methods/domain/value-objects/payment-method-catalog";
 
 @Injectable()
 export class AddSaleOrderPaymentUsecase {
@@ -65,8 +66,10 @@ export class AddSaleOrderPaymentUsecase {
       if (this.paymentMethodRepo && !input.paymentMethodId) {
         throw new BadRequestException("Selecciona el método de pago del cobro");
       }
+      let resolvedPaymentMethod: PaymentMethodEntity | null = null;
       if (this.paymentMethodRepo && input.paymentMethodId) {
-        const paymentMethod = await this.paymentMethodRepo.findOne({ where: { id: input.paymentMethodId } });
+        resolvedPaymentMethod = await this.paymentMethodRepo.findOne({ where: { id: input.paymentMethodId } });
+        const paymentMethod = resolvedPaymentMethod;
         if (!paymentMethod || !paymentMethod.isActive) throw new BadRequestException("El método de pago no existe o está inactivo");
 
         if (account && !isCompanyPaymentAccountCompatible(paymentMethod.code, account.type)) {
@@ -85,10 +88,10 @@ export class AddSaleOrderPaymentUsecase {
           bankAccountId: receiverId,
           companyPaymentAccountId: receiverId,
           paymentMethodId: input.paymentMethodId ?? null,
-        currency: CurrencyType.PEN,
+          currency: CurrencyType.PEN,
           status: "POSTED" as const,
           date,
-          method: input.method,
+          method: resolvedPaymentMethod?.name ?? (this.paymentMethodRepo ? canonicalPaymentMethodName(input.method) : input.method),
           operationNumber: input.operationNumber ?? null,
           operationCode: input.operationCode ?? input.operationNumber ?? null,
           amount: input.amount,

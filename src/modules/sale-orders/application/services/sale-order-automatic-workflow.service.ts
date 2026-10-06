@@ -22,6 +22,7 @@ export enum SaleOrderAutomaticWorkflowTriggerEnum {
   DELIVERY_CONFIRMED = "delivery-confirmed",
   PAYMENT_CREATED = "payment-created",
   PAYMENT_DELETED = "payment-deleted",
+  PAYMENT_VOIDED = "payment-voided",
   CLIENT_UPDATED = "client-updated",
   INVENTORY_UPDATED = "inventory-updated",
 }

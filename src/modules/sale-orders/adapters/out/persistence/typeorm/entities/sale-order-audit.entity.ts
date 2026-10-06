@@ -2,7 +2,7 @@ import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGenerat
 import { User } from "src/modules/users/adapters/out/persistence/typeorm/entities/user.entity";
 import { SaleOrderEntity } from "./sale-order.entity";
 
-export type SaleOrderAuditAction = "delete" | "restore" | "preguide_on" | "preguide_off" | "prepared_on" | "prepared_off";
+export type SaleOrderAuditAction = "delete" | "restore" | "preguide_on" | "preguide_off" | "prepared_on" | "prepared_off" | "payment_evidence_attached";
 
 @Entity("sale_order_auditory")
 export class SaleOrderAuditEntity {
@@ -22,7 +22,7 @@ export class SaleOrderAuditEntity {
   @Column({ name: "executed_by", type: "uuid" })
   executedBy: string;
 
-  @Column({ name: "action_execution", type: "varchar", length: 20 })
+  @Column({ name: "action_execution", type: "varchar", length: 50 })
   actionExecution: SaleOrderAuditAction;
 
   @ManyToOne(() => SaleOrderEntity, { nullable: false })

@@ -59,6 +59,7 @@ export class UploadSaleOrderAttachmentUsecase {
       type: SaleOrderAttachmentType | `${SaleOrderAttachmentType}`;
       file: Express.Multer.File;
       note?: string | null;
+      storageArea?: 'public' | 'private';
     },
     userId?: string,
   ): Promise<SaleOrderAttachmentOutput> {
@@ -101,7 +102,7 @@ export class UploadSaleOrderAttachmentUsecase {
     });
 
     const savedFile = await this.fileStorage.save({
-      area: 'public',
+      area: input.storageArea ?? 'public',
       directory: `sale-order-attachments/${input.saleOrderId}`,
       buffer: preparedFile.buffer,
       extension: preparedFile.extension,

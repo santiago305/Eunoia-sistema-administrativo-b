@@ -27,6 +27,7 @@ describe("ListIncomeUsecase", () => {
       client: undefined,
       q: undefined,
       hasEvidence: undefined,
+      status: "POSTED",
       page: 2,
       limit: 25,
     });

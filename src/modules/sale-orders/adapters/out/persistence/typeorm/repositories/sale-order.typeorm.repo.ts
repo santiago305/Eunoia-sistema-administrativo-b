@@ -668,7 +668,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
 
   private paymentStatusSql() {
     const paymentsSumSql =
-      '(SELECT COALESCE(SUM(sp.amount), 0) FROM sale_payments sp WHERE sp.sale_order_id = so.id)';
+      "(SELECT COALESCE(SUM(sp.amount) FILTER (WHERE sp.status = 'POSTED'), 0) FROM sale_payments sp WHERE sp.sale_order_id = so.id)";
     return `CASE WHEN so.total > 0 AND ${paymentsSumSql} >= so.total THEN '${SaleOrderPaymentStatusValues.PAID}' ELSE '${SaleOrderPaymentStatusValues.PENDING}' END`;
   }
 
@@ -1701,10 +1701,9 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     const items: SaleOrderListItemOutput[] = await Promise.all(
       rows.map(async (row) => {
         const orderPayments = paymentsByOrderId.get(row.id) ?? [];
-        const totalPaid = orderPayments.reduce(
-          (acc, p) => acc + Number(p.amount ?? 0),
-          0,
-        );
+        const totalPaid = orderPayments
+          .filter((p) => p.status === undefined || p.status === 'POSTED')
+          .reduce((acc, p) => acc + Number(p.amount ?? 0), 0);
         const totalOrder = Number(row.total ?? 0);
         const pendingAmount = Math.max(totalOrder - totalPaid, 0);
         const paymentStatus: SaleOrderPaymentStatus =
@@ -1870,6 +1869,10 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
             operationNumber: p.operationNumber ?? null,
             amount: Number(p.amount ?? 0),
             note: p.note ?? null,
+            status: p.status,
+            voidedAt: p.voidedAt ? toIso(p.voidedAt) : null,
+            voidedByUserId: p.voidedByUserId ?? null,
+            voidReason: p.voidReason ?? null,
             createdAt: toIso(p.createdAt),
           })),
           totalPaid,
@@ -1995,7 +1998,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         'globalState.id = state.saleOrderStateId',
       )
       .leftJoin(
-        '(SELECT sale_order_id, SUM(amount) AS collected FROM sale_payments GROUP BY sale_order_id)',
+        "(SELECT sale_order_id, SUM(amount) FILTER (WHERE status = 'POSTED') AS collected FROM sale_payments GROUP BY sale_order_id)",
         'payment_sum',
         'payment_sum.sale_order_id = so.id',
       );
@@ -2143,6 +2146,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
             SELECT 1
             FROM sale_payments filter_payment
             WHERE filter_payment.sale_order_id = so.id
+            AND filter_payment.status = 'POSTED'
             AND filter_payment.company_payment_account_id ${filter.mode === 'exclude' ? 'NOT IN' : 'IN'} (:...${valueParam})
           )`,
           { [valueParam]: filter.values },
@@ -2305,6 +2309,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       base
         .clone()
         .innerJoin(SalePaymentEntity, 'payment', 'payment.saleOrderId = so.id')
+        .andWhere("payment.status = 'POSTED'")
         .leftJoin(
           CompanyPaymentAccountEntity,
           'bank_account',
@@ -2668,7 +2673,10 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     );
 
     const totalPaid = payments.reduce(
-      (acc, payment) => acc + Number(payment.amount ?? 0),
+      (acc, payment) =>
+        payment.status === undefined || payment.status === 'POSTED'
+          ? acc + Number(payment.amount ?? 0)
+          : acc,
       0,
     );
     const totalOrder = Number(row.total ?? 0);
@@ -2863,6 +2871,10 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         amount: Number(payment.amount ?? 0),
         note: payment.note ?? null,
         paymentPhoto: paymentAttachmentByPaymentId.get(payment.id)?.url ?? null,
+        status: payment.status,
+        voidedAt: payment.voidedAt ? toIso(payment.voidedAt) : null,
+        voidedByUserId: payment.voidedByUserId ?? null,
+        voidReason: payment.voidReason ?? null,
         createdAt: toIso(payment.createdAt),
       })),
 

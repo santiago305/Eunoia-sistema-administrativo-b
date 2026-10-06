@@ -24,6 +24,7 @@ import { CancelSaleOrderUsecase } from 'src/modules/sale-orders/application/usec
 import { SaleOrdersRealtimeService } from 'src/modules/sale-orders/infrastructure/realtime/sale-orders-realtime.service';
 import { AddSaleOrderPaymentUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/add-payment.usecase';
 import { DeleteSaleOrderPaymentUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/delete-payment.usecase';
+import { VoidSaleOrderPaymentUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/void-payment.usecase';
 import { CorrectSaleOrderTotalUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/correct-total.usecase';
 import { ListSaleOrderPaymentsUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/list-payments.usecase';
 import { ConfirmSaleOrderDeliveryUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/confirm-delivery.usecase';
@@ -98,6 +99,7 @@ describe('SaleOrdersController', () => {
   const confirmDelivery = { execute: jest.fn() };
   const addPayment = { execute: jest.fn() };
   const deletePayment = { execute: jest.fn() };
+  const voidPayment = { execute: jest.fn() };
   const correctTotal = { execute: jest.fn() };
   const listPayments = { execute: jest.fn() };
   const createFromImportPreview = { execute: jest.fn() };
@@ -535,6 +537,7 @@ describe('SaleOrdersController', () => {
         { provide: ConfirmSaleOrderDeliveryUsecase, useValue: confirmDelivery },
         { provide: AddSaleOrderPaymentUsecase, useValue: addPayment },
         { provide: DeleteSaleOrderPaymentUsecase, useValue: deletePayment },
+        { provide: VoidSaleOrderPaymentUsecase, useValue: voidPayment },
         { provide: CorrectSaleOrderTotalUsecase, useValue: correctTotal },
         { provide: ListSaleOrderPaymentsUsecase, useValue: listPayments },
         {
@@ -1808,6 +1811,28 @@ describe('SaleOrdersController', () => {
         saleOrderIds: [saleOrderId],
         statistics: statisticsPayload,
       }),
+    );
+  });
+
+  it('voids payment with the authenticated user and emits the semantic trigger', async () => {
+    const saleOrderId = '11111111-1111-4111-8111-111111111111';
+    const paymentId = '22222222-2222-4222-8222-222222222222';
+    voidPayment.execute.mockResolvedValue({ type: 'success', message: 'Ingreso anulado correctamente' });
+
+    await request(app.getHttpServer())
+      .post(`/sale-orders/${saleOrderId}/payments/${paymentId}/void`)
+      .send({ reason: 'Pago duplicado' })
+      .expect(200);
+
+    expect(voidPayment.execute).toHaveBeenCalledWith({
+      saleOrderId,
+      paymentId,
+      executedBy: 'user-1',
+      reason: 'Pago duplicado',
+    });
+    expect(automaticWorkflow.evaluateAndNotify).toHaveBeenCalledWith(
+      saleOrderId,
+      SaleOrderAutomaticWorkflowTriggerEnum.PAYMENT_VOIDED,
     );
   });
 });

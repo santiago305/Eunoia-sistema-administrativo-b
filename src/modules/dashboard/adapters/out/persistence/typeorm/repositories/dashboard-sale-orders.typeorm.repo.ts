@@ -162,7 +162,7 @@ export class DashboardSaleOrdersTypeormRepository
               "sale_order_id",
             )
             .addSelect(
-              "COALESCE(SUM(payment.amount), 0)",
+              "COALESCE(SUM(payment.amount) FILTER (WHERE payment.status = 'POSTED'), 0)",
               "collected",
             )
             .from(

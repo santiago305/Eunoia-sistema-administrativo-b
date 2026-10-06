@@ -40,7 +40,7 @@ export class ListAdviserOrdersUsecase {
       .addSelect('o.created_at', 'createdAt')
       .addSelect('c.full_name', 'clientName')
       .addSelect('o.total', 'total')
-      .addSelect('(SELECT COALESCE(SUM(sp.amount), 0) FROM sale_payments sp WHERE sp.sale_order_id = o.id)', 'collectedTotal')
+      .addSelect("(SELECT COALESCE(SUM(sp.amount) FILTER (WHERE sp.status = 'POSTED'), 0) FROM sale_payments sp WHERE sp.sale_order_id = o.id)", 'collectedTotal')
       .addSelect('s.name', 'stateName')
       .addSelect('s.color', 'stateColor')
       .orderBy('o.created_at', 'DESC')

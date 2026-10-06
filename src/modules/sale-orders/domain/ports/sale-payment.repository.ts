@@ -62,4 +62,15 @@ export interface SalePaymentRepository {
     saleOrderIds: string[],
     tx?: TransactionContext,
   ): Promise<SalePayment[]>;
+
+  voidPostedPayment(
+    input: {
+      saleOrderId: string;
+      paymentId: string;
+      voidedByUserId: string;
+      voidReason: string;
+      voidedAt: Date;
+    },
+    tx?: TransactionContext,
+  ): Promise<{ payment: SalePayment; transitioned: boolean } | null>;
 }

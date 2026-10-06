@@ -50,7 +50,7 @@ export class AdminFinanceQueryTypeormRepository implements AdminFinanceQueryRepo
     const incomeByCurrency = await this.dataSource.query(
       `
       WITH posted AS (
-        SELECT sp.sale_order_id, sp.currency, COALESCE(SUM(sp.amount), 0) AS collected
+        SELECT sp.sale_order_id, sp.currency, COALESCE(SUM(sp.amount) FILTER (WHERE sp.status = 'POSTED'), 0) AS collected
         FROM sale_payments sp
         INNER JOIN sale_orders so ON so.id = sp.sale_order_id
         WHERE so.is_active = true AND sp.status = 'POSTED'

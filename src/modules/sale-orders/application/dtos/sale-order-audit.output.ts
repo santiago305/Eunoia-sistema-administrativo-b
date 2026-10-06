@@ -3,5 +3,5 @@ export type SaleOrderAuditOutput = {
   saleOrderId: string;
   createdAt: string;
   executedBy: { id: string; name: string | null; email: string | null };
-  actionExecution: "delete" | "restore" | "preguide_on" | "preguide_off" | "prepared_on" | "prepared_off";
+  actionExecution: "delete" | "restore" | "preguide_on" | "preguide_off" | "prepared_on" | "prepared_off" | "payment_evidence_attached";
 };

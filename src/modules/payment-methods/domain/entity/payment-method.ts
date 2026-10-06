@@ -33,12 +33,12 @@ export class PaymentMethod {
     requiresOperationReference?: boolean;
     isSystem?: boolean;
   }) {
-    const name = PaymentMethodDomainService.normalizeName(params.name);
+    const code = normalizePaymentMethodCode(params.code, params.name);
+    const name = PaymentMethodDomainService.canonicalName(params.name, code, params.isSystem ?? false);
     if (!name) {
       throw new InvalidPaymentMethodNameError();
     }
 
-    const code = normalizePaymentMethodCode(params.code, name);
     const definition = getPaymentMethodDefinition(code, name);
 
     return new PaymentMethod(
@@ -56,6 +56,7 @@ export class PaymentMethod {
   }
 
   rename(name: string) {
+    if (this.isSystem) return this;
     return PaymentMethod.create({
       methodId: this.methodId,
       name,

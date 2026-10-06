@@ -5,6 +5,9 @@ export interface IncomeOutput {
   clientName: string;
   amount: number;
   method: string;
+  paymentMethodId: string | null;
+  paymentMethodCode: string | null;
+  paymentMethodName: string;
   companyPaymentAccountId: string | null;
   companyPaymentAccountLabel: string | null;
   operationNumber: string | null;
@@ -12,6 +15,31 @@ export interface IncomeOutput {
   date: string;
   createdAt: string;
   evidenceUrl: string | null;
+  evidence: IncomeEvidenceSummary;
+  status: "POSTED" | "VOIDED";
+  voidedAt: string | null;
+  voidedByUserId: string | null;
+  voidReason: string | null;
+}
+
+export type IncomeEvidenceStatus =
+  | "AVAILABLE"
+  | "MISSING_OPTIONAL"
+  | "MISSING_REQUIRED"
+  | "UNAVAILABLE";
+
+export interface IncomeEvidenceSummary {
+  /** Indicates that an evidence object exists without exposing its private URL. */
+  available: boolean;
+  status: IncomeEvidenceStatus;
+  attachmentId: string | null;
+  url: string | null;
+  originalName: string | null;
+  mimeType: string | null;
+  sizeBytes: number | null;
+  createdAt: string | null;
+  canView: boolean;
+  canUpload: boolean;
 }
 
 export interface IncomeSummaryOutput {
@@ -19,7 +47,14 @@ export interface IncomeSummaryOutput {
   totalPending: number;
   ordersPaid: number;
   ordersPending: number;
-  byMethod: Array<{ method: string; amount: number; count: number }>;
+  postedPaymentsCount: number;
+  averageCollectedPayment: number;
+  collectionEffectiveness: number;
+  observedPaymentsCount: number;
+  observedPaymentsAmount: number;
+  voidedPaymentsCount: number;
+  voidedPaymentsAmount: number;
+  byMethod: Array<{ method: string; paymentMethodId: string | null; paymentMethodCode: string | null; amount: number; count: number }>;
   byAccount: Array<{ accountId: string | null; label: string; amount: number; count: number }>;
 }
 

@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Inject,
   Param,
   ParseUUIDPipe,
@@ -41,6 +43,7 @@ import { CancelSaleOrderUsecase } from 'src/modules/sale-orders/application/usec
 import { SaleOrdersRealtimeService } from 'src/modules/sale-orders/infrastructure/realtime/sale-orders-realtime.service';
 import { AddSaleOrderPaymentUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/add-payment.usecase';
 import { DeleteSaleOrderPaymentUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/delete-payment.usecase';
+import { VoidSaleOrderPaymentUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/void-payment.usecase';
 import { ListSaleOrderPaymentsUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/list-payments.usecase';
 import { AddSaleOrderPaymentDto } from '../dtos/add-sale-order-payment.dto';
 import { ConfirmSaleOrderDeliveryUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/confirm-delivery.usecase';
@@ -127,6 +130,7 @@ export class SaleOrdersController {
     private readonly confirmDelivery: ConfirmSaleOrderDeliveryUsecase,
     private readonly addPayment: AddSaleOrderPaymentUsecase,
     private readonly deletePayment: DeleteSaleOrderPaymentUsecase,
+    private readonly voidPayment: VoidSaleOrderPaymentUsecase,
     private readonly correctTotal: CorrectSaleOrderTotalUsecase,
     private readonly listPayments: ListSaleOrderPaymentsUsecase,
     private readonly createFromImportPreview: CreateFromImportPreviewUseCase,
@@ -630,6 +634,28 @@ export class SaleOrdersController {
     await this.evaluateAutomaticWorkflowThenNotify(
       saleOrderId,
       SaleOrderAutomaticWorkflowTriggerEnum.PAYMENT_DELETED,
+    );
+    return result;
+  }
+
+  @Post(':saleOrderId/payments/:paymentId/void')
+  @HttpCode(HttpStatus.OK)
+  @RequirePermissions('sale_orders.payments.void')
+  async voidSaleOrderPayment(
+    @Param('saleOrderId', ParseUUIDPipe) saleOrderId: string,
+    @Param('paymentId', ParseUUIDPipe) paymentId: string,
+    @Body() body: { reason?: string },
+    @CurrentUser() user: { id: string },
+  ) {
+    const result = await this.voidPayment.execute({
+      saleOrderId,
+      paymentId,
+      executedBy: user.id,
+      reason: body?.reason ?? '',
+    });
+    await this.evaluateAutomaticWorkflowThenNotify(
+      saleOrderId,
+      SaleOrderAutomaticWorkflowTriggerEnum.PAYMENT_VOIDED,
     );
     return result;
   }

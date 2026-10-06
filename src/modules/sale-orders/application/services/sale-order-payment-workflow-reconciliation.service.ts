@@ -94,7 +94,9 @@ export class SaleOrderPaymentWorkflowReconciliationService {
     );
     const payments = await this.paymentRepo.listBySaleOrderIds([order.id], tx);
     const totalPaid = this.roundMoney(
-      payments.reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0),
+      payments
+        .filter((payment) => payment.status === undefined || payment.status === 'POSTED')
+        .reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0),
     );
     const pendingAmount = this.roundMoney(Math.max(total - totalPaid, 0));
     const paymentStatus =

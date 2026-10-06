@@ -28,6 +28,7 @@ describe("GetIncomeSummaryUsecase", () => {
       client: undefined,
       q: undefined,
       hasEvidence: true,
+      status: "POSTED",
       page: 1,
       limit: 20,
     });

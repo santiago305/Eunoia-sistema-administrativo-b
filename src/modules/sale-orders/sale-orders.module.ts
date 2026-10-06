@@ -46,6 +46,7 @@ import { SaleOrderAdviserImportAliasEntity } from './adapters/out/persistence/ty
 import { SaleOrderAdviserImportAliasService } from './application/services/sale-order-adviser-import-alias.service';
 import { ProductCatalogInventoryEntity } from '../product-catalog/adapters/out/persistence/typeorm/entities/inventory.entity';
 import { PaymentMethodsModule } from '../payment-methods/payment-methods.module';
+import { SaleOrdersRealtimeService } from './infrastructure/realtime/sale-orders-realtime.service';
 
 @Module({
   imports: [
@@ -99,5 +100,6 @@ import { PaymentMethodsModule } from '../payment-methods/payment-methods.module'
     SaleOrderSkuRecognitionCodeService,
     SaleOrderAdviserImportAliasService,
   ],
+  exports: [SaleOrdersRealtimeService],
 })
 export class SaleOrdersModule {}

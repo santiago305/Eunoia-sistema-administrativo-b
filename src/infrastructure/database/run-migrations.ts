@@ -8,6 +8,8 @@ const requiredTables = [
   "production_orders",
   "sale_orders",
   "recurring_purchase_templates",
+  "sale_order_attachments",
+  "sale_order_auditory",
 ];
 
 export async function assertRequiredTablesExist(dataSource = migrationDataSource) {

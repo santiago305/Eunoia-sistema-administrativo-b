@@ -23,7 +23,8 @@ export type SaleOrderAuditRecord = {
     | 'preguide_on'
     | 'preguide_off'
     | 'prepared_on'
-    | 'prepared_off';
+    | 'prepared_off'
+    | 'payment_evidence_attached';
 };
 
 type SaleOrderWrite = {

@@ -200,6 +200,10 @@ export type SaleOrderGetOutput = {
     amount: number;
     note: string | null;
     paymentPhoto: string | null;
+    status?: 'DRAFT' | 'POSTED' | 'VOIDED';
+    voidedAt?: string | null;
+    voidedByUserId?: string | null;
+    voidReason?: string | null;
     createdAt: string;
   }>;
   attachments: Array<{

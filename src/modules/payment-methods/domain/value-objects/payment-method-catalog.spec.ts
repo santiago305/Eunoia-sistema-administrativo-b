@@ -21,6 +21,8 @@ describe("payment method catalog", () => {
     expect(normalizePaymentMethodCode(undefined, "BCP")).toBe("BANK_TRANSFER");
     expect(normalizePaymentMethodCode(undefined, "YAPE")).toBe("DIGITAL_WALLET");
     expect(normalizePaymentMethodCode("BANK_TRANSFER")).toBe("BANK_TRANSFER");
+    expect(normalizePaymentMethodCode(undefined, "TRANFERENCIA BANCARIA")).toBe("BANK_TRANSFER");
+    expect(getPaymentMethodDefinition("BANK_TRANSFER").defaultName).toBe("Trans. bancaria");
   });
 
   it("defines cash without a voucher or operation reference by default", () => {

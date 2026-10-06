@@ -131,6 +131,10 @@ export type SaleOrderPaymentOutput = {
   operationNumber: string | null;
   amount: number;
   note: string | null;
+  status?: 'DRAFT' | 'POSTED' | 'VOIDED';
+  voidedAt?: string | null;
+  voidedByUserId?: string | null;
+  voidReason?: string | null;
   createdAt: string;
 };
 

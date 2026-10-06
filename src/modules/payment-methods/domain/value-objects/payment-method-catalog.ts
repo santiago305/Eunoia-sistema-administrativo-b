@@ -41,7 +41,7 @@ export const PAYMENT_METHOD_DEFINITIONS: Record<PaymentMethodCode, PaymentMethod
   BANK_TRANSFER: {
     code: "BANK_TRANSFER",
     category: "BANKING",
-    defaultName: "Transferencia bancaria",
+    defaultName: "Trans. bancaria",
     requiresSourceAccount: true,
     requiresDestination: true,
     requiresOperationReference: true,
@@ -50,7 +50,7 @@ export const PAYMENT_METHOD_DEFINITIONS: Record<PaymentMethodCode, PaymentMethod
   BANK_DEPOSIT: {
     code: "BANK_DEPOSIT",
     category: "BANKING",
-    defaultName: "Deposito bancario",
+    defaultName: "Depósito bancario",
     requiresSourceAccount: true,
     requiresDestination: true,
     requiresOperationReference: true,
@@ -99,10 +99,14 @@ const LEGACY_NAME_TO_CODE: Record<string, PaymentMethodCode> = {
   CASH: "CASH",
   TRANSFERENCIA: "BANK_TRANSFER",
   "TRANSFERENCIA BANCARIA": "BANK_TRANSFER",
+  "TRANS. BANCARIA": "BANK_TRANSFER",
+  "TRANFERENCIA BANCARIA": "BANK_TRANSFER",
   BANK_TRANSFER: "BANK_TRANSFER",
   BCP: "BANK_TRANSFER",
   BBVA: "BANK_TRANSFER",
   DEPOSITO: "BANK_DEPOSIT",
+  "DEPÓSITO": "BANK_DEPOSIT",
+  "DEPOSITO BANCARIO": "BANK_DEPOSIT",
   BANK_DEPOSIT: "BANK_DEPOSIT",
   TARJETA: "CARD",
   CARD: "CARD",
@@ -126,11 +130,27 @@ export const normalizePaymentMethodCode = (
     return normalizedCode as PaymentMethodCode;
   }
 
-  const normalizedName = name?.trim().toUpperCase();
-  return LEGACY_NAME_TO_CODE[normalizedName ?? ""] ?? "OTHER";
+  const normalizedName = name
+    ?.trim()
+    .replace(/\s+/g, " ")
+    .toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+  const aliases = Object.entries(LEGACY_NAME_TO_CODE).map(([alias, mappedCode]) => [
+    alias.normalize("NFD").replace(/[\u0300-\u036f]/g, ""), mappedCode,
+  ] as const);
+  return aliases.find(([alias]) => alias === (normalizedName ?? ""))?.[1] ?? "OTHER";
 };
 
 export const getPaymentMethodDefinition = (
   code?: string | null,
   name?: string | null,
 ): PaymentMethodDefinition => PAYMENT_METHOD_DEFINITIONS[normalizePaymentMethodCode(code, name)];
+
+export const canonicalPaymentMethodName = (value?: string | null): string => {
+  const normalized = value?.trim().replace(/\s+/g, " ");
+  if (!normalized) return PAYMENT_METHOD_DEFINITIONS.OTHER.defaultName;
+  const code = normalizePaymentMethodCode(undefined, normalized);
+  if (code === "OTHER" && !["OTRO", "OTHER"].includes(normalized.toUpperCase())) return normalized;
+  return getPaymentMethodDefinition(code).defaultName;
+};

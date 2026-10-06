@@ -498,6 +498,15 @@ export class UpdateSaleOrderUsecase {
     await this.saleOrderItemRepo.deleteBySaleOrderId(input.saleOrderId, tx);
 
     if (input.payments) {
+      const persistedPayments = await this.paymentRepo.listBySaleOrderId(input.saleOrderId, tx);
+      const protectedPayments = persistedPayments.filter(
+        (payment) => payment.status === 'POSTED' || payment.status === 'VOIDED',
+      );
+      if (protectedPayments.length) {
+        throw new BadRequestException(
+          'Los pagos contabilizados o anulados no se pueden reemplazar desde esta ruta; utiliza la edición unificada o Anular ingreso',
+        );
+      }
       await this.paymentRepo.deleteBySaleOrderId(input.saleOrderId, tx);
     }
 

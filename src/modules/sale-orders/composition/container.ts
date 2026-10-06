@@ -37,6 +37,7 @@ import { ConfirmSaleOrderDeliveryUsecase } from 'src/modules/sale-orders/applica
 import { ListSaleOrderPaymentsUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/list-payments.usecase';
 import { AddSaleOrderPaymentUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/add-payment.usecase';
 import { DeleteSaleOrderPaymentUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/delete-payment.usecase';
+import { VoidSaleOrderPaymentUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/void-payment.usecase';
 import { CreateFromImportPreviewUseCase } from 'src/modules/sale-orders/application/usecases/sale-order/create-from-import-preview.usecase';
 import { AssignImportLoteUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/assign-import-lote.usecase';
 import { ListImportLotesUsecase } from 'src/modules/sale-orders/application/usecases/sale-order/list-import-lotes.usecase';
@@ -145,6 +146,7 @@ export const saleOrdersModuleProviders = [
   ListSaleOrderPaymentsUsecase,
   AddSaleOrderPaymentUsecase,
   DeleteSaleOrderPaymentUsecase,
+  VoidSaleOrderPaymentUsecase,
   CorrectSaleOrderTotalUsecase,
   CreateFromImportPreviewUseCase,
   AssignImportLoteUsecase,

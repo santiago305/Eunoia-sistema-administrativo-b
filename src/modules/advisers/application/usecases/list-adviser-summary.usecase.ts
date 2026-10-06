@@ -72,10 +72,10 @@ export class ListAdviserSummaryUsecase {
       .addSelect('a.is_active', 'isActive')
       .addSelect('COUNT(DISTINCT o.id)', 'assignedOrders')
       .addSelect('COALESCE(SUM(o.total), 0)', 'soldTotal')
-      .addSelect(`(SELECT COALESCE(SUM(sp.amount), 0) FROM sale_payments sp INNER JOIN sale_orders so2 ON so2.id = sp.sale_order_id AND so2.assigned_by = a.user_id AND so2.is_active = true AND ${adviserOrderPeriodSql('so2')})`, 'collectedTotal')
+      .addSelect(`(SELECT COALESCE(SUM(sp.amount) FILTER (WHERE sp.status = 'POSTED'), 0) FROM sale_payments sp INNER JOIN sale_orders so2 ON so2.id = sp.sale_order_id AND so2.assigned_by = a.user_id AND so2.is_active = true AND ${adviserOrderPeriodSql('so2')})`, 'collectedTotal')
       .groupBy('a.user_id').addGroupBy('u.name').addGroupBy('u.email').addGroupBy('a.is_active')
       .orderBy('u.name', 'ASC');
-    const numericExpressions: Record<string, string> = { assignedOrders: 'COUNT(DISTINCT o.id)', soldTotal: 'COALESCE(SUM(o.total), 0)', collectedTotal: `(SELECT COALESCE(SUM(sp.amount), 0) FROM sale_payments sp INNER JOIN sale_orders so2 ON so2.id = sp.sale_order_id AND so2.assigned_by = a.user_id AND so2.is_active = true AND ${adviserOrderPeriodSql('so2')})` };
+    const numericExpressions: Record<string, string> = { assignedOrders: 'COUNT(DISTINCT o.id)', soldTotal: 'COALESCE(SUM(o.total), 0)', collectedTotal: `(SELECT COALESCE(SUM(sp.amount) FILTER (WHERE sp.status = 'POSTED'), 0) FROM sale_payments sp INNER JOIN sale_orders so2 ON so2.id = sp.sale_order_id AND so2.assigned_by = a.user_id AND so2.is_active = true AND ${adviserOrderPeriodSql('so2')})` };
     snapshot.filters.forEach((rule, index) => {
       const expression = numericExpressions[rule.field]; if (!expression) return;
       const operator = ({ eq: '=', gt: '>', gte: '>=', lt: '<', lte: '<=' } as Record<string, string>)[rule.operator];

@@ -43,7 +43,7 @@ export class GetAdviserAnalyticsUsecase {
           COALESCE(SUM(COALESCE(payments.collected, 0)), 0) AS "collectedTotal"
         FROM sale_orders o
         LEFT JOIN (
-          SELECT sale_order_id, SUM(amount) AS collected
+          SELECT sale_order_id, SUM(amount) FILTER (WHERE status = 'POSTED') AS collected
           FROM sale_payments
           GROUP BY sale_order_id
         ) payments ON payments.sale_order_id = o.id

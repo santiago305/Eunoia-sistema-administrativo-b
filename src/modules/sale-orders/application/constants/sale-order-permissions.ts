@@ -279,6 +279,15 @@ export const SALE_ORDER_PERMISSIONS: ReadonlyArray<
     type: 'action',
   },
   {
+    code: 'sale_orders.payments.void',
+    name: 'Anular pagos de pedidos',
+    description: 'Anular ingresos contabilizados conservando su historial',
+    module: 'sale_orders',
+    resource: 'sale_order_payments',
+    action: 'void',
+    type: 'action',
+  },
+  {
     code: 'sale_orders.attachments.view',
     name: 'Ver adjuntos del pedido',
     description: 'Listar y visualizar fotos y comprobantes del pedido',

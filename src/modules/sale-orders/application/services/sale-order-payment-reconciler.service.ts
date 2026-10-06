@@ -8,6 +8,7 @@ import {
   SALE_PAYMENT_REPOSITORY,
   SalePaymentRepository,
 } from '../../domain/ports/sale-payment.repository';
+import { canonicalPaymentMethodName } from 'src/modules/payment-methods/domain/value-objects/payment-method-catalog';
 
 export type SaleOrderPaymentCommand = {
   id?: string;
@@ -67,6 +68,19 @@ export class SaleOrderPaymentReconcilerService {
 
       retainedIds.add(payment.id);
       paymentIdByClientKey.set(payment.clientKey, payment.id);
+      const existingPayment = existingById.get(payment.id)!;
+      if (existingPayment.status === 'POSTED' || existingPayment.status === 'VOIDED') {
+        const changed =
+          existingPayment.amount !== payment.amount ||
+          existingPayment.method !== payment.method ||
+          (existingPayment.operationNumber ?? null) !== (payment.operationNumber ?? null) ||
+          (existingPayment.note ?? null) !== (payment.note ?? null) ||
+          existingPayment.date.toISOString().slice(0, 10) !== payment.date.toISOString().slice(0, 10);
+        if (changed) {
+          throw new BadRequestException('Los pagos contabilizados o anulados son de solo lectura; anula y registra un nuevo ingreso');
+        }
+        continue;
+      }
       await this.paymentRepo.update(
         {
           saleOrderId: input.saleOrderId,
@@ -76,7 +90,7 @@ export class SaleOrderPaymentReconcilerService {
           paymentMethodId: payment.paymentMethodId ?? null,
           operationCode: payment.operationCode ?? payment.operationNumber ?? null,
           date: payment.date,
-          method: payment.method,
+          method: canonicalPaymentMethodName(payment.method),
           operationNumber: payment.operationNumber ?? null,
           amount: payment.amount,
           note: payment.note ?? null,
@@ -88,6 +102,12 @@ export class SaleOrderPaymentReconcilerService {
     const retiredPaymentIds = existing
       .filter((payment) => !retainedIds.has(payment.id))
       .map((payment) => payment.id);
+    const protectedRetired = existing.filter(
+      (payment) => !retainedIds.has(payment.id) && (payment.status === 'POSTED' || payment.status === 'VOIDED'),
+    );
+    if (protectedRetired.length) {
+      throw new BadRequestException('No se pueden quitar pagos contabilizados o anulados desde el editor; utiliza Anular ingreso');
+    }
     await this.paymentRepo.deleteByIds(
       { saleOrderId: input.saleOrderId, paymentIds: retiredPaymentIds },
       tx,
@@ -101,7 +121,7 @@ export class SaleOrderPaymentReconcilerService {
         paymentMethodId: payment.paymentMethodId ?? null,
         operationCode: payment.operationCode ?? payment.operationNumber ?? null,
         date: payment.date,
-        method: payment.method,
+        method: canonicalPaymentMethodName(payment.method),
         operationNumber: payment.operationNumber ?? null,
         amount: payment.amount,
         note: payment.note ?? null,
