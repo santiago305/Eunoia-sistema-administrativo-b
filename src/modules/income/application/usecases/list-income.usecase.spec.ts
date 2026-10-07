@@ -36,4 +36,21 @@ describe("ListIncomeUsecase", () => {
   it("exports the repository token used by the module provider", () => {
     expect(typeof INCOME_QUERY_REPOSITORY).toBe("symbol");
   });
+
+  it("stores only executed smart searches as recent searches", async () => {
+    const repo: jest.Mocked<IncomeQueryRepository> = {
+      list: jest.fn().mockResolvedValue({ items: [], total: 0 }),
+      getSummary: jest.fn(),
+    };
+    const searchStorage = { touchRecentSearch: jest.fn().mockResolvedValue(undefined) };
+    const usecase = new ListIncomeUsecase(repo, searchStorage as any);
+
+    await usecase.execute({ requestedBy: "user-1", q: "PE-531" });
+
+    expect(searchStorage.touchRecentSearch).toHaveBeenCalledWith({
+      userId: "user-1",
+      tableKey: "income",
+      snapshot: { q: "PE-531", filters: [] },
+    });
+  });
 });

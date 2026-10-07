@@ -1,4 +1,4 @@
-import { BadRequestException, Controller, Get, NotFoundException, Param, ParseUUIDPipe, Post, Query, Res, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Delete, Get, NotFoundException, Optional, Param, ParseUUIDPipe, Post, Query, Res, UploadedFile, UseGuards, UseInterceptors } from "@nestjs/common";
 import type { Response } from "express";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { memoryStorage } from "multer";
@@ -13,6 +13,11 @@ import { IncomeFilterInput } from "../../../application/dtos/income-filter.input
 import { GetIncomeSummaryUsecase } from "../../../application/usecases/get-income-summary.usecase";
 import { ListIncomeUsecase } from "../../../application/usecases/list-income.usecase";
 import { GetIncomeEvidenceUsecase, UploadIncomeEvidenceUsecase } from "../../../application/usecases/get-income-evidence.usecase";
+import { GetIncomeSearchStateUsecase } from "../../../application/usecases/income-search/get-state.usecase";
+import { SaveIncomeSearchMetricUsecase } from "../../../application/usecases/income-search/save-metric.usecase";
+import { DeleteIncomeSearchMetricUsecase } from "../../../application/usecases/income-search/delete-metric.usecase";
+import { HttpCreateIncomeSearchMetricDto } from "../dtos/http-income-search-metric-create.dto";
+import { sanitizeIncomeSearchSnapshot } from "../../../application/support/income-search.utils";
 
 @Controller("income")
 @UseGuards(JwtAuthGuard, CompanyConfiguredGuard, PermissionsGuard)
@@ -23,12 +28,40 @@ export class IncomeController {
     private readonly getEvidence: GetIncomeEvidenceUsecase,
     private readonly uploadEvidence: UploadIncomeEvidenceUsecase,
     @Inject(FILE_STORAGE) private readonly fileStorage: FileStorage,
+    @Optional() private readonly getSearchState?: GetIncomeSearchStateUsecase,
+    @Optional() private readonly saveSearchMetric?: SaveIncomeSearchMetricUsecase,
+    @Optional() private readonly deleteSearchMetric?: DeleteIncomeSearchMetricUsecase,
   ) {}
 
   @RequirePermissions("income.read")
   @Get()
-  list(@Query() query: IncomeFilterInput) {
-    return this.listIncome.execute(query);
+  list(@Query() query: IncomeFilterInput, @CurrentUser() user: { id: string }) {
+    return this.listIncome.execute({ ...query, requestedBy: user?.id });
+  }
+
+  @RequirePermissions("income.read")
+  @Get("search-state")
+  getSearchStateForUser(@CurrentUser() user: { id: string }) {
+    return this.getSearchState?.execute(user.id);
+  }
+
+  @RequirePermissions("income.read")
+  @Post("search-metrics")
+  saveMetric(@Body() dto: HttpCreateIncomeSearchMetricDto, @CurrentUser() user: { id: string }) {
+    return this.saveSearchMetric?.execute({
+      userId: user.id,
+      name: dto.name,
+      snapshot: sanitizeIncomeSearchSnapshot({
+        q: dto.snapshot?.q,
+        filters: dto.snapshot?.filters,
+      }),
+    });
+  }
+
+  @RequirePermissions("income.read")
+  @Delete("search-metrics/:metricId")
+  deleteMetric(@Param("metricId", ParseUUIDPipe) metricId: string, @CurrentUser() user: { id: string }) {
+    return this.deleteSearchMetric?.execute(user.id, metricId);
   }
 
   @RequirePermissions("income.read")

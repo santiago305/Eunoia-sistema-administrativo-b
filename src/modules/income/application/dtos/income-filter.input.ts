@@ -11,24 +11,16 @@ export interface IncomeFilterInput {
   filters?: string | IncomeSearchRule[];
   page?: number | string;
   limit?: number | string;
+  requestedBy?: string;
 }
 
-export type IncomeSearchField =
-  | "status"
-  | "paymentMethodId"
-  | "detail"
-  | "companyPaymentAccountId"
-  | "hasEvidence";
+import type {
+  IncomeSearchField,
+  IncomeSearchOperator,
+  IncomeSearchRule,
+} from "./income-search/income-search-snapshot";
 
-export type IncomeSearchOperator = "in" | "contains" | "eq";
-
-export type IncomeSearchRule = {
-  field: IncomeSearchField | string;
-  operator: IncomeSearchOperator | string;
-  mode?: "include" | "exclude";
-  value?: string;
-  values?: string[];
-};
+export type { IncomeSearchField, IncomeSearchOperator, IncomeSearchRule } from "./income-search/income-search-snapshot";
 
 export interface IncomeFilters {
   from?: string;
