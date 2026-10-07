@@ -4,6 +4,10 @@ import {
   Injectable,
   Optional,
 } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { PaymentMethodEntity } from 'src/modules/payment-methods/adapters/out/persistence/typeorm/entities/payment-method.entity';
+import { canonicalPaymentMethodName } from 'src/modules/payment-methods/domain/value-objects/payment-method-catalog';
 import {
   TransactionContext,
   UNIT_OF_WORK,
@@ -150,7 +154,23 @@ export class UpdateSaleOrderUsecase {
     @Optional()
     @Inject(CLOCK)
     private readonly clock?: ClockPort,
+    @Optional() @InjectRepository(PaymentMethodEntity)
+    private readonly paymentMethodRepo?: Repository<PaymentMethodEntity>,
   ) {}
+
+  private async resolvePaymentMethodSnapshot(paymentMethodId: string | undefined, method: string) {
+    if (!paymentMethodId || !this.paymentMethodRepo) {
+      return { paymentMethodId: paymentMethodId ?? null, method: canonicalPaymentMethodName(method) };
+    }
+    const paymentMethod = await this.paymentMethodRepo.findOne({ where: { id: paymentMethodId } });
+    if (!paymentMethod || !paymentMethod.isActive) {
+      throw new BadRequestException('Método de pago inválido o inactivo');
+    }
+    return {
+      paymentMethodId: paymentMethod.id,
+      method: canonicalPaymentMethodName(paymentMethod.code ?? paymentMethod.name),
+    };
+  }
 
   private buildComponentSignature(
     components: Array<{ skuId: string; quantity: number }>,
@@ -597,31 +617,32 @@ export class UpdateSaleOrderUsecase {
       );
     }
 
-    const paymentsInput = (input.payments ?? []).map((payment) => {
+    const paymentsInput = await Promise.all((input.payments ?? []).map(async (payment) => {
       const date = payment.date ? new Date(payment.date) : new Date();
 
       if (Number.isNaN(date.getTime())) {
         throw new BadRequestException('Fecha de pago inválida');
       }
 
+      const resolvedMethod = await this.resolvePaymentMethodSnapshot(payment.paymentMethodId, payment.method);
       return {
         saleOrderId: updated.id,
         bankAccountId: payment.bankAccountId?.trim()
           ? payment.bankAccountId.trim()
           : null,
         companyPaymentAccountId: payment.companyPaymentAccountId?.trim() || payment.bankAccountId?.trim() || null,
-        paymentMethodId: payment.paymentMethodId ?? null,
+        paymentMethodId: resolvedMethod.paymentMethodId,
         currency: "PEN" as any,
         status: "POSTED" as const,
         date,
-        method: payment.method,
+        method: resolvedMethod.method,
         operationNumber: payment.operationNumber ?? null,
         operationCode: payment.operationCode ?? payment.operationNumber ?? null,
         amount: payment.amount,
         note: payment.note ?? null,
         paymentPhoto: payment.paymentPhoto ?? null,
       };
-    });
+    }));
 
     try {
       if (paymentsInput.length) {

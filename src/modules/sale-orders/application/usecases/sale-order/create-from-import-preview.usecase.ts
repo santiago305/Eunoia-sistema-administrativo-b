@@ -25,6 +25,7 @@ import {
   CreateSaleOrdersFromImportPreviewOutput,
 } from 'src/modules/sale-orders/application/dtos/import-preview/create-sale-orders-from-preview.input';
 import { PreferredCompanyPaymentMethodService } from 'src/modules/payment-methods/application/services/preferred-company-payment-method.service';
+import { canonicalPaymentMethodName } from 'src/modules/payment-methods/domain/value-objects/payment-method-catalog';
 import { SaleOrderImportClientResolverService } from 'src/modules/sale-orders/application/services/sale-order-import-client-resolver.service';
 import { SaleOrderImportRowNormalizerService } from 'src/modules/sale-orders/application/services/sale-order-import-row-normalizer.service';
 import { SaleOrderImportSkuResolverService } from 'src/modules/sale-orders/application/services/sale-order-import-sku-resolver.service';
@@ -389,7 +390,7 @@ export class CreateFromImportPreviewUseCase {
             companyPaymentAccountId: null,
             paymentMethodId: preferredMethod.paymentMethodId,
             date: businessDateAsUtcMidnight(),
-            method: preferredMethod.method,
+            method: canonicalPaymentMethodName(preferredMethod.method),
             operationNumber: null,
             amount: advance,
             note: PaymentDescription.ANTICIPO,

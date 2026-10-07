@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Brackets, Repository, SelectQueryBuilder } from "typeorm";
+import { Repository, SelectQueryBuilder } from "typeorm";
 import { ClientEntity } from "src/modules/clients/adapters/out/persistence/typeorm/entities/client.entity";
 import { CompanyPaymentAccountEntity } from "src/modules/company-payment-accounts/adapters/out/persistence/typeorm/entities/company-payment-account.entity";
 import { SaleOrderEntity } from "src/modules/sale-orders/adapters/out/persistence/typeorm/entities/sale-order.entity";
@@ -15,6 +15,9 @@ const accountLabelSql =
   "COALESCE(cpa.masked_label, cpa.name, cpa.institution_name, cpa.bank_name, cpa.wallet_provider, cpa.wallet_name, 'Sin cuenta')";
 const evidenceExistsSql = `EXISTS (SELECT 1 FROM sale_order_attachments soa WHERE soa.sale_order_payment_id = sp.id AND soa.deleted_at IS NULL AND soa.type IN ('PAYMENT_PROOF', 'SALE_PAYMENT_PROOF'))`;
 const evidenceUrlSql = `COALESCE((SELECT soa.url FROM sale_order_attachments soa WHERE soa.sale_order_payment_id = sp.id AND soa.deleted_at IS NULL AND soa.type IN ('PAYMENT_PROOF', 'SALE_PAYMENT_PROOF') ORDER BY soa.created_at DESC LIMIT 1), NULLIF(sp.payment_photo, ''))`;
+const escapeLike = (value: string) => value.replace(/[\\%_]/g, (character) => `\\${character}`);
+const ruleValues = (rule: { values?: string[]; value?: string }) =>
+  [...new Set((rule.values?.length ? rule.values : rule.value ? [rule.value] : []).map((value) => value.trim()).filter(Boolean))];
 
 @Injectable()
 export class IncomeQueryTypeormRepository implements IncomeQueryRepository {
@@ -225,6 +228,37 @@ export class IncomeQueryTypeormRepository implements IncomeQueryRepository {
     }
     if (filters.hasEvidence === true) qb.andWhere(`(${evidenceExistsSql} OR (sp.paymentPhoto IS NOT NULL AND sp.paymentPhoto <> ''))`);
     if (filters.hasEvidence === false) qb.andWhere(`NOT (${evidenceExistsSql}) AND (sp.paymentPhoto IS NULL OR sp.paymentPhoto = '')`);
+    for (const [index, rule] of (filters.filters ?? []).entries()) {
+      const values = ruleValues(rule);
+      const parameter = `incomeRule${index}`;
+      if (!values.length) continue;
+
+      if (rule.field === "paymentMethodId") {
+        const condition = `sp.paymentMethodId IN (:...${parameter})`;
+        qb.andWhere(rule.mode === "exclude" ? `NOT (${condition})` : condition, { [parameter]: values });
+      }
+
+      if (rule.field === "companyPaymentAccountId") {
+        const unassigned = values.includes("__unassigned__");
+        const assigned = values.filter((value) => value !== "__unassigned__");
+        const parts = [
+          ...(assigned.length ? [`sp.companyPaymentAccountId IN (:...${parameter})`] : []),
+          ...(unassigned ? ["sp.companyPaymentAccountId IS NULL"] : []),
+        ];
+        if (parts.length) {
+          const condition = `(${parts.join(" OR ")})`;
+          qb.andWhere(rule.mode === "exclude" ? `NOT ${condition}` : condition, { [parameter]: assigned });
+        }
+      }
+
+      if (rule.field === "detail") {
+        const value = escapeLike(values[0]);
+        const condition = rule.operator === "eq"
+          ? "LOWER(COALESCE(sp.note, '')) = LOWER(:detailValue)"
+          : "LOWER(COALESCE(sp.note, '')) LIKE LOWER(:detailValue) ESCAPE '\\'";
+        qb.andWhere(condition, { detailValue: rule.operator === "eq" ? value : `%${value}%` });
+      }
+    }
     return qb;
   }
 
@@ -233,16 +267,22 @@ export class IncomeQueryTypeormRepository implements IncomeQueryRepository {
     if (filters.saleOrderId) qb.andWhere("so.id = :saleOrderId", { saleOrderId: filters.saleOrderId });
     if (filters.client) qb.andWhere("client.fullName ILIKE :client", { client: `%${filters.client}%` });
     if (filters.q) {
-      qb.andWhere(
-        new Brackets((sub) => {
-          sub
-            .where("client.fullName ILIKE :q", { q: `%${filters.q}%` })
-            .orWhere("sp.method ILIKE :q", { q: `%${filters.q}%` })
-            .orWhere("sp.operationNumber ILIKE :q", { q: `%${filters.q}%` })
-            .orWhere("CAST(so.correlative AS TEXT) ILIKE :q", { q: `%${filters.q}%` })
-            .orWhere("so.serie ILIKE :q", { q: `%${filters.q}%` });
-        }),
-      );
+      const query = filters.q.trim();
+      const compact = query.replace(/\s+/g, "");
+      const exactNumber = /^\d+$/.test(compact) ? Number(compact) : null;
+      const seriesNumber = compact.match(/^([A-Za-z0-9]+)[- ](\d+)$/);
+      if (exactNumber !== null && Number.isSafeInteger(exactNumber)) {
+        qb.andWhere("so.correlative = :incomeCorrelative", { incomeCorrelative: exactNumber });
+      } else if (seriesNumber) {
+        qb.andWhere("UPPER(COALESCE(so.serie, '')) = UPPER(:incomeSerie) AND so.correlative = :incomeCorrelative", {
+          incomeSerie: seriesNumber[1],
+          incomeCorrelative: Number(seriesNumber[2]),
+        });
+      } else {
+        qb.andWhere("CONCAT(COALESCE(so.serie, ''), '-', COALESCE(so.correlative::text, '')) ILIKE :incomeOrderNumber ESCAPE '\\'", {
+          incomeOrderNumber: `%${escapeLike(query)}%`,
+        });
+      }
     }
     return qb;
   }

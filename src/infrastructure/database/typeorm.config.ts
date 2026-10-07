@@ -152,6 +152,7 @@ import { RetireBankAccountPermissions20260921200000 } from './migrations/2026092
 import { RetireSalePaymentBankAccount20260921210000 } from './migrations/20260921210000-retire-sale-payment-bank-account';
 import { AddSalePaymentVoidAudit20261005000000 } from './migrations/20261005000000-add-sale-payment-void-audit';
 import { NormalizeSalePaymentMethodSnapshots20261006000000 } from './migrations/20261006000000-normalize-sale-payment-method-snapshots';
+import { RepairPaymentMethodNormalization20261006120000 } from './migrations/20261006120000-repair-payment-method-normalization';
 import { ConsolidateCompanyMethodEvidencePolicy20260922120000 } from './migrations/20260922120000-consolidate-company-method-evidence-policy';
 import { CreateWorkflowActionExecutions20260923090000 } from './migrations/20260923090000-create-workflow-action-executions';
 import { AddPreferredCompanyPaymentMethod20260928120000 } from './migrations/20260928120000-add-preferred-company-payment-method';
@@ -324,6 +325,7 @@ export const databaseMigrations = [
   CreateWorkflowActionExecutions20260923090000,
   AddPreferredCompanyPaymentMethod20260928120000,
   AddSaleOrderWorkflowRepairPermission20261003000000,
+  RepairPaymentMethodNormalization20261006120000,
   HardenPaymentEvidenceAndAudit20261007000000,
 ];
 

@@ -4,6 +4,10 @@ import {
   Injectable,
   Optional,
 } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { PaymentMethodEntity } from 'src/modules/payment-methods/adapters/out/persistence/typeorm/entities/payment-method.entity';
+import { canonicalPaymentMethodName } from 'src/modules/payment-methods/domain/value-objects/payment-method-catalog';
 import {
   TransactionContext,
   UNIT_OF_WORK,
@@ -124,7 +128,23 @@ export class CreateSaleOrderUsecase {
     @Optional()
     private readonly commandAuthorization?: SaleOrderCommandAuthorizationService,
     @Optional() private readonly suppliesService?: SaleOrderSuppliesService,
+    @Optional() @InjectRepository(PaymentMethodEntity)
+    private readonly paymentMethodRepo?: Repository<PaymentMethodEntity>,
   ) {}
+
+  private async resolvePaymentMethodSnapshot(paymentMethodId: string | undefined, method: string) {
+    if (!paymentMethodId || !this.paymentMethodRepo) {
+      return { paymentMethodId: paymentMethodId ?? null, method: canonicalPaymentMethodName(method) };
+    }
+    const paymentMethod = await this.paymentMethodRepo.findOne({ where: { id: paymentMethodId } });
+    if (!paymentMethod || !paymentMethod.isActive) {
+      throw new BadRequestException('Método de pago inválido o inactivo');
+    }
+    return {
+      paymentMethodId: paymentMethod.id,
+      method: canonicalPaymentMethodName(paymentMethod.code ?? paymentMethod.name),
+    };
+  }
 
   async execute(input: CreateSaleOrderInput, createdBy: string) {
     await this.commandAuthorization?.authorizeCreate(createdBy, input as any);
@@ -272,27 +292,28 @@ export class CreateSaleOrderUsecase {
       }
     }
 
-    const paymentsInput = (input.payments ?? []).map((p) => {
+    const paymentsInput = await Promise.all((input.payments ?? []).map(async (p) => {
       const date = p.date ? new Date(p.date) : new Date();
       if (Number.isNaN(date.getTime())) {
         throw new BadRequestException('Fecha de pago inválida');
       }
+      const resolvedMethod = await this.resolvePaymentMethodSnapshot(p.paymentMethodId, p.method);
       return {
         saleOrderId: order.id,
         bankAccountId: p.bankAccountId?.trim() ? p.bankAccountId.trim() : null,
         companyPaymentAccountId: p.companyPaymentAccountId?.trim() || p.bankAccountId?.trim() || null,
-        paymentMethodId: p.paymentMethodId ?? null,
+        paymentMethodId: resolvedMethod.paymentMethodId,
         currency: "PEN" as any,
         status: "POSTED" as const,
         date,
-        method: p.method,
+        method: resolvedMethod.method,
         operationNumber: p.operationNumber ?? null,
         operationCode: p.operationCode ?? p.operationNumber ?? null,
         amount: p.amount,
         note: p.note ?? null,
         paymentPhoto: p.paymentPhoto ?? null,
       };
-    });
+    }));
     try {
       if (input.payments) {
         await this.paymentRepo.bulkCreate(paymentsInput, tx);

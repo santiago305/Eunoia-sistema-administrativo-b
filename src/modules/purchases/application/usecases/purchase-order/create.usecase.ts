@@ -23,6 +23,7 @@ import { PURCHASE_NOTIFICATION_TYPES } from "src/modules/mail/domain/constants/p
 import { CreateAccountPayableUsecase } from "src/modules/accounts-payable";
 import { PurchaseItemType } from "src/modules/purchases/domain/value-objects/purchase-item-type";
 import { PurchaseHistoryService } from "../../services/purchase-history.service";
+import { canonicalPaymentMethodName } from "src/modules/payment-methods/domain/value-objects/payment-method-catalog";
 
 export class CreatePurchaseOrderUsecase {
   constructor(
@@ -259,7 +260,7 @@ export class CreatePurchaseOrderUsecase {
           }
 
           const document = PaymentsFactory.createPaymentDocument({
-            method: payment.method,
+            method: canonicalPaymentMethodName(payment.method),
             date: payDate,
             currency: payment.currency,
             amount: payment.amount,
@@ -301,7 +302,7 @@ export class CreatePurchaseOrderUsecase {
                 paymentId: createdPayment?.payDocId ?? null,
                 amount: payment.amount,
                 currency: payment.currency,
-                method: payment.method,
+                method: canonicalPaymentMethodName(payment.method),
                 operationNumber: payment.operationNumber ?? null,
                 quotaId: payment.quotaId ?? null,
                 status: allowDirectPaymentCreation ? "APPROVED" : "PENDING_APPROVAL",

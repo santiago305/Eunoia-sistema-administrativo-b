@@ -22,7 +22,10 @@ import {
   PaymentFinancialPolicy,
   type PaymentMethodPolicy,
 } from "src/modules/payments/domain/services/payment-financial-policy";
-import { getPaymentMethodDefinition } from "src/modules/payment-methods/domain/value-objects/payment-method-catalog";
+import {
+  canonicalPaymentMethodName,
+  getPaymentMethodDefinition,
+} from "src/modules/payment-methods/domain/value-objects/payment-method-catalog";
 import { resolveCompanyMethodRequiresVoucher } from "src/modules/payment-methods/domain/services/payment-method-voucher-policy";
 
 export class CreatePaymentUsecase {
@@ -257,6 +260,9 @@ export class CreatePaymentUsecase {
       }
 
       const paymentPolicy = await this.validateTreasuryAccount(input);
+      const paymentMethodSnapshot = canonicalPaymentMethodName(
+        paymentPolicy.method?.code ?? paymentPolicy.method?.name ?? input.method,
+      );
       await this.validateSupplierDestination(input, paymentPoId, paymentPolicy.method);
       await this.validateMethodRequirements(input, paymentPolicy.method);
       if (["POSTED", "APPROVED"].includes(options?.status ?? "APPROVED") && input.paymentMethodId && this.paymentMethods) {
@@ -298,7 +304,7 @@ export class CreatePaymentUsecase {
       }
 
       const document = PaymentsFactory.createPaymentDocument({
-        method: input.method,
+        method: paymentMethodSnapshot,
         date,
         currency: input.currency,
         amount: input.amount,
@@ -352,7 +358,7 @@ export class CreatePaymentUsecase {
               paymentId: created.payDocId,
               amount: input.amount,
               currency: input.currency,
-              method: input.method,
+              method: paymentMethodSnapshot,
               operationNumber: input.operationNumber ?? null,
               quotaId: input.quotaId ?? null,
               accountPayableId: accountPayableId ?? null,

@@ -34,6 +34,7 @@ import { PurchaseItemType } from "src/modules/purchases/domain/value-objects/pur
 import { PurchaseOrder } from "src/modules/purchases/domain/entities/purchase-order";
 import { PurchaseHistoryService } from "../../services/purchase-history.service";
 import { CreateAccountPayableUsecase } from "src/modules/accounts-payable";
+import { canonicalPaymentMethodName } from "src/modules/payment-methods/domain/value-objects/payment-method-catalog";
 
 export class UpdatePurchaseOrderUsecase {
   constructor(
@@ -343,7 +344,7 @@ export class UpdatePurchaseOrderUsecase {
           }
 
           const document = PaymentsFactory.createPaymentDocument({
-            method: payment.method,
+            method: canonicalPaymentMethodName(payment.method),
             date: payDate,
             currency: payment.currency,
             amount: payment.amount,
@@ -373,7 +374,7 @@ export class UpdatePurchaseOrderUsecase {
                 paymentId: createdPayment?.payDocId ?? null,
                 amount: payment.amount,
                 currency: payment.currency,
-                method: payment.method,
+                method: canonicalPaymentMethodName(payment.method),
                 operationNumber: payment.operationNumber ?? null,
                 quotaId: payment.quotaId ?? null,
               },

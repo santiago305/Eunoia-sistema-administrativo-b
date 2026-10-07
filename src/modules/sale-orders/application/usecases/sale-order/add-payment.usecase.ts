@@ -91,7 +91,9 @@ export class AddSaleOrderPaymentUsecase {
           currency: CurrencyType.PEN,
           status: "POSTED" as const,
           date,
-          method: resolvedPaymentMethod?.name ?? (this.paymentMethodRepo ? canonicalPaymentMethodName(input.method) : input.method),
+          method: resolvedPaymentMethod
+            ? canonicalPaymentMethodName(resolvedPaymentMethod.code ?? resolvedPaymentMethod.name)
+            : canonicalPaymentMethodName(input.method),
           operationNumber: input.operationNumber ?? null,
           operationCode: input.operationCode ?? input.operationNumber ?? null,
           amount: input.amount,
