@@ -33,8 +33,10 @@ const CATALOG_FIELDS = new Set<IncomeSearchField>([
 const TEXT_FIELDS = new Set<IncomeSearchField>([IncomeSearchFields.DETAIL]);
 
 const STATUS_OPTIONS: ListingSearchOptionOutput[] = [
+  { id: "PENDING_CONFIRMATION", label: "Por confirmar", keywords: ["pendiente", "por confirmar"] },
   { id: "POSTED", label: "Contabilizado", keywords: ["contabilizado", "publicado"] },
-  { id: "VOIDED", label: "Anulado", keywords: ["anulado", "cancelado"] },
+  { id: "CANCELLED", label: "Cancelado", keywords: ["cancelado", "anulado"] },
+  { id: "REVERSED", label: "Revertido", keywords: ["revertido", "reversado"] },
 ];
 
 const EVIDENCE_OPTIONS: ListingSearchOptionOutput[] = [

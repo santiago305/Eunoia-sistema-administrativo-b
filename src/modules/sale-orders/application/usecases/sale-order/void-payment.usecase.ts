@@ -74,15 +74,15 @@ export class VoidSaleOrderPaymentUsecase {
           },
         };
       }
-      if (payment.payment.status === "VOIDED") {
+      if (payment.payment.status === "REVERSED" || payment.payment.status === "CANCELLED") {
         throw new ConflictException({
           code: "SALE_PAYMENT_ALREADY_VOIDED",
           message: "Este ingreso ya fue anulado. Actualiza la información.",
         });
       }
       throw new ConflictException({
-        code: "SALE_PAYMENT_NOT_POSTED",
-        message: "Solo se puede anular un ingreso contabilizado.",
+        code: "SALE_PAYMENT_NOT_ACTIVE",
+        message: "Solo se puede anular un ingreso por confirmar o contabilizado.",
       });
     });
   }

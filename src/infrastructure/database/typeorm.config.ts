@@ -158,6 +158,10 @@ import { CreateWorkflowActionExecutions20260923090000 } from './migrations/20260
 import { AddPreferredCompanyPaymentMethod20260928120000 } from './migrations/20260928120000-add-preferred-company-payment-method';
 import { AddSaleOrderWorkflowRepairPermission20261003000000 } from './migrations/20261003000000-add-sale-order-workflow-repair-permission';
 import { HardenPaymentEvidenceAndAudit20261007000000 } from './migrations/20261007000000-harden-payment-evidence-and-audit';
+import { PaymentLifecycleFourStates20261008000000 } from './migrations/20261008000000-payment-lifecycle-four-states';
+import { UniqueSalePaymentOperationNumber20261008010000 } from './migrations/20261008010000-unique-sale-payment-operation-number';
+import { CreateMailAttachmentOperations20261010000000 } from './migrations/20261010000000-create-mail-attachment-operations';
+import { CreateMailAttachmentQuarantine20261010010000 } from './migrations/20261010010000-create-mail-attachment-quarantine';
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: 'postgres',
@@ -327,6 +331,10 @@ export const databaseMigrations = [
   AddSaleOrderWorkflowRepairPermission20261003000000,
   RepairPaymentMethodNormalization20261006120000,
   HardenPaymentEvidenceAndAudit20261007000000,
+  PaymentLifecycleFourStates20261008000000,
+  UniqueSalePaymentOperationNumber20261008010000,
+  CreateMailAttachmentOperations20261010000000,
+  CreateMailAttachmentQuarantine20261010010000,
 ];
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({

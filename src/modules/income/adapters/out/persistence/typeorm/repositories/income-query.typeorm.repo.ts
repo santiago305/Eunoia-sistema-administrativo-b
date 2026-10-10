@@ -169,7 +169,7 @@ export class IncomeQueryTypeormRepository implements IncomeQueryRepository {
         .leftJoin(ClientEntity, "client", "client.id = so.clientId")
         .select("COUNT(*)", "voidedPaymentsCount")
         .addSelect("COALESCE(SUM(sp.amount), 0)", "voidedPaymentsAmount")
-        .where("sp.status = 'VOIDED'"),
+        .where("sp.status IN ('CANCELLED', 'REVERSED')"),
       filters,
     );
     if (filters.from) voidedQb.andWhere("sp.voidedAt >= :voidedFrom", { voidedFrom: `${filters.from}T00:00:00.000Z` });
@@ -313,7 +313,7 @@ export class IncomeQueryTypeormRepository implements IncomeQueryRepository {
       evidenceUrl: null,
       evidence: {
         available: Boolean(row.evidenceUrl),
-        status: row.evidenceUrl ? "AVAILABLE" : row.status === "VOIDED" ? "MISSING_OPTIONAL" : "MISSING_REQUIRED",
+        status: row.evidenceUrl ? "AVAILABLE" : ["CANCELLED", "REVERSED"].includes(row.status) ? "MISSING_OPTIONAL" : "MISSING_REQUIRED",
         attachmentId: null,
         url: null,
         originalName: null,
@@ -323,7 +323,7 @@ export class IncomeQueryTypeormRepository implements IncomeQueryRepository {
         canView: false,
         canUpload: false,
       },
-      status: row.status === "VOIDED" ? "VOIDED" : "POSTED",
+      status: row.status,
       voidedAt: row.voidedAt instanceof Date ? row.voidedAt.toISOString() : row.voidedAt ? String(row.voidedAt) : null,
       voidedByUserId: row.voidedByUserId ?? null,
       voidReason: row.voidReason ?? null,

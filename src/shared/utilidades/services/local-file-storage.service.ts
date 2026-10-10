@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { access, mkdir, readFile, rename, rm, writeFile } from 'fs/promises';
+import { access, mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'fs/promises';
 import { randomUUID } from 'crypto';
 import { isAbsolute, join, posix, relative, resolve, sep } from 'path';
 import { envs } from 'src/infrastructure/config/envs';
@@ -71,6 +71,39 @@ export class LocalFileStorageService implements FileStorage {
     }
   }
 
+  async list(area: StorageArea, directory: string): Promise<string[]> {
+    const root = this.areaRoot(area);
+    const safeDirectory = this.sanitizeDirectory(directory);
+    const targetRoot = join(root, safeDirectory);
+    this.assertInside(root, targetRoot, 'Ruta de archivo invalida');
+    const keys: string[] = [];
+
+    const visit = async (current: string) => {
+      let entries;
+      try {
+        entries = await readdir(current, { withFileTypes: true });
+      } catch (error: any) {
+        if (error?.code === 'ENOENT') return;
+        throw error;
+      }
+      for (const entry of entries) {
+        const absolutePath = join(current, entry.name);
+        if (entry.isDirectory()) {
+          await visit(absolutePath);
+          continue;
+        }
+        if (!entry.isFile()) continue;
+        const file = await stat(absolutePath);
+        if (!file.isFile()) continue;
+        const relativePath = this.toPosix(relative(root, absolutePath));
+        keys.push(posix.join(area, relativePath));
+      }
+    };
+
+    await visit(targetRoot);
+    return keys.sort();
+  }
+
   async delete(keyOrPath: string): Promise<boolean> {
     const { absolutePath } = this.resolve(keyOrPath);
     try {
@@ -119,6 +152,24 @@ export class LocalFileStorageService implements FileStorage {
     );
   }
 
+  async move(sourceKey: string, targetKey: string): Promise<StoredFileRef | null> {
+    const source = this.resolve(sourceKey);
+    const target = this.resolve(targetKey);
+    const targetRoot = this.areaRoot(target.area);
+    this.assertInside(targetRoot, target.absolutePath, 'Ruta de archivo invalida');
+    await mkdir(resolve(target.absolutePath, '..'), { recursive: true });
+    try {
+      await rename(source.absolutePath, target.absolutePath);
+    } catch (error: any) {
+      if (error?.code === 'ENOENT') return null;
+      if (error?.code === 'EEXIST') {
+        throw new FileStorageConflictError('Ya existe un archivo con ese nombre');
+      }
+      throw error;
+    }
+    return target;
+  }
+
   resolve(keyOrPath: string): StoredFileRef {
     if (!keyOrPath) {
       throw new InvalidFileStoragePathError('Ruta de archivo invalida');
@@ -138,7 +189,7 @@ export class LocalFileStorageService implements FileStorage {
       );
     }
 
-    if (/^(public|private|deleted)\//.test(normalizedInput)) {
+    if (/^(public|private|deleted|quarantine|staging)\//.test(normalizedInput)) {
       return this.resolveStorageKey(normalizedInput);
     }
 
@@ -231,6 +282,8 @@ export class LocalFileStorageService implements FileStorage {
       public: envs.files.publicDir,
       private: envs.files.privateDir,
       deleted: envs.files.deletedDir,
+      quarantine: envs.files.quarantineDir,
+      staging: envs.files.stagingDir,
     };
 
     return this.resolveFromCwd(areaRoots[area]);
@@ -268,6 +321,8 @@ export class LocalFileStorageService implements FileStorage {
       { area: 'public', root: this.areaRoot('public') },
       { area: 'private', root: this.areaRoot('private') },
       { area: 'deleted', root: this.areaRoot('deleted') },
+      { area: 'quarantine', root: this.areaRoot('quarantine') },
+      { area: 'staging', root: this.areaRoot('staging') },
       { area: 'public', root: this.resolveFromCwd('assets') },
     ];
 
@@ -304,7 +359,7 @@ export class LocalFileStorageService implements FileStorage {
   }
 
   private parseArea(value: string): StorageArea {
-    if (value === 'public' || value === 'private' || value === 'deleted') {
+    if (value === 'public' || value === 'private' || value === 'deleted' || value === 'quarantine' || value === 'staging') {
       return value;
     }
 

@@ -7,7 +7,7 @@ export interface IncomeFilterInput {
   client?: string;
   q?: string;
   hasEvidence?: boolean | string;
-  status?: "POSTED" | "VOIDED" | "ALL" | string;
+  status?: "PENDING_CONFIRMATION" | "POSTED" | "CANCELLED" | "REVERSED" | "ALL" | string;
   filters?: string | IncomeSearchRule[];
   page?: number | string;
   limit?: number | string;
@@ -31,7 +31,7 @@ export interface IncomeFilters {
   client?: string;
   q?: string;
   hasEvidence?: boolean;
-  status: "POSTED" | "VOIDED" | "ALL";
+  status: "PENDING_CONFIRMATION" | "POSTED" | "CANCELLED" | "REVERSED" | "ALL";
   filters?: IncomeSearchRule[];
   page: number;
   limit: number;
@@ -123,10 +123,10 @@ const ruleValues = (rule?: IncomeSearchRule): string[] =>
 export const normalizeIncomeFilters = (input: IncomeFilterInput = {}): IncomeFilters => {
   const parsedRules = parseRules(input.filters);
   const statusValues = ruleValues(parsedRules.find((rule) => rule.field === "status"))
-    .filter((value): value is "POSTED" | "VOIDED" => value === "POSTED" || value === "VOIDED");
+    .filter((value): value is "PENDING_CONFIRMATION" | "POSTED" | "CANCELLED" | "REVERSED" => ["PENDING_CONFIRMATION", "POSTED", "CANCELLED", "REVERSED"].includes(value as any));
   const evidenceValues = ruleValues(parsedRules.find((rule) => rule.field === "hasEvidence"))
     .filter((value) => value === "true" || value === "false");
-  const scalarStatus = input.status === "POSTED" || input.status === "VOIDED" || input.status === "ALL" ? input.status : "ALL";
+  const scalarStatus = ["PENDING_CONFIRMATION", "POSTED", "CANCELLED", "REVERSED", "ALL"].includes(input.status as string) ? input.status as "PENDING_CONFIRMATION" | "POSTED" | "CANCELLED" | "REVERSED" | "ALL" : "ALL";
   const status = statusValues.length === 1 ? statusValues[0] : statusValues.length > 1 ? "ALL" : scalarStatus;
   const hasEvidence = evidenceValues.length === 1 ? evidenceValues[0] === "true" : evidenceValues.length > 1 ? undefined : booleanOrUndefined(input.hasEvidence);
 

@@ -7,6 +7,7 @@ const createRepository = () => ({
   find: jest.fn(),
   findOne: jest.fn(),
   save: jest.fn(),
+  update: jest.fn(),
 });
 
 describe('NotificationAttachmentsService', () => {
@@ -16,14 +17,22 @@ describe('NotificationAttachmentsService', () => {
   let attachmentRepository: ReturnType<typeof createRepository>;
   let messageRepository: ReturnType<typeof createRepository>;
   let attachmentUserRefRepository: ReturnType<typeof createRepository>;
+  let operationRepository: ReturnType<typeof createRepository>;
   let service: NotificationAttachmentsService;
   let imageProcessor: { toWebp: jest.Mock };
-  let fileStorage: { save: jest.Mock; read: jest.Mock; moveToDeleted: jest.Mock };
+  let fileStorage: { save: jest.Mock; read: jest.Mock; delete: jest.Mock; moveToDeleted: jest.Mock; move: jest.Mock };
 
   beforeEach(() => {
     attachmentRepository = createRepository();
     messageRepository = createRepository();
     attachmentUserRefRepository = createRepository();
+    operationRepository = createRepository();
+    operationRepository.save.mockImplementation(async (value) => ({
+      id: 'operation-id',
+      attempts: 0,
+      ...value,
+    }));
+    operationRepository.findOne.mockResolvedValue(null);
     messageRepository.findOne.mockResolvedValue({
       id: draftId,
       createdByUserId: userId,
@@ -36,15 +45,16 @@ describe('NotificationAttachmentsService', () => {
       ...value,
     }));
     fileStorage = {
-      save: jest.fn().mockResolvedValue({
-        key: 'private/mail-attachments/one.webp',
+      save: jest.fn().mockImplementation(async (input) => ({
+        key: `${input.area}/mail-attachments/one.webp`,
         filename: 'one.webp',
-        relativePath: 'private/mail-attachments/one.webp',
+        relativePath: `${input.area}/mail-attachments/one.webp`,
         publicUrl: null,
-        absolutePath: 'C:\\app\\storage\\private\\mail-attachments\\one.webp',
-        area: 'private',
-      }),
+        absolutePath: `C:\\app\\storage\\${input.area}\\mail-attachments\\one.webp`,
+        area: input.area,
+      })),
       read: jest.fn(),
+      delete: jest.fn().mockResolvedValue(true),
       moveToDeleted: jest.fn().mockResolvedValue({
         key: 'deleted/mail-attachments/one.webp',
         filename: 'one.webp',
@@ -53,6 +63,14 @@ describe('NotificationAttachmentsService', () => {
         absolutePath: 'C:\\app\\storage\\deleted\\mail-attachments\\one.webp',
         area: 'deleted',
       }),
+      move: jest.fn().mockImplementation(async (_source, target) => ({
+        key: target,
+        filename: target.split('/').at(-1),
+        relativePath: target,
+        publicUrl: null,
+        absolutePath: `C:\\app\\storage\\${target.replace(/\//g, '\\\\')}`,
+        area: target.split('/')[0],
+      })),
     };
     imageProcessor = {
       toWebp: jest.fn().mockResolvedValue({
@@ -67,6 +85,7 @@ describe('NotificationAttachmentsService', () => {
       attachmentRepository as any,
       messageRepository as any,
       attachmentUserRefRepository as any,
+      operationRepository as any,
       { canDownloadAttachment: jest.fn() } as any,
       { ensureMessageParticipant: jest.fn() } as any,
       {
@@ -120,6 +139,10 @@ describe('NotificationAttachmentsService', () => {
         attachmentKind: 'file',
       }),
     );
+    expect(operationRepository.update).toHaveBeenCalledWith(
+      'operation-id',
+      expect.objectContaining({ status: 'ACTIVE' }),
+    );
   });
 
   it('converts non-PNG image attachments to WEBP before writing to disk', async () => {
@@ -135,19 +158,23 @@ describe('NotificationAttachmentsService', () => {
       buffer: Buffer.from([0xff, 0xd8, 0xff, 0xdb]),
     }));
     expect(fileStorage.save).toHaveBeenCalledWith(expect.objectContaining({
-      area: 'private',
+      area: 'staging',
       directory: 'mail-attachments',
       buffer: Buffer.from('webp'),
       extension: 'webp',
       filename: expect.stringMatching(/\.webp$/),
     }));
+    expect(fileStorage.move).toHaveBeenCalledWith(
+      expect.stringMatching(/^staging\/mail-attachments\//),
+      expect.stringMatching(/^private\/mail-attachments\//),
+    );
     expect(attachmentRepository.save).toHaveBeenCalledWith(
       expect.objectContaining({
         originalName: 'foto.jpg',
         storedName: expect.stringMatching(/\.webp$/),
         mimeType: 'image/webp',
         sizeBytes: '4',
-        storageKey: 'private/mail-attachments/one.webp',
+        storageKey: expect.stringMatching(/^private\/mail-attachments\/.*\.webp$/),
         attachmentKind: 'image',
       }),
     );
@@ -169,6 +196,62 @@ describe('NotificationAttachmentsService', () => {
       }),
     ).rejects.toThrow(new BadRequestException('ATTACHMENT_SIGNATURE_MISMATCH'));
     expect(fileStorage.save).not.toHaveBeenCalled();
+  });
+
+  it('removes the physical file when saving the attachment row fails', async () => {
+    const failure = new Error('database unavailable');
+    attachmentRepository.save.mockRejectedValueOnce(failure);
+
+    await expect(upload()).rejects.toBe(failure);
+
+    expect(fileStorage.delete.mock.calls).toEqual(expect.arrayContaining([
+      [expect.stringMatching(/^private\/mail-attachments\/.*\.pdf$/)],
+      [expect.stringMatching(/^staging\/mail-attachments\/.*\.webp$/)],
+    ]));
+    expect(operationRepository.update).toHaveBeenCalledWith(
+      'operation-id',
+      expect.objectContaining({ status: 'FAILED' }),
+    );
+  });
+
+  it('removes both the row and physical file when ownership tracking fails', async () => {
+    const failure = new Error('quota reference unavailable');
+    (service as any).mailStorageQuotaService.trackAttachmentOwnership.mockRejectedValueOnce(failure);
+
+    await expect(upload()).rejects.toBe(failure);
+
+    expect(attachmentRepository.delete).toHaveBeenCalledWith('attachment-id');
+    expect(fileStorage.delete.mock.calls).toEqual(expect.arrayContaining([
+      [expect.stringMatching(/^private\/mail-attachments\/.*\.pdf$/)],
+      [expect.stringMatching(/^staging\/mail-attachments\/.*\.webp$/)],
+    ]));
+  });
+
+  it('only links selected IDs that belong to the supplied draft', async () => {
+    attachmentRepository.find.mockResolvedValue([]);
+
+    await service.linkAttachmentsToMessage(userId, 'message-id', ['attachment-id'], draftId);
+
+    expect(attachmentRepository.find).toHaveBeenCalledWith({
+      where: [{ id: 'attachment-id', uploadedByUserId: userId, draftId }],
+    });
+  });
+
+  it('reuses an active operation for the same idempotency key', async () => {
+    operationRepository.findOne.mockResolvedValue({
+      id: 'operation-id',
+      userId,
+      idempotencyKey: 'upload-1',
+      status: 'ACTIVE',
+      attachmentId: 'attachment-id',
+    });
+    attachmentRepository.findOne.mockResolvedValue({ id: 'attachment-id', originalName: 'archivo.pdf' });
+
+    const result = await upload({ idempotencyKey: 'upload-1' });
+
+    expect(result).toEqual(expect.objectContaining({ id: 'attachment-id' }));
+    expect(fileStorage.save).not.toHaveBeenCalled();
+    expect(operationRepository.save).not.toHaveBeenCalled();
   });
 
   it('purges draft attachments by moving binaries, releasing refs and deleting rows', async () => {
@@ -206,6 +289,21 @@ describe('NotificationAttachmentsService', () => {
     expect((service as any).mailStorageQuotaService.releaseAttachmentRefs).not.toHaveBeenCalled();
     expect(attachmentRepository.delete).not.toHaveBeenCalled();
     expect(result).toEqual({ deleted: 0 });
+  });
+
+  it('restores moved files when the purge transaction fails', async () => {
+    const attachments = [
+      { id: 'att-1', draftId, uploadedByUserId: userId, storedName: 'one.pdf', storageKey: 'private/mail-attachments/one.pdf' },
+    ];
+    attachmentRepository.find.mockResolvedValue(attachments);
+    attachmentRepository.delete.mockRejectedValueOnce(new Error('database unavailable'));
+
+    await expect(service.purgeDraftAttachments(userId, draftId)).rejects.toThrow('database unavailable');
+
+    expect(fileStorage.move).toHaveBeenCalledWith(
+      'deleted/mail-attachments/one.webp',
+      'private/mail-attachments/one.pdf',
+    );
   });
 
   it('downloads attachment content through file storage', async () => {

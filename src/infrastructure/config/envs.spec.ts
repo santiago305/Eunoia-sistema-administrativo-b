@@ -117,6 +117,64 @@ describe('envs validation', () => {
     });
   });
 
+  it('keeps the deleted-mail database disabled without an explicit opt-in', () => {
+    process.env.JWT_SECRET = 'j'.repeat(32);
+    process.env.COOKIE_SECRET = 'c'.repeat(32);
+    process.env.MAIL_DELETED_DB_HOST = 'deleted-db';
+    process.env.MAIL_DELETED_DB_PORT = '5432';
+    process.env.MAIL_DELETED_DB_USERNAME = 'deleted';
+    process.env.MAIL_DELETED_DB_NAME = 'deleted_mail';
+
+    jest.isolateModules(() => {
+      const { envs } = require('./envs');
+      expect(envs.mail.deletedDb.enabled).toBe(false);
+    });
+  });
+
+  it('enables the deleted-mail database only with a complete explicit opt-in', () => {
+    process.env.JWT_SECRET = 'j'.repeat(32);
+    process.env.COOKIE_SECRET = 'c'.repeat(32);
+    process.env.MAIL_DELETED_DB_ENABLED = 'true';
+    process.env.MAIL_DELETED_DB_HOST = 'deleted-db';
+    process.env.MAIL_DELETED_DB_PORT = '5432';
+    process.env.MAIL_DELETED_DB_USERNAME = 'deleted';
+    process.env.MAIL_DELETED_DB_NAME = 'deleted_mail';
+
+    jest.isolateModules(() => {
+      const { envs } = require('./envs');
+      expect(envs.mail.deletedDb.enabled).toBe(true);
+    });
+  });
+
+  it('keeps destructive mail jobs opt-in while allowing read-only development audits', () => {
+    process.env.JWT_SECRET = 'j'.repeat(32);
+    process.env.COOKIE_SECRET = 'c'.repeat(32);
+
+    jest.isolateModules(() => {
+      const { envs } = require('./envs');
+      expect(envs.mail.jobs.enabled).toBe(true);
+      expect(envs.mail.jobs.orphanAuditEnabled).toBe(true);
+      expect(envs.mail.jobs.deletedArchiveEnabled).toBe(false);
+      expect(envs.mail.jobs.orphanQuarantineEnabled).toBe(false);
+    });
+  });
+
+  it('disables scheduler by default in production unless explicitly enabled', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.DB_PASSWORD = 'Db_9fH2!mQ7#vL4@xP8';
+    process.env.REDIS_PASSWORD = 'Redis_6!zN3@qW8#kT2';
+    process.env.JWT_SECRET = 'Jwt_Production_9fH2!mQ7#vL4@xP8$zN3';
+    process.env.COOKIE_SECRET = 'Cookie_Production_6zN3@qW8#kT2!mQ7';
+    process.env.MASTER_ADMIN_INITIAL_PASSWORD = 'Root_8#xP2!vL6';
+    process.env.PAYMENT_ACCOUNT_ENCRYPTION_KEY = 'PaymentAccount_Encryption_9fH2!mQ7#vL4@xP8';
+
+    jest.isolateModules(() => {
+      const { envs } = require('./envs');
+      expect(envs.mail.jobs.enabled).toBe(false);
+      expect(envs.mail.jobs.runOnStart).toBe(false);
+    });
+  });
+
   it('uses localhost CORS origins by default', () => {
     process.env.JWT_SECRET = 'j'.repeat(32);
     process.env.COOKIE_SECRET = 'c'.repeat(32);

@@ -1,10 +1,12 @@
-import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, IsNull, Repository } from 'typeorm';
+import { createHash } from 'node:crypto';
 import * as path from 'node:path';
 import { MessageAttachmentEntity } from '../../adapters/out/persistence/typeorm/entities/message-attachment.entity';
 import { MessageEntity } from '../../adapters/out/persistence/typeorm/entities/message.entity';
 import { MailAttachmentUserRefEntity } from '../../adapters/out/persistence/typeorm/entities/mail-attachment-user-ref.entity';
+import { MailAttachmentOperationEntity } from '../../adapters/out/persistence/typeorm/entities/mail-attachment-operation.entity';
 import { ACCESS_CONTROL_PORT, AccessControlPort } from '../ports/access-control.port';
 import { MessageAccessService } from './message-access.service';
 import { MailStorageQuotaService } from './mail-storage-quota.service';
@@ -26,6 +28,7 @@ type DetectedAttachmentSignature =
 
 @Injectable()
 export class NotificationAttachmentsService {
+  private readonly logger = new Logger(NotificationAttachmentsService.name);
   private readonly allowedAttachmentMimeTypes = new Set([
     'application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -55,6 +58,8 @@ export class NotificationAttachmentsService {
     private readonly messageRepository: Repository<MessageEntity>,
     @InjectRepository(MailAttachmentUserRefEntity)
     private readonly attachmentUserRefRepository: Repository<MailAttachmentUserRefEntity>,
+    @InjectRepository(MailAttachmentOperationEntity)
+    private readonly operationRepository: Repository<MailAttachmentOperationEntity>,
     @Inject(ACCESS_CONTROL_PORT)
     private readonly accessControlPort: AccessControlPort,
     private readonly messageAccessService: MessageAccessService,
@@ -151,7 +156,15 @@ export class NotificationAttachmentsService {
   async linkAttachmentsToMessage(userId: string, messageId: string, attachmentIds: string[], draftId?: string, manager?: EntityManager) {
     const attachmentRepo = manager ? manager.getRepository(MessageAttachmentEntity) : this.messageAttachmentRepository;
     const ids = Array.from(new Set((attachmentIds ?? []).filter(Boolean)));
-    const whereBase = ids.length ? ids.map((id) => ({ id, uploadedByUserId: userId })) : draftId ? [{ draftId, uploadedByUserId: userId }] : [];
+    const whereBase = ids.length
+      ? ids.map((id) => ({
+          id,
+          uploadedByUserId: userId,
+          ...(draftId ? { draftId } : {}),
+        }))
+      : draftId
+        ? [{ draftId, uploadedByUserId: userId }]
+        : [];
     if (!whereBase.length) return;
 
     const attachments = await attachmentRepo.find({ where: whereBase });
@@ -195,7 +208,7 @@ export class NotificationAttachmentsService {
     }
   }
 
-  async uploadAttachment(input: { userId: string; fileName: string; mimeType: string; size: number; buffer: Buffer; messageId?: string; draftId?: string; kind?: MailAttachmentKind; modulePermissions: Record<string, string[]>; }) {
+  async uploadAttachment(input: { userId: string; fileName: string; mimeType: string; size: number; buffer: Buffer; messageId?: string; draftId?: string; kind?: MailAttachmentKind; idempotencyKey?: string; modulePermissions: Record<string, string[]>; }) {
     if (!input.fileName || !input.mimeType || !input.buffer?.length) throw new BadRequestException('ATTACHMENT_FILE_REQUIRED');
     if (!input.messageId && !input.draftId) throw new BadRequestException('ATTACHMENT_TARGET_REQUIRED');
 
@@ -233,37 +246,187 @@ export class NotificationAttachmentsService {
     await this.mailStorageQuotaService.assertCanAddBytes(input.userId, preparedFile.sizeBytes);
 
     const storedName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${preparedFile.extension}`;
-    const stored = await this.fileStorage.save({
-      area: 'private',
-      directory: 'mail-attachments',
-      buffer: preparedFile.buffer,
-      extension: preparedFile.extension,
-      filename: storedName,
-    });
-    const storageKey = stored.key;
+    const contentHash = createHash('sha256').update(preparedFile.buffer).digest('hex');
+    const idempotencyKey = input.idempotencyKey?.trim() || null;
+    let operation: MailAttachmentOperationEntity | null = null;
+    if (idempotencyKey) {
+      operation = await this.operationRepository.findOne({
+        where: { userId: input.userId, idempotencyKey },
+      });
+      if (operation?.status === 'ACTIVE' && operation.attachmentId) {
+        if (operation.sha256 && operation.sha256 !== contentHash) {
+          throw new BadRequestException('ATTACHMENT_IDEMPOTENCY_CONTENT_MISMATCH');
+        }
+        const existingAttachment = await this.messageAttachmentRepository.findOne({
+          where: { id: operation.attachmentId },
+        });
+        if (existingAttachment) return existingAttachment;
+      }
+      if (operation?.sha256 && operation.sha256 !== contentHash) {
+        throw new BadRequestException('ATTACHMENT_IDEMPOTENCY_CONTENT_MISMATCH');
+      }
+    }
 
-    const saved = await this.messageAttachmentRepository.save(this.messageAttachmentRepository.create({
-      messageId: input.messageId ?? null,
-      draftId: input.draftId ?? null,
-      originalName: input.fileName,
-      storedName,
-      mimeType: preparedFile.mimeType,
-      sizeBytes: String(preparedFile.sizeBytes),
-      storageKey,
-      uploadedByUserId: input.userId,
-      attachmentKind,
-    }));
-    await this.mailStorageQuotaService.trackAttachmentOwnership({
-      attachmentId: saved.id,
-      userId: input.userId,
-      messageId: saved.messageId,
-    });
+    try {
+      operation = await this.operationRepository.save(
+        operation
+          ? this.operationRepository.create({
+              ...operation,
+              status: 'PENDING',
+              lastError: null,
+              attempts: operation.attempts ?? 0,
+            })
+          : this.operationRepository.create({
+              userId: input.userId,
+              messageId: input.messageId ?? null,
+              draftId: input.draftId ?? null,
+              idempotencyKey,
+              status: 'PENDING',
+              attachmentId: null,
+              storageKey: null,
+              expectedSizeBytes: String(preparedFile.sizeBytes),
+              actualSizeBytes: null,
+              sha256: contentHash,
+              attempts: 0,
+              lastError: null,
+              completedAt: null,
+            }),
+      );
+    } catch (error) {
+      this.logger.error(`No se pudo registrar la operación durable del adjunto: ${(error as Error)?.message ?? 'unknown'}`);
+      throw error;
+    }
 
-    return saved;
+    let stored: Awaited<ReturnType<FileStorage['save']>> | null = null;
+    let staged: Awaited<ReturnType<FileStorage['save']>> | null = null;
+    let saved: MessageAttachmentEntity | null = null;
+    try {
+      staged = await this.fileStorage.save({
+        area: 'staging',
+        directory: 'mail-attachments',
+        buffer: preparedFile.buffer,
+        extension: preparedFile.extension,
+        filename: storedName,
+      });
+      await this.operationRepository.update(operation.id, {
+        status: 'STAGED',
+        storageKey: staged.key,
+        actualSizeBytes: String(preparedFile.sizeBytes),
+        sha256: contentHash,
+      });
+
+      stored = this.fileStorage.move
+        ? await this.fileStorage.move(staged.key, `private/mail-attachments/${storedName}`)
+        : null;
+      if (!stored) {
+        stored = await this.fileStorage.save({
+          area: 'private',
+          directory: 'mail-attachments',
+          buffer: preparedFile.buffer,
+          extension: preparedFile.extension,
+          filename: storedName,
+        });
+        await this.fileStorage.delete(staged.key);
+      }
+      const storageKey = stored.key;
+      await this.operationRepository.update(operation.id, {
+        status: 'STAGED',
+        storageKey,
+        actualSizeBytes: String(preparedFile.sizeBytes),
+        sha256: contentHash,
+      });
+
+      saved = await this.messageAttachmentRepository.save(this.messageAttachmentRepository.create({
+        messageId: input.messageId ?? null,
+        draftId: input.draftId ?? null,
+        originalName: input.fileName,
+        storedName,
+        mimeType: preparedFile.mimeType,
+        sizeBytes: String(preparedFile.sizeBytes),
+        storageKey,
+        uploadedByUserId: input.userId,
+        attachmentKind,
+      }));
+      await this.operationRepository.update(operation.id, {
+        status: 'REGISTERED',
+        attachmentId: saved.id,
+      });
+      await this.mailStorageQuotaService.trackAttachmentOwnership({
+        attachmentId: saved.id,
+        userId: input.userId,
+        messageId: saved.messageId,
+      });
+      await this.operationRepository.update(operation.id, {
+        status: 'ACTIVE',
+        completedAt: new Date(),
+        lastError: null,
+      });
+
+      return saved;
+    } catch (error) {
+      if (operation?.id) {
+        try {
+          await this.operationRepository.update(operation.id, {
+            status: 'FAILED',
+            attempts: (operation.attempts ?? 0) + 1,
+            lastError: (error as Error)?.message ?? 'unknown',
+          });
+        } catch (operationError) {
+          this.logger.error(`No se pudo marcar la operación ${operation.id} como FAILED: ${(operationError as Error)?.message ?? 'unknown'}`);
+        }
+      }
+      if (saved?.id) {
+        try {
+          await this.messageAttachmentRepository.delete(saved.id);
+        } catch (cleanupError) {
+          this.logger.error(
+            `No se pudo revertir el registro del adjunto ${saved.id}: ${(cleanupError as Error)?.message ?? 'unknown'}`,
+          );
+        }
+      }
+      if (stored) {
+        try {
+          await this.fileStorage.delete(stored.key);
+        } catch (cleanupError) {
+          this.logger.error(
+            `No se pudo limpiar el archivo ${stored.key} tras una carga fallida: ${(cleanupError as Error)?.message ?? 'unknown'}`,
+          );
+        }
+      }
+      if (staged && staged.key !== stored?.key) {
+        try {
+          await this.fileStorage.delete(staged.key);
+        } catch (cleanupError) {
+          this.logger.error(
+            `No se pudo limpiar el staging ${staged.key}: ${(cleanupError as Error)?.message ?? 'unknown'}`,
+          );
+        }
+      }
+      throw error;
+    }
   }
 
   private async moveAttachmentToDeletedArea(attachment: MessageAttachmentEntity) {
-    await this.fileStorage.moveToDeleted(attachment.storageKey, 'mail-attachments');
+    const moved = await this.fileStorage.moveToDeleted(attachment.storageKey, 'mail-attachments');
+    if (!moved) {
+      throw new NotFoundException('ATTACHMENT_FILE_NOT_FOUND');
+    }
+    return moved;
+  }
+
+  private async restoreMovedAttachments(
+    moved: Array<{ originalKey: string; deletedKey: string }>,
+  ) {
+    if (!this.fileStorage.move) return;
+    for (const item of [...moved].reverse()) {
+      try {
+        await this.fileStorage.move(item.deletedKey, item.originalKey);
+      } catch (error) {
+        this.logger.error(
+          `No se pudo restaurar ${item.deletedKey} a ${item.originalKey}: ${(error as Error)?.message ?? 'unknown'}`,
+        );
+      }
+    }
   }
 
   async purgeDraftAttachments(
@@ -277,19 +440,26 @@ export class NotificationAttachmentsService {
     });
     if (!attachments.length) return { deleted: 0 };
 
-    for (const attachment of attachments) {
-      await this.moveAttachmentToDeletedArea(attachment);
+    const moved: Array<{ originalKey: string; deletedKey: string }> = [];
+    try {
+      for (const attachment of attachments) {
+        const movedFile = await this.moveAttachmentToDeletedArea(attachment);
+        moved.push({ originalKey: attachment.storageKey, deletedKey: movedFile.key });
+      }
+
+      const attachmentIds = attachments.map((attachment) => attachment.id);
+      await this.mailStorageQuotaService.releaseAttachmentRefs({
+        attachmentIds,
+        userId,
+        manager,
+      });
+      await attachmentRepo.delete(attachmentIds);
+
+      return { deleted: attachmentIds.length };
+    } catch (error) {
+      await this.restoreMovedAttachments(moved);
+      throw error;
     }
-
-    const attachmentIds = attachments.map((attachment) => attachment.id);
-    await this.mailStorageQuotaService.releaseAttachmentRefs({
-      attachmentIds,
-      userId,
-      manager,
-    });
-    await attachmentRepo.delete(attachmentIds);
-
-    return { deleted: attachmentIds.length };
   }
 
   async downloadAttachment(userId: string, attachmentId: string, modulePermissions: Record<string, string[]>) {

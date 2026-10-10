@@ -84,6 +84,8 @@ export class IncomeController {
     const content = await this.fileStorage.read(evidence.url);
     response.setHeader("Content-Type", evidence.mimeType ?? "image/jpeg");
     response.setHeader("Content-Length", content.byteLength);
+    response.setHeader("Content-Disposition", "inline");
+    response.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
     response.setHeader("Cache-Control", "private, no-store");
     response.send(content);
   }

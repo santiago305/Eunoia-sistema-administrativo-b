@@ -69,7 +69,7 @@ export class SaleOrderPaymentReconcilerService {
       retainedIds.add(payment.id);
       paymentIdByClientKey.set(payment.clientKey, payment.id);
       const existingPayment = existingById.get(payment.id)!;
-      if (existingPayment.status === 'POSTED' || existingPayment.status === 'VOIDED') {
+      if (existingPayment.status === 'POSTED' || existingPayment.status === 'CANCELLED' || existingPayment.status === 'REVERSED') {
         const changed =
           existingPayment.amount !== payment.amount ||
           existingPayment.method !== payment.method ||
@@ -103,7 +103,7 @@ export class SaleOrderPaymentReconcilerService {
       .filter((payment) => !retainedIds.has(payment.id))
       .map((payment) => payment.id);
     const protectedRetired = existing.filter(
-      (payment) => !retainedIds.has(payment.id) && (payment.status === 'POSTED' || payment.status === 'VOIDED'),
+      (payment) => !retainedIds.has(payment.id) && (payment.status === 'POSTED' || payment.status === 'CANCELLED' || payment.status === 'REVERSED'),
     );
     if (protectedRetired.length) {
       throw new BadRequestException('No se pueden quitar pagos contabilizados o anulados desde el editor; utiliza Anular ingreso');

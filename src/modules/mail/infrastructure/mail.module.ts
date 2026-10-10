@@ -21,6 +21,8 @@ import { MessageActionEntity } from '../adapters/out/persistence/typeorm/entitie
 import { MessageActionRecipientEntity } from '../adapters/out/persistence/typeorm/entities/message-action-recipient.entity';
 import { MailStorageQuotaEntity } from '../adapters/out/persistence/typeorm/entities/mail-storage-quota.entity';
 import { MailAttachmentUserRefEntity } from '../adapters/out/persistence/typeorm/entities/mail-attachment-user-ref.entity';
+import { MailAttachmentOperationEntity } from '../adapters/out/persistence/typeorm/entities/mail-attachment-operation.entity';
+import { MailAttachmentQuarantineEntity } from '../adapters/out/persistence/typeorm/entities/mail-attachment-quarantine.entity';
 import { ApprovalRequestEntity } from 'src/modules/purchases/adapters/out/persistence/typeorm/entities/approval-request.entity';
 import { PurchaseOrderEntity } from 'src/modules/purchases/adapters/out/persistence/typeorm/entities/purchase-order.entity';
 import { PaymentDocumentEntity } from 'src/modules/payments/adapters/out/persistence/typeorm/entities/payment-document.entity';
@@ -33,6 +35,7 @@ import { CreateYearlyPartitionsJob } from './jobs/create-yearly-partitions.job';
 import { ArchiveDeletedMailJob } from './jobs/archive-deleted-mail.job';
 import { PurgeDisabledUserMailJob } from './jobs/purge-disabled-user-mail.job';
 import { MailJobsScheduler } from './jobs/mail-jobs.scheduler';
+import { RecoverMailAttachmentOperationsJob } from './jobs/recover-mail-attachment-operations.job';
 import { DeletedMailDataSourceProvider } from './deleted-mail.datasource.provider';
 import { MessageStateService } from '../application/services/message-state.service';
 import { MessageAccessService } from '../application/services/message-access.service';
@@ -49,6 +52,7 @@ import { MessageUserStateAccessService } from '../application/services/message-u
 import { SystemNotificationService } from '../application/services/system-notification.service';
 import { MessageActionsService } from '../application/services/message-actions.service';
 import { MailStorageQuotaService } from '../application/services/mail-storage-quota.service';
+import { MailAttachmentQuarantineService } from '../application/services/mail-attachment-quarantine.service';
 import { ACCESS_CONTROL_PORT } from '../application/ports/access-control.port';
 import { AccessControlAdapter } from '../adapters/out/access-control/access-control.adapter';
 import { IMAGE_PROCESSOR } from 'src/shared/application/ports/image-processor.port';
@@ -73,6 +77,8 @@ import { StorageModule } from 'src/shared/storage/storage.module';
       MessageActionRecipientEntity,
       MailStorageQuotaEntity,
       MailAttachmentUserRefEntity,
+      MailAttachmentOperationEntity,
+      MailAttachmentQuarantineEntity,
       ApprovalRequestEntity,
       PurchaseOrderEntity,
       PaymentDocumentEntity,
@@ -99,6 +105,7 @@ import { StorageModule } from 'src/shared/storage/storage.module';
     SystemNotificationService,
     MessageActionsService,
     MailStorageQuotaService,
+    MailAttachmentQuarantineService,
     AccessControlAdapter,
     { provide: ACCESS_CONTROL_PORT, useExisting: AccessControlAdapter },
     { provide: IMAGE_PROCESSOR, useClass: SharpImageProcessorService },
@@ -112,6 +119,7 @@ import { StorageModule } from 'src/shared/storage/storage.module';
     CreateYearlyPartitionsJob,
     ArchiveDeletedMailJob,
     PurgeDisabledUserMailJob,
+    RecoverMailAttachmentOperationsJob,
     DeletedMailDataSourceProvider,
     MailJobsScheduler,
   ],

@@ -33,18 +33,28 @@ interface EnvVars {
     FILES_PUBLIC_DIR?: string;
     FILES_PRIVATE_DIR?: string;
     FILES_DELETED_DIR?: string;
+    FILES_QUARANTINE_DIR?: string;
+    FILES_STAGING_DIR?: string;
     MAIL_DEFAULT_USER_STORAGE_GB?: number;
     MAIL_ATTACHMENTS_DIR?: string;
     MAIL_ATTACHMENTS_DELETED_DIR?: string;
     MAIL_STORAGE_ACTIVE_DIR?: string;
     MAIL_STORAGE_DELETED_DIR?: string;
     MAIL_DELETED_DB_HOST?: string;
+    MAIL_DELETED_DB_ENABLED?: boolean;
     MAIL_DELETED_DB_PORT?: number;
     MAIL_DELETED_DB_USERNAME?: string;
     MAIL_DELETED_DB_PASSWORD?: string;
     MAIL_DELETED_DB_NAME?: string;
     MAIL_DELETED_RETENTION_DAYS?: number;
     MAIL_DISABLED_USER_RETENTION_DAYS?: number;
+    MAIL_JOBS_ENABLED?: boolean;
+    MAIL_JOBS_RUN_ON_START?: boolean;
+    MAIL_DRAFT_EXPIRATION_V2_ENABLED?: boolean;
+    MAIL_ORPHAN_AUDIT_ENABLED?: boolean;
+    MAIL_ORPHAN_QUARANTINE_ENABLED?: boolean;
+    MAIL_DELETED_ARCHIVE_ENABLED?: boolean;
+    MAIL_ATTACHMENT_RECOVERY_WORKER_ENABLED?: boolean;
 
     IDENTITY_API_KEY?: string;
     IDENTITY_BASE_URL?: string;
@@ -83,18 +93,28 @@ const envsSchema = joi.object({
     FILES_PUBLIC_DIR: joi.string().optional(),
     FILES_PRIVATE_DIR: joi.string().optional(),
     FILES_DELETED_DIR: joi.string().optional(),
+    FILES_QUARANTINE_DIR: joi.string().optional(),
+    FILES_STAGING_DIR: joi.string().optional(),
     MAIL_DEFAULT_USER_STORAGE_GB: joi.number().min(1).max(5).optional(),
     MAIL_ATTACHMENTS_DIR: joi.string().optional(),
     MAIL_ATTACHMENTS_DELETED_DIR: joi.string().optional(),
     MAIL_STORAGE_ACTIVE_DIR: joi.string().optional(),
     MAIL_STORAGE_DELETED_DIR: joi.string().optional(),
     MAIL_DELETED_DB_HOST: joi.string().optional(),
+    MAIL_DELETED_DB_ENABLED: joi.boolean().optional(),
     MAIL_DELETED_DB_PORT: joi.number().optional(),
     MAIL_DELETED_DB_USERNAME: joi.string().optional(),
     MAIL_DELETED_DB_PASSWORD: joi.string().allow('').optional(),
     MAIL_DELETED_DB_NAME: joi.string().optional(),
     MAIL_DELETED_RETENTION_DAYS: joi.number().min(1).max(3650).optional(),
     MAIL_DISABLED_USER_RETENTION_DAYS: joi.number().min(1).max(3650).optional(),
+    MAIL_JOBS_ENABLED: joi.boolean().optional(),
+    MAIL_JOBS_RUN_ON_START: joi.boolean().optional(),
+    MAIL_DRAFT_EXPIRATION_V2_ENABLED: joi.boolean().optional(),
+    MAIL_ORPHAN_AUDIT_ENABLED: joi.boolean().optional(),
+    MAIL_ORPHAN_QUARANTINE_ENABLED: joi.boolean().optional(),
+    MAIL_DELETED_ARCHIVE_ENABLED: joi.boolean().optional(),
+    MAIL_ATTACHMENT_RECOVERY_WORKER_ENABLED: joi.boolean().optional(),
     IDENTITY_BASE_URL: joi.string().optional(),
     IDENTITY_API_KEY: joi.string().optional(),
     IDENTITY_TIMEOUT_MS: joi.number().optional(),
@@ -174,6 +194,8 @@ const filesRootDir = envsVars.FILES_STORAGE_ROOT ?? 'storage';
 const filesPublicDir = envsVars.FILES_PUBLIC_DIR ?? `${filesRootDir}/public`;
 const filesPrivateDir = envsVars.FILES_PRIVATE_DIR ?? `${filesRootDir}/private`;
 const filesDeletedDir = envsVars.FILES_DELETED_DIR ?? `${filesRootDir}/deleted`;
+const filesQuarantineDir = envsVars.FILES_QUARANTINE_DIR ?? `${filesRootDir}/quarantine`;
+const filesStagingDir = envsVars.FILES_STAGING_DIR ?? `${filesRootDir}/staging`;
 const corsOrigins = (envsVars.CORS_ORIGINS ?? 'http://localhost:5173,http://127.0.0.1:5173')
   .split(',')
   .map((origin) => origin.trim())
@@ -227,6 +249,8 @@ export const envs = {
         publicDir: filesPublicDir,
         privateDir: filesPrivateDir,
         deletedDir: filesDeletedDir,
+        quarantineDir: filesQuarantineDir,
+        stagingDir: filesStagingDir,
     },
     mail: {
         defaultUserStorageGb: envsVars.MAIL_DEFAULT_USER_STORAGE_GB ?? 1,
@@ -244,7 +268,9 @@ export const envs = {
           username: envsVars.MAIL_DELETED_DB_USERNAME,
           password: envsVars.MAIL_DELETED_DB_PASSWORD,
           name: envsVars.MAIL_DELETED_DB_NAME,
-          enabled: Boolean(
+          // Explicit opt-in prevents an accidentally partially configured
+          // secondary database from being used by archive jobs.
+          enabled: envsVars.MAIL_DELETED_DB_ENABLED === true && Boolean(
             envsVars.MAIL_DELETED_DB_HOST &&
             envsVars.MAIL_DELETED_DB_PORT &&
             envsVars.MAIL_DELETED_DB_USERNAME &&
@@ -253,5 +279,16 @@ export const envs = {
         },
         deletedRetentionDays: envsVars.MAIL_DELETED_RETENTION_DAYS ?? 15,
         disabledUserRetentionDays: envsVars.MAIL_DISABLED_USER_RETENTION_DAYS ?? 30,
+        jobs: {
+          // Development keeps jobs available for isolated Docker rehearsal;
+          // production must opt in explicitly before any scheduler is active.
+          enabled: envsVars.MAIL_JOBS_ENABLED ?? envsVars.NODE_ENV !== 'production',
+          runOnStart: envsVars.MAIL_JOBS_RUN_ON_START ?? envsVars.NODE_ENV !== 'production',
+          draftExpirationV2Enabled: envsVars.MAIL_DRAFT_EXPIRATION_V2_ENABLED ?? true,
+          orphanAuditEnabled: envsVars.MAIL_ORPHAN_AUDIT_ENABLED ?? true,
+          orphanQuarantineEnabled: envsVars.MAIL_ORPHAN_QUARANTINE_ENABLED ?? false,
+          deletedArchiveEnabled: envsVars.MAIL_DELETED_ARCHIVE_ENABLED ?? false,
+          attachmentRecoveryWorkerEnabled: envsVars.MAIL_ATTACHMENT_RECOVERY_WORKER_ENABLED ?? false,
+        },
     },
 }

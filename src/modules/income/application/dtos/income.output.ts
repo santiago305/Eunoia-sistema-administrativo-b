@@ -16,7 +16,7 @@ export interface IncomeOutput {
   createdAt: string;
   evidenceUrl: string | null;
   evidence: IncomeEvidenceSummary;
-  status: "POSTED" | "VOIDED";
+  status: "PENDING_CONFIRMATION" | "POSTED" | "CANCELLED" | "REVERSED";
   voidedAt: string | null;
   voidedByUserId: string | null;
   voidReason: string | null;

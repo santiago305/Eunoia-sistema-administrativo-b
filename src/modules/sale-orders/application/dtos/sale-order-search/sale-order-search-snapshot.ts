@@ -131,7 +131,7 @@ export type SaleOrderPaymentOutput = {
   operationNumber: string | null;
   amount: number;
   note: string | null;
-  status?: 'DRAFT' | 'POSTED' | 'VOIDED';
+  status?: 'PENDING_CONFIRMATION' | 'POSTED' | 'CANCELLED' | 'REVERSED';
   voidedAt?: string | null;
   voidedByUserId?: string | null;
   voidReason?: string | null;

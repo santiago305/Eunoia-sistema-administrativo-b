@@ -200,7 +200,7 @@ export type SaleOrderGetOutput = {
     amount: number;
     note: string | null;
     paymentPhoto: string | null;
-    status?: 'DRAFT' | 'POSTED' | 'VOIDED';
+    status?: 'PENDING_CONFIRMATION' | 'POSTED' | 'CANCELLED' | 'REVERSED';
     voidedAt?: string | null;
     voidedByUserId?: string | null;
     voidReason?: string | null;

@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { createHash, randomUUID } from 'node:crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, In, Repository } from 'typeorm';
 import { envs } from 'src/infrastructure/config/envs';
@@ -13,6 +14,7 @@ import { DeletedMailMessageEntity } from '../../adapters/out/persistence/typeorm
 import { DeletedMailMessageUserStateEntity } from '../../adapters/out/persistence/typeorm/entities/deleted-mail-message-user-state.entity';
 import { DeletedMailAttachmentEntity } from '../../adapters/out/persistence/typeorm/entities/deleted-mail-attachment.entity';
 import { DeletedMailAuditLogEntity } from '../../adapters/out/persistence/typeorm/entities/deleted-mail-audit-log.entity';
+import { DeletedMailArchiveOperationEntity } from '../../adapters/out/persistence/typeorm/entities/deleted-mail-archive-operation.entity';
 
 @Injectable()
 export class ArchiveDeletedMailJob {
@@ -40,7 +42,30 @@ export class ArchiveDeletedMailJob {
   }
 
   private async moveAttachmentToDeletedArea(storageKey: string) {
-    await this.fileStorage.moveToDeleted(storageKey, 'mail-attachments');
+    const moved = await this.fileStorage.moveToDeleted(storageKey, 'mail-attachments');
+    if (moved) return moved;
+
+    // A retry may find the source already moved after a previous successful
+    // filesystem step. Treat the deterministic final key as idempotent only
+    // when it is actually present.
+    const filename = this.fileStorage.resolve(storageKey).filename;
+    const finalKey = `deleted/mail-attachments/${filename}`;
+    if (await this.fileStorage.exists(finalKey)) {
+      return this.fileStorage.resolve(finalKey);
+    }
+    throw new Error(`ARCHIVE_ATTACHMENT_FILE_NOT_FOUND:${storageKey}`);
+  }
+
+  private async verifyMovedAttachment(storageKey: string, expectedSize: number | string | null | undefined) {
+    const content = await this.fileStorage.read(storageKey);
+    const actualSize = content.length;
+    if (expectedSize !== null && expectedSize !== undefined && Number(expectedSize) !== actualSize) {
+      throw new Error(`ARCHIVE_ATTACHMENT_SIZE_MISMATCH:${storageKey}`);
+    }
+    return {
+      actualSize,
+      sha256: createHash('sha256').update(content).digest('hex'),
+    };
   }
 
   async run(batchSize = 200) {
@@ -76,6 +101,7 @@ export class ArchiveDeletedMailJob {
       this.messageRecipientRepository.find({ where: { messageId: In(messageIds) } }),
       this.messageAuditLogRepository.find({ where: { messageId: In(messageIds) } }),
     ]);
+    const runId = randomUUID();
 
     const statesByMessageId = new Map<string, MessageUserStateEntity[]>();
     states.forEach((state) => {
@@ -169,9 +195,85 @@ export class ArchiveDeletedMailJob {
       );
     });
 
+    await deletedDataSource.transaction(async (manager) => {
+      for (const attachment of attachments) {
+        await manager.query(
+          `
+            INSERT INTO deleted_mail_archive_operations
+              (source_message_id, source_attachment_id, run_id, status,
+               original_storage_key, expected_size_bytes, attempts, last_error)
+            VALUES ($1, $2, $3, 'PENDING', $4, $5, 1, NULL)
+            ON CONFLICT (source_attachment_id)
+            DO UPDATE SET
+              run_id = EXCLUDED.run_id,
+              status = 'PENDING',
+              original_storage_key = EXCLUDED.original_storage_key,
+              expected_size_bytes = EXCLUDED.expected_size_bytes,
+              attempts = deleted_mail_archive_operations.attempts + 1,
+              last_error = NULL,
+              updated_at = now(),
+              completed_at = NULL
+          `,
+          [attachment.messageId, attachment.id, runId, attachment.storageKey, String(attachment.sizeBytes)],
+        );
+      }
+    });
+
+    const movedAttachments = [] as Array<{ id: string; key: string }>;
     for (const attachment of attachments) {
-      await this.moveAttachmentToDeletedArea(attachment.storageKey);
+      let movedKey: string | null = null;
+      try {
+        const moved = await this.moveAttachmentToDeletedArea(attachment.storageKey);
+        movedKey = moved.key;
+        const verified = await this.verifyMovedAttachment(moved.key, attachment.sizeBytes);
+        await deletedDataSource.transaction(async (manager) => {
+          await manager.getRepository(DeletedMailArchiveOperationEntity).update(
+            { sourceAttachmentId: attachment.id },
+            {
+              status: 'VERIFIED',
+              finalStorageKey: moved.key,
+              actualSizeBytes: String(verified.actualSize),
+              sha256: verified.sha256,
+              lastError: null,
+            },
+          );
+        });
+        movedAttachments.push({ id: attachment.id, key: moved.key });
+      } catch (error) {
+        if (movedKey && this.fileStorage.move) {
+          try {
+            await this.fileStorage.move(movedKey, attachment.storageKey);
+          } catch (rollbackError) {
+            this.logger.error(
+              `archive-deleted-mail rollback failed attachment=${attachment.id}: ${(rollbackError as Error)?.message ?? 'unknown error'}`,
+            );
+          }
+        }
+        await deletedDataSource.transaction(async (manager) => {
+          await manager.getRepository(DeletedMailArchiveOperationEntity).update(
+            { sourceAttachmentId: attachment.id },
+            { status: 'FAILED', lastError: (error as Error)?.message ?? 'unknown error' },
+          );
+        });
+        throw error;
+      }
     }
+
+    // The archived record must point to the verified final key. This is kept
+    // separate from the source transaction so a retry can repair it safely.
+    await deletedDataSource.transaction(async (manager) => {
+      const deletedAttachmentRepo = manager.getRepository(DeletedMailAttachmentEntity);
+      for (const moved of movedAttachments) {
+        await deletedAttachmentRepo.update(
+          { sourceAttachmentId: moved.id },
+          { storageKey: moved.key },
+        );
+        await manager.getRepository(DeletedMailArchiveOperationEntity).update(
+          { sourceAttachmentId: moved.id },
+          { status: 'COMMITTED', completedAt: new Date() },
+        );
+      }
+    });
 
     await this.dataSource.transaction(async (manager) => {
       const threadIds = Array.from(

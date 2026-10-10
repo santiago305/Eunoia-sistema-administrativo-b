@@ -5,6 +5,9 @@ import { DeletedMailMessageEntity } from '../adapters/out/persistence/typeorm/en
 import { DeletedMailMessageUserStateEntity } from '../adapters/out/persistence/typeorm/entities/deleted-mail-message-user-state.entity';
 import { DeletedMailAttachmentEntity } from '../adapters/out/persistence/typeorm/entities/deleted-mail-attachment.entity';
 import { DeletedMailAuditLogEntity } from '../adapters/out/persistence/typeorm/entities/deleted-mail-audit-log.entity';
+import { CreateDeletedMailArchive20260522190000 } from 'src/infrastructure/database/migrations/20260522190000-create-deleted-mail-archive';
+import { CreateDeletedMailArchiveOperations20261010020000 } from 'src/infrastructure/database/migrations/20261010020000-create-deleted-mail-archive-operations';
+import { DeletedMailArchiveOperationEntity } from '../adapters/out/persistence/typeorm/entities/deleted-mail-archive-operation.entity';
 
 @Injectable()
 export class DeletedMailDataSourceProvider implements OnModuleDestroy {
@@ -47,12 +50,20 @@ export class DeletedMailDataSourceProvider implements OnModuleDestroy {
         password: envs.mail.deletedDb.password ?? '',
         database: envs.mail.deletedDb.name!,
         logging: false,
-        synchronize: true,
+        // The secondary schema must be created by reviewed migrations. Never
+        // let a production process mutate it implicitly at startup.
+        synchronize: false,
+        migrationsTableName: 'typeorm_deleted_mail_migrations',
+        migrations: [
+          CreateDeletedMailArchive20260522190000,
+          CreateDeletedMailArchiveOperations20261010020000,
+        ],
         entities: [
           DeletedMailMessageEntity,
           DeletedMailMessageUserStateEntity,
           DeletedMailAttachmentEntity,
           DeletedMailAuditLogEntity,
+          DeletedMailArchiveOperationEntity,
         ],
       });
 

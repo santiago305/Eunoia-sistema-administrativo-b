@@ -321,7 +321,7 @@ describe('CreateFromImportPreviewUseCase', () => {
             amount: 40,
             companyPaymentAccountId: null,
             paymentMethodId: 'method-bank-transfer',
-            method: 'Transferencia bancaria',
+            method: 'Trans. bancaria',
           }),
         ],
         expect.anything(),

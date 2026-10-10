@@ -12,7 +12,7 @@ export interface SalePaymentRepository {
       companyPaymentAccountId?: string | null;
       paymentMethodId?: string | null;
       currency?: CurrencyType;
-      status?: "DRAFT" | "POSTED" | "VOIDED";
+      status?: "PENDING_CONFIRMATION" | "POSTED" | "CANCELLED" | "REVERSED";
       operationCode?: string | null;
       date: Date;
       method: string;

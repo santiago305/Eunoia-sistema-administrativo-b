@@ -68,7 +68,7 @@ describe("SalePaymentTypeormRepository", () => {
         currency: "PEN",
         paymentMethodId: null,
         operationCode: null,
-        status: "POSTED",
+        status: "PENDING_CONFIRMATION",
         voidedAt: null,
         voidReason: null,
         createdAt,

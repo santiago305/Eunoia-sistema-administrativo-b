@@ -6,7 +6,7 @@ describe('VoidSaleOrderPaymentUsecase', () => {
     id: 'payment-1',
     saleOrderId: 'order-1',
     amount: 150,
-    status: 'VOIDED' as const,
+    status: 'REVERSED' as const,
     voidedAt: new Date('2026-10-05T10:00:00.000Z'),
     voidedByUserId: 'user-1',
     voidReason: 'Pago duplicado',
@@ -53,7 +53,7 @@ describe('VoidSaleOrderPaymentUsecase', () => {
   });
 
   it('returns a conflict when another request already voided the payment', async () => {
-    const { usecase } = make({ payment: { ...postedPayment, status: 'VOIDED', voidReason: 'Otro motivo' }, transitioned: false });
+    const { usecase } = make({ payment: { ...postedPayment, status: 'REVERSED', voidReason: 'Otro motivo' }, transitioned: false });
     await expect(usecase.execute({ saleOrderId: 'order-1', paymentId: 'payment-1', executedBy: 'user-2', reason: 'Pago duplicado' }))
       .rejects.toBeInstanceOf(ConflictException);
   });

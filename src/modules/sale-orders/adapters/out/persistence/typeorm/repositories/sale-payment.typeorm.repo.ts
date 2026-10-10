@@ -20,6 +20,11 @@ const maskedAccountNumber = (account: CompanyPaymentAccountEntity): string | nul
   return suffix ? `****${suffix}` : null;
 };
 
+const normalizeOperationNumber = (value?: string | null): string | null => {
+  const normalized = value?.trim() ?? "";
+  return normalized || null;
+};
+
 @Injectable()
 export class SalePaymentTypeormRepository implements SalePaymentRepository {
   constructor(
@@ -75,11 +80,11 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
         companyPaymentAccountId: row.companyPaymentAccountId ?? row.bankAccountId ?? null,
         paymentMethodId: row.paymentMethodId ?? null,
         currency: row.currency ?? CurrencyType.PEN,
-        status: row.status ?? "POSTED",
-        operationCode: row.operationCode ?? null,
+        status: row.status ?? "PENDING_CONFIRMATION",
+        operationCode: normalizeOperationNumber(row.operationCode),
         date: row.date,
         method: row.method,
-        operationNumber: row.operationNumber ?? null,
+        operationNumber: normalizeOperationNumber(row.operationNumber),
         amount: row.amount,
         note: row.note ?? null,
         paymentPhoto: row.paymentPhoto ?? null,
@@ -110,10 +115,10 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
       {
         companyPaymentAccountId: input.companyPaymentAccountId ?? input.bankAccountId ?? null,
         paymentMethodId: input.paymentMethodId ?? null,
-        operationCode: input.operationCode ?? null,
+        operationCode: normalizeOperationNumber(input.operationCode),
         date: input.date,
         method: input.method,
-        operationNumber: input.operationNumber ?? null,
+        operationNumber: normalizeOperationNumber(input.operationNumber),
         amount: input.amount,
         note: input.note ?? null,
       },
@@ -185,9 +190,9 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
       .getOne();
 
     if (!row) return null;
-    if (row.status !== "POSTED") return { payment: this.toDomain(row), transitioned: false };
+    if (row.status !== "POSTED" && row.status !== "PENDING_CONFIRMATION") return { payment: this.toDomain(row), transitioned: false };
 
-    row.status = "VOIDED";
+    row.status = row.status === "POSTED" ? "REVERSED" : "CANCELLED";
     row.voidedAt = input.voidedAt;
     row.voidedByUserId = input.voidedByUserId;
     row.voidReason = input.voidReason;

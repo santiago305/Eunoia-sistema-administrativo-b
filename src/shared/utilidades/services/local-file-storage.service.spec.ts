@@ -9,6 +9,8 @@ jest.mock('src/infrastructure/config/envs', () => ({
       publicDir: 'storage/public',
       privateDir: 'storage/private',
       deletedDir: 'storage/deleted',
+      quarantineDir: 'storage/quarantine',
+      stagingDir: 'storage/staging',
     },
   },
 }));
@@ -77,6 +79,24 @@ describe('LocalFileStorageService', () => {
     expect(result.publicUrl).toBeNull();
     expect(result.absolutePath).toBe(
       join(tempDir, 'storage', 'private', 'mail-attachments', 'one.pdf'),
+    );
+  });
+
+  it('resolves quarantine keys inside the dedicated quarantine root', () => {
+    const result = service.resolve('quarantine/mail-attachments/run/file.pdf');
+
+    expect(result.key).toBe('quarantine/mail-attachments/run/file.pdf');
+    expect(result.absolutePath).toBe(
+      join(tempDir, 'storage', 'quarantine', 'mail-attachments', 'run', 'file.pdf'),
+    );
+  });
+
+  it('resolves staging keys inside the dedicated staging root', () => {
+    const result = service.resolve('staging/mail-attachments/run/file.pdf');
+
+    expect(result.key).toBe('staging/mail-attachments/run/file.pdf');
+    expect(result.absolutePath).toBe(
+      join(tempDir, 'storage', 'staging', 'mail-attachments', 'run', 'file.pdf'),
     );
   });
 });

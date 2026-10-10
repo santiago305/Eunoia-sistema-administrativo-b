@@ -520,7 +520,7 @@ export class UpdateSaleOrderUsecase {
     if (input.payments) {
       const persistedPayments = await this.paymentRepo.listBySaleOrderId(input.saleOrderId, tx);
       const protectedPayments = persistedPayments.filter(
-        (payment) => payment.status === 'POSTED' || payment.status === 'VOIDED',
+        (payment) => payment.status === 'POSTED' || payment.status === 'CANCELLED' || payment.status === 'REVERSED',
       );
       if (protectedPayments.length) {
         throw new BadRequestException(

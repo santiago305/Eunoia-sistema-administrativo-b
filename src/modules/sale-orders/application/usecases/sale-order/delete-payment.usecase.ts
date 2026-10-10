@@ -17,7 +17,7 @@ export class DeleteSaleOrderPaymentUsecase {
         const payment = (await this.paymentRepo.listBySaleOrderId(input.saleOrderId, tx))
           .find((item) => item.id === input.paymentId);
         if (!payment) throw new BadRequestException("Pago no encontrado");
-        if (payment.status === "POSTED" || payment.status === "VOIDED") {
+        if (payment.status === "POSTED" || payment.status === "CANCELLED" || payment.status === "REVERSED") {
           throw new BadRequestException("Los pagos contabilizados o anulados no se pueden eliminar; utiliza Anular ingreso");
         }
       }

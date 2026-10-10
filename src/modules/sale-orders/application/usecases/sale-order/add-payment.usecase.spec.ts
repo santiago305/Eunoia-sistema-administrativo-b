@@ -50,8 +50,9 @@ describe("AddSaleOrderPaymentUsecase", () => {
         expect.objectContaining({
           saleOrderId: "order-1",
           bankAccountId: "ba-1",
-          method: "cash",
+          method: "Efectivo",
           amount: 10,
+          status: "PENDING_CONFIRMATION",
         }),
       ],
       expect.anything(),

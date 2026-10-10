@@ -28,7 +28,14 @@ describe('getTypeOrmModuleOptions', () => {
   it('registers every migration file in the migration datasource', () => {
     const migrationsDir = join(__dirname, 'migrations');
     const expectedMigrationNames = readdirSync(migrationsDir)
-      .filter((file) => file.endsWith('.ts') && !file.endsWith('.spec.ts'))
+      .filter(
+        (file) =>
+          file.endsWith('.ts') &&
+          !file.endsWith('.spec.ts') &&
+          // This migration belongs exclusively to the opt-in deleted-mail
+          // datasource and must never be applied to the primary database.
+          !file.includes('create-deleted-mail-archive-operations'),
+      )
       .flatMap((file) => {
         const migrationModule = require(join(migrationsDir, file));
         return Object.values(migrationModule)

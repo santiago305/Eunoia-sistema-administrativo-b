@@ -16,7 +16,7 @@ export class SalePayment {
     public readonly companyPaymentAccountId: string | null = null,
     public readonly paymentMethodId: string | null = null,
     public readonly currency: CurrencyType = CurrencyType.PEN,
-    public readonly status: "DRAFT" | "POSTED" | "VOIDED" = "POSTED",
+    public readonly status: "PENDING_CONFIRMATION" | "POSTED" | "CANCELLED" | "REVERSED" = "PENDING_CONFIRMATION",
     public readonly operationCode: string | null = null,
     public readonly voidedAt: Date | null = null,
     public readonly voidedByUserId: string | null = null,

@@ -78,8 +78,10 @@ export class AddSaleOrderPaymentUsecase {
       }
       if (typeof this.paymentRepo.listBySaleOrderId === "function" && typeof order.total === "number") {
         const existing = await this.paymentRepo.listBySaleOrderId(input.saleOrderId, tx);
-        const posted = existing.filter((payment) => payment.status === "POSTED").reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
-        if (posted + input.amount > Number(order.total) + 0.01) throw new BadRequestException("El cobro supera el saldo pendiente de la venta");
+        const activePayments = existing
+          .filter((payment) => payment.status === "POSTED" || payment.status === "PENDING_CONFIRMATION")
+          .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+        if (activePayments + input.amount > Number(order.total) + 0.01) throw new BadRequestException("El cobro supera el saldo pendiente de la venta");
       }
 
       const paymentsInput = [
@@ -89,7 +91,7 @@ export class AddSaleOrderPaymentUsecase {
           companyPaymentAccountId: receiverId,
           paymentMethodId: input.paymentMethodId ?? null,
           currency: CurrencyType.PEN,
-          status: "POSTED" as const,
+          status: "PENDING_CONFIRMATION" as const,
           date,
           method: resolvedPaymentMethod
             ? canonicalPaymentMethodName(resolvedPaymentMethod.code ?? resolvedPaymentMethod.name)
@@ -108,6 +110,9 @@ export class AddSaleOrderPaymentUsecase {
       } catch (error: any) {
         if (error?.code === "23503") {
           throw new BadRequestException("Cuenta bancaria inválida");
+        }
+        if (error?.code === "23505") {
+          throw new BadRequestException("El número de operación ya está registrado");
         }
         throw error;
       }

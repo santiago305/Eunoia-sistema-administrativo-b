@@ -27,7 +27,7 @@ export class GetIncomeEvidenceUsecase {
       saleOrderId: payment.saleOrderId,
       saleOrderPaymentId: incomeId,
       available: Boolean(url),
-      status: url ? "AVAILABLE" : payment.status === "VOIDED" ? "MISSING_OPTIONAL" : "MISSING_REQUIRED",
+      status: url ? "AVAILABLE" : payment.status === "CANCELLED" || payment.status === "REVERSED" ? "MISSING_OPTIONAL" : "MISSING_REQUIRED",
       attachmentId: attachment?.id ?? null,
       url,
       originalName: attachment?.originalName ?? (url ? "evidencia-legada" : null),
@@ -35,7 +35,7 @@ export class GetIncomeEvidenceUsecase {
       sizeBytes: attachment?.sizeBytes ?? null,
       createdAt: attachment?.createdAt ?? (url ? payment.createdAt.toISOString() : null),
       canView: true,
-      canUpload: payment.status === "POSTED" && !url,
+      canUpload: payment.status === "PENDING_CONFIRMATION",
     };
   }
 }
@@ -54,9 +54,7 @@ export class UploadIncomeEvidenceUsecase {
   async execute(incomeId: string, file: Express.Multer.File, userId: string) {
     const payment = await this.entityManager.getRepository(SalePaymentEntity).findOne({ where: { id: incomeId } });
     if (!payment) throw new NotFoundException("Ingreso no encontrado");
-    if (payment.status !== "POSTED") throw new ConflictException("Los ingresos anulados son de solo lectura");
-    const evidence = await this.getEvidence.execute(incomeId);
-    if (evidence.url) throw new ConflictException("Este ingreso ya tiene una evidencia y no se puede reemplazar");
+    if (payment.status !== "PENDING_CONFIRMATION") throw new ConflictException("Los ingresos contabilizados o revertidos son de solo lectura");
     let result;
     try {
       result = await this.uploadAttachment.execute({ saleOrderId: payment.saleOrderId, saleOrderPaymentId: incomeId, type: SaleOrderAttachmentType.PAYMENT_PROOF, file, note: "Evidencia cargada desde ingresos.", storageArea: "private" }, userId);

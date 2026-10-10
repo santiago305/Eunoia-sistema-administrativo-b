@@ -1,4 +1,4 @@
-export type StorageArea = 'public' | 'private' | 'deleted';
+export type StorageArea = 'public' | 'private' | 'deleted' | 'quarantine' | 'staging';
 
 export type SaveStoredFileInput = {
   area?: StorageArea;

@@ -19,8 +19,17 @@ export class SalePaymentEntity {
   @Column({ name: "currency", type: "enum", enum: CurrencyType, enumName: "currency_type", default: CurrencyType.PEN })
   currency: CurrencyType;
 
-  @Column({ name: "status", type: "varchar", length: 20, default: "POSTED" })
-  status: "DRAFT" | "POSTED" | "VOIDED";
+  @Column({ name: "status", type: "varchar", length: 24, default: "PENDING_CONFIRMATION" })
+  status: "PENDING_CONFIRMATION" | "POSTED" | "CANCELLED" | "REVERSED";
+
+  @Column({ name: "version", type: "integer", default: 1 })
+  version: number;
+
+  @Column({ name: "posted_at", type: "timestamptz", nullable: true })
+  postedAt?: Date | null;
+
+  @Column({ name: "accounting_date", type: "date", nullable: true })
+  accountingDate?: string | null;
 
   @Column({ name: "operation_code", type: "varchar", length: 80, nullable: true })
   operationCode?: string | null;
