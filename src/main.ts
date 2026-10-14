@@ -7,7 +7,7 @@ import { enableCookieParser } from './shared/utilidades/middleware/enable-cookie
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import compression from 'compression';
-import { join } from 'path';
+import { resolve } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { runMigrations } from './infrastructure/database/run-migrations';
 
@@ -23,10 +23,10 @@ async function bootstrap() {
   }
 
   // Servir archivos publicos desde storage unificado y mantener assets legacy.
-  app.useStaticAssets(join(process.cwd(), envs.files.publicDir), {
+  app.useStaticAssets(resolve(process.cwd(), envs.files.publicDir), {
     prefix: '/api/assets/',
   });
-  app.useStaticAssets(join(process.cwd(), 'assets'), {
+  app.useStaticAssets(resolve(process.cwd(), 'assets'), {
     prefix: '/api/assets/',
   });
 

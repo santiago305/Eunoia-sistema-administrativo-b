@@ -1,4 +1,4 @@
-import { join } from 'path';
+import { resolve } from 'path';
 
 const appMock = {
   useStaticAssets: jest.fn(),
@@ -29,7 +29,7 @@ jest.mock('./infrastructure/database/run-migrations', () => ({
 jest.mock('./infrastructure/config/envs', () => ({
   envs: {
     files: {
-      publicDir: 'storage/public',
+      publicDir: resolve(process.cwd(), 'storage/public'),
     },
     port: 3000,
     trustProxy: false,
@@ -66,12 +66,12 @@ describe('bootstrap static assets', () => {
 
     expect(appMock.useStaticAssets).toHaveBeenNthCalledWith(
       1,
-      join(process.cwd(), 'storage/public'),
+      resolve(process.cwd(), 'storage/public'),
       { prefix: '/api/assets/' },
     );
     expect(appMock.useStaticAssets).toHaveBeenNthCalledWith(
       2,
-      join(process.cwd(), 'assets'),
+      resolve(process.cwd(), 'assets'),
       { prefix: '/api/assets/' },
     );
   });

@@ -1,5 +1,5 @@
 import { access } from 'fs/promises';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import { pathToFileURL } from 'url';
 import sharp from 'sharp';
 import { envs } from 'src/infrastructure/config/envs';
@@ -31,7 +31,7 @@ const exists = async (pathValue: string) => {
 
 const resolvePublicAssetPath = async (assetPath: string) => {
   const relative = toPublicRelativePath(assetPath);
-  const storagePublicPath = join(process.cwd(), envs.files.publicDir, relative);
+  const storagePublicPath = resolve(process.cwd(), envs.files.publicDir, relative);
   if (await exists(storagePublicPath)) {
     return storagePublicPath;
   }

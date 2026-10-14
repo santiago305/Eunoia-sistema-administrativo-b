@@ -1,10 +1,11 @@
 import { mkdir, rm, writeFile } from 'fs/promises';
-import { join } from 'path';
+import { join, resolve } from 'path';
+import { pathToFileURL } from 'url';
 
 jest.mock('src/infrastructure/config/envs', () => ({
   envs: {
     files: {
-      publicDir: 'storage/public',
+      publicDir: resolve(process.cwd(), 'storage/public'),
     },
   },
 }));
@@ -47,7 +48,7 @@ describe('resolvePublicAssetUrl', () => {
 
     const result = await resolvePublicAssetUrl('/api/assets/company/logo.png');
 
-    expect(result).toBe(`file://${storageLogo.replace(/\\/g, '/')}`);
+    expect(result).toBe(pathToFileURL(storageLogo).toString());
   });
 
   it('keeps external and data URLs unchanged', async () => {
