@@ -62,10 +62,10 @@ describe("SaleOrderWorkflowContextService", () => {
     expect(context.hasStock).toBe(false);
   });
 
-  it("does not consider a zero-total order paid even when it has payments", async () => {
+  it("ignores payments whose financial state is absent", async () => {
     const service = new SaleOrderWorkflowContextService(
       {
-        listBySaleOrderIds: jest.fn().mockResolvedValue([{ amount: 20 }]),
+        listBySaleOrderIds: jest.fn().mockResolvedValue([{ amount: 10 }]),
       } as any,
       { getSnapshot: jest.fn().mockResolvedValue(null) } as any,
       { now: () => new Date("2026-06-06T00:00:00.000Z") } as any,
@@ -73,10 +73,51 @@ describe("SaleOrderWorkflowContextService", () => {
       { findById: jest.fn().mockResolvedValue(null) } as any,
     );
 
-    const context = await service.build(buildOrder({ total: 0 }), currentState);
+    const context = await service.build(buildOrder(), currentState);
 
-    expect(context.variables.totalPaid).toBe(20);
+    expect(context.variables.totalPaid).toBe(0);
     expect(context.isPaid).toBe(false);
+  });
+
+  it("sums posted payments in cents and excludes non-posted payments", async () => {
+    const service = new SaleOrderWorkflowContextService(
+      {
+        listBySaleOrderIds: jest.fn().mockResolvedValue([
+          { amount: 0.1, status: "POSTED" },
+          { amount: 0.2, status: "POSTED" },
+          { amount: 50, status: "REVERSED" },
+          { amount: 50, status: "PENDING" },
+        ]),
+      } as any,
+      { getSnapshot: jest.fn().mockResolvedValue(null) } as any,
+      { now: () => new Date("2026-06-06T00:00:00.000Z") } as any,
+      { resolve: jest.fn().mockResolvedValue([]) } as any,
+      { findById: jest.fn().mockResolvedValue(null) } as any,
+    );
+
+    const context = await service.build(buildOrder({ total: 0.3 }), currentState);
+
+    expect(context.variables.totalPaid).toBe(0.3);
+    expect(context.isPaid).toBe(true);
+  });
+
+  it("rejects a total paid that exceeds the safe integer cents range", async () => {
+    const service = new SaleOrderWorkflowContextService(
+      {
+        listBySaleOrderIds: jest.fn().mockResolvedValue([
+          { amount: "50000000000000.00", status: "POSTED" },
+          { amount: "50000000000000.00", status: "POSTED" },
+        ]),
+      } as any,
+      { getSnapshot: jest.fn().mockResolvedValue(null) } as any,
+      { now: () => new Date("2026-06-06T00:00:00.000Z") } as any,
+      { resolve: jest.fn().mockResolvedValue([]) } as any,
+      { findById: jest.fn().mockResolvedValue(null) } as any,
+    );
+
+    await expect(service.build(buildOrder(), currentState)).rejects.toThrow(
+      "El total pagado del pedido está fuera del rango permitido",
+    );
   });
 
   it("adds controlled sale-order and client fields to workflow variables", async () => {

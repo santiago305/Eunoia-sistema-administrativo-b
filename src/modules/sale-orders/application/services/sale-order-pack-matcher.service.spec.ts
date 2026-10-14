@@ -150,6 +150,78 @@ describe('SaleOrderPackMatcherService', () => {
     );
   });
 
+  it('decomposes fractional pack quantities using integer hundredths', async () => {
+    const pack = {
+      ...makePack('fractional-pack'),
+      items: [
+        { id: 'pi-a', skuId: 'sku-a', quantity: 0.3 },
+        { id: 'pi-b', skuId: 'sku-b', quantity: 0.2 },
+      ],
+    } as any;
+    const packRepo = {
+      findActiveByExactComposition: jest.fn().mockResolvedValue([]),
+      findActiveContainedInComposition: jest.fn().mockResolvedValue([pack]),
+    };
+    const service = new SaleOrderPackMatcherService(packRepo as any);
+
+    await expect(
+      service.decompose([
+        { skuId: 'sku-a', quantity: 0.99 },
+        { skuId: 'sku-b', quantity: 0.59 },
+      ]),
+    ).resolves.toEqual(
+      expect.objectContaining({
+        status: 'UNIQUE',
+        packQuantity: 2,
+        leftovers: [
+          { skuId: 'sku-a', quantity: 0.39 },
+          { skuId: 'sku-b', quantity: 0.19 },
+        ],
+      }),
+    );
+  });
+
+  it('normalizes grouped decimal quantities to hundredths after aggregation', async () => {
+    const service = new SaleOrderPackMatcherService({} as any);
+
+    expect(
+      service.normalize([
+        { skuId: 'sku-a', quantity: 0.1 },
+        { skuId: 'sku-a', quantity: 0.2 },
+        { skuId: 'sku-b', quantity: 0.3 },
+        { skuId: 'sku-b', quantity: 0.2 },
+      ]),
+    ).toEqual([
+      { skuId: 'sku-a', quantity: 0.3 },
+      { skuId: 'sku-b', quantity: 0.5 },
+    ]);
+  });
+
+  it('rejects corrupt pack components with zero effective quantity', async () => {
+    const pack = {
+      ...makePack('invalid-pack'),
+      items: [
+        { id: 'pi-a', skuId: 'sku-a', quantity: 0 },
+        { id: 'pi-b', skuId: 'sku-b', quantity: 1 },
+      ],
+    } as any;
+    const service = new SaleOrderPackMatcherService({
+      findActiveByExactComposition: jest.fn().mockResolvedValue([]),
+      findActiveContainedInComposition: jest.fn().mockResolvedValue([pack]),
+    } as any);
+
+    await expect(
+      service.decompose([
+        { skuId: 'sku-a', quantity: 1 },
+        { skuId: 'sku-b', quantity: 1 },
+      ]),
+    ).rejects.toEqual(
+      expect.objectContaining<Partial<BadRequestException>>({
+        message: expect.stringContaining('componente del pack'),
+      }),
+    );
+  });
+
   it.each([
     [[{ skuId: '', quantity: 1 }], 'SKU'],
     [[{ skuId: 'sku-a', quantity: 0 }], 'cantidad'],

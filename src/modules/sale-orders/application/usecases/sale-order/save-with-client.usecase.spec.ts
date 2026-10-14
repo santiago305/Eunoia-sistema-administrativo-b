@@ -1,4 +1,5 @@
 import { SaveSaleOrderWithClientUsecase } from './save-with-client.usecase';
+import { SaleOrderCommandAuthorizationService } from '../../services/sale-order-command-authorization.service';
 
 describe('SaveSaleOrderWithClientUsecase', () => {
   const tx = { id: 'shared-tx' } as any;
@@ -22,6 +23,8 @@ describe('SaveSaleOrderWithClientUsecase', () => {
       {
         clientKey: 'new-1',
         method: 'EFECTIVO',
+        companyPaymentAccountId: 'account-1',
+        paymentMethodId: 'method-1',
         amount: 10,
         date: '2026-07-03T00:00:00.000Z',
       },
@@ -29,7 +32,7 @@ describe('SaveSaleOrderWithClientUsecase', () => {
     removedAttachmentIds: [],
   };
 
-  function fixture() {
+  function fixture(commandAuthorization?: SaleOrderCommandAuthorizationService) {
     const clientCommands = {
       execute: jest.fn().mockResolvedValue({
         clientId: 'client-1',
@@ -94,6 +97,7 @@ describe('SaveSaleOrderWithClientUsecase', () => {
       fileStorage,
       clientRealtime,
       imageProcessor,
+      uow,
       usecase: new SaveSaleOrderWithClientUsecase(
         uow as any,
         clientCommands as any,
@@ -104,7 +108,7 @@ describe('SaveSaleOrderWithClientUsecase', () => {
         fileStorage as any,
         clientRealtime as any,
         imageProcessor as any,
-        undefined,
+        commandAuthorization,
         paymentWorkflowReconciliation as any,
         stockCorrection as any,
       ),
@@ -112,6 +116,34 @@ describe('SaveSaleOrderWithClientUsecase', () => {
       stockCorrection,
     };
   }
+
+  it('rejects legacy payment-edit permission before opening the order save transaction', async () => {
+    const accessControl = {
+      getEffectivePermissions: jest.fn().mockResolvedValue([
+        'sale_orders.update',
+        'sale_orders.clients.manage',
+        'sale_orders.assign_workflow',
+        'sale_orders.products.view',
+        'sale_orders.payments.update',
+      ]),
+    };
+    const authorization = new SaleOrderCommandAuthorizationService(accessControl as any);
+    const f = fixture(authorization);
+
+    await expect(f.usecase.execute({
+      data: {
+        ...data,
+        payments: [{ ...data.payments[0], id: 'existing-payment-1' }],
+      } as any,
+      saleOrderId: 'order-1',
+      paymentPhotoByClientKey: new Map(),
+      userId: 'user-1',
+    })).rejects.toThrow('sale_orders.payments.update_pending');
+
+    expect(f.uow.runInTransaction).not.toHaveBeenCalled();
+    expect(f.clientCommands.execute).not.toHaveBeenCalled();
+    expect(f.paymentReconciler.reconcile).not.toHaveBeenCalled();
+  });
 
   it('uses one transaction for client, order, payments and attachments', async () => {
     const f = fixture();
@@ -136,7 +168,14 @@ describe('SaveSaleOrderWithClientUsecase', () => {
       tx,
     );
     expect(f.paymentReconciler.reconcile).toHaveBeenCalledWith(
-      expect.objectContaining({ saleOrderId: 'order-1' }),
+      expect.objectContaining({
+        saleOrderId: 'order-1',
+        payments: [expect.objectContaining({
+          companyPaymentAccountId: 'account-1',
+          bankAccountId: 'account-1',
+          paymentMethodId: 'method-1',
+        })],
+      }),
       tx,
     );
     expect(f.attachmentRepo.create).toHaveBeenCalledWith(

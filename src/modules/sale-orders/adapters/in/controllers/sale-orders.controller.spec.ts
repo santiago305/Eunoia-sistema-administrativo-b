@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import {
   CanActivate,
+  ConflictException,
   ExecutionContext,
   INestApplication,
   Injectable,
@@ -100,7 +101,7 @@ describe('SaleOrdersController', () => {
   const addPayment = { execute: jest.fn() };
   const deletePayment = { execute: jest.fn() };
   const voidPayment = { execute: jest.fn() };
-  const correctTotal = { execute: jest.fn() };
+  const correctTotal = { execute: jest.fn(), preview: jest.fn() };
   const listPayments = { execute: jest.fn() };
   const createFromImportPreview = { execute: jest.fn() };
   const listImportLotes = { execute: jest.fn() };
@@ -1706,7 +1707,7 @@ describe('SaleOrdersController', () => {
     await request(app.getHttpServer())
       .patch(`/sale-orders/${saleOrderId}/cancel`)
       .expect(200);
-    expect(cancelSaleOrder.execute).toHaveBeenCalledWith({ saleOrderId });
+    expect(cancelSaleOrder.execute).toHaveBeenCalledWith({ saleOrderId, userId: 'user-1' });
     expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
       'sale-orders.updated',
       expect.objectContaining({ saleOrderIds: [saleOrderId] }),
@@ -1726,13 +1727,14 @@ describe('SaleOrdersController', () => {
 
     await request(app.getHttpServer())
       .patch(`/sale-orders/${saleOrderId}/correct-total`)
-      .send({ total: 100 })
+      .send({ total: 100, previewToken: 'a'.repeat(64) })
       .expect(200);
 
     expect(correctTotal.execute).toHaveBeenCalledWith({
       saleOrderId,
       total: 100,
       executedBy: 'user-1',
+      previewToken: 'a'.repeat(64),
     });
     expect(automaticWorkflow.evaluateAndNotify).toHaveBeenCalledWith(
       saleOrderId,
@@ -1740,24 +1742,32 @@ describe('SaleOrdersController', () => {
     );
   });
 
+  it('previews the total correction using the validated sale-order id and amount', async () => {
+    const saleOrderId = '11111111-1111-4111-8111-111111111111';
+    correctTotal.preview.mockResolvedValueOnce({ saleOrderId, currency: 'USD', customerCreditCreated: 30 });
+    const response = await request(app.getHttpServer())
+      .post(`/sale-orders/${saleOrderId}/correct-total/preview`)
+      .send({ total: 70 })
+      .expect(201);
+    expect(response.body).toEqual(expect.objectContaining({ currency: 'USD', customerCreditCreated: 30 }));
+    expect(correctTotal.preview).toHaveBeenCalledWith({ saleOrderId, total: 70 });
+    expect(automaticWorkflow.evaluateAndNotify).not.toHaveBeenCalled();
+  });
+
   it('lists payments for a saleOrderId', async () => {
     const saleOrderId = '11111111-1111-4111-8111-111111111111';
     await request(app.getHttpServer())
       .get(`/sale-orders/${saleOrderId}/payments`)
       .expect(200);
-    expect(listPayments.execute).toHaveBeenCalledWith({ saleOrderId });
+    expect(listPayments.execute).toHaveBeenCalledWith({ saleOrderId, requestedBy: 'user-1' });
   });
 
-  it('adds payment and emits realtime', async () => {
+  it('rejects the retired legacy payment-create route without emitting realtime', async () => {
     const saleOrderId = '11111111-1111-4111-8111-111111111111';
-    getSaleOrder.execute.mockResolvedValueOnce({
-      id: saleOrderId,
-      items: [],
-      payments: [],
-      totalPaid: 0,
-      pendingAmount: 0,
-      paymentStatus: 'PENDING',
-    });
+    addPayment.execute.mockRejectedValueOnce(new ConflictException({
+      code: 'FINANCIAL_ENDPOINT_RETIRED',
+      message: 'Usa el flujo unificado de pagos.',
+    }));
     await request(app.getHttpServer())
       .post(`/sale-orders/${saleOrderId}/payments`)
       .send({
@@ -1768,7 +1778,7 @@ describe('SaleOrdersController', () => {
         operationNumber: 'op-1',
         note: 'n',
       })
-      .expect(201);
+      .expect(409);
 
     expect(addPayment.execute).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -1778,19 +1788,8 @@ describe('SaleOrdersController', () => {
         amount: 10,
       }),
     );
-
-    expect(realtimeService.emitToAllConnected).toHaveBeenCalledWith(
-      'sale-orders.updated',
-      expect.objectContaining({
-        saleOrderIds: [saleOrderId],
-        saleOrders: [expect.objectContaining({ id: saleOrderId })],
-        statistics: statisticsPayload,
-      }),
-    );
-    expect(automaticWorkflow.evaluateAndNotify).toHaveBeenCalledWith(
-      saleOrderId,
-      SaleOrderAutomaticWorkflowTriggerEnum.PAYMENT_CREATED,
-    );
+    expect(realtimeService.emitToAllConnected).not.toHaveBeenCalled();
+    expect(automaticWorkflow.evaluateAndNotify).not.toHaveBeenCalled();
   });
 
   it('deletes payment and emits realtime', async () => {

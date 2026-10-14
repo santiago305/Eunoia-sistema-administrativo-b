@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'fs/promises';
+import { mkdir, mkdtemp, readFile, rm, stat, symlink, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { migrateAssetsToStoragePublic } from './migrate-assets-to-storage-public';
@@ -23,10 +23,10 @@ describe('migrateAssetsToStoragePublic', () => {
     await expect(
       readFile(join(rootDir, 'storage/public/users/avatar.webp'), 'utf8'),
     ).resolves.toBe('avatar');
-    expect(result).toEqual({ copied: 1, skipped: 0 });
+    expect(result).toEqual({ copied: 1, skipped: 0, conflicts: [] });
   });
 
-  it('skips files that already exist with the same size', async () => {
+  it('skips files only when existing content has the same SHA-256', async () => {
     await mkdir(join(rootDir, 'assets/company'), { recursive: true });
     await mkdir(join(rootDir, 'storage/public/company'), { recursive: true });
     await writeFile(join(rootDir, 'assets/company/logo.png'), 'same');
@@ -36,8 +36,51 @@ describe('migrateAssetsToStoragePublic', () => {
     const result = await migrateAssetsToStoragePublic({ rootDir });
     const after = await stat(join(rootDir, 'storage/public/company/logo.png'));
 
-    expect(result).toEqual({ copied: 0, skipped: 1 });
+    expect(result).toEqual({ copied: 0, skipped: 1, conflicts: [] });
     expect(after.mtimeMs).toBe(before.mtimeMs);
+  });
+
+  it('reports same-size content collisions without overwriting either file', async () => {
+    await mkdir(join(rootDir, 'assets/company'), { recursive: true });
+    await mkdir(join(rootDir, 'storage/public/company'), { recursive: true });
+    await writeFile(join(rootDir, 'assets/company/logo.png'), 'legacy');
+    await writeFile(join(rootDir, 'storage/public/company/logo.png'), 'target');
+
+    const result = await migrateAssetsToStoragePublic({ rootDir });
+
+    expect(result).toEqual({ copied: 0, skipped: 0, conflicts: ['company/logo.png'] });
+    await expect(readFile(join(rootDir, 'assets/company/logo.png'), 'utf8')).resolves.toBe('legacy');
+    await expect(readFile(join(rootDir, 'storage/public/company/logo.png'), 'utf8')).resolves.toBe('target');
+  });
+
+  it('does not follow a symbolic-link directory already present in the destination', async () => {
+    const externalDir = join(rootDir, 'outside-storage');
+    await mkdir(join(rootDir, 'assets/company'), { recursive: true });
+    await mkdir(externalDir, { recursive: true });
+    await mkdir(join(rootDir, 'storage/public'), { recursive: true });
+    await writeFile(join(rootDir, 'assets/company/logo.png'), 'legacy');
+    await symlink(externalDir, join(rootDir, 'storage/public/company'), 'dir');
+
+    const result = await migrateAssetsToStoragePublic({ rootDir });
+
+    expect(result).toEqual({ copied: 0, skipped: 0, conflicts: ['company/logo.png'] });
+    await expect(readFile(join(externalDir, 'logo.png'))).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(readFile(join(rootDir, 'assets/company/logo.png'), 'utf8')).resolves.toBe('legacy');
+  });
+
+  it('preflights all destinations before copying and leaves no partial migration on conflict', async () => {
+    await mkdir(join(rootDir, 'assets'), { recursive: true });
+    await mkdir(join(rootDir, 'storage/public'), { recursive: true });
+    await writeFile(join(rootDir, 'assets/a-first.png'), 'new asset');
+    await writeFile(join(rootDir, 'assets/z-conflict.png'), 'legacy bytes');
+    await writeFile(join(rootDir, 'storage/public/z-conflict.png'), 'different bytes');
+
+    const result = await migrateAssetsToStoragePublic({ rootDir });
+
+    expect(result).toEqual({ copied: 0, skipped: 0, conflicts: ['z-conflict.png'] });
+    await expect(readFile(join(rootDir, 'storage/public/a-first.png'))).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(readFile(join(rootDir, 'assets/z-conflict.png'), 'utf8')).resolves.toBe('legacy bytes');
+    await expect(readFile(join(rootDir, 'storage/public/z-conflict.png'), 'utf8')).resolves.toBe('different bytes');
   });
 });
 

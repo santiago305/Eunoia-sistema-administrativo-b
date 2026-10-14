@@ -71,6 +71,61 @@ import { SaleOrderImportSkuResolverService } from "src/modules/sale-orders/appli
 import { SaleOrderImportSourceResolverService } from "src/modules/sale-orders/application/services/sale-order-import-source-resolver.service";
 import { businessDateAsUtcMidnight } from "src/shared/utilidades/utils/business-date";
 import { PreferredCompanyPaymentMethodService } from "src/modules/payment-methods/application/services/preferred-company-payment-method.service";
+import {
+  divideMoneyByQuantity,
+  fromMinorUnits,
+  roundMoney,
+  toMinorUnits,
+} from "src/modules/sale-orders/domain/value-objects/money";
+
+export const calculateImportedComponentPrices = (
+  subtotal: number,
+  quantities: number[],
+): Array<{ unitPrice: number; total: number }> => {
+  const subtotalCents = toMinorUnits(subtotal);
+  if (subtotalCents < 0) throw new Error("El subtotal de importación no puede ser negativo");
+  const quantityHundredths = quantities.map((quantity) => toMinorUnits(quantity));
+  if (quantityHundredths.some((quantity) => quantity < 0)) {
+    throw new Error("La cantidad de un componente no puede ser negativa");
+  }
+  const totalQuantityHundredths = quantityHundredths.reduce((sum, quantity) => {
+    const total = sum + quantity;
+    if (!Number.isSafeInteger(total)) throw new Error("La cantidad total de componentes está fuera del rango permitido");
+    return total;
+  }, 0);
+  const unitPrice = totalQuantityHundredths > 0
+    ? divideMoneyByQuantity(subtotal, fromMinorUnits(totalQuantityHundredths))
+    : 0;
+
+  if (!totalQuantityHundredths) {
+    if (subtotalCents > 0) throw new Error("No se puede prorratear un subtotal sin cantidades de componentes");
+    return quantities.map(() => ({ unitPrice: 0, total: 0 }));
+  }
+
+  const shares = quantityHundredths.map((quantity, index) => {
+    const numerator = BigInt(subtotalCents) * BigInt(quantity);
+    const denominator = BigInt(totalQuantityHundredths);
+    return {
+      index,
+      cents: Number(numerator / denominator),
+      remainder: numerator % denominator,
+    };
+  });
+  let remainingCents = subtotalCents - shares.reduce((sum, share) => sum + share.cents, 0);
+  const remainderOrder = [...shares].sort((left, right) => {
+    if (left.remainder === right.remainder) return left.index - right.index;
+    return left.remainder > right.remainder ? -1 : 1;
+  });
+  for (let index = 0; remainingCents > 0; index += 1, remainingCents -= 1) {
+    remainderOrder[index % remainderOrder.length].cents += 1;
+  }
+
+  const totalsByIndex = new Map(shares.map((share) => [share.index, fromMinorUnits(share.cents)]));
+  return quantities.map((_, index) => ({
+    unitPrice: roundMoney(unitPrice),
+    total: totalsByIndex.get(index) ?? 0,
+  }));
+};
 
 const DEPARTMENT_NAME_ALIASES: Readonly<Record<string, string>> = {
   cuzco: "cusco",
@@ -357,11 +412,11 @@ export class PreviewOrdersImportUseCase {
 
     const warehouseId = null;
 
-    const total = this.toNumber(input.row.total);
-    const advance = this.toNumber(input.row.advance);
+    const total = roundMoney(this.toNumber(input.row.total));
+    const advance = roundMoney(this.toNumber(input.row.advance));
 
     const deliveryCost = 0;
-    const subTotal = Math.max(total - deliveryCost, 0);
+    const subTotal = fromMinorUnits(Math.max(toMinorUnits(total) - toMinorUnits(deliveryCost), 0));
     const serie = "PE";
     const correlative = await this.reserveNextSaleOrderCorrelative(input.tx);
 
@@ -433,20 +488,18 @@ export class PreviewOrdersImportUseCase {
       "saleOrderItem.saleOrderItemId/id",
     );
 
-    const totalUnits = input.skus.reduce(
-      (sum, item) => sum + Number(item.quantity || 0),
-      0,
+    const componentPrices = calculateImportedComponentPrices(
+      subTotal,
+      input.skus.map((sku) => Number(sku.quantity || 0)),
     );
 
-    const unitComponentPrice = totalUnits > 0 ? subTotal / totalUnits : 0;
-
-    const componentsInput = input.skus.map((sku) => ({
+    const componentsInput = input.skus.map((sku, index) => ({
       saleOrderItemId,
       skuId: sku.skuId,
       referencePackItemId: null,
       quantity: sku.quantity,
-      unitPrice: unitComponentPrice,
-      total: unitComponentPrice * sku.quantity,
+      unitPrice: componentPrices[index].unitPrice,
+      total: componentPrices[index].total,
     }));
 
     this.debug("SALE_ORDER_COMPONENTS_INPUT", {
@@ -553,9 +606,15 @@ export class PreviewOrdersImportUseCase {
     const parsedDocument = this.parseDocumentFromDeliveryNote(deliveryNote);
     const clientType = this.getClientType(internalNote);
     const sourceName = this.getSourceName(internalNote);
-    const parsedProducts = this.parseProductCodes(productCodes);
-
     const errors: string[] = [];
+    let parsedProducts = [] as ReturnType<PreviewOrdersImportUseCase["parseProductCodes"]>;
+    if (this.toText(productCodes)) {
+      try {
+        parsedProducts = this.parseProductCodes(productCodes);
+      } catch (error) {
+        errors.push(error instanceof Error ? error.message : "Los codigos de producto no son validos");
+      }
+    }
 
     if (!this.toText(recipientName)) errors.push("Nombre del destinatario es obligatorio");
     if (!this.toText(phone)) {
@@ -566,7 +625,7 @@ export class PreviewOrdersImportUseCase {
     if (!this.toText(departmentNameFromExcel)) errors.push("Provincia/Ciudad es obligatoria");
     if (!this.toText(provinceNameFromExcel)) errors.push("Distrito es obligatorio");
     if (!this.toText(districtNameFromExcel)) errors.push("Comuna/Pueblo es obligatorio");
-    if (!parsedProducts.length) errors.push("Incluye códigos de producto es obligatorio");
+    if (!parsedProducts.length && !this.toText(productCodes)) errors.push("Incluye códigos de producto es obligatorio");
 
     const ubigeo = await this.resolveUbigeo(
       departmentNameFromExcel,

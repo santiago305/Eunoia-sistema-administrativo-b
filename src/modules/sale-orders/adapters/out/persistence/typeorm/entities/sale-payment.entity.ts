@@ -25,6 +25,9 @@ export class SalePaymentEntity {
   @Column({ name: "version", type: "integer", default: 1 })
   version: number;
 
+  @Column({ name: "payment_date", type: "date" })
+  paymentDate: string;
+
   @Column({ name: "posted_at", type: "timestamptz", nullable: true })
   postedAt?: Date | null;
 
@@ -42,6 +45,36 @@ export class SalePaymentEntity {
 
   @Column({ name: "void_reason", type: "text", nullable: true })
   voidReason?: string | null;
+
+  @Column({ name: "created_by_user_id", type: "uuid", nullable: true })
+  createdByUserId?: string | null;
+
+  @Column({ name: "updated_by_user_id", type: "uuid", nullable: true })
+  updatedByUserId?: string | null;
+
+  @Column({ name: "posted_by_user_id", type: "uuid", nullable: true })
+  postedByUserId?: string | null;
+
+  @Column({ name: "cancelled_by_user_id", type: "uuid", nullable: true })
+  cancelledByUserId?: string | null;
+
+  @Column({ name: "cancelled_at", type: "timestamptz", nullable: true })
+  cancelledAt?: Date | null;
+
+  @Column({ name: "reversed_by_user_id", type: "uuid", nullable: true })
+  reversedByUserId?: string | null;
+
+  @Column({ name: "reversed_at", type: "timestamptz", nullable: true })
+  reversedAt?: Date | null;
+
+  @Column({ name: "corrected_from_payment_id", type: "uuid", nullable: true })
+  correctedFromPaymentId?: string | null;
+
+  @Column({ name: "reentered_from_payment_id", type: "uuid", nullable: true })
+  reenteredFromPaymentId?: string | null;
+
+  @Column({ name: "financial_reason", type: "text", nullable: true })
+  financialReason?: string | null;
 
   @Column({ name: "date", type: "timestamptz" })
   date: Date;

@@ -109,7 +109,9 @@ const EXPORT_COLUMNS: ExportColumnDefinition[] = [
   { key: "deliveryCost", label: "Costo envio", map: (row) => row.deliveryCost ?? 0 },
   { key: "discount", label: "Descuento", map: (row) => row.discount ?? 0 },
   { key: "total", label: "Total", map: (row) => row.total ?? 0 },
-  { key: "totalPaid", label: "Total pagado", map: (row) => row.totalPaid ?? 0 },
+  { key: "totalReceived", label: "Total recibido", map: (row) => row.totalReceived ?? 0 },
+  { key: "totalPaid", label: "Importe aplicado", map: (row) => row.totalApplied ?? row.totalPaid ?? 0 },
+  { key: "customerCreditAvailable", label: "Excedente disponible", map: (row) => row.customerCreditAvailable ?? 0 },
   { key: "totalToPay", label: "Total por cobrar", map: (row) => row.pendingAmount ?? 0 },
   { key: "assignedByName", label: "Asignado a", map: (row) => row.assignedBy?.name ?? row.assignedBy?.email ?? "" },
   { key: "createdByName", label: "Creado por", map: (row) => row.createdBy?.name ?? row.createdBy?.email ?? "" },
@@ -175,7 +177,7 @@ export class ExportSaleOrdersExcelUsecase {
     const isColumnAllowed = (key: string) => {
       if (!readContext) return true;
       const customerColumns = new Set(["clientDocumentNumber", "clientReference", "clientPhone", "clientDepartment", "clientProvince", "clientDistrict"]);
-      const amountColumns = new Set(["subTotal", "deliveryCost", "discount", "total", "totalPaid", "totalToPay", "paymentStatus"]);
+      const amountColumns = new Set(["subTotal", "deliveryCost", "discount", "total", "totalReceived", "customerCreditAvailable", "totalPaid", "totalToPay", "paymentStatus"]);
       const productColumns = new Set(["SKUS", "detail"]);
       return (!customerColumns.has(key) || readContext.includeCustomerData)
         && (!amountColumns.has(key) || readContext.includeAmounts)

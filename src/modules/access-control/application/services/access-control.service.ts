@@ -214,7 +214,19 @@ export class AccessControlService {
         where: { isActive: true },
         select: ['code'],
       });
-      return ['*', ...all.map((permission) => permission.code)].sort();
+      const overrides = await this.userPermissionOverrideRepository.find({
+        where: { userId },
+        relations: ['permission'],
+      }) ?? [];
+      const denied = new Set(
+        overrides
+          .filter((item) => item.effect === 'DENY')
+          .map((item) => item.permission?.code)
+          .filter((code): code is string => Boolean(code)),
+      );
+      if (!denied.size) return ['*', ...all.map((permission) => permission.code)].sort();
+      if (denied.has('*')) return [];
+      return all.map((permission) => permission.code).filter((code) => !denied.has(code)).sort();
     }
 
     const overrides = await this.userPermissionOverrideRepository.find({

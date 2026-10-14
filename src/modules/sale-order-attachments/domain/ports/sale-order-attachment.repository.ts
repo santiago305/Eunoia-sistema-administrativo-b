@@ -15,6 +15,12 @@ export interface SaleOrderAttachmentRepository {
     attachmentId: string,
     tx?: TransactionContext,
   ): Promise<SaleOrderAttachment | null>;
+  findByUploadIdempotencyKey(
+    saleOrderPaymentId: string,
+    uploadedByUserId: string,
+    uploadIdempotencyKey: string,
+    tx?: TransactionContext,
+  ): Promise<SaleOrderAttachment | null>;
   list(
     params: {
       saleOrderId?: string;

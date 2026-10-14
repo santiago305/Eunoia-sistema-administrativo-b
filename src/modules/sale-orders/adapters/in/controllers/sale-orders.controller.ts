@@ -1,8 +1,10 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
+  Headers,
   HttpCode,
   HttpStatus,
   Inject,
@@ -299,17 +301,24 @@ export class SaleOrdersController {
     @Body() body: unknown,
     @UploadedFiles() files: Express.Multer.File[] = [],
     @CurrentUser() user: { id: string },
+    @Headers('idempotency-key') idempotencyKey?: string,
   ) {
     const parsed = parseSaleOrderMultipart(body, files);
+    this.requirePaymentSaveIdempotencyKey(parsed.data.payments, idempotencyKey);
     const result = await this.saveWithClient.execute({
       ...parsed,
+      idempotencyKey,
       userId: user.id,
     });
 
-    await this.evaluateAutomaticWorkflowThenNotify(
-      result.orderId,
-      SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_CREATED,
-    );
+    const replayed = Boolean((result as any).__idempotentReplay);
+    delete (result as any).__idempotentReplay;
+    if (!replayed) {
+      await this.evaluateAutomaticWorkflowThenNotify(
+        result.orderId,
+        SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_CREATED,
+      );
+    }
     return result;
   }
 
@@ -560,15 +569,18 @@ export class SaleOrdersController {
   @RequirePermissions('sale_orders.view_history')
   history(
     @Param('saleOrderId', ParseUUIDPipe) saleOrderId: string,
-    @CurrentUser() user: { id: string },
   ) {
     return this.getOrderTimeline.execute({ saleOrderId });
   }
 
   @Patch(':saleOrderId/cancel')
   @RequirePermissions('sale_orders.cancel')
-  async cancel(@Param('saleOrderId', ParseUUIDPipe) saleOrderId: string) {
-    const result = await this.cancelSaleOrder.execute({ saleOrderId });
+  async cancel(
+    @Param('saleOrderId', ParseUUIDPipe) saleOrderId: string,
+    @Body() body: { idempotencyKey?: string; resolutions?: Array<{ incomeId: string; action: 'CANCEL_PENDING' | 'TRANSFER_PENDING' | 'KEEP_AS_CREDIT' | 'APPLY_TO_ORDER' | 'REFUND'; reason: string; targetSaleOrderId?: string; amount?: number }> },
+    @CurrentUser() user: { id: string },
+  ) {
+    const result = await this.cancelSaleOrder.execute({ saleOrderId, userId: user.id, ...(body ?? {}) });
     await this.evaluateAutomaticWorkflowThenNotify(
       saleOrderId,
       SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_CANCELLED,
@@ -593,8 +605,9 @@ export class SaleOrdersController {
   @RequirePermissions('sale_orders.payments.view')
   listSaleOrderPayments(
     @Param('saleOrderId', ParseUUIDPipe) saleOrderId: string,
+    @CurrentUser() user: { id: string },
   ) {
-    return this.listPayments.execute({ saleOrderId });
+    return this.listPayments.execute({ saleOrderId, requestedBy: user.id });
   }
 
   @Post(':saleOrderId/payments')
@@ -602,6 +615,7 @@ export class SaleOrdersController {
   async addSaleOrderPayment(
     @Param('saleOrderId', ParseUUIDPipe) saleOrderId: string,
     @Body() dto: AddSaleOrderPaymentDto,
+    @CurrentUser() user: { id: string },
   ) {
     const result = await this.addPayment.execute({
       saleOrderId,
@@ -615,6 +629,7 @@ export class SaleOrdersController {
       operationCode: dto.operationCode,
       note: dto.note,
       paymentPhoto: dto.paymentPhoto,
+      createdByUserId: user.id,
     });
 
     await this.evaluateAutomaticWorkflowThenNotify(
@@ -625,7 +640,7 @@ export class SaleOrdersController {
   }
 
   @Delete(':saleOrderId/payments/:paymentId')
-  @RequirePermissions('sale_orders.payments.delete')
+  @RequirePermissions('sale_orders.payments.view')
   async deleteSaleOrderPayment(
     @Param('saleOrderId', ParseUUIDPipe) saleOrderId: string,
     @Param('paymentId', ParseUUIDPipe) paymentId: string,
@@ -640,7 +655,7 @@ export class SaleOrdersController {
 
   @Post(':saleOrderId/payments/:paymentId/void')
   @HttpCode(HttpStatus.OK)
-  @RequirePermissions('sale_orders.payments.void')
+  @RequirePermissions('sale_orders.payments.view')
   async voidSaleOrderPayment(
     @Param('saleOrderId', ParseUUIDPipe) saleOrderId: string,
     @Param('paymentId', ParseUUIDPipe) paymentId: string,
@@ -674,12 +689,22 @@ export class SaleOrdersController {
       saleOrderId,
       total: dto.total,
       executedBy: user.id,
+      previewToken: dto.previewToken ?? '',
     });
     await this.evaluateAutomaticWorkflowThenNotify(
       saleOrderId,
       SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_UPDATED,
     );
     return result;
+  }
+
+  @Post(':saleOrderId/correct-total/preview')
+  @RequirePermissions('sale_orders.update', 'sale_orders.advanced_orders')
+  async previewCorrectSaleOrderTotal(
+    @Param('saleOrderId', ParseUUIDPipe) saleOrderId: string,
+    @Body() dto: CorrectSaleOrderTotalDto,
+  ) {
+    return this.correctTotal.preview({ saleOrderId, total: dto.total });
   }
 
   @Patch(':id')
@@ -764,19 +789,37 @@ export class SaleOrdersController {
     @Body() body: unknown,
     @UploadedFiles() files: Express.Multer.File[] = [],
     @CurrentUser() user: { id: string },
+    @Headers('idempotency-key') idempotencyKey?: string,
   ) {
     const parsed = parseSaleOrderMultipart(body, files);
+    this.requirePaymentSaveIdempotencyKey(parsed.data.payments, idempotencyKey);
     const result = await this.saveWithClient.execute({
       ...parsed,
       saleOrderId,
+      idempotencyKey,
       userId: user.id,
     });
 
-    await this.evaluateAutomaticWorkflowThenNotify(
-      saleOrderId,
-      SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_UPDATED,
-    );
+    const replayed = Boolean((result as any).__idempotentReplay);
+    delete (result as any).__idempotentReplay;
+    if (!replayed) {
+      await this.evaluateAutomaticWorkflowThenNotify(
+        saleOrderId,
+        SaleOrderAutomaticWorkflowTriggerEnum.SALE_ORDER_UPDATED,
+      );
+    }
     return result;
+  }
+
+  private requirePaymentSaveIdempotencyKey(
+    payments: Array<unknown> | undefined,
+    idempotencyKey?: string,
+  ): void {
+    if (payments?.length && !idempotencyKey) {
+      throw new BadRequestException(
+        'El guardado de ingresos requiere una clave de idempotencia. Actualiza la pantalla e intenta nuevamente.',
+      );
+    }
   }
 
   @Get()
@@ -820,6 +863,7 @@ export class SaleOrdersController {
   }
 
   @Get('search-state')
+  @RequirePermissions('sale_orders.view')
   getSearchStateForUser(@CurrentUser() user: { id: string }) {
     return this.getSearchState.execute(user.id);
   }
@@ -1014,6 +1058,7 @@ export class SaleOrdersController {
   }
 
   @Post('search-metrics')
+  @RequirePermissions('sale_orders.view')
   saveMetric(
     @Body() dto: HttpCreateSaleOrderSearchMetricDto,
     @CurrentUser() user: { id: string },
@@ -1029,6 +1074,7 @@ export class SaleOrdersController {
   }
 
   @Delete('search-metrics/:metricId')
+  @RequirePermissions('sale_orders.view')
   deleteMetric(
     @Param('metricId', ParseUUIDPipe) metricId: string,
     @CurrentUser() user: { id: string },

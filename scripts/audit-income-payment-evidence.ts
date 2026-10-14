@@ -1,5 +1,7 @@
 import "dotenv/config";
 import { migrationDataSource } from "../src/infrastructure/database/typeorm.config";
+import { FileStorage } from "../src/shared/application/ports/file-storage.port";
+import { LocalFileStorageService } from "../src/shared/utilidades/services/local-file-storage.service";
 
 type EvidenceAuditCheck = { check: string; count: number; blocking: boolean; details?: unknown[] };
 
@@ -26,12 +28,80 @@ const checks: Array<{ check: string; sql: string; blocking: boolean }> = [
   },
 ];
 
-export async function auditIncomePaymentEvidence(dataSource = migrationDataSource) {
+type UploadOperationRow = {
+  id: string;
+  status: string;
+  staging_key: string | null;
+  promoted_key: string | null;
+};
+
+type EvidenceStorageRow = { storage_path: string };
+
+export async function auditIncomePaymentEvidence(
+  dataSource = migrationDataSource,
+  fileStorage: Pick<FileStorage, "list"> = new LocalFileStorageService(),
+) {
   const result: EvidenceAuditCheck[] = [];
   for (const item of checks) {
     const details = await dataSource.query(item.sql);
     result.push({ check: item.check, count: details.length, blocking: item.blocking, details });
   }
+
+  const staleOperations = await dataSource.query<UploadOperationRow[]>(
+    `SELECT id, status, staging_key, promoted_key
+     FROM payment_evidence_upload_operations
+     WHERE status IN ('PREPARING', 'STAGED', 'PROMOTED', 'FAILED')
+       AND updated_at <= now() - interval '15 minutes'
+       AND (lease_until IS NULL OR lease_until <= now())
+     ORDER BY updated_at ASC
+     LIMIT 1000`,
+  );
+  result.push({
+    check: "stale_evidence_upload_operations",
+    count: staleOperations.length,
+    blocking: true,
+    details: staleOperations,
+  });
+
+  const operations = await dataSource.query<Array<Pick<UploadOperationRow, "staging_key" | "promoted_key">>>(
+    `SELECT staging_key, promoted_key
+     FROM payment_evidence_upload_operations
+     WHERE staging_key IS NOT NULL OR promoted_key IS NOT NULL`,
+  );
+  const attachmentRows = await dataSource.query<EvidenceStorageRow[]>(
+    `SELECT storage_path
+     FROM sale_order_attachments
+     WHERE type IN ('PAYMENT_PROOF', 'SALE_PAYMENT_PROOF')`,
+  );
+  const privateInventory = await fileStorage.list?.("private", "sale-order-attachments") ?? null;
+  const stagingInventory = await fileStorage.list?.("staging", "sale-order-attachments") ?? null;
+  if (!privateInventory || !stagingInventory) {
+    result.push({ check: "evidence_storage_inventory_available", count: 1, blocking: true });
+    return result;
+  }
+  result.push({ check: "evidence_storage_inventory_available", count: 0, blocking: true });
+
+  const attachmentKeys = new Set(attachmentRows.map((row) => row.storage_path));
+  const promotedKeys = new Set(operations.map((row) => row.promoted_key).filter((key): key is string => Boolean(key)));
+  const stagingKeys = new Set(operations.map((row) => row.staging_key).filter((key): key is string => Boolean(key)));
+  const privateKeys = new Set(privateInventory);
+  const stagingFileKeys = new Set(stagingInventory);
+  const missingReferencedEvidence = [...attachmentKeys].filter((key) =>
+    key.startsWith("private/sale-order-attachments/") && !privateKeys.has(key),
+  );
+  const orphanPrivateFiles = privateInventory.filter((key) => !attachmentKeys.has(key) && !promotedKeys.has(key));
+  const orphanStagingFiles = stagingInventory.filter((key) => !stagingKeys.has(key));
+  const staleOperationFilesMissing = staleOperations.filter((operation) =>
+    (!operation.promoted_key || !privateKeys.has(operation.promoted_key)) &&
+    (!operation.staging_key || !stagingFileKeys.has(operation.staging_key)),
+  );
+
+  result.push(
+    { check: "missing_private_payment_evidence_files", count: missingReferencedEvidence.length, blocking: true, details: missingReferencedEvidence.slice(0, 100) },
+    { check: "orphan_private_payment_evidence_files", count: orphanPrivateFiles.length, blocking: true, details: orphanPrivateFiles.slice(0, 100) },
+    { check: "orphan_staged_payment_evidence_files", count: orphanStagingFiles.length, blocking: true, details: orphanStagingFiles.slice(0, 100) },
+    { check: "stale_upload_operations_with_missing_files", count: staleOperationFilesMissing.length, blocking: true, details: staleOperationFilesMissing.map(({ id, status }) => ({ id, status })) },
+  );
   return result;
 }
 

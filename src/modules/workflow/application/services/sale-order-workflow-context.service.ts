@@ -11,6 +11,7 @@ import { CLIENT_REPOSITORY, ClientRepository } from "src/modules/clients/domain/
 import { WorkflowContext } from "../../domain/conditions/condition";
 import { WorkflowState } from "../../domain/entities/workflow-state";
 import { SaleOrderStockRequirementsService } from "./sale-order-stock-requirements.service";
+import { fromMinorUnits, toMinorUnits } from "src/modules/sale-orders/domain/value-objects/money";
 
 @Injectable()
 export class SaleOrderWorkflowContextService {
@@ -28,20 +29,24 @@ export class SaleOrderWorkflowContextService {
 
   async build(order: SaleOrder, currentState: WorkflowState, tx?: TransactionContext): Promise<WorkflowContext> {
     const payments = await this.paymentRepo.listBySaleOrderIds([order.id], tx);
-    const totalPaid = payments.reduce(
-      (sum, payment) =>
-        payment.status === undefined || payment.status === "POSTED"
-          ? sum + Number(payment.amount ?? 0)
-          : sum,
-      0,
-    );
+    const totalPaidCents = payments.reduce((sumCents, payment) => {
+      if (payment.status !== "POSTED") return sumCents;
+
+      const nextCents = sumCents + toMinorUnits(payment.amount ?? 0);
+      if (!Number.isSafeInteger(nextCents)) {
+        throw new Error("El total pagado del pedido está fuera del rango permitido");
+      }
+      return nextCents;
+    }, 0);
+    const totalPaid = fromMinorUnits(totalPaidCents);
     const client = await this.clientRepo.findById(order.clientId, tx);
 
-    const total = Number(order.total ?? 0);
+    const totalCents = toMinorUnits(order.total ?? 0);
+    const total = fromMinorUnits(totalCents);
 
     return {
       orderId: order.id,
-      isPaid: total > 0 && totalPaid >= total,
+      isPaid: totalCents > 0 && totalPaidCents >= totalCents,
       hasStock: await this.hasAvailableStock(order, tx),
       isCancelled: currentState.code.toUpperCase() === "CANCELLED",
       invoiceSent: order.invoiceSend,

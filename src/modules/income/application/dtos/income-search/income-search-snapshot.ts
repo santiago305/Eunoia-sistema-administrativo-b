@@ -6,6 +6,8 @@ export const IncomeSearchFields = {
   DETAIL: "detail",
   COMPANY_PAYMENT_ACCOUNT_ID: "companyPaymentAccountId",
   HAS_EVIDENCE: "hasEvidence",
+  RECONCILIATION_STATUS: "reconciliationStatus",
+  CUSTOMER_CREDIT_STATUS: "customerCreditStatus",
 } as const;
 
 export type IncomeSearchField = typeof IncomeSearchFields[keyof typeof IncomeSearchFields];

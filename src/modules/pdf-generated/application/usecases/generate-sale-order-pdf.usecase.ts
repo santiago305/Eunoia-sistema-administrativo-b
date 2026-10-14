@@ -15,6 +15,7 @@ import { WarehouseEntity } from "src/modules/warehouses/adapters/out/persistence
 import { ProductCatalogSkuEntity } from "src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku.entity";
 import { resolvePublicAssetUrl } from "../support/resolve-public-asset-url";
 import { AccessControlService } from "src/modules/access-control/application/services/access-control.service";
+import { fromMinorUnits, toMinorUnits } from "src/modules/sale-orders/domain/value-objects/money";
 
 export class GenerateSaleOrderPdfUseCase {
   constructor(
@@ -88,15 +89,19 @@ export class GenerateSaleOrderPdfUseCase {
       compsByItemId.set(c.saleOrderItemId, list);
     }
 
-    const totalPaid = payments.reduce(
-      (acc, p) =>
-        p.status === undefined || p.status === "POSTED"
-          ? acc + Number(p.amount ?? 0)
-          : acc,
-      0,
-    );
-    const total = Number(order.total ?? 0);
-    const pendingAmount = Math.max(total - totalPaid, 0);
+    const totalPaidCents = payments.reduce((sumCents, payment) => {
+      if (payment.status !== "POSTED") return sumCents;
+
+      const nextCents = sumCents + toMinorUnits(payment.amount ?? 0);
+      if (!Number.isSafeInteger(nextCents)) {
+        throw new Error("El total pagado del pedido está fuera del rango permitido");
+      }
+      return nextCents;
+    }, 0);
+    const totalPaid = fromMinorUnits(totalPaidCents);
+    const totalCents = toMinorUnits(order.total ?? 0);
+    const total = fromMinorUnits(totalCents);
+    const pendingAmount = fromMinorUnits(Math.max(totalCents - totalPaidCents, 0));
 
     const companyAddress =
       company?.address || [company?.department, company?.province, company?.district].filter(Boolean).join(" - ");

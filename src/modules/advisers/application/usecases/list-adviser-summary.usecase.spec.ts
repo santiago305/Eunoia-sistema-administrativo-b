@@ -25,6 +25,7 @@ const createQueryBuilder = () => {
       assignedOrders: '4',
       soldTotal: '1200',
       collectedTotal: '900',
+      currencyMetrics: [{ currency: 'PEN', soldTotal: '1200', collectedTotal: '900' }],
     },
   ]);
   return builder;
@@ -87,7 +88,33 @@ describe('ListAdviserSummaryUsecase permissions', () => {
         assignedOrders: 4,
         soldTotal: 1200,
         collectedTotal: 900,
+        currencyMetrics: [{ currency: 'PEN', soldTotal: 1200, collectedTotal: 900 }],
       }),
     );
+  });
+
+  it('does not expose a cross-currency scalar total', async () => {
+    const builder = createQueryBuilder();
+    builder.getRawMany.mockResolvedValueOnce([{
+      id: 'user-1', name: 'Ana', email: 'ana@example.com', isActive: true,
+      assignedOrders: '4', currencyMetrics: [
+        { currency: 'PEN', soldTotal: '1200', collectedTotal: '900' },
+        { currency: 'USD', soldTotal: '100', collectedTotal: '50' },
+      ],
+    }]);
+    const usecase = new ListAdviserSummaryUsecase(
+      { createQueryBuilder: jest.fn().mockReturnValue(builder) } as never,
+      {} as never,
+      { touchRecentSearch: jest.fn() } as never,
+    );
+    const result = await usecase.execute({ includePerformanceSummary: true });
+    expect(result.items[0]).toMatchObject({
+      soldTotal: null,
+      collectedTotal: null,
+      currencyMetrics: [
+        { currency: 'PEN', soldTotal: 1200, collectedTotal: 900 },
+        { currency: 'USD', soldTotal: 100, collectedTotal: 50 },
+      ],
+    });
   });
 });

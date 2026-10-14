@@ -12,4 +12,5 @@ export type SaleOrderAttachmentOutput = {
   url: string;
   note: string | null;
   createdAt: string;
+  idempotentReplay?: boolean;
 };

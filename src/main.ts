@@ -55,6 +55,7 @@ async function bootstrap() {
       'x-user-agent',
       'x-request-id',
       'x-csrf-token',
+      'Idempotency-Key',
     ],
     exposedHeaders: [
       'Authorization',

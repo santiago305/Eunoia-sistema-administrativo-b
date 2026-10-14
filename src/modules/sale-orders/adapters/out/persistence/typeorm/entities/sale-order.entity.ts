@@ -1,6 +1,7 @@
 import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { OneToMany } from "typeorm";
 import { SaleOrderItemEntity } from "./sale-order-item.entity";
+import { CurrencyType } from "src/modules/payments/domain/value-objects/currency-type";
 
 @Entity("sale_orders")
 @Index("idx_sale_orders_client", ["clientId"])
@@ -38,6 +39,9 @@ export class SaleOrderEntity {
 
   @Column({ name: "total", type: "numeric", precision: 12, scale: 2, default: 0 })
   total: number;
+
+  @Column({ name: "currency", type: "enum", enum: CurrencyType, enumName: "currency_type", default: CurrencyType.PEN })
+  currency: CurrencyType;
 
   @Column({ name: "note", type: "text", nullable: true })
   note?: string | null;

@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { ConflictException, Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { EntityManager, In, Repository } from "typeorm";
 import { DeepPartial } from "typeorm";
@@ -69,6 +69,9 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
       row.voidedAt ?? null,
       row.voidedByUserId ?? null,
       row.voidReason ?? null,
+      row.version,
+      row.createdByUserId ?? null,
+      row.updatedByUserId ?? null,
     );
   }
 
@@ -83,11 +86,13 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
         status: row.status ?? "PENDING_CONFIRMATION",
         operationCode: normalizeOperationNumber(row.operationCode),
         date: row.date,
+        paymentDate: row.date.toISOString().slice(0, 10),
         method: row.method,
         operationNumber: normalizeOperationNumber(row.operationNumber),
         amount: row.amount,
         note: row.note ?? null,
         paymentPhoto: row.paymentPhoto ?? null,
+        createdByUserId: row.createdByUserId ?? null,
       }));
     const saved = await manager.getRepository(SalePaymentEntity).save(entities);
     return saved.map((row) => this.toDomain(row as SalePaymentEntity));
@@ -110,19 +115,34 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
     tx?: TransactionContext,
   ): Promise<void> {
     const manager = this.getManager(tx);
-    await manager.getRepository(SalePaymentEntity).update(
-      { id: input.paymentId, saleOrderId: input.saleOrderId },
-      {
+    const query = manager.getRepository(SalePaymentEntity)
+      .createQueryBuilder()
+      .update(SalePaymentEntity)
+      .set({
         companyPaymentAccountId: input.companyPaymentAccountId ?? input.bankAccountId ?? null,
         paymentMethodId: input.paymentMethodId ?? null,
         operationCode: normalizeOperationNumber(input.operationCode),
         date: input.date,
+        paymentDate: input.date.toISOString().slice(0, 10),
         method: input.method,
         operationNumber: normalizeOperationNumber(input.operationNumber),
         amount: input.amount,
         note: input.note ?? null,
-      },
-    );
+        updatedByUserId: input.updatedByUserId ?? null,
+        version: () => 'version + 1',
+      })
+      .where('id = :paymentId AND sale_order_id = :saleOrderId AND status = :status', {
+        paymentId: input.paymentId,
+        saleOrderId: input.saleOrderId,
+        status: 'PENDING_CONFIRMATION',
+      });
+    if (input.expectedVersion !== undefined) {
+      query.andWhere('version = :expectedVersion', { expectedVersion: input.expectedVersion });
+    }
+    const result = await query.execute();
+    if ((result.affected ?? 0) === 0) {
+      throw new ConflictException('El ingreso cambió o dejó de estar pendiente. Actualiza la información.');
+    }
   }
 
   async deleteByIds(
@@ -174,6 +194,35 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
           : null,
       ),
     );
+  }
+
+  async getPostedAppliedTotalsBySaleOrderIds(
+    saleOrderIds: string[],
+    tx?: TransactionContext,
+  ): Promise<Array<{ saleOrderId: string; amount: number }>> {
+    if (!saleOrderIds.length) return [];
+    const manager = this.getManager(tx);
+    const rows = await manager.query(
+      `SELECT requested.sale_order_id AS "saleOrderId",
+              CASE WHEN EXISTS (
+                SELECT 1 FROM sale_payment_allocations existing
+                WHERE existing.sale_order_id = requested.sale_order_id
+              ) THEN COALESCE((
+                SELECT SUM(allocation.amount)
+                FROM sale_payment_allocations allocation
+                JOIN sale_payments payment ON payment.id = allocation.sale_payment_id
+                WHERE allocation.sale_order_id = requested.sale_order_id AND payment.status = 'POSTED'
+              ), 0) ELSE COALESCE((
+                SELECT SUM(payment.amount) FROM sale_payments payment
+                WHERE payment.sale_order_id = requested.sale_order_id AND payment.status = 'POSTED'
+              ), 0) END::numeric(14,2)::text AS amount
+       FROM unnest($1::uuid[]) AS requested(sale_order_id)`,
+      [saleOrderIds],
+    );
+    return rows.map((row: { saleOrderId: string; amount: string | number }) => ({
+      saleOrderId: row.saleOrderId,
+      amount: Number(row.amount ?? 0),
+    }));
   }
 
   async voidPostedPayment(

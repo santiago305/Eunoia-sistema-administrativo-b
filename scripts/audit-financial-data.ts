@@ -1,5 +1,6 @@
 import "dotenv/config";
-import { migrationDataSource } from "../src/infrastructure/database/typeorm.config";
+
+type AuditQuerySource = { query: (sql: string) => Promise<unknown[]> };
 
 export type FinancialAuditCheck = {
   check: string;
@@ -7,7 +8,200 @@ export type FinancialAuditCheck = {
   details?: unknown[];
 };
 
+/** Run before the lifecycle/operation-number migrations and again after them. */
+export const financialLifecyclePreflightQueries: Array<{ check: string; sql: string }> = [
+  {
+    check: "legacy_sale_payment_lifecycle_statuses",
+    sql: `
+      SELECT id, sale_order_id, amount, currency, status, date, method, operation_number,
+             voided_at, voided_by_user_id, void_reason
+      FROM sale_payments
+      WHERE status IS NULL
+         OR status NOT IN ('PENDING_CONFIRMATION', 'POSTED', 'CANCELLED', 'REVERSED')
+      ORDER BY status, date, id
+    `,
+  },
+  {
+    check: "duplicate_sale_payment_operation_references",
+    sql: `
+      SELECT lower(btrim(operation_number)) AS normalized_reference,
+             COUNT(*)::int AS total,
+             JSON_AGG(JSON_BUILD_OBJECT('id', id, 'status', status, 'date', date)
+                      ORDER BY date, id) AS payments
+      FROM sale_payments
+      WHERE NULLIF(btrim(operation_number), '') IS NOT NULL
+      GROUP BY lower(btrim(operation_number))
+      HAVING COUNT(*) > 1
+      ORDER BY lower(btrim(operation_number))
+    `,
+  },
+  {
+    check: "pending_sale_payments_without_valid_method",
+    sql: `
+      SELECT sp.id, sp.sale_order_id, sp.payment_method_id, sp.method AS legacy_method
+      FROM sale_payments sp
+      LEFT JOIN payment_methods pm ON pm.method_id = sp.payment_method_id
+      WHERE sp.status = 'PENDING_CONFIRMATION'
+        AND (pm.method_id IS NULL OR pm.is_active = false)
+      ORDER BY sp.date, sp.id
+    `,
+  },
+  {
+    check: "pending_sale_payments_without_valid_receiver",
+    sql: `
+      SELECT sp.id, sp.sale_order_id, sp.company_payment_account_id, sp.currency,
+             cpa.is_active, cpa.usage, cpa.currency AS account_currency,
+             pm.code AS payment_method_code, cpa.type AS receiver_type
+      FROM sale_payments sp
+      LEFT JOIN company_payment_accounts cpa
+        ON cpa.company_payment_account_id = sp.company_payment_account_id
+      LEFT JOIN payment_methods pm ON pm.method_id = sp.payment_method_id
+      WHERE sp.status = 'PENDING_CONFIRMATION'
+        AND (cpa.company_payment_account_id IS NULL
+             OR cpa.is_active = false
+             OR cpa.usage NOT IN ('INFLOW', 'BOTH')
+             OR cpa.currency::text <> sp.currency::text
+             OR (pm.code = 'CASH' AND cpa.type <> 'CASH')
+             OR (pm.code IN ('BANK_TRANSFER', 'CHECK') AND cpa.type <> 'BANK_ACCOUNT')
+             OR (pm.code = 'BANK_DEPOSIT' AND cpa.type NOT IN ('BANK_ACCOUNT', 'CASH'))
+             OR (pm.code = 'CARD' AND cpa.type <> 'CREDIT_CARD')
+             OR (pm.code = 'DIGITAL_WALLET' AND cpa.type <> 'DIGITAL_WALLET'))
+      ORDER BY sp.date, sp.id
+    `,
+  },
+  {
+    check: "pending_sale_payments_missing_required_operation_reference",
+    sql: `
+      SELECT sp.id, sp.sale_order_id, pm.code AS payment_method_code
+      FROM sale_payments sp
+      INNER JOIN payment_methods pm ON pm.method_id = sp.payment_method_id
+      WHERE sp.status = 'PENDING_CONFIRMATION'
+        AND pm.requires_operation_reference = true
+        AND NULLIF(BTRIM(sp.operation_number), '') IS NULL
+      ORDER BY sp.date, sp.id
+    `,
+  },
+  {
+    check: "active_sale_payments_currency_mismatch",
+    sql: `
+      SELECT sp.id, sp.sale_order_id, sp.status,
+             sp.currency AS payment_currency, so.currency AS order_currency
+      FROM sale_payments sp
+      INNER JOIN sale_orders so ON so.id = sp.sale_order_id
+      WHERE sp.status IN ('POSTED', 'PENDING_CONFIRMATION')
+        AND sp.currency::text <> so.currency::text
+      ORDER BY sp.id
+    `,
+  },
+];
+
+/** Read-only checks for company ownership evidence used by financial access scopes. */
+export const financialCompanyScopeAuditQueries: Array<{ check: string; sql: string }> = [
+  {
+    check: "financial_scope_users_without_company_or_cross_company_accounts",
+    sql: `
+      SELECT scope.id, scope.user_id, scope.scope_type, scope.scope_id,
+             user_row.company_id AS user_company_id,
+             account.company_id AS account_company_id
+      FROM user_financial_data_scopes scope
+      INNER JOIN users user_row ON user_row.user_id = scope.user_id
+      LEFT JOIN company_payment_accounts account
+        ON scope.scope_type = 'PAYMENT_ACCOUNT'
+       AND account.company_payment_account_id = scope.scope_id
+      WHERE user_row.company_id IS NULL
+         OR (scope.scope_type = 'PAYMENT_ACCOUNT'
+             AND account.company_payment_account_id IS NULL)
+         OR (scope.scope_type = 'PAYMENT_ACCOUNT'
+             AND account.company_id IS DISTINCT FROM user_row.company_id)
+      ORDER BY scope.user_id, scope.scope_type, scope.scope_id
+    `,
+  },
+  {
+    check: "sale_orders_with_conflicting_company_evidence",
+    sql: `
+      WITH company_evidence AS (
+        SELECT so.id AS sale_order_id, creator.company_id
+        FROM sale_orders so
+        INNER JOIN users creator ON creator.user_id = so.created_by
+        WHERE creator.company_id IS NOT NULL
+        UNION
+        SELECT payment.sale_order_id, account.company_id
+        FROM sale_payments payment
+        INNER JOIN company_payment_accounts account
+          ON account.company_payment_account_id = payment.company_payment_account_id
+        WHERE account.company_id IS NOT NULL
+      )
+      SELECT evidence.sale_order_id,
+             ARRAY_AGG(DISTINCT evidence.company_id ORDER BY evidence.company_id) AS company_ids,
+             COUNT(DISTINCT evidence.company_id)::int AS company_count
+      FROM company_evidence evidence
+      GROUP BY evidence.sale_order_id
+      HAVING COUNT(DISTINCT evidence.company_id) > 1
+      ORDER BY evidence.sale_order_id
+    `,
+  },
+  {
+    check: "sale_orders_without_company_evidence",
+    sql: `
+      SELECT so.id AS sale_order_id, so.client_id, so.created_by
+      FROM sale_orders so
+      WHERE NOT EXISTS (
+          SELECT 1 FROM users creator
+          WHERE creator.user_id = so.created_by AND creator.company_id IS NOT NULL
+        )
+        AND NOT EXISTS (
+          SELECT 1
+          FROM sale_payments payment
+          INNER JOIN company_payment_accounts account
+            ON account.company_payment_account_id = payment.company_payment_account_id
+          WHERE payment.sale_order_id = so.id
+            AND account.company_id IS NOT NULL
+        )
+      ORDER BY so.id
+    `,
+  },
+];
+
+export const financialLedgerAuditQueries: Array<{ check: string; sql: string }> = [
+  {
+    check: "sale_payment_movement_ledger_mismatch",
+    sql: `
+      WITH payment_movements AS (
+        SELECT sale_payment_id,
+               COALESCE(SUM(amount) FILTER (WHERE movement_type IN ('INCOME', 'REVERSAL')), 0)::numeric(14,2) AS net_amount
+        FROM financial_account_movements
+        WHERE sale_payment_id IS NOT NULL
+        GROUP BY sale_payment_id
+      )
+      SELECT sp.id, sp.sale_order_id, sp.status, sp.amount AS payment_amount,
+             COALESCE(pm.net_amount, 0)::numeric(14,2) AS ledger_amount
+      FROM sale_payments sp
+      LEFT JOIN payment_movements pm ON pm.sale_payment_id = sp.id
+      WHERE (sp.status = 'POSTED' AND COALESCE(pm.net_amount, 0) <> sp.amount)
+         OR (sp.status IN ('PENDING_CONFIRMATION', 'CANCELLED', 'REVERSED')
+             AND COALESCE(pm.net_amount, 0) <> 0)
+      ORDER BY sp.id
+    `,
+  },
+  {
+    check: "sale_order_payment_allocations_exceed_total",
+    sql: `
+      SELECT so.id AS sale_order_id, so.total AS order_total,
+             ROUND(SUM(spa.amount), 2)::numeric(14,2) AS applied_amount
+      FROM sale_orders so
+      INNER JOIN sale_payment_allocations spa ON spa.sale_order_id = so.id
+      GROUP BY so.id, so.total
+      HAVING ROUND(SUM(spa.amount), 2) < 0
+          OR ROUND(SUM(spa.amount), 2) > ROUND(so.total, 2)
+      ORDER BY so.id
+    `,
+  },
+];
+
 const queries: Array<{ check: string; sql: string }> = [
+  ...financialLifecyclePreflightQueries,
+  ...financialCompanyScopeAuditQueries,
+  ...financialLedgerAuditQueries,
   {
     check: "legacy_bank_accounts_table_remaining",
     sql: `
@@ -353,19 +547,6 @@ const queries: Array<{ check: string; sql: string }> = [
     `,
   },
   {
-    check: "sale_payments_over_collected",
-    sql: `
-      SELECT sp.sale_order_id,
-             ROUND(SUM(sp.amount), 2) AS collected,
-             ROUND(so.total, 2) AS sale_total
-      FROM sale_payments sp
-      INNER JOIN sale_orders so ON so.id = sp.sale_order_id
-      WHERE sp.status = 'POSTED'
-      GROUP BY sp.sale_order_id, so.total
-      HAVING ROUND(SUM(sp.amount), 2) > ROUND(so.total, 2) + 0.01
-    `,
-  },
-  {
     check: "sale_payments_legacy_receiver_unmapped",
     sql: `
       SELECT id, sale_order_id,
@@ -405,7 +586,7 @@ const queries: Array<{ check: string; sql: string }> = [
   },
 ];
 
-export async function collectFinancialAudit(dataSource = migrationDataSource): Promise<FinancialAuditCheck[]> {
+export async function collectFinancialAudit(dataSource: AuditQuerySource): Promise<FinancialAuditCheck[]> {
   const checks: FinancialAuditCheck[] = [];
 
   for (const query of queries) {
@@ -421,6 +602,7 @@ export async function collectFinancialAudit(dataSource = migrationDataSource): P
 }
 
 export async function runFinancialAudit(options: { summary?: boolean } = {}) {
+  const { migrationDataSource } = await import("../src/infrastructure/database/typeorm.config");
   await migrationDataSource.initialize();
 
   try {

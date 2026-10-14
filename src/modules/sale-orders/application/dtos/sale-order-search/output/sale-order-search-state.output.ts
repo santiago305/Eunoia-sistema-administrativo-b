@@ -79,6 +79,7 @@ export type SaleOrderComponentsOutput = {
 };
 export type SaleOrderGetOutput = {
   id: string;
+  currency: string;
   serie: string | null;
   correlative: number | null;
   warehouse: { id: string; name: string } | null;
@@ -192,6 +193,9 @@ export type SaleOrderGetOutput = {
   detail: string;
   payments: Array<{
     id: string;
+    version: number;
+    createdByUserId: string | null;
+    updatedByUserId: string | null;
     clientKey: string;
     bankAccount: { id: string; name: string; number?: string | null } | null;
     date: string;
@@ -221,6 +225,9 @@ export type SaleOrderGetOutput = {
   editPolicy: SaleOrderEditPolicy;
   reservationHealth?: SaleOrderReservationHealthResult;
   totalPaid: number;
+  totalReceived: number;
+  totalApplied: number;
+  customerCreditAvailable: number;
   pendingAmount: number;
   paymentStatus: SaleOrderPaymentStatus;
 };

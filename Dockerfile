@@ -18,7 +18,7 @@ RUN pnpm run build
 # production runner below remains dependency-minimized.
 FROM build AS test
 ENV NODE_ENV=test
-CMD ["pnpm", "test", "--", "--runInBand"]
+CMD ["pnpm", "exec", "jest", "--runInBand"]
 
 FROM node:${NODE_VERSION} AS runner
 WORKDIR /app

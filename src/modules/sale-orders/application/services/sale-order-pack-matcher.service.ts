@@ -6,6 +6,10 @@ import {
   PackWithItems,
 } from 'src/modules/packs/domain/ports/pack.repository';
 import { TransactionContext } from 'src/shared/domain/ports/unit-of-work.port';
+import {
+  fromMinorUnits,
+  toMinorUnits,
+} from 'src/modules/sale-orders/domain/value-objects/money';
 
 export type SaleOrderPackMatchResult =
   | {
@@ -118,16 +122,21 @@ export class SaleOrderPackMatcherService {
     const ranked = candidates
       .map((pack) => {
         const packQuantity = this.getMaximumPackQuantity(composition, pack);
-        const consumedQuantity = pack.items.reduce(
-          (sum, item) => sum + Number(item.quantity) * packQuantity,
-          0,
+        const consumedQuantityHundredths = pack.items.reduce(
+          (sum, item) =>
+            sum + BigInt(toMinorUnits(Number(item.quantity))) * BigInt(packQuantity),
+          0n,
         );
-        return { pack, packQuantity, consumedQuantity };
+        return { pack, packQuantity, consumedQuantityHundredths };
       })
       .filter((candidate) => candidate.packQuantity > 0)
       .sort(
         (left, right) =>
-          right.consumedQuantity - left.consumedQuantity ||
+          (right.consumedQuantityHundredths > left.consumedQuantityHundredths
+            ? 1
+            : right.consumedQuantityHundredths < left.consumedQuantityHundredths
+              ? -1
+              : 0) ||
           right.pack.items.length - left.pack.items.length,
       );
 
@@ -138,7 +147,7 @@ export class SaleOrderPackMatcherService {
     const best = ranked[0];
     const tied = ranked.filter(
       (candidate) =>
-        candidate.consumedQuantity === best.consumedQuantity &&
+        candidate.consumedQuantityHundredths === best.consumedQuantityHundredths &&
         candidate.pack.items.length === best.pack.items.length,
     );
     if (tied.length > 1) {
@@ -152,15 +161,17 @@ export class SaleOrderPackMatcherService {
     const consumedBySkuId = new Map(
       best.pack.items.map((item) => [
         item.skuId,
-        this.roundQuantity(Number(item.quantity) * best.packQuantity),
+        this.toSafeQuantityHundredths(
+          BigInt(toMinorUnits(Number(item.quantity))) * BigInt(best.packQuantity),
+        ),
       ]),
     );
     const leftovers = composition
       .map((component) => ({
         skuId: component.skuId,
-        quantity: this.roundQuantity(
-          component.quantity -
-            Number(consumedBySkuId.get(component.skuId) ?? 0),
+        quantity: fromMinorUnits(
+          toMinorUnits(component.quantity) -
+            (consumedBySkuId.get(component.skuId) ?? 0),
         ),
       }))
       .filter((component) => component.quantity > 0);
@@ -200,16 +211,9 @@ export class SaleOrderPackMatcherService {
     }
 
     return [...quantityBySkuId.entries()]
-      .map(([skuId, quantity]) => ({
-        skuId,
-        quantity: this.roundQuantity(quantity),
-      }))
+      .map(([skuId, quantity]) => ({ skuId, quantity: fromMinorUnits(toMinorUnits(quantity)) }))
       .filter((component) => component.quantity > 0)
       .sort((left, right) => left.skuId.localeCompare(right.skuId));
-  }
-
-  private roundQuantity(value: number): number {
-    return Math.round((value + Number.EPSILON) * 100) / 100;
   }
 
   private getMaximumPackQuantity(
@@ -217,15 +221,38 @@ export class SaleOrderPackMatcherService {
     pack: PackWithItems,
   ): number {
     const availableBySkuId = new Map(
-      composition.map((component) => [component.skuId, component.quantity]),
+      composition.map((component) => [component.skuId, toMinorUnits(component.quantity)]),
     );
-    return Math.min(
-      ...pack.items.map((item) =>
-        Math.floor(
-          Number(availableBySkuId.get(item.skuId) ?? 0) /
-            Number(item.quantity),
-        ),
-      ),
-    );
+    if (pack.items.length === 0) return 0;
+
+    let maximumPackQuantity: bigint | null = null;
+    for (const item of pack.items) {
+      const packItemQuantityHundredths = toMinorUnits(Number(item.quantity));
+      if (packItemQuantityHundredths <= 0) {
+        throw new BadRequestException('La cantidad de un componente del pack debe ser mayor que cero');
+      }
+      const availableQuantityHundredths = BigInt(
+        availableBySkuId.get(item.skuId) ?? 0,
+      );
+      const packCount =
+        availableQuantityHundredths / BigInt(packItemQuantityHundredths);
+      maximumPackQuantity =
+        maximumPackQuantity === null || packCount < maximumPackQuantity
+          ? packCount
+          : maximumPackQuantity;
+    }
+
+    const result = maximumPackQuantity ?? 0n;
+    if (result > BigInt(Number.MAX_SAFE_INTEGER)) {
+      throw new BadRequestException('La cantidad de packs esta fuera del rango permitido');
+    }
+    return Number(result);
+  }
+
+  private toSafeQuantityHundredths(value: bigint): number {
+    if (value > BigInt(Number.MAX_SAFE_INTEGER) || value < BigInt(Number.MIN_SAFE_INTEGER)) {
+      throw new BadRequestException('La cantidad de componentes esta fuera del rango permitido');
+    }
+    return Number(value);
   }
 }

@@ -1,13 +1,10 @@
 import {
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   Optional,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { PaymentMethodEntity } from 'src/modules/payment-methods/adapters/out/persistence/typeorm/entities/payment-method.entity';
-import { canonicalPaymentMethodName } from 'src/modules/payment-methods/domain/value-objects/payment-method-catalog';
 import {
   TransactionContext,
   UNIT_OF_WORK,
@@ -29,10 +26,8 @@ import {
   SALE_ORDER_ITEM_COMPONENT_REPOSITORY,
   SaleOrderItemComponentRepository,
 } from 'src/modules/sale-orders/domain/ports/sale-order-item-component.repository';
-import {
-  SALE_PAYMENT_REPOSITORY,
-  SalePaymentRepository,
-} from 'src/modules/sale-orders/domain/ports/sale-payment.repository';
+import { calculateSaleOrderTotals } from 'src/modules/sale-orders/domain/value-objects/sale-order-totals';
+import { multiplyMoneyByQuantity, multiplyQuantities } from 'src/modules/sale-orders/domain/value-objects/money';
 import {
   WORKFLOW_REPOSITORY,
   WorkflowRepository,
@@ -116,8 +111,6 @@ export class CreateSaleOrderUsecase {
     private readonly saleOrderItemRepo: SaleOrderItemRepository,
     @Inject(SALE_ORDER_ITEM_COMPONENT_REPOSITORY)
     private readonly componentRepo: SaleOrderItemComponentRepository,
-    @Inject(SALE_PAYMENT_REPOSITORY)
-    private readonly paymentRepo: SalePaymentRepository,
     @Inject(WORKFLOW_REPOSITORY)
     private readonly workflowRepo: WorkflowRepository,
     @Inject(WORKFLOW_STATE_REPOSITORY)
@@ -128,29 +121,22 @@ export class CreateSaleOrderUsecase {
     @Optional()
     private readonly commandAuthorization?: SaleOrderCommandAuthorizationService,
     @Optional() private readonly suppliesService?: SaleOrderSuppliesService,
-    @Optional() @InjectRepository(PaymentMethodEntity)
-    private readonly paymentMethodRepo?: Repository<PaymentMethodEntity>,
   ) {}
-
-  private async resolvePaymentMethodSnapshot(paymentMethodId: string | undefined, method: string) {
-    if (!paymentMethodId || !this.paymentMethodRepo) {
-      return { paymentMethodId: paymentMethodId ?? null, method: canonicalPaymentMethodName(method) };
-    }
-    const paymentMethod = await this.paymentMethodRepo.findOne({ where: { id: paymentMethodId } });
-    if (!paymentMethod || !paymentMethod.isActive) {
-      throw new BadRequestException('Método de pago inválido o inactivo');
-    }
-    return {
-      paymentMethodId: paymentMethod.id,
-      method: canonicalPaymentMethodName(paymentMethod.code ?? paymentMethod.name),
-    };
-  }
 
   async execute(input: CreateSaleOrderInput, createdBy: string) {
     await this.commandAuthorization?.authorizeCreate(createdBy, input as any);
+    this.assertNoLegacyPaymentMutation(input.payments);
     return this.uow.runInTransaction((tx) =>
       this.executeInTransaction(input, createdBy, tx),
     );
+  }
+
+  private assertNoLegacyPaymentMutation(payments: CreateSaleOrderInput['payments']): void {
+    if (payments === undefined) return;
+    throw new ConflictException({
+      code: 'FINANCIAL_ENDPOINT_RETIRED',
+      message: 'Los pagos ya no se registran desde la creacion general del pedido. Usa el flujo unificado de pagos para conservar su historial financiero.',
+    });
   }
 
   async executeInTransaction(
@@ -158,6 +144,7 @@ export class CreateSaleOrderUsecase {
     createdBy: string,
     tx: TransactionContext,
   ) {
+    this.assertNoLegacyPaymentMutation(input.payments);
     await this.adviserMembership?.assertIsAdviser(input.assignedBy);
     if (!input.workflowId) {
       throw new BadRequestException('workflowId es obligatorio');
@@ -173,13 +160,11 @@ export class CreateSaleOrderUsecase {
       throw new BadRequestException('Workflow invalido para crear pedido');
     }
 
-    const subTotal = input.items.reduce(
-      (sum, item) => sum + Number(item.total ?? 0),
-      0,
-    );
-    const deliveryCost = Number(input.deliveryCost ?? 0);
-    const discount = Number(input.discount ?? 0);
-    const total = Math.max(0, subTotal + deliveryCost - discount);
+    const { subTotal, deliveryCost, discount, total } = calculateSaleOrderTotals({
+      itemTotals: input.items.map((item) => item.total ?? 0),
+      deliveryCost: input.deliveryCost ?? 0,
+      discount: input.discount ?? 0,
+    });
 
     const order = await this.saleOrderRepo.create(
       {
@@ -271,9 +256,9 @@ export class CreateSaleOrderUsecase {
           saleOrderItemId: savedItem.id,
           skuId: packItem.skuId,
           referencePackItemId: packItem.id,
-          quantity: Number(savedItem.quantity) * Number(packItem.quantity),
+          quantity: multiplyQuantities(savedItem.quantity, packItem.quantity),
           unitPrice: Number(packItem.price ?? 0),
-          total: Number(packItem.lineTotal ?? 0) * Number(savedItem.quantity),
+          total: multiplyMoneyByQuantity(packItem.lineTotal ?? 0, savedItem.quantity),
         });
       }
     }
@@ -290,39 +275,6 @@ export class CreateSaleOrderUsecase {
           tx,
         );
       }
-    }
-
-    const paymentsInput = await Promise.all((input.payments ?? []).map(async (p) => {
-      const date = p.date ? new Date(p.date) : new Date();
-      if (Number.isNaN(date.getTime())) {
-        throw new BadRequestException('Fecha de pago inválida');
-      }
-      const resolvedMethod = await this.resolvePaymentMethodSnapshot(p.paymentMethodId, p.method);
-      return {
-        saleOrderId: order.id,
-        bankAccountId: p.bankAccountId?.trim() ? p.bankAccountId.trim() : null,
-        companyPaymentAccountId: p.companyPaymentAccountId?.trim() || p.bankAccountId?.trim() || null,
-        paymentMethodId: resolvedMethod.paymentMethodId,
-        currency: "PEN" as any,
-        status: "POSTED" as const,
-        date,
-        method: resolvedMethod.method,
-        operationNumber: p.operationNumber ?? null,
-        operationCode: p.operationCode ?? p.operationNumber ?? null,
-        amount: p.amount,
-        note: p.note ?? null,
-        paymentPhoto: p.paymentPhoto ?? null,
-      };
-    }));
-    try {
-      if (input.payments) {
-        await this.paymentRepo.bulkCreate(paymentsInput, tx);
-      }
-    } catch (error: any) {
-      if (error?.code === '23503') {
-        throw new BadRequestException('Cuenta bancaria inválida');
-      }
-      throw error;
     }
 
     await this.createLogisticsPayable?.execute(

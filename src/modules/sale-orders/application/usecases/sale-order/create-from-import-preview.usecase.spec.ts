@@ -19,7 +19,7 @@ import { SaleOrderPackMatcherService } from '../../services/sale-order-pack-matc
 import { PreferredCompanyPaymentMethodService } from 'src/modules/payment-methods/application/services/preferred-company-payment-method.service';
 
 function makeImportUsecase(overrides: Record<string, any> = {}) {
-  const tx = overrides.tx ?? {};
+  const tx = overrides.tx ?? { manager: { query: jest.fn().mockResolvedValue([]) } };
   const uow = { runInTransaction: (work: any) => work(tx) };
   const saleOrderRepo = {
     create: jest.fn().mockResolvedValue({ id: 'order-1' }),
@@ -137,6 +137,33 @@ function makeNormalizedImportRow(overrides: Record<string, any> = {}) {
 }
 
 describe('CreateFromImportPreviewUseCase', () => {
+  it('aggregates imported SKU quantities as integer hundredths', () => {
+    const f = makeImportUsecase();
+
+    const result = (f.usecase as any).aggregateImportedSkus([
+      { productId: 'p-a', skuId: 'sku-a', skuName: 'A', customSku: 'A', price: 1, quantity: 0.1 },
+      { productId: 'p-a', skuId: 'sku-a', skuName: 'A', customSku: 'A', price: 1, quantity: 0.2 },
+      { productId: 'p-b', skuId: 'sku-b', skuName: 'B', customSku: 'B', price: 1, quantity: 0.3 },
+      { productId: 'p-b', skuId: 'sku-b', skuName: 'B', customSku: 'B', price: 1, quantity: 0.2 },
+    ]);
+
+    expect(result.map(({ skuId, quantity }: any) => ({ skuId, quantity }))).toEqual([
+      { skuId: 'sku-a', quantity: 0.3 },
+      { skuId: 'sku-b', quantity: 0.5 },
+    ]);
+  });
+
+  it('multiplies pack component quantities in integer hundredths', () => {
+    const f = makeImportUsecase();
+
+    const quantity = (f.usecase as any).getPackItemQuantity(
+      { skuId: 'sku-a', quantity: 0.3 },
+      { packQuantity: 3, composition: [] },
+    );
+
+    expect(quantity).toBe(0.9);
+  });
+
   it('rejects the complete dispatch before creating orders when any SKU is unknown', async () => {
     const runInTransaction = jest.fn();
     const f = makeImportUsecase({
@@ -180,7 +207,8 @@ describe('CreateFromImportPreviewUseCase', () => {
 
   it('imports a single valid row', async () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-08-30T01:30:00.000Z'));
-    const uow = { runInTransaction: (work: any) => work({}) };
+    const tx = { manager: { query: jest.fn().mockResolvedValue([]) } };
+    const uow = { runInTransaction: (work: any) => work(tx) };
     const saleOrderRepo = { create: jest.fn() };
     const saleOrderItemRepo = { bulkCreate: jest.fn() };
     const componentRepo = { bulkCreate: jest.fn() };
@@ -322,9 +350,23 @@ describe('CreateFromImportPreviewUseCase', () => {
             companyPaymentAccountId: null,
             paymentMethodId: 'method-bank-transfer',
             method: 'Trans. bancaria',
+            status: 'PENDING_CONFIRMATION',
+            createdByUserId: 'user-1',
           }),
         ],
-        expect.anything(),
+        tx,
+      );
+      expect(tx.manager.query).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO sale_order_auditory'),
+        ['order-1', 'user-1', 'payment_pending_created'],
+      );
+      expect(tx.manager.query).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO financial_outbox_events'),
+        expect.arrayContaining([
+          'income.payment_pending_created',
+          'pay-1',
+          expect.stringContaining('sale_order_import'),
+        ]),
       );
     } finally {
       jest.useRealTimers();

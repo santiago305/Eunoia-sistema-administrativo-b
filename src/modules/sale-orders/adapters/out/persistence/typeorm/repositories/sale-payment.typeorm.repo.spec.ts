@@ -4,6 +4,22 @@ import { SalePaymentEntity } from "../entities/sale-payment.entity";
 import { SalePaymentTypeormRepository } from "./sale-payment.typeorm.repo";
 
 describe("SalePaymentTypeormRepository", () => {
+  it("calculates order receipts from posted payment allocations, including credits applied from another order", async () => {
+    const manager = {
+      query: jest.fn().mockResolvedValue([
+        { saleOrderId: "order-target", amount: "45.50" },
+        { saleOrderId: "order-source", amount: "30.00" },
+      ]),
+    };
+    const repository = new SalePaymentTypeormRepository({ manager } as any);
+
+    await expect(repository.getPostedAppliedTotalsBySaleOrderIds(["order-target", "order-source"])).resolves.toEqual([
+      { saleOrderId: "order-target", amount: 45.5 },
+      { saleOrderId: "order-source", amount: 30 },
+    ]);
+    expect(manager.query).toHaveBeenCalledWith(expect.stringContaining("sale_payment_allocations"), [["order-target", "order-source"]]);
+  });
+
   it("loads company payment account data when listing payments by sale order ids", async () => {
     const paymentDate = new Date("2026-06-13T00:00:00.000Z");
     const createdAt = new Date("2026-06-15T23:08:16.892Z");
@@ -77,8 +93,15 @@ describe("SalePaymentTypeormRepository", () => {
   });
 
   it('updates and deletes selected payments through the transaction manager', async () => {
+    const query = {
+      update: jest.fn().mockReturnThis(),
+      set: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      execute: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
     const paymentRepo = {
-      update: jest.fn().mockResolvedValue({ affected: 1 }),
+      createQueryBuilder: jest.fn().mockReturnValue(query),
       delete: jest.fn().mockResolvedValue({ affected: 1 }),
     };
     const manager = {
@@ -106,10 +129,8 @@ describe("SalePaymentTypeormRepository", () => {
       tx,
     );
 
-    expect(paymentRepo.update).toHaveBeenCalledWith(
-      { id: 'payment-1', saleOrderId: 'order-1' },
-      expect.objectContaining({ amount: 80, method: 'EFECTIVO' }),
-    );
+    expect(query.set).toHaveBeenCalledWith(expect.objectContaining({ amount: 80, method: 'EFECTIVO', version: expect.any(Function) }));
+    expect(query.where).toHaveBeenCalledWith(expect.stringContaining("status = :status"), expect.objectContaining({ status: 'PENDING_CONFIRMATION' }));
     expect(paymentRepo.delete).toHaveBeenCalledWith({
       id: In(['payment-2']),
       saleOrderId: 'order-1',

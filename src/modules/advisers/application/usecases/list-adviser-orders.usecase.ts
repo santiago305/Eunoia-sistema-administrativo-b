@@ -40,7 +40,8 @@ export class ListAdviserOrdersUsecase {
       .addSelect('o.created_at', 'createdAt')
       .addSelect('c.full_name', 'clientName')
       .addSelect('o.total', 'total')
-      .addSelect("(SELECT COALESCE(SUM(sp.amount) FILTER (WHERE sp.status = 'POSTED'), 0) FROM sale_payments sp WHERE sp.sale_order_id = o.id)", 'collectedTotal')
+      .addSelect('o.currency', 'currency')
+      .addSelect("(SELECT COALESCE(jsonb_agg(jsonb_build_object('currency', posted.currency, 'amount', posted.amount) ORDER BY posted.currency), '[]'::jsonb) FROM (SELECT sp.currency, SUM(sp.amount) AS amount FROM sale_payments sp WHERE sp.sale_order_id = o.id AND sp.status = 'POSTED' GROUP BY sp.currency) posted)", 'collectedByCurrency')
       .addSelect('s.name', 'stateName')
       .addSelect('s.color', 'stateColor')
       .orderBy('o.created_at', 'DESC')
@@ -50,17 +51,29 @@ export class ListAdviserOrdersUsecase {
       .getRawMany();
 
     return {
-      items: rows.map((row) => ({
-        id: row.id,
-        serie: row.serie ?? null,
-        correlative: row.correlative == null ? null : Number(row.correlative),
-        createdAt: row.createdAt ?? row.createdat,
-        clientName: row.clientName ?? row.clientname ?? 'Sin cliente',
-        total: Number(row.total ?? 0),
-        collectedTotal: Number(row.collectedTotal ?? row.collectedtotal ?? 0),
-        stateName: row.stateName ?? row.statename ?? 'Sin estado',
-        stateColor: row.stateColor ?? row.statecolor ?? null,
-      })),
+      items: rows.map((row) => {
+        const currency = row.currency ?? row.currency_code ?? 'PEN';
+        const value = row.collectedByCurrency ?? row.collectedbycurrency ?? [];
+        const rawMetrics = typeof value === 'string' ? JSON.parse(value) : value;
+        const collectedByCurrency = (rawMetrics as Array<{ currency: string; amount: string | number }>).map((metric) => ({
+          currency: metric.currency,
+          amount: Number(metric.amount ?? 0),
+        }));
+        const ownCurrencyTotal = collectedByCurrency.find((metric) => metric.currency === currency)?.amount ?? 0;
+        return {
+          id: row.id,
+          serie: row.serie ?? null,
+          correlative: row.correlative == null ? null : Number(row.correlative),
+          createdAt: row.createdAt ?? row.createdat,
+          clientName: row.clientName ?? row.clientname ?? 'Sin cliente',
+          total: Number(row.total ?? 0),
+          currency,
+          collectedByCurrency,
+          collectedTotal: ownCurrencyTotal,
+          stateName: row.stateName ?? row.statename ?? 'Sin estado',
+          stateColor: row.stateColor ?? row.statecolor ?? null,
+        };
+      }),
       total,
       page,
       limit,

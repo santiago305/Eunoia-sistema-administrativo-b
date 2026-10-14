@@ -21,5 +21,8 @@ export class SalePayment {
     public readonly voidedAt: Date | null = null,
     public readonly voidedByUserId: string | null = null,
     public readonly voidReason: string | null = null,
+    public readonly version: number = 1,
+    public readonly createdByUserId: string | null = null,
+    public readonly updatedByUserId: string | null = null,
   ) {}
 }

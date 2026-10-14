@@ -23,6 +23,15 @@ export class SaleOrderCommandAuthorizationService {
   }
 
   private collect(input: PermissionInput, base: string): string[] {
+    if (
+      (Array.isArray(input.removedPaymentIds) && input.removedPaymentIds.length) ||
+      (Array.isArray(input.deletedPaymentIds) && input.deletedPaymentIds.length)
+    ) {
+      throw new ForbiddenException(
+        'Los ingresos conservan historial; no se permite eliminarlos desde el pedido.',
+      );
+    }
+
     const required = [base];
     if (input.client) required.push('sale_orders.clients.manage');
     if (input.assignedBy !== undefined) required.push('sale_orders.assign_adviser');
@@ -33,15 +42,11 @@ export class SaleOrderCommandAuthorizationService {
     if (payments.length) {
       required.push(
         ...payments.map((payment: any) =>
-          payment?.id ? 'sale_orders.payments.update' : 'sale_orders.payments.create',
+          payment?.id
+            ? 'sale_orders.payments.update_pending'
+            : 'sale_orders.payments.create',
         ),
       );
-    }
-    if (
-      (Array.isArray(input.removedPaymentIds) && input.removedPaymentIds.length) ||
-      (Array.isArray(input.deletedPaymentIds) && input.deletedPaymentIds.length)
-    ) {
-      required.push('sale_orders.payments.delete');
     }
     if (input.shippingPhoto || input.paymentPhotoByClientKey) {
       required.push('sale_orders.attachments.upload');

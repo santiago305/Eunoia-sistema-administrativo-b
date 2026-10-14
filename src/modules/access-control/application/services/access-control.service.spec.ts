@@ -127,6 +127,30 @@ describe('AccessControlService (fase 6 reglas finales)', () => {
 
       await expect(service.userHasAllPermissions('u-master-role', ['company.manage'])).resolves.toBe(true);
     });
+
+    it('un DENY individual limita tambien un rol wildcard y elimina el bypass global', async () => {
+      userRepository.findOne.mockResolvedValue({
+        id: 'u-wildcard-denied',
+        isSuperAdmin: false,
+        role: { roleId: 'role-master' },
+      });
+      rolePermissionRepository.find.mockResolvedValue([{ permission: { code: '*' } }]);
+      permissionRepository.find.mockResolvedValue([
+        { code: 'income.view_all' },
+        { code: 'income.view_own' },
+        { code: 'sale_orders.payments.post_own' },
+      ]);
+      userPermissionOverrideRepository.find.mockResolvedValue([
+        { effect: 'DENY' as PermissionEffect, permission: { code: 'income.view_all' } },
+        { effect: 'DENY' as PermissionEffect, permission: { code: 'sale_orders.payments.post_own' } },
+      ]);
+
+      const effective = await service.getEffectivePermissions('u-wildcard-denied');
+
+      expect(effective).toEqual(['income.view_own']);
+      expect(effective).not.toContain('*');
+      await expect(service.userHasAllPermissions('u-wildcard-denied', ['income.view_all'])).resolves.toBe(false);
+    });
   });
 
   describe('upsertUserPermissionOverride', () => {

@@ -10,8 +10,12 @@ async function main() {
   });
 
   console.log(
-    `Migracion de assets completada. copied=${result.copied} skipped=${result.skipped}`,
+    `Migracion de assets completada. copied=${result.copied} skipped=${result.skipped} conflicts=${result.conflicts.length}`,
   );
+  if (result.conflicts.length) {
+    console.error(`Colisiones no copiadas; revisar antes de continuar:\n${result.conflicts.join('\n')}`);
+    process.exitCode = 2;
+  }
 }
 
 main().catch((error) => {

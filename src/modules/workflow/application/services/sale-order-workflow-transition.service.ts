@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, Optional, UnprocessableEntityException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Inject, Injectable, Optional, UnprocessableEntityException } from "@nestjs/common";
 import { CLOCK, ClockPort } from "src/shared/application/ports/clock.port";
 import { TransactionContext } from "src/shared/domain/ports/unit-of-work.port";
 import { SALE_ORDER_REPOSITORY, SaleOrderRepository } from "src/modules/sale-orders/domain/ports/sale-order.repository";
@@ -16,6 +16,7 @@ import { SaleOrderWorkflowActionRunnerService } from "./sale-order-workflow-acti
 import { WorkflowTransitionPurpose } from "../../domain/constants/workflow-transition-purpose.constants";
 import { TRANSITION_EFFECTS } from "../../domain/constants/workflow-transition-effect.constants";
 import { WorkflowActionExecutionRecorderService } from './workflow-action-execution-recorder.service';
+import { SALE_PAYMENT_REPOSITORY, SalePaymentRepository } from 'src/modules/sale-orders/domain/ports/sale-payment.repository';
 
 type AdvanceStateInput = {
   saleOrderId: string;
@@ -25,6 +26,8 @@ type AdvanceStateInput = {
   transitionPurpose?: WorkflowTransitionPurpose;
   metadata?: Record<string, unknown> | null;
   idempotencyKey?: string;
+  /** Set only by the dedicated cancellation flow after financial resolution. */
+  financialCancellationResolved?: boolean;
 };
 
 @Injectable()
@@ -46,6 +49,9 @@ export class SaleOrderWorkflowTransitionService {
     private readonly actionRunner: SaleOrderWorkflowActionRunnerService,
     @Optional()
     private readonly executionRecorder?: WorkflowActionExecutionRecorderService,
+    @Optional()
+    @Inject(SALE_PAYMENT_REPOSITORY)
+    private readonly paymentRepo?: SalePaymentRepository,
   ) {}
 
   private async recordActionOutcomes(
@@ -115,6 +121,18 @@ export class SaleOrderWorkflowTransitionService {
 
     if (!transitionBundle) {
       throw new BadRequestException("Transicion no disponible");
+    }
+
+    if (transitionBundle.transition.purpose === 'CANCEL' && !input.financialCancellationResolved && this.paymentRepo) {
+      const unresolved = (await this.paymentRepo.listBySaleOrderId(order.id, tx))
+        .filter((payment) => payment.status === 'PENDING_CONFIRMATION' || payment.status === 'POSTED');
+      if (unresolved.length) {
+        throw new ConflictException({
+          code: 'SALE_ORDER_PAYMENTS_MUST_BE_RESOLVED',
+          message: 'Resuelve los ingresos pendientes y contabilizados antes de cancelar el pedido.',
+          payments: unresolved.map(({ id, status, amount }) => ({ id, status, amount })),
+        });
+      }
     }
 
     const isActionOnly = transitionBundle.transition.effect === TRANSITION_EFFECTS.RUN_ACTIONS;

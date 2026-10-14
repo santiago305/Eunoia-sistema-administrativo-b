@@ -10,6 +10,27 @@ import { WorkflowState } from "../../domain/entities/workflow-state";
 import { WorkflowTransition } from "../../domain/entities/workflow-transition";
 
 describe("SaleOrderWorkflowTransitionService", () => {
+  it("blocks a generic workflow cancellation while an income is still active", async () => {
+    const paymentRepo = {
+      listBySaleOrderId: jest.fn().mockResolvedValue([{ id: "income-1", amount: 20, status: "POSTED" }]),
+    };
+    const service = new SaleOrderWorkflowTransitionService(
+      { findByIdForUpdate: jest.fn().mockResolvedValue({ id: "order-1", workflowId: "workflow-1", currentStateId: "state-1" }) } as any,
+      { findDetailedById: jest.fn().mockResolvedValue({ states: [{ id: "state-1" }] }) } as any,
+      { findDetailedById: jest.fn().mockResolvedValue({ transition: { id: "cancel-transition", purpose: TRANSITION_PURPOSES.CANCEL } }) } as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      undefined,
+      paymentRepo as any,
+    );
+
+    await expect(service.advance({ saleOrderId: "order-1", executedBy: "user-1", transitionId: "cancel-transition" }, {} as any))
+      .rejects.toMatchObject({ response: expect.objectContaining({ code: "SALE_ORDER_PAYMENTS_MUST_BE_RESOLVED" }) });
+    expect(paymentRepo.listBySaleOrderId).toHaveBeenCalledWith("order-1", expect.anything());
+  });
+
   it("records automatic history without an executor when no executor is provided", async () => {
     const tx = {};
     const order = {

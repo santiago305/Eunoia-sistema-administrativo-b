@@ -86,7 +86,25 @@ describe('CreateSaleOrderUsecase', () => {
       ],
     }).compile();
 
-    await moduleRef.get(CreateSaleOrderUsecase).execute(
+    const usecase = moduleRef.get(CreateSaleOrderUsecase);
+    const legacyPaymentInput = {
+      warehouseId: 'warehouse-1',
+      clientId: 'client-1',
+      workflowId: 'workflow-1',
+      items: [],
+      payments: [],
+    };
+    await expect(usecase.execute(legacyPaymentInput, 'user-1')).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'FINANCIAL_ENDPOINT_RETIRED' }),
+    });
+    await expect(
+      usecase.executeInTransaction(legacyPaymentInput, 'user-1', tx),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'FINANCIAL_ENDPOINT_RETIRED' }),
+    });
+    expect(saleOrderRepo.create).not.toHaveBeenCalled();
+
+    await usecase.execute(
       {
         warehouseId: 'warehouse-1',
         clientId: 'client-1',
@@ -267,9 +285,9 @@ describe('CreateSaleOrderUsecase', () => {
           {
             id: 'pack-item-1',
             skuId: 'sku-pack',
-            quantity: 2,
-            price: 4,
-            lineTotal: 8,
+            quantity: 0.15,
+            price: 0.1,
+            lineTotal: 0.1,
           },
         ],
       }),
@@ -307,7 +325,7 @@ describe('CreateSaleOrderUsecase', () => {
           useValue: {
             bulkCreate: jest
               .fn()
-              .mockResolvedValue([{ id: 'item-1', quantity: 3 }]),
+              .mockResolvedValue([{ id: 'item-1', quantity: 0.1 }]),
           },
         },
         {
@@ -344,9 +362,9 @@ describe('CreateSaleOrderUsecase', () => {
         workflowId: 'workflow-1',
         items: [
           {
-            quantity: 3,
-            unitPrice: 8,
-            total: 24,
+            quantity: 0.1,
+            unitPrice: 0.1,
+            total: 0.01,
             referencePackId: 'pack-1',
           },
         ],
@@ -361,9 +379,9 @@ describe('CreateSaleOrderUsecase', () => {
           saleOrderItemId: 'item-1',
           skuId: 'sku-pack',
           referencePackItemId: 'pack-item-1',
-          quantity: 6,
-          unitPrice: 4,
-          total: 24,
+          quantity: 0.02,
+          unitPrice: 0.1,
+          total: 0.01,
         },
       ],
       tx,

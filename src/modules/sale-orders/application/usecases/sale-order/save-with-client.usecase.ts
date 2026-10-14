@@ -1,9 +1,11 @@
 import {
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   Optional,
 } from '@nestjs/common';
+import { createHash } from 'crypto';
 import {
   CLIENT_REALTIME,
   ClientRealtime,
@@ -21,6 +23,7 @@ import {
   UNIT_OF_WORK,
   UnitOfWork,
 } from 'src/shared/domain/ports/unit-of-work.port';
+import { TypeormTransactionContext } from 'src/shared/domain/ports/typeorm-transaction-context';
 import { prepareImageForStorage } from 'src/shared/utilidades/utils/prepare-image-for-storage';
 import {
   SALE_ORDER_ATTACHMENT_REPOSITORY,
@@ -39,6 +42,7 @@ import { SaleOrderStockCorrectionService } from '../../services/sale-order-stock
 
 type SaveSaleOrderWithClientInput = {
   saleOrderId?: string;
+  idempotencyKey?: string;
   data: HttpSaveSaleOrderWithClientDto;
   shippingPhoto?: Express.Multer.File;
   paymentPhotoByClientKey: Map<string, Express.Multer.File>;
@@ -74,6 +78,9 @@ export class SaveSaleOrderWithClientUsecase {
     if (!input.saleOrderId && !input.data.workflowId?.trim()) {
       throw new BadRequestException('El tipo de pedido es requerido');
     }
+    if (input.idempotencyKey && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input.idempotencyKey)) {
+      throw new BadRequestException('Envía una clave de idempotencia UUID válida.');
+    }
 
     await this.commandAuthorization?.authorizeWithClient(
       input.userId,
@@ -85,7 +92,42 @@ export class SaveSaleOrderWithClientUsecase {
     let clientEvent: ClientUpdatedEvent | null = null;
 
     try {
-      const result = await this.uow.runInTransaction(async (tx) => {
+      const transactionResult = await this.uow.runInTransaction(async (tx) => {
+        const manager = (tx as TypeormTransactionContext).manager;
+        const scopeKey = `sale-order-with-client:${input.userId}:${input.saleOrderId ?? 'create'}`;
+        const requestHash = this.createRequestHash(input);
+        if (input.idempotencyKey) {
+          if (!manager) {
+            throw new BadRequestException('El guardado idempotente requiere una transacción de base de datos.');
+          }
+          const inserted = await manager.query(
+            `INSERT INTO financial_idempotency_records (scope_key, idempotency_key, request_hash, status)
+             VALUES ($1, $2::uuid, $3, 'IN_PROGRESS')
+             ON CONFLICT (scope_key, idempotency_key) DO NOTHING RETURNING id`,
+            [scopeKey, input.idempotencyKey, requestHash],
+          );
+          if (!inserted.length) {
+            const [prior] = await manager.query(
+              `SELECT request_hash, status, response_body FROM financial_idempotency_records
+               WHERE scope_key = $1 AND idempotency_key = $2::uuid FOR UPDATE`,
+              [scopeKey, input.idempotencyKey],
+            );
+            if (!prior || prior.request_hash !== requestHash) {
+              throw new ConflictException({
+                code: 'IDEMPOTENCY_KEY_REUSED',
+                message: 'La clave de guardado ya se usó con otros datos. Restaura la solicitud original o vuelve a abrir el pedido.',
+              });
+            }
+            if (prior.status === 'COMPLETED' && prior.response_body) {
+              return { value: prior.response_body, replayed: true };
+            }
+            throw new ConflictException({
+              code: 'OPERATION_IN_PROGRESS',
+              message: 'El guardado del pedido sigue en curso; vuelve a consultar el pedido antes de intentarlo otra vez.',
+            });
+          }
+        }
+
         const clientResult = await this.clientCommands.execute(
           input.data.client,
           tx,
@@ -98,6 +140,7 @@ export class SaveSaleOrderWithClientUsecase {
           removedAttachmentIds = [],
           ...orderFields
         } = input.data;
+        void _client;
 
         const orderResult = input.saleOrderId
           ? await this.updateOrder.executeInTransaction(
@@ -132,10 +175,16 @@ export class SaveSaleOrderWithClientUsecase {
         const paymentResult = await this.paymentReconciler.reconcile(
           {
             saleOrderId: orderResult.orderId,
+            executedBy: input.userId,
             payments: payments.map((payment) => ({
               id: payment.id,
+              version: payment.version,
               clientKey: payment.clientKey,
-              bankAccountId: payment.bankAccountId ?? null,
+              bankAccountId:
+                payment.companyPaymentAccountId ?? payment.bankAccountId ?? null,
+              companyPaymentAccountId:
+                payment.companyPaymentAccountId ?? payment.bankAccountId ?? null,
+              paymentMethodId: payment.paymentMethodId ?? null,
               date: this.parsePaymentDate(payment.date),
               method: payment.method,
               operationNumber: payment.operationNumber ?? null,
@@ -220,28 +269,63 @@ export class SaveSaleOrderWithClientUsecase {
           staleFilePaths,
         );
 
-        return {
+        const value = {
           ...orderResult,
           currentStateId:
             paymentWorkflowResult?.currentState?.id ??
             orderResult.currentStateId,
           clientId: clientResult.clientId,
         };
+        if (input.idempotencyKey) {
+          await manager.query(
+            `UPDATE financial_idempotency_records SET status = 'COMPLETED', response_status = 200,
+               response_body = $3::jsonb, completed_at = now()
+             WHERE scope_key = $1 AND idempotency_key = $2::uuid AND status = 'IN_PROGRESS'`,
+            [scopeKey, input.idempotencyKey, JSON.stringify(value)],
+          );
+        }
+        return { value, replayed: false };
       });
 
-      await Promise.allSettled(
-        staleFilePaths.map((path) => this.fileStorage.delete(path)),
-      );
-      if (clientEvent) {
-        this.clientRealtime.emitClientUpdated(clientEvent);
+      if (!transactionResult.replayed) {
+        await Promise.allSettled(
+          staleFilePaths.map((path) => this.fileStorage.delete(path)),
+        );
+        if (clientEvent) {
+          this.clientRealtime.emitClientUpdated(clientEvent);
+        }
+        return transactionResult.value;
       }
-      return result;
+      return { ...transactionResult.value, __idempotentReplay: true };
     } catch (error) {
       await Promise.allSettled(
         newFilePaths.map((path) => this.fileStorage.delete(path)),
       );
       throw error;
     }
+  }
+
+  private createRequestHash(input: SaveSaleOrderWithClientInput): string {
+    const fingerprintFile = (file?: Express.Multer.File) => file
+      ? {
+          originalName: file.originalname,
+          mimeType: file.mimetype,
+          size: file.size,
+          sha256: createHash('sha256').update(file.buffer).digest('hex'),
+        }
+      : null;
+    const paymentPhotos = [...input.paymentPhotoByClientKey.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([clientKey, file]) => [clientKey, fingerprintFile(file)]);
+    return createHash('sha256')
+      .update(JSON.stringify({
+        saleOrderId: input.saleOrderId ?? null,
+        userId: input.userId,
+        data: input.data,
+        shippingPhoto: fingerprintFile(input.shippingPhoto),
+        paymentPhotos,
+      }))
+      .digest('hex');
   }
 
   private parsePaymentDate(value?: string): Date {

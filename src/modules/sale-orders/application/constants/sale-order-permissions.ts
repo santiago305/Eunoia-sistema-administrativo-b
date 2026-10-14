@@ -2,7 +2,7 @@ export type SaleOrderPermissionSeed = {
   code: string;
   name: string;
   description: string;
-  module: 'sale_orders';
+  module: string;
   resource: string;
   action: string;
   type: 'action' | 'page';
@@ -11,6 +11,40 @@ export type SaleOrderPermissionSeed = {
 export const SALE_ORDER_PERMISSIONS: ReadonlyArray<
   Readonly<SaleOrderPermissionSeed>
 > = [
+  ...[
+    ['sale_orders.payments.update_pending', 'Editar ingresos por confirmar', 'Modificar los datos de ingresos pendientes', 'sale_orders', 'sale_order_payments', 'update_pending'],
+    ['sale_orders.payments.post', 'Contabilizar ingresos', 'Confirmar un ingreso y registrar su movimiento financiero', 'sale_orders', 'sale_order_payments', 'post'],
+    ['sale_orders.payments.post_bulk', 'Contabilizar ingresos masivamente', 'Confirmar de forma atómica ingresos pendientes de una misma fecha', 'sale_orders', 'sale_order_payments', 'post_bulk'],
+    ['sale_orders.payments.post_own', 'Contabilizar ingresos propios', 'Permitir contabilizar ingresos creados o editados por el mismo usuario', 'sale_orders', 'sale_order_payments', 'post_own'],
+    ['sale_orders.payments.post_high_value', 'Contabilizar montos altos', 'Autorizar ingresos que superan el umbral configurado', 'sale_orders', 'sale_order_payments', 'post_high_value'],
+    ['sale_orders.payments.cancel_pending', 'Cancelar ingresos por confirmar', 'Cancelar pendientes sin movimiento financiero', 'sale_orders', 'sale_order_payments', 'cancel_pending'],
+    ['sale_orders.payments.transfer_pending', 'Transferir pagos por confirmar', 'Transferir un pendiente a otro pedido válido del mismo cliente', 'sale_orders', 'sale_order_payments', 'transfer_pending'],
+    ['sale_orders.payments.reverse_posted', 'Revertir ingresos', 'Revertir un contabilizado con su movimiento compensatorio', 'sale_orders', 'sale_order_payments', 'reverse_posted'],
+    ['sale_orders.payments.correct_posted', 'Corregir ingresos contabilizados', 'Revertir el original y registrar una versión corregida', 'sale_orders', 'sale_order_payments', 'correct_posted'],
+    ['sale_orders.payments.reenter_closed', 'Reingresar cobros cerrados', 'Crear un pendiente vinculado a un ingreso cancelado o revertido', 'sale_orders', 'sale_order_payments', 'reenter_closed'],
+    ['sale_orders.payments.resolve_cancelled_order', 'Resolver pagos al cancelar pedidos', 'Resolver los cobros antes de cancelar un pedido', 'sale_orders', 'sale_order_payments', 'resolve_cancelled_order'],
+    ['customer_credits.view', 'Ver saldos a favor', 'Consultar créditos disponibles por cliente y moneda', 'customer_credits', 'customer_credits', 'view'],
+    ['customer_credits.apply', 'Aplicar saldos a favor', 'Aplicar crédito a otro pedido del mismo cliente y moneda', 'customer_credits', 'customer_credits', 'apply'],
+    ['customer_refunds.view', 'Ver reembolsos', 'Consultar devoluciones vinculadas a ingresos', 'customer_refunds', 'customer_refunds', 'view'],
+    ['customer_refunds.create', 'Registrar reembolsos', 'Crear reembolsos pendientes vinculados a ingresos contabilizados', 'customer_refunds', 'customer_refunds', 'create'],
+    ['customer_refunds.post', 'Confirmar reembolsos', 'Confirmar una salida real de dinero', 'customer_refunds', 'customer_refunds', 'post'],
+    ['customer_refunds.post_own', 'Confirmar reembolsos propios', 'Excepción explícita para confirmar un reembolso registrado por el mismo usuario', 'customer_refunds', 'customer_refunds', 'post_own'],
+    ['customer_refunds.cancel', 'Cancelar reembolsos pendientes', 'Cancelar una reserva de reembolso que aún no se ha pagado', 'customer_refunds', 'customer_refunds', 'cancel'],
+    ['customer_refunds.reverse', 'Revertir reembolsos', 'Compensar un reembolso mediante un movimiento nuevo', 'customer_refunds', 'customer_refunds', 'reverse'],
+    ['income.reconciliation.view', 'Ver conciliaciones bancarias', 'Consultar referencias y asignaciones de ingresos', 'income', 'income_reconciliation', 'view'],
+    ['income.reconciliation.reconcile', 'Conciliar ingresos', 'Asignar un ingreso contabilizado a movimientos bancarios', 'income', 'income_reconciliation', 'reconcile'],
+    ['income.reconciliation.unreconcile', 'Desconciliar ingresos', 'Retirar una conciliación con motivo y auditoría', 'income', 'income_reconciliation', 'unreconcile'],
+    ['income.audit.view', 'Ver auditoría financiera', 'Consultar historial de transiciones y movimientos', 'income', 'income_audit', 'view'],
+    ['income.outbox.manage', 'Recuperar eventos financieros', 'Consultar fallos y solicitar el reintento de eventos de actualizacion financiera', 'income', 'income_outbox', 'manage'],
+  ].map(([code, name, description, module, resource, action]) => ({
+    code,
+    name,
+    description,
+    module,
+    resource,
+    action,
+    type: 'action' as const,
+  })),
   {
     code: 'page.sale-orders.view',
     name: 'Ingresar a Pedidos',
@@ -258,33 +292,6 @@ export const SALE_ORDER_PERMISSIONS: ReadonlyArray<
     module: 'sale_orders',
     resource: 'sale_order_payments',
     action: 'create',
-    type: 'action',
-  },
-  {
-    code: 'sale_orders.payments.update',
-    name: 'Modificar pago de pedido',
-    description: 'Cambiar datos de pagos existentes del pedido',
-    module: 'sale_orders',
-    resource: 'sale_order_payments',
-    action: 'update',
-    type: 'action',
-  },
-  {
-    code: 'sale_orders.payments.delete',
-    name: 'Eliminar pago de pedido',
-    description: 'Eliminar pagos del pedido',
-    module: 'sale_orders',
-    resource: 'sale_order_payments',
-    action: 'delete',
-    type: 'action',
-  },
-  {
-    code: 'sale_orders.payments.void',
-    name: 'Anular pagos de pedidos',
-    description: 'Anular ingresos contabilizados conservando su historial',
-    module: 'sale_orders',
-    resource: 'sale_order_payments',
-    action: 'void',
     type: 'action',
   },
   {

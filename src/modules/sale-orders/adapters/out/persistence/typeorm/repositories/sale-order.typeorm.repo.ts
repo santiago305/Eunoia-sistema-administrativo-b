@@ -67,6 +67,7 @@ import { SaleOrderAuditEntity } from '../entities/sale-order-audit.entity';
 import { SaleOrderReadContext } from 'src/modules/sale-orders/application/services/sale-order-access-policy.service';
 import { buildSaleOrderTrackingCapabilities } from 'src/modules/sale-orders/application/support/sale-order-tracking-capabilities';
 import { SaleOrderSupplyItemEntity } from '../entities/sale-order-supply-item.entity';
+import { fromMinorUnits, toMinorUnits } from 'src/modules/sale-orders/domain/value-objects/money';
 
 const maskedAccountNumber = (account: CompanyPaymentAccountEntity): string | null => {
   const suffix =
@@ -90,6 +91,15 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       return (tx as TypeormTransactionContext).manager;
     }
     return this.repo.manager;
+  }
+
+  private sumPostedPaymentAmounts(
+    payments: Array<{ amount?: number | string | null; status?: string }>,
+  ): number {
+    const cents = payments
+      .filter((payment) => payment.status === 'POSTED')
+      .reduce((sum, payment) => sum + toMinorUnits(payment.amount ?? 0), 0);
+    return fromMinorUnits(cents);
   }
 
   private async loadSkuAttributes(
@@ -245,6 +255,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       row.prepared ?? false,
       row.preguide ?? false,
       Boolean(row.reserveBool),
+      row.currency,
     );
   }
 
@@ -602,6 +613,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     qb: SelectQueryBuilder<SaleOrderEntity>,
     filter: SaleOrderSearchRule,
     valuesParam: string,
+    readContext?: SaleOrderReadContext,
   ) {
     if (!filter.values?.length) return;
     const normalized = filter.values.filter(
@@ -613,7 +625,9 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
 
     const comparator = filter.mode === 'exclude' ? 'NOT IN' : 'IN';
 
-    const statusSql = this.paymentStatusSql();
+    const statusSql = this.paymentStatusSql(readContext);
+    const scopeParameters = this.incomePaymentScopeParameters(readContext);
+    if (Object.keys(scopeParameters).length && typeof qb.setParameters === 'function') qb.setParameters(scopeParameters);
 
     qb.andWhere(`${statusSql} ${comparator} (:...${valuesParam})`, {
       [valuesParam]: normalized,
@@ -666,10 +680,142 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     qb.andWhere(filter.mode === 'exclude' ? `NOT ${combined}` : combined);
   }
 
-  private paymentStatusSql() {
-    const paymentsSumSql =
-      "(SELECT COALESCE(SUM(sp.amount) FILTER (WHERE sp.status = 'POSTED'), 0) FROM sale_payments sp WHERE sp.sale_order_id = so.id)";
+  private incomePaymentScopeParameters(context?: SaleOrderReadContext): Record<string, unknown> {
+    const scope = context?.incomeDataScope;
+    if (!context || context.includeIncomePayments === undefined || scope?.userId === null) return {};
+    if (!context.includeIncomePayments || !scope) return { incomeScopeDenied: true };
+    return {
+      incomeScopeUserId: scope.userId,
+      incomeScopeSubsidiaryIds: scope.subsidiaryIds ?? [],
+      incomeScopeAccountIds: scope.accountIds ?? [],
+      incomeScopeClientIds: scope.clientIds ?? [],
+    };
+  }
+
+  private incomePaymentScopeSql(
+    context: SaleOrderReadContext | undefined,
+    orderAlias: string,
+    paymentAlias: string,
+  ): string {
+    if (!context || context.includeIncomePayments === undefined) return 'TRUE';
+    const scope = context.incomeDataScope;
+    if (!context.includeIncomePayments || !scope) return 'FALSE';
+    if (scope.userId === null) return 'TRUE';
+    const checks = [
+      `${orderAlias}.created_by = :incomeScopeUserId`,
+      `${paymentAlias}.created_by_user_id = :incomeScopeUserId`,
+      `${paymentAlias}.updated_by_user_id = :incomeScopeUserId`,
+    ];
+    if ((scope.subsidiaryIds ?? []).length) checks.push(`${orderAlias}.agency_subsidiary_id = ANY(:incomeScopeSubsidiaryIds::uuid[])`);
+    if ((scope.clientIds ?? []).length) checks.push(`${orderAlias}.client_id = ANY(:incomeScopeClientIds::uuid[])`);
+    if ((scope.accountIds ?? []).length) checks.push(`${paymentAlias}.company_payment_account_id = ANY(:incomeScopeAccountIds::uuid[])`);
+    return `(${checks.join(' OR ')})`;
+  }
+
+  private paymentStatusSql(readContext?: SaleOrderReadContext) {
+    const incomeScopeSql = this.incomePaymentScopeSql(readContext, 'so', 'payment');
+    const paymentsSumSql = `(
+      SELECT CASE WHEN EXISTS (
+        SELECT 1 FROM sale_payment_allocations existing WHERE existing.sale_order_id = so.id
+      ) THEN COALESCE((
+        SELECT SUM(allocation.amount) FROM sale_payment_allocations allocation
+        JOIN sale_payments payment ON payment.id = allocation.sale_payment_id
+        WHERE allocation.sale_order_id = so.id AND payment.status = 'POSTED' AND ${incomeScopeSql}
+      ), 0) ELSE COALESCE((
+        SELECT SUM(payment.amount) FROM sale_payments payment
+        WHERE payment.sale_order_id = so.id AND payment.status = 'POSTED' AND ${incomeScopeSql}
+      ), 0) END
+    )`;
     return `CASE WHEN so.total > 0 AND ${paymentsSumSql} >= so.total THEN '${SaleOrderPaymentStatusValues.PAID}' ELSE '${SaleOrderPaymentStatusValues.PENDING}' END`;
+  }
+
+  private async loadPostedAppliedTotals(manager: EntityManager, saleOrderIds: string[]) {
+    const totals = new Map<string, number>();
+    if (!saleOrderIds.length || typeof (manager as any).query !== 'function') return totals;
+    const rows = await manager.query(
+      `SELECT requested.sale_order_id AS "saleOrderId",
+              CASE WHEN EXISTS (
+                SELECT 1 FROM sale_payment_allocations existing
+                WHERE existing.sale_order_id = requested.sale_order_id
+              ) THEN COALESCE((
+                SELECT SUM(allocation.amount)
+                FROM sale_payment_allocations allocation
+                JOIN sale_payments payment ON payment.id = allocation.sale_payment_id
+                WHERE allocation.sale_order_id = requested.sale_order_id AND payment.status = 'POSTED'
+              ), 0) ELSE COALESCE((
+                SELECT SUM(payment.amount) FROM sale_payments payment
+                WHERE payment.sale_order_id = requested.sale_order_id AND payment.status = 'POSTED'
+              ), 0) END::numeric(14,2)::text AS amount
+       FROM unnest($1::uuid[]) AS requested(sale_order_id)`,
+      [saleOrderIds],
+    );
+    for (const row of rows) totals.set(row.saleOrderId, Number(row.amount ?? 0));
+    return totals;
+  }
+
+  private async loadCustomerCreditBalancesBySourceOrder(manager: EntityManager, saleOrderIds: string[]) {
+    const balances = new Map<string, number>();
+    if (!saleOrderIds.length || typeof (manager as any).query !== 'function') return balances;
+    const rows = await manager.query(
+      `SELECT movement.source_sale_order_id AS "saleOrderId",
+              GREATEST(SUM(movement.amount), 0)::numeric(14,2)::text AS amount
+       FROM customer_credit_movements movement
+       JOIN sale_payments source_payment ON source_payment.id = movement.sale_payment_id
+       WHERE movement.source_sale_order_id = ANY($1::uuid[])
+         AND source_payment.status = 'POSTED'
+       GROUP BY movement.source_sale_order_id
+       HAVING SUM(movement.amount) > 0`,
+      [saleOrderIds],
+    );
+    for (const row of rows) balances.set(row.saleOrderId, Number(row.amount ?? 0));
+    return balances;
+  }
+
+  private isIncomeOrderVisible(row: Pick<SaleOrderEntity, 'createdBy' | 'agencySubsidiaryId' | 'clientId'>, context: SaleOrderReadContext) {
+    const scope = context.incomeDataScope;
+    if (!context.includeIncomePayments || !scope) return false;
+    if (scope.userId === null) return true;
+    return row.createdBy === scope.userId
+      || (row.agencySubsidiaryId != null && (scope.subsidiaryIds ?? []).includes(row.agencySubsidiaryId))
+      || (row.clientId != null && (scope.clientIds ?? []).includes(row.clientId));
+  }
+
+  private filterIncomePayments<T extends Pick<SalePaymentEntity, 'createdByUserId' | 'updatedByUserId' | 'companyPaymentAccountId'>>(
+    row: Pick<SaleOrderEntity, 'createdBy' | 'agencySubsidiaryId' | 'clientId'>,
+    payments: T[],
+    context?: SaleOrderReadContext,
+  ): T[] {
+    // Internal callers without a read context retain their existing full-access behavior.
+    if (!context || context.includeIncomePayments === undefined) return payments;
+    if (!context.includeIncomePayments || !context.incomeDataScope) return [];
+    const scope = context.incomeDataScope;
+    if (scope.userId === null || this.isIncomeOrderVisible(row, context)) return payments;
+    return payments.filter((payment) =>
+      payment.createdByUserId === scope.userId
+      || payment.updatedByUserId === scope.userId
+      || (payment.companyPaymentAccountId != null && (scope.accountIds ?? []).includes(payment.companyPaymentAccountId)),
+    );
+  }
+
+  private async loadScopedPaymentTotals(manager: EntityManager, saleOrderId: string, paymentIds: string[]) {
+    if (!paymentIds.length || typeof (manager as any).query !== 'function') return { applied: 0, credit: 0 };
+    const [row] = await manager.query(
+      `SELECT
+         CASE WHEN EXISTS (SELECT 1 FROM sale_payment_allocations WHERE sale_order_id = $1)
+           THEN COALESCE((SELECT SUM(allocation.amount)
+             FROM sale_payment_allocations allocation
+             JOIN sale_payments payment ON payment.id = allocation.sale_payment_id
+             WHERE allocation.sale_order_id = $1 AND payment.id = ANY($2::uuid[]) AND payment.status = 'POSTED'), 0)
+           ELSE COALESCE((SELECT SUM(payment.amount) FROM sale_payments payment
+             WHERE payment.sale_order_id = $1 AND payment.id = ANY($2::uuid[]) AND payment.status = 'POSTED'), 0)
+         END::numeric(14,2)::text AS applied,
+         GREATEST(COALESCE((SELECT SUM(movement.amount)
+           FROM customer_credit_movements movement
+           JOIN sale_payments payment ON payment.id = movement.sale_payment_id
+           WHERE movement.source_sale_order_id = $1 AND payment.id = ANY($2::uuid[]) AND payment.status = 'POSTED'), 0), 0)::numeric(14,2)::text AS credit`,
+      [saleOrderId, paymentIds],
+    );
+    return { applied: Number(row?.applied ?? 0), credit: Number(row?.credit ?? 0) };
   }
 
   private applyBooleanStatusFilter(
@@ -1127,6 +1273,8 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         },
       );
     }
+    const scopeParameters = this.incomePaymentScopeParameters(params.readContext);
+    if (Object.keys(scopeParameters).length && typeof qb.setParameters === 'function') qb.setParameters(scopeParameters);
 
     const q = params.q?.trim();
     if (q) {
@@ -1194,7 +1342,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
 
           if (matchedPaymentStatuses.length) {
             searchQb.orWhere(
-              `${this.paymentStatusSql()} IN (:...matchedPaymentStatuses)`,
+              `${this.paymentStatusSql(params.readContext)} IN (:...matchedPaymentStatuses)`,
               { matchedPaymentStatuses },
             );
           }
@@ -1352,6 +1500,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
                 [valueParam]: filter.values,
               },
             );
+            qb.andWhere(this.incomePaymentScopeSql(params.readContext, 'so', '"filterPayment"'));
           }
           break;
         case SaleOrderSearchFields.CLIENT_TYPE:
@@ -1370,7 +1519,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
           }
           break;
         case SaleOrderSearchFields.PAYMENT_STATUS:
-          this.applyPaymentStatusFilter(qb, filter, valueParam);
+          this.applyPaymentStatusFilter(qb, filter, valueParam, params.readContext);
           break;
         case SaleOrderSearchFields.CLIENT_DEPARTMENT_ID:
         case SaleOrderSearchFields.CLIENT_PROVINCE_ID:
@@ -1689,6 +1838,8 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       displayComponentsByOrderId.set(row.id, displayComponents);
     }
 
+    const appliedTotalsByOrderId = await this.loadPostedAppliedTotals(manager, saleOrderIds);
+    const customerCreditByOrderId = await this.loadCustomerCreditBalancesBySourceOrder(manager, saleOrderIds);
     const paymentsByOrderId = new Map<string, SalePaymentEntity[]>();
     for (const payment of payments) {
       const list = paymentsByOrderId.get(payment.saleOrderId) ?? [];
@@ -1700,14 +1851,28 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
 
     const items: SaleOrderListItemOutput[] = await Promise.all(
       rows.map(async (row) => {
-        const orderPayments = paymentsByOrderId.get(row.id) ?? [];
-        const totalPaid = orderPayments
-          .filter((p) => p.status === undefined || p.status === 'POSTED')
-          .reduce((acc, p) => acc + Number(p.amount ?? 0), 0);
+        const allOrderPayments = paymentsByOrderId.get(row.id) ?? [];
+        const orderPayments = this.filterIncomePayments(row, allOrderPayments, params.readContext);
+        const isPartiallyScoped = Boolean(
+          params.readContext
+          && params.readContext.includeIncomePayments !== undefined
+          && (!params.readContext.includeIncomePayments || !this.isIncomeOrderVisible(row, params.readContext))
+          && (!params.readContext.includeIncomePayments || orderPayments.length !== allOrderPayments.length),
+        );
+        const scopedTotals = isPartiallyScoped
+          ? await this.loadScopedPaymentTotals(manager, row.id, orderPayments.map((payment) => payment.id))
+          : null;
+        const totalPaid = scopedTotals?.applied ?? (appliedTotalsByOrderId.has(row.id)
+          ? appliedTotalsByOrderId.get(row.id) ?? 0
+          : this.sumPostedPaymentAmounts(orderPayments));
+        const totalReceived = this.sumPostedPaymentAmounts(orderPayments);
+        const customerCreditAvailable = scopedTotals?.credit ?? customerCreditByOrderId.get(row.id) ?? 0;
         const totalOrder = Number(row.total ?? 0);
-        const pendingAmount = Math.max(totalOrder - totalPaid, 0);
+        const totalOrderCents = toMinorUnits(totalOrder);
+        const totalPaidCents = toMinorUnits(totalPaid);
+        const pendingAmount = fromMinorUnits(Math.max(totalOrderCents - totalPaidCents, 0));
         const paymentStatus: SaleOrderPaymentStatus =
-          totalOrder > 0 && totalPaid >= totalOrder ? 'PAID' : 'PENDING';
+          totalOrderCents > 0 && totalPaidCents >= totalOrderCents ? 'PAID' : 'PENDING';
 
         const client = clientById.get(row.clientId);
         const warehouse = warehouseById.get(row.warehouseId);
@@ -1852,6 +2017,9 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
           detail: displayFields.detail,
           payments: orderPayments.map((p) => ({
             id: p.id,
+            version: p.version,
+            createdByUserId: p.createdByUserId ?? null,
+            updatedByUserId: p.updatedByUserId ?? null,
             bankAccount: p.companyPaymentAccountId
               ? (() => {
                   const account = bankAccountById.get(p.companyPaymentAccountId);
@@ -1876,6 +2044,9 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
             createdAt: toIso(p.createdAt),
           })),
           totalPaid,
+          totalReceived,
+          totalApplied: totalPaid,
+          customerCreditAvailable,
           pendingAmount,
           paymentStatus,
         };
@@ -1910,6 +2081,9 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       (output as any).deliveryCost = null;
       (output as any).total = null;
       (output as any).totalPaid = null;
+      (output as any).totalReceived = null;
+      (output as any).totalApplied = null;
+      (output as any).customerCreditAvailable = null;
       (output as any).pendingAmount = null;
       (output as any).payments = [];
     }
@@ -1983,6 +2157,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     tx?: TransactionContext,
   ): Promise<SaleOrderStatisticsOutput> {
     const manager = this.getManager(tx);
+    const incomeScopeSql = this.incomePaymentScopeSql(params.readContext, 'orders', 'payment');
     const base = manager
       .getRepository(SaleOrderEntity)
       .createQueryBuilder('so')
@@ -1998,7 +2173,15 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         'globalState.id = state.saleOrderStateId',
       )
       .leftJoin(
-        "(SELECT sale_order_id, SUM(amount) FILTER (WHERE status = 'POSTED') AS collected FROM sale_payments GROUP BY sale_order_id)",
+        `(SELECT orders.id AS sale_order_id,
+                 CASE WHEN EXISTS (SELECT 1 FROM sale_payment_allocations existing WHERE existing.sale_order_id = orders.id)
+                   THEN COALESCE((SELECT SUM(allocation.amount) FROM sale_payment_allocations allocation
+                     JOIN sale_payments payment ON payment.id = allocation.sale_payment_id
+                     WHERE allocation.sale_order_id = orders.id AND payment.status = 'POSTED' AND ${incomeScopeSql}), 0)
+                   ELSE COALESCE((SELECT SUM(payment.amount) FROM sale_payments payment
+                     WHERE payment.sale_order_id = orders.id AND payment.status = 'POSTED' AND ${incomeScopeSql}), 0)
+                 END AS collected
+          FROM sale_orders orders)`,
         'payment_sum',
         'payment_sum.sale_order_id = so.id',
       );
@@ -2012,6 +2195,8 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         },
       );
     }
+    const scopeParameters = this.incomePaymentScopeParameters(params.readContext);
+    if (Object.keys(scopeParameters).length && typeof base.setParameters === 'function') base.setParameters(scopeParameters);
 
     const q = params.q?.trim();
     if (q) {
@@ -2064,7 +2249,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
             );
           if (matchedPaymentStatuses.length) {
             searchQb.orWhere(
-              `${this.paymentStatusSql()} IN (:...matchedPaymentStatuses)`,
+              `${this.paymentStatusSql(params.readContext)} IN (:...matchedPaymentStatuses)`,
               {
                 matchedPaymentStatuses,
               },
@@ -2147,6 +2332,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
             FROM sale_payments filter_payment
             WHERE filter_payment.sale_order_id = so.id
             AND filter_payment.status = 'POSTED'
+            AND ${this.incomePaymentScopeSql(params.readContext, 'so', 'filter_payment')}
             AND filter_payment.company_payment_account_id ${filter.mode === 'exclude' ? 'NOT IN' : 'IN'} (:...${valueParam})
           )`,
           { [valueParam]: filter.values },
@@ -2162,7 +2348,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
           },
         );
       } else if (filter.field === SaleOrderSearchFields.PAYMENT_STATUS) {
-        this.applyPaymentStatusFilter(base, filter, valueParam);
+        this.applyPaymentStatusFilter(base, filter, valueParam, params.readContext);
       } else if (filter.field === SaleOrderSearchFields.PREGUIDE_STATUS) {
         this.applyBooleanStatusFilter(base, filter, 'so.preguide', valueParam);
       } else if (filter.field === SaleOrderSearchFields.PREPARED_STATUS) {
@@ -2310,6 +2496,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         .clone()
         .innerJoin(SalePaymentEntity, 'payment', 'payment.saleOrderId = so.id')
         .andWhere("payment.status = 'POSTED'")
+        .andWhere(this.incomePaymentScopeSql(params.readContext, 'so', 'payment'))
         .leftJoin(
           CompanyPaymentAccountEntity,
           'bank_account',
@@ -2573,8 +2760,15 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       stockItems.map((stockItem) => [stockItem.skuId, stockItem]),
     );
 
+    const visiblePayments = this.filterIncomePayments(row, payments, readContext);
+    const visiblePaymentIds = new Set(visiblePayments.map((payment) => payment.id));
+    const visibleAttachments = attachments.filter((attachment) =>
+      attachment.type !== SaleOrderAttachmentType.PAYMENT_PROOF
+      || (attachment.saleOrderPaymentId != null && visiblePaymentIds.has(attachment.saleOrderPaymentId)),
+    );
+
     const bankAccountIds = Array.from(
-      new Set(payments.map((payment) => payment.companyPaymentAccountId).filter(Boolean)),
+      new Set(visiblePayments.map((payment) => payment.companyPaymentAccountId).filter(Boolean)),
     ) as string[];
 
     const bankAccounts = bankAccountIds.length
@@ -2591,7 +2785,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         attachment.type === SaleOrderAttachmentType.SHIPPING_PHOTO,
     );
     const paymentAttachmentByPaymentId = new Map(
-      attachments
+      visibleAttachments
         .filter(
           (attachment) =>
             attachment.type === SaleOrderAttachmentType.PAYMENT_PROOF &&
@@ -2672,20 +2866,32 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       orderedDisplayComponents,
     );
 
-    const totalPaid = payments.reduce(
-      (acc, payment) =>
-        payment.status === undefined || payment.status === 'POSTED'
-          ? acc + Number(payment.amount ?? 0)
-          : acc,
-      0,
+    const appliedTotalsByOrderId = await this.loadPostedAppliedTotals(manager, [row.id]);
+    const customerCreditByOrderId = await this.loadCustomerCreditBalancesBySourceOrder(manager, [row.id]);
+    const isPartiallyScoped = Boolean(
+      readContext
+      && readContext.includeIncomePayments !== undefined
+      && (!readContext.includeIncomePayments || !this.isIncomeOrderVisible(row, readContext))
+      && (!readContext.includeIncomePayments || visiblePayments.length !== payments.length),
     );
+    const scopedTotals = isPartiallyScoped
+      ? await this.loadScopedPaymentTotals(manager, row.id, visiblePayments.map((payment) => payment.id))
+      : null;
+    const totalPaid = scopedTotals?.applied ?? (appliedTotalsByOrderId.has(row.id)
+      ? appliedTotalsByOrderId.get(row.id) ?? 0
+      : this.sumPostedPaymentAmounts(visiblePayments));
     const totalOrder = Number(row.total ?? 0);
-    const pendingAmount = Math.max(totalOrder - totalPaid, 0);
+    const totalReceived = this.sumPostedPaymentAmounts(visiblePayments);
+    const customerCreditAvailable = scopedTotals?.credit ?? customerCreditByOrderId.get(row.id) ?? 0;
+    const totalOrderCents = toMinorUnits(totalOrder);
+    const totalPaidCents = toMinorUnits(totalPaid);
+    const pendingAmount = fromMinorUnits(Math.max(totalOrderCents - totalPaidCents, 0));
     const paymentStatus: SaleOrderPaymentStatus =
-      totalOrder > 0 && totalPaid >= totalOrder ? 'PAID' : 'PENDING';
+      totalOrderCents > 0 && totalPaidCents >= totalOrderCents ? 'PAID' : 'PENDING';
 
     const output: SaleOrderGetOutput = {
       id: row.id,
+      currency: row.currency,
       serie: row.serie ?? null,
       correlative: row.correlative ?? null,
 
@@ -2849,8 +3055,9 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       SKUS: displayFields.SKUS,
       detail: displayFields.detail,
 
-      payments: payments.map((payment) => ({
+      payments: visiblePayments.map((payment) => ({
         id: payment.id,
+        version: payment.version,
         clientKey: payment.id,
         bankAccount: payment.companyPaymentAccountId
           ? (() => {
@@ -2872,13 +3079,15 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         note: payment.note ?? null,
         paymentPhoto: paymentAttachmentByPaymentId.get(payment.id)?.url ?? null,
         status: payment.status,
+        createdByUserId: payment.createdByUserId ?? null,
+        updatedByUserId: payment.updatedByUserId ?? null,
         voidedAt: payment.voidedAt ? toIso(payment.voidedAt) : null,
         voidedByUserId: payment.voidedByUserId ?? null,
         voidReason: payment.voidReason ?? null,
         createdAt: toIso(payment.createdAt),
       })),
 
-      attachments: attachments.map((attachment) => ({
+      attachments: visibleAttachments.map((attachment) => ({
         id: attachment.id,
         saleOrderPaymentId: attachment.saleOrderPaymentId ?? null,
         type: attachment.type,
@@ -2900,6 +3109,9 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       },
 
       totalPaid,
+      totalReceived,
+      totalApplied: totalPaid,
+      customerCreditAvailable,
       pendingAmount,
       paymentStatus,
     };
@@ -2922,6 +3134,9 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         (output as any).deliveryCost = null;
         (output as any).total = null;
         (output as any).totalPaid = null;
+        (output as any).totalReceived = null;
+        (output as any).totalApplied = null;
+        (output as any).customerCreditAvailable = null;
         (output as any).pendingAmount = null;
         output.payments = [];
       }

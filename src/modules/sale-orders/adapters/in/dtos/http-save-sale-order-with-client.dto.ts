@@ -3,6 +3,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsDateString,
+  IsInt,
   IsNumber,
   IsObject,
   IsOptional,
@@ -18,6 +19,11 @@ export class HttpUnifiedSalePaymentDto {
   @IsOptional()
   @IsUUID()
   id?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  version?: number;
 
   @IsString()
   clientKey: string;

@@ -15,6 +15,8 @@ export class SaleOrderAttachment {
     public readonly uploadedByUserId: string | null,
     public readonly note: string | null,
     public readonly deletedAt: Date | null,
+    public readonly uploadIdempotencyKey: string | null,
+    public readonly contentSha256: string | null,
     public readonly createdAt?: Date,
   ) {}
 
@@ -32,6 +34,8 @@ export class SaleOrderAttachment {
     uploadedByUserId?: string | null;
     note?: string | null;
     deletedAt?: Date | null;
+    uploadIdempotencyKey?: string | null;
+    contentSha256?: string | null;
     createdAt?: Date;
   }) {
     return new SaleOrderAttachment(
@@ -48,6 +52,8 @@ export class SaleOrderAttachment {
       params.uploadedByUserId ?? null,
       params.note?.trim() || null,
       params.deletedAt ?? null,
+      params.uploadIdempotencyKey ?? null,
+      params.contentSha256 ?? null,
       params.createdAt,
     );
   }

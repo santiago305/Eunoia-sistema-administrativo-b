@@ -135,7 +135,11 @@ describe('SaleOrderPaymentWorkflowReconciliationService', () => {
   function buildFixture(input: {
     currentStateId?: string;
     deliveryDate: string;
+    total?: number;
     totalPaid?: number;
+    appliedTotal?: number;
+    paymentStatus?: string;
+    withoutAppliedTotals?: boolean;
     withoutHistory?: boolean;
     historyOverride?: unknown[];
     reserveBool?: boolean;
@@ -150,7 +154,7 @@ describe('SaleOrderPaymentWorkflowReconciliationService', () => {
       clientId: 'client-1',
       workflowId: 'workflow-1',
       currentStateId,
-      total: 100,
+      total: input.total ?? 100,
       deliveryDate: input.deliveryDate,
       scheduleDate: null,
       invoiceSend: false,
@@ -189,7 +193,12 @@ describe('SaleOrderPaymentWorkflowReconciliationService', () => {
     const paymentRepo = {
       listBySaleOrderIds: jest
         .fn()
-        .mockResolvedValue([{ amount: input.totalPaid ?? 100 }]),
+        .mockResolvedValue([{ amount: input.totalPaid ?? 100, status: input.paymentStatus }]),
+      ...(input.withoutAppliedTotals ? {} : {
+        getPostedAppliedTotalsBySaleOrderIds: jest.fn().mockResolvedValue([
+          { saleOrderId: 'order-1', amount: input.appliedTotal ?? input.totalPaid ?? 100 },
+        ]),
+      }),
     };
     const workflowRepo = {
       findDetailedById: jest.fn().mockResolvedValue({
@@ -407,5 +416,74 @@ describe('SaleOrderPaymentWorkflowReconciliationService', () => {
     expect(
       fixture.stockCorrection.releaseCurrentReservation,
     ).toHaveBeenCalled();
+  });
+
+  it('uses applied allocations, not the original income amount, to evaluate order payment status', async () => {
+    const fixture = buildFixture({
+      currentStateId: 'state-to-send',
+      deliveryDate: '2026-08-21',
+      totalPaid: 100,
+      appliedTotal: 40,
+    });
+
+    const result = await fixture.service.reconcile(
+      {
+        saleOrderId: 'order-1',
+        executedBy: 'user-2',
+        source: 'customer-credit-application',
+      },
+      tx,
+    );
+
+    expect(result).toEqual(expect.objectContaining({ totalPaid: 40, pendingAmount: 60, paymentStatus: 'PENDING' }));
+  });
+
+  it('fails closed when fallback payment data has no financial state', async () => {
+    const fixture = buildFixture({
+      currentStateId: 'state-to-send',
+      deliveryDate: '2026-08-21',
+      totalPaid: 100,
+      withoutAppliedTotals: true,
+    });
+
+    const result = await fixture.service.reconcile(
+      {
+        saleOrderId: 'order-1',
+        executedBy: 'user-2',
+        source: 'financial-state-fail-closed-regression',
+      },
+      tx,
+    );
+
+    expect(result).toEqual(expect.objectContaining({
+      totalPaid: 0,
+      pendingAmount: 100,
+      paymentStatus: 'PENDING',
+    }));
+  });
+
+  it('calculates fractional order balances in integer minor units', async () => {
+    const fixture = buildFixture({
+      deliveryDate: '2026-08-21',
+      total: 100.3,
+      totalPaid: 100.1,
+      appliedTotal: 100.1,
+    });
+
+    const result = await fixture.service.reconcile(
+      {
+        saleOrderId: 'order-1',
+        executedBy: 'user-2',
+        source: 'financial-precision-regression',
+      },
+      tx,
+    );
+
+    expect(result).toEqual(expect.objectContaining({
+      total: 100.3,
+      totalPaid: 100.1,
+      pendingAmount: 0.2,
+      paymentStatus: 'PENDING',
+    }));
   });
 });

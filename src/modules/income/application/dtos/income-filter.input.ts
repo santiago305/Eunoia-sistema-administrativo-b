@@ -12,6 +12,12 @@ export interface IncomeFilterInput {
   page?: number | string;
   limit?: number | string;
   requestedBy?: string;
+  /** Internal server-assigned scope. Never trust a client-provided value. */
+  scopeUserId?: string;
+  scopeCompanyId?: string;
+  scopeSubsidiaryIds?: string[];
+  scopeAccountIds?: string[];
+  scopeClientIds?: string[];
 }
 
 import type {
@@ -35,6 +41,12 @@ export interface IncomeFilters {
   filters?: IncomeSearchRule[];
   page: number;
   limit: number;
+  /** Internal server-assigned scope. */
+  scopeUserId?: string;
+  scopeCompanyId?: string;
+  scopeSubsidiaryIds?: string[];
+  scopeAccountIds?: string[];
+  scopeClientIds?: string[];
 }
 
 const stringOrUndefined = (value?: string | null): string | undefined => {
@@ -95,6 +107,8 @@ const parseRules = (value: IncomeFilterInput["filters"]): IncomeSearchRule[] => 
     "detail",
     "companyPaymentAccountId",
     "hasEvidence",
+    "reconciliationStatus",
+    "customerCreditStatus",
   ]);
   const allowedOperators = new Set<IncomeSearchOperator>(["in", "contains", "eq"]);
 
@@ -140,8 +154,13 @@ export const normalizeIncomeFilters = (input: IncomeFilterInput = {}): IncomeFil
     q: stringOrUndefined(input.q)?.slice(0, 100),
     hasEvidence,
     status,
-    filters: parsedRules.filter((rule) => rule.field !== "status" && rule.field !== "hasEvidence"),
+      filters: parsedRules.filter((rule) => rule.field !== "status" && rule.field !== "hasEvidence"),
     page: pageNumber(input.page, 1),
     limit: limitNumber(input.limit),
+    scopeUserId: stringOrUndefined(input.scopeUserId),
+    scopeCompanyId: stringOrUndefined(input.scopeCompanyId),
+    scopeSubsidiaryIds: input.scopeSubsidiaryIds,
+    scopeAccountIds: input.scopeAccountIds,
+    scopeClientIds: input.scopeClientIds,
   };
 };

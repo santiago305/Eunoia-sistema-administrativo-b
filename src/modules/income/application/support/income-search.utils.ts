@@ -13,6 +13,7 @@ type SearchCatalogMaps = {
   methods?: Map<string, string>;
   accounts?: Map<string, string>;
   evidenceStates?: Map<string, string>;
+  reconciliationStates?: Map<string, string>;
 };
 
 const FILTER_FIELD_ORDER: IncomeSearchField[] = [
@@ -21,6 +22,7 @@ const FILTER_FIELD_ORDER: IncomeSearchField[] = [
   IncomeSearchFields.DETAIL,
   IncomeSearchFields.COMPANY_PAYMENT_ACCOUNT_ID,
   IncomeSearchFields.HAS_EVIDENCE,
+  IncomeSearchFields.RECONCILIATION_STATUS,
 ];
 
 const CATALOG_FIELDS = new Set<IncomeSearchField>([
@@ -28,6 +30,7 @@ const CATALOG_FIELDS = new Set<IncomeSearchField>([
   IncomeSearchFields.PAYMENT_METHOD_ID,
   IncomeSearchFields.COMPANY_PAYMENT_ACCOUNT_ID,
   IncomeSearchFields.HAS_EVIDENCE,
+  IncomeSearchFields.RECONCILIATION_STATUS,
 ]);
 
 const TEXT_FIELDS = new Set<IncomeSearchField>([IncomeSearchFields.DETAIL]);
@@ -42,6 +45,12 @@ const STATUS_OPTIONS: ListingSearchOptionOutput[] = [
 const EVIDENCE_OPTIONS: ListingSearchOptionOutput[] = [
   { id: "true", label: "Con evidencia", keywords: ["comprobante", "adjunto"] },
   { id: "false", label: "Sin evidencia", keywords: ["pendiente", "faltante"] },
+];
+
+const RECONCILIATION_OPTIONS: ListingSearchOptionOutput[] = [
+  { id: "UNRECONCILED", label: "Sin conciliar", keywords: ["pendiente", "sin conciliación"] },
+  { id: "PARTIALLY_RECONCILED", label: "Conciliación parcial", keywords: ["parcial", "incompleta"] },
+  { id: "RECONCILED", label: "Conciliado", keywords: ["completo", "conciliado"] },
 ];
 
 const uniqueStrings = (values: string[] | undefined) =>
@@ -71,6 +80,12 @@ function sanitizeSearchRule(rule?: Partial<IncomeSearchRule> | null): IncomeSear
 
     if (field === IncomeSearchFields.HAS_EVIDENCE) {
       const allowed = new Set(EVIDENCE_OPTIONS.map((item) => item.id));
+      const normalized = values.filter((value) => allowed.has(value));
+      return normalized.length ? { field, operator, mode: normalizeRuleMode(rule.mode), values: normalized } : null;
+    }
+
+    if (field === IncomeSearchFields.RECONCILIATION_STATUS) {
+      const allowed = new Set(RECONCILIATION_OPTIONS.map((item) => item.id));
       const normalized = values.filter((value) => allowed.has(value));
       return normalized.length ? { field, operator, mode: normalizeRuleMode(rule.mode), values: normalized } : null;
     }
@@ -140,6 +155,8 @@ function getCatalogMap(field: IncomeSearchField, maps: SearchCatalogMaps) {
       return maps.accounts;
     case IncomeSearchFields.HAS_EVIDENCE:
       return maps.evidenceStates;
+    case IncomeSearchFields.RECONCILIATION_STATUS:
+      return maps.reconciliationStates;
     default:
       return undefined;
   }
@@ -158,6 +175,7 @@ export function buildIncomeSearchLabel(snapshot: IncomeSearchSnapshot, maps: Sea
       [IncomeSearchFields.DETAIL]: "Detalle",
       [IncomeSearchFields.COMPANY_PAYMENT_ACCOUNT_ID]: "Cuenta",
       [IncomeSearchFields.HAS_EVIDENCE]: "Evidencia",
+      [IncomeSearchFields.RECONCILIATION_STATUS]: "Conciliación bancaria",
     }[rule.field];
 
     if (rule.operator === IncomeSearchOperators.IN) {
@@ -176,3 +194,4 @@ export function buildIncomeSearchLabel(snapshot: IncomeSearchSnapshot, maps: Sea
 
 export const INCOME_STATUS_SEARCH_OPTIONS = STATUS_OPTIONS;
 export const INCOME_EVIDENCE_SEARCH_OPTIONS = EVIDENCE_OPTIONS;
+export const INCOME_RECONCILIATION_SEARCH_OPTIONS = RECONCILIATION_OPTIONS;

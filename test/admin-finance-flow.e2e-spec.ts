@@ -6,7 +6,10 @@ import { GetAdminFinanceSummaryUsecase } from 'src/modules/admin-finance/applica
 import { ListAdminFinanceMovementsUsecase } from 'src/modules/admin-finance/application/usecases/list-admin-finance-movements.usecase';
 import { IncomeController } from 'src/modules/income/adapters/in/controllers/income.controller';
 import { GetIncomeSummaryUsecase } from 'src/modules/income/application/usecases/get-income-summary.usecase';
+import { GetIncomeEvidenceUsecase, UploadIncomeEvidenceUsecase } from 'src/modules/income/application/usecases/get-income-evidence.usecase';
 import { ListIncomeUsecase } from 'src/modules/income/application/usecases/list-income.usecase';
+import { FinancialOutboxPublisher } from 'src/modules/income/infrastructure/financial-outbox-publisher.service';
+import { FILE_STORAGE } from 'src/shared/application/ports/file-storage.port';
 import { PermissionsGuard } from 'src/modules/access-control/adapters/in/guards/permissions.guard';
 import { JwtAuthGuard } from 'src/modules/auth/adapters/in/guards/jwt-auth.guard';
 import { CompanyConfiguredGuard } from 'src/shared/utilidades/guards/company-configured.guard';
@@ -29,6 +32,10 @@ describe('Administrative finance flow contracts (e2e)', () => {
       providers: [
         { provide: ListIncomeUsecase, useValue: listIncome },
         { provide: GetIncomeSummaryUsecase, useValue: getIncomeSummary },
+        { provide: GetIncomeEvidenceUsecase, useValue: { execute: jest.fn() } },
+        { provide: UploadIncomeEvidenceUsecase, useValue: { execute: jest.fn() } },
+        { provide: FILE_STORAGE, useValue: { read: jest.fn() } },
+        { provide: FinancialOutboxPublisher, useValue: { getHealth: jest.fn(), listDeadLetters: jest.fn(), retryDeadLetter: jest.fn() } },
         { provide: GetAdminFinanceSummaryUsecase, useValue: getAdminFinanceSummary },
         { provide: ListAdminFinanceMovementsUsecase, useValue: listAdminFinanceMovements },
       ],

@@ -39,6 +39,8 @@ export class SaleOrderAttachmentTypeormRepository
       uploadedByUserId: row.uploadedByUserId ?? null,
       note: row.note ?? null,
       deletedAt: row.deletedAt ?? null,
+      uploadIdempotencyKey: row.uploadIdempotencyKey ?? null,
+      contentSha256: row.contentSha256 ?? null,
       createdAt: row.createdAt,
     });
   }
@@ -63,6 +65,8 @@ export class SaleOrderAttachmentTypeormRepository
         uploadedByUserId: attachment.uploadedByUserId,
         note: attachment.note,
         deletedAt: attachment.deletedAt,
+        uploadIdempotencyKey: attachment.uploadIdempotencyKey,
+        contentSha256: attachment.contentSha256,
       });
     return this.toDomain(saved);
   }
@@ -74,6 +78,18 @@ export class SaleOrderAttachmentTypeormRepository
     const row = await this.getManager(tx)
       .getRepository(SaleOrderAttachmentEntity)
       .findOne({ where: { id: attachmentId, deletedAt: IsNull() } });
+    return row ? this.toDomain(row) : null;
+  }
+
+  async findByUploadIdempotencyKey(
+    saleOrderPaymentId: string,
+    uploadedByUserId: string,
+    uploadIdempotencyKey: string,
+    tx?: TransactionContext,
+  ): Promise<SaleOrderAttachment | null> {
+    const row = await this.getManager(tx)
+      .getRepository(SaleOrderAttachmentEntity)
+      .findOne({ where: { saleOrderPaymentId, uploadedByUserId, uploadIdempotencyKey } });
     return row ? this.toDomain(row) : null;
   }
 

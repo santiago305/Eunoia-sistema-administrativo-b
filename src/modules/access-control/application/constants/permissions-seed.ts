@@ -228,6 +228,8 @@ export const PERMISSIONS_SEED: PermissionSeedItem[] = [
   { code: 'purchases.manage_services', name: 'Gestionar servicios', description: 'Gestionar compras de servicios, membresias y suscripciones', module: 'purchases', resource: 'purchases', action: 'manage_services', type: 'action' },
   { code: 'purchases.export', name: 'Exportar compras', description: 'Exportar compras e historial a archivos', module: 'purchases', resource: 'purchases', action: 'export', type: 'action' },
   ...SALE_ORDER_PERMISSIONS,
+  { code: 'sale_orders.adviser_import_aliases.view', name: 'Ver equivalencias de asesores de importación', description: 'Abrir y consultar los nombres externos relacionados con asesores', module: 'sale_orders', resource: 'sale_order_adviser_import_aliases', action: 'view', type: 'action' },
+  { code: 'sale_orders.adviser_import_aliases.manage', name: 'Gestionar equivalencias de asesores de importación', description: 'Crear, editar, activar y eliminar relaciones entre nombres externos y asesores', module: 'sale_orders', resource: 'sale_order_adviser_import_aliases', action: 'manage', type: 'action' },
   { code: 'purchases.view_costs', name: 'Ver costos de compras', description: 'Ver costos, importes y totales de compras', module: 'purchases', resource: 'purchases', action: 'view_costs', type: 'action' },
   { code: 'purchases.attach_documents', name: 'Adjuntar documentos de compras', description: 'Adjuntar documentos y evidencias a compras', module: 'purchases', resource: 'purchase_documents', action: 'attach_documents', type: 'action' },
   { code: 'purchases.delete_documents', name: 'Eliminar documentos de compras', description: 'Eliminar documentos y evidencias de compras', module: 'purchases', resource: 'purchase_documents', action: 'delete_documents', type: 'action' },
@@ -274,6 +276,8 @@ export const PERMISSIONS_SEED: PermissionSeedItem[] = [
   { code: 'income.export', name: 'Exportar ingresos', description: 'Exportar reportes de ingresos', module: 'income', resource: 'income', action: 'export', type: 'action' },
   { code: 'income.view_all', name: 'Ver todos los ingresos', description: 'Consultar ingresos de todos los usuarios', module: 'income', resource: 'income', action: 'view_all', type: 'action' },
   { code: 'income.view_own', name: 'Ver ingresos propios', description: 'Consultar ingresos propios o asociados al usuario', module: 'income', resource: 'income', action: 'view_own', type: 'action' },
+  { code: 'income.scope.manage', name: 'Gestionar alcances financieros', description: 'Asignar sucursales, cuentas y clientes visibles en Ingresos', module: 'income', resource: 'income_scope', action: 'manage', type: 'action' },
+  { code: 'income.evidence.quarantine.manage', name: 'Recuperar evidencia en cuarentena', description: 'Reincorporar evidencia de pago en cuarentena tras validar su integridad', module: 'income', resource: 'payment_evidence_quarantine', action: 'manage', type: 'action' },
   { code: 'admin_finance.read', name: 'Consultar dashboard administrativo', description: 'Consultar ingresos, egresos y saldos administrativos', module: 'admin_finance', resource: 'admin_finance', action: 'read', type: 'action' },
   { code: 'admin_finance.export', name: 'Exportar dashboard administrativo', description: 'Exportar movimientos administrativos consolidados', module: 'admin_finance', resource: 'admin_finance', action: 'export', type: 'action' },
   { code: 'accounts-payable.view', name: 'Consultar cuentas por pagar', description: 'Consultar cuentas por pagar y sus saldos', module: 'accounts_payable', resource: 'accounts_payable', action: 'view', type: 'action' },
@@ -326,5 +330,12 @@ export const PERMISSIONS_SEED: PermissionSeedItem[] = [
   { code: 'sources.recognition_codes.view', name: 'Ver códigos de reconocimiento de enganches', description: 'Abrir y consultar los códigos asociados a cada enganche', module: 'sources', resource: 'source_recognition_codes', action: 'view', type: 'action' },
   { code: 'sources.recognition_codes.manage', name: 'Gestionar códigos de reconocimiento de enganches', description: 'Crear, editar, activar, eliminar y restaurar códigos de enganches', module: 'sources', resource: 'source_recognition_codes', action: 'manage', type: 'action' },
 ];
+
+// Keep legacy page entries while adding any fine-grained pages not already listed.
+PERMISSIONS_SEED.push(
+  ...CATALOG_FINE_PAGE_PERMISSIONS.filter(
+    ({ code }) => !PERMISSIONS_SEED.some((permission) => permission.code === code),
+  ),
+);
 
 

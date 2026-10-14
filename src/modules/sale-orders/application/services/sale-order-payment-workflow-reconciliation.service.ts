@@ -10,6 +10,11 @@ import {
   SalePaymentRepository,
 } from 'src/modules/sale-orders/domain/ports/sale-payment.repository';
 import {
+  fromMinorUnits,
+  roundMoney,
+  toMinorUnits,
+} from 'src/modules/sale-orders/domain/value-objects/money';
+import {
   WORKFLOW_REPOSITORY,
   WorkflowAggregate,
   WorkflowRepository,
@@ -89,18 +94,22 @@ export class SaleOrderPaymentWorkflowReconciliationService {
       throw new BadRequestException('Estado actual del pedido inválido');
     }
 
-    const total = this.roundMoney(
-      Number(input.currentTotal ?? order.total ?? 0),
-    );
+    const totalCents = toMinorUnits(input.currentTotal ?? order.total ?? 0);
+    const total = fromMinorUnits(totalCents);
     const payments = await this.paymentRepo.listBySaleOrderIds([order.id], tx);
-    const totalPaid = this.roundMoney(
-      payments
-        .filter((payment) => payment.status === undefined || payment.status === 'POSTED')
-        .reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0),
-    );
-    const pendingAmount = this.roundMoney(Math.max(total - totalPaid, 0));
+    const appliedTotals = this.paymentRepo.getPostedAppliedTotalsBySaleOrderIds
+      ? await this.paymentRepo.getPostedAppliedTotalsBySaleOrderIds([order.id], tx)
+      : [];
+    const appliedTotal = appliedTotals.find((item) => item.saleOrderId === order.id)?.amount;
+    const totalPaidCents = appliedTotal != null
+      ? toMinorUnits(appliedTotal)
+      : payments
+        .filter((payment) => payment.status === 'POSTED')
+        .reduce((sum, payment) => sum + toMinorUnits(payment.amount ?? 0), 0);
+    const totalPaid = fromMinorUnits(totalPaidCents);
+    const pendingAmount = fromMinorUnits(Math.max(totalCents - totalPaidCents, 0));
     const paymentStatus =
-      total > 0 && totalPaid >= total
+      totalCents > 0 && totalPaidCents >= totalCents
         ? ('PAID' as const)
         : ('PENDING' as const);
     const previousDeliveryDate =
@@ -175,9 +184,7 @@ export class SaleOrderPaymentWorkflowReconciliationService {
           executedAt: now,
           metadata: {
             source: input.source,
-            previousTotal: this.roundMoney(
-              Number(input.previousTotal ?? order.total ?? 0),
-            ),
+            previousTotal: roundMoney(input.previousTotal ?? order.total ?? 0),
             correctedTotal: total,
             totalPaid,
             pendingAmount,
@@ -209,9 +216,7 @@ export class SaleOrderPaymentWorkflowReconciliationService {
 
     return {
       saleOrderId: order.id,
-      previousTotal: this.roundMoney(
-        Number(input.previousTotal ?? order.total ?? 0),
-      ),
+      previousTotal: roundMoney(input.previousTotal ?? order.total ?? 0),
       total,
       totalPaid,
       pendingAmount,
@@ -586,7 +591,4 @@ export class SaleOrderPaymentWorkflowReconciliationService {
     return 'payment-condition-invalidated';
   }
 
-  private roundMoney(value: number): number {
-    return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
-  }
 }

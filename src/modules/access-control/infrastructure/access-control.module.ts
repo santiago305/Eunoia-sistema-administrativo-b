@@ -10,14 +10,15 @@ import { UserPermissionOverride } from '../adapters/out/persistence/typeorm/enti
 import { AccessControlService } from '../application/services/access-control.service';
 import { AccessControlSeeder } from './seed/access-control.seeder';
 import { PermissionsGuard } from '../adapters/in/guards/permissions.guard';
+import { IncomeDataScopeService } from 'src/modules/income/application/services/income-data-scope.service';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([User, Role, Permission, RolePermission, UserPermissionOverride, UserGrantablePermission]),
   ],
   controllers: [AccessControlController],
-  providers: [AccessControlService, AccessControlSeeder, PermissionsGuard],
-  exports: [AccessControlService, PermissionsGuard],
+  providers: [AccessControlService, AccessControlSeeder, PermissionsGuard, IncomeDataScopeService],
+  exports: [AccessControlService, PermissionsGuard, IncomeDataScopeService],
 })
 export class AccessControlModule {}
 

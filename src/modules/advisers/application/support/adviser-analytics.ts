@@ -5,6 +5,7 @@ export type AdviserAnalyticsMonths = (typeof ADVISER_ANALYTICS_MONTHS)[number];
 
 export type AdviserMonthlyAnalytics = {
   monthKey: string;
+  currency: string;
   orders: number;
   soldTotal: number;
   collectedTotal: number;
@@ -14,7 +15,7 @@ export type AdviserMonthlyAnalytics = {
 
 type AdviserMonthlyTotals = Pick<
   AdviserMonthlyAnalytics,
-  'monthKey' | 'orders' | 'soldTotal' | 'collectedTotal'
+  'monthKey' | 'currency' | 'orders' | 'soldTotal' | 'collectedTotal'
 >;
 
 const round = (value: number, decimals = 0) => {
@@ -65,52 +66,41 @@ export const buildAdviserMonthlyAnalytics = (
   monthKeys: string[],
   rows: AdviserMonthlyTotals[],
 ): AdviserMonthlyAnalytics[] => {
-  const rowsByMonth = new Map(rows.map((row) => [row.monthKey, row]));
-  const totals = monthKeys.map((monthKey) => {
-    const row = rowsByMonth.get(monthKey);
-    return {
-      monthKey,
-      orders: Number(row?.orders ?? 0),
-      soldTotal: Number(row?.soldTotal ?? 0),
-      collectedTotal: Number(row?.collectedTotal ?? 0),
-    };
-  });
-  const firstActiveMonthIndex = totals.findIndex(
-    (item) =>
-      item.orders > 0 || item.soldTotal > 0 || item.collectedTotal > 0,
-  );
-  const visibleTotals =
-    firstActiveMonthIndex === -1 ? [] : totals.slice(firstActiveMonthIndex);
+  const rowsByKey = new Map(rows.map((row) => [`${row.currency}:${row.monthKey}`, row]));
+  return [...new Set(rows.map((row) => row.currency))].sort().flatMap((currency) => {
+    const totals = monthKeys.map((monthKey) => {
+      const row = rowsByKey.get(`${currency}:${monthKey}`);
+      return {
+        monthKey,
+        currency,
+        orders: Number(row?.orders ?? 0),
+        soldTotal: Number(row?.soldTotal ?? 0),
+        collectedTotal: Number(row?.collectedTotal ?? 0),
+      };
+    });
+    const firstActiveMonthIndex = totals.findIndex(
+      (item) => item.orders > 0 || item.soldTotal > 0 || item.collectedTotal > 0,
+    );
+    const visibleTotals = firstActiveMonthIndex === -1 ? [] : totals.slice(firstActiveMonthIndex);
+    if (!visibleTotals.length) return [];
 
-  if (!visibleTotals.length) return [];
+    const averageOrders = visibleTotals.reduce((sum, item) => sum + item.orders, 0) / visibleTotals.length;
+    const averageSold = visibleTotals.reduce((sum, item) => sum + item.soldTotal, 0) / visibleTotals.length;
 
-  const averageOrders =
-    visibleTotals.reduce((sum, item) => sum + item.orders, 0) /
-    visibleTotals.length;
-  const averageSold =
-    visibleTotals.reduce((sum, item) => sum + item.soldTotal, 0) /
-    visibleTotals.length;
+    return visibleTotals.map((item) => {
+      const ordersScore = averageOrders ? clampScore((item.orders / averageOrders) * 50) : 0;
+      const salesScore = averageSold ? clampScore((item.soldTotal / averageSold) * 50) : 0;
+      const collectionRate = item.soldTotal ? clampScore((item.collectedTotal / item.soldTotal) * 100) : 0;
+      const performanceScore = salesScore * 0.4 + collectionRate * 0.35 + ordersScore * 0.25;
 
-  return visibleTotals.map((item) => {
-    const ordersScore = averageOrders
-      ? clampScore((item.orders / averageOrders) * 50)
-      : 0;
-    const salesScore = averageSold
-      ? clampScore((item.soldTotal / averageSold) * 50)
-      : 0;
-    const collectionRate = item.soldTotal
-      ? clampScore((item.collectedTotal / item.soldTotal) * 100)
-      : 0;
-    const performanceScore =
-      salesScore * 0.4 + collectionRate * 0.35 + ordersScore * 0.25;
-
-    return {
-      ...item,
-      soldTotal: round(item.soldTotal, 2),
-      collectedTotal: round(item.collectedTotal, 2),
-      collectionRate: round(collectionRate, 1),
-      performanceScore: round(performanceScore),
-    };
+      return {
+        ...item,
+        soldTotal: round(item.soldTotal, 2),
+        collectedTotal: round(item.collectedTotal, 2),
+        collectionRate: round(collectionRate, 1),
+        performanceScore: round(performanceScore),
+      };
+    });
   });
 };
 

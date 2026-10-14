@@ -1,13 +1,10 @@
 import {
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   Optional,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { PaymentMethodEntity } from 'src/modules/payment-methods/adapters/out/persistence/typeorm/entities/payment-method.entity';
-import { canonicalPaymentMethodName } from 'src/modules/payment-methods/domain/value-objects/payment-method-catalog';
 import {
   TransactionContext,
   UNIT_OF_WORK,
@@ -29,6 +26,12 @@ import {
   SALE_ORDER_ITEM_COMPONENT_REPOSITORY,
   SaleOrderItemComponentRepository,
 } from 'src/modules/sale-orders/domain/ports/sale-order-item-component.repository';
+import { calculateSaleOrderTotals } from 'src/modules/sale-orders/domain/value-objects/sale-order-totals';
+import {
+  multiplyMoneyByQuantity,
+  multiplyQuantities,
+  toMinorUnits,
+} from 'src/modules/sale-orders/domain/value-objects/money';
 import {
   SALE_PAYMENT_REPOSITORY,
   SalePaymentRepository,
@@ -154,23 +157,7 @@ export class UpdateSaleOrderUsecase {
     @Optional()
     @Inject(CLOCK)
     private readonly clock?: ClockPort,
-    @Optional() @InjectRepository(PaymentMethodEntity)
-    private readonly paymentMethodRepo?: Repository<PaymentMethodEntity>,
   ) {}
-
-  private async resolvePaymentMethodSnapshot(paymentMethodId: string | undefined, method: string) {
-    if (!paymentMethodId || !this.paymentMethodRepo) {
-      return { paymentMethodId: paymentMethodId ?? null, method: canonicalPaymentMethodName(method) };
-    }
-    const paymentMethod = await this.paymentMethodRepo.findOne({ where: { id: paymentMethodId } });
-    if (!paymentMethod || !paymentMethod.isActive) {
-      throw new BadRequestException('Método de pago inválido o inactivo');
-    }
-    return {
-      paymentMethodId: paymentMethod.id,
-      method: canonicalPaymentMethodName(paymentMethod.code ?? paymentMethod.name),
-    };
-  }
 
   private buildComponentSignature(
     components: Array<{ skuId: string; quantity: number }>,
@@ -253,9 +240,7 @@ export class UpdateSaleOrderUsecase {
     left: number | null | undefined,
     right: number,
   ): boolean {
-    return (
-      Math.round(Number(left ?? 0) * 100) !== Math.round(Number(right) * 100)
-    );
+    return toMinorUnits(left ?? 0) !== toMinorUnits(right);
   }
 
   async execute(input: UpdateSaleOrderInput) {
@@ -265,9 +250,18 @@ export class UpdateSaleOrderUsecase {
         input as any,
       );
     }
+    this.assertNoLegacyPaymentMutation(input.payments);
     return this.uow.runInTransaction((tx) =>
       this.executeInTransaction(input, tx, { executedBy: input.userId }),
     );
+  }
+
+  private assertNoLegacyPaymentMutation(payments: UpdateSaleOrderInput['payments']): void {
+    if (payments === undefined) return;
+    throw new ConflictException({
+      code: 'FINANCIAL_ENDPOINT_RETIRED',
+      message: 'Los pagos ya no se crean, editan ni eliminan desde la actualizacion general del pedido. Usa el flujo unificado de pagos para conservar su historial financiero.',
+    });
   }
 
   async executeInTransaction(
@@ -275,6 +269,7 @@ export class UpdateSaleOrderUsecase {
     tx: TransactionContext,
     options: UpdateSaleOrderTransactionOptions = {},
   ) {
+    this.assertNoLegacyPaymentMutation(input.payments);
     await this.adviserMembership?.assertIsAdviser(input.assignedBy);
     const order = await this.saleOrderRepo.findByIdForUpdate(
       input.saleOrderId,
@@ -283,6 +278,15 @@ export class UpdateSaleOrderUsecase {
 
     if (!order) {
       throw new BadRequestException('Pedido no encontrado');
+    }
+
+    if (order.clientId !== input.clientId) {
+      const payments = await this.paymentRepo.listBySaleOrderId(order.id, tx);
+      if (payments.length) {
+        throw new BadRequestException(
+          'No puedes cambiar el cliente mientras el pedido tenga ingresos persistidos. Resuelve sus pagos primero.',
+        );
+      }
     }
 
     const editPolicy = await this.editPolicy.resolve(order, tx);
@@ -376,9 +380,9 @@ export class UpdateSaleOrderUsecase {
         plans.push({
           skuId: packItem.skuId,
           referencePackItemId: packItem.id,
-          quantity: Number(item.quantity) * Number(packItem.quantity),
+          quantity: multiplyQuantities(item.quantity, packItem.quantity),
           unitPrice: Number(packItem.price ?? 0),
-          total: Number(packItem.lineTotal ?? 0) * Number(item.quantity),
+          total: multiplyMoneyByQuantity(packItem.lineTotal ?? 0, item.quantity),
         });
       }
 
@@ -434,13 +438,11 @@ export class UpdateSaleOrderUsecase {
           components: componentPlansByItemIndex[index] ?? [],
         })),
       );
-    const subTotal = input.items.reduce(
-      (sum, item) => sum + Number(item.total ?? 0),
-      0,
-    );
-    const deliveryCost = Number(input.deliveryCost ?? 0);
-    const discount = Number(input.discount ?? order.discount ?? 0);
-    const total = Math.max(0, subTotal + deliveryCost - discount);
+    const { subTotal, deliveryCost, discount, total } = calculateSaleOrderTotals({
+      itemTotals: input.items.map((item) => item.total ?? 0),
+      deliveryCost: input.deliveryCost ?? 0,
+      discount: input.discount ?? order.discount ?? 0,
+    });
 
     const stockLifecycleStatus = editPolicy.stockStatus;
     const isAdvancedOrder =
@@ -516,19 +518,6 @@ export class UpdateSaleOrderUsecase {
 
     await this.componentRepo.deleteBySaleOrderItemIds(existingItemIds, tx);
     await this.saleOrderItemRepo.deleteBySaleOrderId(input.saleOrderId, tx);
-
-    if (input.payments) {
-      const persistedPayments = await this.paymentRepo.listBySaleOrderId(input.saleOrderId, tx);
-      const protectedPayments = persistedPayments.filter(
-        (payment) => payment.status === 'POSTED' || payment.status === 'CANCELLED' || payment.status === 'REVERSED',
-      );
-      if (protectedPayments.length) {
-        throw new BadRequestException(
-          'Los pagos contabilizados o anulados no se pueden reemplazar desde esta ruta; utiliza la edición unificada o Anular ingreso',
-        );
-      }
-      await this.paymentRepo.deleteBySaleOrderId(input.saleOrderId, tx);
-    }
 
     const updated = await this.saleOrderRepo.update(
       {
@@ -617,45 +606,6 @@ export class UpdateSaleOrderUsecase {
       );
     }
 
-    const paymentsInput = await Promise.all((input.payments ?? []).map(async (payment) => {
-      const date = payment.date ? new Date(payment.date) : new Date();
-
-      if (Number.isNaN(date.getTime())) {
-        throw new BadRequestException('Fecha de pago inválida');
-      }
-
-      const resolvedMethod = await this.resolvePaymentMethodSnapshot(payment.paymentMethodId, payment.method);
-      return {
-        saleOrderId: updated.id,
-        bankAccountId: payment.bankAccountId?.trim()
-          ? payment.bankAccountId.trim()
-          : null,
-        companyPaymentAccountId: payment.companyPaymentAccountId?.trim() || payment.bankAccountId?.trim() || null,
-        paymentMethodId: resolvedMethod.paymentMethodId,
-        currency: "PEN" as any,
-        status: "POSTED" as const,
-        date,
-        method: resolvedMethod.method,
-        operationNumber: payment.operationNumber ?? null,
-        operationCode: payment.operationCode ?? payment.operationNumber ?? null,
-        amount: payment.amount,
-        note: payment.note ?? null,
-        paymentPhoto: payment.paymentPhoto ?? null,
-      };
-    }));
-
-    try {
-      if (paymentsInput.length) {
-        await this.paymentRepo.bulkCreate(paymentsInput, tx);
-      }
-    } catch (error: any) {
-      if (error?.code === '23503') {
-        throw new BadRequestException('Cuenta bancaria inválida');
-      }
-
-      throw error;
-    }
-
     await this.reconcileLogisticsPayable?.execute(
       {
         saleOrderId: updated.id,
@@ -670,8 +620,7 @@ export class UpdateSaleOrderUsecase {
     );
 
     const totalChanged =
-      Math.round(Number(order.total ?? 0) * 100) !==
-      Math.round(Number(total) * 100);
+      toMinorUnits(order.total ?? 0) !== toMinorUnits(total);
     let reconciledCurrentStateId = updated.currentStateId ?? null;
     let paymentStateChanged = false;
     if (
@@ -681,7 +630,6 @@ export class UpdateSaleOrderUsecase {
       !workflowChanged &&
       (totalChanged ||
         deliveryDateChanged ||
-        input.payments !== undefined ||
         activeStockCompositionReleased)
     ) {
       const reconciliation = await this.paymentWorkflowReconciliation.reconcile(

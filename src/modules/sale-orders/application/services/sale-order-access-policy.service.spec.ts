@@ -4,6 +4,8 @@ describe("SaleOrderAccessPolicyService", () => {
   const make = (permissions: string[]) =>
     new SaleOrderAccessPolicyService({
       getEffectivePermissions: jest.fn().mockResolvedValue(permissions),
+    } as never, {
+      resolve: jest.fn().mockResolvedValue({ userId: null, subsidiaryIds: [], accountIds: [], clientIds: [] }),
     } as never);
 
   it("gives wildcard users full read context", async () => {
@@ -14,6 +16,8 @@ describe("SaleOrderAccessPolicyService", () => {
       includeCustomerData: true,
       includeAmounts: true,
       includeProducts: true,
+      incomeDataScope: { userId: null, subsidiaryIds: [], accountIds: [], clientIds: [] },
+      includeIncomePayments: true,
     });
   });
 
@@ -39,6 +43,8 @@ describe("SaleOrderAccessPolicyService", () => {
       includeCustomerData: false,
       includeAmounts: false,
       includeProducts: true,
+      incomeDataScope: null,
+      includeIncomePayments: false,
     });
   });
 });

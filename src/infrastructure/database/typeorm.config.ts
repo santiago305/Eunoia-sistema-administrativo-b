@@ -162,6 +162,22 @@ import { PaymentLifecycleFourStates20261008000000 } from './migrations/202610080
 import { UniqueSalePaymentOperationNumber20261008010000 } from './migrations/20261008010000-unique-sale-payment-operation-number';
 import { CreateMailAttachmentOperations20261010000000 } from './migrations/20261010000000-create-mail-attachment-operations';
 import { CreateMailAttachmentQuarantine20261010010000 } from './migrations/20261010010000-create-mail-attachment-quarantine';
+import { AddSalePaymentLedgerAndOperations20261012000000 } from './migrations/20261012000000-add-sale-payment-ledger-and-operations';
+import { HardenSalePaymentCorrection20261012010000 } from './migrations/20261012010000-harden-sale-payment-correction';
+import { IndexFinancialIdempotencyResultLookup20261012020000 } from './migrations/20261012020000-index-financial-idempotency-result-lookup';
+import { AddCustomerRefundPermissions20261012030000 } from './migrations/20261012030000-add-customer-refund-permissions';
+import { HardenBankReconciliationHistory20261012040000 } from './migrations/20261012040000-harden-bank-reconciliation-history';
+import { HardenFinancialOutboxRetries20261012050000 } from './migrations/20261012050000-harden-financial-outbox-retries';
+import { PreserveFinancialOperationReferenceHistory20261012060000 } from './migrations/20261012060000-preserve-financial-operation-reference-history';
+import { AddIncomeDataScopePermissions20261012070000 } from './migrations/20261012070000-add-income-data-scope-permissions';
+import { CreateIncomeUserDataScopes20261012080000 } from './migrations/20261012080000-create-income-user-data-scopes';
+import { IdempotentIncomeEvidenceUpload20261013000000 } from './migrations/20261013000000-idempotent-income-evidence-upload';
+import { CreatePaymentEvidenceAccessLogs20261013010000 } from './migrations/20261013010000-create-payment-evidence-access-logs';
+import { CreatePaymentEvidenceUploadOperations20261013020000 } from './migrations/20261013020000-create-payment-evidence-upload-operations';
+import { ManagePaymentEvidenceQuarantine20261013030000 } from './migrations/20261013030000-manage-payment-evidence-quarantine';
+import { AuditEmptyOrderCancellation20261013040000 } from './migrations/20261013040000-audit-empty-order-cancellation';
+import { MapLegacySalePaymentUpdatePermission20261013050000 } from './migrations/20261013050000-map-legacy-sale-payment-update-permission';
+import { ValidateSalePaymentLifecycle20261014010000 } from './migrations/20261014010000-validate-sale-payment-lifecycle';
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: 'postgres',
@@ -335,6 +351,22 @@ export const databaseMigrations = [
   UniqueSalePaymentOperationNumber20261008010000,
   CreateMailAttachmentOperations20261010000000,
   CreateMailAttachmentQuarantine20261010010000,
+  AddSalePaymentLedgerAndOperations20261012000000,
+  HardenSalePaymentCorrection20261012010000,
+  IndexFinancialIdempotencyResultLookup20261012020000,
+  AddCustomerRefundPermissions20261012030000,
+  HardenBankReconciliationHistory20261012040000,
+  HardenFinancialOutboxRetries20261012050000,
+  PreserveFinancialOperationReferenceHistory20261012060000,
+  AddIncomeDataScopePermissions20261012070000,
+  CreateIncomeUserDataScopes20261012080000,
+  IdempotentIncomeEvidenceUpload20261013000000,
+  CreatePaymentEvidenceAccessLogs20261013010000,
+  CreatePaymentEvidenceUploadOperations20261013020000,
+  ManagePaymentEvidenceQuarantine20261013030000,
+  AuditEmptyOrderCancellation20261013040000,
+  MapLegacySalePaymentUpdatePermission20261013050000,
+  ValidateSalePaymentLifecycle20261014010000,
 ];
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({

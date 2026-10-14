@@ -4,6 +4,13 @@ import { SaleOrderEditPolicyService } from '../../services/sale-order-edit-polic
 import { UpdateSaleOrderUsecase } from './update.usecase';
 
 describe('UpdateSaleOrderUsecase', () => {
+  it('compares changed money at two-decimal precision using integer cents', () => {
+    const { usecase } = createFixture();
+
+    expect((usecase as any).moneyChanged('1.005', 1.01)).toBe(false);
+    expect((usecase as any).moneyChanged(1.01, 1.02)).toBe(true);
+  });
+
   const input = {
     saleOrderId: 'order-1',
     warehouseId: 'warehouse-1',
@@ -103,6 +110,7 @@ describe('UpdateSaleOrderUsecase', () => {
       bulkCreate: jest.fn(),
     };
     const paymentRepo = {
+      listBySaleOrderId: jest.fn().mockResolvedValue([]),
       deleteBySaleOrderId: jest.fn(),
       bulkCreate: jest.fn(),
     };
@@ -222,6 +230,28 @@ describe('UpdateSaleOrderUsecase', () => {
       commandAuthorization,
     };
   };
+
+  it('rejects legacy payment arrays before the general order update can create or delete income', async () => {
+    const { usecase, saleOrderRepo, paymentRepo } = createFixture();
+
+    await expect(
+      usecase.execute({ ...input, payments: [] }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'FINANCIAL_ENDPOINT_RETIRED' }),
+    });
+
+    expect(saleOrderRepo.findByIdForUpdate).not.toHaveBeenCalled();
+    expect(paymentRepo.deleteBySaleOrderId).not.toHaveBeenCalled();
+    expect(paymentRepo.bulkCreate).not.toHaveBeenCalled();
+
+    await expect(
+      usecase.executeInTransaction({ ...input, payments: [] }, {} as any),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'FINANCIAL_ENDPOINT_RETIRED' }),
+    });
+    expect(saleOrderRepo.findByIdForUpdate).not.toHaveBeenCalled();
+    expect(paymentRepo.bulkCreate).not.toHaveBeenCalled();
+  });
 
   it('replaces order lines without mutating inventory', async () => {
     const { usecase, componentRepo, paymentRepo } = createFixture();
@@ -953,5 +983,25 @@ describe('UpdateSaleOrderUsecase', () => {
       expect.anything(),
     );
     expect(packRepo.findByIdWithItems).not.toHaveBeenCalled();
+  });
+
+  it('rounds hydrated pack component quantity and totals after fractional multiplication', async () => {
+    const packRepo = {
+      findByIdWithItems: jest.fn().mockResolvedValue({
+        id: 'pack-1',
+        items: [{ id: 'pack-item-1', skuId: 'sku-pack', quantity: 0.15, price: 0.1, lineTotal: 0.1 }],
+      }),
+    };
+    const fixture = createFixture([], false, packRepo);
+
+    await fixture.usecase.execute({
+      ...input,
+      items: [{ quantity: 0.1, unitPrice: 0.1, total: 0.01, referencePackId: 'pack-1' }],
+    });
+
+    expect(fixture.componentRepo.bulkCreate).toHaveBeenCalledWith(
+      [expect.objectContaining({ quantity: 0.02, unitPrice: 0.1, total: 0.01 })],
+      expect.anything(),
+    );
   });
 });

@@ -12,6 +12,9 @@ import { SaleOrderEntity } from '../entities/sale-order.entity';
 import { SalePaymentEntity } from '../entities/sale-payment.entity';
 import { SaleOrderItemComponentEntity } from '../entities/sale-order-item-component.entity';
 import { ProductCatalogSkuEntity } from 'src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku.entity';
+import { ProductCatalogStockItemEntity } from 'src/modules/product-catalog/adapters/out/persistence/typeorm/entities/stock-item.entity';
+import { ProductCatalogSkuAttributeValueEntity } from 'src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku-attribute-value.entity';
+import { SaleOrderItemEntity } from '../entities/sale-order-item.entity';
 
 const createStatsQueryBuilder = (
   rawMany: unknown[] = [],
@@ -32,6 +35,60 @@ const createStatsQueryBuilder = (
 });
 
 describe('SaleOrderTypeormRepository', () => {
+  it('sums posted order payments in integer cents and excludes pending payments', () => {
+    const repository = new SaleOrderTypeormRepository({ manager: {} } as any);
+
+    expect((repository as any).sumPostedPaymentAmounts([
+      { amount: 0.1, status: 'POSTED' },
+      { amount: 0.2, status: 'POSTED' },
+      { amount: 50, status: 'PENDING_CONFIRMATION' },
+      { amount: 90 },
+    ])).toBe(0.3);
+    expect((repository as any).sumPostedPaymentAmounts([{ amount: 90 }])).toBe(0);
+  });
+
+  it('filters order payments by the user financial scope and honors order-level assignments', () => {
+    const repository = new SaleOrderTypeormRepository({ manager: {} } as any);
+    const context = {
+      userId: 'user-1', viewAll: false, includeDeleted: false,
+      includeCustomerData: false, includeAmounts: true, includeProducts: false,
+      incomeDataScope: { userId: 'user-1', subsidiaryIds: ['sub-1'], accountIds: ['account-1'], clientIds: [] },
+      includeIncomePayments: true,
+    };
+    const payments = [
+      { id: 'p-own', createdByUserId: 'user-1', companyPaymentAccountId: null },
+      { id: 'p-account', createdByUserId: 'user-2', companyPaymentAccountId: 'account-1' },
+      { id: 'p-hidden', createdByUserId: 'user-2', companyPaymentAccountId: 'account-2' },
+    ];
+
+    expect((repository as any).filterIncomePayments({ createdBy: 'other', agencySubsidiaryId: null, clientId: 'client-1' }, payments, context).map((payment: any) => payment.id))
+      .toEqual(['p-own', 'p-account']);
+    expect((repository as any).filterIncomePayments({ createdBy: 'other', agencySubsidiaryId: 'sub-1', clientId: 'client-1' }, payments, context))
+      .toEqual(payments);
+    expect((repository as any).filterIncomePayments({ createdBy: 'other', agencySubsidiaryId: null, clientId: 'client-1' }, payments, { ...context, includeIncomePayments: false }))
+      .toEqual([]);
+  });
+
+  it('loads only the net customer credit balance sourced from active posted incomes', async () => {
+    const manager = {
+      query: jest.fn().mockResolvedValue([
+        { saleOrderId: 'order-1', amount: '17.35' },
+      ]),
+    };
+    const repository = new SaleOrderTypeormRepository({ manager } as any);
+
+    const balances = await (repository as any).loadCustomerCreditBalancesBySourceOrder(
+      manager,
+      ['order-1'],
+    );
+
+    expect(balances.get('order-1')).toBe(17.35);
+    expect(manager.query).toHaveBeenCalledWith(
+      expect.stringContaining("source_payment.status = 'POSTED'"),
+      [['order-1']],
+    );
+  });
+
   it('loads tracking capabilities once for orders that share a workflow', async () => {
     const buildOrderRow = (id: string) => ({
       id,
@@ -125,6 +182,12 @@ describe('SaleOrderTypeormRepository', () => {
       { invoice: true, preguide: false, prepared: true },
       { invoice: true, preguide: false, prepared: true },
     ]);
+    expect(result.items[0]).toEqual(expect.objectContaining({
+      totalReceived: 0,
+      totalApplied: 0,
+      customerCreditAvailable: 0,
+      pendingAmount: 100,
+    }));
     expect(trackingActionQb.getRawMany).toHaveBeenCalledTimes(1);
     expect(trackingActionQb.andWhere).toHaveBeenCalledWith(
       'trackingWorkflow.isActive = true',
@@ -817,9 +880,7 @@ describe('SaleOrderTypeormRepository', () => {
       }),
     };
     const repository = new SaleOrderTypeormRepository({ manager } as any);
-    const saleOrderRepo = manager.getRepository(
-      require('../entities/sale-order.entity').SaleOrderEntity,
-    );
+    const saleOrderRepo = manager.getRepository(SaleOrderEntity);
     saleOrderRepo.findOne.mockResolvedValue({
       id: 'order-1',
       clientId: 'client-1',
@@ -835,10 +896,7 @@ describe('SaleOrderTypeormRepository', () => {
       isActive: true,
       createdAt: new Date('2026-06-08T00:00:00.000Z'),
     });
-    const clientRepo = manager.getRepository(
-      require('src/modules/clients/adapters/out/persistence/typeorm/entities/client.entity')
-        .ClientEntity,
-    );
+    const clientRepo = manager.getRepository(ClientEntity);
     clientRepo.findOne.mockResolvedValue({
       id: 'client-1',
       fullName: 'Cliente',
@@ -846,10 +904,7 @@ describe('SaleOrderTypeormRepository', () => {
       docNumber: null,
       reference: null,
     });
-    const userRepo = manager.getRepository(
-      require('src/modules/users/adapters/out/persistence/typeorm/entities/user.entity')
-        .User,
-    );
+    const userRepo = manager.getRepository(User);
     userRepo.findOne.mockResolvedValue({
       id: 'user-1',
       name: 'User',
@@ -868,23 +923,6 @@ describe('SaleOrderTypeormRepository', () => {
   });
 
   it('returns enriched item components when getting a sale order', async () => {
-    const { SaleOrderEntity } = require('../entities/sale-order.entity');
-    const {
-      SaleOrderItemEntity,
-    } = require('../entities/sale-order-item.entity');
-    const {
-      SaleOrderItemComponentEntity,
-    } = require('../entities/sale-order-item-component.entity');
-    const {
-      ProductCatalogSkuEntity,
-    } = require('src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku.entity');
-    const {
-      ProductCatalogStockItemEntity,
-    } = require('src/modules/product-catalog/adapters/out/persistence/typeorm/entities/stock-item.entity');
-    const {
-      ProductCatalogSkuAttributeValueEntity,
-    } = require('src/modules/product-catalog/adapters/out/persistence/typeorm/entities/sku-attribute-value.entity');
-
     const attributeQb = {
       innerJoin: jest.fn().mockReturnThis(),
       where: jest.fn().mockReturnThis(),

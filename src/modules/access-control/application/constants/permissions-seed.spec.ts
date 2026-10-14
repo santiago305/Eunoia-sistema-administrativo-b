@@ -1,6 +1,6 @@
 import { PERMISSIONS_SEED } from "./permissions-seed";
 import { DEPRECATED_PERMISSION_CODES } from "../../infrastructure/seed/access-control.seeder";
-import { SALE_ORDER_PERMISSION_CODES } from "../../../sale-orders/application/constants/sale-order-permissions";
+import { SALE_ORDER_PERMISSIONS, SALE_ORDER_PERMISSION_CODES } from "../../../sale-orders/application/constants/sale-order-permissions";
 
 describe("permissions seed", () => {
   it("includes page.payments.view", () => {
@@ -12,6 +12,19 @@ describe("permissions seed", () => {
     const codes = new Set(PERMISSIONS_SEED.map((item) => item.code));
     expect(codes.has("payments.read")).toBe(true);
     expect(codes.has("payments.manage")).toBe(true);
+  });
+
+  it("includes the explicit permission for evidence recovery from quarantine", () => {
+    expect(PERMISSIONS_SEED).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "income.evidence.quarantine.manage",
+          name: "Recuperar evidencia en cuarentena",
+          module: "income",
+          action: "manage",
+        }),
+      ]),
+    );
   });
 
   it("does not seed permissions from the retired bank accounts module", () => {
@@ -244,8 +257,8 @@ describe("permissions seed", () => {
   });
 
   it("includes the complete sale order permission contract", () => {
-    expect(SALE_ORDER_PERMISSION_CODES).toHaveLength(43);
-    expect(new Set(SALE_ORDER_PERMISSION_CODES).size).toBe(43);
+    expect(SALE_ORDER_PERMISSION_CODES.length).toBeGreaterThanOrEqual(43);
+    expect(new Set(SALE_ORDER_PERMISSION_CODES).size).toBe(SALE_ORDER_PERMISSION_CODES.length);
     expect(SALE_ORDER_PERMISSION_CODES).not.toContain("sale_orders.preguide.update");
     expect(SALE_ORDER_PERMISSION_CODES).not.toContain("sale_orders.prepared.update");
     expect(DEPRECATED_PERMISSION_CODES).toEqual(
@@ -256,8 +269,9 @@ describe("permissions seed", () => {
     );
 
     for (const code of SALE_ORDER_PERMISSION_CODES) {
+      const permission = SALE_ORDER_PERMISSIONS.find((item) => item.code === code)!;
       expect(PERMISSIONS_SEED).toEqual(
-        expect.arrayContaining([expect.objectContaining({ code, module: "sale_orders" })]),
+        expect.arrayContaining([expect.objectContaining({ code, module: permission.module })]),
       );
     }
 

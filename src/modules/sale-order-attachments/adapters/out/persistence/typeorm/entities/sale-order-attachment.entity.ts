@@ -50,6 +50,12 @@ export class SaleOrderAttachmentEntity {
   @Column({ name: 'deleted_at', type: 'timestamptz', nullable: true })
   deletedAt?: Date | null;
 
+  @Column({ name: 'upload_idempotency_key', type: 'uuid', nullable: true })
+  uploadIdempotencyKey?: string | null;
+
+  @Column({ name: 'content_sha256', type: 'varchar', length: 64, nullable: true })
+  contentSha256?: string | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }

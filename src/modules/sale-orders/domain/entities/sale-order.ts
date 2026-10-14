@@ -1,4 +1,6 @@
 
+import { CurrencyType } from "src/modules/payments/domain/value-objects/currency-type";
+
 export type SaleOrderItem = {
   id: string;
   saleOrderId: string;
@@ -47,5 +49,6 @@ export class SaleOrder {
     public readonly prepared: boolean = false,
     public readonly preguide: boolean = false,
     public readonly reserveBool: boolean = false,
+    public readonly currency: CurrencyType = CurrencyType.PEN,
   ) {}
 }

@@ -1,6 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { RegisterProductCatalogInventoryMovement } from 'src/modules/product-catalog/application/usecases/register-inventory-movement.usecase';
 import { TransferProductCatalogInventoryBetweenWarehouses } from 'src/modules/product-catalog/application/usecases/transfer-between-warehouses.usecase';
+import { businessDateAsUtcMidnight } from 'src/shared/utilidades/utils/business-date';
 import { ProductCatalogInventoryBalance } from 'src/modules/product-catalog/domain/entities/inventory-balance';
 import { ProductCatalogInventoryDocument } from 'src/modules/product-catalog/domain/entities/inventory-document';
 import { ProductCatalogInventoryDocumentItem } from 'src/modules/product-catalog/domain/entities/inventory-document-item';
@@ -134,10 +135,12 @@ describe('Catalog inventory flow matrix (e2e)', () => {
     '%s keeps stock, documents, ledger and realtime events consistent',
     async (productType) => {
       const fixture: InventoryFixture = createInventoryFixture(productType);
+      const departure = businessDateAsUtcMidnight();
+      const expectedArrival = new Date(departure.getTime() + 86_400_000);
 
       await fixture.register.execute({ docType: DocType.IN, warehouseId: fixture.warehouseA, serieId: `in-${productType}`, direction: Direction.IN, items: [{ skuId: fixture.skuId, quantity: 10 }] });
       await expect(fixture.register.execute({ docType: DocType.ADJUSTMENT, warehouseId: fixture.warehouseA, serieId: `adjustment-${productType}`, direction: Direction.OUT, items: [{ skuId: fixture.skuId, quantity: 11 }] })).rejects.toBeInstanceOf(BadRequestException);
-      await fixture.transfer.execute({ fromWarehouseId: fixture.warehouseA, toWarehouseId: fixture.warehouseB, serieId: `transfer-${productType}`, scheduledDepartureDate: '2026-09-23', expectedArrivalDate: '2026-09-24', items: [{ skuId: fixture.skuId, quantity: 4 }] });
+      await fixture.transfer.execute({ fromWarehouseId: fixture.warehouseA, toWarehouseId: fixture.warehouseB, serieId: `transfer-${productType}`, scheduledDepartureDate: departure.toISOString().slice(0, 10), expectedArrivalDate: expectedArrival.toISOString().slice(0, 10), items: [{ skuId: fixture.skuId, quantity: 4 }] });
       await fixture.register.execute({ docType: DocType.ADJUSTMENT, warehouseId: fixture.warehouseA, serieId: `adjustment-${productType}`, direction: Direction.OUT, items: [{ skuId: fixture.skuId, quantity: 2 }] });
 
       const balances = [...fixture.balances.values()].sort((a, b) => a.warehouseId.localeCompare(b.warehouseId));

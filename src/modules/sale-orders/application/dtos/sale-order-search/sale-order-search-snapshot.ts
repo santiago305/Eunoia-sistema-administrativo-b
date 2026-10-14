@@ -125,6 +125,9 @@ export type SaleOrderWorkflowStateOutput = {
 
 export type SaleOrderPaymentOutput = {
   id: string;
+  version: number;
+  createdByUserId: string | null;
+  updatedByUserId: string | null;
   bankAccount: { id: string; name: string; number?: string | null } | null;
   date: string;
   method: string;
@@ -190,6 +193,9 @@ export type SaleOrderListItemOutput = {
   detail: string;
   payments: SaleOrderPaymentOutput[];
   totalPaid: number;
+  totalReceived: number;
+  totalApplied: number;
+  customerCreditAvailable: number;
   pendingAmount: number;
   paymentStatus: SaleOrderPaymentStatus;
 };

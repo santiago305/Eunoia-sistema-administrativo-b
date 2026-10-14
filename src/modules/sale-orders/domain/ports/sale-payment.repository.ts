@@ -20,6 +20,7 @@ export interface SalePaymentRepository {
       amount: number;
       note?: string | null;
       paymentPhoto?: string | null;
+      createdByUserId?: string | null;
     }>,
     tx?: TransactionContext,
   ): Promise<SalePayment[]>;
@@ -44,6 +45,8 @@ export interface SalePaymentRepository {
       operationNumber?: string | null;
       amount: number;
       note?: string | null;
+      updatedByUserId?: string | null;
+      expectedVersion?: number;
     },
     tx?: TransactionContext,
   ): Promise<void>;
@@ -62,6 +65,11 @@ export interface SalePaymentRepository {
     saleOrderIds: string[],
     tx?: TransactionContext,
   ): Promise<SalePayment[]>;
+
+  getPostedAppliedTotalsBySaleOrderIds?(
+    saleOrderIds: string[],
+    tx?: TransactionContext,
+  ): Promise<Array<{ saleOrderId: string; amount: number }>>;
 
   voidPostedPayment(
     input: {

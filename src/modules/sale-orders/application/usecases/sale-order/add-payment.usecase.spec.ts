@@ -1,127 +1,20 @@
-import { AddSaleOrderPaymentUsecase } from "./add-payment.usecase";
+import { ConflictException } from '@nestjs/common';
+import { AddSaleOrderPaymentUsecase } from './add-payment.usecase';
 
-describe("AddSaleOrderPaymentUsecase", () => {
-  it("throws when order not found", async () => {
-    const uow = { runInTransaction: (fn: any) => fn({}) };
-    const paymentRepo = { bulkCreate: jest.fn() };
-    const saleOrderRepo = { findByIdForUpdate: jest.fn().mockResolvedValue(null) };
-
-    const uc = new AddSaleOrderPaymentUsecase(uow as any, paymentRepo as any, saleOrderRepo as any);
+describe('AddSaleOrderPaymentUsecase', () => {
+  it('retires the legacy payment endpoint instead of creating an untracked income', async () => {
+    const usecase = new AddSaleOrderPaymentUsecase();
 
     await expect(
-      uc.execute({ saleOrderId: "order-1", bankAccountId: "ba-1", method: "cash", amount: 10 }),
-    ).rejects.toThrow("Pedido no encontrado");
-  });
-
-  it("throws when date is invalid", async () => {
-    const uow = { runInTransaction: (fn: any) => fn({}) };
-    const paymentRepo = { bulkCreate: jest.fn() };
-    const saleOrderRepo = { findByIdForUpdate: jest.fn().mockResolvedValue({ id: "order-1" }) };
-
-    const uc = new AddSaleOrderPaymentUsecase(uow as any, paymentRepo as any, saleOrderRepo as any);
-
-    await expect(
-      uc.execute({
-        saleOrderId: "order-1",
-        bankAccountId: "ba-1",
-        method: "cash",
-        amount: 10,
-        date: "not-a-date",
-      }),
-    ).rejects.toThrow("Fecha de pago inválida");
-  });
-
-  it("creates payment and returns paymentId", async () => {
-    const uow = { runInTransaction: (fn: any) => fn({}) };
-    const paymentRepo = { bulkCreate: jest.fn().mockResolvedValue([{ id: "p1" }]) };
-    const saleOrderRepo = { findByIdForUpdate: jest.fn().mockResolvedValue({ id: "order-1" }) };
-
-    const uc = new AddSaleOrderPaymentUsecase(uow as any, paymentRepo as any, saleOrderRepo as any);
-
-    const result = await uc.execute({
-      saleOrderId: "order-1",
-      bankAccountId: " ba-1 ",
-      method: "cash",
-      amount: 10,
+      usecase.execute({ saleOrderId: 'order-1', amount: 10 }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({ code: 'FINANCIAL_ENDPOINT_RETIRED' }),
     });
-
-    expect(paymentRepo.bulkCreate).toHaveBeenCalledWith(
-      [
-        expect.objectContaining({
-          saleOrderId: "order-1",
-          bankAccountId: "ba-1",
-          method: "Efectivo",
-          amount: 10,
-          status: "PENDING_CONFIRMATION",
-        }),
-      ],
-      expect.anything(),
-    );
-    expect(result).toEqual({ paymentId: "p1" });
   });
 
-  it("throws when bankAccountId is invalid (FK)", async () => {
-    const uow = { runInTransaction: (fn: any) => fn({}) };
-    const paymentRepo = {
-      bulkCreate: jest.fn().mockRejectedValue(Object.assign(new Error("fk"), { code: "23503" })),
-    };
-    const saleOrderRepo = { findByIdForUpdate: jest.fn().mockResolvedValue({ id: "order-1" }) };
+  it('returns a conflict rather than accepting any legacy payload', async () => {
+    const usecase = new AddSaleOrderPaymentUsecase();
 
-    const uc = new AddSaleOrderPaymentUsecase(uow as any, paymentRepo as any, saleOrderRepo as any);
-
-    await expect(
-      uc.execute({ saleOrderId: "order-1", bankAccountId: "ba-1", method: "cash", amount: 10 }),
-    ).rejects.toThrow("Cuenta bancaria inválida");
-  });
-
-  it("requires a normalized payment method when financial repositories are available", async () => {
-    const uow = { runInTransaction: (fn: any) => fn({}) };
-    const paymentRepo = { bulkCreate: jest.fn() };
-    const saleOrderRepo = { findByIdForUpdate: jest.fn().mockResolvedValue({ id: "order-1", total: 100 }) };
-    const accountRepo = {
-      findOne: jest.fn().mockResolvedValue({ id: "account-1", isActive: true, usage: "INFLOW", currency: "PEN", type: "BANK_ACCOUNT" }),
-    };
-    const methodRepo = { findOne: jest.fn() };
-    const uc = new AddSaleOrderPaymentUsecase(
-      uow as any,
-      paymentRepo as any,
-      saleOrderRepo as any,
-      accountRepo as any,
-      methodRepo as any,
-    );
-
-    await expect(uc.execute({
-      saleOrderId: "order-1",
-      companyPaymentAccountId: "account-1",
-      method: "TRANSFERENCIA",
-      amount: 10,
-    })).rejects.toThrow("Selecciona el método de pago del cobro");
-  });
-
-  it("rejects a receiver account that is incompatible with the payment method", async () => {
-    const uow = { runInTransaction: (fn: any) => fn({}) };
-    const paymentRepo = { bulkCreate: jest.fn() };
-    const saleOrderRepo = { findByIdForUpdate: jest.fn().mockResolvedValue({ id: "order-1", total: 100 }) };
-    const accountRepo = {
-      findOne: jest.fn().mockResolvedValue({ id: "account-1", isActive: true, usage: "INFLOW", currency: "PEN", type: "DIGITAL_WALLET" }),
-    };
-    const methodRepo = {
-      findOne: jest.fn().mockResolvedValue({ id: "method-1", isActive: true, code: "BANK_TRANSFER" }),
-    };
-    const uc = new AddSaleOrderPaymentUsecase(
-      uow as any,
-      paymentRepo as any,
-      saleOrderRepo as any,
-      accountRepo as any,
-      methodRepo as any,
-    );
-
-    await expect(uc.execute({
-      saleOrderId: "order-1",
-      companyPaymentAccountId: "account-1",
-      paymentMethodId: "method-1",
-      method: "TRANSFERENCIA",
-      amount: 10,
-    })).rejects.toThrow("La cuenta receptora no es compatible con el método de pago");
+    await expect(usecase.execute({})).rejects.toBeInstanceOf(ConflictException);
   });
 });

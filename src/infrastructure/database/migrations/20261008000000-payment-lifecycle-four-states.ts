@@ -3,14 +3,29 @@ import { MigrationInterface, QueryRunner } from "typeorm";
 /**
  * Canonical income lifecycle used by sale payments.
  *
- * DRAFT/VOIDED were the legacy names. Existing rows are mapped to the
- * equivalent canonical state before the constraint is tightened so this
- * migration is safe for databases that already contain payment history.
+ * Every non-canonical state needs historical classification. Fail closed
+ * before changing the schema instead of silently assigning financial meaning.
  */
 export class PaymentLifecycleFourStates20261008000000 implements MigrationInterface {
   name = "PaymentLifecycleFourStates20261008000000";
 
   async up(queryRunner: QueryRunner): Promise<void> {
+    const legacyStatuses: Array<{ status: string; total: number }> = await queryRunner.query(`
+      SELECT status, COUNT(*)::int AS total
+      FROM sale_payments
+      WHERE status IS NULL
+         OR status NOT IN ('PENDING_CONFIRMATION', 'POSTED', 'CANCELLED', 'REVERSED')
+      GROUP BY status
+      ORDER BY status
+    `);
+    if (legacyStatuses.length > 0) {
+      const summary = legacyStatuses.map((row) => `${row.status ?? "NULL"}=${row.total}`).join(", ");
+      throw new Error(
+        `Migration stopped: unsupported payment lifecycle states need classification (${summary}). ` +
+        "Run audit:financial:strict against an authorized copy and resolve each payment with evidence before migrating.",
+      );
+    }
+
     await queryRunner.query(`
       ALTER TABLE sale_payments
         ADD COLUMN IF NOT EXISTS version integer NOT NULL DEFAULT 1,
@@ -18,16 +33,6 @@ export class PaymentLifecycleFourStates20261008000000 implements MigrationInterf
         ADD COLUMN IF NOT EXISTS accounting_date date NULL;
     `);
 
-    await queryRunner.query(`
-      UPDATE sale_payments
-      SET status = 'PENDING_CONFIRMATION'
-      WHERE status = 'DRAFT';
-    `);
-    await queryRunner.query(`
-      UPDATE sale_payments
-      SET status = 'REVERSED', posted_at = COALESCE(posted_at, voided_at)
-      WHERE status = 'VOIDED';
-    `);
     await queryRunner.query(`
       UPDATE sale_payments
       SET posted_at = COALESCE(posted_at, created_at),

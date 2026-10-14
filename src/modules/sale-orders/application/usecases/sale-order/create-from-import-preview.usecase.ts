@@ -35,6 +35,7 @@ import {
   UNIT_OF_WORK,
   UnitOfWork,
 } from 'src/shared/domain/ports/unit-of-work.port';
+import { TypeormTransactionContext } from 'src/shared/infrastructure/typeorm/typeorm.transaction-context';
 import {
   WORKFLOW_REPOSITORY,
   WorkflowRepository,
@@ -48,6 +49,13 @@ import {
   SaleOrderPackMatchResult,
 } from '../../services/sale-order-pack-matcher.service';
 import { businessDateAsUtcMidnight } from 'src/shared/utilidades/utils/business-date';
+import {
+  divideMoneyByQuantity,
+  fromMinorUnits,
+  multiplyMoneyByQuantity,
+  roundMoney,
+  toMinorUnits,
+} from 'src/modules/sale-orders/domain/value-objects/money';
 
 type ImportDestination = {
   agencySubsidiaryId: string | null;
@@ -260,10 +268,12 @@ export class CreateFromImportPreviewUseCase {
   }): Promise<{ saleOrderId: string; pricingWarning: string | null }> {
     const warehouseId = null;
 
-    const total = this.roundMoney(Number(input.row.total ?? 0));
-    const advance = Number(input.row.advance ?? 0);
-    const deliveryCost = this.roundMoney(Number(input.row.deliveryCost ?? 0));
-    const importedSubTotal = this.roundMoney(Math.max(total - deliveryCost, 0));
+    const total = roundMoney(input.row.total ?? 0);
+    const advance = roundMoney(input.row.advance ?? 0);
+    const deliveryCost = roundMoney(input.row.deliveryCost ?? 0);
+    const importedSubTotal = fromMinorUnits(
+      Math.max(toMinorUnits(total) - toMinorUnits(deliveryCost), 0),
+    );
 
     const itemDescription = input.row.productName?.trim() || 'Sin nombre';
     const referenceItemPlans = await this.buildImportedItemPlans({
@@ -276,17 +286,20 @@ export class CreateFromImportPreviewUseCase {
       referenceItemPlans,
       importedSubTotal,
     );
-    const subTotal = this.roundMoney(
-      itemPlans.reduce((sum, item) => sum + item.total, 0),
+    const subTotal = fromMinorUnits(
+      itemPlans.reduce((sum, item) => sum + toMinorUnits(item.total), 0),
     );
-    const discount = this.roundMoney(
-      Math.max(subTotal + deliveryCost - total, 0),
+    const discount = fromMinorUnits(
+      Math.max(
+        toMinorUnits(subTotal) + toMinorUnits(deliveryCost) - toMinorUnits(total),
+        0,
+      ),
     );
     const pricingWarning = this.buildPricingWarning({
       description: itemDescription,
       importedTotal: total,
-      referenceSubTotal: this.roundMoney(
-        referenceItemPlans.reduce((sum, item) => sum + item.total, 0),
+      referenceSubTotal: fromMinorUnits(
+        referenceItemPlans.reduce((sum, item) => sum + toMinorUnits(item.total), 0),
       ),
       discount,
       deliveryCost,
@@ -383,20 +396,52 @@ export class CreateFromImportPreviewUseCase {
 
     if (advance > 0) {
       const preferredMethod = await this.preferredPaymentMethod.resolve(input.tx);
-      await this.salePaymentRepo.bulkCreate(
+      const [advancePayment] = await this.salePaymentRepo.bulkCreate(
         [
           {
             saleOrderId,
             companyPaymentAccountId: null,
             paymentMethodId: preferredMethod.paymentMethodId,
+            status: 'PENDING_CONFIRMATION',
             date: businessDateAsUtcMidnight(),
             method: canonicalPaymentMethodName(preferredMethod.method),
             operationNumber: null,
             amount: advance,
             note: PaymentDescription.ANTICIPO,
+            createdByUserId: input.userId,
           },
         ],
         input.tx,
+      );
+      if (!advancePayment) {
+        throw new Error('No se pudo registrar el anticipo importado');
+      }
+      const manager = (input.tx as TypeormTransactionContext).manager;
+      if (!manager) {
+        throw new Error('La auditoria del anticipo requiere la transaccion del pedido');
+      }
+      await manager.query(
+        `INSERT INTO sale_order_auditory (sale_order_id, executed_by, action_execution)
+         VALUES ($1, $2, $3)`,
+        [saleOrderId, input.userId, 'payment_pending_created'],
+      );
+      await manager.query(
+        `INSERT INTO financial_outbox_events (event_type, aggregate_type, aggregate_id, payload)
+         VALUES ($1, 'sale_payment', $2, $3::jsonb)`,
+        [
+          'income.payment_pending_created',
+          advancePayment.id,
+          JSON.stringify({
+            incomeId: advancePayment.id,
+            saleOrderId,
+            actorId: input.userId,
+            details: {
+              status: 'PENDING_CONFIRMATION',
+              amount: advance,
+              source: 'sale_order_import',
+            },
+          }),
+        ],
       );
     }
 
@@ -419,13 +464,13 @@ export class CreateFromImportPreviewUseCase {
 
     if (skus.length === 1) {
       const sku = skus[0];
-      const referenceTotal = this.roundMoney(
+      const referenceTotal = roundMoney(
         Number(sku.price) > 0
-          ? Number(sku.price) * sku.quantity
+          ? multiplyMoneyByQuantity(sku.price, sku.quantity)
           : input.subTotal,
       );
       const total = referenceTotal;
-      const unitPrice = this.divideMoney(total, sku.quantity);
+      const unitPrice = divideMoneyByQuantity(total, sku.quantity);
 
       return [{
         referencePackId: null,
@@ -475,8 +520,9 @@ export class CreateFromImportPreviewUseCase {
       { status: 'UNIQUE' }
     >;
   }): ImportedItemPlan[] {
-    const packTotal = this.roundMoney(
-      Number(input.match.pack.pack.total ?? 0) * input.match.packQuantity,
+    const packTotal = multiplyMoneyByQuantity(
+      input.match.pack.pack.total ?? 0,
+      input.match.packQuantity,
     );
 
     const packComponentWeights = input.match.pack.items.map((item) =>
@@ -490,7 +536,7 @@ export class CreateFromImportPreviewUseCase {
       referencePackId: input.match.pack.pack.packId.value,
       description: input.match.pack.pack.description,
       quantity: input.match.packQuantity,
-      unitPrice: this.divideMoney(packTotal, input.match.packQuantity),
+      unitPrice: divideMoneyByQuantity(packTotal, input.match.packQuantity),
       total: packTotal,
       components: input.match.pack.items.map((item, index) => {
         const quantity = this.getPackItemQuantity(item, input.match);
@@ -499,7 +545,7 @@ export class CreateFromImportPreviewUseCase {
           skuId: item.skuId,
           referencePackItemId: item.id,
           quantity,
-          unitPrice: this.divideMoney(total, quantity),
+          unitPrice: divideMoneyByQuantity(total, quantity),
           total,
         };
       }),
@@ -515,10 +561,12 @@ export class CreateFromImportPreviewUseCase {
         packItemBySkuId.get(leftover.skuId)?.price ?? 0,
       );
       const unitWeight = skuPrice > 0 ? skuPrice : packItemPrice;
-      return unitWeight > 0 ? unitWeight * leftover.quantity : leftover.quantity;
+      return unitWeight > 0
+        ? multiplyMoneyByQuantity(unitWeight, leftover.quantity)
+        : leftover.quantity;
     });
-    const leftoverReferenceTotal = this.roundMoney(
-      leftoverWeights.reduce((sum, weight) => sum + weight, 0),
+    const leftoverReferenceTotal = fromMinorUnits(
+      leftoverWeights.reduce((sum, weight) => sum + toMinorUnits(weight), 0),
     );
     const leftoverTotals = this.allocateMoney(
       leftoverReferenceTotal,
@@ -535,14 +583,14 @@ export class CreateFromImportPreviewUseCase {
           referencePackId: null,
           description,
           quantity: leftover.quantity,
-          unitPrice: this.divideMoney(total, leftover.quantity),
+          unitPrice: divideMoneyByQuantity(total, leftover.quantity),
           total,
           components: [
             {
               skuId: leftover.skuId,
               referencePackItemId: null,
               quantity: leftover.quantity,
-              unitPrice: this.divideMoney(total, leftover.quantity),
+              unitPrice: divideMoneyByQuantity(total, leftover.quantity),
               total,
             },
           ],
@@ -575,15 +623,15 @@ export class CreateFromImportPreviewUseCase {
       referencePackId: matchedPack?.pack.packId.value ?? null,
       description: matchedPack?.pack.description ?? input.description,
       quantity: 1,
-      unitPrice: this.roundMoney(input.subTotal),
-      total: this.roundMoney(input.subTotal),
+      unitPrice: roundMoney(input.subTotal),
+      total: roundMoney(input.subTotal),
       components: input.skus.map((sku, index) => {
         const componentTotal = allocatedTotals[index] ?? 0;
         return {
           skuId: sku.skuId,
           referencePackItemId: packItemBySkuId.get(sku.skuId)?.id ?? null,
           quantity: sku.quantity,
-          unitPrice: this.divideMoney(componentTotal, sku.quantity),
+          unitPrice: divideMoneyByQuantity(componentTotal, sku.quantity),
           total: componentTotal,
         };
       }),
@@ -594,10 +642,10 @@ export class CreateFromImportPreviewUseCase {
     plans: ImportedItemPlan[],
     importedSubTotal: number,
   ): ImportedItemPlan[] {
-    const referenceSubTotal = this.roundMoney(
-      plans.reduce((sum, item) => sum + Number(item.total ?? 0), 0),
+    const referenceSubTotal = fromMinorUnits(
+      plans.reduce((sum, item) => sum + toMinorUnits(item.total ?? 0), 0),
     );
-    const targetSubTotal = this.roundMoney(importedSubTotal);
+    const targetSubTotal = roundMoney(importedSubTotal);
 
     if (referenceSubTotal >= targetSubTotal || plans.length === 0) {
       return plans;
@@ -622,13 +670,13 @@ export class CreateFromImportPreviewUseCase {
 
       return {
         ...item,
-        unitPrice: this.divideMoney(itemTotal, item.quantity),
+        unitPrice: divideMoneyByQuantity(itemTotal, item.quantity),
         total: itemTotal,
         components: item.components.map((component, componentIndex) => {
           const total = componentTotals[componentIndex] ?? 0;
           return {
             ...component,
-            unitPrice: this.divideMoney(total, component.quantity),
+            unitPrice: divideMoneyByQuantity(total, component.quantity),
             total,
           };
         }),
@@ -643,10 +691,10 @@ export class CreateFromImportPreviewUseCase {
     discount: number;
     deliveryCost: number;
   }): string | null {
-    const importedSubTotal = this.roundMoney(
-      Math.max(input.importedTotal - input.deliveryCost, 0),
+    const importedSubTotal = fromMinorUnits(
+      Math.max(toMinorUnits(input.importedTotal) - toMinorUnits(input.deliveryCost), 0),
     );
-    const referenceSubTotal = this.roundMoney(input.referenceSubTotal);
+    const referenceSubTotal = roundMoney(input.referenceSubTotal);
 
     if (input.discount > 0) {
       return `Se reconocio ${input.description} y se aplico un descuento comercial de S/ ${input.discount.toFixed(2)} para respetar el importe importado de S/ ${input.importedTotal.toFixed(2)}.`;
@@ -666,14 +714,18 @@ export class CreateFromImportPreviewUseCase {
       { status: 'UNIQUE' }
     >,
   ): number {
-    const quantity = Number(item.quantity ?? 0) * Number(match.packQuantity);
-    if (quantity > 0) return this.roundQuantity(quantity);
+    const itemQuantityHundredths = toMinorUnits(Number(item.quantity ?? 0));
+    if (itemQuantityHundredths > 0) {
+      return this.quantityFromHundredths(
+        BigInt(itemQuantityHundredths) * BigInt(match.packQuantity),
+      );
+    }
 
-    const compositionQuantity = Number(
+    const compositionQuantityHundredths = toMinorUnits(Number(
       match.composition.find((component) => component.skuId === item.skuId)
         ?.quantity ?? 0,
-    );
-    return this.roundQuantity(compositionQuantity);
+    ));
+    return fromMinorUnits(compositionQuantityHundredths);
   }
 
   private getPackItemReferenceTotal(
@@ -688,12 +740,15 @@ export class CreateFromImportPreviewUseCase {
       { status: 'UNIQUE' }
     >,
   ): number {
-    const lineTotal = Number(item.lineTotal ?? 0) * Number(match.packQuantity);
-    if (lineTotal > 0) return this.roundMoney(lineTotal);
+    const lineTotal = multiplyMoneyByQuantity(
+      Number(item.lineTotal ?? 0),
+      Number(match.packQuantity),
+    );
+    if (lineTotal > 0) return lineTotal;
 
     const quantity = this.getPackItemQuantity(item, match);
     const price = Number(item.price ?? 0);
-    if (price > 0) return this.roundMoney(price * quantity);
+    if (price > 0) return multiplyMoneyByQuantity(price, quantity);
 
     return quantity;
   }
@@ -701,66 +756,76 @@ export class CreateFromImportPreviewUseCase {
   private aggregateImportedSkus(
     skus: ResolvedImportSku[],
   ): ResolvedImportSku[] {
-    const bySkuId = new Map<string, ResolvedImportSku>();
+    const bySkuId = new Map<
+      string,
+      { sku: ResolvedImportSku; quantityHundredths: number }
+    >();
 
     for (const sku of skus) {
       const skuId = sku.skuId?.trim();
-      const quantity = this.roundQuantity(Number(sku.quantity ?? 0));
-      if (!skuId || quantity <= 0) continue;
+      const quantityHundredths = toMinorUnits(Number(sku.quantity ?? 0));
+      if (!skuId || quantityHundredths <= 0) continue;
 
       const current = bySkuId.get(skuId);
       if (current) {
-        current.quantity = this.roundQuantity(current.quantity + quantity);
+        const combinedHundredths = current.quantityHundredths + quantityHundredths;
+        if (!Number.isSafeInteger(combinedHundredths)) {
+          throw new BadRequestException(
+            'La cantidad acumulada del producto esta fuera del rango permitido',
+          );
+        }
+        current.quantityHundredths = combinedHundredths;
         continue;
       }
 
-      bySkuId.set(skuId, { ...sku, skuId, quantity });
+      bySkuId.set(skuId, { sku: { ...sku, skuId }, quantityHundredths });
     }
 
-    return [...bySkuId.values()].sort((left, right) =>
-      left.skuId.localeCompare(right.skuId),
-    );
+    return [...bySkuId.values()]
+      .map(({ sku, quantityHundredths }) => ({
+        ...sku,
+        quantity: fromMinorUnits(quantityHundredths),
+      }))
+      .sort((left, right) => left.skuId.localeCompare(right.skuId));
   }
 
   private allocateMoney(total: number, weights: number[]): number[] {
     if (weights.length === 0) return [];
 
-    const targetCents = Math.round(this.roundMoney(total) * 100);
+    const targetCents = toMinorUnits(roundMoney(total));
     const normalizedWeights = weights.map((weight) =>
-      Number.isFinite(weight) && weight > 0 ? weight : 0,
+      Number.isFinite(weight) && weight > 0 ? toMinorUnits(weight) : 0,
     );
     const totalWeight = normalizedWeights.reduce(
-      (sum, weight) => sum + weight,
-      0,
+      (sum, weight) => sum + BigInt(weight),
+      0n,
     );
     const effectiveWeights =
-      totalWeight > 0 ? normalizedWeights : weights.map(() => 1);
+      totalWeight > 0n ? normalizedWeights : weights.map(() => 100);
     const effectiveTotalWeight = effectiveWeights.reduce(
-      (sum, weight) => sum + weight,
-      0,
+      (sum, weight) => sum + BigInt(weight),
+      0n,
     );
-    let assignedCents = 0;
+    const targetCentsInteger = BigInt(targetCents);
+    let assignedCents = 0n;
 
     return effectiveWeights.map((weight, index) => {
       const cents =
         index === effectiveWeights.length - 1
-          ? targetCents - assignedCents
-          : Math.floor((targetCents * weight) / effectiveTotalWeight);
+          ? targetCentsInteger - assignedCents
+          : (targetCentsInteger * BigInt(weight)) / effectiveTotalWeight;
       assignedCents += cents;
-      return cents / 100;
+      return fromMinorUnits(Number(cents));
     });
   }
 
-  private divideMoney(total: number, quantity: number): number {
-    return quantity > 0 ? this.roundMoney(total / quantity) : 0;
-  }
-
-  private roundMoney(value: number): number {
-    return Math.round((Number(value ?? 0) + Number.EPSILON) * 100) / 100;
-  }
-
-  private roundQuantity(value: number): number {
-    return Math.round((Number(value ?? 0) + Number.EPSILON) * 100) / 100;
+  private quantityFromHundredths(value: bigint): number {
+    if (value > BigInt(Number.MAX_SAFE_INTEGER) || value < BigInt(Number.MIN_SAFE_INTEGER)) {
+      throw new BadRequestException(
+        'La cantidad de componentes esta fuera del rango permitido',
+      );
+    }
+    return fromMinorUnits(Number(value));
   }
 
   private resolveImportDestination(address: string | null): ImportDestination {

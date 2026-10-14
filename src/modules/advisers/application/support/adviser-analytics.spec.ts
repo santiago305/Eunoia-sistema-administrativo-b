@@ -27,8 +27,8 @@ describe('adviser analytics', () => {
     const points = buildAdviserMonthlyAnalytics(
       ['2026-01', '2026-02', '2026-03'],
       [
-        { monthKey: '2026-01', orders: 10, soldTotal: 1000, collectedTotal: 800 },
-        { monthKey: '2026-03', orders: 20, soldTotal: 2000, collectedTotal: 2000 },
+        { monthKey: '2026-01', currency: 'PEN', orders: 10, soldTotal: 1000, collectedTotal: 800 },
+        { monthKey: '2026-03', currency: 'PEN', orders: 20, soldTotal: 2000, collectedTotal: 2000 },
       ],
     );
 
@@ -47,7 +47,7 @@ describe('adviser analytics', () => {
     const points = buildAdviserMonthlyAnalytics(
       ['2026-01', '2026-02', '2026-03', '2026-04'],
       [
-        { monthKey: '2026-03', orders: 1, soldTotal: 500, collectedTotal: 0 },
+        { monthKey: '2026-03', currency: 'PEN', orders: 1, soldTotal: 500, collectedTotal: 0 },
       ],
     );
 
@@ -62,5 +62,27 @@ describe('adviser analytics', () => {
     expect(
       buildAdviserMonthlyAnalytics(['2026-01', '2026-02'], []),
     ).toEqual([]);
+  });
+
+  it('calculates each currency series independently', () => {
+    const points = buildAdviserMonthlyAnalytics(
+      ['2026-01', '2026-02'],
+      [
+        { monthKey: '2026-01', currency: 'PEN', orders: 1, soldTotal: 100, collectedTotal: 50 },
+        { monthKey: '2026-02', currency: 'PEN', orders: 1, soldTotal: 200, collectedTotal: 100 },
+        { monthKey: '2026-01', currency: 'USD', orders: 1, soldTotal: 10, collectedTotal: 10 },
+        { monthKey: '2026-02', currency: 'USD', orders: 2, soldTotal: 20, collectedTotal: 20 },
+      ],
+    );
+
+    expect(points.map(({ currency, monthKey, soldTotal }) => ({ currency, monthKey, soldTotal }))).toEqual([
+      { currency: 'PEN', monthKey: '2026-01', soldTotal: 100 },
+      { currency: 'PEN', monthKey: '2026-02', soldTotal: 200 },
+      { currency: 'USD', monthKey: '2026-01', soldTotal: 10 },
+      { currency: 'USD', monthKey: '2026-02', soldTotal: 20 },
+    ]);
+    expect(points[0].collectionRate).toBe(50);
+    expect(points[2].collectionRate).toBe(100);
+    expect(getAdviserPerformanceTrend(points.filter((point) => point.currency === 'PEN')).direction).toBe('improved');
   });
 });

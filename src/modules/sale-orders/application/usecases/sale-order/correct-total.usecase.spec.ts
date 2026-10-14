@@ -49,6 +49,7 @@ describe("CorrectSaleOrderTotalUsecase", () => {
     withoutHistory?: boolean;
     reservationBeforePayment?: boolean;
   } = {}) {
+    (tx as any).manager.query = jest.fn().mockResolvedValue([]);
     const workflowName = options.workflowName ?? "ABONADO CE";
     const reservationBeforePayment =
       options.reservationBeforePayment ?? true;
@@ -186,7 +187,7 @@ describe("CorrectSaleOrderTotalUsecase", () => {
       updateAmounts: jest.fn().mockResolvedValue(undefined),
     };
     const paymentRepo = {
-      listBySaleOrderIds: jest.fn().mockResolvedValue([{ amount: 20 }]),
+      listBySaleOrderIds: jest.fn().mockResolvedValue([{ amount: 20, status: "POSTED" }]),
     };
     const workflowRepo = {
       findDetailedById: jest.fn().mockResolvedValue({
@@ -258,14 +259,15 @@ describe("CorrectSaleOrderTotalUsecase", () => {
     };
   }
 
+  async function executeWithPreview(usecase: CorrectSaleOrderTotalUsecase, total: number) {
+    const preview = await usecase.preview({ saleOrderId: "order-1", total });
+    return usecase.execute({ saleOrderId: "order-1", total, executedBy: "user-2", previewToken: preview.previewToken });
+  }
+
   it("recalculates the debt and returns a delivered CE order to in progress", async () => {
     const dependencies = buildUsecase();
 
-    const result = await dependencies.usecase.execute({
-      saleOrderId: "order-1",
-      total: 100,
-      executedBy: "user-2",
-    });
+    const result = await executeWithPreview(dependencies.usecase, 100);
 
     expect(result).toEqual(
       expect.objectContaining({
@@ -313,14 +315,109 @@ describe("CorrectSaleOrderTotalUsecase", () => {
     );
   });
 
+  it("releases allocations above a reduced total into immutable customer credit", async () => {
+    const dependencies = buildUsecase();
+    dependencies.saleOrderRepo.findByIdForUpdate.mockResolvedValue({
+      ...buildOrder(),
+      total: 100,
+      clientId: "client-1",
+    });
+    const query = jest.fn(async () => [{ id: "payment-1", currency: "PEN", applied: "100.00" }]);
+    (tx as any).manager.query = query;
+
+    const preview = await dependencies.usecase.preview({ saleOrderId: "order-1", total: 70 });
+    await dependencies.usecase.execute({ saleOrderId: "order-1", total: 70, executedBy: "user-2", previewToken: preview.previewToken });
+
+    expect(query).toHaveBeenCalledWith(expect.stringContaining("FOR UPDATE OF sp"), ["order-1"]);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining("INSERT INTO sale_payment_allocations"), ["payment-1", "order-1", -30, "PEN", "user-2"]);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining("INSERT INTO customer_credit_movements"), ["client-1", "payment-1", "order-1", 30, "PEN", "user-2"]);
+    expect(query).toHaveBeenCalledWith(expect.stringContaining("income.customer_credit_created"), expect.any(Array));
+  });
+
+  it("distributes corrected totals with exact centavo remainders and stable tie-breaking", () => {
+    const { usecase } = buildUsecase();
+    const allocate = (usecase as any).allocate.bind(usecase) as (total: number, rows: Array<{ id: string; quantity: number; total: number }>) => Array<{ id: string; total: number; unitPrice: number }>;
+
+    const tiedShares = allocate(0.02, [
+      { id: "first", quantity: 1, total: 1 },
+      { id: "second", quantity: 1, total: 1 },
+      { id: "third", quantity: 1, total: 1 },
+    ]);
+    const quantityShares = allocate(0.05, [
+      { id: "one", quantity: 1, total: 0 },
+      { id: "two", quantity: 2, total: 0 },
+      { id: "three", quantity: 3, total: 0 },
+    ]);
+    const largeShares = allocate(922707636016, [
+      { id: "large-first", quantity: 1, total: 968675763645.37 },
+      { id: "large-second", quantity: 1, total: 901367655565.94 },
+      { id: "large-third", quantity: 1, total: 971197777787.26 },
+    ]);
+
+    expect(tiedShares.map(({ id, total }) => [id, total])).toEqual([
+      ["first", 0.01], ["second", 0.01], ["third", 0],
+    ]);
+    expect(quantityShares.map(({ id, total }) => [id, total])).toEqual([
+      ["one", 0.01], ["two", 0.02], ["three", 0.02],
+    ]);
+    expect(largeShares.map(({ id, total }) => [id, total])).toEqual([
+      ["large-first", 314582417319.38],
+      ["large-second", 292723764362.96],
+      ["large-third", 315401454333.66],
+    ]);
+    expect(tiedShares.reduce((sum, row) => sum + Math.round(row.total * 100), 0)).toBe(2);
+    expect(quantityShares.reduce((sum, row) => sum + Math.round(row.total * 100), 0)).toBe(5);
+  });
+
+  it("previews the exact posted-allocation release in the order currency without writing ledger rows", async () => {
+    const dependencies = buildUsecase();
+    dependencies.saleOrderRepo.findByIdForUpdate.mockResolvedValue({ ...buildOrder(), total: 100, currency: "USD" });
+    const query = jest.fn().mockResolvedValue([{ id: "payment-usd", currency: "USD", applied: "100.00" }]);
+    (tx as any).manager.query = query;
+
+    const preview = await dependencies.usecase.preview({ saleOrderId: "order-1", total: 70 });
+
+    expect(preview).toEqual(expect.objectContaining({
+      currency: "USD", currentTotal: 100, correctedTotal: 70,
+      appliedAmount: 100, pendingAmount: 0, customerCreditCreated: 30,
+      releasedByIncome: [{ paymentId: "payment-usd", currency: "USD", amount: 30 }],
+    }));
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(query.mock.calls[0][0]).not.toContain("FOR UPDATE");
+    expect(dependencies.itemRepo.updateAmounts).not.toHaveBeenCalled();
+    expect(dependencies.componentRepo.updateAmounts).not.toHaveBeenCalled();
+  });
+
+  it("blocks preview and correction when a legacy posted income has a different currency", async () => {
+    const dependencies = buildUsecase();
+    dependencies.saleOrderRepo.findByIdForUpdate.mockResolvedValue({ ...buildOrder(), total: 100, currency: "PEN" });
+    (tx as any).manager.query = jest.fn().mockResolvedValue([{ id: "payment-usd", currency: "USD", applied: "100.00" }]);
+
+    await expect(dependencies.usecase.preview({ saleOrderId: "order-1", total: 70 })).rejects.toThrow(
+      "hay ingresos contabilizados en una moneda distinta",
+    );
+  });
+
+  it("rejects correction when posted allocations changed after preview", async () => {
+    const dependencies = buildUsecase();
+    dependencies.saleOrderRepo.findByIdForUpdate.mockResolvedValue({ ...buildOrder(), total: 100, currency: "PEN" });
+    const query = jest.fn()
+      .mockResolvedValueOnce([{ id: "payment-1", currency: "PEN", applied: "100.00" }])
+      .mockResolvedValueOnce([{ id: "payment-1", currency: "PEN", applied: "90.00" }]);
+    (tx as any).manager.query = query;
+    const preview = await dependencies.usecase.preview({ saleOrderId: "order-1", total: 70 });
+
+    await expect(dependencies.usecase.execute({
+      saleOrderId: "order-1", total: 70, executedBy: "user-2", previewToken: preview.previewToken,
+    })).rejects.toThrow("cambiaron desde la previsualización");
+    expect(dependencies.itemRepo.updateAmounts).not.toHaveBeenCalled();
+    expect(dependencies.saleOrderRepo.updateAmounts).not.toHaveBeenCalled();
+  });
+
   it("applies the same analysis to any workflow name", async () => {
     const { usecase } = buildUsecase({ workflowName: "VENTA REGULAR" });
 
-    const result = await usecase.execute({
-      saleOrderId: "order-1",
-      total: 100,
-      executedBy: "user-2",
-    });
+    const result = await executeWithPreview(usecase, 100);
 
     expect(result.stateChanged).toBe(true);
     expect(result.currentState.code).toBe("IN_PROGRESS");
@@ -332,11 +429,7 @@ describe("CorrectSaleOrderTotalUsecase", () => {
       downstreamState: true,
     });
 
-    const result = await usecase.execute({
-      saleOrderId: "order-1",
-      total: 100,
-      executedBy: "user-2",
-    });
+    const result = await executeWithPreview(usecase, 100);
 
     expect(result.currentState).toEqual(
       expect.objectContaining({
@@ -357,11 +450,7 @@ describe("CorrectSaleOrderTotalUsecase", () => {
       withoutHistory: true,
     });
 
-    const result = await usecase.execute({
-      saleOrderId: "order-1",
-      total: 100,
-      executedBy: "user-2",
-    });
+    const result = await executeWithPreview(usecase, 100);
 
     expect(result.stateChanged).toBe(true);
     expect(result.currentState.code).toBe("WAITING_PAYMENT");
@@ -370,11 +459,7 @@ describe("CorrectSaleOrderTotalUsecase", () => {
   it("restores and releases stock when payment rollback returns before reservation", async () => {
     const dependencies = buildUsecase({ reservationBeforePayment: false });
 
-    const result = await dependencies.usecase.execute({
-      saleOrderId: "order-1",
-      total: 100,
-      executedBy: "user-2",
-    });
+    const result = await executeWithPreview(dependencies.usecase, 100);
 
     expect(result.stockRestored).toBe(true);
     expect(result.stockRestoredAndReserved).toBe(false);

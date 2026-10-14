@@ -21,7 +21,15 @@ import { GetIncomeEvidenceUsecase, UploadIncomeEvidenceUsecase } from "./applica
 import { GetIncomeSearchStateUsecase } from "./application/usecases/income-search/get-state.usecase";
 import { SaveIncomeSearchMetricUsecase } from "./application/usecases/income-search/save-metric.usecase";
 import { DeleteIncomeSearchMetricUsecase } from "./application/usecases/income-search/delete-metric.usecase";
+import { ManageIncomePaymentsUsecase } from "./application/usecases/manage-income-payments.usecase";
 import { INCOME_QUERY_REPOSITORY } from "./domain/ports/income-query.repository";
+import { FinancialOutboxPublisher } from "./infrastructure/financial-outbox-publisher.service";
+import { ExportIncomeExcelUsecase } from "./application/usecases/export-income-excel.usecase";
+import { IncomeResourceScopeGuard } from "./adapters/in/guards/income-resource-scope.guard";
+import { IncomeEvidenceAccessUsecase } from "./application/usecases/income-evidence-access.usecase";
+import { IncomeEvidenceUploadRecoveryService } from "./infrastructure/income-evidence-upload-recovery.service";
+import { IncomeEvidenceRevisionsUsecase } from "./application/usecases/income-evidence-revisions.usecase";
+import { IncomeEvidenceQuarantineUsecase } from "./application/usecases/income-evidence-quarantine.usecase";
 
 @Module({
   imports: [
@@ -42,14 +50,22 @@ import { INCOME_QUERY_REPOSITORY } from "./domain/ports/income-query.repository"
   controllers: [IncomeController],
   providers: [
     ListIncomeUsecase,
+    ExportIncomeExcelUsecase,
     GetIncomeSummaryUsecase,
     GetIncomeSearchStateUsecase,
     SaveIncomeSearchMetricUsecase,
     DeleteIncomeSearchMetricUsecase,
+    ManageIncomePaymentsUsecase,
+    FinancialOutboxPublisher,
     { provide: INCOME_QUERY_REPOSITORY, useClass: IncomeQueryTypeormRepository },
     { provide: LISTING_SEARCH_STORAGE, useClass: ListingSearchTypeormRepository },
     GetIncomeEvidenceUsecase,
+    IncomeEvidenceAccessUsecase,
+    IncomeEvidenceRevisionsUsecase,
+    IncomeEvidenceQuarantineUsecase,
+    IncomeEvidenceUploadRecoveryService,
     UploadIncomeEvidenceUsecase,
+    IncomeResourceScopeGuard,
   ],
 })
 export class IncomeModule {}

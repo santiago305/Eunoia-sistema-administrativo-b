@@ -12,6 +12,7 @@ import { IncomeSearchSnapshot } from "../../dtos/income-search/income-search-sna
 import {
   buildIncomeSearchLabel,
   INCOME_EVIDENCE_SEARCH_OPTIONS,
+  INCOME_RECONCILIATION_SEARCH_OPTIONS,
   INCOME_STATUS_SEARCH_OPTIONS,
   sanitizeIncomeSearchSnapshot,
 } from "../../support/income-search.utils";
@@ -52,6 +53,7 @@ export class GetIncomeSearchStateUsecase {
     const maps = {
       statuses: new Map(INCOME_STATUS_SEARCH_OPTIONS.map((item) => [item.id, item.label])),
       evidenceStates: new Map(INCOME_EVIDENCE_SEARCH_OPTIONS.map((item) => [item.id, item.label])),
+      reconciliationStates: new Map(INCOME_RECONCILIATION_SEARCH_OPTIONS.map((item) => [item.id, item.label])),
       methods: new Map(methodOptions.map((item) => [item.id, item.label])),
       accounts: new Map([
         ["__unassigned__", "Sin cuenta asignada"],
