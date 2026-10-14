@@ -63,6 +63,9 @@ export class User {
   @Column({ name: 'created_by_user_id', type: 'uuid', nullable: true })
   createdByUserId?: string | null;
 
+  @Column({ name: 'company_id', type: 'uuid', nullable: true })
+  companyId?: string | null;
+
   @Column({ name: 'manageable_role_descriptions', type: 'text', array: true, nullable: true })
   manageableRoleDescriptions?: string[] | null;
 

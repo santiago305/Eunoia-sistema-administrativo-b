@@ -178,6 +178,7 @@ import { ManagePaymentEvidenceQuarantine20261013030000 } from './migrations/2026
 import { AuditEmptyOrderCancellation20261013040000 } from './migrations/20261013040000-audit-empty-order-cancellation';
 import { MapLegacySalePaymentUpdatePermission20261013050000 } from './migrations/20261013050000-map-legacy-sale-payment-update-permission';
 import { ValidateSalePaymentLifecycle20261014010000 } from './migrations/20261014010000-validate-sale-payment-lifecycle';
+import { RepairUserCompanyScope20261014020000 } from './migrations/20261014020000-repair-user-company-scope';
 
 export const getBaseTypeOrmOptions = (): DataSourceOptions => ({
   type: 'postgres',
@@ -367,6 +368,7 @@ export const databaseMigrations = [
   AuditEmptyOrderCancellation20261013040000,
   MapLegacySalePaymentUpdatePermission20261013050000,
   ValidateSalePaymentLifecycle20261014010000,
+  RepairUserCompanyScope20261014020000,
 ];
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({

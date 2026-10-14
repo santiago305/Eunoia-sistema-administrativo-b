@@ -23,6 +23,7 @@ export class UserMapper {
       createdByUserId: orm.createdByUserId ?? null,
       manageableRoleDescriptions: orm.manageableRoleDescriptions ?? null,
       manageableUserIds: orm.manageableUserIds ?? null,
+      companyId: orm.companyId ?? null,
     });
   }
 
@@ -39,6 +40,7 @@ export class UserMapper {
       createdByUserId: domain.createdByUserId ?? null,
       manageableRoleDescriptions: domain.manageableRoleDescriptions ?? null,
       manageableUserIds: domain.manageableUserIds ?? null,
+      companyId: domain.companyId ?? null,
       role: domain.roleId ? ({ roleId: domain.roleId.value } as OrmUser['role']) : null,
       createdAt: domain.createdAt,
     };

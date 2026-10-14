@@ -17,5 +17,6 @@ export class User {
     public createdByUserId?: string | null,
     public manageableRoleDescriptions?: string[] | null,
     public manageableUserIds?: string[] | null,
+    public companyId?: string | null,
   ) {}
 }

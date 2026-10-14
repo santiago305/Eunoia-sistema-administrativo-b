@@ -13,6 +13,7 @@ describe('UserMapper', () => {
     orm.email = 'ana@example.com';
     orm.password = 'hash';
     orm.deleted = false;
+    orm.companyId = 'company-1';
     orm.avatarUrl = 'avatar.png';
     orm.createdAt = new Date('2024-01-01T00:00:00.000Z');
     orm.role = { roleId: 'role-1' } as any;
@@ -22,6 +23,7 @@ describe('UserMapper', () => {
     expect(domain.id).toBe('user-1');
     expect(domain.email.value).toBe('ana@example.com');
     expect(domain.roleId.value).toBe('role-1');
+    expect(domain.companyId).toBe('company-1');
   });
 
   it('maps orm user with missing role id to domain user with null roleId', () => {
@@ -44,6 +46,7 @@ describe('UserMapper', () => {
       password: new Password('hash'),
       roleId: new RoleId('role-1'),
       deleted: false,
+      companyId: 'company-1',
       avatarUrl: 'avatar.png',
       createdAt: new Date('2024-01-01T00:00:00.000Z'),
     });
@@ -52,6 +55,7 @@ describe('UserMapper', () => {
 
     expect(persistence.email).toBe('ana@example.com');
     expect((persistence.role as any).roleId).toBe('role-1');
+    expect(persistence.companyId).toBe('company-1');
   });
 });
 

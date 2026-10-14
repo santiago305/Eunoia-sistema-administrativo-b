@@ -37,6 +37,7 @@ import {
 import { HttpCreateCompanyDto } from "../dtos/http-company-create.dto";
 import { HttpUpdateCompanyDto } from "../dtos/http-company-update.dto";
 import { CompanyHttpMapper } from "../mappers/company-http.mapper";
+import { User as CurrentUser } from "src/shared/utilidades/decorators/user.decorator";
 
 @Controller("company")
 export class CompanyController {
@@ -56,9 +57,10 @@ export class CompanyController {
 
   @Post()
   @UseGuards(JwtAuthGuard, FirstCompanyCreationGuard, CsrfGuard)
-  async create(@Body() dto: HttpCreateCompanyDto) {
+  async create(@Body() dto: HttpCreateCompanyDto, @CurrentUser() user: { id: string }) {
     return this.createCompanyUsecase.execute(
       CompanyHttpMapper.toCreateInput(dto),
+      user.id,
     );
   }
 

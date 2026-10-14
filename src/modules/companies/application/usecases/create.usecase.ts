@@ -6,6 +6,7 @@ import { UNIT_OF_WORK, UnitOfWork } from "src/shared/domain/ports/unit-of-work.p
 import { successResponse } from "src/shared/response-standard/response";
 import { CreateCompanyInput } from "../dtos/company/input/create.input";
 import { CompanyOutputMapper } from "../mappers/company-output.mapper";
+import { USER_REPOSITORY, UserRepository } from "src/modules/users/application/ports/user.repository";
 
 export class CreateCompanyUsecase {
   constructor(
@@ -13,9 +14,11 @@ export class CreateCompanyUsecase {
     private readonly uow: UnitOfWork,
     @Inject(COMPANY_REPOSITORY)
     private readonly companyRepo: CompanyRepository,
+    @Inject(USER_REPOSITORY)
+    private readonly userRepository: UserRepository,
   ) {}
 
-  async execute(input: CreateCompanyInput) {
+  async execute(input: CreateCompanyInput, requesterUserId: string) {
     return this.uow.runInTransaction(async (tx) => {
       const existing = await this.companyRepo.findSingle(tx);
       if (existing) {
@@ -45,6 +48,10 @@ export class CreateCompanyUsecase {
 
       try {
         const createdCompany = await this.companyRepo.create(company, tx);
+        if (!createdCompany.companyId) {
+          throw new InternalServerErrorException("La empresa creada no tiene un identificador válido");
+        }
+        await this.userRepository.assignCompany(requesterUserId, createdCompany.companyId, tx);
         return successResponse(
           "Empresa creada correctamente",
           CompanyOutputMapper.toOutput(createdCompany),

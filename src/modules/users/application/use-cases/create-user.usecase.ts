@@ -132,6 +132,7 @@ export class CreateUserUseCase {
       avatarUrl: dto.avatarUrl,
       telefono: dto.telefono,
       createdByUserId: requester.userId,
+      companyId: company.companyId,
     });
 
     try {

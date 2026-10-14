@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { AccessControlService } from './access-control.service';
 import { PermissionEffect } from '../../adapters/out/persistence/typeorm/entities/user-permission-override.entity';
 
@@ -198,6 +198,18 @@ describe('AccessControlService (fase 6 reglas finales)', () => {
         reason: 'policy',
       });
       expect(userPermissionOverrideRepository.save).toHaveBeenCalled();
+    });
+  });
+
+  describe('assignPermissionsToRole', () => {
+    it('rejects assigning both financial read scopes to the same role', async () => {
+      roleRepository.findOne.mockResolvedValue({ roleId: 'role-admin', description: 'administrador' });
+
+      await expect(
+        service.assignPermissionsToRole('role-admin', ['income.view_all', 'income.view_own'], 'master'),
+      ).rejects.toBeInstanceOf(BadRequestException);
+
+      expect(rolePermissionRepository.delete).not.toHaveBeenCalled();
     });
   });
 });

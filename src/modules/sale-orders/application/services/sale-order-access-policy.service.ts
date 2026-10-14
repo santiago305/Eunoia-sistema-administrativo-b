@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { ForbiddenException, Injectable, Logger } from "@nestjs/common";
 import { AccessControlService } from "src/modules/access-control/application/services/access-control.service";
 import { IncomeDataScope, IncomeDataScopeService } from "src/modules/income/application/services/income-data-scope.service";
 
@@ -16,6 +16,8 @@ export type SaleOrderReadContext = {
 
 @Injectable()
 export class SaleOrderAccessPolicyService {
+  private readonly logger = new Logger(SaleOrderAccessPolicyService.name);
+
   constructor(
     private readonly accessControl: AccessControlService,
     private readonly incomeDataScope: IncomeDataScopeService,
@@ -27,8 +29,13 @@ export class SaleOrderAccessPolicyService {
     let incomeDataScope: IncomeDataScope | null = null;
     let includeIncomePayments = false;
     if (allows("income.view_all") || allows("income.view_own")) {
-      incomeDataScope = await this.incomeDataScope.resolve(userId);
-      includeIncomePayments = true;
+      try {
+        incomeDataScope = await this.incomeDataScope.resolve(userId);
+        includeIncomePayments = true;
+      } catch (error) {
+        if (!this.isMissingCompanyScope(error)) throw error;
+        this.logger.warn(`Se omiten pagos financieros en pedidos: usuario sin empresa userId=${userId}`);
+      }
     }
 
     return {
@@ -41,5 +48,10 @@ export class SaleOrderAccessPolicyService {
       incomeDataScope,
       includeIncomePayments,
     };
+  }
+
+  private isMissingCompanyScope(error: unknown): boolean {
+    if (!(error instanceof ForbiddenException)) return false;
+    return error.message.includes("empresa asignada");
   }
 }

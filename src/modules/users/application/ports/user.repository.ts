@@ -1,5 +1,6 @@
 import { User } from '../../domain/entities/user.entity';
 import { Email } from '../../domain/value-objects/email.vo';
+import { TransactionContext } from 'src/shared/domain/ports/transaction-context.port';
 
 export const USER_REPOSITORY = Symbol('USER_REPOSITORY');
 
@@ -26,5 +27,6 @@ export interface UserRepository {
     },
   ): Promise<void>;
   reassignRole(fromRoleId: string, toRoleId: string): Promise<void>;
+  assignCompany(userId: string, companyId: string, tx?: TransactionContext): Promise<void>;
   save(user: User): Promise<User>;
 }

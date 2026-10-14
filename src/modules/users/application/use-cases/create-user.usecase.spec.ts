@@ -80,7 +80,13 @@ describe('CreateUserUseCase', () => {
       save: jest.fn().mockResolvedValue({}),
     };
 
-    const useCase = makeUseCase({ userRepository, roleReadRepository });
+    const useCase = makeUseCase({
+      userRepository,
+      roleReadRepository,
+      companyRepository: {
+        findSingle: jest.fn().mockResolvedValue({ companyId: 'company-eunoia', name: 'Eunoia Test' }),
+      },
+    });
 
     const result = await useCase.execute(
       {
@@ -95,6 +101,7 @@ describe('CreateUserUseCase', () => {
     expect(userRepository.existsByEmail).toHaveBeenCalledWith(new Email('ana@example.com'));
     expect(roleReadRepository.findById).toHaveBeenCalledWith('role-1');
     expect(userRepository.save).toHaveBeenCalled();
+    expect(userRepository.save.mock.calls[0][0].companyId).toBe('company-eunoia');
     expect(result).toEqual(successResponse('Usuario creado correctamente', { id: undefined }));
   });
 

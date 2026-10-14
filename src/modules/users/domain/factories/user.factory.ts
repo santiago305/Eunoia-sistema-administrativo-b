@@ -15,6 +15,7 @@ export class UserFactory {
     createdByUserId?: string | null;
     manageableRoleDescriptions?: string[] | null;
     manageableUserIds?: string[] | null;
+    companyId?: string | null;
   }): User {
     return new User(
       undefined,
@@ -30,6 +31,7 @@ export class UserFactory {
       params.createdByUserId ?? null,
       params.manageableRoleDescriptions ?? null,
       params.manageableUserIds ?? null,
+      params.companyId ?? null,
     );
   }
 
@@ -47,6 +49,7 @@ export class UserFactory {
     createdByUserId?: string | null;
     manageableRoleDescriptions?: string[] | null;
     manageableUserIds?: string[] | null;
+    companyId?: string | null;
   }): User {
     return new User(
       params.id,
@@ -62,6 +65,7 @@ export class UserFactory {
       params.createdByUserId ?? null,
       params.manageableRoleDescriptions ?? null,
       params.manageableUserIds ?? null,
+      params.companyId ?? null,
     );
   }
 }

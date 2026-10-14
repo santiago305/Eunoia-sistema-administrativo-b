@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Role } from 'src/modules/roles/adapters/out/persistence/typeorm/entities/role.entity';
@@ -421,6 +421,11 @@ export class AccessControlService {
     }
 
     const normalizedCodes = this.normalizePermissionCodes(permissionCodes);
+    if (normalizedCodes.includes('income.view_all') && normalizedCodes.includes('income.view_own')) {
+      throw new BadRequestException(
+        'Un rol no puede tener simultáneamente income.view_all e income.view_own',
+      );
+    }
     const permissions = await this.permissionRepository.find({
       where: { code: In(normalizedCodes) },
       select: ['id', 'code'],

@@ -8,6 +8,8 @@ import { User as OrmUser } from '../entities/user.entity';
 import { UserMapper } from '../mappers/user.mapper';
 import { UserManageableRole } from '../entities/user-manageable-role.entity';
 import { Role } from 'src/modules/roles/adapters/out/persistence/typeorm/entities/role.entity';
+import { TransactionContext } from 'src/shared/domain/ports/transaction-context.port';
+import { TypeormTransactionContext } from 'src/shared/domain/ports/typeorm-transaction-context';
 
 @Injectable()
 export class TypeormUserRepository implements UserRepository {
@@ -127,6 +129,15 @@ export class TypeormUserRepository implements UserRepository {
     return UserMapper.toDomain(saved);
   }
 
+  async assignCompany(userId: string, companyId: string, tx?: TransactionContext): Promise<void> {
+    await this.getOrmRepository(tx)
+      .createQueryBuilder()
+      .update(OrmUser)
+      .set({ companyId })
+      .where('user_id = :userId', { userId })
+      .execute();
+  }
+
   async updateManagementScope(
     id: string,
     params: {
@@ -174,6 +185,14 @@ export class TypeormUserRepository implements UserRepository {
       'UPDATE users SET role_id = $1 WHERE role_id = $2',
       [toRoleId, fromRoleId],
     );
+  }
+
+  private getOrmRepository(tx?: TransactionContext): Repository<OrmUser> {
+    if (tx && (tx as TypeormTransactionContext).manager) {
+      return (tx as TypeormTransactionContext).manager.getRepository(OrmUser);
+    }
+
+    return this.ormRepository;
   }
 }
 
