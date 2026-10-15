@@ -144,8 +144,20 @@ export class IncomeQueryTypeormRepository implements IncomeQueryRepository {
         .addSelect("COUNT(CASE WHEN GREATEST(so.total - COALESCE(payments.collected, 0), 0) <= 0 THEN 1 END)", "ordersPaid")
         .addSelect("COUNT(CASE WHEN GREATEST(so.total - COALESCE(payments.collected, 0), 0) > 0 THEN 1 END)", "ordersPending")
         .groupBy("so.currency"),
-      filters,
-    ).getRawMany();
+      { ...filters, scopeCompanyId: undefined },
+    )
+      .andWhere(
+        `:incomeScopeCompanyId IS NULL OR EXISTS (
+          SELECT 1
+          FROM company_payment_accounts scoped_company_account
+          INNER JOIN sale_payments scoped_payment
+            ON scoped_payment.company_payment_account_id = scoped_company_account.company_payment_account_id
+          WHERE scoped_payment.sale_order_id = so.id
+            AND scoped_company_account.company_id = :incomeScopeCompanyId
+        )`,
+        { incomeScopeCompanyId: filters.scopeCompanyId ?? null },
+      )
+      .getRawMany();
 
     const byMethodRows = await this.applyFilters(
       this.paymentRepo

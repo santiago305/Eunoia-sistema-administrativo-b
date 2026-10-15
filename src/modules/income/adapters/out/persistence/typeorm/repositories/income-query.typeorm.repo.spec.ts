@@ -3,6 +3,37 @@ import { normalizeIncomeFilters } from "src/modules/income/application/dtos/inco
 import { IncomeQueryTypeormRepository } from "./income-query.typeorm.repo";
 
 describe("IncomeQueryTypeormRepository customer-credit filter", () => {
+  it("applies company scope to pending orders without referencing an outer payment alias", async () => {
+    const createQueryBuilder = () => {
+      const query = {
+        andWhere: jest.fn().mockReturnThis(),
+        addGroupBy: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([]),
+        groupBy: jest.fn().mockReturnThis(),
+        innerJoin: jest.fn().mockReturnThis(),
+        leftJoin: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+      };
+      return query;
+    };
+    const paymentQuery = createQueryBuilder();
+    const orderQuery = createQueryBuilder();
+    const repository = new IncomeQueryTypeormRepository(
+      { createQueryBuilder: jest.fn().mockReturnValue(paymentQuery) } as any,
+      { createQueryBuilder: jest.fn().mockReturnValue(orderQuery) } as any,
+    );
+
+    await repository.getSummary(normalizeIncomeFilters({ scopeCompanyId: "company-1" }));
+
+    expect(orderQuery.andWhere).toHaveBeenCalledWith(
+      expect.stringContaining("scoped_payment.sale_order_id = so.id"),
+      { incomeScopeCompanyId: "company-1" },
+    );
+    expect(orderQuery.andWhere.mock.calls[0][0]).not.toContain("sp.company_payment_account_id");
+  });
+
   it("applies company scope independently from per-user access", () => {
     const andWhere = jest.fn().mockReturnThis();
     const query = { andWhere } as unknown as SelectQueryBuilder<unknown>;
