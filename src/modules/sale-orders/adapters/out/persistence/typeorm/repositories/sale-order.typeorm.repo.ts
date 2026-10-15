@@ -102,6 +102,17 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     return fromMinorUnits(cents);
   }
 
+  private sumOperationalPaymentAmounts(
+    payments: Array<{ amount?: number | string | null; status?: string }>,
+  ): number {
+    const cents = payments
+      .filter((payment) =>
+        payment.status === 'POSTED' || payment.status === 'PENDING_CONFIRMATION',
+      )
+      .reduce((sum, payment) => sum + toMinorUnits(payment.amount ?? 0), 0);
+    return fromMinorUnits(cents);
+  }
+
   private async loadSkuAttributes(
     manager: EntityManager,
     skuIds: string[],
@@ -715,7 +726,12 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
   private paymentStatusSql(readContext?: SaleOrderReadContext) {
     const incomeScopeSql = this.incomePaymentScopeSql(readContext, 'so', 'payment');
     const paymentsSumSql = `(
-      SELECT CASE WHEN EXISTS (
+      SELECT COALESCE((
+        SELECT SUM(payment.amount) FROM sale_payments payment
+        WHERE payment.sale_order_id = so.id
+          AND payment.status = 'PENDING_CONFIRMATION'
+          AND ${incomeScopeSql}
+      ), 0) + CASE WHEN EXISTS (
         SELECT 1 FROM sale_payment_allocations existing WHERE existing.sale_order_id = so.id
       ) THEN COALESCE((
         SELECT SUM(allocation.amount) FROM sale_payment_allocations allocation
@@ -729,12 +745,16 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     return `CASE WHEN so.total > 0 AND ${paymentsSumSql} >= so.total THEN '${SaleOrderPaymentStatusValues.PAID}' ELSE '${SaleOrderPaymentStatusValues.PENDING}' END`;
   }
 
-  private async loadPostedAppliedTotals(manager: EntityManager, saleOrderIds: string[]) {
+  private async loadOperationalAppliedTotals(manager: EntityManager, saleOrderIds: string[]) {
     const totals = new Map<string, number>();
     if (!saleOrderIds.length || typeof (manager as any).query !== 'function') return totals;
     const rows = await manager.query(
       `SELECT requested.sale_order_id AS "saleOrderId",
-              CASE WHEN EXISTS (
+              (COALESCE((
+                SELECT SUM(payment.amount) FROM sale_payments payment
+                WHERE payment.sale_order_id = requested.sale_order_id
+                  AND payment.status = 'PENDING_CONFIRMATION'
+              ), 0) + CASE WHEN EXISTS (
                 SELECT 1 FROM sale_payment_allocations existing
                 WHERE existing.sale_order_id = requested.sale_order_id
               ) THEN COALESCE((
@@ -745,7 +765,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
               ), 0) ELSE COALESCE((
                 SELECT SUM(payment.amount) FROM sale_payments payment
                 WHERE payment.sale_order_id = requested.sale_order_id AND payment.status = 'POSTED'
-              ), 0) END::numeric(14,2)::text AS amount
+              ), 0) END)::numeric(14,2)::text AS amount
        FROM unnest($1::uuid[]) AS requested(sale_order_id)`,
       [saleOrderIds],
     );
@@ -801,6 +821,9 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
     if (!paymentIds.length || typeof (manager as any).query !== 'function') return { applied: 0, credit: 0 };
     const [row] = await manager.query(
       `SELECT
+         (COALESCE((SELECT SUM(payment.amount) FROM sale_payments payment
+             WHERE payment.sale_order_id = $1 AND payment.id = ANY($2::uuid[])
+               AND payment.status = 'PENDING_CONFIRMATION'), 0) +
          CASE WHEN EXISTS (SELECT 1 FROM sale_payment_allocations WHERE sale_order_id = $1)
            THEN COALESCE((SELECT SUM(allocation.amount)
              FROM sale_payment_allocations allocation
@@ -808,7 +831,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
              WHERE allocation.sale_order_id = $1 AND payment.id = ANY($2::uuid[]) AND payment.status = 'POSTED'), 0)
            ELSE COALESCE((SELECT SUM(payment.amount) FROM sale_payments payment
              WHERE payment.sale_order_id = $1 AND payment.id = ANY($2::uuid[]) AND payment.status = 'POSTED'), 0)
-         END::numeric(14,2)::text AS applied,
+         END)::numeric(14,2)::text AS applied,
          GREATEST(COALESCE((SELECT SUM(movement.amount)
            FROM customer_credit_movements movement
            JOIN sale_payments payment ON payment.id = movement.sale_payment_id
@@ -1838,7 +1861,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       displayComponentsByOrderId.set(row.id, displayComponents);
     }
 
-    const appliedTotalsByOrderId = await this.loadPostedAppliedTotals(manager, saleOrderIds);
+    const appliedTotalsByOrderId = await this.loadOperationalAppliedTotals(manager, saleOrderIds);
     const customerCreditByOrderId = await this.loadCustomerCreditBalancesBySourceOrder(manager, saleOrderIds);
     const paymentsByOrderId = new Map<string, SalePaymentEntity[]>();
     for (const payment of payments) {
@@ -1864,7 +1887,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
           : null;
         const totalPaid = scopedTotals?.applied ?? (appliedTotalsByOrderId.has(row.id)
           ? appliedTotalsByOrderId.get(row.id) ?? 0
-          : this.sumPostedPaymentAmounts(orderPayments));
+          : this.sumOperationalPaymentAmounts(orderPayments));
         const totalReceived = this.sumPostedPaymentAmounts(orderPayments);
         const customerCreditAvailable = scopedTotals?.credit ?? customerCreditByOrderId.get(row.id) ?? 0;
         const totalOrder = Number(row.total ?? 0);
@@ -2174,6 +2197,10 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       )
       .leftJoin(
         `(SELECT orders.id AS sale_order_id,
+                 COALESCE((SELECT SUM(payment.amount) FROM sale_payments payment
+                   WHERE payment.sale_order_id = orders.id
+                     AND payment.status = 'PENDING_CONFIRMATION'
+                     AND ${incomeScopeSql}), 0) +
                  CASE WHEN EXISTS (SELECT 1 FROM sale_payment_allocations existing WHERE existing.sale_order_id = orders.id)
                    THEN COALESCE((SELECT SUM(allocation.amount) FROM sale_payment_allocations allocation
                      JOIN sale_payments payment ON payment.id = allocation.sale_payment_id
@@ -2866,7 +2893,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       orderedDisplayComponents,
     );
 
-    const appliedTotalsByOrderId = await this.loadPostedAppliedTotals(manager, [row.id]);
+    const appliedTotalsByOrderId = await this.loadOperationalAppliedTotals(manager, [row.id]);
     const customerCreditByOrderId = await this.loadCustomerCreditBalancesBySourceOrder(manager, [row.id]);
     const isPartiallyScoped = Boolean(
       readContext
@@ -2879,7 +2906,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       : null;
     const totalPaid = scopedTotals?.applied ?? (appliedTotalsByOrderId.has(row.id)
       ? appliedTotalsByOrderId.get(row.id) ?? 0
-      : this.sumPostedPaymentAmounts(visiblePayments));
+          : this.sumOperationalPaymentAmounts(visiblePayments));
     const totalOrder = Number(row.total ?? 0);
     const totalReceived = this.sumPostedPaymentAmounts(visiblePayments);
     const customerCreditAvailable = scopedTotals?.credit ?? customerCreditByOrderId.get(row.id) ?? 0;

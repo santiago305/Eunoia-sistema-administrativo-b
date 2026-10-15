@@ -20,6 +20,24 @@ describe("SalePaymentTypeormRepository", () => {
     expect(manager.query).toHaveBeenCalledWith(expect.stringContaining("sale_payment_allocations"), [["order-target", "order-source"]]);
   });
 
+  it("calculates operational coverage from pending payments plus posted allocations", async () => {
+    const manager = {
+      query: jest.fn().mockResolvedValue([
+        { saleOrderId: "order-target", amount: "80.00" },
+      ]),
+    };
+    const repository = new SalePaymentTypeormRepository({ manager } as any);
+
+    await expect(repository.getOperationalAppliedTotalsBySaleOrderIds(["order-target"])).resolves.toEqual([
+      { saleOrderId: "order-target", amount: 80 },
+    ]);
+    expect(manager.query).toHaveBeenCalledWith(
+      expect.stringContaining("payment.status = 'PENDING_CONFIRMATION'"),
+      [["order-target"]],
+    );
+    expect(manager.query.mock.calls[0][0]).toContain("sale_payment_allocations");
+  });
+
   it("loads company payment account data when listing payments by sale order ids", async () => {
     const paymentDate = new Date("2026-06-13T00:00:00.000Z");
     const createdAt = new Date("2026-06-15T23:08:16.892Z");

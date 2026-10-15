@@ -97,14 +97,16 @@ export class SaleOrderPaymentWorkflowReconciliationService {
     const totalCents = toMinorUnits(input.currentTotal ?? order.total ?? 0);
     const total = fromMinorUnits(totalCents);
     const payments = await this.paymentRepo.listBySaleOrderIds([order.id], tx);
-    const appliedTotals = this.paymentRepo.getPostedAppliedTotalsBySaleOrderIds
-      ? await this.paymentRepo.getPostedAppliedTotalsBySaleOrderIds([order.id], tx)
+    const appliedTotals = this.paymentRepo.getOperationalAppliedTotalsBySaleOrderIds
+      ? await this.paymentRepo.getOperationalAppliedTotalsBySaleOrderIds([order.id], tx)
       : [];
     const appliedTotal = appliedTotals.find((item) => item.saleOrderId === order.id)?.amount;
     const totalPaidCents = appliedTotal != null
       ? toMinorUnits(appliedTotal)
       : payments
-        .filter((payment) => payment.status === 'POSTED')
+        .filter((payment) =>
+          payment.status === 'POSTED' || payment.status === 'PENDING_CONFIRMATION',
+        )
         .reduce((sum, payment) => sum + toMinorUnits(payment.amount ?? 0), 0);
     const totalPaid = fromMinorUnits(totalPaidCents);
     const pendingAmount = fromMinorUnits(Math.max(totalCents - totalPaidCents, 0));

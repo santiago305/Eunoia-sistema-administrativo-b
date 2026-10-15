@@ -47,6 +47,17 @@ describe('SaleOrderTypeormRepository', () => {
     expect((repository as any).sumPostedPaymentAmounts([{ amount: 90 }])).toBe(0);
   });
 
+  it('sums pending-confirmation and posted payments for operational order coverage', () => {
+    const repository = new SaleOrderTypeormRepository({ manager: {} } as any);
+
+    expect((repository as any).sumOperationalPaymentAmounts([
+      { amount: 0.1, status: 'POSTED' },
+      { amount: 0.2, status: 'PENDING_CONFIRMATION' },
+      { amount: 50, status: 'CANCELLED' },
+      { amount: 90, status: 'REVERSED' },
+    ])).toBe(0.3);
+  });
+
   it('filters order payments by the user financial scope and honors order-level assignments', () => {
     const repository = new SaleOrderTypeormRepository({ manager: {} } as any);
     const context = {

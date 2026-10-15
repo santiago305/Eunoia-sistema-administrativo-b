@@ -79,14 +79,14 @@ describe("SaleOrderWorkflowContextService", () => {
     expect(context.isPaid).toBe(false);
   });
 
-  it("sums posted payments in cents and excludes non-posted payments", async () => {
+  it("counts pending-confirmation and posted payments, excluding closed payments", async () => {
     const service = new SaleOrderWorkflowContextService(
       {
         listBySaleOrderIds: jest.fn().mockResolvedValue([
           { amount: 0.1, status: "POSTED" },
-          { amount: 0.2, status: "POSTED" },
+          { amount: 0.2, status: "PENDING_CONFIRMATION" },
           { amount: 50, status: "REVERSED" },
-          { amount: 50, status: "PENDING" },
+          { amount: 50, status: "CANCELLED" },
         ]),
       } as any,
       { getSnapshot: jest.fn().mockResolvedValue(null) } as any,
@@ -99,6 +99,29 @@ describe("SaleOrderWorkflowContextService", () => {
 
     expect(context.variables.totalPaid).toBe(0.3);
     expect(context.isPaid).toBe(true);
+  });
+
+  it("uses the operational applied total to avoid double counting a posted allocation", async () => {
+    const service = new SaleOrderWorkflowContextService(
+      {
+        listBySaleOrderIds: jest.fn().mockResolvedValue([
+          { amount: 100, status: "POSTED" },
+          { amount: 20, status: "PENDING_CONFIRMATION" },
+        ]),
+        getOperationalAppliedTotalsBySaleOrderIds: jest.fn().mockResolvedValue([
+          { saleOrderId: "order-1", amount: 70 },
+        ]),
+      } as any,
+      { getSnapshot: jest.fn().mockResolvedValue(null) } as any,
+      { now: () => new Date("2026-06-06T00:00:00.000Z") } as any,
+      { resolve: jest.fn().mockResolvedValue([]) } as any,
+      { findById: jest.fn().mockResolvedValue(null) } as any,
+    );
+
+    const context = await service.build(buildOrder({ total: 100 }), currentState);
+
+    expect(context.variables.totalPaid).toBe(70);
+    expect(context.isPaid).toBe(false);
   });
 
   it("rejects a total paid that exceeds the safe integer cents range", async () => {

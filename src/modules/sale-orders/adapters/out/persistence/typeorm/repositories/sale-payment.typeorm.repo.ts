@@ -225,6 +225,46 @@ export class SalePaymentTypeormRepository implements SalePaymentRepository {
     }));
   }
 
+  async getOperationalAppliedTotalsBySaleOrderIds(
+    saleOrderIds: string[],
+    tx?: TransactionContext,
+  ): Promise<Array<{ saleOrderId: string; amount: number }>> {
+    if (!saleOrderIds.length) return [];
+    const manager = this.getManager(tx);
+    const rows = await manager.query(
+      `SELECT requested.sale_order_id AS "saleOrderId",
+              (
+                COALESCE((
+                  SELECT SUM(payment.amount)
+                  FROM sale_payments payment
+                  WHERE payment.sale_order_id = requested.sale_order_id
+                    AND payment.status = 'PENDING_CONFIRMATION'
+                ), 0)
+                +
+                CASE WHEN EXISTS (
+                  SELECT 1 FROM sale_payment_allocations existing
+                  WHERE existing.sale_order_id = requested.sale_order_id
+                ) THEN COALESCE((
+                  SELECT SUM(allocation.amount)
+                  FROM sale_payment_allocations allocation
+                  JOIN sale_payments payment ON payment.id = allocation.sale_payment_id
+                  WHERE allocation.sale_order_id = requested.sale_order_id
+                    AND payment.status = 'POSTED'
+                ), 0) ELSE COALESCE((
+                  SELECT SUM(payment.amount) FROM sale_payments payment
+                  WHERE payment.sale_order_id = requested.sale_order_id
+                    AND payment.status = 'POSTED'
+                ), 0) END
+              )::numeric(14,2)::text AS amount
+       FROM unnest($1::uuid[]) AS requested(sale_order_id)`,
+      [saleOrderIds],
+    );
+    return rows.map((row: { saleOrderId: string; amount: string | number }) => ({
+      saleOrderId: row.saleOrderId,
+      amount: Number(row.amount ?? 0),
+    }));
+  }
+
   async voidPostedPayment(
     input: Parameters<SalePaymentRepository["voidPostedPayment"]>[0],
     tx?: TransactionContext,

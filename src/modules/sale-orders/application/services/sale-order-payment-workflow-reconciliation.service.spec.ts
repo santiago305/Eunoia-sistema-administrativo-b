@@ -195,7 +195,7 @@ describe('SaleOrderPaymentWorkflowReconciliationService', () => {
         .fn()
         .mockResolvedValue([{ amount: input.totalPaid ?? 100, status: input.paymentStatus }]),
       ...(input.withoutAppliedTotals ? {} : {
-        getPostedAppliedTotalsBySaleOrderIds: jest.fn().mockResolvedValue([
+        getOperationalAppliedTotalsBySaleOrderIds: jest.fn().mockResolvedValue([
           { saleOrderId: 'order-1', amount: input.appliedTotal ?? input.totalPaid ?? 100 },
         ]),
       }),

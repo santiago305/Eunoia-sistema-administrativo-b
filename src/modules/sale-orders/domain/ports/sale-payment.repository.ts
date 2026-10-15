@@ -71,6 +71,12 @@ export interface SalePaymentRepository {
     tx?: TransactionContext,
   ): Promise<Array<{ saleOrderId: string; amount: number }>>;
 
+  /** Total operativo del pedido; incluye por confirmar y contabilizados aplicados. */
+  getOperationalAppliedTotalsBySaleOrderIds?(
+    saleOrderIds: string[],
+    tx?: TransactionContext,
+  ): Promise<Array<{ saleOrderId: string; amount: number }>>;
+
   voidPostedPayment(
     input: {
       saleOrderId: string;
