@@ -123,7 +123,7 @@ export class IncomeQueryTypeormRepository implements IncomeQueryRepository {
       filters,
     );
 
-    const pendingRows = await this.applyOrderFilters(
+    const pendingQb = this.applyOrderFilters(
       this.orderRepo
         .createQueryBuilder("so")
         .leftJoin(ClientEntity, "client", "client.id = so.clientId")
@@ -145,9 +145,11 @@ export class IncomeQueryTypeormRepository implements IncomeQueryRepository {
         .addSelect("COUNT(CASE WHEN GREATEST(so.total - COALESCE(payments.collected, 0), 0) > 0 THEN 1 END)", "ordersPending")
         .groupBy("so.currency"),
       { ...filters, scopeCompanyId: undefined },
-    )
-      .andWhere(
-        `:incomeScopeCompanyId IS NULL OR EXISTS (
+    );
+
+    if (filters.scopeCompanyId) {
+      pendingQb.andWhere(
+        `EXISTS (
           SELECT 1
           FROM company_payment_accounts scoped_company_account
           INNER JOIN sale_payments scoped_payment
@@ -155,9 +157,11 @@ export class IncomeQueryTypeormRepository implements IncomeQueryRepository {
           WHERE scoped_payment.sale_order_id = so.id
             AND scoped_company_account.company_id = :incomeScopeCompanyId
         )`,
-        { incomeScopeCompanyId: filters.scopeCompanyId ?? null },
-      )
-      .getRawMany();
+        { incomeScopeCompanyId: filters.scopeCompanyId },
+      );
+    }
+
+    const pendingRows = await pendingQb.getRawMany();
 
     const byMethodRows = await this.applyFilters(
       this.paymentRepo

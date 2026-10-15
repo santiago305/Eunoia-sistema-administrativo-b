@@ -34,6 +34,35 @@ describe("IncomeQueryTypeormRepository customer-credit filter", () => {
     expect(orderQuery.andWhere.mock.calls[0][0]).not.toContain("sp.company_payment_account_id");
   });
 
+  it("does not use an untyped nullable parameter for pending order scope", async () => {
+    const createQueryBuilder = () => {
+      const query = {
+        andWhere: jest.fn().mockReturnThis(),
+        addGroupBy: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        getRawMany: jest.fn().mockResolvedValue([]),
+        groupBy: jest.fn().mockReturnThis(),
+        innerJoin: jest.fn().mockReturnThis(),
+        leftJoin: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+      };
+      return query;
+    };
+    const paymentQuery = createQueryBuilder();
+    const orderQuery = createQueryBuilder();
+    const repository = new IncomeQueryTypeormRepository(
+      { createQueryBuilder: jest.fn().mockReturnValue(paymentQuery) } as any,
+      { createQueryBuilder: jest.fn().mockReturnValue(orderQuery) } as any,
+    );
+
+    await repository.getSummary(normalizeIncomeFilters({ scopeCompanyId: "company-1" }));
+
+    expect(orderQuery.andWhere.mock.calls[0][0]).not.toContain(
+      ":incomeScopeCompanyId IS NULL",
+    );
+  });
+
   it("applies company scope independently from per-user access", () => {
     const andWhere = jest.fn().mockReturnThis();
     const query = { andWhere } as unknown as SelectQueryBuilder<unknown>;
