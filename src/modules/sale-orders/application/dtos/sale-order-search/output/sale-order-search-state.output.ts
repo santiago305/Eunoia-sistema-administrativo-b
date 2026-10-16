@@ -197,10 +197,13 @@ export type SaleOrderGetOutput = {
     createdByUserId: string | null;
     updatedByUserId: string | null;
     clientKey: string;
+    companyPaymentAccountId: string | null;
+    paymentMethodId: string | null;
     bankAccount: { id: string; name: string; number?: string | null } | null;
     date: string;
     method: string;
     operationNumber: string | null;
+    operationCode: string | null;
     amount: number;
     note: string | null;
     paymentPhoto: string | null;

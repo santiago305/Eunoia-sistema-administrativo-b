@@ -128,10 +128,13 @@ export type SaleOrderPaymentOutput = {
   version: number;
   createdByUserId: string | null;
   updatedByUserId: string | null;
+  companyPaymentAccountId: string | null;
+  paymentMethodId: string | null;
   bankAccount: { id: string; name: string; number?: string | null } | null;
   date: string;
   method: string;
   operationNumber: string | null;
+  operationCode: string | null;
   amount: number;
   note: string | null;
   status?: 'PENDING_CONFIRMATION' | 'POSTED' | 'CANCELLED' | 'REVERSED';

@@ -2043,6 +2043,8 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
             version: p.version,
             createdByUserId: p.createdByUserId ?? null,
             updatedByUserId: p.updatedByUserId ?? null,
+            companyPaymentAccountId: p.companyPaymentAccountId ?? null,
+            paymentMethodId: p.paymentMethodId ?? null,
             bankAccount: p.companyPaymentAccountId
               ? (() => {
                   const account = bankAccountById.get(p.companyPaymentAccountId);
@@ -2058,6 +2060,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
             date: toIso(p.date),
             method: p.method,
             operationNumber: p.operationNumber ?? null,
+            operationCode: p.operationCode ?? null,
             amount: Number(p.amount ?? 0),
             note: p.note ?? null,
             status: p.status,
@@ -3086,6 +3089,8 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         id: payment.id,
         version: payment.version,
         clientKey: payment.id,
+        companyPaymentAccountId: payment.companyPaymentAccountId ?? null,
+        paymentMethodId: payment.paymentMethodId ?? null,
         bankAccount: payment.companyPaymentAccountId
           ? (() => {
               const account = bankAccountById.get(payment.companyPaymentAccountId);
@@ -3102,6 +3107,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
         date: toIso(payment.date),
         method: payment.method,
         operationNumber: payment.operationNumber ?? null,
+        operationCode: payment.operationCode ?? null,
         amount: Number(payment.amount ?? 0),
         note: payment.note ?? null,
         paymentPhoto: paymentAttachmentByPaymentId.get(payment.id)?.url ?? null,
