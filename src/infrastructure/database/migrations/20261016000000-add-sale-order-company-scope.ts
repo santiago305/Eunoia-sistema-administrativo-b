@@ -28,7 +28,7 @@ export class AddSaleOrderCompanyScope20261016000000 implements MigrationInterfac
           OR (
             COUNT(DISTINCT account.company_id) = 1
             AND creator.company_id IS NOT NULL
-            AND MAX(account.company_id) IS DISTINCT FROM creator.company_id
+            AND BOOL_OR(account.company_id IS DISTINCT FROM creator.company_id)
           )
     `);
     if (conflicts.length) {
