@@ -16,19 +16,30 @@ export class AddSaleOrderCompanyScope20261016000000 implements MigrationInterfac
     `);
 
     const conflicts = await queryRunner.query(`
+      WITH order_account_companies AS (
+        SELECT payment.sale_order_id, account.company_id
+          FROM sale_payments payment
+          JOIN company_payment_accounts account
+            ON account.company_payment_account_id = payment.company_payment_account_id
+         WHERE account.company_id IS NOT NULL
+      )
       SELECT so.id
         FROM sale_orders so
         LEFT JOIN users creator ON creator.user_id = so.created_by
-        LEFT JOIN sale_payments payment ON payment.sale_order_id = so.id
-        LEFT JOIN company_payment_accounts account
-          ON account.company_payment_account_id = payment.company_payment_account_id
+        LEFT JOIN order_account_companies account
+          ON account.sale_order_id = so.id
        WHERE so.company_id IS NULL
        GROUP BY so.id, creator.company_id
       HAVING COUNT(DISTINCT account.company_id) > 1
           OR (
             COUNT(DISTINCT account.company_id) = 1
             AND creator.company_id IS NOT NULL
-            AND BOOL_OR(account.company_id IS DISTINCT FROM creator.company_id)
+            AND EXISTS (
+              SELECT 1
+                FROM order_account_companies mismatch
+               WHERE mismatch.sale_order_id = so.id
+                 AND mismatch.company_id <> creator.company_id
+            )
           )
     `);
     if (conflicts.length) {
