@@ -19,6 +19,10 @@ export class HttpCompanyMethodUpdateDto {
 
   @IsOptional()
   @IsBoolean()
+  requiresOperationNumber?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
   enabled?: boolean;
 
   @IsOptional()

@@ -416,7 +416,7 @@ describe("ManageIncomePaymentsUsecase.reenter", () => {
       if (sql.includes("INSERT INTO financial_idempotency_records")) return [{ id: "idempotency-1" }];
       if (sql.includes("SELECT sp.*")) return [closedSource];
       if (sql.includes("SELECT so.currency")) return [{ currency: "PEN", is_active: true, state_code: "OPEN" }];
-      if (sql.includes("FROM payment_methods WHERE method_id")) return [{ is_active: true, code: "BANK_TRANSFER", name: "Transferencia", requires_operation_reference: true }];
+      if (sql.includes("FROM payment_methods pm")) return [{ is_active: true, code: "BANK_TRANSFER", name: "Transferencia", requires_operation_number: true }];
       if (sql.includes("FROM company_payment_accounts")) return [{ currency: "PEN", usage: "INFLOW", is_active: true, type: "BANK_ACCOUNT" }];
       if (sql.includes("INSERT INTO sale_payments")) return [{ id: "new-payment", version: 1, status: "PENDING_CONFIRMATION" }];
       return [];
@@ -475,7 +475,7 @@ function buildCorrectionUsecase(overrides: Record<string, any> = {}) {
     if (sql.includes("AS has_credit_movements")) return [{ reconciled: false, has_refunds: false, has_credit_movements: false, ...overrides.dependencies }];
     if (sql.includes("FROM financial_account_movements WHERE sale_payment_id")) return [{ id: "movement-1", company_payment_account_id: "account-1", amount: "25.00" }];
     if (sql.includes("FROM company_payment_accounts")) return [{ currency: "PEN", usage: "INFLOW", is_active: true, type: "BANK_ACCOUNT" }];
-    if (sql.includes("FROM payment_methods WHERE method_id")) return [{ is_active: true, code: "BANK_TRANSFER", name: "Transferencia bancaria", requires_operation_reference: true }];
+    if (sql.includes("FROM payment_methods pm")) return [{ is_active: true, code: "BANK_TRANSFER", name: "Transferencia bancaria", requires_operation_number: true }];
     if (sql.includes("AS active_total")) return [{ active_total: overrides.activeTotal ?? "10.00" }];
     if (sql.includes("INSERT INTO sale_payments")) return [{ id: "corrected-payment-1", version: 1, status: "POSTED" }];
     return [];
@@ -570,7 +570,7 @@ describe("ManageIncomePaymentsUsecase.updatePending idempotency", () => {
       if (sql.includes("SELECT sp.*, sp.payment_date")) return [payment];
       if (sql.includes("SELECT currency, total, is_active FROM sale_orders")) return [{ currency: "PEN", total: "100.00", is_active: true }];
       if (sql.includes("SELECT currency, usage, is_active, type FROM company_payment_accounts")) return [{ currency: "PEN", usage: "INFLOW", is_active: true, type: "BANK_ACCOUNT" }];
-      if (sql.includes("SELECT is_active, code, requires_operation_reference FROM payment_methods")) return [{ is_active: true, code: "BANK_TRANSFER", requires_operation_reference: false }];
+      if (sql.includes("FROM payment_methods pm")) return [{ is_active: true, code: "BANK_TRANSFER", requires_operation_number: false }];
       if (sql.includes("SELECT COALESCE(SUM(amount), 0)")) return [{ amount: "10.00" }];
       return [];
     });
@@ -608,7 +608,7 @@ describe("ManageIncomePaymentsUsecase.updatePending idempotency", () => {
       if (sql.includes("SELECT sp.*, sp.payment_date")) return [paymentRow];
       if (sql.includes("SELECT currency, total, is_active FROM sale_orders")) return [{ currency: "PEN", total: "100.00", is_active: true }];
       if (sql.includes("SELECT currency, usage, is_active, type FROM company_payment_accounts")) return [{ currency: "PEN", usage: "INFLOW", is_active: true, type: "BANK_ACCOUNT" }];
-      if (sql.includes("SELECT is_active, code, requires_operation_reference FROM payment_methods")) return [{ is_active: true, code: "BANK_TRANSFER", requires_operation_reference: false }];
+      if (sql.includes("FROM payment_methods pm")) return [{ is_active: true, code: "BANK_TRANSFER", requires_operation_number: false }];
       if (sql.includes("SELECT COALESCE(SUM(amount), 0)")) return [{ amount: "10.00" }];
       return [];
     });

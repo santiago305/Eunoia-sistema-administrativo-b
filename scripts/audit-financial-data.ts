@@ -75,8 +75,12 @@ export const financialLifecyclePreflightQueries: Array<{ check: string; sql: str
       SELECT sp.id, sp.sale_order_id, pm.code AS payment_method_code
       FROM sale_payments sp
       INNER JOIN payment_methods pm ON pm.method_id = sp.payment_method_id
+      INNER JOIN sale_orders so ON so.id = sp.sale_order_id
+      INNER JOIN company_methods cm
+        ON cm.company_id = so.company_id
+       AND cm.method_id = sp.payment_method_id
       WHERE sp.status = 'PENDING_CONFIRMATION'
-        AND pm.requires_operation_reference = true
+        AND cm.requires_operation_number = true
         AND NULLIF(BTRIM(sp.operation_number), '') IS NULL
       ORDER BY sp.date, sp.id
     `,

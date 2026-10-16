@@ -7,6 +7,7 @@ export class CompanyMethod {
     public readonly companyId: string,
     public readonly methodId: string,
     public readonly evidencePolicy: CompanyMethodEvidencePolicy = "INHERIT",
+    public readonly requiresOperationNumber: boolean = true,
     public readonly enabled: boolean = true,
     public readonly isDefault: boolean = false,
   ) {}
@@ -16,6 +17,7 @@ export class CompanyMethod {
     companyId: string;
     methodId: string;
     evidencePolicy?: CompanyMethodEvidencePolicy;
+    requiresOperationNumber?: boolean;
     enabled?: boolean;
     isDefault?: boolean;
   }) {
@@ -28,6 +30,7 @@ export class CompanyMethod {
       params.companyId,
       params.methodId,
       params.evidencePolicy ?? "INHERIT",
+      params.requiresOperationNumber ?? true,
       params.enabled ?? true,
       params.isDefault ?? false,
     );

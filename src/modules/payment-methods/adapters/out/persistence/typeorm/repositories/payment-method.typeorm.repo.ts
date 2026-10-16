@@ -57,6 +57,7 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
       .select([
         "cm.id AS relation_id",
         "cm.evidencePolicy AS relation_evidence_policy",
+        "cm.requiresOperationNumber AS relation_requires_operation_number",
         "cm.enabled AS relation_enabled",
         "cm.isDefault AS relation_is_default",
         "pm.id AS method_id",
@@ -76,6 +77,7 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
       .getRawMany<{
         relation_id: string;
         relation_evidence_policy: "INHERIT" | "REQUIRED" | "OPTIONAL";
+        relation_requires_operation_number: boolean;
         relation_enabled: boolean;
         relation_is_default: boolean;
         method_id: string;
@@ -110,6 +112,7 @@ export class PaymentMethodTypeormRepository implements PaymentMethodRepository {
         row.relation_evidence_policy,
       ),
       evidencePolicy: row.relation_evidence_policy,
+      requiresOperationNumber: row.relation_requires_operation_number,
       enabled: row.relation_enabled ?? true,
     }));
   }

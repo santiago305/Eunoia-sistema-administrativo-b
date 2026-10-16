@@ -129,10 +129,14 @@ export class ManageIncomePaymentsUsecase {
         WHERE company_payment_account_id = $1 AND ($2::uuid IS NULL OR company_id = $2) FOR UPDATE`, [input.companyPaymentAccountId, companyId]);
       if (!account.length || !account[0].is_active || !["INFLOW", "BOTH"].includes(account[0].usage) || account[0].currency !== order[0].currency) throw new BadRequestException("Selecciona una cuenta activa compatible con el pedido.");
       const operationNumber = input.operationNumber?.trim() || null;
-      const method = await manager.query<any[]>(`SELECT is_active, code, requires_operation_reference FROM payment_methods WHERE method_id = $1`, [input.paymentMethodId]);
+      const method = await manager.query<any[]>(`SELECT pm.is_active, pm.code, cm.requires_operation_number
+        FROM payment_methods pm
+        INNER JOIN company_methods cm ON cm.method_id = pm.method_id AND cm.enabled = true
+        INNER JOIN company_payment_accounts cpa ON cpa.company_id = cm.company_id
+        WHERE pm.method_id = $1 AND cpa.company_payment_account_id = $2`, [input.paymentMethodId, input.companyPaymentAccountId]);
       if (!method.length || !method[0].is_active) throw new BadRequestException("Selecciona un método de pago activo.");
       if (!isCompanyPaymentAccountCompatible(method[0].code, account[0].type)) throw new BadRequestException("La cuenta receptora no es compatible con el método de pago.");
-      if (method[0].requires_operation_reference && !operationNumber) throw new BadRequestException("Este método de pago requiere un número de operación.");
+      if (method[0].requires_operation_number && !operationNumber) throw new BadRequestException("Este método de pago requiere un número de operación.");
       const activeTotal = await manager.query<any[]>(
         `SELECT COALESCE(SUM(amount), 0)::numeric(14,2) AS amount FROM sale_payments
          WHERE sale_order_id = $1 AND id <> $2 AND status IN ('POSTED','PENDING_CONFIRMATION')`,
@@ -254,12 +258,17 @@ export class ManageIncomePaymentsUsecase {
           throw new BadRequestException("Selecciona una cuenta activa compatible con el pedido y su moneda.");
         }
         const [method] = await manager.query<any[]>(
-          `SELECT is_active, code, name, requires_operation_reference FROM payment_methods WHERE method_id = $1 FOR UPDATE`,
-          [input.paymentMethodId],
+          `SELECT pm.is_active, pm.code, pm.name, cm.requires_operation_number
+           FROM payment_methods pm
+           INNER JOIN company_methods cm ON cm.method_id = pm.method_id AND cm.enabled = true
+           INNER JOIN company_payment_accounts cpa ON cpa.company_id = cm.company_id
+           WHERE pm.method_id = $1 AND cpa.company_payment_account_id = $2
+           FOR UPDATE OF pm, cm`,
+          [input.paymentMethodId, input.companyPaymentAccountId],
         );
         if (!method?.is_active) throw new BadRequestException("Selecciona un método de pago activo.");
         if (!isCompanyPaymentAccountCompatible(method.code, account.type)) throw new BadRequestException("La cuenta receptora no es compatible con el método de pago.");
-        if (method.requires_operation_reference && !operationNumber) throw new BadRequestException("Este método de pago requiere un número de operación.");
+        if (method.requires_operation_number && !operationNumber) throw new BadRequestException("Este método de pago requiere un número de operación.");
 
         const [totals] = await manager.query<any[]>(
           `SELECT COALESCE(SUM(amount), 0)::numeric(14,2) AS active_total
@@ -1226,14 +1235,18 @@ export class ManageIncomePaymentsUsecase {
       if (!order || !order.is_active || order.state_code === "CANCELLED") throw new ConflictException("El pedido está cancelado, archivado o ya no existe.");
       const methodId = input.paymentMethodId;
       const accountId = input.companyPaymentAccountId;
-      const [method] = await manager.query<any[]>(`SELECT is_active, code, name, requires_operation_reference FROM payment_methods WHERE method_id = $1`, [methodId]);
+      const [method] = await manager.query<any[]>(`SELECT pm.is_active, pm.code, pm.name, cm.requires_operation_number
+        FROM payment_methods pm
+        INNER JOIN company_methods cm ON cm.method_id = pm.method_id AND cm.enabled = true
+        INNER JOIN company_payment_accounts cpa ON cpa.company_id = cm.company_id
+        WHERE pm.method_id = $1 AND cpa.company_payment_account_id = $2`, [methodId, accountId]);
       if (!method?.is_active) throw new BadRequestException("Selecciona un método de pago activo.");
       const companyId = await this.companyScopeId(manager, input.userId);
       const [account] = await manager.query<any[]>(`SELECT currency, usage, is_active, type FROM company_payment_accounts
         WHERE company_payment_account_id = $1 AND ($2::uuid IS NULL OR company_id = $2) FOR UPDATE`, [accountId, companyId]);
       if (!account?.is_active || !["INFLOW", "BOTH"].includes(account.usage) || account.currency !== order.currency) throw new BadRequestException("Selecciona una cuenta receptora activa y compatible con el pedido.");
       if (!isCompanyPaymentAccountCompatible(method.code, account.type)) throw new BadRequestException("La cuenta receptora no es compatible con el método de pago.");
-      if (method.requires_operation_reference && !operationNumber) throw new BadRequestException("Este método de pago requiere un nuevo número de operación.");
+      if (method.requires_operation_number && !operationNumber) throw new BadRequestException("Este método de pago requiere un nuevo número de operación.");
       const paymentDate = input.date;
       const amount = amountCents;
       try {

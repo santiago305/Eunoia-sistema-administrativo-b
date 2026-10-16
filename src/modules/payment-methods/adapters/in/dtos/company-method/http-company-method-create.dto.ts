@@ -23,5 +23,9 @@ export class HttpCompanyMethodCreateDto {
 
   @IsOptional()
   @IsBoolean()
+  requiresOperationNumber?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
   enabled?: boolean;
 }

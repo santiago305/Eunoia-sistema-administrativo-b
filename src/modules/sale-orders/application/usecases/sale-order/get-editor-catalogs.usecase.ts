@@ -122,7 +122,8 @@ export class GetSaleOrderEditorCatalogsUsecase {
           isActive: row.method.isActive,
           requiresSourceAccount: row.method.requiresSourceAccount,
           requiresDestination: row.method.requiresDestination,
-          requiresOperationReference: row.method.requiresOperationReference,
+          requiresOperationNumber: row.requiresOperationNumber,
+          requiresOperationReference: row.requiresOperationNumber,
           evidencePolicy: row.evidencePolicy,
           requiresVoucher: resolveCompanyMethodRequiresVoucher(
             row.method.requiresVoucher,

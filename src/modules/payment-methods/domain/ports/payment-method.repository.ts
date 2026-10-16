@@ -10,6 +10,7 @@ export type ConfiguredPaymentMethod = {
   isDefault?: boolean;
   requiresVoucher: boolean;
   evidencePolicy: CompanyMethodEvidencePolicy;
+  requiresOperationNumber: boolean;
   enabled?: boolean;
 };
 

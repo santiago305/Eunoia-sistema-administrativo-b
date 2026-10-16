@@ -11,6 +11,7 @@ export class PaymentMethodFactory {
     companyId: string;
     methodId: string;
     evidencePolicy?: CompanyMethodEvidencePolicy;
+    requiresOperationNumber?: boolean;
     enabled?: boolean;
   }) {
     return CompanyMethod.create(params);

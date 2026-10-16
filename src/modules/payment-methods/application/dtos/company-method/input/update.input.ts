@@ -5,6 +5,7 @@ export interface UpdateCompanyMethodInput {
   methodId?: string;
   requiresVoucher?: boolean;
   evidencePolicy?: CompanyMethodEvidencePolicy;
+  requiresOperationNumber?: boolean;
   enabled?: boolean;
   isDefault?: boolean;
 }

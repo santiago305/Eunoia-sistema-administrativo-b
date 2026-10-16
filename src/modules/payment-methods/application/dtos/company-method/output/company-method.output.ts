@@ -10,6 +10,8 @@ export interface CompanyMethodOutput {
   isActive: boolean;
   requiresVoucher: boolean;
   evidencePolicy: CompanyMethodEvidencePolicy;
+  requiresOperationNumber: boolean;
+  requiresOperationReference: boolean;
   enabled: boolean;
   isDefault: boolean;
 }

@@ -8,6 +8,7 @@ export interface PaymentMethodOutput {
   requiresSourceAccount?: boolean;
   requiresDestination?: boolean;
   requiresOperationReference?: boolean;
+  requiresOperationNumber?: boolean;
   isSystem?: boolean;
   isActive: boolean;
   isDefault?: boolean;

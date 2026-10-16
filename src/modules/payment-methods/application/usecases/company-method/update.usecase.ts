@@ -23,9 +23,20 @@ export class UpdateCompanyMethodUsecase {
     return this.uow.runInTransaction(async (tx) => {
       const hasRequiresVoucher = Object.prototype.hasOwnProperty.call(input, "requiresVoucher");
       const hasEvidencePolicy = Object.prototype.hasOwnProperty.call(input, "evidencePolicy");
+      const hasRequiresOperationNumber = Object.prototype.hasOwnProperty.call(
+        input,
+        "requiresOperationNumber",
+      );
       const hasEnabled = Object.prototype.hasOwnProperty.call(input, "enabled");
       const hasIsDefault = Object.prototype.hasOwnProperty.call(input, "isDefault");
-      if (input.methodId === undefined && !hasRequiresVoucher && !hasEvidencePolicy && !hasEnabled && !hasIsDefault) {
+      if (
+        input.methodId === undefined &&
+        !hasRequiresVoucher &&
+        !hasEvidencePolicy &&
+        !hasRequiresOperationNumber &&
+        !hasEnabled &&
+        !hasIsDefault
+      ) {
         throw new BadRequestException("Debe enviar al menos un campo para actualizar");
       }
 
@@ -99,6 +110,9 @@ export class UpdateCompanyMethodUsecase {
                     input.requiresVoucher,
                   ),
                 }
+              : {}),
+            ...(hasRequiresOperationNumber
+              ? { requiresOperationNumber: input.requiresOperationNumber }
               : {}),
             ...(hasEnabled ? { enabled: input.enabled } : {}),
             ...(hasIsDefault ? { isDefault: input.isDefault } : {}),

@@ -5,5 +5,6 @@ export interface CreateCompanyMethodInput {
   methodId: string;
   requiresVoucher?: boolean;
   evidencePolicy?: CompanyMethodEvidencePolicy;
+  requiresOperationNumber?: boolean;
   enabled?: boolean;
 }

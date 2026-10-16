@@ -277,11 +277,15 @@ export class SaleOrderPaymentReconcilerService {
       `SELECT account.currency AS "accountCurrency", account.usage AS "accountUsage",
               account.is_active AS "accountIsActive", account.type AS "accountType",
               method.is_active AS "methodIsActive", method.code AS "methodCode",
-              method.requires_operation_reference AS "requiresOperationReference"
+              configured.requires_operation_number AS "requiresOperationNumber"
        FROM company_payment_accounts account
        JOIN companies company ON company.company_id = account.company_id AND company.is_active = true
        JOIN users actor ON actor.user_id = $3 AND actor.deleted = false
        JOIN payment_methods method ON method.method_id = $2
+       JOIN company_methods configured
+         ON configured.company_id = account.company_id
+        AND configured.method_id = method.method_id
+        AND configured.enabled = true
        WHERE account.company_payment_account_id = $1
          AND account.company_id = $4
          AND (actor.is_super_admin = true OR actor.company_id = account.company_id)
@@ -303,7 +307,7 @@ export class SaleOrderPaymentReconcilerService {
     if (!isCompanyPaymentAccountCompatible(configuration.methodCode, configuration.accountType)) {
       throw new BadRequestException('La cuenta receptora no es compatible con el metodo de pago.');
     }
-    if (configuration.requiresOperationReference && !payment.operationNumber?.trim()) {
+    if (configuration.requiresOperationNumber && !payment.operationNumber?.trim()) {
       throw new BadRequestException('Este metodo de pago requiere un numero de operacion.');
     }
   }

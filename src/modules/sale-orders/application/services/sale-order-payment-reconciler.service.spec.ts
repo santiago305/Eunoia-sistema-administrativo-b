@@ -23,7 +23,7 @@ describe('SaleOrderPaymentReconcilerService', () => {
         return Promise.resolve([{
           accountCurrency: 'PEN', accountUsage: 'INFLOW', accountIsActive: true,
           accountType: 'BANK_ACCOUNT', methodIsActive: true, methodCode: 'BANK_TRANSFER',
-          requiresOperationReference: false,
+          requiresOperationNumber: false,
         }]);
       }
       return Promise.resolve([]);
@@ -249,7 +249,7 @@ describe('SaleOrderPaymentReconcilerService', () => {
         return Promise.resolve([{
           accountCurrency: 'PEN', accountUsage: 'INFLOW', accountIsActive: true,
           accountType: 'CASH', methodIsActive: true, methodCode: 'BANK_TRANSFER',
-          requiresOperationReference: false,
+          requiresOperationNumber: false,
         }]);
       }
       return Promise.resolve([]);
@@ -275,6 +275,41 @@ describe('SaleOrderPaymentReconcilerService', () => {
 
     expect(paymentRepo.bulkCreate).not.toHaveBeenCalled();
     expect(tx.manager.query).toHaveBeenCalledTimes(2);
+  });
+
+  it('requires the operation number when the company method is configured as required', async () => {
+    const { service, paymentRepo } = createFixture([]);
+    tx.manager.query.mockImplementation((sql: string) => {
+      if (sql.includes('SELECT currency')) {
+        return Promise.resolve([{ currency: 'PEN', companyId: 'company-1' }]);
+      }
+      if (sql.includes('FROM company_payment_accounts')) {
+        return Promise.resolve([{
+          accountCurrency: 'PEN', accountUsage: 'INFLOW', accountIsActive: true,
+          accountType: 'BANK_ACCOUNT', methodIsActive: true, methodCode: 'BANK_TRANSFER',
+          requiresOperationNumber: true,
+        }]);
+      }
+      return Promise.resolve([]);
+    });
+
+    await expect(service.reconcile(
+      {
+        saleOrderId: 'order-1',
+        executedBy: 'user-1',
+        payments: [{
+          clientKey: 'new-required-payment',
+          date: new Date('2026-07-03T00:00:00.000Z'),
+          method: 'TRANSFERENCIA',
+          companyPaymentAccountId: 'account-1',
+          paymentMethodId: 'method-1',
+          amount: 30,
+        }],
+      },
+      tx,
+    )).rejects.toThrow('requiere un numero de operacion');
+
+    expect(paymentRepo.bulkCreate).not.toHaveBeenCalled();
   });
 
   it('allows superadmins to use active payment accounts across companies while retaining regular-user scope', async () => {
@@ -304,5 +339,7 @@ describe('SaleOrderPaymentReconcilerService', () => {
     expect(validationQuery).toContain('actor.company_id = account.company_id');
     expect(validationQuery).toContain('account.company_id = $4');
     expect(validationQuery).toContain('actor.deleted = false');
+    expect(validationQuery).toContain('JOIN company_methods configured');
+    expect(validationQuery).toContain('configured.requires_operation_number');
   });
 });

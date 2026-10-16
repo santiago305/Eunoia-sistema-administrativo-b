@@ -35,6 +35,7 @@ export class CompanyMethodTypeormRepository implements CompanyMethodRepository {
       companyId: row.companyId,
       methodId: row.methodId,
       evidencePolicy: row.evidencePolicy,
+      requiresOperationNumber: row.requiresOperationNumber,
       enabled: row.enabled,
       isDefault: row.isDefault,
     });
@@ -113,6 +114,7 @@ export class CompanyMethodTypeormRepository implements CompanyMethodRepository {
       companyId: method.companyId,
       methodId: method.methodId,
       evidencePolicy: method.evidencePolicy,
+      requiresOperationNumber: method.requiresOperationNumber,
       enabled: method.enabled,
       isDefault: method.isDefault,
     });
@@ -125,6 +127,7 @@ export class CompanyMethodTypeormRepository implements CompanyMethodRepository {
       companyMethodId: string;
       methodId?: string;
       evidencePolicy?: CompanyMethod["evidencePolicy"];
+      requiresOperationNumber?: boolean;
       enabled?: boolean;
       isDefault?: boolean;
     },
@@ -135,6 +138,9 @@ export class CompanyMethodTypeormRepository implements CompanyMethodRepository {
 
     if (params.methodId !== undefined) patch.methodId = params.methodId;
     if (params.evidencePolicy !== undefined) patch.evidencePolicy = params.evidencePolicy;
+    if (params.requiresOperationNumber !== undefined) {
+      patch.requiresOperationNumber = params.requiresOperationNumber;
+    }
     if (params.enabled !== undefined) patch.enabled = params.enabled;
     if (params.isDefault !== undefined) patch.isDefault = params.isDefault;
 

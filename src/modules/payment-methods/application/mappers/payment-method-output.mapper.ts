@@ -29,7 +29,8 @@ export class PaymentMethodOutputMapper {
       category: item.method.category,
       requiresSourceAccount: item.method.requiresSourceAccount,
       requiresDestination: item.method.requiresDestination,
-      requiresOperationReference: item.method.requiresOperationReference,
+      requiresOperationReference: item.requiresOperationNumber,
+      requiresOperationNumber: item.requiresOperationNumber,
       isSystem: item.method.isSystem,
       enabled: item.enabled ?? true,
       isActive: item.method.isActive,
@@ -53,6 +54,8 @@ export class PaymentMethodOutputMapper {
         item.relation.evidencePolicy,
       ),
       evidencePolicy: item.relation.evidencePolicy,
+      requiresOperationNumber: item.relation.requiresOperationNumber,
+      requiresOperationReference: item.relation.requiresOperationNumber,
       enabled: item.relation.enabled,
       isDefault: item.relation.isDefault,
     };

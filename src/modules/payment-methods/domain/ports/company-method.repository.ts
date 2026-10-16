@@ -28,6 +28,7 @@ export interface CompanyMethodRepository {
       companyMethodId: string;
       methodId?: string;
       evidencePolicy?: CompanyMethodEvidencePolicy;
+      requiresOperationNumber?: boolean;
       enabled?: boolean;
       isDefault?: boolean;
     },

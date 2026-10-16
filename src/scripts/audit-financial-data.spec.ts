@@ -29,7 +29,7 @@ describe("audit-financial-data lifecycle preflight", () => {
         if (sql.includes("GROUP BY lower(btrim(operation_number))")) return [duplicateOperation];
         if (sql.includes("sp.status = 'PENDING_CONFIRMATION'") && sql.includes("pm.is_active = false")) return [pendingMissingMethod];
         if (sql.includes("cpa.usage NOT IN ('INFLOW', 'BOTH')")) return [pendingInvalidReceiver];
-        if (sql.includes("pm.requires_operation_reference = true")) return [pendingMissingReference];
+        if (sql.includes("cm.requires_operation_number = true")) return [pendingMissingReference];
         if (sql.includes("sp.currency::text <> so.currency::text")) return [currencyMismatch];
         if (sql.includes("scope.scope_type = 'PAYMENT_ACCOUNT'")) return [crossCompanyScope];
         if (sql.includes("HAVING COUNT(DISTINCT evidence.company_id) > 1")) return [conflictingOrder];

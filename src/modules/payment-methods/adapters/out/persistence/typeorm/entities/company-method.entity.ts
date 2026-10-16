@@ -23,6 +23,9 @@ export class CompanyMethodEntity {
   @Column({ name: "evidence_policy", type: "varchar", length: 20, default: "INHERIT" })
   evidencePolicy: CompanyMethodEvidencePolicy;
 
+  @Column({ name: "requires_operation_number", type: "boolean", default: true })
+  requiresOperationNumber: boolean;
+
   @ManyToOne(() => CompanyEntity)
   @JoinColumn({ name: "company_id" })
   company: CompanyEntity;
