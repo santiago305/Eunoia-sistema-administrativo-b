@@ -163,7 +163,7 @@ export const PERMISSIONS_SEED: PermissionSeedItem[] = [
   { code: 'page.purchases.view', name: 'Ver compras', description: 'Acceso a pantalla de compras', module: 'purchases', resource: 'purchases', action: 'view', type: 'page' },
   { code: 'page.purchase-receptions.view', name: 'Ver recepciones de compras', description: 'Acceso a pantalla de recepcion de compras', module: 'purchases', resource: 'purchase_receptions', action: 'view', type: 'page' },
   { code: 'page.payments.view', name: 'Ver pagos', description: 'Acceso a pantalla de pagos', module: 'payments', resource: 'payments', action: 'view', type: 'page' },
-  { code: 'page.income.view', name: 'Ver ingresos', description: 'Acceso a pantalla de ingresos', module: 'income', resource: 'income', action: 'view', type: 'page' },
+  { code: 'page.income.view', name: 'Ingresar a Ingresos', description: 'Mostrar el menú y permitir abrir la pantalla de Ingresos', module: 'income', resource: 'income', action: 'view', type: 'page' },
   { code: 'page.admin-finance.view', name: 'Ver dashboard administrativo', description: 'Acceso a flujo administrativo de ingresos y egresos', module: 'admin_finance', resource: 'admin_finance', action: 'view', type: 'page' },
   { code: 'page.accounts-payable.view', name: 'Ver cuentas por pagar', description: 'Acceso a pantalla de cuentas por pagar', module: 'accounts_payable', resource: 'accounts_payable', action: 'view', type: 'page' },
   { code: 'page.recurring-purchases.view', name: 'Ver compras recurrentes', description: 'Acceso a pantalla de compras recurrentes', module: 'recurring_purchases', resource: 'recurring_purchases', action: 'view', type: 'page' },

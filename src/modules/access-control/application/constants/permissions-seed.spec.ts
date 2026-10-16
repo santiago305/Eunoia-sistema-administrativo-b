@@ -198,6 +198,54 @@ describe("permissions seed", () => {
     );
   });
 
+  it("includes the complete Spanish income permission contract", () => {
+    const permissionByCode = new Map(PERMISSIONS_SEED.map((item) => [item.code, item]));
+    const incomeCodes = [
+      "page.income.view",
+      "income.read",
+      "income.view_own",
+      "income.view_all",
+      "income.export",
+      "sale_orders.payments.update_pending",
+      "sale_orders.payments.post",
+      "sale_orders.payments.post_bulk",
+      "sale_orders.payments.post_own",
+      "sale_orders.payments.post_high_value",
+      "sale_orders.payments.cancel_pending",
+      "sale_orders.payments.transfer_pending",
+      "sale_orders.payments.reverse_posted",
+      "sale_orders.payments.correct_posted",
+      "sale_orders.payments.reenter_closed",
+      "payments.view_evidence",
+      "payments.attach_evidence",
+      "income.reconciliation.view",
+      "income.reconciliation.reconcile",
+      "income.reconciliation.unreconcile",
+      "income.audit.view",
+      "income.scope.manage",
+      "income.evidence.quarantine.manage",
+      "income.outbox.manage",
+    ];
+
+    expect(incomeCodes).toHaveLength(24);
+    incomeCodes.forEach((code) => expect(permissionByCode.has(code)).toBe(true));
+    expect(permissionByCode.get("page.income.view")).toEqual(
+      expect.objectContaining({ name: "Ingresar a Ingresos", module: "income" }),
+    );
+    [
+      "sale_orders.payments.update_pending",
+      "sale_orders.payments.post",
+      "sale_orders.payments.post_bulk",
+      "sale_orders.payments.post_own",
+      "sale_orders.payments.post_high_value",
+      "sale_orders.payments.cancel_pending",
+      "sale_orders.payments.transfer_pending",
+      "sale_orders.payments.reverse_posted",
+      "sale_orders.payments.correct_posted",
+      "sale_orders.payments.reenter_closed",
+    ].forEach((code) => expect(permissionByCode.get(code)?.module).toBe("income"));
+  });
+
   it("includes fine warehouse and supplier permissions", () => {
     const codes = new Set(PERMISSIONS_SEED.map((item) => item.code));
 

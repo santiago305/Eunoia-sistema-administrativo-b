@@ -160,6 +160,7 @@ import { AddSaleOrderWorkflowRepairPermission20261003000000 } from './migrations
 import { HardenPaymentEvidenceAndAudit20261007000000 } from './migrations/20261007000000-harden-payment-evidence-and-audit';
 import { AddSaleOrderCompanyScope20261016000000 } from './migrations/20261016000000-add-sale-order-company-scope';
 import { AddCompanyMethodOperationNumberRequirement20261016010000 } from './migrations/20261016010000-add-company-method-operation-number-requirement';
+import { GroupIncomePermissions20261016020000 } from './migrations/20261016020000-group-income-permissions';
 import { PaymentLifecycleFourStates20261008000000 } from './migrations/20261008000000-payment-lifecycle-four-states';
 import { UniqueSalePaymentOperationNumber20261008010000 } from './migrations/20261008010000-unique-sale-payment-operation-number';
 import { CreateMailAttachmentOperations20261010000000 } from './migrations/20261010000000-create-mail-attachment-operations';
@@ -373,6 +374,7 @@ export const databaseMigrations = [
   RepairUserCompanyScope20261014020000,
   AddSaleOrderCompanyScope20261016000000,
   AddCompanyMethodOperationNumberRequirement20261016010000,
+  GroupIncomePermissions20261016020000,
 ];
 
 export const getTypeOrmModuleOptions = (): TypeOrmModuleOptions => ({
