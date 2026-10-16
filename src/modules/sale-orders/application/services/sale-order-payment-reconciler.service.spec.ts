@@ -276,4 +276,32 @@ describe('SaleOrderPaymentReconcilerService', () => {
     expect(paymentRepo.bulkCreate).not.toHaveBeenCalled();
     expect(tx.manager.query).toHaveBeenCalledTimes(2);
   });
+
+  it('allows superadmins to use active payment accounts across companies while retaining regular-user scope', async () => {
+    const { service } = createFixture([]);
+
+    await service.reconcile(
+      {
+        saleOrderId: 'order-1',
+        executedBy: 'superadmin-1',
+        payments: [{
+          clientKey: 'new-superadmin-payment',
+          date: new Date('2026-07-03T00:00:00.000Z'),
+          method: 'TRANSFERENCIA',
+          companyPaymentAccountId: 'account-from-another-company',
+          paymentMethodId: 'method-1',
+          amount: 30,
+        }],
+      },
+      tx,
+    );
+
+    const validationQuery = tx.manager.query.mock.calls.find(([sql]: [string]) =>
+      sql.includes('FROM company_payment_accounts'),
+    )?.[0] as string;
+
+    expect(validationQuery).toContain('actor.is_super_admin = true');
+    expect(validationQuery).toContain('actor.company_id = account.company_id');
+    expect(validationQuery).toContain('actor.deleted = false');
+  });
 });

@@ -263,9 +263,10 @@ export class SaleOrderPaymentReconcilerService {
               method.requires_operation_reference AS "requiresOperationReference"
        FROM company_payment_accounts account
        JOIN companies company ON company.company_id = account.company_id AND company.is_active = true
-       JOIN users actor ON actor.user_id = $3 AND actor.company_id = account.company_id
+       JOIN users actor ON actor.user_id = $3 AND actor.deleted = false
        JOIN payment_methods method ON method.method_id = $2
        WHERE account.company_payment_account_id = $1
+         AND (actor.is_super_admin = true OR actor.company_id = account.company_id)
        FOR UPDATE OF account, method`,
       [accountId, payment.paymentMethodId, userId],
     );

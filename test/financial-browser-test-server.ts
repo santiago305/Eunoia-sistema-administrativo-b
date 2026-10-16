@@ -1108,7 +1108,7 @@ async function createSchema() {
   await db.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
   await db.query(`CREATE TYPE currency_type AS ENUM ('PEN', 'USD')`);
   await db.query(`CREATE TABLE companies (company_id uuid PRIMARY KEY, is_active boolean NOT NULL DEFAULT true, created_at timestamptz NOT NULL DEFAULT now())`);
-  await db.query(`CREATE TABLE users (user_id uuid PRIMARY KEY, company_id uuid REFERENCES companies(company_id))`);
+  await db.query(`CREATE TABLE users (user_id uuid PRIMARY KEY, company_id uuid REFERENCES companies(company_id), is_super_admin boolean NOT NULL DEFAULT false, deleted boolean NOT NULL DEFAULT false)`);
   await db.query(`CREATE TABLE clients (id uuid PRIMARY KEY, full_name varchar(255) NOT NULL DEFAULT 'Cliente E2E', is_active boolean NOT NULL DEFAULT true)`);
   await db.query(`CREATE TABLE subsidiaries (id uuid PRIMARY KEY, alias varchar(120) NOT NULL, is_active boolean NOT NULL DEFAULT true)`);
   await db.query(`CREATE TABLE permissions (permission_id uuid PRIMARY KEY DEFAULT uuid_generate_v4(), code varchar NOT NULL UNIQUE, name varchar NOT NULL, description varchar, module varchar, resource varchar, action varchar, type varchar NOT NULL DEFAULT 'action', is_system boolean NOT NULL DEFAULT true, is_active boolean NOT NULL DEFAULT true)`);
