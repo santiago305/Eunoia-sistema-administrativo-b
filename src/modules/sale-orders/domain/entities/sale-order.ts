@@ -50,5 +50,6 @@ export class SaleOrder {
     public readonly preguide: boolean = false,
     public readonly reserveBool: boolean = false,
     public readonly currency: CurrencyType = CurrencyType.PEN,
+    public readonly companyId: string | null = null,
   ) {}
 }

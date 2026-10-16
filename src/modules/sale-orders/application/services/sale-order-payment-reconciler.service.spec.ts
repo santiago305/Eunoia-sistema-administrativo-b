@@ -18,7 +18,7 @@ describe('SaleOrderPaymentReconcilerService', () => {
 
   function createFixture(existing = [existingPayment]) {
     tx.manager.query.mockReset().mockImplementation((sql: string) => {
-      if (sql.includes('SELECT currency')) return Promise.resolve([{ currency: 'PEN' }]);
+      if (sql.includes('SELECT currency')) return Promise.resolve([{ currency: 'PEN', companyId: 'company-1' }]);
       if (sql.includes('FROM company_payment_accounts')) {
         return Promise.resolve([{
           accountCurrency: 'PEN', accountUsage: 'INFLOW', accountIsActive: true,
@@ -244,7 +244,7 @@ describe('SaleOrderPaymentReconcilerService', () => {
   it('rejects an account type incompatible with the selected payment method', async () => {
     const { service, paymentRepo } = createFixture([]);
     tx.manager.query.mockImplementation((sql: string) => {
-      if (sql.includes('SELECT currency')) return Promise.resolve([{ currency: 'PEN' }]);
+      if (sql.includes('SELECT currency')) return Promise.resolve([{ currency: 'PEN', companyId: 'company-1' }]);
       if (sql.includes('FROM company_payment_accounts')) {
         return Promise.resolve([{
           accountCurrency: 'PEN', accountUsage: 'INFLOW', accountIsActive: true,
@@ -302,6 +302,7 @@ describe('SaleOrderPaymentReconcilerService', () => {
 
     expect(validationQuery).toContain('actor.is_super_admin = true');
     expect(validationQuery).toContain('actor.company_id = account.company_id');
+    expect(validationQuery).toContain('account.company_id = $4');
     expect(validationQuery).toContain('actor.deleted = false');
   });
 });

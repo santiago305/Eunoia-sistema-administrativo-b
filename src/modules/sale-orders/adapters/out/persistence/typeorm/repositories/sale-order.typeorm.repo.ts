@@ -267,6 +267,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       row.preguide ?? false,
       Boolean(row.reserveBool),
       row.currency,
+      row.companyId ?? null,
     );
   }
 
@@ -297,6 +298,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
       sendCode: input.sendCode ?? null,
       sendAddress: input.sendAddress ?? null,
       assignedBy: input.assignedBy ?? null,
+      companyId: input.companyId ?? null,
       createdBy: input.createdBy,
       createdAt: input.createdAt ?? undefined,
       workflowId: input.workflowId ?? null,
@@ -1916,6 +1918,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
 
         return {
           id: row.id,
+          companyId: row.companyId,
           serie: row.serie ?? null,
           correlative: row.correlative ?? null,
           warehouse: warehouse
@@ -2921,6 +2924,7 @@ export class SaleOrderTypeormRepository implements SaleOrderRepository {
 
     const output: SaleOrderGetOutput = {
       id: row.id,
+      companyId: row.companyId,
       currency: row.currency,
       serie: row.serie ?? null,
       correlative: row.correlative ?? null,

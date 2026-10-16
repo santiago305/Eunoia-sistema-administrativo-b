@@ -44,8 +44,10 @@ import {
   SaleOrderSuppliesService,
   SaleOrderSupplyInput,
 } from '../../services/sale-order-supplies.service';
+import { resolveSaleOrderCompanyId } from '../../services/sale-order-company-resolver';
 
 export type CreateSaleOrderInput = {
+  companyId?: string | null;
   warehouseId?: string;
   clientId: string;
   workflowId: string;
@@ -160,6 +162,12 @@ export class CreateSaleOrderUsecase {
       throw new BadRequestException('Workflow invalido para crear pedido');
     }
 
+    const companyId = await resolveSaleOrderCompanyId(
+      (tx as any).manager,
+      createdBy,
+      input.companyId,
+    );
+
     const { subTotal, deliveryCost, discount, total } = calculateSaleOrderTotals({
       itemTotals: input.items.map((item) => item.total ?? 0),
       deliveryCost: input.deliveryCost ?? 0,
@@ -168,6 +176,7 @@ export class CreateSaleOrderUsecase {
 
     const order = await this.saleOrderRepo.create(
       {
+        companyId,
         serie,
         correlative,
         warehouseId: input.warehouseId,

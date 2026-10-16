@@ -56,6 +56,7 @@ import {
   roundMoney,
   toMinorUnits,
 } from 'src/modules/sale-orders/domain/value-objects/money';
+import { resolveSaleOrderCompanyId } from '../../services/sale-order-company-resolver';
 
 type ImportDestination = {
   agencySubsidiaryId: string | null;
@@ -330,6 +331,10 @@ export class CreateFromImportPreviewUseCase {
 
     const saleOrder = await this.saleOrderRepo.create(
       {
+        companyId: await resolveSaleOrderCompanyId(
+          (input.tx as TypeormTransactionContext).manager,
+          input.userId,
+        ),
         serie,
         correlative,
         warehouseId,

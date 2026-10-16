@@ -65,6 +65,10 @@ export class HttpUnifiedSalePaymentDto {
 }
 
 export class HttpSaveSaleOrderWithClientDto {
+  @IsOptional()
+  @IsUUID()
+  companyId?: string;
+
   @IsObject()
   client: SaleOrderClientCommand;
 

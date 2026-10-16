@@ -28,6 +28,7 @@ export type SaleOrderAuditRecord = {
 };
 
 type SaleOrderWrite = {
+  companyId?: string | null;
   warehouseId: string | null;
   clientId: string;
   agencySubsidiaryId?: string | null;

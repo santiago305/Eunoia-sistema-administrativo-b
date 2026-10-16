@@ -146,6 +146,10 @@ export class HttpSaleOrderSupplyDto {
 
 export class HttpSaleOrderCreateDto {
   @IsOptional()
+  @IsUUID()
+  companyId?: string;
+
+  @IsOptional()
   @Transform(({ value }) =>
     value === '' || value === null ? undefined : value,
   )

@@ -7,6 +7,7 @@ import { CurrencyType } from "src/modules/payments/domain/value-objects/currency
 @Index("idx_sale_orders_client", ["clientId"])
 @Index("idx_sale_orders_source", ["sourceId"])
 @Index("idx_sale_orders_created_by", ["createdBy"])
+@Index("idx_sale_orders_company_id", ["companyId"])
 @Index("idx_sale_orders_schedule_date", ["scheduleDate"])
 @Index("idx_sale_orders_warehouse", ["warehouseId"])
 @Index("idx_sale_orders_workflow", ["workflowId"])
@@ -84,6 +85,9 @@ export class SaleOrderEntity {
 
   @Column({ name: "created_by", type: "uuid" })
   createdBy: string;
+
+  @Column({ name: "company_id", type: "uuid" })
+  companyId: string;
 
   @Column({ name: "workflow_id", type: "uuid", nullable: true })
   workflowId?: string | null;

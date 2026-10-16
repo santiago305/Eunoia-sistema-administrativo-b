@@ -60,12 +60,16 @@ export class SaleOrderPaymentReconcilerService {
       throw new BadRequestException('El registro de ingresos requiere una transaccion del pedido');
     }
     const orderRows = await manager.query(
-      'SELECT currency FROM sale_orders WHERE id = $1 FOR UPDATE',
+      'SELECT currency, company_id AS "companyId" FROM sale_orders WHERE id = $1 FOR UPDATE',
       [input.saleOrderId],
     );
     const orderCurrency = orderRows[0]?.currency;
+    const orderCompanyId = orderRows[0]?.companyId;
     if (orderCurrency !== 'PEN' && orderCurrency !== 'USD') {
       throw new BadRequestException('No se pudo determinar la moneda del pedido');
+    }
+    if (!orderCompanyId) {
+      throw new BadRequestException('No se pudo determinar la compañía del pedido');
     }
     const payments = input.payments.map((payment) => ({
       ...payment,
@@ -87,7 +91,13 @@ export class SaleOrderPaymentReconcilerService {
 
     for (const payment of payments) {
       if (!payment.id) {
-        await this.validatePendingPaymentConfiguration(manager, payment, orderCurrency, input.executedBy);
+        await this.validatePendingPaymentConfiguration(
+          manager,
+          payment,
+          orderCurrency,
+          input.executedBy,
+          orderCompanyId,
+        );
         newPayments.push(payment);
         continue;
       }
@@ -123,7 +133,13 @@ export class SaleOrderPaymentReconcilerService {
       if ((existingPayment.paymentMethodId ?? null) !== (payment.paymentMethodId ?? null)) changedFields.push('paymentMethodId');
       if (changedFields.length === 0) continue;
 
-      await this.validatePendingPaymentConfiguration(manager, payment, orderCurrency, input.executedBy);
+      await this.validatePendingPaymentConfiguration(
+        manager,
+        payment,
+        orderCurrency,
+        input.executedBy,
+        orderCompanyId,
+      );
 
       await this.paymentRepo.update(
         {
@@ -251,6 +267,7 @@ export class SaleOrderPaymentReconcilerService {
     payment: SaleOrderPaymentCommand,
     orderCurrency: string,
     userId: string,
+    orderCompanyId: string,
   ): Promise<void> {
     const accountId = payment.companyPaymentAccountId ?? payment.bankAccountId;
     if (!accountId || !payment.paymentMethodId) {
@@ -266,9 +283,10 @@ export class SaleOrderPaymentReconcilerService {
        JOIN users actor ON actor.user_id = $3 AND actor.deleted = false
        JOIN payment_methods method ON method.method_id = $2
        WHERE account.company_payment_account_id = $1
+         AND account.company_id = $4
          AND (actor.is_super_admin = true OR actor.company_id = account.company_id)
        FOR UPDATE OF account, method`,
-      [accountId, payment.paymentMethodId, userId],
+      [accountId, payment.paymentMethodId, userId, orderCompanyId],
     );
     const configuration = rows[0];
     if (

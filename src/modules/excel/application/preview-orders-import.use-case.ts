@@ -77,6 +77,7 @@ import {
   roundMoney,
   toMinorUnits,
 } from "src/modules/sale-orders/domain/value-objects/money";
+import { resolveSaleOrderCompanyId } from "src/modules/sale-orders/application/services/sale-order-company-resolver";
 
 export const calculateImportedComponentPrices = (
   subtotal: number,
@@ -423,6 +424,10 @@ export class PreviewOrdersImportUseCase {
     const deliveryDate = this.toDateOnly(input.row.deliveryDate);
 
     const saleOrderInput = {
+      companyId: await resolveSaleOrderCompanyId(
+        (input.tx as TypeormTransactionContext).manager,
+        input.userId,
+      ),
       serie,
       correlative,
       warehouseId,

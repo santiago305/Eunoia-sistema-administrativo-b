@@ -146,6 +146,7 @@ export type SaleOrderPaymentOutput = {
 
 export type SaleOrderListItemOutput = {
   id: string;
+  companyId?: string | null;
   serie: string | null;
   correlative: number | null;
   warehouse: { id: string; name: string } | null;

@@ -160,6 +160,7 @@ export class SaveSaleOrderWithClientUsecase {
           : await this.createOrder.executeInTransaction(
               {
                 ...orderFields,
+                companyId: orderFields.companyId ?? null,
                 workflowId: orderFields.workflowId!,
                 clientId: clientResult.clientId,
                 payments: undefined,

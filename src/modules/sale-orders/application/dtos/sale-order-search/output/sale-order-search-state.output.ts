@@ -79,6 +79,7 @@ export type SaleOrderComponentsOutput = {
 };
 export type SaleOrderGetOutput = {
   id: string;
+  companyId?: string | null;
   currency: string;
   serie: string | null;
   correlative: number | null;

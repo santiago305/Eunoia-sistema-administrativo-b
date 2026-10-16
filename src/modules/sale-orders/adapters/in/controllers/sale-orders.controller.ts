@@ -225,6 +225,7 @@ export class SaleOrdersController {
   ) {
     const result = await this.createSaleOrder.execute(
       {
+        companyId: dto.companyId,
         warehouseId: dto.warehouseId,
         clientId: dto.clientId,
         workflowId: dto.workflowId,
