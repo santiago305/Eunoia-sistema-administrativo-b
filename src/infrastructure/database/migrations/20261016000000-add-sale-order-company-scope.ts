@@ -59,12 +59,20 @@ export class AddSaleOrderCompanyScope20261016000000 implements MigrationInterfac
               WHERE active.is_active = true
            ) = 1
       ), payment_company AS (
-        SELECT payment.sale_order_id, MIN(account.company_id) AS company_id
+        SELECT DISTINCT payment.sale_order_id, account.company_id
           FROM sale_payments payment
           JOIN company_payment_accounts account
             ON account.company_payment_account_id = payment.company_payment_account_id
-         GROUP BY payment.sale_order_id
-        HAVING COUNT(DISTINCT account.company_id) = 1
+         WHERE account.company_id IS NOT NULL
+           AND NOT EXISTS (
+             SELECT 1
+               FROM sale_payments other_payment
+               JOIN company_payment_accounts other_account
+                 ON other_account.company_payment_account_id = other_payment.company_payment_account_id
+              WHERE other_payment.sale_order_id = payment.sale_order_id
+                AND other_account.company_id IS NOT NULL
+                AND other_account.company_id <> account.company_id
+           )
       )
       UPDATE sale_orders so
          SET company_id = COALESCE(
